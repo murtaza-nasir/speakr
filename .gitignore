@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 *.log
 .env
+.migrate/
