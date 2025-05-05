@@ -6,10 +6,10 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 ## Screenshots
 
-*(Add screenshots of the main interface, detail view, admin panel, etc., here)*
-* `[Screenshot of Main Gallery View]`
-* `[Screenshot of Recording Detail View (Transcription/Summary/Chat)]`
-* `[Screenshot of Admin User Management]`
+![image](https://github.com/user-attachments/assets/bb478201-3487-4b8c-9179-7070beace923)
+![image](https://github.com/user-attachments/assets/637bfb92-bbfc-4113-93d2-c7d051c970af)
+![image](https://github.com/user-attachments/assets/def80268-ede9-477d-a44a-a618d262be1c)
+
 
 ## Features
 
@@ -66,7 +66,7 @@ Follow these steps to run Speakr on your local machine for development or testin
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/your-username/speakr.git](https://github.com/your-username/speakr.git) # Replace with your repo URL
+    git clone https://github.com/murtaza-nasir/speakr.git
     cd speakr
     ```
 
@@ -83,23 +83,23 @@ Follow these steps to run Speakr on your local machine for development or testin
     ```
 
 4.  **Configure Environment Variables:**
-    * Copy the example environment file (if you create one) or create a new file named `.env` in the project root.
+    * Copy the example environment file `.env.example` or create a new file named `.env` in the project root.
     * Add the following variables, replacing placeholder values with your actual keys and endpoints:
 
         ```dotenv
         # --- Required for Summaries/Chat ---
         # (Use OpenRouter or another OpenAI-compatible Chat API)
-        OPENROUTER_API_KEY="sk-or-v1-..." # Your OpenRouter or compatible API key
-        OPENROUTER_BASE_URL="[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)" # Or your chat model endpoint
+        OPENROUTER_API_KEY=sk-or-v1-... # Your OpenRouter or compatible API key
+        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1" # Or your chat model endpoint
         # Recommended Models: openai/gpt-4o-mini, google/gemini-flash-1.5, etc.
         OPENROUTER_MODEL_NAME="openai/gpt-4o-mini"
 
         # --- Required for Transcription ---
         # (Use OpenAI Whisper API or a compatible local/remote endpoint)
-        OPENAI_API_KEY="cant-be-empty" # Use your OpenAI key OR often "none", "NA", "cant-be-empty" for local endpoints
-        OPENAI_BASE_URL="http://YOUR_LOCAL_WHISPER_IP:PORT/v1/" # Your transcription endpoint URL
+        TRANSCRIPTION_API_KEY="cant-be-empty" # Use your OpenAI key OR often "none", "NA", "cant-be-empty" for local endpoints
+        TRANSCRIPTION_BASE_URL="http://YOUR_LOCAL_WHISPER_IP:PORT/v1/" # Your transcription endpoint URL
         # Set the specific model name your transcription endpoint uses (if needed by API)
-        TRANSCRIPTION_MODEL_NAME="Systran/faster-distil-whisper-large-v3" # Or the model your endpoint expects
+        WHISPER_MODEL="Systran/faster-distil-whisper-large-v3" # Or the model your endpoint expects
 
         # --- Flask Specific ---
         # A strong, random secret key is crucial for session security.
@@ -113,13 +113,7 @@ Follow these steps to run Speakr on your local machine for development or testin
 
 5.  **Database Setup & Migrations:**
     * The application uses SQLite by default, stored in `instance/transcriptions.db`.
-    * Run the necessary migrations to set up or update the database schema:
-        ```bash
-        python migrate_db.py
-        python migrate_original_filename.py
-        python migrate_is_admin.py
-        ```
-    * *(Note: If you ever need to start completely fresh, you can use `python reset_db.py`, but **be careful as this deletes all data**)*
+    * If you ever need to start completely fresh, you can use `python reset_db.py`, but **be careful as this deletes all data**)
 
 6.  **Create an Admin User:**
     * Run the interactive script to create your first user with admin privileges:
@@ -188,9 +182,9 @@ Configuration is primarily handled through the `.env` file in the project root (
 * `OPENROUTER_API_KEY`: **Required.** Your API key for the chat/summarization model endpoint (e.g., OpenRouter API Key).
 * `OPENROUTER_BASE_URL`: *Optional.* The base URL for the chat/summarization API. Defaults to OpenRouter's URL.
 * `OPENROUTER_MODEL_NAME`: *Optional.* The specific model to use for chat/summarization (e.g., `openai/gpt-4o-mini`, `google/gemini-flash-1.5`). Defaults to `openai/gpt-4o-mini` if not set (update from code default).
-* `OPENAI_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
-* `OPENAI_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
-* `TRANSCRIPTION_MODEL_NAME`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
+* `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
+* `TRANSCRIPTION_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
+* `WHISPER_MODEL`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
 * `SECRET_KEY`: **Required.** A long, random string used by Flask for session security. The `setup.sh` script generates one if it's missing.
 * `ALLOW_REGISTRATION`: *Optional.* Set to `false` to prevent new users from registering via the web UI. Defaults to `true`.
 
@@ -217,7 +211,6 @@ Configuration is primarily handled through the `.env` file in the project root (
 
 The following scripts are located in the application root (`/opt/transcription-app` if deployed):
 
-* `migrate_db.py`, `migrate_original_filename.py`, `migrate_is_admin.py`: Run these (in order if setting up an older version) to apply schema updates *without* losing existing data. The `setup.sh` script runs `migrate_db.py` automatically if the database already exists.
 * `reset_db.py`: **Use with caution!** This script deletes the existing database (`instance/transcriptions.db`) and the contents of the `uploads` directory, then creates a fresh, empty database schema.
 
 ## License
