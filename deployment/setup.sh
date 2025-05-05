@@ -11,7 +11,6 @@ cp app.py /opt/transcription-app/
 cp -r templates /opt/transcription-app/
 cp requirements.txt /opt/transcription-app/
 cp reset_db.py /opt/transcription-app/
-cp migrate_db.py /opt/transcription-app/
 cp create_admin.py /opt/transcription-app/
 cp .env /opt/transcription-app/  # Copy the .env file with API keys
 
