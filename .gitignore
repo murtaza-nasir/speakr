@@ -9,3 +9,4 @@ __pycache__/
 *.log
 .env
 .migrate/
+project_files.md
