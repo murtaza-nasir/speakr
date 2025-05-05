@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 *.log
 .env
+.migrate/
+project_files.md
