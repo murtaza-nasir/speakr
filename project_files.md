@@ -3,68 +3,6 @@
 Generated documentation of all project files.
 
 
-## migrate_is_admin.py
-
-```python
-
-#!/usr/bin/env python3
-
-import os
-import sys
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Boolean
-
-# Try to import from app context
-try:
-    from flask import current_app
-    app = current_app._get_current_object()
-    with app.app_context():
-        db = app.extensions['sqlalchemy'].db
-        User = app.extensions['sqlalchemy'].db.metadata.tables['user']
-except (RuntimeError, AttributeError, KeyError):
-    # If not in app context, import directly
-    try:
-        from app import app, db, User
-    except ImportError as e:
-        print(f"Error: Could not import required modules: {e}")
-        print("Make sure migrate_is_admin.py is runnable and PYTHONPATH is set.")
-        sys.exit(1)
-
-def migrate_is_admin_field():
-    """
-    Add is_admin field to User model if it doesn't exist
-    """
-    print("Migrating database to add is_admin field to User model")
-    print("=====================================================")
-    
-    with app.app_context():
-        # Check if is_admin column exists
-        inspector = db.inspect(db.engine)
-        columns = [column['name'] for column in inspector.get_columns('user')]
-        
-        if 'is_admin' in columns:
-            print("is_admin column already exists in User table.")
-            return
-        
-        # Add is_admin column
-        print("Adding is_admin column to User table...")
-        try:
-            db.engine.execute('ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0')
-            print("Column added successfully.")
-        except Exception as e:
-            print(f"Error adding column: {e}")
-            sys.exit(1)
-        
-        print("\nMigration completed successfully!")
-        print("You can now use the create_admin.py script to create admin users.")
-
-if __name__ == "__main__":
-    migrate_is_admin_field()
-
-```
-
-
 ## reset_db.py
 
 ```python
@@ -199,115 +137,6 @@ if __name__ == "__main__":
     print("Attempting to reset the database and clean up all data...")
     reset_database(delete_uploads=True)
     print("Database reset process finished.")
-
-```
-
-
-## migrate_original_filename.py
-
-```python
-
-#!/usr/bin/env python3
-
-import os
-import sys
-from sqlalchemy import inspect
-from sqlalchemy.exc import OperationalError
-
-# Try to import from app context
-try:
-    from flask import current_app
-    app = current_app._get_current_object()
-    with app.app_context():
-        db = app.extensions['sqlalchemy'].db
-except (RuntimeError, AttributeError, KeyError):
-    # If not in app context, import directly
-    try:
-        from app import app, db, Recording
-    except ImportError as e:
-        print(f"Error: Could not import 'app' and 'db': {e}")
-        print("Make sure migrate_original_filename.py is runnable and PYTHONPATH is set.")
-        sys.exit(1)
-
-def migrate_database():
-    """
-    Migrate the database schema to add original_filename column without losing data
-    """
-    print("Starting database migration for original_filename column...")
-    
-    with app.app_context():
-        inspector = inspect(db.engine)
-        
-        # Check if Recording.original_filename column exists
-        recording_columns = [column['name'] for column in inspector.get_columns('recording')]
-        if 'original_filename' not in recording_columns:
-            print("Adding original_filename column to Recording table...")
-            try:
-                # Add original_filename column to Recording table
-                with db.engine.begin() as conn:
-                    conn.execute(db.text("ALTER TABLE recording ADD COLUMN original_filename VARCHAR(500)"))
-                print("original_filename column added successfully!")
-            except OperationalError as e:
-                print(f"Error adding original_filename column: {e}")
-                print("Attempting alternative approach...")
-                try:
-                    # SQLite doesn't support ALTER TABLE ADD COLUMN with foreign keys
-                    # So we need to create a new table, copy data, drop old table, rename new table
-                    
-                    # 1. Create temporary table with new schema
-                    with db.engine.begin() as conn:
-                        conn.execute(db.text("""
-                            CREATE TABLE recording_new (
-                                id INTEGER PRIMARY KEY,
-                                title VARCHAR(200),
-                                participants VARCHAR(500),
-                                notes TEXT,
-                                transcription TEXT,
-                                summary TEXT,
-                                status VARCHAR(50),
-                                audio_path VARCHAR(500),
-                                created_at DATETIME,
-                                meeting_date DATE,
-                                file_size INTEGER,
-                                user_id INTEGER REFERENCES user(id),
-                                original_filename VARCHAR(500)
-                            )
-                        """))
-                    
-                    # 2. Copy data from old table to new table
-                    with db.engine.begin() as conn:
-                        conn.execute(db.text("""
-                            INSERT INTO recording_new (
-                                id, title, participants, notes, transcription, summary, 
-                                status, audio_path, created_at, meeting_date, file_size, user_id
-                            )
-                            SELECT 
-                                id, title, participants, notes, transcription, summary, 
-                                status, audio_path, created_at, meeting_date, file_size, user_id
-                            FROM recording
-                        """))
-                    
-                    # 3. Drop old table
-                    with db.engine.begin() as conn:
-                        conn.execute(db.text("DROP TABLE recording"))
-                    
-                    # 4. Rename new table
-                    with db.engine.begin() as conn:
-                        conn.execute(db.text("ALTER TABLE recording_new RENAME TO recording"))
-                    
-                    print("original_filename column added successfully using table recreation!")
-                except Exception as e2:
-                    print(f"Error during table recreation: {e2}")
-                    sys.exit(1)
-        else:
-            print("original_filename column already exists in Recording table.")
-        
-        print("Database migration completed successfully!")
-
-if __name__ == "__main__":
-    print("Attempting to migrate the database to add original_filename column...")
-    migrate_database()
-    print("Database migration process finished.")
 
 ```
 
@@ -586,8 +415,8 @@ else:
          app.logger.error(f"Failed to initialize OpenRouter client: {client_init_e}", exc_info=True)
 
 # Store details for the transcription client (potentially different)
-transcription_api_key = os.environ.get("OPENAI_API_KEY", "cant-be-empty")
-transcription_base_url = os.environ.get("OPENAI_BASE_URL", "http://192.168.68.85:1611/v1/")
+transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
+transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openrouter.ai/api/v1")
 
 app.logger.info(f"Using OpenRouter model for summaries: {openrouter_model_name}")
 
@@ -618,8 +447,10 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
                     base_url=transcription_base_url,
                     http_client=http_client_no_proxy # Reuse the same client configuration
                 )
+                # Get the Whisper model name from environment variables
+                whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
                 transcript = transcription_client.audio.transcriptions.create(
-                    model="Systran/faster-distil-whisper-large-v3", # Your Whisper model
+                    model=whisper_model, # Use model from environment variables
                     file=audio_file,
                     language="en" # Specify language if known
                 )
@@ -1355,7 +1186,271 @@ if __name__ == '__main__':
 ```
 
 
-## migrate_db.py
+## create_docs.py
+
+```python
+
+import os
+from pathlib import Path
+
+def create_markdown_doc(base_dir):
+    output = []
+    
+    # Add header
+    output.append("# Project Files\n")
+    output.append("Generated documentation of all project files.\n")
+
+    # Function to read and format file content
+    def add_file_content(filepath, relative_path):
+        output.append(f"\n## {relative_path}\n")
+        output.append("```" + get_file_extension(filepath) + "\n")
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                output.append(f.read())
+        except Exception as e:
+            output.append(f"Error reading file: {e}")
+        output.append("```\n")
+
+    def get_file_extension(filepath):
+        ext = os.path.splitext(filepath)[1][1:].lower()
+        # Map file extensions to markdown code block languages
+        extension_map = {
+            'py': 'python',
+            'html': 'html',
+            'js': 'javascript',
+            'css': 'css',
+            'sh': 'bash',
+            'md': 'markdown',
+            'txt': 'text'
+        }
+        return extension_map.get(ext, '')
+
+    # List of important file patterns to include
+    patterns = [
+        '*.py',
+        '*.html',
+        '*.js',
+        '*.css',
+        '*.sh',
+        'requirements.txt'
+    ]
+
+    # Walk through directory and add files
+    for root, _, _ in os.walk(base_dir):
+        for pattern in patterns:
+            for filepath in Path(root).glob(pattern):
+                if 'venv' not in str(filepath) and '__pycache__' not in str(filepath):
+                    relative_path = os.path.relpath(filepath, base_dir)
+                    add_file_content(filepath, relative_path)
+
+    # Write to output file
+    output_path = os.path.join(base_dir, 'project_files.md')
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(output))
+    
+    return output_path
+
+if __name__ == "__main__":
+    # Get the current directory
+    current_dir = os.getcwd()
+    
+    # Create the markdown file
+    output_file = create_markdown_doc(current_dir)
+    print(f"Created markdown documentation at: {output_file}")
+```
+
+
+## requirements.txt
+
+```text
+
+flask==2.3.3
+flask-sqlalchemy==3.1.1
+flask-login==0.6.3
+flask-wtf==1.2.2
+flask-bcrypt==1.0.1
+email-validator==2.2.0
+openai==1.3.0
+werkzeug==2.3.7
+gunicorn==21.2.0
+python-dotenv==1.0.0
+markdown==3.5.1
+
+```
+
+
+## .migrate/migrate_is_admin.py
+
+```python
+
+#!/usr/bin/env python3
+
+import os
+import sys
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, Boolean
+
+# Try to import from app context
+try:
+    from flask import current_app
+    app = current_app._get_current_object()
+    with app.app_context():
+        db = app.extensions['sqlalchemy'].db
+        User = app.extensions['sqlalchemy'].db.metadata.tables['user']
+except (RuntimeError, AttributeError, KeyError):
+    # If not in app context, import directly
+    try:
+        from app import app, db, User
+    except ImportError as e:
+        print(f"Error: Could not import required modules: {e}")
+        print("Make sure migrate_is_admin.py is runnable and PYTHONPATH is set.")
+        sys.exit(1)
+
+def migrate_is_admin_field():
+    """
+    Add is_admin field to User model if it doesn't exist
+    """
+    print("Migrating database to add is_admin field to User model")
+    print("=====================================================")
+    
+    with app.app_context():
+        # Check if is_admin column exists
+        inspector = db.inspect(db.engine)
+        columns = [column['name'] for column in inspector.get_columns('user')]
+        
+        if 'is_admin' in columns:
+            print("is_admin column already exists in User table.")
+            return
+        
+        # Add is_admin column
+        print("Adding is_admin column to User table...")
+        try:
+            db.engine.execute('ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0')
+            print("Column added successfully.")
+        except Exception as e:
+            print(f"Error adding column: {e}")
+            sys.exit(1)
+        
+        print("\nMigration completed successfully!")
+        print("You can now use the create_admin.py script to create admin users.")
+
+if __name__ == "__main__":
+    migrate_is_admin_field()
+
+```
+
+
+## .migrate/migrate_original_filename.py
+
+```python
+
+#!/usr/bin/env python3
+
+import os
+import sys
+from sqlalchemy import inspect
+from sqlalchemy.exc import OperationalError
+
+# Try to import from app context
+try:
+    from flask import current_app
+    app = current_app._get_current_object()
+    with app.app_context():
+        db = app.extensions['sqlalchemy'].db
+except (RuntimeError, AttributeError, KeyError):
+    # If not in app context, import directly
+    try:
+        from app import app, db, Recording
+    except ImportError as e:
+        print(f"Error: Could not import 'app' and 'db': {e}")
+        print("Make sure migrate_original_filename.py is runnable and PYTHONPATH is set.")
+        sys.exit(1)
+
+def migrate_database():
+    """
+    Migrate the database schema to add original_filename column without losing data
+    """
+    print("Starting database migration for original_filename column...")
+    
+    with app.app_context():
+        inspector = inspect(db.engine)
+        
+        # Check if Recording.original_filename column exists
+        recording_columns = [column['name'] for column in inspector.get_columns('recording')]
+        if 'original_filename' not in recording_columns:
+            print("Adding original_filename column to Recording table...")
+            try:
+                # Add original_filename column to Recording table
+                with db.engine.begin() as conn:
+                    conn.execute(db.text("ALTER TABLE recording ADD COLUMN original_filename VARCHAR(500)"))
+                print("original_filename column added successfully!")
+            except OperationalError as e:
+                print(f"Error adding original_filename column: {e}")
+                print("Attempting alternative approach...")
+                try:
+                    # SQLite doesn't support ALTER TABLE ADD COLUMN with foreign keys
+                    # So we need to create a new table, copy data, drop old table, rename new table
+                    
+                    # 1. Create temporary table with new schema
+                    with db.engine.begin() as conn:
+                        conn.execute(db.text("""
+                            CREATE TABLE recording_new (
+                                id INTEGER PRIMARY KEY,
+                                title VARCHAR(200),
+                                participants VARCHAR(500),
+                                notes TEXT,
+                                transcription TEXT,
+                                summary TEXT,
+                                status VARCHAR(50),
+                                audio_path VARCHAR(500),
+                                created_at DATETIME,
+                                meeting_date DATE,
+                                file_size INTEGER,
+                                user_id INTEGER REFERENCES user(id),
+                                original_filename VARCHAR(500)
+                            )
+                        """))
+                    
+                    # 2. Copy data from old table to new table
+                    with db.engine.begin() as conn:
+                        conn.execute(db.text("""
+                            INSERT INTO recording_new (
+                                id, title, participants, notes, transcription, summary, 
+                                status, audio_path, created_at, meeting_date, file_size, user_id
+                            )
+                            SELECT 
+                                id, title, participants, notes, transcription, summary, 
+                                status, audio_path, created_at, meeting_date, file_size, user_id
+                            FROM recording
+                        """))
+                    
+                    # 3. Drop old table
+                    with db.engine.begin() as conn:
+                        conn.execute(db.text("DROP TABLE recording"))
+                    
+                    # 4. Rename new table
+                    with db.engine.begin() as conn:
+                        conn.execute(db.text("ALTER TABLE recording_new RENAME TO recording"))
+                    
+                    print("original_filename column added successfully using table recreation!")
+                except Exception as e2:
+                    print(f"Error during table recreation: {e2}")
+                    sys.exit(1)
+        else:
+            print("original_filename column already exists in Recording table.")
+        
+        print("Database migration completed successfully!")
+
+if __name__ == "__main__":
+    print("Attempting to migrate the database to add original_filename column...")
+    migrate_database()
+    print("Database migration process finished.")
+
+```
+
+
+## .migrate/migrate_db.py
 
 ```python
 
@@ -1479,99 +1574,6 @@ if __name__ == "__main__":
     print("Attempting to migrate the database...")
     migrate_database()
     print("Database migration process finished.")
-
-```
-
-
-## create_docs.py
-
-```python
-
-import os
-from pathlib import Path
-
-def create_markdown_doc(base_dir):
-    output = []
-    
-    # Add header
-    output.append("# Project Files\n")
-    output.append("Generated documentation of all project files.\n")
-
-    # Function to read and format file content
-    def add_file_content(filepath, relative_path):
-        output.append(f"\n## {relative_path}\n")
-        output.append("```" + get_file_extension(filepath) + "\n")
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                output.append(f.read())
-        except Exception as e:
-            output.append(f"Error reading file: {e}")
-        output.append("```\n")
-
-    def get_file_extension(filepath):
-        ext = os.path.splitext(filepath)[1][1:].lower()
-        # Map file extensions to markdown code block languages
-        extension_map = {
-            'py': 'python',
-            'html': 'html',
-            'js': 'javascript',
-            'css': 'css',
-            'sh': 'bash',
-            'md': 'markdown',
-            'txt': 'text'
-        }
-        return extension_map.get(ext, '')
-
-    # List of important file patterns to include
-    patterns = [
-        '*.py',
-        '*.html',
-        '*.js',
-        '*.css',
-        '*.sh',
-        'requirements.txt'
-    ]
-
-    # Walk through directory and add files
-    for root, _, _ in os.walk(base_dir):
-        for pattern in patterns:
-            for filepath in Path(root).glob(pattern):
-                if 'venv' not in str(filepath) and '__pycache__' not in str(filepath):
-                    relative_path = os.path.relpath(filepath, base_dir)
-                    add_file_content(filepath, relative_path)
-
-    # Write to output file
-    output_path = os.path.join(base_dir, 'project_files.md')
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(output))
-    
-    return output_path
-
-if __name__ == "__main__":
-    # Get the current directory
-    current_dir = os.getcwd()
-    
-    # Create the markdown file
-    output_file = create_markdown_doc(current_dir)
-    print(f"Created markdown documentation at: {output_file}")
-```
-
-
-## requirements.txt
-
-```text
-
-flask==2.3.3
-flask-sqlalchemy==3.1.1
-flask-login==0.6.3
-flask-wtf==1.2.2
-flask-bcrypt==1.0.1
-email-validator==2.2.0
-openai==1.3.0
-werkzeug==2.3.7
-gunicorn==21.2.0
-python-dotenv==1.0.0
-markdown==3.5.1
 
 ```
 
@@ -3651,6 +3653,7 @@ markdown==3.5.1
                 const isProcessingActive = ref(false);
                 const pollInterval = ref(null);
                 const progressPopupMinimized = ref(false);
+                const progressPopupClosed = ref(false);
 
                 const showEditModal = ref(false);
                 const showDeleteModal = ref(false);
@@ -3846,6 +3849,7 @@ markdown==3.5.1
                      if(filesAdded > 0) {
                         console.log(`Added ${filesAdded} file(s) to the queue.`);
                         progressPopupMinimized.value = false; // Show popup
+                        progressPopupClosed.value = false; // Reset closed state to make popup reappear
                         if (!isProcessingActive.value) {
                             startProcessingQueue();
                         }
@@ -4345,8 +4349,14 @@ markdown==3.5.1
                  watch(uploadQueue, (newQueue, oldQueue) => {
                     if (newQueue.length === 0 && oldQueue.length > 0 && !isProcessingActive.value) {
                         console.log("Upload queue processing finished.");
-                        // Optional: Auto-minimize after delay
-                         // setTimeout(() => progressPopupMinimized.value = true, 3000);
+                        // Auto-minimize after delay
+                        setTimeout(() => progressPopupMinimized.value = true, 1000);
+                        // Auto-hide popup after all uploads are complete
+                        setTimeout(() => {
+                            if (completedInQueue.value === totalInQueue.value && !isProcessingActive.value) {
+                                progressPopupClosed.value = true;
+                            }
+                        }, 5000);
                      }
                  }, { deep: true });
 
@@ -4564,7 +4574,7 @@ markdown==3.5.1
                     isLoadingRecordings, globalError, maxFileSizeMB, isDarkMode, // <-- Added isDarkMode
                     // Multi-upload State
                     uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
-                    isProcessingActive, progressPopupMinimized,
+                    isProcessingActive, progressPopupMinimized, progressPopupClosed,
                     // Chat State
                     showChat, chatMessages, chatInput, isChatLoading, chatMessagesRef, // <-- Added chatMessagesRef
                     // Computed
@@ -4990,6 +5000,8 @@ markdown==3.5.1
 #!/bin/bash
 
 # Create directory for the application
+sudo systemctl stop transcription
+
 sudo mkdir -p /opt/transcription-app
 sudo chown $USER:$USER /opt/transcription-app
 
@@ -4998,7 +5010,6 @@ cp app.py /opt/transcription-app/
 cp -r templates /opt/transcription-app/
 cp requirements.txt /opt/transcription-app/
 cp reset_db.py /opt/transcription-app/
-cp migrate_db.py /opt/transcription-app/
 cp create_admin.py /opt/transcription-app/
 cp .env /opt/transcription-app/  # Copy the .env file with API keys
 
