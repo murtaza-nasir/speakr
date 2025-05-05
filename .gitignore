@@ -10,3 +10,4 @@ __pycache__/
 .env
 .migrate/
 project_files.md
+*.md
