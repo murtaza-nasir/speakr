@@ -1175,6 +1175,7 @@
                      if(filesAdded > 0) {
                         console.log(`Added ${filesAdded} file(s) to the queue.`);
                         progressPopupMinimized.value = false; // Show popup
+                        progressPopupClosed.value = false; // Reset closed state to make popup reappear
                         if (!isProcessingActive.value) {
                             startProcessingQueue();
                         }

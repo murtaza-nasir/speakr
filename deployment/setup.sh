@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Create directory for the application
+sudo systemctl stop transcription
+
 sudo mkdir -p /opt/transcription-app
 sudo chown $USER:$USER /opt/transcription-app
 
