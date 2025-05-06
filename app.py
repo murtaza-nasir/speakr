@@ -11,7 +11,7 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from sqlalchemy import select
 import threading
 from dotenv import load_dotenv # Import load_dotenv
-import httpx 
+import httpx
 import re
 import markdown
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -82,7 +82,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     recordings = db.relationship('Recording', backref='owner', lazy=True)
-    
+
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 class Recording(db.Model):
@@ -127,12 +127,12 @@ class RegistrationForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
-    
+
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
         if user:
             raise ValidationError('That username is already taken. Please choose a different one.')
-    
+
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
         if user:
@@ -220,7 +220,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
                 recording.status = 'COMPLETED'
                 db.session.commit()
                 return # Exit cleanly
-            
+
             recording.status = 'SUMMARIZING' # Update status
             db.session.commit()
             app.logger.info(f"Requesting title and summary from OpenRouter for recording {recording_id} using model {openrouter_model_name}...")
@@ -264,7 +264,7 @@ JSON Response:""" # The prompt guides the model towards the desired output
 
                 response_content = completion.choices[0].message.content
                 app.logger.debug(f"Raw OpenRouter response for {recording_id}: {response_content}")
-                
+
                 try:
                     response_content = completion.choices[0].message.content
                     app.logger.debug(f"Raw OpenRouter response for {recording_id}: {response_content}")
@@ -272,15 +272,15 @@ JSON Response:""" # The prompt guides the model towards the desired output
                     # Use regex to extract JSON content from potential markdown code blocks
                     # This looks for content between markdown code blocks or just takes the whole content
                     json_match = re.search(r'```(?:json)?(.*?)```|(.+)', response_content, re.DOTALL)
-                    
+
                     if json_match:
                         # Use the first group that matched (either between ``` or the whole content)
                         sanitized_response = json_match.group(1) if json_match.group(1) else json_match.group(2)
                         sanitized_response = sanitized_response.strip()
                     else:
                         sanitized_response = response_content.strip()
-                        
-                    summary_data = json.loads(response_content)
+
+                    summary_data = json.loads(sanitized_response)
                     generated_title = summary_data.get("title")
                     generated_summary = summary_data.get("summary")
 
@@ -334,29 +334,29 @@ def chat_with_transcription():
         data = request.json
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         recording_id = data.get('recording_id')
         user_message = data.get('message')
         message_history = data.get('message_history', [])
-        
+
         if not recording_id:
             return jsonify({'error': 'No recording ID provided'}), 400
         if not user_message:
             return jsonify({'error': 'No message provided'}), 400
-            
+
         # Get the recording
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
-            
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to chat with this recording'}), 403
-            
+
         # Check if OpenRouter client is available
         if client is None:
             return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
-            
+
         # Prepare the system prompt with the transcription
         system_prompt = f"""You are a professional meeting analyst working with Murtaza Nasir, Assistant Professor at Wichita State University. Analyze the following meeting information and respond to the specific request.
 
@@ -371,41 +371,41 @@ Following is the meeting transcript:
 Additional context and notes about the meeting:
 {recording.notes or "none"}
 """
-        
+
         # Call the LLM
         try:
             # Prepare messages array with system prompt and conversation history
             messages = [{"role": "system", "content": system_prompt}]
-            
+
             # Add message history if provided
             if message_history:
                 messages.extend(message_history)
-            
+
             # Add the current user message
             messages.append({"role": "user", "content": user_message})
-            
+
             completion = client.chat.completions.create(
                 model=openrouter_model_name,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=1000
             )
-            
+
             response_content = completion.choices[0].message.content
-            
+
             # Convert markdown in the response to HTML
             response_html = md_to_html(response_content)
-            
+
             return jsonify({
                 'response': response_content,
                 'response_html': response_html,
                 'success': True
             })
-            
+
         except Exception as chat_error:
             app.logger.error(f"Error calling OpenRouter API for chat: {str(chat_error)}")
             return jsonify({'error': f'Chat service error: {str(chat_error)}'}), 500
-            
+
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500
@@ -416,14 +416,14 @@ Additional context and notes about the meeting:
 def register():
     # Check if registration is allowed
     allow_registration = os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
-    
+
     if not allow_registration:
         flash('Registration is currently disabled. Please contact the administrator.', 'danger')
         return redirect(url_for('login'))
-        
+
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
     form = RegistrationForm()
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -432,14 +432,14 @@ def register():
         db.session.commit()
         flash('Your account has been created! You can now log in.', 'success')
         return redirect(url_for('login'))
-    
+
     return render_template('register.html', title='Register', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
-    
+
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
@@ -449,7 +449,7 @@ def login():
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Login unsuccessful. Please check email and password.', 'danger')
-    
+
     return render_template('login.html', title='Login', form=form)
 
 @app.route('/logout')
@@ -468,25 +468,25 @@ def change_password():
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
-    
+
     # Validate form data
     if not current_password or not new_password or not confirm_password:
         flash('All fields are required.', 'danger')
         return redirect(url_for('account'))
-    
+
     if new_password != confirm_password:
         flash('New password and confirmation do not match.', 'danger')
         return redirect(url_for('account'))
-    
+
     # Check if current password is correct
     if not bcrypt.check_password_hash(current_user.password, current_password):
         flash('Current password is incorrect.', 'danger')
         return redirect(url_for('account'))
-    
+
     # Update password
     current_user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
     db.session.commit()
-    
+
     flash('Your password has been updated successfully.', 'success')
     return redirect(url_for('account'))
 
@@ -506,15 +506,15 @@ def admin_get_users():
     # Check if user is admin
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     users = User.query.all()
     user_data = []
-    
+
     for user in users:
         # Get recordings count and storage used
         recordings_count = len(user.recordings)
         storage_used = sum(r.file_size for r in user.recordings if r.file_size) or 0
-        
+
         user_data.append({
             'id': user.id,
             'username': user.username,
@@ -523,7 +523,7 @@ def admin_get_users():
             'recordings_count': recordings_count,
             'storage_used': storage_used
         })
-    
+
     return jsonify(user_data)
 
 @app.route('/admin/users', methods=['POST'])
@@ -532,24 +532,24 @@ def admin_add_user():
     # Check if user is admin
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     data = request.json
     if not data:
         return jsonify({'error': 'No data provided'}), 400
-    
+
     # Validate required fields
     required_fields = ['username', 'email', 'password']
     for field in required_fields:
         if field not in data:
             return jsonify({'error': f'Missing required field: {field}'}), 400
-    
+
     # Check if username or email already exists
     if User.query.filter_by(username=data['username']).first():
         return jsonify({'error': 'Username already exists'}), 400
-    
+
     if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email already exists'}), 400
-    
+
     # Create new user
     hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
     new_user = User(
@@ -558,10 +558,10 @@ def admin_add_user():
         password=hashed_password,
         is_admin=data.get('is_admin', False)
     )
-    
+
     db.session.add(new_user)
     db.session.commit()
-    
+
     return jsonify({
         'id': new_user.id,
         'username': new_user.username,
@@ -577,40 +577,40 @@ def admin_update_user(user_id):
     # Check if user is admin
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
+
     data = request.json
     if not data:
         return jsonify({'error': 'No data provided'}), 400
-    
+
     # Update user fields
     if 'username' in data and data['username'] != user.username:
         # Check if username already exists
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': 'Username already exists'}), 400
         user.username = data['username']
-    
+
     if 'email' in data and data['email'] != user.email:
         # Check if email already exists
         if User.query.filter_by(email=data['email']).first():
             return jsonify({'error': 'Email already exists'}), 400
         user.email = data['email']
-    
+
     if 'password' in data and data['password']:
         user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
-    
+
     if 'is_admin' in data:
         user.is_admin = data['is_admin']
-    
+
     db.session.commit()
-    
+
     # Get recordings count and storage used
     recordings_count = len(user.recordings)
     storage_used = sum(r.file_size for r in user.recordings if r.file_size) or 0
-    
+
     return jsonify({
         'id': user.id,
         'username': user.username,
@@ -626,15 +626,15 @@ def admin_delete_user(user_id):
     # Check if user is admin
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     # Prevent deleting self
     if user_id == current_user.id:
         return jsonify({'error': 'Cannot delete your own account'}), 400
-    
+
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
+
     # Delete user's recordings and audio files
     for recording in user.recordings:
         try:
@@ -642,11 +642,11 @@ def admin_delete_user(user_id):
                 os.remove(recording.audio_path)
         except Exception as e:
             app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
-    
+
     # Delete user
     db.session.delete(user)
     db.session.commit()
-    
+
     return jsonify({'success': True})
 
 @app.route('/admin/users/<int:user_id>/toggle-admin', methods=['POST'])
@@ -655,19 +655,19 @@ def admin_toggle_admin(user_id):
     # Check if user is admin
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     # Prevent changing own admin status
     if user_id == current_user.id:
         return jsonify({'error': 'Cannot change your own admin status'}), 400
-    
+
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
+
     # Toggle admin status
     user.is_admin = not user.is_admin
     db.session.commit()
-    
+
     return jsonify({'success': True, 'is_admin': user.is_admin})
 
 @app.route('/admin/stats', methods=['GET'])
@@ -676,22 +676,22 @@ def admin_get_stats():
     # Check if user is admin
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     # Get total users
     total_users = User.query.count()
-    
+
     # Get total recordings
     total_recordings = Recording.query.count()
-    
+
     # Get recordings by status
     completed_recordings = Recording.query.filter_by(status='COMPLETED').count()
     processing_recordings = Recording.query.filter(Recording.status.in_(['PROCESSING', 'SUMMARIZING'])).count()
     pending_recordings = Recording.query.filter_by(status='PENDING').count()
     failed_recordings = Recording.query.filter_by(status='FAILED').count()
-    
+
     # Get total storage used
     total_storage = db.session.query(db.func.sum(Recording.file_size)).scalar() or 0
-    
+
     # Get top users by storage
     top_users_query = db.session.query(
         User.id,
@@ -702,7 +702,7 @@ def admin_get_stats():
      .group_by(User.id) \
      .order_by(db.func.sum(Recording.file_size).desc()) \
      .limit(5)
-    
+
     top_users = []
     for user_id, username, recordings_count, storage_used in top_users_query:
         top_users.append({
@@ -711,11 +711,11 @@ def admin_get_stats():
             'recordings_count': recordings_count or 0,
             'storage_used': storage_used or 0
         })
-    
+
     # Get total queries (chat requests)
     # This is a placeholder - you would need to track this in your database
     total_queries = 0
-    
+
     return jsonify({
         'total_users': total_users,
         'total_recordings': total_recordings,
@@ -739,7 +739,7 @@ def get_recordings():
         # Check if user is logged in
         if not current_user.is_authenticated:
             return jsonify([])  # Return empty array if not logged in
-            
+
         # Filter recordings by the current user
         stmt = select(Recording).where(Recording.user_id == current_user.id).order_by(Recording.created_at.desc())
         recordings = db.session.execute(stmt).scalars().all()
@@ -759,7 +759,7 @@ def save_metadata():
 
         recording = db.session.get(Recording, recording_id)
         if not recording: return jsonify({'error': 'Recording not found'}), 404
-        
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to edit this recording'}), 403
@@ -869,11 +869,11 @@ def get_status(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
-        
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to view this recording'}), 403
-            
+
         return jsonify(recording.to_dict())
     except Exception as e:
         app.logger.error(f"Error fetching status for recording {recording_id}: {e}")
@@ -887,7 +887,7 @@ def get_audio(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording or not recording.audio_path:
             return jsonify({'error': 'Recording or audio file not found'}), 404
-            
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to access this audio file'}), 403
@@ -907,7 +907,7 @@ def delete_recording(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
-            
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to delete this recording'}), 403
