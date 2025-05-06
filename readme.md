@@ -173,6 +173,38 @@ The `deployment/setup.sh` script automates the setup process on a Linux server u
 
 5.  **Access Speakr:** Open your web browser and navigate to `http://YOUR_SERVER_IP:8899`.
 
+### 2. Deployment (Docker)
+
+1.  **Build**
+
+    ```
+    git clone https://github.com/murtaza-nasir/speakr.git
+    cd speakr
+    docker build -t speakr:dev .
+    ```
+
+3.  **Create admin user**
+
+    ```
+    docker run --rm -it \
+        -v ./instance:/opt/transcription-app/instance \
+        speakr:dev \
+        python create_admin.py
+    ```
+
+2.  **Run**
+
+    ```
+    docker run -d \
+        -p 8899:8899 \
+        -v ./instance:/opt/transcription-app/instance \
+        -v ./uploads:/opt/transcription-app/uploads \
+        --env-file .env \
+        --name speakr \
+        speakr:dev
+    ```
+
+
 ## Configuration
 
 Configuration is primarily handled through the `.env` file in the project root (or `/opt/transcription-app` if deployed using the script).
