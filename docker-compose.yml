@@ -1,0 +1,16 @@
+services:
+  speakr:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - instance:/opt/transcription-app/instance
+      - uploads:/opt/transcription-app/uploads
+    ports:
+      - "8899:8899"
+
+volumes:
+  instance:
+  uploads:
