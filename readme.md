@@ -173,7 +173,7 @@ The `deployment/setup.sh` script automates the setup process on a Linux server u
 
 5.  **Access Speakr:** Open your web browser and navigate to `http://YOUR_SERVER_IP:8899`.
 
-### 2. Deployment (Docker)
+### 3. Deployment (Docker)
 
 1.  **Build**
 
