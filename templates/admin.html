@@ -114,13 +114,13 @@
                 <button @click="toggleDarkMode" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
                     <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
                 </button>
-                <div class="relative" @click.away="isDropdownOpen = false">
-                    <button @click="isDropdownOpen = !isDropdownOpen" class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
+                <div class="relative">
+                    <button @click="isUserMenuOpen = !isUserMenuOpen" class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
                         <i class="fas fa-user-shield mr-2"></i>
                         <span>{{ current_user.username }}</span>
                         <i class="fas fa-chevron-down ml-2"></i>
                     </button>
-                    <div v-show="isDropdownOpen" class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
+                    <div v-if="isUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
                         <a href="{{ url_for('index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-home mr-2"></i> Home
                         </a>
@@ -453,7 +453,7 @@
                 const isLoadingUsers = ref(true);
                 const userSearchQuery = ref('');
                 const isDarkMode = ref(false);
-                const isDropdownOpen = ref(false);
+                const isUserMenuOpen = ref(false);
                 
                 // Modal state
                 const showAddUserModal = ref(false);
@@ -702,7 +702,7 @@
                     isLoadingUsers,
                     userSearchQuery,
                     isDarkMode,
-                    isDropdownOpen,
+                    isUserMenuOpen,
                     
                     // Modal state
                     showAddUserModal,
