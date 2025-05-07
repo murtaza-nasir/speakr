@@ -141,23 +141,22 @@
         .progress-popup { position: fixed; bottom: 1rem; left: 1rem; z-index: 100; transition: all 0.3s ease-in-out; min-width: 300px; border-radius: 12px; overflow: hidden; }
         .progress-popup.minimized { transform: translateY(calc(100% - 45px)); }
         .progress-list-item { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; }
-         /* Modern style for summary box */
-        .summary-box {
-            background-color: #f9fafb; /* bg-gray-50 */
+         /* Unified style for content boxes (summary, notes, transcription) */
+        .summary-box, .transcription-box, .notes-box {
+            background-color: var(--bg-tertiary);
             padding: 1rem; /* p-4 */
-    border-radius: 0.75rem; /* rounded-xl */
-    border: 1px solid #e5e7eb; /* border-gray-200 */
-    min-height: 0; /* Allow proper flex shrinking for scrolling */
-    /* max-height: 100%; */ /* Removed, flex:1 should handle sizing within constrained parent */
-    overflow-y: auto; /* Enable vertical scrolling */
-    white-space: pre-wrap;
-    font-family: inherit; /* Use body font */
-    font-size: 0.875rem; /* text-sm */
-    line-height: 1.5; /* Improved line height */
-    box-shadow: 0 1px 2px rgba(0,0,0,0.03); /* Subtle shadow */
-    flex: 1; /* Take up available space */
-    /* height: 100%; */ /* Removed, flex:1 should handle sizing */
-}
+            border-radius: 0.75rem; /* rounded-xl */
+            border: 1px solid var(--border-primary);
+            min-height: 0; /* Allow proper flex shrinking for scrolling */
+            overflow-y: auto; /* Enable vertical scrolling */
+            white-space: pre-wrap;
+            font-family: inherit; /* Use body font */
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.5; /* Consistent line height */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03); /* Subtle shadow */
+            flex: 1; /* Take up available space */
+            color: var(--text-secondary);
+        }
         
 /* Standardize border radius for all content boxes */
         .transcription-box, 
@@ -764,7 +763,7 @@
                                                 <i class="fas fa-copy"></i>
                                             </button>
                                         </div>
-                                        <div class="transcription-box p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-primary)] text-sm custom-scrollbar relative text-[var(--text-secondary)]">
+                                        <div class="transcription-box custom-scrollbar relative">
                                             <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'" class="copyable">
                                                 <pre class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
                                             </div>
@@ -822,12 +821,12 @@
                                             <!-- Notes Panel -->
                                             <div v-show="selectedTab === 'notes'" class="h-full">
                                                 <div v-if="!editingNotes" class="content-box h-full flex flex-col min-h-0 overflow-hidden">
-                                                    <div class="text-sm bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] flex-1 min-h-0 overflow-y-auto" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
+                                                    <div class="notes-box custom-scrollbar" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
                                                     <button @click="toggleEditNotes" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Notes">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
                                                 </div>
-                                                <textarea v-else v-model="selectedRecording.notes" @blur="saveInlineEdit('notes')" class="text-sm bg-[var(--bg-tertiary)] p-4 rounded border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box flex-1 height-100" placeholder="Enter notes"></textarea>
+                                                <textarea v-else v-model="selectedRecording.notes" @blur="saveInlineEdit('notes')" class="notes-box custom-scrollbar w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box flex-1 height-100" placeholder="Enter notes"></textarea>
                                             </div>
                                             
                                             <!-- Metadata Panel (in separate tab) -->
