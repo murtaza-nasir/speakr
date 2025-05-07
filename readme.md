@@ -65,7 +65,7 @@ Choose either **Docker** (recommended and currently the only working method), **
 
 ### 1. Docker Installation
 
-The easiest way to deploy Speakr is using Docker and docker-compose.
+The easiest way to deploy Speakr is using Docker and docker compose.
 
 #### Option A: Using Pre-built Docker Images
 
@@ -137,11 +137,11 @@ If you're using Portainer to manage your Docker containers:
    ```
 
 2. **Configure Environment Variables:**
-   * Copy the example environment file:
+   * Copy the example docker-compose file:
      ```bash
-     cp .env.example .env
+     cp docker-compose.example.yml docker-compose.yml
      ```
-   * Edit the `.env` file with your API keys and settings as described in the Configuration section.
+   * Edit the `docker-compose.yml` file to update the environment variables with your actual API keys and settings as described in the Configuration section.
 
 3. **Build and Start the Container:**
    ```bash
@@ -346,7 +346,7 @@ The `deployment/setup.sh` script automates the setup process on a Linux server u
 
 ## Configuration
 
-Configuration is primarily handled through the `.env` file in the project root (or `/opt/transcription-app` if deployed using the script).
+Configuration is primarily handled through environment variables in the `docker-compose.yml` file for Docker installations, or through the `.env` file for other installation methods (though note that the non-Docker installation methods are currently not working).
 
 **Key Variables:**
 
