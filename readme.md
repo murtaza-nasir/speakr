@@ -58,7 +58,9 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 ## Setup Instructions
 
-Choose either **Docker**, **Local Development**, or **Deployment**.
+**IMPORTANT NOTE:** Currently, only the Docker installation method is working. The Local Development and Deployment methods are not functional at this time.
+
+Choose either **Docker** (recommended and currently the only working method), **Local Development**, or **Deployment**.
 
 ### 1. Docker Installation
 
@@ -163,6 +165,8 @@ Your data will be preserved as it's stored in Docker volumes or your custom mapp
 
 ### 2. Local Development
 
+**NOTE: This method is currently not working. Please use the Docker installation method above.**
+
 Follow these steps to run Speakr on your local machine for development or testing.
 
 1.  **Clone the Repository:**
@@ -238,6 +242,8 @@ Follow these steps to run Speakr on your local machine for development or testin
 8.  **Access Speakr:** Open your web browser and navigate to `http://localhost:8899` (or your server's IP address if running remotely).
 
 ### 3. Deployment (Linux with Systemd)
+
+**NOTE: This method is currently not working. Please use the Docker installation method above.**
 
 The `deployment/setup.sh` script automates the setup process on a Linux server using `systemd`.
 
