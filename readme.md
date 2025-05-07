@@ -104,7 +104,7 @@ The easiest way to deploy Speakr is using Docker and docker compose.
    ```bash
    cp docker-compose.example.yml docker-compose.yml
    ```
-   Then edit the file to update the environment variables with your actual values.
+   Then edit the file to update the environment variables with your actual values. **Make sure to change the mount points to the correct paths**.
 
 2. **Start the container:**
    ```bash

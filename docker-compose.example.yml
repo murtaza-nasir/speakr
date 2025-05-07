@@ -8,8 +8,8 @@ services:
     ports:
       - "8899:8899"
     volumes:
-      - speakr-uploads:/data/uploads
-      - speakr-instance:/data/instance
+      - /path/to/uploads:/data/uploads
+      - /path/to/instance:/data/instance
     environment:
       # Database and upload folder configuration
       - SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
@@ -32,9 +32,3 @@ services:
       - ADMIN_USERNAME=admin
       - ADMIN_EMAIL=admin@example.com
       - ADMIN_PASSWORD=securepassword
-
-volumes:
-  speakr-uploads:
-    name: speakr-uploads
-  speakr-instance:
-    name: speakr-instance
