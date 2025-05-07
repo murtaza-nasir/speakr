@@ -20,6 +20,7 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 * **Transcription:** Uses OpenAI-compatible Speech-to-Text (STT) APIs (configurable, e.g., self-hosted Whisper).
 * **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs via OpenAI-compatible APIs (like OpenRouter).
 * **Interactive Chat:** Ask questions and interact with the transcription content using an AI model.
+* **Search, Inbox & Highlight:** For highlighting and easy processing
 * **Metadata Editing:** Edit titles, participants, meeting dates, summaries, and notes associated with recordings.
 
 **User Features:**
