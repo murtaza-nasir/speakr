@@ -589,3 +589,27 @@ div[v-if="!editingNotes"] {
      animation: copy-success 0.3s ease;
      color: #4CAF50 !important;
  }
+
+/* Fix for sidebar height and scrolling */
+/* Ensure the grid layout container has a fixed height */
+.grid.grid-cols-1.lg\:grid-cols-4.gap-6.flex-grow {
+    display: grid;
+    height: calc(85vh - 2rem); /* Match the max-h-85vh but subtract some padding */
+    min-height: 0; /* Allow the grid to shrink if needed */
+    overflow: hidden; /* Hide overflow at the grid level */
+}
+
+/* Ensure the sidebar container doesn't expand beyond its parent */
+.lg\:col-span-1.bg-\[var\(--bg-secondary\)\].p-4.rounded-lg.shadow-md.sidebar-container.max-h-85vh {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Hide overflow at container level */
+    max-height: 100%; /* Limit to parent height */
+}
+
+/* Make sure the sidebar content scrolls internally */
+.sidebar-content {
+    flex: 1;
+    overflow-y: auto; /* Enable scrolling for content */
+    min-height: 0; /* Allow content to shrink */
+}
