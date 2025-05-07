@@ -3,26 +3,26 @@ version: '3.8'
 services:
   app:
     build: .
-    image: whispertranscribe:latest
-    container_name: whispertranscribe
+    image: speakr:latest
+    container_name: speakr
     restart: unless-stopped
     ports:
       - "8899:8899"
     volumes:
-      - whispertranscribe-uploads:/data/uploads
-      - whispertranscribe-instance:/data/instance
+      - speakr-uploads:/data/uploads
+      - speakr-instance:/data/instance
     env_file:
       - .env
     environment:
       - SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
       - UPLOAD_FOLDER=/data/uploads
-      # Admin user creation (uncomment and set these to create an admin user on first run)
-      # - ADMIN_USERNAME=admin
-      # - ADMIN_EMAIL=admin@example.com
-      # - ADMIN_PASSWORD=securepassword
+      # Admin user creation
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@example.com
+      - ADMIN_PASSWORD=securepassword
 
 volumes:
-  whispertranscribe-uploads:
-    name: whispertranscribe-uploads
-  whispertranscribe-instance:
-    name: whispertranscribe-instance
+  speakr-uploads:
+    name: speakr-uploads
+  speakr-instance:
+    name: speakr-instance
