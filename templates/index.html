@@ -98,6 +98,7 @@
         }
 
         /* Modern UI styles */
+        .height-100 { height: 100%; }
         .drag-area { transition: background-color 0.3s ease, border-color 0.3s ease; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 12px; }
@@ -154,6 +155,8 @@
             font-size: 0.875rem; /* text-sm */
             line-height: 1.5; /* Improved line height */
             box-shadow: 0 1px 2px rgba(0,0,0,0.03); /* Subtle shadow */
+            flex: 1; /* Take up available space */
+            height: 100%; /* Fill the container height */
         }
         
         /* Standardize border radius for all content boxes */
@@ -204,13 +207,14 @@
             flex-direction: column;
         }
         
-        /* Tab content section - takes up remaining space */
+        /* Tab content section - takes up remaining space and aligns with chat box */
         .tab-section {
             flex: 1;
             min-height: 0; /* Allows flex to work properly */
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            height: 100%; /* Ensure it takes full height */
         }
         
         /* Audio player section - small fixed height */
@@ -231,6 +235,9 @@
             flex: 1;
             overflow-y: auto;
             min-height: 0; /* Allows flex to work properly */
+            height: 100%; /* Fill available height */
+            display: flex;
+            flex-direction: column;
         }
         
         .chat-content-box {
@@ -246,6 +253,9 @@
             /* margin-top removed to align with other boxes */
             font-size: 0.875rem; /* text-sm */
             color: var(--text-secondary);
+            flex: 1; /* Take up available space */
+            height: 100%; /* Fill the container height */
+            overflow-y: auto; /* Enable scrolling when content overflows */
         }
         .metadata-panel dt {
             font-weight: 500;
@@ -812,12 +822,12 @@
                                             <!-- Notes Panel -->
                                             <div v-show="selectedTab === 'notes'" class="h-full">
                                                 <div v-if="!editingNotes" class="content-box h-full">
-                                                    <div class="text-sm bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] tab-content-box" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
+                                                    <div class="text-sm bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] tab-content-box flex-1 height-100" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
                                                     <button @click="toggleEditNotes" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Notes">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
                                                 </div>
-                                                <textarea v-else v-model="selectedRecording.notes" @blur="saveInlineEdit('notes')" class="text-sm bg-[var(--bg-tertiary)] p-4 rounded border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box" placeholder="Enter notes"></textarea>
+                                                <textarea v-else v-model="selectedRecording.notes" @blur="saveInlineEdit('notes')" class="text-sm bg-[var(--bg-tertiary)] p-4 rounded border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box flex-1 height-100" placeholder="Enter notes"></textarea>
                                             </div>
                                             
                                             <!-- Metadata Panel (in separate tab) -->
