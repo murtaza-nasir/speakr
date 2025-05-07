@@ -85,16 +85,52 @@ The easiest way to deploy Speakr is using Docker and docker-compose.
        volumes:
          - ./uploads:/data/uploads
          - ./instance:/data/instance
-       env_file:
-         - .env
+       environment:
+         # Database and upload folder configuration
+         - SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
+         - UPLOAD_FOLDER=/data/uploads
+         
+         # Text model configuration
+         - TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+         - TEXT_MODEL_API_KEY=your_text_model_api_key_here
+         - TEXT_MODEL_NAME=openai/gpt-4o-mini
+         
+         # Whisper model configuration
+         - TRANSCRIPTION_BASE_URL=http://your_local_api_url:port/v1/
+         - TRANSCRIPTION_API_KEY=your_transcription_api_key_here
+         - WHISPER_MODEL=Systran/faster-distil-whisper-large-v3
+         
+         # Application settings
+         - ALLOW_REGISTRATION=false
    ```
 
-2. **Create a .env file** with your configuration (see the Configuration section below).
+   Alternatively, you can copy the example file:
+   ```bash
+   cp docker-compose.example.yml docker-compose.yml
+   ```
+   Then edit the file to update the environment variables with your actual values.
 
-3. **Start the container:**
+2. **Start the container:**
    ```bash
    docker compose up -d
    ```
+
+#### Option A.1: Deploying with Portainer
+
+If you're using Portainer to manage your Docker containers:
+
+1. **In Portainer:**
+   - Go to Stacks → Add stack
+   - Name your stack (e.g., "speakr")
+   - Upload the `docker-compose.example.yml` file or paste its contents
+   - Edit the environment variables with your actual values
+   - Click "Deploy the stack"
+
+2. **Important Notes for Portainer:**
+   - Make sure to update all environment variables with your actual values
+   - For volume persistence, you can either:
+     - Use named volumes as shown in the example file
+     - Or modify the volumes to use bind mounts to specific directories on your host
 
 #### Option B: Building Locally
 
