@@ -63,7 +63,7 @@ Choose either **Docker** (recommended and currently the only working method), **
 
 ### 1. Docker Installation
 
-The easiest way to deploy Speakr is using Docker and Docker Compose.
+The easiest way to deploy Speakr is using Docker and docker-compose.
 
 1. **Clone the Repository:**
    ```bash
@@ -106,13 +106,13 @@ The easiest way to deploy Speakr is using Docker and Docker Compose.
      
      Then restart the container:
      ```bash
-     docker-compose down
-     docker-compose up -d
+     docker compose down
+     docker compose up -d
      ```
    
    * **Option B: Using the create_admin.py script:**
      ```bash
-     docker-compose exec app python create_admin.py
+     docker compose exec app python create_admin.py
      ```
      Follow the interactive prompts to create an admin user.
 
@@ -140,8 +140,8 @@ By default, all data (database and uploaded audio files) is stored in Docker vol
 
 4. Restart the container:
    ```bash
-   docker-compose down
-   docker-compose up -d
+   docker compose down
+   docker compose up -d
    ```
 
 #### Updating the Docker Installation
@@ -155,9 +155,9 @@ To update the application to a newer version:
 
 2. Rebuild and restart the container:
    ```bash
-   docker-compose down
-   docker-compose build
-   docker-compose up -d
+   docker compose down
+   docker compose build
+   docker compose up -d
    ```
 
 Your data will be preserved as it's stored in Docker volumes or your custom mapped directories.
