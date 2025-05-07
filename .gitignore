@@ -11,3 +11,4 @@ __pycache__/
 .migrate/
 project_files.md
 *.md
+notes.md
