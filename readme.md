@@ -1,6 +1,6 @@
 # Speakr
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) This project is dual-licensed. See the [License](#license) section for details.
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Docker Build and Publish](https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml) This project is dual-licensed. See the [License](#license) section for details.
 
 Speakr is a personal, self-hosted web application designed for transcribing audio recordings (like meetings), generating concise summaries and titles, and interacting with the content through a chat interface. Keep all your meeting notes and insights securely on your own server.
 
@@ -42,7 +42,9 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 * **AI Integration:** OpenAI Python library (compatible with various endpoints like OpenAI, OpenRouter, or local servers)
 * **Authentication:** Flask-Login, Flask-Bcrypt, Flask-WTF
 * **Frontend:** Jinja2 Templates, Tailwind CSS, Vue.js (for interactive components), Font Awesome
-* **Deployment:** Bash script (`setup.sh`) for Linux/Systemd environments.
+* **Deployment:** 
+  * Bash script (`setup.sh`) for Linux/Systemd environments
+  * Docker with automated builds via GitHub Actions
 
 ## Prerequisites
 
@@ -61,9 +63,40 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 Choose either **Docker** (recommended and currently the only working method), **Local Development**, or **Deployment**.
 
+For information on the CI/CD setup and automated Docker image building, see [CI/CD Setup](docs/ci-cd-setup.md).
+
 ### 1. Docker Installation
 
 The easiest way to deploy Speakr is using Docker and docker-compose.
+
+#### Option A: Using Pre-built Docker Images
+
+1. **Create a docker-compose.yml file:**
+   ```yaml
+   version: '3.8'
+   
+   services:
+     app:
+       image: murtazanasir/speakr:latest
+       container_name: speakr
+       restart: unless-stopped
+       ports:
+         - "8899:8899"
+       volumes:
+         - ./uploads:/data/uploads
+         - ./instance:/data/instance
+       env_file:
+         - .env
+   ```
+
+2. **Create a .env file** with your configuration (see the Configuration section below).
+
+3. **Start the container:**
+   ```bash
+   docker compose up -d
+   ```
+
+#### Option B: Building Locally
 
 1. **Clone the Repository:**
    ```bash
