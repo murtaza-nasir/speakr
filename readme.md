@@ -58,9 +58,110 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 ## Setup Instructions
 
-Choose either **Local Development** or **Deployment**.
+Choose either **Docker**, **Local Development**, or **Deployment**.
 
-### 1. Local Development
+### 1. Docker Installation
+
+The easiest way to deploy Speakr is using Docker and Docker Compose.
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/murtaza-nasir/speakr.git
+   cd speakr
+   ```
+
+2. **Configure Environment Variables:**
+   * Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   * Edit the `.env` file with your API keys and settings as described in the Configuration section.
+
+3. **Build and Start the Container:**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Create an Admin User:**
+   
+   You can create an admin user in one of the following ways:
+   
+   * **Option A: Using environment variables:**
+     
+     Create a `docker-compose.override.yml` file:
+     ```bash
+     cp docker-compose.override.yml.example docker-compose.override.yml
+     ```
+     
+     Edit the file to uncomment and set the admin credentials:
+     ```yaml
+     services:
+       app:
+         environment:
+           - ADMIN_USERNAME=admin
+           - ADMIN_EMAIL=admin@example.com
+           - ADMIN_PASSWORD=securepassword
+     ```
+     
+     Then restart the container:
+     ```bash
+     docker-compose down
+     docker-compose up -d
+     ```
+   
+   * **Option B: Using the create_admin.py script:**
+     ```bash
+     docker-compose exec app python create_admin.py
+     ```
+     Follow the interactive prompts to create an admin user.
+
+5. **Access Speakr:** Open your web browser and navigate to `http://localhost:8899`.
+
+#### Customizing Data Storage
+
+By default, all data (database and uploaded audio files) is stored in Docker volumes. To use custom directories on your host system:
+
+1. Create a `docker-compose.override.yml` file (if you haven't already):
+   ```bash
+   cp docker-compose.override.yml.example docker-compose.override.yml
+   ```
+
+2. Edit `docker-compose.override.yml` and uncomment the volume mappings:
+   ```yaml
+   services:
+     app:
+       volumes:
+         - /path/to/your/uploads:/data/uploads
+         - /path/to/your/database:/data/instance
+   ```
+
+3. Replace `/path/to/your/uploads` and `/path/to/your/database` with actual paths on your system.
+
+4. Restart the container:
+   ```bash
+   docker-compose down
+   docker-compose up -d
+   ```
+
+#### Updating the Docker Installation
+
+To update the application to a newer version:
+
+1. Pull the latest code:
+   ```bash
+   git pull
+   ```
+
+2. Rebuild and restart the container:
+   ```bash
+   docker-compose down
+   docker-compose build
+   docker-compose up -d
+   ```
+
+Your data will be preserved as it's stored in Docker volumes or your custom mapped directories.
+
+### 2. Local Development
 
 Follow these steps to run Speakr on your local machine for development or testing.
 
@@ -136,7 +237,7 @@ Follow these steps to run Speakr on your local machine for development or testin
 
 8.  **Access Speakr:** Open your web browser and navigate to `http://localhost:8899` (or your server's IP address if running remotely).
 
-### 2. Deployment (Linux with Systemd)
+### 3. Deployment (Linux with Systemd)
 
 The `deployment/setup.sh` script automates the setup process on a Linux server using `systemd`.
 
