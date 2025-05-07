@@ -489,20 +489,47 @@
              gap: 12px;
          }
          
-         .toast {
-             padding: 12px 18px;
-             border-radius: 8px;
-             background-color: #4CAF50;
-             color: white;
-             font-size: 14px;
-             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-             opacity: 0;
-             transform: translateY(20px);
-             transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
-             display: flex;
-             align-items: center;
-             min-width: 200px;
-         }
+        /* Form styling for edit modal */
+        .form-group {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .form-group:hover {
+            transform: translateY(-1px);
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        /* Dark mode adjustments for form elements */
+        .dark .form-group input:focus,
+        .dark .form-group textarea:focus {
+            box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.3);
+        }
+        
+        /* Elegant divider styling */
+        .relative.py-3 {
+            margin: 0.5rem 0;
+        }
+        
+        /* Toast notification styles */
+        .toast {
+            padding: 12px 18px;
+            border-radius: 8px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+            display: flex;
+            align-items: center;
+            min-width: 200px;
+        }
          
          .toast.show {
              opacity: 1;
@@ -959,38 +986,120 @@
             Speakr &copy; ${ new Date().getFullYear() }
         </footer>
 
-         <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar">
-                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Edit Recording Details</h3>
-                    <button @click="cancelEdit" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+         <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
+             <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-in-out">
+                <!-- Header with gradient background -->
+                <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-[var(--text-primary)] flex items-center">
+                        <i class="fas fa-edit mr-2 text-[var(--text-accent)]"></i>
+                        Edit Recording Details
+                    </h3>
+                    <button @click="cancelEdit" class="text-[var(--text-light)] hover:text-[var(--text-primary)] transition-colors duration-200 rounded-full h-8 w-8 flex items-center justify-center hover:bg-[var(--bg-tertiary)]">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <div v-if="editingRecording" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Title</label>
-                        <input v-model="editingRecording.title" class="mt-1 block w-full rounded-md border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-[var(--ring-focus)] focus:ring-opacity-50 bg-[var(--bg-input)] text-[var(--text-primary)]">
+                
+                <!-- Form content with custom scrollbar -->
+                <div class="p-6 overflow-y-auto custom-scrollbar" style="max-height: calc(90vh - 70px);">
+                    <div v-if="editingRecording" class="space-y-5">
+                        <!-- Title field with icon -->
+                        <div class="form-group">
+                            <label class="flex items-center text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+                                <i class="fas fa-heading text-[var(--text-accent)] mr-2"></i>
+                                Title
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    v-model="editingRecording.title" 
+                                    class="pl-3 pr-3 py-2.5 block w-full rounded-lg border border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--ring-focus)] focus:ring-opacity-30 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all duration-200"
+                                    placeholder="Enter recording title">
+                            </div>
+                        </div>
+                        
+                        <!-- Participants field with icon -->
+                        <div class="form-group">
+                            <label class="flex items-center text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+                                <i class="fas fa-users text-[var(--text-accent)] mr-2"></i>
+                                Participants
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    v-model="editingRecording.participants" 
+                                    class="pl-3 pr-3 py-2.5 block w-full rounded-lg border border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--ring-focus)] focus:ring-opacity-30 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all duration-200"
+                                    placeholder="Enter participant names">
+                            </div>
+                        </div>
+                        
+                        <!-- Meeting Date field with icon -->
+                        <div class="form-group">
+                            <label class="flex items-center text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+                                <i class="fas fa-calendar-alt text-[var(--text-accent)] mr-2"></i>
+                                Meeting Date
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="date" 
+                                    v-model="editingRecording.meeting_date" 
+                                    class="pl-3 pr-3 py-2.5 block w-full rounded-lg border border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--ring-focus)] focus:ring-opacity-30 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all duration-200">
+                            </div>
+                        </div>
+                        
+                        <!-- Divider -->
+                        <div class="relative py-3">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-[var(--border-primary)]"></div>
+                            </div>
+                            <div class="relative flex justify-center">
+                                <span class="bg-[var(--bg-secondary)] px-4 text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Content</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Summary field with icon -->
+                        <div class="form-group">
+                            <label class="flex items-center text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+                                <i class="fas fa-file-alt text-[var(--text-accent)] mr-2"></i>
+                                Summary
+                            </label>
+                            <div class="relative">
+                                <textarea 
+                                    v-model="editingRecording.summary" 
+                                    class="pl-3 pr-3 py-2.5 block w-full rounded-lg border border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--ring-focus)] focus:ring-opacity-30 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all duration-200" 
+                                    rows="5"
+                                    placeholder="Enter summary of the recording"></textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes field with icon -->
+                        <div class="form-group">
+                            <label class="flex items-center text-sm font-medium text-[var(--text-secondary)] mb-1.5">
+                                <i class="fas fa-sticky-note text-[var(--text-accent)] mr-2"></i>
+                                Notes
+                            </label>
+                            <div class="relative">
+                                <textarea 
+                                    v-model="editingRecording.notes" 
+                                    class="pl-3 pr-3 py-2.5 block w-full rounded-lg border border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--ring-focus)] focus:ring-opacity-30 bg-[var(--bg-input)] text-[var(--text-primary)] transition-all duration-200" 
+                                    rows="4"
+                                    placeholder="Enter additional notes"></textarea>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Participants</label>
-                        <input v-model="editingRecording.participants" class="mt-1 block w-full rounded-md border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-[var(--ring-focus)] focus:ring-opacity-50 bg-[var(--bg-input)] text-[var(--text-primary)]">
-                    </div>
-                    <!-- Add Meeting Date Input -->
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Meeting Date</label>
-                        <input type="date" v-model="editingRecording.meeting_date" class="mt-1 block w-full rounded-md border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-[var(--ring-focus)] focus:ring-opacity-50 bg-[var(--bg-input)] text-[var(--text-primary)]">
-                    </div>
-                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Summary</label>
-                        <textarea v-model="editingRecording.summary" class="mt-1 block w-full rounded-md border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-[var(--ring-focus)] focus:ring-opacity-50 bg-[var(--bg-input)] text-[var(--text-primary)]" rows="5"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Notes</label>
-                        <textarea v-model="editingRecording.notes" class="mt-1 block w-full rounded-md border-[var(--border-secondary)] shadow-sm focus:border-[var(--border-focus)] focus:ring-[var(--ring-focus)] focus:ring-opacity-50 bg-[var(--bg-input)] text-[var(--text-primary)]" rows="4"></textarea>
-                    </div>
-                    <div class="flex justify-end space-x-3 pt-4">
-                        <button @click="cancelEdit" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
-                        <button @click="saveEdit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">Save Changes</button>
-                    </div>
+                </div>
+                
+                <!-- Footer with action buttons -->
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                    <button 
+                        @click="cancelEdit" 
+                        class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors duration-200 flex items-center shadow-sm">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </button>
+                    <button 
+                        @click="saveEdit" 
+                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors duration-200 flex items-center shadow-sm">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Changes
+                    </button>
                 </div>
             </div>
         </div>
