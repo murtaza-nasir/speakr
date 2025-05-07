@@ -145,21 +145,21 @@
         .summary-box {
             background-color: #f9fafb; /* bg-gray-50 */
             padding: 1rem; /* p-4 */
-            border-radius: 0.75rem; /* rounded-xl */
-            border: 1px solid #e5e7eb; /* border-gray-200 */
-            min-height: 60px; /* min-h-[60px] or adjust as needed */
-            /* max-height removed to allow full height */
-            overflow-y: auto;
-            white-space: pre-wrap;
-            font-family: inherit; /* Use body font */
-            font-size: 0.875rem; /* text-sm */
-            line-height: 1.5; /* Improved line height */
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03); /* Subtle shadow */
-            flex: 1; /* Take up available space */
-            height: 100%; /* Fill the container height */
-        }
+    border-radius: 0.75rem; /* rounded-xl */
+    border: 1px solid #e5e7eb; /* border-gray-200 */
+    min-height: 0; /* Allow proper flex shrinking for scrolling */
+    /* max-height: 100%; */ /* Removed, flex:1 should handle sizing within constrained parent */
+    overflow-y: auto; /* Enable vertical scrolling */
+    white-space: pre-wrap;
+    font-family: inherit; /* Use body font */
+    font-size: 0.875rem; /* text-sm */
+    line-height: 1.5; /* Improved line height */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03); /* Subtle shadow */
+    flex: 1; /* Take up available space */
+    /* height: 100%; */ /* Removed, flex:1 should handle sizing */
+}
         
-        /* Standardize border radius for all content boxes */
+/* Standardize border radius for all content boxes */
         .transcription-box, 
         .summary-box, 
         .chat-container,
@@ -799,12 +799,12 @@
                                                 </button>
                                             </nav>
                                         </div>
-                                        <div class="pt-4 flex-grow">
+                                        <div class="pt-4 flex-grow flex flex-col min-h-0"> 
                                             <!-- Summary Panel -->
                                             <div v-show="selectedTab === 'summary'" class="h-full">
                                                 <div v-if="selectedRecording.status === 'COMPLETED'" class="h-full">
-                                                    <div v-if="!editingSummary" class="content-box h-full">
-                                                        <div class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)] tab-content-box" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
+                                                    <div v-if="!editingSummary" class="content-box h-full flex flex-col min-h-0 overflow-hidden"> 
+                                                        <div class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)]" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
                                                         </div>
                                                         <button @click="toggleEditSummary" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Summary">
                                                             <i class="fas fa-edit"></i>
@@ -821,8 +821,8 @@
                                             
                                             <!-- Notes Panel -->
                                             <div v-show="selectedTab === 'notes'" class="h-full">
-                                                <div v-if="!editingNotes" class="content-box h-full">
-                                                    <div class="text-sm bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] tab-content-box flex-1 height-100" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
+                                                <div v-if="!editingNotes" class="content-box h-full flex flex-col min-h-0 overflow-hidden">
+                                                    <div class="text-sm bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] flex-1 min-h-0 overflow-y-auto" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
                                                     <button @click="toggleEditNotes" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Notes">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
