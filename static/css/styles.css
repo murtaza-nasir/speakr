@@ -100,23 +100,42 @@ html { /* Apply base colors to html for smoother transitions */
     transition: background-color 0.3s, color 0.3s; 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
-html, body { height: 100%; margin: 0; }
-#app { min-height: 100%; display: flex; flex-direction: column; }
-main { flex-grow: 1; position: relative; }
-
-/* Sidebar styles with max-height */
-.sidebar-container {
-    max-height: 85vh; /* Limit height to 85% of viewport height */
+html { 
+    height: 100%; 
+    margin: 0;
+}
+body {
+    height: 100%;
+    margin: 0;
+    overflow-y: auto; /* Allow scrolling on the body */
+}
+#app { 
+    min-height: 100%; /* Full viewport height */
+    display: flex; 
+    flex-direction: column;
+}
+main { 
+    flex: 1; 
+    position: relative;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Prevent overall sidebar overflow */
+    overflow-y: auto; /* Allow scrolling on main */
 }
 
-/* Grid container with flex layout and max-height */
-.grid-container {
-    max-height: 85vh; /* Limit height to 85% of viewport height */
+/* Sidebar styles with flexible height */
+.sidebar-container {
+    height: 100%; /* Use relative height */
     display: flex;
     flex-direction: column;
+    overflow-y: auto; /* Allow sidebar to scroll */
+}
+
+/* Grid container with flex layout and flexible height */
+.grid-container {
+    height: 100%; /* Use relative height */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Allow scrolling */
 }
 
 .sidebar-header {
@@ -163,6 +182,8 @@ div[v-if="!editingNotes"] {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0; /* Allow content to size based on parent container */
+    flex: 1 1 auto; /* Grow and shrink as needed */
     overflow: hidden;
 }
 
@@ -172,6 +193,8 @@ div[v-if="!editingNotes"] {
     flex-direction: column;
     height: 100%;
     gap: 1rem;
+    overflow-y: auto; /* Enable scrolling for content that exceeds container */
+    min-height: 0; /* Allows flex to work properly */
 }
 
 /* Right column content (audio player, chat) */
@@ -180,6 +203,8 @@ div[v-if="!editingNotes"] {
     flex-direction: column;
     height: 100%;
     gap: 1rem;
+    overflow-y: auto; /* Enable scrolling for content that exceeds container */
+    min-height: 0; /* Allows flex to work properly */
 }
 
 /* Participants section - small fixed height */
@@ -191,7 +216,7 @@ div[v-if="!editingNotes"] {
 .transcription-section {
     flex: 2;
     min-height: 0; /* Allows flex to work properly */
-    overflow: hidden;
+    overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
     display: flex;
     flex-direction: column;
 }
@@ -200,7 +225,7 @@ div[v-if="!editingNotes"] {
 .tab-section {
     flex: 1;
     min-height: 100px; /* Minimum height to prevent collapsing too much */
-    overflow: hidden;
+    overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
     display: flex;
     flex-direction: column;
     height: 100%; /* Ensure it takes full height */
@@ -215,7 +240,7 @@ div[v-if="!editingNotes"] {
 .chat-section {
     flex: 1;
     min-height: 0; /* Allows flex to work properly */
-    overflow: hidden;
+    overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
     display: flex;
     flex-direction: column;
 }
@@ -313,6 +338,7 @@ div[v-if="!editingNotes"] {
  /* Hover edit button styles */
  .content-box {
      position: relative;
+     overflow-y: auto; /* Allow content to scroll */
  }
  
  .hover-edit-btn {
@@ -357,6 +383,7 @@ div[v-if="!editingNotes"] {
      display: flex;
      flex-direction: column;
      height: 100%;
+     min-height: 300px; /* Minimum height for chat container */
      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
      overflow: hidden;
  }
@@ -471,7 +498,23 @@ div[v-if="!editingNotes"] {
      color: #666;
  }
  
- /* Modern toast notification styles */
+ /* Main content container - ensure it fills available space and allows scrolling */
+.flex-grow.flex.flex-col.md\:flex-row.gap-6.overflow-hidden {
+    max-height: none !important; /* Override the inline style */
+    height: 100%;
+    flex: 1;
+    overflow-y: auto; /* Allow scrolling */
+}
+
+/* Ensure the lg:col-span-3 container can grow properly and scroll */
+.lg\:col-span-3.bg-\[var\(--bg-secondary\)\].p-6.rounded-lg.shadow-md.flex.flex-col.max-h-85vh {
+    max-height: none !important; /* Override the max-height constraint */
+    height: 100%;
+    flex: 1;
+    overflow-y: auto; /* Allow scrolling */
+}
+
+/* Modern toast notification styles */
  .toast-container {
      position: fixed;
      bottom: 20px;

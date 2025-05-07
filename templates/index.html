@@ -255,7 +255,7 @@
                             </div>
 
                             <!-- Main content area with flex layout -->
-                            <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-hidden" style="max-height: 75vh;">
+                            <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-y-auto" style="max-height: 75vh;">
                                 <!-- Left Column: Participants, Transcription, Summary & Notes -->
                                 <div class="md:w-2/5 content-column left-content">
                                     <!-- Participants Section -->
@@ -325,7 +325,7 @@
                                             <!-- Summary Panel -->
                                             <div v-show="selectedTab === 'summary'" class="h-full">
                                                 <div v-if="selectedRecording.status === 'COMPLETED'" class="h-full">
-                                                    <div v-if="!editingSummary" class="content-box h-full flex flex-col min-h-0 overflow-hidden"> 
+                                                    <div v-if="!editingSummary" class="content-box h-full flex flex-col min-h-0"> 
                                                         <div class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)]" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
                                                         </div>
                                                         <button @click="toggleEditSummary" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Summary">
@@ -343,7 +343,7 @@
                                             
                                             <!-- Notes Panel -->
                                             <div v-show="selectedTab === 'notes'" class="h-full">
-                                                <div v-if="!editingNotes" class="content-box h-full flex flex-col min-h-0 overflow-hidden">
+                                                <div v-if="!editingNotes" class="content-box h-full flex flex-col min-h-0">
                                                     <div class="notes-box custom-scrollbar" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
                                                     <button @click="toggleEditNotes" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Notes">
                                                         <i class="fas fa-edit"></i>
