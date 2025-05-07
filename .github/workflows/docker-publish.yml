@@ -10,8 +10,8 @@ on:
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: docker.io
-  # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ github.repository }}
+  # Use explicit image name instead of github.repository
+  IMAGE_NAME: learnedmachine/speakr
 
 jobs:
   build:
