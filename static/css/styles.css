@@ -146,6 +146,7 @@ main {
     flex-grow: 1;
     overflow-y: auto; /* Enable scrolling for content */
     padding-right: 6px; /* Space for scrollbar */
+    min-height: 0; /* Added for robust flex scrolling */
 }
 .progress-popup { position: fixed; bottom: 1rem; left: 1rem; z-index: 100; transition: all 0.3s ease-in-out; min-width: 300px; border-radius: 12px; overflow: hidden; }
 .progress-popup.minimized { transform: translateY(calc(100% - 45px)); }
@@ -508,10 +509,10 @@ div[v-if="!editingNotes"] {
 
 /* Ensure the lg:col-span-3 container can grow properly and scroll */
 .lg\:col-span-3.bg-\[var\(--bg-secondary\)\].p-6.rounded-lg.shadow-md.flex.flex-col.max-h-85vh {
-    max-height: none !important; /* Override the max-height constraint */
-    height: 100%;
-    flex: 1;
-    overflow-y: auto; /* Allow scrolling */
+    /* max-height: none !important; /* Let Tailwind class 'max-h-85vh' apply */
+    height: 100%; /* Occupy the height of its grid cell */
+    flex: 1; /* For its own children, as it's a flex container */
+    overflow-y: auto; /* Allow its own content to scroll if it exceeds its height (max 85vh) */
 }
 
 /* Modern toast notification styles */

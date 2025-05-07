@@ -102,7 +102,7 @@
                 </button>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
-                    <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md sidebar-container">
+                    <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md sidebar-container max-h-85vh">
                          <div class="flex justify-between items-center mb-2 sticky top-0 bg-[var(--bg-secondary)] pb-2 border-b border-[var(--border-primary)] sidebar-header">
                             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Recordings</h3>
                             <button @click="toggleSidebar" class="p-1 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar'">
