@@ -100,7 +100,10 @@
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
-                <a href="{{ url_for('index') }}">Speakr</a>
+                <a href="{{ url_for('index') }}" class="flex items-center">
+                    <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
+                    Speakr
+                </a>
             </h1>
             <div class="flex items-center space-x-2">
                 <button id="darkModeToggle" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200">
