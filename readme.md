@@ -190,10 +190,10 @@ Follow these steps to run Speakr on your local machine for development or testin
         ```dotenv
         # --- Required for Summaries/Chat ---
         # (Use OpenRouter or another OpenAI-compatible Chat API)
-        OPENROUTER_API_KEY=sk-or-v1-... # Your OpenRouter or compatible API key
-        OPENROUTER_BASE_URL="https://openrouter.ai/api/v1" # Or your chat model endpoint
+        TEXT_MODEL_API_KEY=sk-or-v1-... # Your OpenRouter or compatible API key
+        TEXT_MODEL_BASE_URL="https://openrouter.ai/api/v1" # Or your chat model endpoint
         # Recommended Models: openai/gpt-4o-mini, google/gemini-flash-1.5, etc.
-        OPENROUTER_MODEL_NAME="openai/gpt-4o-mini"
+        TEXT_MODEL_MODEL_NAME="openai/gpt-4o-mini"
 
         # --- Required for Transcription ---
         # (Use OpenAI Whisper API or a compatible local/remote endpoint)
@@ -280,9 +280,9 @@ Configuration is primarily handled through the `.env` file in the project root (
 
 **Key Variables:**
 
-* `OPENROUTER_API_KEY`: **Required.** Your API key for the chat/summarization model endpoint (e.g., OpenRouter API Key).
-* `OPENROUTER_BASE_URL`: *Optional.* The base URL for the chat/summarization API. Defaults to OpenRouter's URL.
-* `OPENROUTER_MODEL_NAME`: *Optional.* The specific model to use for chat/summarization (e.g., `openai/gpt-4o-mini`, `google/gemini-flash-1.5`). Defaults to `openai/gpt-4o-mini` if not set (update from code default).
+* `TEXT_MODEL_API_KEY`: **Required.** Your API key for the chat/summarization model endpoint (e.g., OpenRouter API Key).
+* `TEXT_MODEL_BASE_URL`: *Optional.* The base URL for the chat/summarization API. Defaults to OpenRouter's URL.
+* `TEXT_MODEL_MODEL_NAME`: *Optional.* The specific model to use for chat/summarization (e.g., `openai/gpt-4o-mini`, `google/gemini-flash-1.5`). Defaults to `openai/gpt-4o-mini` if not set (update from code default).
 * `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
 * `TRANSCRIPTION_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
 * `WHISPER_MODEL`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
