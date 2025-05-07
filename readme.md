@@ -63,8 +63,6 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 Choose either **Docker** (recommended and currently the only working method), **Local Development**, or **Deployment**.
 
-For information on the CI/CD setup and automated Docker image building, see [CI/CD Setup](docs/ci-cd-setup.md).
-
 ### 1. Docker Installation
 
 The easiest way to deploy Speakr is using Docker and docker-compose.
