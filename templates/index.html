@@ -576,6 +576,12 @@
                                          <div class="flex items-center overflow-hidden mr-2">
                                             <i class="fas fa-file-audio text-[var(--text-accent)] mr-2 flex-shrink-0"></i>
                                             <span class="text-sm font-medium truncate" :title="recording.title || 'Loading title...'">${ recording.title || '(Processing...)' }</span>
+                                            <span v-if="recording.is_inbox" class="ml-1 text-blue-500" title="Inbox">
+                                                <i class="fas fa-inbox text-xs"></i>
+                                            </span>
+                                            <span v-if="recording.is_highlighted" class="ml-1 text-yellow-500" title="Highlighted">
+                                                <i class="fas fa-star text-xs"></i>
+                                            </span>
                                         </div>
                                         <div class="flex space-x-2 flex-shrink-0 items-center">
                                             <span v-if="recording.status === 'PROCESSING'" class="text-xs text-[var(--text-info-strong)] italic flex items-center" title="Transcribing...">
@@ -610,7 +616,15 @@
                         <div v-if="selectedRecording" class="flex-grow flex flex-col">
                             <div class="flex flex-col sm:flex-row justify-between items-start mb-4 border-b border-[var(--border-primary)] pb-4">
                                 <div class="mb-3 sm:mb-0 max-w-lg">
-                                     <h3 class="text-2xl font-semibold text-[var(--text-primary)]">${ selectedRecording.title || 'Loading...' }</h3>
+                                     <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
+                                        ${ selectedRecording.title || 'Loading...' }
+                                        <span v-if="selectedRecording.is_inbox" class="ml-2 text-blue-500" title="Inbox">
+                                            <i class="fas fa-inbox"></i>
+                                        </span>
+                                        <span v-if="selectedRecording.is_highlighted" class="ml-2 text-yellow-500" title="Highlighted">
+                                            <i class="fas fa-star"></i>
+                                        </span>
+                                     </h3>
                                     <p class="text-sm text-[var(--text-muted)] mt-1">
                                         <!-- Display Meeting Date with edit functionality -->
                                         <span>
@@ -640,6 +654,14 @@
                                     <!-- Removed separate Status Badge span -->
                                 </div>
                                 <div class="flex space-x-2 flex-shrink-0">
+                                    <button @click="toggleInbox(selectedRecording)" class="px-3 py-1.5 rounded-md text-sm shadow-sm" 
+                                            :class="selectedRecording.is_inbox ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
+                                        <i class="fas fa-inbox mr-1"></i> ${selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'}
+                                    </button>
+                                    <button @click="toggleHighlight(selectedRecording)" class="px-3 py-1.5 rounded-md text-sm shadow-sm"
+                                            :class="selectedRecording.is_highlighted ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
+                                        <i class="fas fa-star mr-1"></i> ${selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'}
+                                    </button>
                                     <button @click="editRecording(selectedRecording)" class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm shadow-sm">
                                         <i class="fas fa-edit mr-1"></i> Edit Details
                                     </button>
@@ -1411,6 +1433,64 @@
                 // AutoSave removed in favor of explicit save in modal
                 // const autoSave = () => { ... };
 
+                // Toggle inbox status
+                const toggleInbox = async (recording) => {
+                    if (!recording || !recording.id) return;
+                    
+                    try {
+                        const response = await fetch(`/recording/${recording.id}/toggle_inbox`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Failed to toggle inbox status');
+                        
+                        // Update the recording in the UI
+                        recording.is_inbox = data.is_inbox;
+                        
+                        // Update in the recordings list
+                        const index = recordings.value.findIndex(r => r.id === recording.id);
+                        if (index !== -1) {
+                            recordings.value[index].is_inbox = data.is_inbox;
+                        }
+                        
+                        showToast(`Recording ${data.is_inbox ? 'moved to inbox' : 'marked as read'}`);
+                    } catch (error) {
+                        console.error('Toggle Inbox Error:', error);
+                        setGlobalError(`Failed to toggle inbox status: ${error.message}`);
+                    }
+                };
+                
+                // Toggle highlighted status
+                const toggleHighlight = async (recording) => {
+                    if (!recording || !recording.id) return;
+                    
+                    try {
+                        const response = await fetch(`/recording/${recording.id}/toggle_highlight`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Failed to toggle highlighted status');
+                        
+                        // Update the recording in the UI
+                        recording.is_highlighted = data.is_highlighted;
+                        
+                        // Update in the recordings list
+                        const index = recordings.value.findIndex(r => r.id === recording.id);
+                        if (index !== -1) {
+                            recordings.value[index].is_highlighted = data.is_highlighted;
+                        }
+                        
+                        showToast(`Recording ${data.is_highlighted ? 'highlighted' : 'unhighlighted'}`);
+                    } catch (error) {
+                        console.error('Toggle Highlight Error:', error);
+                        setGlobalError(`Failed to toggle highlighted status: ${error.message}`);
+                    }
+                };
+
                  const saveMetadata = async (recordingDataToSave) => {
                     globalError.value = null;
                     if (!recordingDataToSave || !recordingDataToSave.id) return null;
@@ -1942,6 +2022,8 @@
                     formatDisplayDate, // <-- ADDED: Expose date formatting function
                     toggleDarkMode, // <-- Added toggleDarkMode
                     toggleSidebar, isSidebarCollapsed, // <-- Added sidebar state and function
+                    // Inbox and Highlight methods
+                    toggleInbox, toggleHighlight,
                     // Inline editing methods
                     toggleEditParticipants, toggleEditMeetingDate, toggleEditSummary, toggleEditNotes, saveInlineEdit,
                     // Chat Methods

@@ -101,6 +101,8 @@ class Recording(db.Model):
     meeting_date = db.Column(db.Date, nullable=True) # <-- ADDED: Meeting Date field
     file_size = db.Column(db.Integer)  # Store file size in bytes
     original_filename = db.Column(db.String(500), nullable=True) # Store the original uploaded filename
+    is_inbox = db.Column(db.Boolean, default=True)  # New recordings are marked as inbox by default
+    is_highlighted = db.Column(db.Boolean, default=False)  # Recordings can be highlighted by the user
 
     def to_dict(self):
         return {
@@ -117,7 +119,9 @@ class Recording(db.Model):
             'meeting_date': self.meeting_date.isoformat() if self.meeting_date else None, # <-- ADDED: Include meeting_date
             'file_size': self.file_size,
             'original_filename': self.original_filename, # <-- ADDED: Include original filename
-            'user_id': self.user_id
+            'user_id': self.user_id,
+            'is_inbox': self.is_inbox,
+            'is_highlighted': self.is_highlighted
         }
 
 # --- Forms for Authentication ---
@@ -144,8 +148,42 @@ class LoginForm(FlaskForm):
     remember = BooleanField('Remember Me')
     submit = SubmitField('Login')
 
+# Function to check and add columns if they don't exist
+def add_column_if_not_exists(engine, table_name, column_name, column_type):
+    """Add a column to a table if it doesn't exist."""
+    from sqlalchemy import text
+    
+    try:
+        # Check if column exists
+        with engine.connect() as conn:
+            # For SQLite, we can query the pragma table_info using text()
+            result = conn.execute(text(f"PRAGMA table_info({table_name})"))
+            columns = [row[1] for row in result]
+            
+            if column_name not in columns:
+                app.logger.info(f"Adding column {column_name} to {table_name}")
+                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+                return True
+            return False
+    except Exception as e:
+        app.logger.error(f"Error checking/adding column {column_name} to {table_name}: {e}")
+        return False
+
 with app.app_context():
     db.create_all()
+    
+    # Check and add new columns if they don't exist
+    engine = db.engine
+    try:
+        # Add is_inbox column with default value of 1 (True)
+        if add_column_if_not_exists(engine, 'recording', 'is_inbox', 'BOOLEAN DEFAULT 1'):
+            app.logger.info("Added is_inbox column to recording table")
+        
+        # Add is_highlighted column with default value of 0 (False)
+        if add_column_if_not_exists(engine, 'recording', 'is_highlighted', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added is_highlighted column to recording table")
+    except Exception as e:
+        app.logger.error(f"Error during database migration: {e}")
 
 # --- API client setup for OpenRouter ---
 # Use environment variables from .env
@@ -769,6 +807,8 @@ def save_metadata():
         if 'participants' in data: recording.participants = data['participants']
         if 'notes' in data: recording.notes = data['notes']
         if 'summary' in data: recording.summary = data['summary'] # <-- ADDED: Allow saving edited summary
+        if 'is_inbox' in data: recording.is_inbox = data['is_inbox']
+        if 'is_highlighted' in data: recording.is_highlighted = data['is_highlighted']
         if 'meeting_date' in data:
             try:
                 # Attempt to parse date string (e.g., "YYYY-MM-DD")
@@ -789,6 +829,52 @@ def save_metadata():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error saving metadata for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Toggle inbox status endpoint
+@app.route('/recording/<int:recording_id>/toggle_inbox', methods=['POST'])
+@login_required
+def toggle_inbox(recording_id):
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to modify this recording'}), 403
+
+        # Toggle the inbox status
+        recording.is_inbox = not recording.is_inbox
+        db.session.commit()
+        
+        return jsonify({'success': True, 'is_inbox': recording.is_inbox})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error toggling inbox status for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Toggle highlighted status endpoint
+@app.route('/recording/<int:recording_id>/toggle_highlight', methods=['POST'])
+@login_required
+def toggle_highlight(recording_id):
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to modify this recording'}), 403
+
+        # Toggle the highlighted status
+        recording.is_highlighted = not recording.is_highlighted
+        db.session.commit()
+        
+        return jsonify({'success': True, 'is_highlighted': recording.is_highlighted})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error toggling highlighted status for recording {recording_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 
