@@ -71,9 +71,7 @@ The easiest way to deploy Speakr is using Docker and docker-compose.
 
 1. **Create a docker-compose.yml file:**
    ```yaml
-   version: '3.8'
-   
-   services:
+    services:
      app:
        image: learnedmachine/speakr:latest
        container_name: speakr
