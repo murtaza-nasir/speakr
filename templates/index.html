@@ -113,21 +113,19 @@
         #app { min-height: 100%; display: flex; flex-direction: column; }
         main { flex-grow: 1; position: relative; }
         
-        /* Sidebar styles for fixed height and independent scrolling */
+        /* Sidebar styles with max-height */
         .sidebar-container {
-            height: 100%; /* Match parent height */
-            max-height: calc(100vh - 120px); /* Limit maximum height */
-            position: sticky;
-            top: 0;
+            max-height: 85vh; /* Limit height to 85% of viewport height */
             display: flex;
             flex-direction: column;
             overflow: hidden; /* Prevent overall sidebar overflow */
         }
         
-        /* Ensure the grid container has a fixed height */
+        /* Grid container with flex layout and max-height */
         .grid-container {
-            height: 100%;
-            min-height: 600px; /* Minimum height to ensure content is visible */
+            max-height: 85vh; /* Limit height to 85% of viewport height */
+            display: flex;
+            flex-direction: column;
         }
         
         .sidebar-header {
@@ -168,14 +166,77 @@
             border-radius: 0.75rem !important; /* rounded-xl */
         }
         
-        /* Ensure consistent height for tab content boxes */
-        .tab-content-box {
-            height: 200px !important;
-            overflow-y: auto;
+        /* Content boxes with flex layout */
+        .content-column {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
         }
-        .chat-content-box {
-            height: 650px !important;
+        
+        /* Left column content (participants, transcription, tabs) */
+        .left-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 1rem;
+        }
+        
+        /* Right column content (audio player, chat) */
+        .right-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            gap: 1rem;
+        }
+        
+        /* Participants section - small fixed height */
+        .participants-section {
+            flex-shrink: 0;
+        }
+        
+        /* Transcription section - takes up significant space */
+        .transcription-section {
+            flex: 2;
+            min-height: 0; /* Allows flex to work properly */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Tab content section - takes up remaining space */
+        .tab-section {
+            flex: 1;
+            min-height: 0; /* Allows flex to work properly */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Audio player section - small fixed height */
+        .audio-section {
+            flex-shrink: 0;
+        }
+        
+        /* Chat section - takes up remaining space */
+        .chat-section {
+            flex: 1;
+            min-height: 0; /* Allows flex to work properly */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tab-content-box {
+            flex: 1;
             overflow-y: auto;
+            min-height: 0; /* Allows flex to work properly */
+        }
+        
+        .chat-content-box {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0; /* Allows flex to work properly */
         }
         .metadata-panel {
             background-color: var(--bg-tertiary);
@@ -214,11 +275,12 @@
          .status-failed { color: #991b1b; background-color: #fee2e2; } /* text-red-800 bg-red-100 */
          .status-pending { color: #57534e; background-color: #f5f5f4; } /* text-stone-700 bg-stone-100 */
          
-         /* Fixed height transcription box */
+         /* Transcription box with flex layout */
          .transcription-box {
-             height: 400px;
+             flex: 1;
              overflow-y: auto;
              position: relative;
+             min-height: 0; /* Allows flex to work properly */
          }
          
          /* Modern copy button styles */
@@ -545,7 +607,7 @@
                     <i class="fas fa-chevron-right"></i>
                 </button>
                 
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow grid-container">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
                     <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md sidebar-container">
                          <div class="flex justify-between items-center mb-4 sticky top-0 bg-[var(--bg-secondary)] pb-3 border-b border-[var(--border-primary)] sidebar-header">
                             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Recordings</h3>
@@ -609,7 +671,7 @@
                         </div>
                     </div>
 
-                     <div :class="isSidebarCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col">
+                     <div :class="isSidebarCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col max-h-85vh">
                         <div v-if="selectedRecording" class="flex-grow flex flex-col">
                             <div class="flex flex-col sm:flex-row justify-between items-start mb-4 border-b border-[var(--border-primary)] pb-4">
                                 <div class="mb-3 sm:mb-0 max-w-lg">
@@ -668,11 +730,12 @@
                                 </div>
                             </div>
 
-                            <!-- Adjusted Grid: md:grid-cols-5 -> Transcription (2), Right Panel (3) -->
-                            <div class="grid md:grid-cols-5 gap-6 flex-grow overflow-hidden">
+                            <!-- Main content area with flex layout -->
+                            <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-hidden" style="max-height: 75vh;">
                                 <!-- Left Column: Participants, Transcription, Summary & Notes -->
-                                <div class="md:col-span-2 flex flex-col overflow-hidden space-y-4">
-                                    <div>
+                                <div class="md:w-2/5 content-column left-content">
+                                    <!-- Participants Section -->
+                                    <div class="participants-section">
                                         <div class="flex justify-between items-center mb-1">
                                             <h4 class="font-semibold text-[var(--text-secondary)]">Participants</h4>
                                             <button @click="toggleEditParticipants" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded">
@@ -682,7 +745,9 @@
                                         <div v-if="!editingParticipants" class="text-sm bg-[var(--bg-tertiary)] p-3 rounded-xl border border-[var(--border-primary)] min-h-[40px] text-[var(--text-secondary)]">${ selectedRecording.participants || 'None specified' }</div>
                                         <textarea v-else v-model="selectedRecording.participants" @blur="saveInlineEdit('participants')" class="text-sm bg-[var(--bg-tertiary)] p-3 rounded border border-[var(--border-primary)] min-h-[40px] w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] text-[var(--text-secondary)]" placeholder="Enter participants"></textarea>
                                     </div>
-                                    <div>
+                                    
+                                    <!-- Transcription Section -->
+                                    <div class="transcription-section">
                                         <div class="flex justify-between items-center mb-1">
                                             <h4 class="font-semibold text-[var(--text-secondary)]">Transcription</h4>
                                             <button @click="copyTranscription($event)" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Copy to clipboard">
@@ -703,8 +768,8 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- Tabs for Summary and Notes (Moved from right column) -->
-                                    <div class="flex flex-col overflow-hidden">
+                                    <!-- Tabs Section -->
+                                    <div class="tab-section">
                                         <div class="border-b border-[var(--border-primary)]">
                                             <nav class="-mb-px flex space-x-4" aria-label="Tabs">
                                                 <button @click="selectedTab = 'summary'" 
@@ -724,11 +789,11 @@
                                                 </button>
                                             </nav>
                                         </div>
-                                        <div class="pt-4">
+                                        <div class="pt-4 flex-grow">
                                             <!-- Summary Panel -->
-                                            <div v-show="selectedTab === 'summary'" class="overflow-hidden">
-                                                <div v-if="selectedRecording.status === 'COMPLETED'">
-                                                    <div v-if="!editingSummary" class="content-box">
+                                            <div v-show="selectedTab === 'summary'" class="h-full">
+                                                <div v-if="selectedRecording.status === 'COMPLETED'" class="h-full">
+                                                    <div v-if="!editingSummary" class="content-box h-full">
                                                         <div class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)] tab-content-box" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
                                                         </div>
                                                         <button @click="toggleEditSummary" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Summary">
@@ -742,12 +807,11 @@
                                                 <div v-else class="h-24 flex items-center justify-center p-4 bg-[var(--bg-tertiary)] rounded border border-[var(--border-primary)] text-[var(--text-muted)]">
                                                     <i class="fas fa-spinner fa-spin mr-2"></i> Summary pending...
                                                 </div>
-                                                
                                             </div>
                                             
                                             <!-- Notes Panel -->
-                                            <div v-show="selectedTab === 'notes'" class="overflow-hidden">
-                                                <div v-if="!editingNotes" class="content-box">
+                                            <div v-show="selectedTab === 'notes'" class="h-full">
+                                                <div v-if="!editingNotes" class="content-box h-full">
                                                     <div class="text-sm bg-[var(--bg-tertiary)] p-4 rounded-xl border border-[var(--border-primary)] custom-scrollbar text-[var(--text-secondary)] tab-content-box" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
                                                     <button @click="toggleEditNotes" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Notes">
                                                         <i class="fas fa-edit"></i>
@@ -757,7 +821,7 @@
                                             </div>
                                             
                                             <!-- Metadata Panel (in separate tab) -->
-                                            <div v-show="selectedTab === 'metadata'" class="overflow-hidden">
+                                            <div v-show="selectedTab === 'metadata'" class="h-full">
                                                 <div class="metadata-panel custom-scrollbar tab-content-box">
                                                     <dl>
                                                         <div v-if="selectedRecording.original_filename">
@@ -776,10 +840,10 @@
                                 </div>
 
                                 <!-- Right Column: Audio & Chat -->
-                                <div class="md:col-span-3 flex flex-col space-y-4 overflow-hidden">
-                                    <div>
+                                <div class="md:w-3/5 content-column right-content">
+                                    <!-- Audio Player Section -->
+                                    <div class="audio-section">
                                         <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
-                                        <!-- Beautified audio player container -->
                                         <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
                                             <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
                                                 Your browser does not support the audio element.
@@ -787,11 +851,10 @@
                                         </div>
                                     </div>
 
-                                    <!-- Chat Section (Fixed height to match left column) -->
-                                    <div class="flex flex-col overflow-hidden">
+                                    <!-- Chat Section -->
+                                    <div class="chat-section">
                                         <h4 class="font-semibold text-[var(--text-secondary)] mb-2 flex-shrink-0">Chat with Transcript</h4>
-                                        <!-- Chat container with fixed height matching left column -->
-                                        <div class="chat-container border-[var(--border-primary)] bg-[var(--bg-secondary)] chat-content-box"> 
+                                        <div class="chat-container border-[var(--border-primary)] bg-[var(--bg-secondary)] h-full"> 
                                             <div class="chat-messages custom-scrollbar" ref="chatMessagesRef">
                                                 <div v-if="chatMessages.length === 0" class="flex items-center justify-center h-full text-[var(--text-muted)]">
                                                     <div class="text-center">
