@@ -603,7 +603,7 @@ div[v-if="!editingNotes"] {
     display: flex;
     flex-direction: column;
     overflow: hidden; /* Hide overflow at container level */
-    height: calc(100vh - 12rem); /* Fixed height for sidebar, adjusted for header/footer */
+    /* height: calc(100vh - 12rem); Fixed height for sidebar, adjusted for header/footer */
     position: sticky;
     top: 1rem; /* Stick to the top with some padding */
 }

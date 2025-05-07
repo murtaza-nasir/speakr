@@ -9,17 +9,17 @@ services:
     ports:
       - "8899:8899"
     volumes:
-      - speakr-uploads:/data/uploads
-      - speakr-instance:/data/instance
+      - /home/murtaza/whispertranscribe/uploads:/data/uploads
+      - /home/murtaza/whispertranscribe/instance:/data/instance
     env_file:
       - .env
     environment:
       - SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
       - UPLOAD_FOLDER=/data/uploads
       # Admin user creation
-      #- ADMIN_USERNAME=admin
-      #- ADMIN_EMAIL=admin@example.com
-      #- ADMIN_PASSWORD=securepassword
+      - ADMIN_USERNAME=murtaza
+      - ADMIN_EMAIL=mail_speakr@nothanks.cc
+      - ADMIN_PASSWORD=ukX8!jHKAR^XJN
 
 volumes:
   speakr-uploads:

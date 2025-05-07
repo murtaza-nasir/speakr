@@ -82,7 +82,7 @@ The easiest way to deploy Speakr is using Docker and Docker Compose.
 
 3. **Build and Start the Container:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 4. **Create an Admin User:**
@@ -196,7 +196,7 @@ Follow these steps to run Speakr on your local machine for development or testin
         # --- Required for Summaries/Chat ---
         # (Use OpenRouter or another OpenAI-compatible Chat API)
         TEXT_MODEL_API_KEY=sk-or-v1-... # Your OpenRouter or compatible API key
-        TEXT_MODEL_BASE_URL="https://openrouter.ai/api/v1" # Or your chat model endpoint
+        TRANSCRIPTION_BASE_URL="https://openrouter.ai/api/v1" # Or your chat model endpoint
         # Recommended Models: openai/gpt-4o-mini, google/gemini-flash-1.5, etc.
         TEXT_MODEL_MODEL_NAME="openai/gpt-4o-mini"
 
@@ -287,11 +287,11 @@ Configuration is primarily handled through the `.env` file in the project root (
 
 **Key Variables:**
 
+* `TEXT_MODEL_BASE_URL`: **Required.** The base URL for the chat/summarization API. Defaults to OpenRouter's URL.
 * `TEXT_MODEL_API_KEY`: **Required.** Your API key for the chat/summarization model endpoint (e.g., OpenRouter API Key).
-* `TEXT_MODEL_BASE_URL`: *Optional.* The base URL for the chat/summarization API. Defaults to OpenRouter's URL.
-* `TEXT_MODEL_MODEL_NAME`: *Optional.* The specific model to use for chat/summarization (e.g., `openai/gpt-4o-mini`, `google/gemini-flash-1.5`). Defaults to `openai/gpt-4o-mini` if not set (update from code default).
-* `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
+* `TEXT_MODEL_NAME`: **Required.** The specific model to use for chat/summarization. **Important:** Choose a model that supports structured outputs for optimal performance. OpenAI models (GPT-4o and later) and Fireworks models are recommended. See [OpenRouter's structured outputs documentation](https://openrouter.ai/docs/features/structured-outputs) for more details.
 * `TRANSCRIPTION_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
+* `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
 * `WHISPER_MODEL`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
 * `SECRET_KEY`: **Required.** A long, random string used by Flask for session security. The `setup.sh` script generates one if it's missing.
 * `ALLOW_REGISTRATION`: *Optional.* Set to `false` to prevent new users from registering via the web UI. Defaults to `true`.

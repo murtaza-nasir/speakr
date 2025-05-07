@@ -212,6 +212,7 @@ transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
 transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openrouter.ai/api/v1")
 
 app.logger.info(f"Using OpenRouter model for summaries: {TEXT_MODEL_NAME}")
+app.logger.info(f"Using Whisper API at: {transcription_base_url}")
 
 # --- Background Transcription & Summarization Task ---
 def transcribe_audio_task(app_context, recording_id, filepath, original_filename):
