@@ -115,13 +115,19 @@
         
         /* Sidebar styles for fixed height and independent scrolling */
         .sidebar-container {
-            max-height: 100vh;
-            height: calc(100vh - 120px); /* Adjust based on header/footer height */
+            height: 100%; /* Match parent height */
+            max-height: calc(100vh - 120px); /* Limit maximum height */
             position: sticky;
             top: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden; /* Prevent overall sidebar overflow */
+        }
+        
+        /* Ensure the grid container has a fixed height */
+        .grid-container {
+            height: 100%;
+            min-height: 600px; /* Minimum height to ensure content is visible */
         }
         
         .sidebar-header {
@@ -539,7 +545,7 @@
                     <i class="fas fa-chevron-right"></i>
                 </button>
                 
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow grid-container">
                     <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md sidebar-container">
                          <div class="flex justify-between items-center mb-4 sticky top-0 bg-[var(--bg-secondary)] pb-3 border-b border-[var(--border-primary)] sidebar-header">
                             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Recordings</h3>
