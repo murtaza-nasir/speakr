@@ -112,6 +112,27 @@
         html, body { height: 100%; margin: 0; }
         #app { min-height: 100%; display: flex; flex-direction: column; }
         main { flex-grow: 1; position: relative; }
+        
+        /* Sidebar styles for fixed height and independent scrolling */
+        .sidebar-container {
+            max-height: 100vh;
+            height: calc(100vh - 120px); /* Adjust based on header/footer height */
+            position: sticky;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Prevent overall sidebar overflow */
+        }
+        
+        .sidebar-header {
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+        
+        .sidebar-content {
+            flex-grow: 1;
+            overflow-y: auto; /* Enable scrolling for content */
+            padding-right: 6px; /* Space for scrollbar */
+        }
         .progress-popup { position: fixed; bottom: 1rem; left: 1rem; z-index: 100; transition: all 0.3s ease-in-out; min-width: 300px; border-radius: 12px; overflow: hidden; }
         .progress-popup.minimized { transform: translateY(calc(100% - 45px)); }
         .progress-list-item { display: grid; grid-template-columns: auto 1fr auto; gap: 0.5rem; align-items: center; }
@@ -519,22 +540,22 @@
                 </button>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
-                    <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md flex flex-col relative">
-                         <div class="flex justify-between items-center mb-4 sticky top-0 bg-[var(--bg-secondary)] pb-3 border-b border-[var(--border-primary)]">
+                    <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md sidebar-container">
+                         <div class="flex justify-between items-center mb-4 sticky top-0 bg-[var(--bg-secondary)] pb-3 border-b border-[var(--border-primary)] sidebar-header">
                             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Recordings</h3>
                             <button @click="toggleSidebar" class="p-1 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar'">
                                 <i class="fas fa-chevron-left"></i>
                              </button>
                         </div>
-                         <div v-if="isLoadingRecordings" class="text-center text-[var(--text-muted)] py-4">
+                         <div v-if="isLoadingRecordings" class="text-center text-[var(--text-muted)] py-4 sidebar-content">
                             <i class="fas fa-spinner fa-spin mr-2"></i> Loading recordings...
                         </div>
-                        <div v-else-if="recordings.length === 0 && uploadQueue.length === 0" class="text-center text-[var(--text-muted)] py-4 flex-grow flex flex-col items-center justify-center">
+                        <div v-else-if="recordings.length === 0 && uploadQueue.length === 0" class="text-center text-[var(--text-muted)] py-4 flex-grow flex flex-col items-center justify-center sidebar-content">
                              <i class="fas fa-folder-open text-4xl text-[var(--text-light)] mb-3"></i>
                             <p>No recordings yet.</p>
                             <p>Upload one or drag & drop anywhere!</p>
                         </div>
-                        <div v-else class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-1">
+                        <div v-else class="space-y-4 custom-scrollbar sidebar-content">
                             <div v-for="group in groupedRecordings" :key="group.title" class="mb-3">
                                 <h4 class="font-medium text-[var(--text-muted)] text-xs uppercase tracking-wider mb-2 sticky top-0 bg-[var(--bg-secondary)] py-1">${ group.title }</h4>
                                 <ul class="space-y-1">
