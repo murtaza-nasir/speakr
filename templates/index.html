@@ -268,15 +268,19 @@
         }
          .status-badge {
              display: inline-block;
-             padding: 0.15rem 0.6rem; /* Smaller padding */
-             font-size: 0.65rem; /* Smaller text */
+             padding: 0.12rem 0.5rem; /* Even smaller padding */
+             font-size: 0.6rem; /* Smaller text */
              font-weight: 500; /* font-medium */
              border-radius: 9999px; /* rounded-full */
-             /* margin-top: 0.5rem; /* mt-2 */ /* Removed margin-top */
              box-shadow: 0 1px 2px rgba(0,0,0,0.05);
              letter-spacing: 0.025em;
              vertical-align: middle; /* Align with text */
-             margin-left: 0.75rem; /* Add some space */
+             margin-left: 0.5rem; /* Less space */
+             opacity: 0.85; /* Slightly more subtle */
+             transition: opacity 0.2s ease;
+         }
+         .status-badge:hover {
+             opacity: 1;
          }
          .status-processing { color: #1d4ed8; background-color: #dbeafe; } /* text-blue-800 bg-blue-100 */
          .status-summarizing { color: #92400e; background-color: #fef3c7; } /* text-amber-800 bg-amber-100 */
@@ -712,23 +716,23 @@
                             <div class="flex flex-col sm:flex-row justify-between items-start mb-4 border-b border-[var(--border-primary)] pb-4">
                                 <div class="mb-3 sm:mb-0 max-w-lg">
                                      <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
-                                        ${ selectedRecording.title || 'Loading...' }
-                                        <span v-if="selectedRecording.is_inbox" class="ml-2 text-blue-500" title="Inbox">
+                                        <span style="hyphens: auto; overflow-wrap: break-word; min-width: 0;">${ selectedRecording.title || 'Loading...' }</span>
+                                        <span v-if="selectedRecording.is_inbox" class="ml-4 bg-blue-50 text-blue-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity" title="Inbox">
                                             <i class="fas fa-inbox"></i>
                                         </span>
-                                        <span v-if="selectedRecording.is_highlighted" class="ml-2 text-yellow-500" title="Highlighted">
+                                        <span v-if="selectedRecording.is_highlighted" class="ml-3 bg-yellow-50 text-yellow-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity" title="Highlighted">
                                             <i class="fas fa-star"></i>
                                         </span>
                                      </h3>
-                                    <p class="text-sm text-[var(--text-muted)] mt-1">
+                                    <p class="text-sm text-[var(--text-muted)] mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                                         <!-- Display Meeting Date with edit functionality -->
-                                        <span>
-                                            <i class="fas fa-calendar-alt mr-1"></i> 
+                                        <span class="inline-flex items-center">
+                                            <i class="fas fa-calendar-alt text-[var(--text-accent)] opacity-75 mr-1.5"></i> 
                                             <span v-if="!editingMeetingDate">
-                                                Meeting Date: 
-                                                <span @click="toggleEditMeetingDate" class="cursor-pointer hover:text-[var(--text-accent)]">
+                                                <span class="font-medium">Meeting:</span> 
+                                                <span @click="toggleEditMeetingDate" class="cursor-pointer hover:text-[var(--text-accent)] hover:underline transition-colors">
                                                     ${ selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'Click to add' }
-                                                </span> | 
+                                                </span>
                                             </span>
                                             <span v-else class="inline-flex items-center">
                                                 <input type="date" v-model="selectedRecording.meeting_date" 
@@ -739,29 +743,40 @@
                                                 </button>
                                             </span>
                                         </span>
-                                        Created: ${ new Date(selectedRecording.created_at).toLocaleString() }
+                                        <span class="inline-flex items-center">
+                                            <i class="fas fa-clock text-[var(--text-accent)] opacity-75 mr-1.5"></i>
+                                            <span class="font-medium">Created:</span> ${ new Date(selectedRecording.created_at).toLocaleString() }
+                                        </span>
                                         <!-- Status Badge Moved Here -->
-                                        <span :class="getStatusClass(selectedRecording.status)" class="status-badge">
+                                        <span v-if="selectedRecording.status !== 'COMPLETED'" :class="getStatusClass(selectedRecording.status)" class="status-badge">
                                             ${ formatStatus(selectedRecording.status) }
                                         </span>
                                     </p>
                                     <!-- Removed Size from here -->
                                     <!-- Removed separate Status Badge span -->
                                 </div>
-                                <div class="flex space-x-2 flex-shrink-0">
-                                    <button @click="toggleInbox(selectedRecording)" class="px-3 py-1.5 rounded-md text-sm shadow-sm" 
-                                            :class="selectedRecording.is_inbox ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
-                                        <i class="fas fa-inbox mr-1"></i> ${selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'}
+                                <div class="flex space-x-1.5 flex-shrink-0">
+                                    <button @click="toggleInbox(selectedRecording)" 
+                                            class="p-1.5 rounded-md text-xs transition-all hover:scale-105" 
+                                            :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                            :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                                        <i class="fas fa-inbox"></i>
                                     </button>
-                                    <button @click="toggleHighlight(selectedRecording)" class="px-3 py-1.5 rounded-md text-sm shadow-sm"
-                                            :class="selectedRecording.is_highlighted ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'">
-                                        <i class="fas fa-star mr-1"></i> ${selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'}
+                                    <button @click="toggleHighlight(selectedRecording)" 
+                                            class="p-1.5 rounded-md text-xs transition-all hover:scale-105"
+                                            :class="selectedRecording.is_highlighted ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                            :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                                        <i class="fas fa-star"></i>
                                     </button>
-                                    <button @click="editRecording(selectedRecording)" class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm shadow-sm">
-                                        <i class="fas fa-edit mr-1"></i> Edit Details
+                                    <button @click="editRecording(selectedRecording)" 
+                                            class="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs transition-all hover:scale-105"
+                                            title="Edit Details">
+                                        <i class="fas fa-edit"></i>
                                     </button>
-                                    <button @click="confirmDelete(selectedRecording)" class="px-3 py-1.5 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)] text-sm shadow-sm">
-                                        <i class="fas fa-trash mr-1"></i> Delete
+                                    <button @click="confirmDelete(selectedRecording)" 
+                                            class="p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-xs transition-all hover:scale-105"
+                                            title="Delete">
+                                        <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             </div>
