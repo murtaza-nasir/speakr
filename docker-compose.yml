@@ -17,9 +17,9 @@ services:
       - SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
       - UPLOAD_FOLDER=/data/uploads
       # Admin user creation
-      - ADMIN_USERNAME=admin
-      - ADMIN_EMAIL=admin@example.com
-      - ADMIN_PASSWORD=securepassword
+      #- ADMIN_USERNAME=admin
+      #- ADMIN_EMAIL=admin@example.com
+      #- ADMIN_PASSWORD=securepassword
 
 volumes:
   speakr-uploads:
