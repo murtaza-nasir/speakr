@@ -1,12 +1,15 @@
 const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue
 
-createApp({
+// Wait for the DOM to be fully loaded before mounting the Vue app
+document.addEventListener('DOMContentLoaded', () => {
+    createApp({
     setup() {
         const currentView = ref('gallery');
         const dragover = ref(false);
         const recordings = ref([]);
         const selectedRecording = ref(null);
         const selectedTab = ref('summary'); // For Summary/Notes tabs
+        const searchQuery = ref(''); // Search input for filtering recordings
 
         // --- Multi-Upload State ---
         // Status: 'queued'|'uploading'|'processing'|'summarizing'|'completed'|'failed'
@@ -38,9 +41,27 @@ createApp({
         const editingNotes = ref(false);
 
         // --- Computed Properties ---
+        // Filter recordings based on search query
+        const filteredRecordings = computed(() => {
+            if (!searchQuery.value.trim()) {
+                return recordings.value; // Return all recordings if no search query
+            }
+            
+            const query = searchQuery.value.toLowerCase().trim();
+            return recordings.value.filter(recording => {
+                // Search in title, participants, and transcription
+                return (
+                    (recording.title && recording.title.toLowerCase().includes(query)) ||
+                    (recording.participants && recording.participants.toLowerCase().includes(query)) ||
+                    (recording.transcription && recording.transcription.toLowerCase().includes(query))
+                );
+            });
+        });
+        
+        // Group recordings by date
         const groupedRecordings = computed(() => {
-            const sortedRecordings = [...recordings.value].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            // Grouping logic (same as before)...
+            const sortedRecordings = [...filteredRecordings.value].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            // Grouping logic
             const groups = { today: [], yesterday: [], thisWeek: [], older: [] };
             const now = new Date();
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1079,7 +1100,10 @@ createApp({
             sendChatMessage, copyMessage, copyTranscription,
             // User menu
             isUserMenuOpen,
+            // Search
+            searchQuery,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja
 }).mount('#app');
+});
