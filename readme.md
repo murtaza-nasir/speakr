@@ -5,10 +5,10 @@
 Speakr is a personal, self-hosted web application designed for transcribing audio recordings (like meetings), generating concise summaries and titles, and interacting with the content through a chat interface. Keep all your meeting notes and insights securely on your own server.
 
 ## Screenshots
-
-![image](https://github.com/user-attachments/assets/bb478201-3487-4b8c-9179-7070beace923)
+![image](https://github.com/user-attachments/assets/a1d471fa-8b52-4f9e-962d-19cbd0955a3b)
 ![image](https://github.com/user-attachments/assets/637bfb92-bbfc-4113-93d2-c7d051c970af)
-![image](https://github.com/user-attachments/assets/def80268-ede9-477d-a44a-a618d262be1c)
+![image](https://github.com/user-attachments/assets/788aebc7-86bd-4024-be4d-c6273d61c765)
+
 
 
 ## Features
