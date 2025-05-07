@@ -187,23 +187,23 @@ with app.app_context():
 
 # --- API client setup for OpenRouter ---
 # Use environment variables from .env
-openrouter_api_key = os.environ.get("OPENROUTER_API_KEY")
-openrouter_base_url = os.environ.get("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
-openrouter_model_name = os.environ.get("OPENROUTER_MODEL_NAME", "openai/gpt-3.5-turbo") # Default if not set
+TEXT_MODEL_API_KEY = os.environ.get("TEXT_MODEL_API_KEY")
+TEXT_MODEL_BASE_URL = os.environ.get("TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo") # Default if not set
 
 http_client_no_proxy = httpx.Client(verify=True) # verify=True is default, but good to be explicit
 
-if not openrouter_api_key:
-    app.logger.warning("OPENROUTER_API_KEY not found. Title/Summary generation DISABLED.")
+if not TEXT_MODEL_API_KEY:
+    app.logger.warning("TEXT_MODEL_API_KEY not found. Title/Summary generation DISABLED.")
 else:
     try:
         # ---> Pass the custom httpx_client <---
         client = OpenAI(
-            api_key=openrouter_api_key,
-            base_url=openrouter_base_url,
+            api_key=TEXT_MODEL_API_KEY,
+            base_url=TEXT_MODEL_BASE_URL,
             http_client=http_client_no_proxy # Pass the proxy-disabled client
         )
-        app.logger.info(f"OpenRouter client initialized. Using model: {openrouter_model_name}")
+        app.logger.info(f"OpenRouter client initialized. Using model: {TEXT_MODEL_NAME}")
     except Exception as client_init_e:
          app.logger.error(f"Failed to initialize OpenRouter client: {client_init_e}", exc_info=True)
 
@@ -211,7 +211,7 @@ else:
 transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
 transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openrouter.ai/api/v1")
 
-app.logger.info(f"Using OpenRouter model for summaries: {openrouter_model_name}")
+app.logger.info(f"Using OpenRouter model for summaries: {TEXT_MODEL_NAME}")
 
 # --- Background Transcription & Summarization Task ---
 def transcribe_audio_task(app_context, recording_id, filepath, original_filename):
@@ -261,7 +261,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
             
             recording.status = 'SUMMARIZING' # Update status
             db.session.commit()
-            app.logger.info(f"Requesting title and summary from OpenRouter for recording {recording_id} using model {openrouter_model_name}...")
+            app.logger.info(f"Requesting title and summary from OpenRouter for recording {recording_id} using model {TEXT_MODEL_NAME}...")
 
             if not recording.transcription or len(recording.transcription.strip()) < 10: # Basic check for valid transcript
                  app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping summarization.")
@@ -290,7 +290,7 @@ JSON Response:""" # The prompt guides the model towards the desired output
             try:
                 # Use the OpenRouter client configured earlier
                 completion = client.chat.completions.create(
-                    model=openrouter_model_name,
+                    model=TEXT_MODEL_NAME,
                     messages=[
                         {"role": "system", "content": "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."},
                         {"role": "user", "content": prompt_text}
@@ -423,7 +423,7 @@ Additional context and notes about the meeting:
             messages.append({"role": "user", "content": user_message})
             
             completion = client.chat.completions.create(
-                model=openrouter_model_name,
+                model=TEXT_MODEL_NAME,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=1000
