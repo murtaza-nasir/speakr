@@ -278,10 +278,11 @@ Transcription:
 {recording.transcription[:30000]}
 \"\"\"
 
-Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 15 words) and "summary" (a paragraph summarizing the key points, max 150 words).
+Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "summary" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
+
 Example Format:
 {{
-  "title": "Example Meeting Discussion on Q3 Results",
+  "title": "Q3 Results for SPERO Program",
   "summary": "The meeting covered the financial results for Q3, highlighting key achievements and areas for improvement. Action items were assigned for follow-up."
 }}
 
