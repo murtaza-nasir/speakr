@@ -576,12 +576,6 @@
                                          <div class="flex items-center overflow-hidden mr-2">
                                             <i class="fas fa-file-audio text-[var(--text-accent)] mr-2 flex-shrink-0"></i>
                                             <span class="text-sm font-medium truncate" :title="recording.title || 'Loading title...'">${ recording.title || '(Processing...)' }</span>
-                                            <span v-if="recording.is_inbox" class="ml-1 text-blue-500" title="Inbox">
-                                                <i class="fas fa-inbox text-xs"></i>
-                                            </span>
-                                            <span v-if="recording.is_highlighted" class="ml-1 text-yellow-500" title="Highlighted">
-                                                <i class="fas fa-star text-xs"></i>
-                                            </span>
                                         </div>
                                         <div class="flex space-x-2 flex-shrink-0 items-center">
                                             <span v-if="recording.status === 'PROCESSING'" class="text-xs text-[var(--text-info-strong)] italic flex items-center" title="Transcribing...">
@@ -596,8 +590,11 @@
                                             <span v-else-if="recording.status === 'FAILED'" class="text-xs text-[var(--text-danger-strong)] italic flex items-center" title="Processing Failed">
                                                 <i class="fas fa-exclamation-triangle mr-1"></i> Failed
                                             </span>
-                                            <span v-else-if="recording.status === 'COMPLETED'" class="text-xs text-[var(--text-success-strong)]" title="Completed">
-                                                <i class="fas fa-check-circle"></i>
+                                            <span v-if="recording.is_inbox" class="text-blue-500" title="Inbox">
+                                                <i class="fas fa-inbox"></i>
+                                            </span>
+                                            <span v-if="recording.is_highlighted" class="text-yellow-500" title="Highlighted">
+                                                <i class="fas fa-star"></i>
                                             </span>
                                              <button @click.stop="editRecording(recording)" class="text-[var(--text-muted)] hover:text-[var(--text-accent)] text-xs p-1 rounded hover:bg-[var(--bg-tertiary)]" title="Edit Details">
                                                 <i class="fas fa-edit"></i>
