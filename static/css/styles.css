@@ -109,6 +109,30 @@ body {
     margin: 0;
     overflow-y: auto; /* Allow scrolling on the body */
 }
+
+/* Mobile fly-in menu specific styles */
+@media (max-width: 1023px) { /* Corresponds to Tailwind's lg breakpoint */
+    .sidebar-container.fixed {
+        height: 100vh; /* Full viewport height */
+        overflow-y: auto; /* Allow scrolling within the fly-in menu */
+    }
+    .main-content-area {
+        transition: filter 0.3s ease-in-out;
+    }
+    body.mobile-menu-open .main-content-area {
+        filter: blur(4px); /* Optional: blur background when menu is open */
+    }
+    body.mobile-menu-open {
+        overflow: hidden; /* Prevent body scroll when mobile menu is open */
+    }
+}
+
+/* Mobile viewport height fix */
+@media (max-width: 767px) { /* Target mobile devices specifically */
+    .main {
+        min-height: 4000px !important; /* Fixed viewport height for mobile */
+    }
+}
 #app { 
     min-height: 100%; /* Full viewport height */
     display: flex; 
@@ -630,4 +654,14 @@ main {
 /* Ensure body scrolls when content exceeds viewport */
 body {
     overflow-y: auto; /* Allow scrolling on the body */
+}
+
+/* Blinking animation for recording indicator */
+@keyframes blink-animation {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
+.blink {
+    animation: blink-animation 1.5s infinite;
 }

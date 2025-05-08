@@ -33,6 +33,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const isDarkMode = ref(false); // Dark mode state
         const isSidebarCollapsed = ref(false); // Sidebar state
         const isUserMenuOpen = ref(false); // User dropdown menu state
+        const isMobileMenuOpen = ref(false); // Mobile fly-in menu state
+        const windowWidth = ref(window.innerWidth); // For reactive screen size
+
+        // --- Audio Recording State ---
+        const isRecording = ref(false);
+        const mediaRecorder = ref(null);
+        const audioChunks = ref([]);
+        const audioBlobURL = ref(null);
+        const recordingTime = ref(0);
+        const recordingInterval = ref(null);
+        const canRecordAudio = ref(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
         
         // Inline editing state
         const editingParticipants = ref(false);
@@ -93,6 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Filter finished: includes completed and failed
          const finishedFilesInQueue = computed(() => uploadQueue.value.filter(item => ['completed', 'failed'].includes(item.status)));
 
+        const isMobileScreen = computed(() => {
+            return windowWidth.value < 1024; // Tailwind's lg breakpoint
+        });
+
 
         // --- Methods ---
         const setGlobalError = (message, duration = 7000) => {
@@ -138,10 +153,27 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- End Dark Mode ---
 
         // --- Sidebar Toggle ---
-        const toggleSidebar = () => {
-            isSidebarCollapsed.value = !isSidebarCollapsed.value;
-            // Optional: Save state to localStorage if persistence is desired
-            // localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.value);
+        const toggleSidebar = () => { // This is for DESKTOP sidebar
+            if (!isMobileScreen.value) {
+                isSidebarCollapsed.value = !isSidebarCollapsed.value;
+                // localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.value);
+            }
+        };
+
+        const toggleMobileMenu = () => {
+            isMobileMenuOpen.value = !isMobileMenuOpen.value;
+            if (isMobileMenuOpen.value) {
+                document.body.classList.add('mobile-menu-open');
+            } else {
+                document.body.classList.remove('mobile-menu-open');
+            }
+        };
+
+        const closeMobileMenu = () => {
+            if (isMobileMenuOpen.value) {
+                isMobileMenuOpen.value = false;
+                document.body.classList.remove('mobile-menu-open');
+            }
         };
         // --- End Sidebar Toggle ---
         
@@ -782,10 +814,110 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // --- Audio Recording Methods ---
+        const formatTime = (seconds) => {
+            const minutes = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const startRecording = async () => {
+            if (!canRecordAudio.value) {
+                setGlobalError('Audio recording is not supported by your browser or permission was denied.');
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder.value = new MediaRecorder(stream);
+                audioChunks.value = [];
+                audioBlobURL.value = null; // Clear previous recording
+
+                mediaRecorder.value.ondataavailable = event => {
+                    audioChunks.value.push(event.data);
+                };
+
+                mediaRecorder.value.onstop = () => {
+                    const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' }); // or audio/ogg, audio/wav
+                    audioBlobURL.value = URL.createObjectURL(audioBlob);
+                    stream.getTracks().forEach(track => track.stop()); // Stop microphone access
+                    clearInterval(recordingInterval.value);
+                };
+
+                mediaRecorder.value.start();
+                isRecording.value = true;
+                recordingTime.value = 0;
+                recordingInterval.value = setInterval(() => {
+                    recordingTime.value++;
+                }, 1000);
+                setGlobalError(null); // Clear any previous errors
+            } catch (err) {
+                console.error("Error starting recording:", err);
+                setGlobalError(`Could not start recording: ${err.message}. Please ensure microphone access is allowed.`);
+                isRecording.value = false;
+                canRecordAudio.value = false; // Assume permission denied or no device
+            }
+        };
+
+        const stopRecording = () => {
+            if (mediaRecorder.value && isRecording.value) {
+                mediaRecorder.value.stop();
+                isRecording.value = false;
+                // URL and blob are set in onstop handler
+            }
+        };
+
+        const uploadRecordedAudio = () => {
+            if (!audioBlobURL.value) {
+                setGlobalError("No recorded audio to upload.");
+                return;
+            }
+            // Create a File object from the Blob
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const recordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+
+            addFilesToQueue([recordedFile]); // Use the existing queue mechanism
+            discardRecording(); // Clear the recording UI
+        };
+
+        const discardRecording = () => {
+            if (audioBlobURL.value) {
+                URL.revokeObjectURL(audioBlobURL.value);
+            }
+            audioBlobURL.value = null;
+            audioChunks.value = [];
+            isRecording.value = false;
+            recordingTime.value = 0;
+            if (recordingInterval.value) clearInterval(recordingInterval.value);
+        };
+
         // --- Lifecycle Hooks ---
         onMounted(() => {
             loadRecordings();
             initializeDarkMode(); // Initialize dark mode on load
+            
+            // Check initial screen size
+            // This is a bit of a hack as isMobileScreen is computed,
+            // but we need to react to its initial value for listeners.
+            // A better way might be to have a separate ref for windowWidth and watch it.
+            const updateMobileStatus = () => {
+                windowWidth.value = window.innerWidth;
+                // If transitioning from mobile to desktop and mobile menu was open, close it.
+                if (!isMobileScreen.value && isMobileMenuOpen.value) {
+                    closeMobileMenu();
+                }
+                // If transitioning to desktop, ensure sidebar state is respected
+                // (e.g. if it was collapsed, it should remain collapsed or open based on isSidebarCollapsed)
+            };
+            updateMobileStatus(); // Call on mount
+            window.addEventListener('resize', updateMobileStatus);
+
+            // Close mobile menu on escape key
+            const handleEsc = (e) => {
+                if (e.key === 'Escape' && isMobileMenuOpen.value) {
+                    closeMobileMenu();
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
         });
 
         // --- Watchers ---
@@ -1081,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             transcriptionFlex, tabsFlex, isResizing, startY, startTranscriptionFlex, startTabsFlex,
             startResize, handleResize, stopResize,
             // Computed
-            groupedRecordings, totalInQueue, completedInQueue, queuedFiles, finishedFilesInQueue,
+            groupedRecordings, totalInQueue, completedInQueue, queuedFiles, finishedFilesInQueue, isMobileScreen,
             // Inline editing state
             editingParticipants, editingMeetingDate, editingSummary, editingNotes,
             // Methods
@@ -1092,6 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formatDisplayDate, // <-- ADDED: Expose date formatting function
             toggleDarkMode, // <-- Added toggleDarkMode
             toggleSidebar, isSidebarCollapsed, // <-- Added sidebar state and function
+            toggleMobileMenu, closeMobileMenu, isMobileMenuOpen, // <-- Added mobile menu state and functions
             // Inbox and Highlight methods
             toggleInbox, toggleHighlight,
             // Inline editing methods
@@ -1102,6 +1235,16 @@ document.addEventListener('DOMContentLoaded', () => {
             isUserMenuOpen,
             // Search
             searchQuery,
+            // Audio Recording
+            isRecording,
+            canRecordAudio,
+            audioBlobURL,
+            recordingTime,
+            startRecording,
+            stopRecording,
+            uploadRecordedAudio,
+            discardRecording,
+            formatTime,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja

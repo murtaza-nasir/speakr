@@ -18,10 +18,23 @@
                 <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
                 Speakr
             </h1>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-2 lg:space-x-2">
+                <!-- Hamburger Menu for Mobile -->
+                <button @click="toggleMobileMenu" class="lg:hidden p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" title="Open Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <!-- Dark Mode Toggle - visible on all sizes -->
                  <button @click="toggleDarkMode" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
                     <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
                 </button>
+                {% if current_user.is_authenticated %}
+                <!-- Add New Recording Button for Mobile Header -->
+                <button @click="switchToUploadView" class="lg:hidden p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" title="New Recording">
+                    <i class="fas fa-plus"></i>
+                </button>
+                {% endif %}
+                <!-- Desktop Menu Items - hidden on small screens, shown on lg and up -->
+                <div class="hidden lg:flex items-center space-x-2">
                 {% if current_user.is_authenticated %}
                 <button @click="switchToUploadView" class="px-4 py-2 mr-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
                     <i class="fas fa-plus mr-1"></i> New Recording
@@ -64,8 +77,12 @@
                     <i class="fas fa-user-plus mr-1"></i> Register
                 </a>
                 {% endif %}
+                </div>
             </div>
         </header>
+
+        <!-- Overlay for mobile fly-in menu -->
+        <div v-if="isMobileMenuOpen" @click="closeMobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"></div>
 
         <div v-if="globalError" class="mb-4 p-4 bg-[var(--bg-danger-light)] border border-[var(--border-danger)] text-[var(--text-danger-strong)] rounded-lg" role="alert">
              <div class="flex justify-between items-center">
@@ -94,7 +111,7 @@
             {% if current_user.is_authenticated %}
             <div v-if="currentView === 'gallery'" class="flex-grow flex flex-col rounded-lg relative">
                 <!-- Sidebar toggle button that appears when sidebar is collapsed - positioned at the left edge of main content, aligned with title -->
-                <button v-if="isSidebarCollapsed" 
+                <button v-if="isSidebarCollapsed && !isMobileScreen"  
                         @click="toggleSidebar" 
                         class="absolute -left-3 top-6 z-20 bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-2 pl-1 pr-3 rounded-r-lg shadow-lg text-[var(--text-accent)] hover:text-[var(--text-primary)] hover:shadow-xl transition-all duration-300 transform hover:translate-x-1 border-r border-t border-b border-[var(--border-accent)]"
                         title="Show Sidebar">
@@ -102,13 +119,38 @@
                 </button>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-grow">
-                    <div v-show="!isSidebarCollapsed" class="lg:col-span-1 bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md sidebar-container max-h-85vh">
+                    <!-- Sidebar: Conditional classes for mobile fly-in and desktop normal -->
+                    <div 
+                        :class="{
+                            'fixed inset-y-0 left-0 z-40 w-4/5 max-w-xs bg-[var(--bg-secondary)] shadow-xl transform transition-transform duration-300 ease-in-out': isMobileScreen,
+                            'translate-x-0': isMobileScreen && isMobileMenuOpen,
+                            '-translate-x-full': isMobileScreen && !isMobileMenuOpen,
+                            'lg:col-span-1 sidebar-container max-h-85vh': !isMobileScreen,
+                            'hidden': isMobileScreen && !isMobileMenuOpen, /* Ensure hidden when not open on mobile */
+                            'block': isMobileScreen && isMobileMenuOpen /* Ensure block when open on mobile */
+                        }"
+                        v-show="isMobileMenuOpen || (!isMobileScreen && !isSidebarCollapsed)"
+                        class="bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md lg:sticky lg:top-6">
                          <div class="flex justify-between items-center mb-2 sticky top-0 bg-[var(--bg-secondary)] pb-2 border-b border-[var(--border-primary)] sidebar-header">
                             <h3 class="text-lg font-semibold text-[var(--text-primary)]">Recordings</h3>
-                            <button @click="toggleSidebar" class="p-1 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar'">
-                                <i class="fas fa-chevron-left"></i>
+                            <!-- Close button for mobile fly-in, hide button for desktop -->
+                            <button @click="isMobileScreen ? closeMobileMenu() : toggleSidebar()"
+                                    class="p-1 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200"
+                                    :title="isMobileScreen ? 'Close Menu' : (isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar')">
+                                <i :class="isMobileScreen ? 'fas fa-times' : 'fas fa-chevron-left'"></i>
                              </button>
                         </div>
+
+                        <!-- New Recording Button for Mobile Menu (Sidebar) -->
+                        {% if current_user.is_authenticated %}
+                        <button
+                            v-if="isMobileScreen"
+                            @click="switchToUploadView(); closeMobileMenu();"
+                            class="w-full flex items-center justify-center mb-3 px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                            <i class="fas fa-plus mr-2"></i> New Recording
+                        </button>
+                        {% endif %}
+
                         <!-- Search input -->
                         <div class="relative mb-3 sticky top-12 z-10 bg-[var(--bg-secondary)]">
                             <div class="flex items-center bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] focus-within:border-[var(--border-focus)] focus-within:ring-1 focus-within:ring-[var(--ring-focus)]">
@@ -142,7 +184,7 @@
                                 <ul class="space-y-1">
                                     <li v-for="recording in group.items"
                                         :key="recording.id"
-                                        @click="selectRecording(recording)"
+                                        @click="selectRecording(recording); if(isMobileScreen) closeMobileMenu();"
                                         class="cursor-pointer p-3 rounded-md flex justify-between items-center transition duration-150 ease-in-out"
                                         :class="{
                                             'bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] ring-1 ring-[var(--border-accent)] text-[var(--text-accent)]': selectedRecording?.id === recording.id,
@@ -184,7 +226,7 @@
                         </div>
                     </div>
 
-                     <div :class="isSidebarCollapsed ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col max-h-85vh">
+                     <div :class="(!isMobileScreen && isSidebarCollapsed) ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col max-h-85vh main-content-area">
                         <div v-if="selectedRecording" class="flex-grow flex flex-col">
                             <div class="flex flex-col sm:flex-row justify-between items-start mb-4 border-b border-[var(--border-primary)] pb-4">
                                 <div class="mb-3 sm:mb-0 max-w-lg">
@@ -449,10 +491,39 @@
                          <h2 class="text-xl font-semibold text-[var(--text-secondary)] mb-2">Upload New Recordings</h2>
                         <p class="text-[var(--text-muted)] mb-4">Drag & drop your audio files here or click below.</p>
                          <input type="file" @change="handleFileSelect" accept="audio/*" class="hidden" ref="fileInput" multiple>
-                        <button @click="$refs.fileInput.click()" class="mt-4 px-6 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] shadow-sm transition duration-150 ease-in-out">
-                            <i class="fas fa-file-import mr-2"></i> Select Files
-                        </button>
-                         <p class="text-xs text-[var(--text-light)] mt-4">Max file size per file: ${ maxFileSizeMB } MB</p>
+                        <div class="flex flex-col sm:flex-row sm:justify-center sm:items-center mt-4 space-y-3 sm:space-y-0 sm:space-x-3">
+                            <template v-if="!isRecording">
+                                <button @click="$refs.fileInput.click()" class="w-full sm:w-auto px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
+                                    <i class="fas fa-file-import mr-2"></i> Select Files
+                                </button>
+                                <!-- New Record Audio Button -->
+                                <button @click="startRecording" v-if="canRecordAudio" class="w-full sm:w-auto px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
+                                    <i class="fas fa-microphone mr-2"></i> Record Audio
+                                </button>
+                            </template>
+                            <button @click="stopRecording" v-if="isRecording" class="w-full sm:w-auto px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 shadow-sm transition duration-150 ease-in-out flex items-center justify-center">
+                                <i class="fas fa-stop mr-2"></i> Stop Recording
+                            </button>
+                        </div>
+                        <div v-if="isRecording" class="mt-3 text-[var(--text-muted)]">
+                            <i class="fas fa-circle text-red-500 fa-xs blink mr-1"></i> Recording: ${ formatTime(recordingTime) }
+                        </div>
+                        <div v-if="audioBlobURL" class="mt-4 p-4 border border-[var(--border-primary)] rounded-lg bg-[var(--bg-tertiary)]">
+                            <p class="text-sm text-[var(--text-secondary)] mb-2 font-medium">Preview your recording:</p>
+                            <audio :src="audioBlobURL" controls class="w-full rounded"></audio>
+                            <div class="mt-3 flex flex-col sm:flex-row sm:justify-center sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                                <button @click="uploadRecordedAudio" class="w-full sm:w-auto px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
+                                    <i class="fas fa-upload mr-1"></i> Upload Recording
+                                </button>
+                                <button @click="discardRecording" class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                                    <i class="fas fa-trash mr-1"></i> Discard
+                                </button>
+                            </div>
+                        </div>
+                        <p v-if="!canRecordAudio && currentView === 'upload' && !isRecording && !audioBlobURL" class="mt-4 text-sm text-[var(--text-muted)]">
+                            Audio recording may not be supported or permission is denied.
+                        </p>
+                         <p class="text-xs text-[var(--text-light)] mt-6">Max file size per file: ${ maxFileSizeMB } MB</p>
                     </div>
                 </div>
             </div>
