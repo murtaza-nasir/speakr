@@ -165,7 +165,7 @@
                                             <span v-else-if="recording.status === 'FAILED'" class="text-xs text-[var(--text-danger-strong)] italic flex items-center" title="Processing Failed">
                                                 <i class="fas fa-exclamation-triangle mr-1"></i> Failed
                                             </span>
-                                            <span v-if="recording.is_inbox" class="text-blue-500" title="Inbox">
+                                            <span v-if="recording.is_inbox" class="text-blue-500 cursor-pointer hover:text-blue-700" title="Mark as Read" @click.stop="toggleInbox(recording)">
                                                 <i class="fas fa-inbox"></i>
                                             </span>
                                             <span v-if="recording.is_highlighted" class="text-yellow-500" title="Highlighted">
@@ -190,7 +190,7 @@
                                 <div class="mb-3 sm:mb-0 max-w-lg">
                                      <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
                                         <span style="hyphens: auto; overflow-wrap: break-word; min-width: 0;">${ selectedRecording.title || 'Loading...' }</span>
-                                        <span v-if="selectedRecording.is_inbox" class="ml-4 bg-blue-50 text-blue-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity" title="Inbox">
+                                        <span v-if="selectedRecording.is_inbox" class="ml-4 bg-blue-50 text-blue-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity cursor-pointer" title="Mark as Read" @click="toggleInbox(selectedRecording)">
                                             <i class="fas fa-inbox"></i>
                                         </span>
                                         <span v-if="selectedRecording.is_highlighted" class="ml-3 bg-yellow-50 text-yellow-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity" title="Highlighted">
