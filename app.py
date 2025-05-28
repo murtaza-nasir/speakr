@@ -217,6 +217,8 @@ app.logger.info(f"Using Whisper API at: {transcription_base_url}")
 # --- Background Transcription & Summarization Task ---
 def transcribe_audio_task(app_context, recording_id, filepath, original_filename):
     """Runs the transcription and summarization in a background thread."""
+    output_language = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language
+
     with app_context: # Need app context for db operations in thread
         recording = db.session.get(Recording, recording_id)
         if not recording:
@@ -291,7 +293,7 @@ Transcription:
 \"\"\"
 
 Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "summary" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
-
+{f"Please provide the title and summary in {output_language}." if output_language else ""}
 Example Format:
 {{
   "title": "Q3 Results for SPERO Program",
@@ -299,13 +301,17 @@ Example Format:
 }}
 
 JSON Response:""" # The prompt guides the model towards the desired output
+            
+            system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
+            if output_language:
+                system_message_content += f" Ensure your response (both title and summary) is in {output_language}."
 
             try:
                 # Use the OpenRouter client configured earlier
                 completion = client.chat.completions.create(
                     model=TEXT_MODEL_NAME,
                     messages=[
-                        {"role": "system", "content": "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."},
+                        {"role": "system", "content": system_message_content},
                         {"role": "user", "content": prompt_text}
                     ],
                     temperature=0.5, # Adjust temperature as needed
@@ -409,7 +415,13 @@ def chat_with_transcription():
             return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
             
         # Prepare the system prompt with the transcription
-        system_prompt = f"""You are a professional meeting analyst working with Murtaza Nasir, Assistant Professor at Wichita State University. Analyze the following meeting information and respond to the specific request.
+        output_language_chat = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language for chat
+        
+        language_instruction = ""
+        if output_language_chat:
+            language_instruction = f"Please provide all your responses in {output_language_chat}."
+
+        system_prompt = f"""You are a professional meeting analyst working with Murtaza Nasir, Assistant Professor at Wichita State University. {language_instruction} Analyze the following meeting information and respond to the specific request.
 
 Following are the meeting participants and their roles:
 {recording.participants or "No specific participants information provided."}

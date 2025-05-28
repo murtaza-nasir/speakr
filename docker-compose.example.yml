@@ -38,6 +38,7 @@ services:
       - TRANSCRIPTION_API_KEY=your_transcription_api_key_here
       - WHISPER_MODEL=Systran/faster-distil-whisper-large-v3
       - TRANSCRIPTION_LANGUAGE= # Optional: Specify ISO-639-1 language code (e.g., en, es, fr, zh for Chinese). Leave empty for auto-detection.
+      - OUTPUT_LANGUAGE= # Optional: Specify desired language for LLM outputs (e.g., English, Spanish, Chinese). Leave empty for English default.
      
       # Application settings
       - ALLOW_REGISTRATION=false
