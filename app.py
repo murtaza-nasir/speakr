@@ -440,7 +440,7 @@ def chat_with_transcription():
         if user_chat_output_language:
             language_instruction = f"Please provide all your responses in {user_chat_output_language}."
 
-        system_prompt = f"""You are a professional meeting analyst working with Murtaza Nasir, Assistant Professor at Wichita State University. {language_instruction} Analyze the following meeting information and respond to the specific request.
+        system_prompt = f"""You are a professional meeting analyst. {language_instruction} Analyze the following meeting information and respond to the specific request.
 
 Following are the meeting participants and their roles:
 {recording.participants or "No specific participants information provided."}
