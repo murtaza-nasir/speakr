@@ -71,6 +71,7 @@ EOF
 # Reload systemd and start service
 sudo systemctl daemon-reload
 sudo systemctl restart transcription
+sudo systemctl disable transcription
 sudo systemctl enable transcription
 
 # Check service status

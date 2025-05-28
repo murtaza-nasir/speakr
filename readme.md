@@ -95,6 +95,7 @@ The easiest way to deploy Speakr is using Docker and docker compose.
          - TRANSCRIPTION_BASE_URL=http://your_local_api_url:port/v1/
          - TRANSCRIPTION_API_KEY=your_transcription_api_key_here
          - WHISPER_MODEL=Systran/faster-distil-whisper-large-v3
+         - TRANSCRIPTION_LANGUAGE= # Optional: Specify ISO-639-1 language code (e.g., en, es, fr, zh for Chinese). Leave empty for auto-detection.
          
          # Application settings
          - ALLOW_REGISTRATION=false
@@ -356,6 +357,7 @@ Configuration is primarily handled through environment variables in the `docker-
 * `TRANSCRIPTION_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
 * `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
 * `WHISPER_MODEL`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
+* `TRANSCRIPTION_LANGUAGE`: *Optional.* The language of the input audio. Supplying the input language in ISO-639-1 format (e.g., `en` for English, `es` for Spanish) will improve transcription accuracy and latency. If not set, the transcription service will attempt to auto-detect the language.
 * `SECRET_KEY`: **Required.** A long, random string used by Flask for session security. The `setup.sh` script generates one if it's missing.
 * `ALLOW_REGISTRATION`: *Optional.* Set to `false` to prevent new users from registering via the web UI. Defaults to `true`.
 

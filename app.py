@@ -243,11 +243,22 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
                 )
                 # Get the Whisper model name from environment variables
                 whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
-                transcript = transcription_client.audio.transcriptions.create(
-                    model=whisper_model, # Use model from environment variables
-                    file=audio_file,
-                    language="en" # Specify language if known
-                )
+                
+                # Get the transcription language from environment variables
+                transcription_language = os.environ.get("TRANSCRIPTION_LANGUAGE", None) # Default to None if not set
+
+                transcription_params = {
+                    "model": whisper_model,
+                    "file": audio_file
+                }
+
+                if transcription_language:
+                    transcription_params["language"] = transcription_language
+                    app.logger.info(f"Using transcription language: {transcription_language}")
+                else:
+                    app.logger.info("Transcription language not set, using auto-detection or service default.")
+
+                transcript = transcription_client.audio.transcriptions.create(**transcription_params)
             recording.transcription = transcript.text
             app.logger.info(f"Transcription completed for recording {recording_id}. Text length: {len(recording.transcription)}")
             # Don't commit yet, proceed to summarization

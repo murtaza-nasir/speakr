@@ -37,6 +37,7 @@ services:
       - TRANSCRIPTION_BASE_URL=http://your_local_api_url:port/v1/
       - TRANSCRIPTION_API_KEY=your_transcription_api_key_here
       - WHISPER_MODEL=Systran/faster-distil-whisper-large-v3
+      - TRANSCRIPTION_LANGUAGE= # Optional: Specify ISO-639-1 language code (e.g., en, es, fr, zh for Chinese). Leave empty for auto-detection.
      
       # Application settings
       - ALLOW_REGISTRATION=false
