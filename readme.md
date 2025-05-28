@@ -8,6 +8,7 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 ## Screenshots
 ![image](https://github.com/user-attachments/assets/788aebc7-86bd-4024-be4d-c6273d61c765)
+![image](https://github.com/user-attachments/assets/36f05267-ad02-4cfe-9f10-a3f140a080ca)
 ![image](https://github.com/user-attachments/assets/a1d471fa-8b52-4f9e-962d-19cbd0955a3b)
 ![image](https://github.com/user-attachments/assets/637bfb92-bbfc-4113-93d2-c7d051c970af)
 
