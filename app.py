@@ -82,6 +82,8 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     recordings = db.relationship('Recording', backref='owner', lazy=True)
+    transcription_language = db.Column(db.String(10), nullable=True) # For ISO 639-1 codes
+    output_language = db.Column(db.String(50), nullable=True) # For full language names like "Spanish"
     
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
@@ -182,6 +184,13 @@ with app.app_context():
         # Add is_highlighted column with default value of 0 (False)
         if add_column_if_not_exists(engine, 'recording', 'is_highlighted', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added is_highlighted column to recording table")
+
+        # Add language preference columns to User table
+        if add_column_if_not_exists(engine, 'user', 'transcription_language', 'VARCHAR(10)'):
+            app.logger.info("Added transcription_language column to user table")
+        if add_column_if_not_exists(engine, 'user', 'output_language', 'VARCHAR(50)'):
+            app.logger.info("Added output_language column to user table")
+            
     except Exception as e:
         app.logger.error(f"Error during database migration: {e}")
 
@@ -217,7 +226,7 @@ app.logger.info(f"Using Whisper API at: {transcription_base_url}")
 # --- Background Transcription & Summarization Task ---
 def transcribe_audio_task(app_context, recording_id, filepath, original_filename):
     """Runs the transcription and summarization in a background thread."""
-    output_language = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language
+    # output_language = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language - Now per user
 
     with app_context: # Need app context for db operations in thread
         recording = db.session.get(Recording, recording_id)
@@ -246,8 +255,16 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
                 # Get the Whisper model name from environment variables
                 whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
                 
-                # Get the transcription language from environment variables
-                transcription_language = os.environ.get("TRANSCRIPTION_LANGUAGE", None) # Default to None if not set
+                user_transcription_language = None
+                user_output_language = None
+                if recording and recording.owner: # Check if recording and owner exist
+                    user_transcription_language = recording.owner.transcription_language
+                    user_output_language = recording.owner.output_language
+                
+                # Get the transcription language from user preferences or environment as fallback (optional)
+                # For now, prioritize user setting. If not set by user, it will be None.
+                # transcription_language = user_transcription_language or os.environ.get("TRANSCRIPTION_LANGUAGE", None)
+                transcription_language = user_transcription_language # Prioritize user setting
 
                 transcription_params = {
                     "model": whisper_model,
@@ -285,6 +302,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
                  return # Exit the task cleanly
 
             # Prepare the prompt for OpenRouter
+            # Use user_output_language for prompts
             prompt_text = f"""Analyze the following audio transcription and generate a concise title and a brief summary.
 
 Transcription:
@@ -293,7 +311,7 @@ Transcription:
 \"\"\"
 
 Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "summary" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
-{f"Please provide the title and summary in {output_language}." if output_language else ""}
+{f"Please provide the title and summary in {user_output_language}." if user_output_language else ""}
 Example Format:
 {{
   "title": "Q3 Results for SPERO Program",
@@ -303,8 +321,8 @@ Example Format:
 JSON Response:""" # The prompt guides the model towards the desired output
             
             system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
-            if output_language:
-                system_message_content += f" Ensure your response (both title and summary) is in {output_language}."
+            if user_output_language: # Use user_output_language here
+                system_message_content += f" Ensure your response (both title and summary) is in {user_output_language}."
 
             try:
                 # Use the OpenRouter client configured earlier
@@ -415,11 +433,12 @@ def chat_with_transcription():
             return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
             
         # Prepare the system prompt with the transcription
-        output_language_chat = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language for chat
+        # output_language_chat = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language for chat - Now from user
+        user_chat_output_language = current_user.output_language if current_user.is_authenticated else None
         
         language_instruction = ""
-        if output_language_chat:
-            language_instruction = f"Please provide all your responses in {output_language_chat}."
+        if user_chat_output_language:
+            language_instruction = f"Please provide all your responses in {user_chat_output_language}."
 
         system_prompt = f"""You are a professional meeting analyst working with Murtaza Nasir, Assistant Professor at Wichita State University. {language_instruction} Analyze the following meeting information and respond to the specific request.
 
@@ -520,9 +539,26 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-@app.route('/account', methods=['GET'])
+@app.route('/account', methods=['GET', 'POST'])
 @login_required
 def account():
+    if request.method == 'POST':
+        # Handle language preference updates
+        transcription_lang = request.form.get('transcription_language')
+        output_lang = request.form.get('output_language')
+
+        # Validate transcription_lang if needed (e.g., ensure it's a valid ISO code or empty)
+        # For simplicity, we'll save what's given. Add validation if strict format is required.
+        # Example: Check against a list of known valid ISO 639-1 codes.
+        # For now, allow empty string to clear the preference.
+        
+        current_user.transcription_language = transcription_lang if transcription_lang else None
+        current_user.output_language = output_lang if output_lang else None
+        
+        db.session.commit()
+        flash('Language preferences updated successfully!', 'success')
+        return redirect(url_for('account'))
+        
     return render_template('account.html', title='Account')
 
 @app.route('/change_password', methods=['POST'])

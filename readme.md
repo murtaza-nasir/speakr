@@ -15,16 +15,16 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 * **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc.) via drag-and-drop or file selection.
 * **Background Processing:** Transcription and summarization happen in the background without blocking the UI.
-* **Transcription:** Uses OpenAI-compatible Speech-to-Text (STT) APIs (configurable, e.g., self-hosted Whisper).
-* **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs via OpenAI-compatible APIs (like OpenRouter).
-* **Interactive Chat:** Ask questions and interact with the transcription content using an AI model.
+* **Transcription:** Uses OpenAI-compatible Speech-to-Text (STT) APIs (configurable, e.g., self-hosted Whisper). Transcription language can be set per user.
+* **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs via OpenAI-compatible APIs (like OpenRouter). Output language can be set per user.
+* **Interactive Chat:** Ask questions and interact with the transcription content using an AI model. Chat output language can be set per user.
 * **Search, Inbox & Highlight:** For highlighting and easy processing
 * **Metadata Editing:** Edit titles, participants, meeting dates, summaries, and notes associated with recordings.
 
 **User Features:**
 
 * **Authentication:** Secure user registration and login system.
-* **Account Management:** Users can change their passwords.
+* **Account Management:** Users can change their passwords and set language preferences (transcription and output language) on their Account page.
 * **Recording Gallery:** View, manage, and access all personal recordings.
 * **Dark Mode:** Switch between light and dark themes.
 
@@ -95,8 +95,7 @@ The easiest way to deploy Speakr is using Docker and docker compose.
          - TRANSCRIPTION_BASE_URL=http://your_local_api_url:port/v1/
          - TRANSCRIPTION_API_KEY=your_transcription_api_key_here
          - WHISPER_MODEL=Systran/faster-distil-whisper-large-v3
-         - TRANSCRIPTION_LANGUAGE= # Optional: Specify ISO-639-1 language code (e.g., en, es, fr, zh for Chinese). Leave empty for auto-detection.
-         - OUTPUT_LANGUAGE= # Optional: Specify desired language for LLM outputs (e.g., English, Spanish, Chinese). Leave empty for English default.
+         # Note: Transcription and Output languages are now per-user settings, configurable on the Account page in the app.
          
          # Application settings
          - ALLOW_REGISTRATION=false
@@ -358,23 +357,24 @@ Configuration is primarily handled through environment variables in the `docker-
 * `TRANSCRIPTION_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
 * `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
 * `WHISPER_MODEL`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
-* `TRANSCRIPTION_LANGUAGE`: *Optional.* The language of the input audio. Supplying the input language in ISO-639-1 format (e.g., `en` for English, `es` for Spanish) will improve transcription accuracy and latency. If not set, the transcription service will attempt to auto-detect the language.
-* `OUTPUT_LANGUAGE`: *Optional.* The desired language for the generated titles, summaries, and chat responses (e.g., "English", "Spanish", "Chinese"). If not set, outputs will typically be in the language of the transcription or English. Ensure your chosen `TEXT_MODEL_NAME` supports the desired output language.
 * `SECRET_KEY`: **Required.** A long, random string used by Flask for session security. The `setup.sh` script generates one if it's missing.
 * `ALLOW_REGISTRATION`: *Optional.* Set to `false` to prevent new users from registering via the web UI. Defaults to `true`.
+
+**Note on Language Preferences:** Transcription language and output language for summaries/chat are now configurable per user on their Account page within the application.
 
 ## Usage
 
 1.  **Register/Login:** Access the web application via your browser. Register a new account (if enabled) or log in.
-2.  **Upload:** Go to "New Recording" or drag-and-drop audio files onto the page. Upload progress and subsequent processing status will appear in the bottom-left popup.
-3.  **View Recordings:** The main "Gallery" view lists your recordings, grouped by date. Click on a recording to view its details.
-4.  **Interact:**
+2.  **Set Preferences (Optional):** Go to your Account page to set your preferred transcription and output languages.
+3.  **Upload:** Go to "New Recording" or drag-and-drop audio files onto the page. Upload progress and subsequent processing status will appear in the bottom-left popup.
+4.  **View Recordings:** The main "Gallery" view lists your recordings, grouped by date. Click on a recording to view its details.
+5.  **Interact:**
     * Listen to the audio using the player.
-    * Read the transcription.
-    * Review the AI-generated summary and title.
+    * Read the transcription (will use your preferred transcription language if set).
+    * Review the AI-generated summary and title (will be in your preferred output language if set).
     * Read or edit metadata (participants, notes, meeting date). Use the small edit icons or the "Edit Details" button.
-    * Use the "Chat with Transcript" panel to ask questions about the recording content.
-5.  **Manage:** Edit details or delete recordings using the buttons in the detail view or the icons in the recording list.
+    * Use the "Chat with Transcript" panel to ask questions about the recording content (responses will be in your preferred output language if set).
+6.  **Manage:** Edit details or delete recordings using the buttons in the detail view or the icons in the recording list.
 
 ## Admin Panel
 

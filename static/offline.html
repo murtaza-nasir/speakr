@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - WhisperTranscribe</title>
+    <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1);
+        }
+        img {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 16px;
+            color: #606770;
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1c1e21;
+                color: #e4e6eb;
+            }
+            .container {
+                background-color: #242526;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0, 0, 0, 0.2);
+            }
+            p {
+                color: #b0b3b8;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="/static/img/favicon.svg" alt="WhisperTranscribe Logo">
+        <h1>You're Offline</h1>
+        <p>It looks like you're not connected to the internet. Please check your connection and try again.</p>
+        <p>Some content may be unavailable until you're back online.</p>
+    </div>
+</body>
+</html>
