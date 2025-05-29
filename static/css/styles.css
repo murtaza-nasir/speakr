@@ -183,7 +183,7 @@ main {
     border: 1px solid var(--border-primary);
     min-height: 0; /* Allow proper flex shrinking for scrolling */
     overflow-y: auto; /* Enable vertical scrolling */
-    white-space: pre-wrap;
+    white-space: normal; /* Allow markdown HTML to control spacing */
     font-family: inherit; /* Use body font */
     font-size: 0.875rem; /* text-sm */
     line-height: 1.5; /* Consistent line height */
@@ -451,76 +451,85 @@ div[v-if="!editingNotes"] {
  }
  
  /* Markdown styling */
- .ai-message h1, .ai-message h2, .ai-message h3, 
- .summary-box h1, .summary-box h2, .summary-box h3 {
+ .ai-message h1, .ai-message h2, .ai-message h3,
+ .summary-box h1, .summary-box h2, .summary-box h3,
+ .notes-box h1, .notes-box h2, .notes-box h3 {
      font-weight: 600;
      margin-top: 1rem;
      margin-bottom: 0.5rem;
  }
  
- .ai-message h1, .summary-box h1 { font-size: 1.25rem; }
- .ai-message h2, .summary-box h2 { font-size: 1.15rem; }
- .ai-message h3, .summary-box h3 { font-size: 1.05rem; }
+ .ai-message h1, .summary-box h1, .notes-box h1 { font-size: 1.25rem; }
+ .ai-message h2, .summary-box h2, .notes-box h2 { font-size: 1.15rem; }
+ .ai-message h3, .summary-box h3, .notes-box h3 { font-size: 1.05rem; }
  
- .ai-message p, .summary-box p {
+ .ai-message p, .summary-box p, .notes-box p {
      margin-bottom: 0.75rem;
  }
  
  .ai-message ul, .ai-message ol,
- .summary-box ul, .summary-box ol {
+ .summary-box ul, .summary-box ol,
+ .notes-box ul, .notes-box ol {
      margin-left: 1.5rem;
      margin-bottom: 0.75rem;
+     list-style-position: outside; /* Ensures bullets are outside the text flow */
  }
  
- .ai-message ul, .summary-box ul { list-style-type: disc; }
- .ai-message ol, .summary-box ol { list-style-type: decimal; }
+ .ai-message ul, .summary-box ul, .notes-box ul { list-style-type: disc; }
+ .ai-message ol, .summary-box ol, .notes-box ol { list-style-type: decimal; }
+
+ .ai-message li, .summary-box li, .notes-box li {
+    display: list-item; /* Ensure li elements are treated as list items */
+    margin-bottom: 0.25rem; /* Add some space between list items */
+ }
  
- .ai-message code, .summary-box code {
-     background-color: #f1f1f1;
+ .ai-message code, .summary-box code, .notes-box code {
+     background-color: #f1f1f1; /* Consider using var(--bg-tertiary) or similar for theme consistency */
      padding: 0.1rem 0.3rem;
      border-radius: 0.25rem;
      font-family: monospace;
      font-size: 0.9em;
  }
  
- .ai-message pre, .summary-box pre {
-     background-color: #f1f1f1;
+ .ai-message pre, .summary-box pre, .notes-box pre {
+     background-color: #f1f1f1; /* Consider using var(--bg-tertiary) or similar */
      padding: 0.75rem;
      border-radius: 0.25rem;
      overflow-x: auto;
      margin-bottom: 0.75rem;
  }
  
- .ai-message pre code, .summary-box pre code {
+ .ai-message pre code, .summary-box pre code, .notes-box pre code {
      background-color: transparent;
      padding: 0;
      border-radius: 0;
  }
  
- .ai-message table, .summary-box table {
+ .ai-message table, .summary-box table, .notes-box table {
      border-collapse: collapse;
      width: 100%;
      margin-bottom: 0.75rem;
  }
  
  .ai-message th, .ai-message td,
- .summary-box th, .summary-box td {
-     border: 1px solid #ddd;
+ .summary-box th, .summary-box td,
+ .notes-box th, .notes-box td {
+     border: 1px solid var(--border-secondary); /* Use theme variable */
      padding: 0.5rem;
      text-align: left;
  }
  
- .ai-message th, .summary-box th {
-     background-color: #f1f1f1;
+ .ai-message th, .summary-box th, .notes-box th {
+     background-color: var(--bg-tertiary); /* Use theme variable */
      font-weight: 600;
  }
  
- .ai-message blockquote, .summary-box blockquote {
-     border-left: 4px solid #ddd;
+ .ai-message blockquote, .summary-box blockquote, .notes-box blockquote {
+     border-left: 4px solid var(--border-secondary); /* Use theme variable */
      padding-left: 1rem;
      margin-left: 0;
      margin-bottom: 0.75rem;
-     color: #666;
+     color: var(--text-muted); /* Use theme variable */
  }
  
  /* Main content container - ensure it fills available space and allows scrolling */

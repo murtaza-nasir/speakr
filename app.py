@@ -32,11 +32,8 @@ def md_to_html(text):
         return ""
     # Convert markdown to HTML with extensions for tables, code highlighting, etc.
     html = markdown.markdown(text, extensions=[
-        'tables',           # Support for tables
-        'fenced_code',      # Support for ```code blocks```
-        'codehilite',       # Syntax highlighting for code blocks
-        'nl2br',            # Convert newlines to <br> tags
-        'sane_lists',       # Better list handling
+        'extra',            # Includes many useful extensions like sane_lists, fenced_code, tables, etc.
+        'codehilite',       # Syntax highlighting for code blocks (ensure Pygments is installed)
         'smarty'            # Smart quotes, dashes, etc.
     ])
     return html
