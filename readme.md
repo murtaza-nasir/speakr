@@ -18,16 +18,20 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 * **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc.) via drag-and-drop or file selection.
 * **Background Processing:** Transcription and summarization happen in the background without blocking the UI.
+* **Multilingual Support:** User-configurable languages for both audio transcription (input) and AI-generated content like summaries and chat (output).
 * **Transcription:** Uses OpenAI-compatible Speech-to-Text (STT) APIs (configurable, e.g., self-hosted Whisper). Transcription language can be set per user.
-* **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs via OpenAI-compatible APIs (like OpenRouter). Output language can be set per user.
-* **Interactive Chat:** Ask questions and interact with the transcription content using an AI model. Chat output language can be set per user.
+* **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs via OpenAI-compatible APIs (like OpenRouter). Features an improved default summarization prompt, and users can provide their own custom prompt. Output language can be set per user.
+* **Interactive Chat:** Ask questions and interact with the transcription content using an AI model. Incorporates user's professional context (name, title, company if provided by the user) for more relevant responses. Chat output language can be set per user.
 * **Search, Inbox & Highlight:** For highlighting and easy processing
 * **Metadata Editing:** Edit titles, participants, meeting dates, summaries, and notes associated with recordings.
 
 **User Features:**
 
 * **Authentication:** Secure user registration and login system.
-* **Account Management:** Users can change their passwords and set language preferences (transcription and output language) on their Account page.
+* **Account Management:** Users can change their passwords and manage preferences on their Account page, including:
+    * Setting transcription and output languages.
+    * Defining a custom summarization prompt.
+    * Adding personal/professional information (name, title, company) to enhance chat context and AI interactions.
 * **Recording Gallery:** View, manage, and access all personal recordings.
 * **Dark Mode:** Switch between light and dark themes.
 
@@ -363,12 +367,15 @@ Configuration is primarily handled through environment variables in the `docker-
 * `SECRET_KEY`: **Required.** A long, random string used by Flask for session security. The `setup.sh` script generates one if it's missing.
 * `ALLOW_REGISTRATION`: *Optional.* Set to `false` to prevent new users from registering via the web UI. Defaults to `true`.
 
-**Note on Language Preferences:** Transcription language and output language for summaries/chat are now configurable per user on their Account page within the application.
+**Note on User Preferences:** Transcription language, output language for summaries/chat, custom summarization prompts, and personal/professional details (name, title, company) are now configurable per user on their Account page within the application.
 
 ## Usage
 
 1.  **Register/Login:** Access the web application via your browser. Register a new account (if enabled) or log in.
-2.  **Set Preferences (Optional):** Go to your Account page to set your preferred transcription and output languages.
+2.  **Set Preferences (Recommended):** Go to your Account page to:
+    * Set your preferred transcription and output languages.
+    * Define a custom summarization prompt to tailor summaries to your needs.
+    * Optionally, add your name, job title, and company to provide more context for AI chat interactions.
 3.  **Upload:** Go to "New Recording" or drag-and-drop audio files onto the page. Upload progress and subsequent processing status will appear in the bottom-left popup.
 4.  **View Recordings:** The main "Gallery" view lists your recordings, grouped by date. Click on a recording to view its details.
 5.  **Interact:**
