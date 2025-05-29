@@ -657,7 +657,7 @@ def account():
         flash('Account details updated successfully!', 'success')
         return redirect(url_for('account'))
         
-    default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, key any next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered."""
+    default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, key next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered."""
     return render_template('account.html', title='Account', default_summary_prompt_text=default_summary_prompt_text)
 
 @app.route('/change_password', methods=['POST'])

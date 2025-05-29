@@ -150,21 +150,8 @@
                 {% endwith %}
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Left Column: Form -->
                     <div>
-                        <div class="mb-6">
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">User Details</h3>
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
-                                <div class="mb-3">
-                                    <span class="block text-sm font-medium text-[var(--text-muted)]">Username</span>
-                                    <span class="block text-[var(--text-primary)]">{{ current_user.username }}</span>
-                                </div>
-                                <div class="mb-3">
-                                    <span class="block text-sm font-medium text-[var(--text-muted)]">Email</span>
-                                    <span class="block text-[var(--text-primary)]">{{ current_user.email }}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         <form method="POST" action="{{ url_for('account') }}" class="space-y-6">
                             <div class="mb-6">
                                 <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Personal Information</h3>
@@ -209,8 +196,61 @@
                                 <i class="fas fa-save mr-2"></i> Save All Preferences
                             </button>
                         </form>
+                    </div>
+                    
+                    <!-- Right Column: Stats, User Details, Account Actions -->
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Account Statistics</h3>
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                        <span class="block text-3xl font-bold text-[var(--text-accent)]">{{ current_user.recordings|length }}</span>
+                                        <span class="block text-sm text-[var(--text-muted)]">Total Recordings</span>
+                                    </div>
+                                    
+                                    <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                        <span class="block text-3xl font-bold text-[var(--text-accent)]">
+                                            {% set completed_count = current_user.recordings|selectattr('status', 'equalto', 'COMPLETED')|list|length %}
+                                            {{ completed_count }}
+                                        </span>
+                                        <span class="block text-sm text-[var(--text-muted)]">Completed</span>
+                                    </div>
+                                    
+                                    <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                        <span class="block text-3xl font-bold text-[var(--text-warn-strong)]">
+                                            {% set processing_count = current_user.recordings|selectattr('status', 'in', ['PENDING', 'PROCESSING', 'SUMMARIZING'])|list|length %}
+                                            {{ processing_count }}
+                                        </span>
+                                        <span class="block text-sm text-[var(--text-muted)]">Processing</span>
+                                    </div>
+                                    
+                                    <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                        <span class="block text-3xl font-bold text-[var(--text-danger)]">
+                                            {% set failed_count = current_user.recordings|selectattr('status', 'equalto', 'FAILED')|list|length %}
+                                            {{ failed_count }}
+                                        </span>
+                                        <span class="block text-sm text-[var(--text-muted)]">Failed</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6"> <!-- Added mt-6 for spacing, was mb-6 on User Details -->
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">User Details</h3>
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                                <div class="mb-3">
+                                    <span class="block text-sm font-medium text-[var(--text-muted)]">Username</span>
+                                    <span class="block text-[var(--text-primary)]">{{ current_user.username }}</span>
+                                </div>
+                                <div class="mb-3">
+                                    <span class="block text-sm font-medium text-[var(--text-muted)]">Email</span>
+                                    <span class="block text-[var(--text-primary)]">{{ current_user.email }}</span>
+                                </div>
+                            </div>
+                        </div>
                         
-                        <div class="mt-8">
+                        <div class="mt-6"> <!-- Added mt-6 for spacing, was mt-8 on Account Actions -->
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Account Actions</h3>
                             <div class="flex flex-col space-y-3">
                                 <a href="{{ url_for('index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
@@ -219,42 +259,6 @@
                                 <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-key mr-2"></i> Change Password
                                 </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Account Statistics</h3>
-                        <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-3xl font-bold text-[var(--text-accent)]">{{ current_user.recordings|length }}</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Total Recordings</span>
-                                </div>
-                                
-                                <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-3xl font-bold text-[var(--text-accent)]">
-                                        {% set completed_count = current_user.recordings|selectattr('status', 'equalto', 'COMPLETED')|list|length %}
-                                        {{ completed_count }}
-                                    </span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Completed</span>
-                                </div>
-                                
-                                <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-3xl font-bold text-[var(--text-warn-strong)]">
-                                        {% set processing_count = current_user.recordings|selectattr('status', 'in', ['PENDING', 'PROCESSING', 'SUMMARIZING'])|list|length %}
-                                        {{ processing_count }}
-                                    </span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Processing</span>
-                                </div>
-                                
-                                <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                    <span class="block text-3xl font-bold text-[var(--text-danger)]">
-                                        {% set failed_count = current_user.recordings|selectattr('status', 'equalto', 'FAILED')|list|length %}
-                                        {{ failed_count }}
-                                    </span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Failed</span>
-                                </div>
                             </div>
                         </div>
                     </div>
