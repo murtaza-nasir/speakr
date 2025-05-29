@@ -158,33 +158,59 @@
                                     <span class="block text-sm font-medium text-[var(--text-muted)]">Username</span>
                                     <span class="block text-[var(--text-primary)]">{{ current_user.username }}</span>
                                 </div>
-                                <div>
+                                <div class="mb-3">
                                     <span class="block text-sm font-medium text-[var(--text-muted)]">Email</span>
                                     <span class="block text-[var(--text-primary)]">{{ current_user.email }}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="mb-6">
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Language Preferences</h3>
-                            <form method="POST" action="{{ url_for('account') }}" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
-                                <div>
-                                    <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]">Transcription Language</label>
-                                    <input type="text" name="transcription_language" id="transcription_language" value="{{ current_user.transcription_language or '' }}" placeholder="e.g., en, es, zh (ISO 639-1 code)" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                    <p class="text-xs text-[var(--text-light)] mt-1">Leave blank for auto-detection by transcription service.</p>
+                        <form method="POST" action="{{ url_for('account') }}" class="space-y-6">
+                            <div class="mb-6">
+                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Personal Information</h3>
+                                <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
+                                    <div>
+                                        <label for="user_name" class="block text-sm font-medium text-[var(--text-muted)]">Full Name</label>
+                                        <input type="text" name="user_name" id="user_name" value="{{ current_user.name or '' }}" placeholder="Your full name" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    </div>
+                                    <div>
+                                        <label for="user_job_title" class="block text-sm font-medium text-[var(--text-muted)]">Job Title</label>
+                                        <input type="text" name="user_job_title" id="user_job_title" value="{{ current_user.job_title or '' }}" placeholder="e.g., Software Engineer" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    </div>
+                                    <div>
+                                        <label for="user_company" class="block text-sm font-medium text-[var(--text-muted)]">Company / Organization</label>
+                                        <input type="text" name="user_company" id="user_company" value="{{ current_user.company or '' }}" placeholder="e.g., Acme Corp" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    </div>
                                 </div>
-                                <div>
-                                    <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]">Preferred Output Language</label>
-                                    <input type="text" name="output_language" id="output_language" value="{{ current_user.output_language or '' }}" placeholder="e.g., English, Spanish, Chinese" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                    <p class="text-xs text-[var(--text-light)] mt-1">Language for titles, summaries, and chat. Leave blank for default (usually English or transcription language).</p>
+                            </div>
+
+                            <div class="mb-6">
+                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Language & Prompt Preferences</h3>
+                                <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
+                                    <div>
+                                        <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]">Transcription Language</label>
+                                        <input type="text" name="transcription_language" id="transcription_language" value="{{ current_user.transcription_language or '' }}" placeholder="e.g., en, es, zh (ISO 639-1 code)" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <p class="text-xs text-[var(--text-light)] mt-1">Leave blank for auto-detection by transcription service.</p>
+                                    </div>
+                                    <div>
+                                        <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]">Preferred Output Language</label>
+                                        <input type="text" name="output_language" id="output_language" value="{{ current_user.output_language or '' }}" placeholder="e.g., English, Spanish, Chinese" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <p class="text-xs text-[var(--text-light)] mt-1">Language for titles, summaries, and chat. Leave blank for default (usually English or transcription language).</p>
+                                    </div>
+                                    <div>
+                                        <label for="summary_prompt" class="block text-sm font-medium text-[var(--text-muted)]">Custom Summary Prompt</label>
+                                        <textarea name="summary_prompt" id="summary_prompt" rows="6" placeholder="Describe how you want your summaries structured. Leave blank to use the default prompt." class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or default_summary_prompt_text }}</textarea>
+                                        <p class="text-xs text-[var(--text-light)] mt-1">This prompt will be used to generate the summary for your transcriptions. You can use placeholders like {{transcription}} and {{language_directive}} if needed, though the system will try to intelligently place the transcription content.</p>
+                                    </div>
                                 </div>
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-save mr-2"></i> Save Language Preferences
-                                </button>
-                            </form>
-                        </div>
+                            </div>
+                            
+                            <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <i class="fas fa-save mr-2"></i> Save All Preferences
+                            </button>
+                        </form>
                         
-                        <div>
+                        <div class="mt-8">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Account Actions</h3>
                             <div class="flex flex-col space-y-3">
                                 <a href="{{ url_for('index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">

@@ -81,6 +81,10 @@ class User(db.Model, UserMixin):
     recordings = db.relationship('Recording', backref='owner', lazy=True)
     transcription_language = db.Column(db.String(10), nullable=True) # For ISO 639-1 codes
     output_language = db.Column(db.String(50), nullable=True) # For full language names like "Spanish"
+    summary_prompt = db.Column(db.Text, nullable=True)
+    name = db.Column(db.String(100), nullable=True)
+    job_title = db.Column(db.String(100), nullable=True)
+    company = db.Column(db.String(100), nullable=True)
     
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
@@ -187,6 +191,14 @@ with app.app_context():
             app.logger.info("Added transcription_language column to user table")
         if add_column_if_not_exists(engine, 'user', 'output_language', 'VARCHAR(50)'):
             app.logger.info("Added output_language column to user table")
+        if add_column_if_not_exists(engine, 'user', 'summary_prompt', 'TEXT'):
+            app.logger.info("Added summary_prompt column to user table")
+        if add_column_if_not_exists(engine, 'user', 'name', 'VARCHAR(100)'):
+            app.logger.info("Added name column to user table")
+        if add_column_if_not_exists(engine, 'user', 'job_title', 'VARCHAR(100)'):
+            app.logger.info("Added job_title column to user table")
+        if add_column_if_not_exists(engine, 'user', 'company', 'VARCHAR(100)'):
+            app.logger.info("Added company column to user table")
             
     except Exception as e:
         app.logger.error(f"Error during database migration: {e}")
@@ -297,25 +309,73 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
                  recording.summary = "[Summary skipped due to short transcription]"
                  db.session.commit()
                  return # Exit the task cleanly
-
-            # Prepare the prompt for OpenRouter
-            # Use user_output_language for prompts
-            prompt_text = f"""Analyze the following audio transcription and generate a concise title and a brief summary.
+            
+            user_summary_prompt = None
+            if recording and recording.owner and recording.owner.summary_prompt:
+                user_summary_prompt = recording.owner.summary_prompt
+            
+            default_summary_prompt = """Analyze the following audio transcription and generate a concise title and a brief summary.
 
 Transcription:
 \"\"\"
-{recording.transcription[:30000]}
+{transcription}
 \"\"\"
 
-Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "summary" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
-{f"Please provide the title and summary in {user_output_language}." if user_output_language else ""}
+Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "minutes" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
+{language_directive}
 Example Format:
 {{
   "title": "Q3 Results for SPERO Program",
-  "summary": "The meeting covered the financial results for Q3, highlighting key achievements and areas for improvement. Action items were assigned for follow-up."
+  "summary": "### Minutes
+
+**Meeting Participants:**  
+- Bob  
+- Alice  
+
+---
+
+**1. Introduction and Overview:**
+- Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
+....
+### Key Issues Discussed
+....
+//and so on and so forth. Make sure not to miss any nuance or details. 
+"
 }}
 
-JSON Response:""" # The prompt guides the model towards the desired output
+JSON Response:"""
+
+            # Prepare the prompt for OpenRouter
+            # Use user_output_language for prompts
+            language_directive = f"Please provide the title and summary in {user_output_language}." if user_output_language else ""
+            
+            if user_summary_prompt:
+                # If user has a custom prompt, we assume it includes placeholders for transcription and language
+                # Or, we can define a structure for how their prompt should be used.
+                # For now, let's assume their prompt is a complete replacement for the "summary" part.
+                # We still need to provide the transcription.
+                prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
+                
+Transcription:
+\"\"\"
+{recording.transcription[:50000]} 
+\"\"\"
+
+Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
+
+For the "title": create a short, descriptive title (max 6 words, no introductory phrases like "brief", "discussion on", "Meeting about").
+For the "summary": {user_summary_prompt}. 
+
+{language_directive}
+
+JSON Response:"""
+            else:
+                prompt_text = default_summary_prompt.format(transcription=recording.transcription[:30000], language_directive=language_directive)
+            
+            # Old prompt_text for reference, to be replaced by the logic above
+            # prompt_text = f"""Analyze the following audio transcription and generate a concise title and a brief summary.
+
+            # The prompt guides the model towards the desired output
             
             system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
             if user_output_language: # Use user_output_language here
@@ -352,23 +412,57 @@ JSON Response:""" # The prompt guides the model towards the desired output
                     else:
                         sanitized_response = response_content.strip()
                         
-                    summary_data = json.loads(response_content)
-                    generated_title = summary_data.get("title")
-                    generated_summary = summary_data.get("summary")
+                    summary_data = json.loads(sanitized_response) # Use sanitized_response here
+                    
+                    raw_title = summary_data.get("title")
+                    raw_summary = summary_data.get("summary")
 
-                    if generated_title and generated_summary:
-                        # Update recording with AI generated content
-                        recording.title = generated_title.strip()
-                        recording.summary = generated_summary.strip()
+                    # Process title
+                    if isinstance(raw_title, str):
+                        processed_title = raw_title.strip()
+                    elif raw_title is None:
+                        processed_title = "[Title not generated]"
+                        app.logger.warning(f"Title was missing in OpenRouter response for {recording_id}.")
+                    else: # It's some other type, e.g. dict
+                        processed_title = "[Title generation error: Unexpected format]"
+                        app.logger.warning(f"Title had unexpected format for {recording_id}: {type(raw_title)}. Content: {raw_title}")
+
+                    # Process summary
+                    if isinstance(raw_summary, str):
+                        processed_summary = raw_summary.strip()
+                    elif isinstance(raw_summary, dict):
+                        # If summary is a dict (structured), convert to formatted JSON string
+                        processed_summary = json.dumps(raw_summary, indent=2) 
+                        app.logger.info(f"Generated summary for {recording_id} was a dictionary, converted to JSON string.")
+                    elif raw_summary is None:
+                        processed_summary = "[Summary not generated]"
+                        app.logger.warning(f"Summary was missing in OpenRouter response for {recording_id}.")
+                    else: # It's some other type
+                        processed_summary = "[Summary generation error: Unexpected format]"
+                        app.logger.warning(f"Summary had unexpected format for {recording_id}: {type(raw_summary)}. Content: {raw_summary}")
+
+                    if raw_title is not None and raw_summary is not None: # Check if keys were present
+                        recording.title = processed_title
+                        recording.summary = processed_summary
                         recording.status = 'COMPLETED'
-                        app.logger.info(f"Title and summary generated successfully for recording {recording_id}.")
+                        app.logger.info(f"Title and summary processed successfully for recording {recording_id}.")
                     else:
-                        app.logger.warning(f"OpenRouter response for {recording_id} lacked 'title' or 'summary' key. Response: {response_content}")
-                        recording.summary = "[AI summary generation failed: Invalid JSON structure]"
-                        recording.status = 'COMPLETED' # Still completed, but summary failed
+                        # Handle cases where one or both keys might be missing, even if not strictly an error above
+                        if raw_title is None:
+                             recording.title = recording.title or "[Title not generated]" # Keep existing if any
+                        else:
+                            recording.title = processed_title
+
+                        if raw_summary is None:
+                            recording.summary = "[AI summary generation failed: Missing summary key]"
+                        else:
+                            recording.summary = processed_summary
+                            
+                        app.logger.warning(f"OpenRouter response for {recording_id} might have lacked 'title' or 'summary'. Title: {raw_title is not None}, Summary: {raw_summary is not None}. Response: {sanitized_response}")
+                        recording.status = 'COMPLETED' # Still completed, but summary might be partial/failed
 
                 except json.JSONDecodeError as json_e:
-                    app.logger.error(f"Failed to parse JSON response from OpenRouter for {recording_id}: {json_e}. Response: {response_content}")
+                    app.logger.error(f"Failed to parse JSON response from OpenRouter for {recording_id}: {json_e}. Response: {sanitized_response}")
                     recording.summary = f"[AI summary generation failed: Invalid JSON response ({json_e})]"
                     recording.status = 'COMPLETED' # Mark as completed, summary failed
 
@@ -436,8 +530,12 @@ def chat_with_transcription():
         language_instruction = ""
         if user_chat_output_language:
             language_instruction = f"Please provide all your responses in {user_chat_output_language}."
+        
+        user_name = current_user.name if current_user.is_authenticated and current_user.name else "User"
+        user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
+        user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
 
-        system_prompt = f"""You are a professional meeting and audio recording analyst. {language_instruction} Analyze the following meeting information and respond to the specific request.
+        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
 
 Following are the meeting participants and their roles:
 {recording.participants or "No specific participants information provided."}
@@ -543,20 +641,24 @@ def account():
         # Handle language preference updates
         transcription_lang = request.form.get('transcription_language')
         output_lang = request.form.get('output_language')
+        summary_prompt_text = request.form.get('summary_prompt')
+        user_name = request.form.get('user_name')
+        user_job_title = request.form.get('user_job_title')
+        user_company = request.form.get('user_company')
 
-        # Validate transcription_lang if needed (e.g., ensure it's a valid ISO code or empty)
-        # For simplicity, we'll save what's given. Add validation if strict format is required.
-        # Example: Check against a list of known valid ISO 639-1 codes.
-        # For now, allow empty string to clear the preference.
-        
         current_user.transcription_language = transcription_lang if transcription_lang else None
         current_user.output_language = output_lang if output_lang else None
+        current_user.summary_prompt = summary_prompt_text if summary_prompt_text else None
+        current_user.name = user_name if user_name else None
+        current_user.job_title = user_job_title if user_job_title else None
+        current_user.company = user_company if user_company else None
         
         db.session.commit()
-        flash('Language preferences updated successfully!', 'success')
+        flash('Account details updated successfully!', 'success')
         return redirect(url_for('account'))
         
-    return render_template('account.html', title='Account')
+    default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, key any next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered."""
+    return render_template('account.html', title='Account', default_summary_prompt_text=default_summary_prompt_text)
 
 @app.route('/change_password', methods=['POST'])
 @login_required
