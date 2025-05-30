@@ -390,7 +390,7 @@ JSON Response:"""
                         {"role": "user", "content": prompt_text}
                     ],
                     temperature=0.5, # Adjust temperature as needed
-                    max_tokens=300, # Adjust based on expected title+summary length
+                    max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")), # Adjust based on expected title+summary length
                     response_format={"type": "json_object"} # Request JSON output
                 )
 
@@ -565,7 +565,7 @@ Additional context and notes about the meeting:
                 model=TEXT_MODEL_NAME,
                 messages=messages,
                 temperature=0.7,
-                max_tokens=1000
+                max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000"))
             )
             
             response_content = completion.choices[0].message.content

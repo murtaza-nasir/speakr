@@ -364,6 +364,8 @@ Configuration is primarily handled through environment variables in the `docker-
 * `TRANSCRIPTION_BASE_URL`: **Required.** The base URL for your transcription API endpoint (e.g., `http://localhost:8787/v1/`).
 * `TRANSCRIPTION_API_KEY`: **Required.** Your API key for the transcription endpoint. For local endpoints, this might be a specific string like "none" or "NA". Check your endpoint's documentation.
 * `WHISPER_MODEL`: *Optional.* The specific model name your transcription endpoint uses/expects (e.g., `Systran/faster-distil-whisper-large-v3`). Check your endpoint's requirements.
+* `SUMMARY_MAX_TOKENS`: *Optional.* The maximum number of tokens for the title and summary generation. Defaults to `3000`.
+* `CHAT_MAX_TOKENS`: *Optional.* The maximum number of tokens for chat responses. Defaults to `2000`.
 * `SECRET_KEY`: **Required.** A long, random string used by Flask for session security. The `setup.sh` script generates one if it's missing.
 * `ALLOW_REGISTRATION`: *Optional.* Set to `false` to prevent new users from registering via the web UI. Defaults to `true`.
 

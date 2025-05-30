@@ -41,6 +41,8 @@ services:
       # Application settings
       # Transcription and Output languages are now per-user settings, configurable on the Account page in the app.
       - ALLOW_REGISTRATION=false
+      - SUMMARY_MAX_TOKENS=8000 # Optional: Max tokens for title/summary generation (default: 3000)
+      - CHAT_MAX_TOKENS=5000    # Optional: Max tokens for chat responses (default: 2000)
      
       # Admin user creation
       - ADMIN_USERNAME=admin
