@@ -629,6 +629,7 @@ div[v-if="!editingNotes"] {
     display: grid;
     min-height: 0; /* Allow the grid to shrink if needed */
     overflow: visible; /* Allow overflow to be visible and scroll with the main window */
+    align-items: start; /* Align grid items to start to prevent stretching */
 }
 
 /* Set a fixed height for the sidebar only */
@@ -648,11 +649,11 @@ div[v-if="!editingNotes"] {
     min-height: 0; /* Allow content to shrink */
 }
 
-/* Ensure the main content area uses the window scroll */
+/* Ensure the main content area uses the window scroll and has consistent height */
 .lg\:col-span-3.bg-\[var\(--bg-secondary\)\].p-6.rounded-lg.shadow-md.flex.flex-col.max-h-85vh {
-    max-height: none !important; /* Override the max-height constraint */
-    height: auto; /* Let height be determined by content */
-    overflow: visible; /* Use the window scroll */
+    max-height: calc(100vh - 10rem) !important; /* Match sidebar height */
+    height: calc(100vh - 10rem); /* Fixed height to match sidebar */
+    overflow-y: auto; /* Enable internal scrolling */
 }
 
 /* Allow the main container to use window scrolling */
@@ -663,6 +664,28 @@ main {
 /* Ensure body scrolls when content exceeds viewport */
 body {
     overflow-y: auto; /* Allow scrolling on the body */
+}
+
+/* Fix recording list item layout to prevent title wrapping */
+.sidebar-content li {
+    display: flex;
+    align-items: center;
+    min-height: 3rem; /* Consistent minimum height for all items */
+    max-height: 3rem; /* Prevent items from growing taller */
+}
+
+/* Ensure recording title container doesn't grow beyond available space */
+.sidebar-content li .flex.items-center.overflow-hidden {
+    min-width: 0; /* Allow flex item to shrink below content size */
+    flex: 1; /* Take up available space */
+}
+
+/* Ensure truncate works properly on recording titles */
+.sidebar-content li .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0; /* Allow text to shrink */
 }
 
 /* Blinking animation for recording indicator */
