@@ -382,6 +382,12 @@ JSON Response:"""
                 system_message_content += f" Ensure your response (both title and summary) is in {user_output_language}."
 
             try:
+                # Log the request details for debugging
+                app.logger.info(f"Making OpenRouter API request for recording {recording_id}")
+                app.logger.debug(f"Model: {TEXT_MODEL_NAME}")
+                app.logger.debug(f"System message length: {len(system_message_content)}")
+                app.logger.debug(f"User prompt length: {len(prompt_text)}")
+                
                 # Use the OpenRouter client configured earlier
                 completion = client.chat.completions.create(
                     model=TEXT_MODEL_NAME,
@@ -393,6 +399,8 @@ JSON Response:"""
                     max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")), # Adjust based on expected title+summary length
                     response_format={"type": "json_object"} # Request JSON output
                 )
+                
+                app.logger.info(f"OpenRouter API request completed for recording {recording_id}")
 
                 response_content = completion.choices[0].message.content
                 app.logger.debug(f"Raw OpenRouter response for {recording_id}: {response_content}")
@@ -400,6 +408,14 @@ JSON Response:"""
                 try:
                     response_content = completion.choices[0].message.content
                     app.logger.debug(f"Raw OpenRouter response for {recording_id}: {response_content}")
+                    
+                    # Check if response is empty or None
+                    if not response_content or response_content.strip() == "":
+                        app.logger.error(f"Empty response from OpenRouter for {recording_id}")
+                        recording.summary = "[AI summary generation failed: Empty response from API]"
+                        recording.status = 'COMPLETED'
+                        db.session.commit()
+                        return
 
                     # Use regex to extract JSON content from potential markdown code blocks
                     # This looks for content between markdown code blocks or just takes the whole content
@@ -411,8 +427,24 @@ JSON Response:"""
                         sanitized_response = sanitized_response.strip()
                     else:
                         sanitized_response = response_content.strip()
+                    
+                    # Additional check for empty sanitized response
+                    if not sanitized_response or sanitized_response.strip() in ["{}", ""]:
+                        app.logger.error(f"Empty or invalid JSON response from OpenRouter for {recording_id}: '{sanitized_response}'")
+                        recording.summary = "[AI summary generation failed: Invalid JSON response]"
+                        recording.status = 'COMPLETED'
+                        db.session.commit()
+                        return
                         
                     summary_data = json.loads(sanitized_response) # Use sanitized_response here
+                    
+                    # Check if the parsed JSON is empty or doesn't contain expected keys
+                    if not summary_data or (not summary_data.get("title") and not summary_data.get("summary")):
+                        app.logger.error(f"OpenRouter returned empty or invalid JSON structure for {recording_id}: {summary_data}")
+                        recording.summary = "[AI summary generation failed: Empty response structure]"
+                        recording.status = 'COMPLETED'
+                        db.session.commit()
+                        return
                     
                     raw_title = summary_data.get("title")
                     raw_summary = summary_data.get("summary")
@@ -585,6 +617,304 @@ Additional context and notes about the meeting:
             
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# --- Reprocessing Endpoints ---
+@app.route('/recording/<int:recording_id>/reprocess_transcription', methods=['POST'])
+@login_required
+def reprocess_transcription(recording_id):
+    """Reprocess transcription for a given recording."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
+            
+        # Check if audio file exists
+        if not recording.audio_path or not os.path.exists(recording.audio_path):
+            return jsonify({'error': 'Audio file not found for reprocessing'}), 404
+            
+        # Check if already processing
+        if recording.status in ['PROCESSING', 'SUMMARIZING']:
+            return jsonify({'error': 'Recording is already being processed'}), 400
+            
+        # Reset transcription and summary, set status to PROCESSING
+        recording.transcription = None
+        recording.summary = None
+        recording.status = 'PROCESSING'
+        db.session.commit()
+        
+        app.logger.info(f"Starting transcription reprocessing for recording {recording_id}")
+        
+        # Start reprocessing in background thread
+        thread = threading.Thread(
+            target=transcribe_audio_task,
+            args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}")
+        )
+        thread.start()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Transcription reprocessing started',
+            'recording': recording.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error reprocessing transcription for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/recording/<int:recording_id>/reprocess_summary', methods=['POST'])
+@login_required
+def reprocess_summary(recording_id):
+    """Reprocess summary for a given recording (requires existing transcription)."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
+            
+        # Check if transcription exists
+        if not recording.transcription or len(recording.transcription.strip()) < 10:
+            return jsonify({'error': 'No valid transcription available for summary generation'}), 400
+            
+        # Check if already processing
+        if recording.status in ['PROCESSING', 'SUMMARIZING']:
+            return jsonify({'error': 'Recording is already being processed'}), 400
+            
+        # Check if OpenRouter client is available
+        if client is None:
+            return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
+            
+        # Set status to SUMMARIZING and clear existing summary
+        recording.summary = None
+        recording.status = 'SUMMARIZING'
+        db.session.commit()
+        
+        app.logger.info(f"Starting summary reprocessing for recording {recording_id}")
+        
+        # Start summary generation in background thread
+        def reprocess_summary_task(app_context, recording_id):
+            with app_context:
+                recording = db.session.get(Recording, recording_id)
+                if not recording:
+                    app.logger.error(f"Recording {recording_id} not found during summary reprocessing")
+                    return
+                    
+                try:
+                    # Get user preferences
+                    user_summary_prompt = None
+                    user_output_language = None
+                    if recording.owner:
+                        user_summary_prompt = recording.owner.summary_prompt
+                        user_output_language = recording.owner.output_language
+                    
+                    # Prepare prompt (same logic as in transcribe_audio_task)
+                    default_summary_prompt = """Analyze the following audio transcription and generate a concise title and a brief summary.
+
+Transcription:
+\"\"\"
+{transcription}
+\"\"\"
+
+Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "minutes" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
+{language_directive}
+Example Format:
+{{
+  "title": "Q3 Results for SPERO Program",
+  "summary": "### Minutes
+
+**Meeting Participants:**  
+- Bob  
+- Alice  
+
+---
+
+**1. Introduction and Overview:**
+- Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
+....
+### Key Issues Discussed
+....
+//and so on and so forth. Make sure not to miss any nuance or details. 
+"
+}}
+
+JSON Response:"""
+                    
+                    language_directive = f"Please provide the title and summary in {user_output_language}." if user_output_language else ""
+                    
+                    if user_summary_prompt:
+                        prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
+                
+Transcription:
+\"\"\"
+{recording.transcription[:50000]} 
+\"\"\"
+
+Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
+
+For the "title": create a short, descriptive title (max 6 words, no introductory phrases like "brief", "discussion on", "Meeting about").
+For the "summary": {user_summary_prompt}. 
+
+{language_directive}
+
+JSON Response:"""
+                    else:
+                        prompt_text = default_summary_prompt.format(transcription=recording.transcription[:30000], language_directive=language_directive)
+                    
+                    system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
+                    if user_output_language:
+                        system_message_content += f" Ensure your response (both title and summary) is in {user_output_language}."
+                    
+                    # Log the request details for debugging
+                    app.logger.info(f"Making OpenRouter API request for summary reprocessing {recording_id}")
+                    app.logger.debug(f"Model: {TEXT_MODEL_NAME}")
+                    app.logger.debug(f"System message length: {len(system_message_content)}")
+                    app.logger.debug(f"User prompt length: {len(prompt_text)}")
+                    
+                    # Call OpenRouter API
+                    completion = client.chat.completions.create(
+                        model=TEXT_MODEL_NAME,
+                        messages=[
+                            {"role": "system", "content": system_message_content},
+                            {"role": "user", "content": prompt_text}
+                        ],
+                        temperature=0.5,
+                        max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),
+                        response_format={"type": "json_object"}
+                    )
+                    
+                    app.logger.info(f"OpenRouter API request completed for summary reprocessing {recording_id}")
+                    
+                    response_content = completion.choices[0].message.content
+                    app.logger.debug(f"Raw OpenRouter response for summary reprocessing {recording_id}: {response_content}")
+                    
+                    # Check if response is empty or None
+                    if not response_content or response_content.strip() == "":
+                        app.logger.error(f"Empty response from OpenRouter for summary reprocessing {recording_id}")
+                        recording.summary = "[AI summary generation failed: Empty response from API]"
+                        recording.status = 'COMPLETED'
+                        db.session.commit()
+                        return
+                    
+                    # Parse response (same logic as in transcribe_audio_task)
+                    json_match = re.search(r'```(?:json)?(.*?)```|(.+)', response_content, re.DOTALL)
+                    
+                    if json_match:
+                        sanitized_response = json_match.group(1) if json_match.group(1) else json_match.group(2)
+                        sanitized_response = sanitized_response.strip()
+                    else:
+                        sanitized_response = response_content.strip()
+                    
+                    # Additional check for empty sanitized response
+                    if not sanitized_response or sanitized_response.strip() in ["{}", ""]:
+                        app.logger.error(f"Empty or invalid JSON response from OpenRouter for summary reprocessing {recording_id}: '{sanitized_response}'")
+                        recording.summary = "[AI summary generation failed: Invalid JSON response]"
+                        recording.status = 'COMPLETED'
+                        db.session.commit()
+                        return
+                        
+                    summary_data = json.loads(sanitized_response)
+                    
+                    # Check if the parsed JSON is empty or doesn't contain expected keys
+                    if not summary_data or (not summary_data.get("title") and not summary_data.get("summary")):
+                        app.logger.error(f"OpenRouter returned empty or invalid JSON structure for summary reprocessing {recording_id}: {summary_data}")
+                        recording.summary = "[AI summary generation failed: Empty response structure]"
+                        recording.status = 'COMPLETED'
+                        db.session.commit()
+                        return
+                    
+                    # Debug log the parsed response
+                    app.logger.debug(f"Parsed summary data for reprocessing {recording_id}: {summary_data}")
+                    
+                    raw_title = summary_data.get("title")
+                    raw_summary = summary_data.get("summary")
+                    
+                    # Log what we got from the response
+                    app.logger.debug(f"Raw title for reprocessing {recording_id}: {raw_title}")
+                    app.logger.debug(f"Raw summary for reprocessing {recording_id}: {raw_summary}")
+                    
+                    # Process title
+                    if isinstance(raw_title, str):
+                        processed_title = raw_title.strip()
+                    elif raw_title is None:
+                        processed_title = "[Title not generated]"
+                        app.logger.warning(f"Title was missing in OpenRouter response for summary reprocessing {recording_id}.")
+                    else:
+                        processed_title = "[Title generation error: Unexpected format]"
+                        app.logger.warning(f"Title had unexpected format for summary reprocessing {recording_id}: {type(raw_title)}. Content: {raw_title}")
+                    
+                    # Process summary
+                    if isinstance(raw_summary, str):
+                        processed_summary = raw_summary.strip()
+                    elif isinstance(raw_summary, dict):
+                        processed_summary = json.dumps(raw_summary, indent=2)
+                        app.logger.info(f"Generated summary for reprocessing {recording_id} was a dictionary, converted to JSON string.")
+                    elif raw_summary is None:
+                        processed_summary = "[Summary not generated]"
+                        app.logger.warning(f"Summary was missing in OpenRouter response for summary reprocessing {recording_id}.")
+                    else:
+                        processed_summary = "[Summary generation error: Unexpected format]"
+                        app.logger.warning(f"Summary had unexpected format for summary reprocessing {recording_id}: {type(raw_summary)}. Content: {raw_summary}")
+                    
+                    # Check if both title and summary are valid before updating
+                    if raw_title is not None and raw_summary is not None:
+                        recording.title = processed_title
+                        recording.summary = processed_summary
+                        recording.status = 'COMPLETED'
+                        app.logger.info(f"Summary reprocessing completed successfully for recording {recording_id}")
+                    else:
+                        # Handle cases where one or both keys might be missing
+                        if raw_title is None:
+                            recording.title = recording.title or "[Title not generated]"  # Keep existing if any
+                        else:
+                            recording.title = processed_title
+                        
+                        if raw_summary is None:
+                            recording.summary = "[AI summary generation failed: Missing summary key]"
+                        else:
+                            recording.summary = processed_summary
+                        
+                        app.logger.warning(f"OpenRouter response for summary reprocessing {recording_id} might have lacked 'title' or 'summary'. Title: {raw_title is not None}, Summary: {raw_summary is not None}. Response: {sanitized_response}")
+                        recording.status = 'COMPLETED'  # Still completed, but summary might be partial/failed
+                    
+                    db.session.commit()
+                    
+                except json.JSONDecodeError as json_e:
+                    app.logger.error(f"Failed to parse JSON response from OpenRouter for summary reprocessing {recording_id}: {json_e}. Response: {sanitized_response}")
+                    recording.summary = f"[AI summary generation failed: Invalid JSON response ({json_e})]"
+                    recording.status = 'COMPLETED'
+                    db.session.commit()
+                    
+                except Exception as summary_e:
+                    app.logger.error(f"Error during summary reprocessing for recording {recording_id}: {str(summary_e)}")
+                    recording.summary = f"[AI summary generation failed: API Error ({str(summary_e)})]"
+                    recording.status = 'COMPLETED'
+                    db.session.commit()
+        
+        thread = threading.Thread(
+            target=reprocess_summary_task,
+            args=(app.app_context(), recording.id)
+        )
+        thread.start()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Summary reprocessing started',
+            'recording': recording.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error reprocessing summary for recording {recording_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 

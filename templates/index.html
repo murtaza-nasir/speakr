@@ -318,9 +318,17 @@
                                     <div class="transcription-section" :style="{ flex: transcriptionFlex }">
                                         <div class="flex justify-between items-center mb-1">
                                             <h4 class="font-semibold text-[var(--text-secondary)]">Transcription</h4>
-                                            <button @click="copyTranscription($event)" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Copy to clipboard">
-                                                <i class="fas fa-copy"></i>
-                                            </button>
+                                            <div class="flex space-x-1">
+                                                <button @click="copyTranscription($event)" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Copy to clipboard">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                                <button @click="reprocessTranscription(selectedRecording.id)" 
+                                                        v-if="selectedRecording && selectedRecording.status === 'COMPLETED'"
+                                                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
+                                                        title="Reprocess transcription">
+                                                    <i class="fas fa-sync-alt"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div class="transcription-box custom-scrollbar relative">
                                             <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'" class="copyable">
@@ -347,23 +355,45 @@
                                     <!-- Tabs Section -->
                                     <div class="tab-section" :style="{ flex: tabsFlex }">
                                         <div class="border-b border-[var(--border-primary)]">
-                                            <nav class="-mb-px flex space-x-4" aria-label="Tabs">
-                                                <button @click="selectedTab = 'summary'" 
-                                                        :class="selectedTab === 'summary' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                                        class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
-                                                    Summary
-                                                </button>
-                                                <button @click="selectedTab = 'notes'" 
-                                                        :class="selectedTab === 'notes' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                                        class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
-                                                    Notes
-                                                </button>
-                                                <button @click="selectedTab = 'metadata'" 
-                                                        :class="selectedTab === 'metadata' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                                        class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
-                                                    Metadata
-                                                </button>
-                                            </nav>
+                                            <div class="flex justify-between items-center">
+                                                <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                                                    <button @click="selectedTab = 'summary'" 
+                                                            :class="selectedTab === 'summary' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                                            class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
+                                                        Summary
+                                                    </button>
+                                                    <button @click="selectedTab = 'notes'" 
+                                                            :class="selectedTab === 'notes' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                                            class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
+                                                        Notes
+                                                    </button>
+                                                    <button @click="selectedTab = 'metadata'" 
+                                                            :class="selectedTab === 'metadata' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                                            class="whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
+                                                        Metadata
+                                                    </button>
+                                                </nav>
+                                                <div class="flex space-x-1 items-center h-full py-3">
+                                                    <!-- Summary buttons - shown when summary tab is active -->
+                                                    <template v-if="selectedTab === 'summary'">
+                                                        <button @click="toggleEditSummary" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Edit Summary">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button @click="reprocessSummary(selectedRecording.id)" 
+                                                                v-if="selectedRecording && selectedRecording.status === 'COMPLETED'"
+                                                                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
+                                                                title="Reprocess summary">
+                                                            <i class="fas fa-sync-alt"></i>
+                                                        </button>
+                                                    </template>
+                                                    <!-- Notes buttons - shown when notes tab is active -->
+                                                    <template v-if="selectedTab === 'notes'">
+                                                        <button @click="toggleEditNotes" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Edit Notes">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                    </template>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="pt-4 flex-grow flex flex-col min-h-0"> 
                                             <!-- Summary Panel -->
@@ -372,9 +402,7 @@
                                                     <div v-if="!editingSummary" class="content-box h-full flex flex-col min-h-0"> 
                                                         <div class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)]" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
                                                         </div>
-                                                        <button @click="toggleEditSummary" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Summary">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
+
                                                     </div>
                                                     <textarea v-else v-model="selectedRecording.summary" @blur="saveInlineEdit('summary')" class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)] w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box" placeholder="Enter summary"></textarea>
                                                 </div>
@@ -389,9 +417,6 @@
                                             <div v-show="selectedTab === 'notes'" class="h-full">
                                                 <div v-if="!editingNotes" class="content-box h-full flex flex-col min-h-0">
                                                     <div class="notes-box custom-scrollbar" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
-                                                    <button @click="toggleEditNotes" class="hover-edit-btn text-[var(--text-muted)] hover:text-[var(--text-accent)]" title="Edit Notes">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
                                                 </div>
                                                 <textarea v-else v-model="selectedRecording.notes" @blur="saveInlineEdit('notes')" class="notes-box custom-scrollbar w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box flex-1 height-100" placeholder="Enter notes"></textarea>
                                             </div>

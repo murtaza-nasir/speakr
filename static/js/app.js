@@ -949,6 +949,143 @@ document.addEventListener('DOMContentLoaded', () => {
          }, { deep: true });
 
 
+        // --- Reprocessing functionality ---
+        const reprocessTranscription = async (recordingId) => {
+            if (!recordingId) {
+                setGlobalError('No recording ID provided for reprocessing.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/recording/${recordingId}/reprocess_transcription`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to start transcription reprocessing');
+                
+                // Update the recording in the UI
+                const index = recordings.value.findIndex(r => r.id === recordingId);
+                if (index !== -1) {
+                    recordings.value[index] = data.recording;
+                }
+                
+                // Update selected recording if it's the one being reprocessed
+                if (selectedRecording.value?.id === recordingId) {
+                    selectedRecording.value = data.recording;
+                }
+                
+                showToast('Transcription reprocessing started', 'fa-sync-alt');
+                
+                // Start polling for status updates
+                startReprocessingPoll(recordingId);
+                
+            } catch (error) {
+                console.error('Reprocess Transcription Error:', error);
+                setGlobalError(`Failed to start transcription reprocessing: ${error.message}`);
+            }
+        };
+        
+        const reprocessSummary = async (recordingId) => {
+            if (!recordingId) {
+                setGlobalError('No recording ID provided for reprocessing.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/recording/${recordingId}/reprocess_summary`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to start summary reprocessing');
+                
+                // Update the recording in the UI
+                const index = recordings.value.findIndex(r => r.id === recordingId);
+                if (index !== -1) {
+                    recordings.value[index] = data.recording;
+                }
+                
+                // Update selected recording if it's the one being reprocessed
+                if (selectedRecording.value?.id === recordingId) {
+                    selectedRecording.value = data.recording;
+                }
+                
+                showToast('Summary reprocessing started', 'fa-sync-alt');
+                
+                // Start polling for status updates
+                startReprocessingPoll(recordingId);
+                
+            } catch (error) {
+                console.error('Reprocess Summary Error:', error);
+                setGlobalError(`Failed to start summary reprocessing: ${error.message}`);
+            }
+        };
+        
+        // Polling for reprocessing status updates
+        const reprocessingPolls = ref(new Map()); // Track active polls by recording ID
+        
+        const startReprocessingPoll = (recordingId) => {
+            // Clear any existing poll for this recording
+            if (reprocessingPolls.value.has(recordingId)) {
+                clearInterval(reprocessingPolls.value.get(recordingId));
+            }
+            
+            console.log(`Starting reprocessing poll for recording ${recordingId}`);
+            
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/status/${recordingId}`);
+                    if (!response.ok) {
+                        console.error(`Status check failed for recording ${recordingId}`);
+                        stopReprocessingPoll(recordingId);
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Update the recording in the UI
+                    const index = recordings.value.findIndex(r => r.id === recordingId);
+                    if (index !== -1) {
+                        recordings.value[index] = data;
+                    }
+                    
+                    // Update selected recording if it's the one being reprocessed
+                    if (selectedRecording.value?.id === recordingId) {
+                        selectedRecording.value = data;
+                    }
+                    
+                    // Stop polling if processing is complete
+                    if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+                        console.log(`Reprocessing ${data.status.toLowerCase()} for recording ${recordingId}`);
+                        stopReprocessingPoll(recordingId);
+                        
+                        if (data.status === 'COMPLETED') {
+                            showToast('Reprocessing completed successfully', 'fa-check-circle');
+                        } else {
+                            showToast('Reprocessing failed', 'fa-exclamation-circle');
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.error(`Error polling status for recording ${recordingId}:`, error);
+                    stopReprocessingPoll(recordingId);
+                }
+            }, 3000); // Poll every 3 seconds
+            
+            reprocessingPolls.value.set(recordingId, pollInterval);
+        };
+        
+        const stopReprocessingPoll = (recordingId) => {
+            if (reprocessingPolls.value.has(recordingId)) {
+                clearInterval(reprocessingPolls.value.get(recordingId));
+                reprocessingPolls.value.delete(recordingId);
+                console.log(`Stopped reprocessing poll for recording ${recordingId}`);
+            }
+        };
+
         // --- Chat functionality ---
         // Resizable panels state
         const transcriptionFlex = ref(2);
@@ -1156,6 +1293,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         
+
+        
         // Resize functionality
         const startResize = (e) => {
             isResizing.value = true;
@@ -1258,6 +1397,9 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadRecordedAudio,
             discardRecording,
             formatTime,
+            // Reprocessing
+            reprocessTranscription,
+            reprocessSummary,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja
