@@ -14,3 +14,6 @@ project_files.md
 notes.md
 docker-compose.yml
 changes.txt
+.gitignore
+
+!README.md
