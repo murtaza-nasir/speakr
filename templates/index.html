@@ -70,6 +70,112 @@
                             <i class="fas fa-sign-out-alt mr-2"></i> Logout
                         </a>
                     </div>
+
+        <!-- Reprocess Confirmation Modal -->
+        <div v-if="showReprocessModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+                <!-- Header with gradient background -->
+                <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                            <i class="fas fa-sync-alt text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Confirm Reprocessing</h3>
+                            <p class="text-sm text-[var(--text-muted)] capitalize">${ reprocessType } reprocessing</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="p-6">
+                    <div v-if="reprocessRecording" class="mb-6">
+                        <div class="bg-[var(--bg-tertiary)] rounded-lg p-4 border border-[var(--border-primary)]">
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-file-audio text-[var(--text-accent)] mt-1"></i>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-medium text-[var(--text-primary)] truncate" :title="reprocessRecording.title">
+                                        ${ reprocessRecording.title || 'Untitled Recording' }
+                                    </h4>
+                                    <p class="text-sm text-[var(--text-muted)] mt-1">
+                                        Created: ${ new Date(reprocessRecording.created_at).toLocaleDateString() }
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <div class="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fas fa-exclamation-triangle text-amber-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1">What will happen?</p>
+                                <p class="text-sm text-[var(--text-muted)]" v-if="reprocessType === 'transcription'">
+                                    The audio will be re-transcribed from scratch. This will also regenerate the title and summary based on the new transcription.
+                                </p>
+                                <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'summary'">
+                                    A new title and summary will be generated based on the existing transcription.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-3">
+                            <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fas fa-clock text-blue-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1">Processing time</p>
+                                <p class="text-sm text-[var(--text-muted)]">
+                                    This may take a few minutes to complete. You can continue using the app while processing.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-3" v-if="reprocessType === 'transcription'">
+                            <div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fas fa-info-circle text-red-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1">Important note</p>
+                                <p class="text-sm text-[var(--text-muted)]">
+                                    Any manual edits to the transcription, title, or summary will be overwritten.
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-3" v-else-if="reprocessType === 'summary'">
+                            <div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i class="fas fa-info-circle text-red-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1">Important note</p>
+                                <p class="text-sm text-[var(--text-muted)]">
+                                    Any manual edits to the title or summary will be overwritten.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer with action buttons -->
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                    <button 
+                        @click="cancelReprocess" 
+                        class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancel
+                    </button>
+                    <button 
+                        @click="executeReprocess" 
+                        class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center shadow-lg font-medium transform hover:scale-105">
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        Start Reprocessing
+                    </button>
+                </div>
+            </div>
+        </div>
                 </div>
                 {% else %}
                 <a href="{{ url_for('login') }}" class="px-4 py-2 ml-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">

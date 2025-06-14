@@ -37,8 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const showEditModal = ref(false);
         const showDeleteModal = ref(false);
+        const showReprocessModal = ref(false);
         const editingRecording = ref(null); // Holds a *copy* for the modal
         const recordingToDelete = ref(null);
+        const reprocessType = ref(null); // 'transcription' or 'summary'
+        const reprocessRecording = ref(null);
         // const autoSaveTimeout = ref(null); // Autosave not implemented for modal
         const isLoadingRecordings = ref(true);
         const globalError = ref(null);
@@ -950,7 +953,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         // --- Reprocessing functionality ---
-        const reprocessTranscription = async (recordingId) => {
+        const confirmReprocess = (type, recording) => {
+            reprocessType.value = type;
+            reprocessRecording.value = recording;
+            showReprocessModal.value = true;
+        };
+        
+        const cancelReprocess = () => {
+            showReprocessModal.value = false;
+            reprocessType.value = null;
+            reprocessRecording.value = null;
+        };
+        
+        const executeReprocess = async () => {
+            if (!reprocessRecording.value || !reprocessType.value) return;
+            
+            const recordingId = reprocessRecording.value.id;
+            const type = reprocessType.value;
+            
+            // Close the modal first
+            cancelReprocess();
+            
+            if (type === 'transcription') {
+                await performReprocessTranscription(recordingId);
+            } else if (type === 'summary') {
+                await performReprocessSummary(recordingId);
+            }
+        };
+        
+        const reprocessTranscription = (recordingId) => {
+            const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
+            confirmReprocess('transcription', recording);
+        };
+        
+        const reprocessSummary = (recordingId) => {
+            const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
+            confirmReprocess('summary', recording);
+        };
+        
+        const performReprocessTranscription = async (recordingId) => {
             if (!recordingId) {
                 setGlobalError('No recording ID provided for reprocessing.');
                 return;
@@ -987,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         
-        const reprocessSummary = async (recordingId) => {
+        const performReprocessSummary = async (recordingId) => {
             if (!recordingId) {
                 setGlobalError('No recording ID provided for reprocessing.');
                 return;
@@ -1400,6 +1441,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reprocessing
             reprocessTranscription,
             reprocessSummary,
+            showReprocessModal,
+            reprocessType,
+            reprocessRecording,
+            confirmReprocess,
+            cancelReprocess,
+            executeReprocess,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja
