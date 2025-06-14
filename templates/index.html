@@ -429,7 +429,7 @@
                                                     <i class="fas fa-copy"></i>
                                                 </button>
                                                 <button @click="reprocessTranscription(selectedRecording.id)" 
-                                                        v-if="selectedRecording && selectedRecording.status === 'COMPLETED'"
+                                                        v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                         class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
                                                         title="Reprocess transcription">
                                                     <i class="fas fa-sync-alt"></i>
@@ -486,7 +486,7 @@
                                                             <i class="fas fa-edit"></i>
                                                         </button>
                                                         <button @click="reprocessSummary(selectedRecording.id)" 
-                                                                v-if="selectedRecording && selectedRecording.status === 'COMPLETED'"
+                                                                v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                                 class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
                                                                 title="Reprocess summary">
                                                             <i class="fas fa-sync-alt"></i>
