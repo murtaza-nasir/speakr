@@ -14,7 +14,11 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
-    <div id="app" class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col" :class="{ 'use-asr-endpoint': useAsrEndpoint }">
+    <div 
+        id="app" 
+        class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col" 
+        :class="{ 'use-asr-endpoint': useAsrEndpoint }"
+        data-use-asr-endpoint="{{ use_asr_endpoint }}">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
              <h1 class="text-3xl font-bold text-[var(--text-primary)] cursor-pointer flex items-center" @click="switchToGalleryView" title="Go to Gallery">
                 <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">

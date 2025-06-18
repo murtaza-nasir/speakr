@@ -545,53 +545,6 @@ def update_speakers(recording_id):
         app.logger.error(f"Error updating speakers for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-@app.route('/recording/<int:recording_id>/reprocess_asr', methods=['POST'])
-@login_required
-def reprocess_asr(recording_id):
-    """Reprocess transcription for a given recording using ASR."""
-    try:
-        recording = db.session.get(Recording, recording_id)
-        if not recording:
-            return jsonify({'error': 'Recording not found'}), 404
-
-        if recording.user_id and recording.user_id != current_user.id:
-            return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
-
-        if not recording.audio_path or not os.path.exists(recording.audio_path):
-            return jsonify({'error': 'Audio file not found for reprocessing'}), 404
-
-        if recording.status in ['PROCESSING', 'SUMMARIZING']:
-            return jsonify({'error': 'Recording is already being processed'}), 400
-
-        data = request.json
-        language = data.get('language')
-        min_speakers = data.get('min_speakers')
-        max_speakers = data.get('max_speakers')
-
-        recording.transcription = None
-        recording.summary = None
-        recording.status = 'PROCESSING'
-        db.session.commit()
-
-        app.logger.info(f"Starting ASR reprocessing for recording {recording_id}")
-
-        thread = threading.Thread(
-            target=transcribe_audio_asr,
-            args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", language, True, min_speakers, max_speakers)
-        )
-        thread.start()
-
-        return jsonify({
-            'success': True,
-            'message': 'ASR reprocessing started',
-            'recording': recording.to_dict()
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error reprocessing ASR for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
-
 # --- Chat with Transcription ---
 @app.route('/chat', methods=['POST'])
 @login_required
@@ -717,15 +670,16 @@ def reprocess_transcription(recording_id):
         # Decide which transcription method to use
         if USE_ASR_ENDPOINT:
             app.logger.info(f"Using ASR endpoint for reprocessing recording {recording_id}")
-            # For ASR, we can reuse the transcribe_audio_asr function.
-            # We might need to decide if we want to pass default or new parameters.
-            # Here, we'll use the user's current settings for diarization.
-            user_diarize = recording.owner.diarize if recording.owner else ASR_DIARIZE
-            user_lang = recording.owner.transcription_language if recording.owner else None
             
+            data = request.json or {}
+            language = data.get('language') or (recording.owner.transcription_language if recording.owner else None)
+            min_speakers = data.get('min_speakers')
+            max_speakers = data.get('max_speakers')
+            user_diarize = recording.owner.diarize if recording.owner else ASR_DIARIZE
+
             thread = threading.Thread(
                 target=transcribe_audio_asr,
-                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", user_lang, user_diarize, ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS)
+                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", language, user_diarize, min_speakers, max_speakers)
             )
         else:
             app.logger.info(f"Using standard transcription API for reprocessing recording {recording_id}")

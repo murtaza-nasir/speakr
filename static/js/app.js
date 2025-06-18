@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const showEditModal = ref(false);
         const showDeleteModal = ref(false);
         const showReprocessModal = ref(false);
-        const showAsrReprocessModal = ref(false);
         const showSpeakerModal = ref(false);
         const editingRecording = ref(null); // Holds a *copy* for the modal
         const recordingToDelete = ref(null);
@@ -954,7 +953,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check for the ASR endpoint flag from the template
             const appDiv = document.getElementById('app');
             if (appDiv) {
-                useAsrEndpoint.value = appDiv.classList.contains('use-asr-endpoint');
+                const asrFlag = appDiv.dataset.useAsrEndpoint;
+                useAsrEndpoint.value = asrFlag === 'True' || asrFlag === 'true';
             }
             loadRecordings();
             initializeDarkMode(); // Initialize dark mode on load            
@@ -1022,8 +1022,12 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelReprocess();
             
             if (type === 'transcription') {
-                // ASR logic is now handled by executeAsrReprocess
-                await performReprocessTranscription(recordingId);
+                await performReprocessTranscription(
+                    recordingId, 
+                    asrReprocessOptions.language, 
+                    asrReprocessOptions.min_speakers, 
+                    asrReprocessOptions.max_speakers
+                );
             } else if (type === 'summary') {
                 await performReprocessSummary(recordingId);
             }
@@ -1031,13 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const reprocessTranscription = (recordingId) => {
             const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
-            if (useAsrEndpoint.value) {
-                // This now calls the specific ASR confirmation modal
-                confirmAsrReprocess(recording);
-            } else {
-                // The original behavior for non-ASR reprocessing
-                confirmReprocess('transcription', recording);
-            }
+            confirmReprocess('transcription', recording);
         };
         
         const reprocessSummary = (recordingId) => {
@@ -1141,16 +1139,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
         
-        const performReprocessTranscription = async (recordingId) => {
+        const performReprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers) => {
             if (!recordingId) {
                 setGlobalError('No recording ID provided for reprocessing.');
                 return;
             }
             
             try {
+                const payload = {
+                    language: language,
+                    min_speakers: minSpeakers,
+                    max_speakers: maxSpeakers
+                };
+
                 const response = await fetch(`/recording/${recordingId}/reprocess_transcription`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
                 
                 const data = await response.json();
@@ -1274,44 +1279,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearInterval(reprocessingPolls.value.get(recordingId));
                 reprocessingPolls.value.delete(recordingId);
                 console.log(`Stopped reprocessing poll for recording ${recordingId}`);
-            }
-        };
-
-        const performAsrReprocess = async (recordingId, language, minSpeakers, maxSpeakers) => {
-            if (!recordingId) {
-                setGlobalError('No recording ID provided for ASR reprocessing.');
-                return;
-            }
-
-            try {
-                const response = await fetch(`/recording/${recordingId}/reprocess_asr`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        language: language,
-                        min_speakers: minSpeakers,
-                        max_speakers: maxSpeakers
-                    })
-                });
-
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Failed to start ASR reprocessing');
-
-                const index = recordings.value.findIndex(r => r.id === recordingId);
-                if (index !== -1) {
-                    recordings.value[index] = data.recording;
-                }
-
-                if (selectedRecording.value?.id === recordingId) {
-                    selectedRecording.value = data.recording;
-                }
-
-                showToast('ASR reprocessing started', 'fa-sync-alt');
-                startReprocessingPoll(recordingId);
-
-            } catch (error) {
-                console.error('ASR Reprocess Error:', error);
-                setGlobalError(`Failed to start ASR reprocessing: ${error.message}`);
             }
         };
 
@@ -1636,11 +1603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelReprocess,
             executeReprocess,
             // ASR Reprocessing
-            showAsrReprocessModal,
             asrReprocessOptions,
-            confirmAsrReprocess,
-            cancelAsrReprocess,
-            executeAsrReprocess,
             // Speaker Identification
             showSpeakerModal,
             speakerMap,
