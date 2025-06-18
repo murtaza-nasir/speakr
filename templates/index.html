@@ -72,8 +72,8 @@
                     </div>
 
         <!-- Reprocess Confirmation Modal -->
-        <div v-if="showReprocessModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
-            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+        <div v-if="showReprocessModal" @click="cancelReprocess" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
                 <!-- Header with gradient background -->
                 <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
                     <div class="flex items-center">
@@ -177,8 +177,8 @@
             </div>
         </div>
         <!-- Speaker Identification Modal -->
-        <div v-if="showSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+        <div v-if="showSpeakerModal" @click="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
                 <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0">
                     <h3 class="text-xl font-bold text-[var(--text-primary)]">Identify Speakers</h3>
                 </div>
@@ -209,8 +209,8 @@
             </div>
         </div>
         <!-- ASR Reprocess Modal -->
-        <div v-if="showAsrReprocessModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+        <div v-if="showAsrReprocessModal" @click="cancelAsrReprocess" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
                 <div class="p-5 border-b border-[var(--border-primary)]">
                     <h3 class="text-xl font-bold text-[var(--text-primary)]">ASR Reprocess Options</h3>
                 </div>
@@ -756,8 +756,8 @@
             Speakr &copy; ${ new Date().getFullYear() }
         </footer>
 
-         <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
-             <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-in-out">
+         <div v-if="showEditModal" @click="cancelEdit" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
+             <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-in-out">
                 <!-- Header with gradient background -->
                 <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-[var(--text-primary)] flex items-center">
@@ -874,8 +874,8 @@
             </div>
         </div>
 
-        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl max-w-md w-full">
+        <div v-if="showDeleteModal" @click="cancelDelete" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+             <div @click.stop class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl max-w-md w-full">
                 <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Confirm Delete</h3>
                  <p v-if="recordingToDelete" class="mb-2 text-[var(--text-secondary)]">Are you sure you want to permanently delete the recording titled "<strong>${ recordingToDelete.title }</strong>"?</p>
                 <p class="text-sm text-[var(--text-danger)] mb-6">This action cannot be undone and will delete the record, transcription, summary, and the audio file.</p>
