@@ -136,8 +136,15 @@ body {
     }
     
     /* Ensure the mobile sidebar shows above the overlay */
-    .fixed.inset-y-0.left-0.z-40 {
+    .fixed.inset-y-0.left-0.z-40 { /* This targets the overlay, not the sidebar */
         z-index: 50 !important;
+    }
+
+    /* Custom easing for mobile sidebar slide animation */
+    /* This targets the main sidebar div when it's in mobile fly-in mode */
+    /* and has the transition-transform class applied by Vue/Tailwind. */
+    div.fixed.z-50.transition-transform {
+        transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
 }
 

@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isSidebarCollapsed = ref(false); // Sidebar state
         const isUserMenuOpen = ref(false); // User dropdown menu state
         const isMobileMenuOpen = ref(false); // Mobile fly-in menu state
+        const isMobileUserMenuOpen = ref(false); // Mobile user icon dropdown menu state
         const windowWidth = ref(window.innerWidth); // For reactive screen size
         const useAsrEndpoint = ref(false);
 
@@ -1599,6 +1600,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sendChatMessage, copyMessage, copyTranscription,
             // User menu
             isUserMenuOpen,
+            isMobileUserMenuOpen, // <-- Added mobile user menu state
             // Search
             searchQuery,
             // Audio Recording

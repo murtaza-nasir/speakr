@@ -38,6 +38,25 @@
                 <button @click="switchToUploadView" class="lg:hidden p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" title="New Recording">
                     <i class="fas fa-plus"></i>
                 </button>
+                <!-- Mobile User Menu Button -->
+                <div class="relative lg:hidden">
+                    <button @click="isMobileUserMenuOpen = !isMobileUserMenuOpen" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" title="User Menu">
+                        <i class="fas fa-user"></i>
+                    </button>
+                    <div v-if="isMobileUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
+                        <a href="{{ url_for('account') }}" @click="isMobileUserMenuOpen = false" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas fa-user-circle mr-2"></i> Account
+                        </a>
+                        {% if current_user.is_admin %}
+                        <a href="{{ url_for('admin') }}" @click="isMobileUserMenuOpen = false" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas fa-user-shield mr-2"></i> Admin
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('logout') }}" @click="isMobileUserMenuOpen = false" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </a>
+                    </div>
+                </div>
                 {% endif %}
                 <!-- Desktop Menu Items - hidden on small screens, shown on lg and up -->
                 <div class="hidden lg:flex items-center space-x-2">
@@ -285,7 +304,7 @@
                             <span v-if="selectedRecording.status" :class="getStatusClass(selectedRecording.status)" class="status-badge text-xs">
                                 ${ formatStatus(selectedRecording.status) }
                             </span>
-                            <div class="flex space-x-2">
+                            <div class="flex space-x-2 items-center">
                                 <button @click="toggleInbox(selectedRecording)" 
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105" 
                                         :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
@@ -298,14 +317,32 @@
                                         :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
                                     <i class="fas fa-star"></i>
                                 </button>
+                                <button @click="editRecording(selectedRecording)"
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                        title="Edit Details">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                        title="Reprocess Transcription">
+                                    <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
+                                </button>
+                                <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                        title="Reprocess Summary">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                        title="Identify Speakers">
+                                    <i class="fas fa-user-tag"></i>
+                                </button>
+                                <button @click="confirmDelete(selectedRecording)"
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] hover:bg-[var(--bg-danger)] hover:text-[var(--text-button)]"
+                                        title="Delete Recording">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
-                        </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                            <button @click="editRecording(selectedRecording)" class="mobile-action-btn flex items-center justify-center"><i class="fas fa-edit mr-1"></i> Details</button>
-                            <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="mobile-action-btn flex items-center justify-center"><i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'" class="mr-1"></i> Tx Reprocess</button>
-                            <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="mobile-action-btn flex items-center justify-center"><i class="fas fa-sync-alt mr-1"></i> Sum Reprocess</button>
-                            <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0" class="mobile-action-btn flex items-center justify-center"><i class="fas fa-user-tag mr-1"></i> Speakers</button>
-                            <button @click="confirmDelete(selectedRecording)" class="mobile-action-btn flex items-center justify-center col-span-2 sm:col-span-1 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] hover:bg-[var(--bg-danger)] hover:text-[var(--text-button)]"><i class="fas fa-trash mr-1"></i> Delete</button>
                         </div>
                     </div>
 
