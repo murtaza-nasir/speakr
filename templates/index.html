@@ -429,8 +429,8 @@
                                         <div v-if="processedTranscription.hasDialogue">
                                             <!-- Simple View -->
                                             <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view">
-                                                <div v-for="(segment, index) in processedTranscription.segments" :key="index" class="speaker-segment">
-                                                    <div :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
+                                                <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment">
+                                                    <div v-if="segment.showSpeaker" :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
                                                     <div class="speaker-text">${ segment.text }</div>
                                                 </div>
                                             </div>
@@ -826,25 +826,24 @@
                                     <div class="transcription-section" :style="{ flex: transcriptionFlex }">
                                         <div class="flex justify-between items-center mb-1">
                                             <h4 class="font-semibold text-[var(--text-secondary)]">Transcription</h4>
-                                            <div class="flex space-x-1">
+                                            <div class="flex items-center space-x-2">
+                                                <!-- View Mode Toggle - compact tablet style next to copy button -->
+                                                <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
+                                                    <button @click="toggleTranscriptionViewMode" 
+                                                            :class="{ active: transcriptionViewMode === 'simple' }"
+                                                            class="toggle-button">
+                                                        <i class="fas fa-list"></i> Simple
+                                                    </button>
+                                                    <button @click="toggleTranscriptionViewMode" 
+                                                            :class="{ active: transcriptionViewMode === 'bubble' }"
+                                                            class="toggle-button">
+                                                        <i class="fas fa-comments"></i> Bubbles
+                                                    </button>
+                                                </div>
                                                 <button @click="copyTranscription($event)" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Copy to clipboard">
                                                     <i class="fas fa-copy"></i>
                                                 </button>
                                             </div>
-                                        </div>
-                                        
-                                        <!-- View Mode Toggle for Desktop -->
-                                        <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle mb-2">
-                                            <button @click="toggleTranscriptionViewMode" 
-                                                    :class="{ active: transcriptionViewMode === 'simple' }"
-                                                    class="toggle-button">
-                                                <i class="fas fa-list mr-1"></i> Simple
-                                            </button>
-                                            <button @click="toggleTranscriptionViewMode" 
-                                                    :class="{ active: transcriptionViewMode === 'bubble' }"
-                                                    class="toggle-button">
-                                                <i class="fas fa-comments mr-1"></i> Bubbles
-                                            </button>
                                         </div>
                                         
                                         <div class="transcription-box custom-scrollbar relative">
@@ -861,16 +860,19 @@
                                                 <div v-if="processedTranscription.hasDialogue">
                                                     <!-- Simple View -->
                                                     <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view">
-                                                        <div v-for="(segment, index) in processedTranscription.segments" :key="index" class="speaker-segment">
-                                                            <div :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
+                                                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment">
+                                                            <div v-if="segment.showSpeaker" :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
                                                             <div class="speaker-text">${ segment.text }</div>
                                                         </div>
                                                     </div>
                                                     <!-- Bubble View -->
                                                     <div v-else class="transcription-with-speakers">
-                                                        <div v-for="(segment, index) in processedTranscription.segments" :key="index" 
-                                                             :class="[segment.color, 'speaker-bubble', { 'speaker-me': segment.speaker && segment.speaker.toLowerCase().includes('me') }]">
-                                                            <div class="speaker-bubble-content">${ segment.text }</div>
+                                                        <div v-for="(row, index) in processedTranscription.bubbleRows" :key="index" 
+                                                             :class="['bubble-row', { 'speaker-me': row.isMe }]">
+                                                            <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="bubbleIndex" 
+                                                                 :class="[row.color, 'speaker-bubble', { 'speaker-me': row.isMe }]">
+                                                                <div class="speaker-bubble-content">${ bubble.text }</div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>

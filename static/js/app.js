@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const processedTranscription = computed(() => {
             if (!selectedRecording.value?.transcription) {
-                return { hasDialogue: false, content: '', speakers: [] };
+                return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [] };
             }
 
             const transcription = selectedRecording.value.transcription;
@@ -195,7 +195,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { 
                     hasDialogue: false, 
                     content: transcription, 
-                    speakers: [] 
+                    speakers: [],
+                    simpleSegments: [],
+                    bubbleRows: []
                 };
             }
 
@@ -260,9 +262,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            // Process segments for simple view (only show speaker icon when speaker changes)
+            const simpleSegments = [];
+            let lastSpeaker = null;
+            
+            segments.forEach(segment => {
+                simpleSegments.push({
+                    ...segment,
+                    showSpeaker: segment.speaker !== lastSpeaker
+                });
+                lastSpeaker = segment.speaker;
+            });
+
+            // Process segments for bubble view (group consecutive segments by speaker)
+            const bubbleRows = [];
+            let currentRow = null;
+            
+            segments.forEach(segment => {
+                // Split long text into smaller chunks for better bubble layout
+                const maxChunkLength = 150; // Adjust this value as needed
+                const chunks = [];
+                
+                if (segment.text.length <= maxChunkLength) {
+                    chunks.push(segment.text);
+                } else {
+                    // Split by sentences first, then by length if needed
+                    const sentences = segment.text.split(/(?<=[.!?])\s+/);
+                    let currentChunk = '';
+                    
+                    sentences.forEach(sentence => {
+                        if (currentChunk.length + sentence.length <= maxChunkLength) {
+                            currentChunk += (currentChunk ? ' ' : '') + sentence;
+                        } else {
+                            if (currentChunk) chunks.push(currentChunk);
+                            currentChunk = sentence;
+                        }
+                    });
+                    
+                    if (currentChunk) chunks.push(currentChunk);
+                }
+                
+                chunks.forEach(chunk => {
+                    // Check if we need a new row (different speaker or if current row is getting too long)
+                    if (!currentRow || 
+                        currentRow.speaker !== segment.speaker || 
+                        currentRow.bubbles.length >= 3) { // Max 3 bubbles per row
+                        
+                        if (currentRow) bubbleRows.push(currentRow);
+                        
+                        currentRow = {
+                            speaker: segment.speaker,
+                            color: segment.color,
+                            bubbles: [],
+                            isMe: segment.speaker && segment.speaker.toLowerCase().includes('me')
+                        };
+                    }
+                    
+                    currentRow.bubbles.push({
+                        text: chunk,
+                        color: segment.color
+                    });
+                });
+            });
+            
+            // Don't forget the last row
+            if (currentRow) bubbleRows.push(currentRow);
+
             return {
                 hasDialogue: true,
                 segments: segments,
+                simpleSegments: simpleSegments,
+                bubbleRows: bubbleRows,
                 speakers: speakerList.map(speaker => ({
                     name: speaker,
                     color: speakerColors[speaker] || 'speaker-color-1'
