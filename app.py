@@ -697,40 +697,51 @@ def reprocess_transcription(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
-            
-        # Check if the recording belongs to the current user
+
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
-            
-        # Check if audio file exists
+
         if not recording.audio_path or not os.path.exists(recording.audio_path):
             return jsonify({'error': 'Audio file not found for reprocessing'}), 404
-            
-        # Check if already processing
+
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
             return jsonify({'error': 'Recording is already being processed'}), 400
-            
-        # Reset transcription and summary, set status to PROCESSING
+
         recording.transcription = None
         recording.summary = None
         recording.status = 'PROCESSING'
         db.session.commit()
-        
+
         app.logger.info(f"Starting transcription reprocessing for recording {recording_id}")
+
+        # Decide which transcription method to use
+        if USE_ASR_ENDPOINT:
+            app.logger.info(f"Using ASR endpoint for reprocessing recording {recording_id}")
+            # For ASR, we can reuse the transcribe_audio_asr function.
+            # We might need to decide if we want to pass default or new parameters.
+            # Here, we'll use the user's current settings for diarization.
+            user_diarize = recording.owner.diarize if recording.owner else ASR_DIARIZE
+            user_lang = recording.owner.transcription_language if recording.owner else None
+            
+            thread = threading.Thread(
+                target=transcribe_audio_asr,
+                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", user_lang, user_diarize, ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS)
+            )
+        else:
+            app.logger.info(f"Using standard transcription API for reprocessing recording {recording_id}")
+            thread = threading.Thread(
+                target=transcribe_audio_task,
+                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}")
+            )
         
-        # Start reprocessing in background thread
-        thread = threading.Thread(
-            target=transcribe_audio_task,
-            args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}")
-        )
         thread.start()
-        
+
         return jsonify({
-            'success': True, 
+            'success': True,
             'message': 'Transcription reprocessing started',
             'recording': recording.to_dict()
         })
-        
+
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error reprocessing transcription for recording {recording_id}: {e}")
@@ -1329,7 +1340,8 @@ def admin_get_stats():
 # --- Flask Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Pass the ASR config to the template
+    return render_template('index.html', use_asr_endpoint=USE_ASR_ENDPOINT)
 
 @app.route('/recordings', methods=['GET'])
 def get_recordings():

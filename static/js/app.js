@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isUserMenuOpen = ref(false); // User dropdown menu state
         const isMobileMenuOpen = ref(false); // Mobile fly-in menu state
         const windowWidth = ref(window.innerWidth); // For reactive screen size
+        const useAsrEndpoint = ref(false);
 
         // --- Audio Recording State ---
         const isRecording = ref(false);
@@ -950,9 +951,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Lifecycle Hooks ---
         onMounted(() => {
+            // Check for the ASR endpoint flag from the template
+            const appDiv = document.getElementById('app');
+            if (appDiv) {
+                useAsrEndpoint.value = appDiv.classList.contains('use-asr-endpoint');
+            }
             loadRecordings();
-            initializeDarkMode(); // Initialize dark mode on load
-            
+            initializeDarkMode(); // Initialize dark mode on load            
             // Check initial screen size
             // This is a bit of a hack as isMobileScreen is computed,
             // but we need to react to its initial value for listeners.
@@ -1017,17 +1022,22 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelReprocess();
             
             if (type === 'transcription') {
+                // ASR logic is now handled by executeAsrReprocess
                 await performReprocessTranscription(recordingId);
             } else if (type === 'summary') {
                 await performReprocessSummary(recordingId);
-            } else if (type === 'asr') {
-                await performAsrReprocess(recordingId);
             }
         };
         
         const reprocessTranscription = (recordingId) => {
             const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
-            confirmReprocess('transcription', recording);
+            if (useAsrEndpoint.value) {
+                // This now calls the specific ASR confirmation modal
+                confirmAsrReprocess(recording);
+            } else {
+                // The original behavior for non-ASR reprocessing
+                confirmReprocess('transcription', recording);
+            }
         };
         
         const reprocessSummary = (recordingId) => {
@@ -1037,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const confirmAsrReprocess = (recording) => {
             reprocessRecording.value = recording;
+            // Reset/pre-fill options when opening the modal
             asrReprocessOptions.language = recording.owner?.transcription_language || '';
             asrReprocessOptions.min_speakers = null;
             asrReprocessOptions.max_speakers = null;
@@ -1045,15 +1056,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cancelAsrReprocess = () => {
             showAsrReprocessModal.value = false;
-            reprocessRecording.value = null;
+            reprocessRecording.value = null; // Clear the recording being reprocessed
         };
 
         const executeAsrReprocess = async () => {
             if (!reprocessRecording.value) return;
+            
             const recordingId = reprocessRecording.value.id;
             
-            await performAsrReprocess(recordingId, asrReprocessOptions.language, asrReprocessOptions.min_speakers, asrReprocessOptions.max_speakers);
-            cancelAsrReprocess();
+            // Hide modal before starting
+            showAsrReprocessModal.value = false;
+
+            await performAsrReprocess(
+                recordingId,
+                asrReprocessOptions.language,
+                asrReprocessOptions.min_speakers,
+                asrReprocessOptions.max_speakers
+            );
+
+            // Clear the recording after execution
+            reprocessRecording.value = null;
         };
 
         const openSpeakerModal = () => {
@@ -1629,6 +1651,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveSpeakerNames,
             highlightedTranscript,
             highlightSpeakerInTranscript,
+            useAsrEndpoint,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja

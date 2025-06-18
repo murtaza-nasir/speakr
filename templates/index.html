@@ -14,7 +14,7 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
-    <div id="app" class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col">
+    <div id="app" class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col" :class="{ 'use-asr-endpoint': useAsrEndpoint }">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
              <h1 class="text-3xl font-bold text-[var(--text-primary)] cursor-pointer flex items-center" @click="switchToGalleryView" title="Go to Gallery">
                 <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
@@ -112,12 +112,32 @@
                             </div>
                             <div>
                                 <p class="text-[var(--text-secondary)] font-medium mb-1">What will happen?</p>
-                                <p class="text-sm text-[var(--text-muted)]" v-if="reprocessType === 'transcription'">
+                                <p class="text-sm text-[var(--text-muted)]" v-if="reprocessType === 'transcription' && !useAsrEndpoint">
                                     The audio will be re-transcribed from scratch. This will also regenerate the title and summary based on the new transcription.
+                                </p>
+                                <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'transcription' && useAsrEndpoint">
+                                    The audio will be re-transcribed using the ASR endpoint. This includes diarization and will regenerate the title and summary.
                                 </p>
                                 <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'summary'">
                                     A new title and summary will be generated based on the existing transcription.
                                 </p>
+                            </div>
+                        </div>
+                        
+                        <!-- ASR Options -->
+                        <div v-if="reprocessType === 'transcription' && useAsrEndpoint" class="space-y-4 pt-4 border-t border-[var(--border-primary)]">
+                            <h4 class="text-md font-semibold text-[var(--text-secondary)]">ASR Options</h4>
+                            <div>
+                                <label for="asr-language-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Language</label>
+                                <input type="text" id="asr-language-reprocess" v-model="asrReprocessOptions.language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh (optional)">
+                            </div>
+                            <div>
+                                <label for="asr-min-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Min Speakers</label>
+                                <input type="number" id="asr-min-speakers-reprocess" v-model.number="asrReprocessOptions.min_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
+                            </div>
+                            <div>
+                                <label for="asr-max-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Max Speakers</label>
+                                <input type="number" id="asr-max-speakers-reprocess" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
                             </div>
                         </div>
                         
@@ -205,32 +225,6 @@
                 <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0">
                     <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
                     <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
-                </div>
-            </div>
-        </div>
-        <!-- ASR Reprocess Modal -->
-        <div v-if="showAsrReprocessModal" @click="cancelAsrReprocess" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
-                <div class="p-5 border-b border-[var(--border-primary)]">
-                    <h3 class="text-xl font-bold text-[var(--text-primary)]">ASR Reprocess Options</h3>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label for="asr-language" class="block text-sm font-medium text-[var(--text-muted)]">Language</label>
-                        <input type="text" id="asr-language" v-model="asrReprocessOptions.language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
-                    </div>
-                    <div>
-                        <label for="asr-min-speakers" class="block text-sm font-medium text-[var(--text-muted)]">Min Speakers</label>
-                        <input type="number" id="asr-min-speakers" v-model.number="asrReprocessOptions.min_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
-                    </div>
-                    <div>
-                        <label for="asr-max-speakers" class="block text-sm font-medium text-[var(--text-muted)]">Max Speakers</label>
-                        <input type="number" id="asr-max-speakers" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
-                    </div>
-                </div>
-                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)]">
-                    <button @click="cancelAsrReprocess" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="executeAsrReprocess" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Reprocess</button>
                 </div>
             </div>
         </div>
@@ -486,17 +480,11 @@
                                                 <button @click="copyTranscription($event)" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Copy to clipboard">
                                                     <i class="fas fa-copy"></i>
                                                 </button>
-                                                <button @click="reprocessTranscription(selectedRecording.id)" 
-                                                        v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                                                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
-                                                        title="Reprocess transcription">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
-                                                <button @click="confirmAsrReprocess(selectedRecording)"
+                                                <button @click="reprocessTranscription(selectedRecording.id)"
                                                         v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                         class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded"
-                                                        title="Reprocess with ASR">
-                                                    <i class="fas fa-cogs"></i>
+                                                        :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                                                    <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
                                                 </button>
                                             </div>
                                         </div>
