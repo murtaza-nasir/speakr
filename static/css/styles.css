@@ -1362,6 +1362,15 @@ body {
         max-height: calc(1.5em * 4 + 1rem); /* Approx 4 lines with padding */
         overflow-y: auto; /* Allow scrolling after max-height */
     }
+
+/* Desktop chat input textarea styling */
+.chat-input-container textarea {
+    min-height: calc(1.5em * 3 + 1rem); /* Approx 3 lines with padding */
+    max-height: calc(1.5em * 6 + 1rem); /* Approx 6 lines with padding */
+    overflow-y: auto; /* Allow scrolling after max-height */
+    line-height: 1.5; /* Consistent line height */
+    font-family: inherit; /* Use the same font as the rest of the app */
+}
     
     .mobile-chat-input button {
         padding: 0.5rem 1rem;

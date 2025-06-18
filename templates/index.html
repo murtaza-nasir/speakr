@@ -1102,14 +1102,15 @@
                                                 </div>
                                             </div>
                                             <div class="chat-input-container border-t-[var(--border-primary)]">
-                                                <input 
+                                                <textarea 
                                                     v-model="chatInput" 
-                                                    @keyup.enter="sendChatMessage"
-                                                    type="text" 
-                                                    placeholder="Ask about the transcript..." 
-                                                    class="flex-grow px-3 py-2 border-0 focus:ring-0 focus:outline-none bg-[var(--bg-input)] text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                                                    @keyup.enter.exact="sendChatMessage"
+                                                    @keyup.enter.shift.exact.prevent="chatInput += '\n'"
+                                                    placeholder="Ask about the transcript... (Shift+Enter for new line)" 
+                                                    class="flex-grow px-3 py-2 border-0 focus:ring-0 focus:outline-none bg-[var(--bg-input)] text-[var(--text-primary)] placeholder-[var(--text-muted)] resize-none custom-scrollbar"
                                                     :disabled="isChatLoading || !selectedRecording || selectedRecording.status !== 'COMPLETED'"
-                                                >
+                                                    rows="3"
+                                                ></textarea>
                                                 <button 
                                                     @click="sendChatMessage" 
                                                     class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
