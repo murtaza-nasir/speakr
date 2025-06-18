@@ -176,6 +176,60 @@
                 </div>
             </div>
         </div>
+        <!-- Speaker Identification Modal -->
+        <div v-if="showSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg">
+                <div class="p-5 border-b border-[var(--border-primary)]">
+                    <h3 class="text-xl font-bold text-[var(--text-primary)]">Identify Speakers</h3>
+                </div>
+                <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    <div v-for="(speaker, index) in identifiedSpeakers" :key="speaker" class="flex items-center space-x-3">
+                        <span class="font-mono text-sm text-[var(--text-muted)] w-28">${ speaker }</span>
+                        <input type="text" v-model="speakerMap[speaker].name" class="flex-grow px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="'Enter name for ' + speaker">
+                        <label class="flex items-center text-sm text-[var(--text-muted)]">
+                            <input type="checkbox" v-model="speakerMap[speaker].isMe" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2">Me</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="p-6 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
+                    <label class="flex items-center text-sm text-[var(--text-muted)]">
+                        <input type="checkbox" v-model="regenerateSummaryAfterSpeakerUpdate" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2">Regenerate summary after updating names</span>
+                    </label>
+                </div>
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                    <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                    <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
+                </div>
+            </div>
+        </div>
+        <!-- ASR Reprocess Modal -->
+        <div v-if="showAsrReprocessModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+                <div class="p-5 border-b border-[var(--border-primary)]">
+                    <h3 class="text-xl font-bold text-[var(--text-primary)]">ASR Reprocess Options</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label for="asr-language" class="block text-sm font-medium text-[var(--text-muted)]">Language</label>
+                        <input type="text" id="asr-language" v-model="asrReprocessOptions.language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
+                    </div>
+                    <div>
+                        <label for="asr-min-speakers" class="block text-sm font-medium text-[var(--text-muted)]">Min Speakers</label>
+                        <input type="number" id="asr-min-speakers" v-model.number="asrReprocessOptions.min_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
+                    </div>
+                    <div>
+                        <label for="asr-max-speakers" class="block text-sm font-medium text-[var(--text-muted)]">Max Speakers</label>
+                        <input type="number" id="asr-max-speakers" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                    <button @click="cancelAsrReprocess" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                    <button @click="executeAsrReprocess" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Reprocess</button>
+                </div>
+            </div>
+        </div>
                 </div>
                 {% else %}
                 <a href="{{ url_for('login') }}" class="px-4 py-2 ml-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
@@ -434,6 +488,12 @@
                                                         title="Reprocess transcription">
                                                     <i class="fas fa-sync-alt"></i>
                                                 </button>
+                                                <button @click="confirmAsrReprocess(selectedRecording)"
+                                                        v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded"
+                                                        title="Reprocess with ASR">
+                                                    <i class="fas fa-cogs"></i>
+                                                </button>
                                             </div>
                                         </div>
                                         <div class="transcription-box custom-scrollbar relative">
@@ -490,6 +550,12 @@
                                                                 class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
                                                                 title="Reprocess summary">
                                                             <i class="fas fa-sync-alt"></i>
+                                                        </button>
+                                                        <button @click="openSpeakerModal"
+                                                                v-if="identifiedSpeakers.length > 0"
+                                                                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded"
+                                                                title="Identify Speakers">
+                                                            <i class="fas fa-user-tag"></i>
                                                         </button>
                                                     </template>
                                                     <!-- Notes buttons - shown when notes tab is active -->

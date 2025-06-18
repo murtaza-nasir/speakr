@@ -38,10 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const showEditModal = ref(false);
         const showDeleteModal = ref(false);
         const showReprocessModal = ref(false);
+        const showAsrReprocessModal = ref(false);
+        const showSpeakerModal = ref(false);
         const editingRecording = ref(null); // Holds a *copy* for the modal
         const recordingToDelete = ref(null);
         const reprocessType = ref(null); // 'transcription' or 'summary'
         const reprocessRecording = ref(null);
+        const asrReprocessOptions = reactive({
+            language: '',
+            min_speakers: null,
+            max_speakers: null
+        });
+        const speakerMap = ref({});
+        const regenerateSummaryAfterSpeakerUpdate = ref(true);
         // const autoSaveTimeout = ref(null); // Autosave not implemented for modal
         const isLoadingRecordings = ref(true);
         const globalError = ref(null);
@@ -122,6 +131,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const isMobileScreen = computed(() => {
             return windowWidth.value < 1024; // Tailwind's lg breakpoint
+        });
+
+        const identifiedSpeakers = computed(() => {
+            if (!selectedRecording.value?.transcription) {
+                return [];
+            }
+            const speakerRegex = /\[(SPEAKER_\d+)\]/g;
+            const speakers = new Set();
+            let match;
+            while ((match = speakerRegex.exec(selectedRecording.value.transcription)) !== null) {
+                speakers.add(match[1]);
+            }
+            return Array.from(speakers);
         });
 
 
@@ -978,6 +1000,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 await performReprocessTranscription(recordingId);
             } else if (type === 'summary') {
                 await performReprocessSummary(recordingId);
+            } else if (type === 'asr') {
+                await performAsrReprocess(recordingId);
             }
         };
         
@@ -989,6 +1013,75 @@ document.addEventListener('DOMContentLoaded', () => {
         const reprocessSummary = (recordingId) => {
             const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
             confirmReprocess('summary', recording);
+        };
+
+        const confirmAsrReprocess = (recording) => {
+            reprocessRecording.value = recording;
+            asrReprocessOptions.language = recording.owner?.transcription_language || '';
+            asrReprocessOptions.min_speakers = null;
+            asrReprocessOptions.max_speakers = null;
+            showAsrReprocessModal.value = true;
+        };
+
+        const cancelAsrReprocess = () => {
+            showAsrReprocessModal.value = false;
+            reprocessRecording.value = null;
+        };
+
+        const executeAsrReprocess = async () => {
+            if (!reprocessRecording.value) return;
+            const recordingId = reprocessRecording.value.id;
+            
+            await performAsrReprocess(recordingId, asrReprocessOptions.language, asrReprocessOptions.min_speakers, asrReprocessOptions.max_speakers);
+            cancelAsrReprocess();
+        };
+
+        const openSpeakerModal = () => {
+            speakerMap.value = identifiedSpeakers.value.reduce((acc, speaker) => {
+                acc[speaker] = { name: '', isMe: false };
+                return acc;
+            }, {});
+            showSpeakerModal.value = true;
+        };
+
+        const closeSpeakerModal = () => {
+            showSpeakerModal.value = false;
+        };
+
+        const saveSpeakerNames = async () => {
+            if (!selectedRecording.value) return;
+
+            try {
+                const response = await fetch(`/recording/${selectedRecording.value.id}/update_speakers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        speaker_map: speakerMap.value,
+                        regenerate_summary: regenerateSummaryAfterSpeakerUpdate.value
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to update speakers');
+
+                // Update the recording in the UI
+                const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
+                if (index !== -1) {
+                    recordings.value[index] = data.recording;
+                }
+                selectedRecording.value = data.recording;
+
+                showToast('Speaker names updated successfully!', 'fa-check-circle');
+                closeSpeakerModal();
+
+                if (regenerateSummaryAfterSpeakerUpdate.value) {
+                    startReprocessingPoll(selectedRecording.value.id);
+                }
+
+            } catch (error) {
+                console.error('Save Speaker Names Error:', error);
+                setGlobalError(`Failed to save speaker names: ${error.message}`);
+            }
         };
         
         const performReprocessTranscription = async (recordingId) => {
@@ -1124,6 +1217,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearInterval(reprocessingPolls.value.get(recordingId));
                 reprocessingPolls.value.delete(recordingId);
                 console.log(`Stopped reprocessing poll for recording ${recordingId}`);
+            }
+        };
+
+        const performAsrReprocess = async (recordingId, language, minSpeakers, maxSpeakers) => {
+            if (!recordingId) {
+                setGlobalError('No recording ID provided for ASR reprocessing.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/recording/${recordingId}/reprocess_asr`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        language: language,
+                        min_speakers: minSpeakers,
+                        max_speakers: maxSpeakers
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to start ASR reprocessing');
+
+                const index = recordings.value.findIndex(r => r.id === recordingId);
+                if (index !== -1) {
+                    recordings.value[index] = data.recording;
+                }
+
+                if (selectedRecording.value?.id === recordingId) {
+                    selectedRecording.value = data.recording;
+                }
+
+                showToast('ASR reprocessing started', 'fa-sync-alt');
+                startReprocessingPoll(recordingId);
+
+            } catch (error) {
+                console.error('ASR Reprocess Error:', error);
+                setGlobalError(`Failed to start ASR reprocessing: ${error.message}`);
             }
         };
 
@@ -1447,6 +1578,20 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmReprocess,
             cancelReprocess,
             executeReprocess,
+            // ASR Reprocessing
+            showAsrReprocessModal,
+            asrReprocessOptions,
+            confirmAsrReprocess,
+            cancelAsrReprocess,
+            executeAsrReprocess,
+            // Speaker Identification
+            showSpeakerModal,
+            speakerMap,
+            regenerateSummaryAfterSpeakerUpdate,
+            identifiedSpeakers,
+            openSpeakerModal,
+            closeSpeakerModal,
+            saveSpeakerNames,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja
