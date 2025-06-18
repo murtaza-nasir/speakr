@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const speakerMap = ref({});
         const regenerateSummaryAfterSpeakerUpdate = ref(true);
+        const highlightedSpeaker = ref(null);
         // const autoSaveTimeout = ref(null); // Autosave not implemented for modal
         const isLoadingRecordings = ref(true);
         const globalError = ref(null);
@@ -144,6 +145,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 speakers.add(match[1]);
             }
             return Array.from(speakers);
+        });
+
+        const highlightedTranscript = computed(() => {
+            if (!selectedRecording.value?.transcription) return '';
+            let html = selectedRecording.value.transcription;
+            // Escape HTML to prevent injection
+            html = html.replace(/</g, '<').replace(/>/g, '>');
+            
+            // Wrap each speaker tag in a span
+            html = html.replace(/\[(SPEAKER_\d+)\]/g, (match, speakerId) => {
+                const isHighlighted = speakerId === highlightedSpeaker.value;
+                return `<span class="speaker-tag ${isHighlighted ? 'highlighted' : ''}" data-speaker-id="${speakerId}">${match}</span>`;
+            });
+            return html;
         });
 
 
@@ -1041,11 +1056,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 acc[speaker] = { name: '', isMe: false };
                 return acc;
             }, {});
+            highlightedSpeaker.value = null;
             showSpeakerModal.value = true;
         };
 
         const closeSpeakerModal = () => {
             showSpeakerModal.value = false;
+            highlightedSpeaker.value = null;
         };
 
         const saveSpeakerNames = async () => {
@@ -1082,6 +1099,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Save Speaker Names Error:', error);
                 setGlobalError(`Failed to save speaker names: ${error.message}`);
             }
+        };
+
+        const highlightSpeakerInTranscript = (speakerId) => {
+            highlightedSpeaker.value = speakerId;
+            nextTick(() => {
+                const modalTranscript = document.querySelector('.speaker-modal-transcript');
+                if (modalTranscript) {
+                    const firstInstance = modalTranscript.querySelector(`.speaker-tag[data-speaker-id="${speakerId}"]`);
+                    if (firstInstance) {
+                        firstInstance.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            });
         };
         
         const performReprocessTranscription = async (recordingId) => {
@@ -1592,6 +1622,8 @@ document.addEventListener('DOMContentLoaded', () => {
             openSpeakerModal,
             closeSpeakerModal,
             saveSpeakerNames,
+            highlightedTranscript,
+            highlightSpeakerInTranscript,
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja

@@ -178,27 +178,31 @@
         </div>
         <!-- Speaker Identification Modal -->
         <div v-if="showSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg">
-                <div class="p-5 border-b border-[var(--border-primary)]">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+                <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0">
                     <h3 class="text-xl font-bold text-[var(--text-primary)]">Identify Speakers</h3>
                 </div>
-                <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                    <div v-for="(speaker, index) in identifiedSpeakers" :key="speaker" class="flex items-center space-x-3">
-                        <span class="font-mono text-sm text-[var(--text-muted)] w-28">${ speaker }</span>
-                        <input type="text" v-model="speakerMap[speaker].name" class="flex-grow px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="'Enter name for ' + speaker">
-                        <label class="flex items-center text-sm text-[var(--text-muted)]">
-                            <input type="checkbox" v-model="speakerMap[speaker].isMe" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="ml-2">Me</span>
-                        </label>
+                <div class="flex-grow flex overflow-hidden">
+                    <div class="w-1/3 p-6 space-y-4 overflow-y-auto custom-scrollbar border-r border-[var(--border-primary)]">
+                        <div v-for="(speaker, index) in identifiedSpeakers" :key="speaker" class="space-y-2">
+                            <span class="font-mono text-sm text-[var(--text-muted)]">${ speaker }</span>
+                            <input type="text" v-model="speakerMap[speaker].name" @focus="highlightSpeakerInTranscript(speaker)" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="'Enter name for ' + speaker">
+                            <label class="flex items-center text-sm text-[var(--text-muted)]">
+                                <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="ml-2">This is Me</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="w-2/3 p-6 overflow-y-auto custom-scrollbar speaker-modal-transcript" v-html="highlightedTranscript">
                     </div>
                 </div>
-                <div class="p-6 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
+                <div class="p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex-shrink-0">
                     <label class="flex items-center text-sm text-[var(--text-muted)]">
                         <input type="checkbox" v-model="regenerateSummaryAfterSpeakerUpdate" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                         <span class="ml-2">Regenerate summary after updating names</span>
                     </label>
                 </div>
-                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0">
                     <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
                     <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
                 </div>
