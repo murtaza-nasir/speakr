@@ -697,3 +697,20 @@ body {
 .blink {
     animation: blink-animation 1.5s infinite;
 }
+
+/* Speaker tag styling in the modal */
+.speaker-tag {
+    font-weight: 600; /* Make speaker tags bold */
+    color: var(--text-accent);
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+}
+
+.speaker-highlight {
+    background-color: var(--bg-accent);
+    color: var(--text-accent);
+    padding: 3px 6px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px var(--bg-accent-hover);
+}

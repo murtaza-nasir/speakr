@@ -150,14 +150,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const highlightedTranscript = computed(() => {
             if (!selectedRecording.value?.transcription) return '';
             let html = selectedRecording.value.transcription;
-            // Escape HTML to prevent injection
+            // Escape HTML to prevent injection, but keep it minimal
             html = html.replace(/</g, '<').replace(/>/g, '>');
+
+            // 1. Replace newlines with <br> tags for proper line breaks in HTML
+            html = html.replace(/\n/g, '<br>');
             
-            // Wrap each speaker tag in a span
+            // 2. Wrap each speaker tag in a span for styling and interaction
             html = html.replace(/\[(SPEAKER_\d+)\]/g, (match, speakerId) => {
                 const isHighlighted = speakerId === highlightedSpeaker.value;
-                return `<span class="speaker-tag ${isHighlighted ? 'highlighted' : ''}" data-speaker-id="${speakerId}">${match}</span>`;
+                // Use a more specific and stylish class structure
+                return `<span class="speaker-tag ${isHighlighted ? 'speaker-highlight' : ''}" data-speaker-id="${speakerId}">${match}</span>`;
             });
+            
             return html;
         });
 
