@@ -714,3 +714,8 @@ body {
     border-radius: 6px;
     box-shadow: 0 0 10px var(--bg-accent-hover);
 }
+
+.modal-content {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
