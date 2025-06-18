@@ -1525,6 +1525,39 @@ document.addEventListener('DOMContentLoaded', () => {
             reprocessRecording.value = null;
         };
 
+        // Speaker database functionality
+        const speakerSuggestions = ref({});
+        const loadingSuggestions = ref({});
+        
+        const searchSpeakers = async (query, speakerId) => {
+            if (!query || query.length < 2) {
+                speakerSuggestions.value[speakerId] = [];
+                return;
+            }
+            
+            loadingSuggestions.value[speakerId] = true;
+            
+            try {
+                const response = await fetch(`/speakers/search?q=${encodeURIComponent(query)}`);
+                if (!response.ok) throw new Error('Failed to search speakers');
+                
+                const speakers = await response.json();
+                speakerSuggestions.value[speakerId] = speakers;
+            } catch (error) {
+                console.error('Error searching speakers:', error);
+                speakerSuggestions.value[speakerId] = [];
+            } finally {
+                loadingSuggestions.value[speakerId] = false;
+            }
+        };
+        
+        const selectSpeakerSuggestion = (speakerId, suggestion) => {
+            if (speakerMap.value[speakerId]) {
+                speakerMap.value[speakerId].name = suggestion.name;
+                speakerSuggestions.value[speakerId] = [];
+            }
+        };
+        
         const openSpeakerModal = () => {
             speakerMap.value = identifiedSpeakers.value.reduce((acc, speaker, index) => {
                 acc[speaker] = { 
@@ -1535,6 +1568,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return acc;
             }, {});
             highlightedSpeaker.value = null;
+            speakerSuggestions.value = {};
+            loadingSuggestions.value = {};
             showSpeakerModal.value = true;
         };
 
@@ -2054,6 +2089,11 @@ document.addEventListener('DOMContentLoaded', () => {
             transcriptionViewMode,
             toggleTranscriptionViewMode,
             legendExpanded, // Speaker legend expansion state
+            // Speaker database functionality
+            speakerSuggestions,
+            loadingSuggestions,
+            searchSpeakers,
+            selectSpeakerSuggestion,
             // Main column resizer refs (not needed in template but good practice if they were)
             // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns 
          }

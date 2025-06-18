@@ -261,7 +261,47 @@
                                     Repeat
                                 </span>
                             </div>
-                            <input type="text" v-model="speakerMap[speaker].name" @focus="highlightSpeakerInTranscript(speaker)" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="'Enter name for ' + speaker">
+                            
+                            <!-- Autocomplete input field -->
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    v-model="speakerMap[speaker].name" 
+                                    @input="searchSpeakers($event.target.value, speaker)"
+                                    @focus="highlightSpeakerInTranscript(speaker)" 
+                                    @blur="setTimeout(() => speakerSuggestions[speaker] = [], 200)"
+                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" 
+                                    :placeholder="'Enter name for ' + speaker"
+                                    autocomplete="off">
+                                
+                                <!-- Loading indicator -->
+                                <div v-if="loadingSuggestions[speaker]" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                    <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-sm"></i>
+                                </div>
+                                
+                                <!-- Suggestions dropdown -->
+                                <div v-if="speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0" 
+                                     class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    <div class="py-1">
+                                        <div v-for="suggestion in speakerSuggestions[speaker]" 
+                                             :key="suggestion.id"
+                                             @mousedown="selectSpeakerSuggestion(speaker, suggestion)"
+                                             class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] flex items-center justify-between">
+                                            <div class="flex-grow">
+                                                <div class="text-sm font-medium text-[var(--text-primary)]">${ suggestion.name }</div>
+                                                <div class="text-xs text-[var(--text-muted)]">
+                                                    Used ${ suggestion.use_count } time${ suggestion.use_count !== 1 ? 's' : '' }
+                                                    <span v-if="suggestion.last_used">
+                                                        • Last: ${ new Date(suggestion.last_used).toLocaleDateString() }
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-user text-[var(--text-muted)] ml-2"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <label class="flex items-center text-sm text-[var(--text-muted)]">
                                 <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                 <span class="ml-2">This is Me</span>
@@ -345,7 +385,7 @@
                                 <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                                    <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
+                                    <i :class="useAsrEndpoint ? 'fas fa-redo-alt' : 'fas fa-sync-alt'"></i>
                                 </button>
                                 <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
@@ -815,7 +855,7 @@
                                     <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                             class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                                        <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
+                                        <i :class="useAsrEndpoint ? 'fas fa-redo-alt' : 'fas fa-sync-alt'"></i>
                                     </button>
                                     <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                             class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"

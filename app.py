@@ -89,6 +89,26 @@ class User(db.Model, UserMixin):
     
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
+class Speaker(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+    use_count = db.Column(db.Integer, default=1)
+    
+    # Relationship to user
+    user = db.relationship('User', backref=db.backref('speakers', lazy=True, cascade='all, delete-orphan'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_used': self.last_used.isoformat() if self.last_used else None,
+            'use_count': self.use_count
+        }
+
 class Recording(db.Model):
     # Add user_id foreign key to associate recordings with users
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -487,6 +507,126 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
 
                 db.session.commit()
 
+@app.route('/speakers', methods=['GET'])
+@login_required
+def get_speakers():
+    """Get all speakers for the current user, ordered by usage frequency and recency."""
+    try:
+        speakers = Speaker.query.filter_by(user_id=current_user.id)\
+                               .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
+                               .all()
+        return jsonify([speaker.to_dict() for speaker in speakers])
+    except Exception as e:
+        app.logger.error(f"Error fetching speakers: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/speakers/search', methods=['GET'])
+@login_required
+def search_speakers():
+    """Search speakers by name for autocomplete functionality."""
+    try:
+        query = request.args.get('q', '').strip()
+        if not query:
+            return jsonify([])
+        
+        speakers = Speaker.query.filter_by(user_id=current_user.id)\
+                               .filter(Speaker.name.ilike(f'%{query}%'))\
+                               .order_by(Speaker.use_count.desc(), Speaker.last_used.desc())\
+                               .limit(10)\
+                               .all()
+        
+        return jsonify([speaker.to_dict() for speaker in speakers])
+    except Exception as e:
+        app.logger.error(f"Error searching speakers: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/speakers', methods=['POST'])
+@login_required
+def create_speaker():
+    """Create a new speaker or update existing one."""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        
+        if not name:
+            return jsonify({'error': 'Speaker name is required'}), 400
+        
+        # Check if speaker already exists for this user
+        existing_speaker = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
+        
+        if existing_speaker:
+            # Update usage statistics
+            existing_speaker.use_count += 1
+            existing_speaker.last_used = datetime.utcnow()
+            db.session.commit()
+            return jsonify(existing_speaker.to_dict())
+        else:
+            # Create new speaker
+            speaker = Speaker(
+                name=name,
+                user_id=current_user.id,
+                use_count=1,
+                created_at=datetime.utcnow(),
+                last_used=datetime.utcnow()
+            )
+            db.session.add(speaker)
+            db.session.commit()
+            return jsonify(speaker.to_dict()), 201
+            
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating speaker: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/speakers/<int:speaker_id>', methods=['DELETE'])
+@login_required
+def delete_speaker(speaker_id):
+    """Delete a speaker."""
+    try:
+        speaker = Speaker.query.filter_by(id=speaker_id, user_id=current_user.id).first()
+        if not speaker:
+            return jsonify({'error': 'Speaker not found'}), 404
+        
+        db.session.delete(speaker)
+        db.session.commit()
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting speaker: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def update_speaker_usage(speaker_names):
+    """Helper function to update speaker usage statistics."""
+    if not speaker_names or not current_user.is_authenticated:
+        return
+    
+    try:
+        for name in speaker_names:
+            name = name.strip()
+            if not name:
+                continue
+                
+            speaker = Speaker.query.filter_by(user_id=current_user.id, name=name).first()
+            if speaker:
+                speaker.use_count += 1
+                speaker.last_used = datetime.utcnow()
+            else:
+                # Create new speaker
+                speaker = Speaker(
+                    name=name,
+                    user_id=current_user.id,
+                    use_count=1,
+                    created_at=datetime.utcnow(),
+                    last_used=datetime.utcnow()
+                )
+                db.session.add(speaker)
+        
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(f"Error updating speaker usage: {e}")
+        db.session.rollback()
+
 @app.route('/recording/<int:recording_id>/update_speakers', methods=['POST'])
 @login_required
 def update_speakers(recording_id):
@@ -508,6 +648,7 @@ def update_speakers(recording_id):
 
         transcription = recording.transcription
         new_participants = []
+        speaker_names_used = []
 
         for speaker_label, new_name_info in speaker_map.items():
             new_name = new_name_info['name']
@@ -519,10 +660,15 @@ def update_speakers(recording_id):
                 transcription = re.sub(r'\[\s*' + re.escape(speaker_label) + r'\s*\]', f'[{new_name}]', transcription)
                 if new_name not in new_participants:
                     new_participants.append(new_name)
+                    speaker_names_used.append(new_name)
 
         recording.transcription = transcription
         if new_participants:
             recording.participants = ', '.join(new_participants)
+        
+        # Update speaker usage statistics
+        if speaker_names_used:
+            update_speaker_usage(speaker_names_used)
         
         db.session.commit()
 
