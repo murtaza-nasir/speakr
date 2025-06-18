@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const regenerateSummaryAfterSpeakerUpdate = ref(true);
         const highlightedSpeaker = ref(null);
         const transcriptionViewMode = ref('simple'); // 'simple' or 'bubble'
+        const legendExpanded = ref(false); // Speaker legend expansion state
         // const autoSaveTimeout = ref(null); // Autosave not implemented for modal
         const isLoadingRecordings = ref(true);
         const globalError = ref(null);
@@ -280,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             segments.forEach(segment => {
                 // Split long text into smaller chunks for better bubble layout
-                const maxChunkLength = 150; // Adjust this value as needed
+                const maxChunkLength = 200; // Increased for better bundling
                 const chunks = [];
                 
                 if (segment.text.length <= maxChunkLength) {
@@ -302,11 +303,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (currentChunk) chunks.push(currentChunk);
                 }
                 
-                chunks.forEach(chunk => {
-                    // Check if we need a new row (different speaker or if current row is getting too long)
-                    if (!currentRow || 
-                        currentRow.speaker !== segment.speaker || 
-                        currentRow.bubbles.length >= 3) { // Max 3 bubbles per row
+                chunks.forEach((chunk, chunkIndex) => {
+                    // Check if we need a new row (different speaker only)
+                    // Remove the bubble count limit to allow better bundling
+                    if (!currentRow || currentRow.speaker !== segment.speaker) {
                         
                         if (currentRow) bubbleRows.push(currentRow);
                         
@@ -349,11 +349,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Replace newlines with <br> tags for proper line breaks in HTML
             html = html.replace(/\n/g, '<br>');
             
-            // 2. Wrap each speaker tag in a span for styling and interaction
-            html = html.replace(/\[(SPEAKER_\d+)\]/g, (match, speakerId) => {
+            // 2. Get speaker colors from the speakerMap if available
+            const speakerColors = {};
+            if (speakerMap.value) {
+                Object.keys(speakerMap.value).forEach((speaker, index) => {
+                    speakerColors[speaker] = speakerMap.value[speaker].color || `speaker-color-${(index % 8) + 1}`;
+                });
+            }
+            
+            // 3. Wrap each speaker tag in a span for styling and interaction with colors
+            html = html.replace(/\[([^\]]+)\]/g, (match, speakerId) => {
                 const isHighlighted = speakerId === highlightedSpeaker.value;
-                // Use a more specific and stylish class structure
-                return `<span class="speaker-tag ${isHighlighted ? 'speaker-highlight' : ''}" data-speaker-id="${speakerId}">${match}</span>`;
+                const colorClass = speakerColors[speakerId] || '';
+                // Use a more specific and stylish class structure with color
+                return `<span class="speaker-tag ${colorClass} ${isHighlighted ? 'speaker-highlight' : ''}" data-speaker-id="${speakerId}">${match}</span>`;
             });
             
             return html;
@@ -1517,8 +1526,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const openSpeakerModal = () => {
-            speakerMap.value = identifiedSpeakers.value.reduce((acc, speaker) => {
-                acc[speaker] = { name: '', isMe: false };
+            speakerMap.value = identifiedSpeakers.value.reduce((acc, speaker, index) => {
+                acc[speaker] = { 
+                    name: '', 
+                    isMe: false,
+                    color: `speaker-color-${(index % 8) + 1}` // Assign same colors as transcription view
+                };
                 return acc;
             }, {});
             highlightedSpeaker.value = null;
@@ -2040,6 +2053,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleEditMobileMeetingDate, // Expose for mobile
             transcriptionViewMode,
             toggleTranscriptionViewMode,
+            legendExpanded, // Speaker legend expansion state
             // Main column resizer refs (not needed in template but good practice if they were)
             // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns 
          }

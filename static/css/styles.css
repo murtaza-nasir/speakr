@@ -745,26 +745,68 @@ body {
     position: sticky;
     top: 0;
     z-index: 10;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
     margin-bottom: 0.75rem;
-    padding: 0.5rem 0.75rem;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-primary);
     border-radius: 0.5rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-height: 2.5rem;
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: all 0.3s ease;
 }
 
-.speaker-legend.expanded {
-    max-height: none;
+.speaker-legend-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-primary);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.speaker-legend-header:hover {
+    background-color: var(--bg-accent);
+}
+
+.speaker-legend-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.speaker-legend-toggle {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    transition: transform 0.3s ease, color 0.2s ease;
+}
+
+.speaker-legend.expanded .speaker-legend-toggle {
+    transform: rotate(180deg);
+    color: var(--text-accent);
+}
+
+.speaker-legend-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.speaker-legend.expanded .speaker-legend-content {
+    max-height: 200px; /* Reasonable max height for scrolling */
+    overflow-y: auto;
+    padding: 0.5rem 0.75rem;
 }
 
 .speaker-legend-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.25rem;
     padding: 0.25rem 0.5rem;
@@ -775,6 +817,9 @@ body {
     font-weight: 500;
     transition: all 0.2s ease;
     white-space: nowrap;
+    flex-shrink: 0;
+    width: auto;
+    max-width: fit-content;
 }
 
 .speaker-legend-item:hover {
@@ -796,20 +841,25 @@ body {
     font-weight: 600;
 }
 
-.legend-expand-btn {
-    margin-left: auto;
-    padding: 0.25rem;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 0.75rem;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
+/* Compact legend when collapsed - show as many speakers as fit */
+.speaker-legend:not(.expanded) .speaker-legend-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow: hidden;
+    max-height: 3rem; /* Allow up to 2 rows of speakers */
+    padding: 0.25rem 0.75rem;
 }
 
-.legend-expand-btn:hover {
-    opacity: 1;
+.speaker-legend:not(.expanded) .speaker-legend-item {
+    flex-shrink: 1;
+    min-width: fit-content;
+}
+
+.speaker-count-indicator {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
 /* Enhanced transcription display with speaker bubbles */
@@ -865,6 +915,7 @@ body {
     align-items: flex-start;
     margin-bottom: 0.5rem;
     gap: 0.25rem;
+    width: 100%;
 }
 
 .bubble-row.speaker-me {
@@ -875,12 +926,79 @@ body {
     justify-content: flex-start;
 }
 
-/* Individual bubbles within rows should size to content */
+/* Individual bubbles within rows should size to content and allow wrapping */
 .bubble-row .speaker-bubble {
     flex: 0 0 auto;
-    max-width: 80%;
+    max-width: calc(100% - 0.5rem);
     width: auto;
     min-width: fit-content;
+    margin: 0;
+}
+
+/* Ensure bubbles can wrap to fill available space on mobile - preserve desktop styling */
+@media (max-width: 1023px) {
+    /* Target all bubble rows on mobile - preserve desktop gap and margin */
+    .bubble-row,
+    .mobile-content-box .bubble-row,
+    .transcription-with-speakers .bubble-row {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        width: 100% !important;
+        gap: 0.25rem !important;
+        margin-bottom: 0.5rem !important;
+        align-items: flex-start !important;
+    }
+    
+    /* Target all speaker bubbles on mobile - preserve desktop spacing and styling */
+    .speaker-bubble,
+    .mobile-content-box .speaker-bubble,
+    .bubble-row .speaker-bubble {
+        display: inline-block !important;
+        flex: 0 0 auto !important;
+        max-width: calc(70% - 0.25rem) !important;
+        width: auto !important;
+        min-width: fit-content !important;
+        margin: 0.125rem 0.25rem 0.125rem 0 !important; /* Preserve desktop margin */
+        flex-shrink: 1 !important;
+        vertical-align: top !important;
+        padding: 0.5rem 0.75rem !important; /* Preserve desktop padding */
+        border-radius: 0.75rem !important; /* Preserve desktop border-radius */
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08) !important; /* Preserve desktop shadow */
+        transition: all 0.2s ease !important; /* Preserve desktop transition */
+        border: 1px solid rgba(255,255,255,0.3) !important; /* Preserve desktop border */
+    }
+    
+    /* Preserve desktop hover effects */
+    .speaker-bubble:hover,
+    .mobile-content-box .speaker-bubble:hover,
+    .bubble-row .speaker-bubble:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.12) !important;
+    }
+    
+    /* Preserve desktop bubble content styling */
+    .speaker-bubble .speaker-bubble-content,
+    .mobile-content-box .speaker-bubble .speaker-bubble-content {
+        margin: 0 !important;
+        color: inherit !important;
+        font-size: 0.875rem !important;
+        line-height: 1.4 !important;
+        white-space: pre-wrap !important;
+    }
+    
+    /* Force horizontal layout for speaker rows */
+    .bubble-row.speaker-me,
+    .bubble-row:not(.speaker-me) {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+    }
+    
+    /* Override any conflicting styles */
+    .transcription-with-speakers {
+        display: block !important;
+    }
 }
 
 /* Simple view with speaker tablets */
@@ -1156,7 +1274,7 @@ body {
     
     .mobile-content-header {
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
         margin-bottom: 1rem;
         padding-bottom: 0.5rem;
@@ -1342,25 +1460,51 @@ body {
     flex-shrink: 0;
 }
 
-/* Discrete horizontal resize divider to match vertical resizer */
+/* Discrete horizontal resize divider */
 #mainColumnResizer {
-    width: 8px !important;
+    width: 12px !important;
     background-color: transparent !important;
     cursor: ew-resize !important;
-    margin: 0 4px !important;
+    margin: 0 2px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    padding: 0 !important;
 }
 
 #mainColumnResizer .w-1 {
     width: 4px !important;
-    height: 40px !important;
+    height: 60px !important;
     background-color: var(--text-light) !important;
     border-radius: 2px !important;
     transition: background-color 0.15s ease !important;
 }
 
 #mainColumnResizer:hover .w-1 {
+    background-color: var(--border-accent) !important;
+}
+
+/* Discrete vertical resize divider */
+.resize-handle {
+    height: 12px !important;
+    background-color: transparent !important;
+    cursor: ns-resize !important;
+    margin: 2px 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+.resize-handle .w-10 {
+    width: 60px !important;
+    height: 4px !important;
+    background-color: var(--text-light) !important;
+    border-radius: 2px !important;
+    transition: background-color 0.15s ease !important;
+}
+
+.resize-handle:hover .w-10 {
     background-color: var(--border-accent) !important;
 }
