@@ -401,9 +401,48 @@
                                         <!-- Reprocess transcription button moved to main header -->
                                     </div>
                                 </div>
+                                
+                                <!-- View Mode Toggle for Mobile -->
+                                <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
+                                    <button @click="toggleTranscriptionViewMode" 
+                                            :class="{ active: transcriptionViewMode === 'simple' }"
+                                            class="toggle-button">
+                                        <i class="fas fa-list mr-1"></i> Simple
+                                    </button>
+                                    <button @click="toggleTranscriptionViewMode" 
+                                            :class="{ active: transcriptionViewMode === 'bubble' }"
+                                            class="toggle-button">
+                                        <i class="fas fa-comments mr-1"></i> Bubbles
+                                    </button>
+                                </div>
                                 <div class="mobile-content-box">
                                     <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'">
-                                        <pre class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
+                                        <!-- Speaker Legend (if dialogue detected and bubble view) -->
+                                        <div v-if="processedTranscription.hasDialogue && transcriptionViewMode === 'bubble'" class="speaker-legend">
+                                            <div v-for="speaker in processedTranscription.speakers" :key="speaker.name" class="speaker-legend-item">
+                                                <div :class="speaker.color" class="speaker-color-dot"></div>
+                                                <span class="speaker-name">${ speaker.name }</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Transcription Content -->
+                                        <div v-if="processedTranscription.hasDialogue">
+                                            <!-- Simple View -->
+                                            <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view">
+                                                <div v-for="(segment, index) in processedTranscription.segments" :key="index" class="speaker-segment">
+                                                    <div :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
+                                                    <div class="speaker-text">${ segment.text }</div>
+                                                </div>
+                                            </div>
+                                            <!-- Bubble View -->
+                                            <div v-else class="transcription-with-speakers">
+                                                <div v-for="(segment, index) in processedTranscription.segments" :key="index" 
+                                                     :class="[segment.color, 'speaker-bubble', { 'speaker-me': segment.speaker && segment.speaker.toLowerCase().includes('me') }]">
+                                                    <div class="speaker-bubble-content">${ segment.text }</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <pre v-else class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
                                     </div>
                                     <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
                                         <p class="font-medium mb-2">Processing Failed:</p>
@@ -686,34 +725,43 @@
                                      <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
                                         <span class="responsive-title" style="min-width: 0;">${ selectedRecording.title || 'Loading...' }</span>
                                      </h3>
-                                    <p class="text-sm text-[var(--text-muted)] mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <div class="recording-metadata">
                                         <!-- Display Meeting Date with edit functionality -->
-                                        <span class="inline-flex items-center">
-                                            <i class="fas fa-calendar-alt text-[var(--text-accent)] opacity-75 mr-1.5"></i> 
-                                            <span v-if="!editingMeetingDate">
-                                                <span class="font-medium">Meeting:</span> 
-                                                <span @click="toggleEditMeetingDate" class="cursor-pointer hover:text-[var(--text-accent)] hover:underline transition-colors">
-                                                    ${ selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'Click to add' }
-                                                </span>
+                                        <div class="metadata-item">
+                                            <i class="fas fa-calendar-alt metadata-icon"></i>
+                                            <span class="metadata-label">Meeting:</span>
+                                            <span v-if="!editingMeetingDate" 
+                                                  @click="toggleEditMeetingDate" 
+                                                  class="metadata-value editable">
+                                                ${ selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'Click to add' }
                                             </span>
                                             <span v-else class="inline-flex items-center">
-                                                <input type="date" v-model="selectedRecording.meeting_date" 
-                                                    @blur="saveInlineEdit('meeting_date')" 
-                                                    class="p-0 w-40 bg-transparent border-b border-[var(--border-secondary)] focus:outline-none focus:border-[var(--border-focus)]" />
-                                                <button @click="saveInlineEdit('meeting_date')" class="ml-1 text-xs text-[var(--text-accent)]">
+                                                <input type="date" 
+                                                       v-model="selectedRecording.meeting_date" 
+                                                       @blur="saveInlineEdit('meeting_date')" 
+                                                       class="metadata-edit-input" />
+                                                <button @click="saveInlineEdit('meeting_date')" 
+                                                        class="metadata-edit-button">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                             </span>
-                                        </span>
-                                        <span class="inline-flex items-center">
-                                            <i class="fas fa-clock text-[var(--text-accent)] opacity-75 mr-1.5"></i>
-                                            <span class="font-medium">Created:</span> ${ new Date(selectedRecording.created_at).toLocaleString() }
-                                        </span>
-                                        <!-- Status Badge Moved Here -->
-                                        <span v-if="selectedRecording.status !== 'COMPLETED'" :class="getStatusClass(selectedRecording.status)" class="status-badge">
-                                            ${ formatStatus(selectedRecording.status) }
-                                        </span>
-                                    </p>
+                                        </div>
+                                        
+                                        <div class="metadata-item">
+                                            <i class="fas fa-clock metadata-icon"></i>
+                                            <span class="metadata-label">Created:</span>
+                                            <span class="metadata-value">${ new Date(selectedRecording.created_at).toLocaleString() }</span>
+                                        </div>
+                                        
+                                        <!-- Status Badge -->
+                                        <div v-if="selectedRecording.status !== 'COMPLETED'" class="metadata-item">
+                                            <i class="fas fa-info-circle metadata-icon"></i>
+                                            <span class="metadata-label">Status:</span>
+                                            <span :class="getStatusClass(selectedRecording.status)" class="status-badge">
+                                                ${ formatStatus(selectedRecording.status) }
+                                            </span>
+                                        </div>
+                                    </div>
                                     <!-- Removed Size from here -->
                                     <!-- Removed separate Status Badge span -->
                                 </div>
@@ -784,9 +832,49 @@
                                                 </button>
                                             </div>
                                         </div>
+                                        
+                                        <!-- View Mode Toggle for Desktop -->
+                                        <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle mb-2">
+                                            <button @click="toggleTranscriptionViewMode" 
+                                                    :class="{ active: transcriptionViewMode === 'simple' }"
+                                                    class="toggle-button">
+                                                <i class="fas fa-list mr-1"></i> Simple
+                                            </button>
+                                            <button @click="toggleTranscriptionViewMode" 
+                                                    :class="{ active: transcriptionViewMode === 'bubble' }"
+                                                    class="toggle-button">
+                                                <i class="fas fa-comments mr-1"></i> Bubbles
+                                            </button>
+                                        </div>
+                                        
                                         <div class="transcription-box custom-scrollbar relative">
                                             <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'" class="copyable">
-                                                <pre class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
+                                                <!-- Speaker Legend (if dialogue detected and bubble view) -->
+                                                <div v-if="processedTranscription.hasDialogue && transcriptionViewMode === 'bubble'" class="speaker-legend">
+                                                    <div v-for="speaker in processedTranscription.speakers" :key="speaker.name" class="speaker-legend-item">
+                                                        <div :class="speaker.color" class="speaker-color-dot"></div>
+                                                        <span class="speaker-name">${ speaker.name }</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Transcription Content -->
+                                                <div v-if="processedTranscription.hasDialogue">
+                                                    <!-- Simple View -->
+                                                    <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view">
+                                                        <div v-for="(segment, index) in processedTranscription.segments" :key="index" class="speaker-segment">
+                                                            <div :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
+                                                            <div class="speaker-text">${ segment.text }</div>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Bubble View -->
+                                                    <div v-else class="transcription-with-speakers">
+                                                        <div v-for="(segment, index) in processedTranscription.segments" :key="index" 
+                                                             :class="[segment.color, 'speaker-bubble', { 'speaker-me': segment.speaker && segment.speaker.toLowerCase().includes('me') }]">
+                                                            <div class="speaker-bubble-content">${ segment.text }</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <pre v-else class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
                                             </div>
                                             <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
                                                 <p class="font-medium mb-2">Processing Failed:</p>
@@ -889,9 +977,9 @@
 
                                 <!-- Resizer Handle for Main Columns -->
                                 <div id="mainColumnResizer" 
-                                     class="hidden md:flex items-center justify-center w-2 bg-transparent hover:bg-[var(--border-accent)] cursor-ew-resize flex-shrink-0 mx-1 group" 
+                                     class="hidden md:flex items-center justify-center w-2 bg-transparent cursor-ew-resize flex-shrink-0 mx-1 group" 
                                      title="Drag to resize columns">
-                                    <div class="w-1 h-16 bg-[var(--border-primary)] group-hover:bg-[var(--text-accent)] rounded-full transition-colors duration-150"></div>
+                                    <div class="w-1 h-10 bg-[var(--text-light)] group-hover:bg-[var(--border-accent)] rounded-full transition-colors duration-150"></div>
                                 </div>
 
                                 <!-- Right Column: Audio & Chat -->

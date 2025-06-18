@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const speakerMap = ref({});
         const regenerateSummaryAfterSpeakerUpdate = ref(true);
         const highlightedSpeaker = ref(null);
+        const transcriptionViewMode = ref('simple'); // 'simple' or 'bubble'
         // const autoSaveTimeout = ref(null); // Autosave not implemented for modal
         const isLoadingRecordings = ref(true);
         const globalError = ref(null);
@@ -169,13 +170,104 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!selectedRecording.value?.transcription) {
                 return [];
             }
-            const speakerRegex = /\[(SPEAKER_\d+)\]/g;
+            // Match both [SPEAKER_XX] and [Name] patterns
+            const speakerRegex = /\[([^\]]+)\]:/g;
             const speakers = new Set();
             let match;
             while ((match = speakerRegex.exec(selectedRecording.value.transcription)) !== null) {
                 speakers.add(match[1]);
             }
             return Array.from(speakers);
+        });
+
+        const processedTranscription = computed(() => {
+            if (!selectedRecording.value?.transcription) {
+                return { hasDialogue: false, content: '', speakers: [] };
+            }
+
+            const transcription = selectedRecording.value.transcription;
+            
+            // Check if transcription has speaker labels
+            const speakerRegex = /\[([^\]]+)\]:\s*/g;
+            const hasDialogue = speakerRegex.test(transcription);
+            
+            if (!hasDialogue) {
+                return { 
+                    hasDialogue: false, 
+                    content: transcription, 
+                    speakers: [] 
+                };
+            }
+
+            // Reset regex for processing
+            speakerRegex.lastIndex = 0;
+            
+            // Extract speakers and assign colors
+            const speakers = new Set();
+            let match;
+            const tempTranscription = transcription;
+            while ((match = speakerRegex.exec(tempTranscription)) !== null) {
+                speakers.add(match[1]);
+            }
+            
+            const speakerList = Array.from(speakers);
+            const speakerColors = {};
+            speakerList.forEach((speaker, index) => {
+                speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
+            });
+
+            // Process transcription into dialogue segments
+            const segments = [];
+            const lines = transcription.split('\n');
+            let currentSpeaker = null;
+            let currentText = '';
+
+            for (const line of lines) {
+                const speakerMatch = line.match(/^\[([^\]]+)\]:\s*(.*)$/);
+                
+                if (speakerMatch) {
+                    // Save previous segment if exists
+                    if (currentSpeaker && currentText.trim()) {
+                        segments.push({
+                            speaker: currentSpeaker,
+                            text: currentText.trim(),
+                            color: speakerColors[currentSpeaker] || 'speaker-color-1'
+                        });
+                    }
+                    
+                    // Start new segment
+                    currentSpeaker = speakerMatch[1];
+                    currentText = speakerMatch[2];
+                } else if (currentSpeaker && line.trim()) {
+                    // Continue current speaker's text
+                    currentText += ' ' + line.trim();
+                } else if (!currentSpeaker && line.trim()) {
+                    // Text without speaker (shouldn't happen in dialogue, but handle gracefully)
+                    segments.push({
+                        speaker: null,
+                        text: line.trim(),
+                        color: 'speaker-color-1'
+                    });
+                }
+            }
+
+            // Don't forget the last segment
+            if (currentSpeaker && currentText.trim()) {
+                segments.push({
+                    speaker: currentSpeaker,
+                    text: currentText.trim(),
+                    color: speakerColors[currentSpeaker] || 'speaker-color-1'
+                });
+            }
+
+            return {
+                hasDialogue: true,
+                segments: segments,
+                speakers: speakerList.map(speaker => ({
+                    name: speaker,
+                    color: speakerColors[speaker] || 'speaker-color-1'
+                }))
+            };
         });
 
         const highlightedTranscript = computed(() => {
@@ -1797,6 +1889,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        // Toggle transcription view mode
+        const toggleTranscriptionViewMode = () => {
+            transcriptionViewMode.value = transcriptionViewMode.value === 'simple' ? 'bubble' : 'simple';
+        };
+
         return {
             // State
             currentView, dragover, recordings, selectedRecording, // currentRecording removed
@@ -1811,6 +1908,7 @@ document.addEventListener('DOMContentLoaded', () => {
             transcriptionFlex, tabsFlex,
             // Computed
             groupedRecordings, totalInQueue, completedInQueue, queuedFiles, finishedFilesInQueue, isMobileScreen,
+            processedTranscription, // <-- ADDED: Expose processedTranscription computed property
             // Inline editing state
             editingParticipants, editingMeetingDate, editingSummary, editingNotes,
             // Methods
@@ -1870,6 +1968,8 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedMobileTab,
             switchMobileTab,
             toggleEditMobileMeetingDate, // Expose for mobile
+            transcriptionViewMode,
+            toggleTranscriptionViewMode,
             // Main column resizer refs (not needed in template but good practice if they were)
             // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns 
          }
