@@ -1088,15 +1088,15 @@ body {
 .speaker-color-7 { background-color: #F1F8E9; color: #558B2F; } /* Light Lime */
 .speaker-color-8 { background-color: #FFF8E1; color: #F57F17; } /* Light Amber */
 
-/* Dark mode speaker colors - pastel and soft */
-.dark .speaker-color-1 { background-color: #334155; color: #CBD5E1; }
-.dark .speaker-color-2 { background-color: #4C1D95; color: #C4B5FD; }
-.dark .speaker-color-3 { background-color: #374151; color: #A7F3D0; }
-.dark .speaker-color-4 { background-color: #78350F; color: #FEF3C7; }
-.dark .speaker-color-5 { background-color: #7C2D12; color: #FECACA; }
-.dark .speaker-color-6 { background-color: #155E75; color: #A5F3FC; }
-.dark .speaker-color-7 { background-color: #365314; color: #D9F99D; }
-.dark .speaker-color-8 { background-color: #92400E; color: #FED7AA; }
+/* Dark mode speaker colors - tasteful pastels inspired by light mode */
+.dark .speaker-color-1 { background-color: #1E3A5F; color: #A5C9EA; } /* Muted blue background, soft blue text */
+.dark .speaker-color-2 { background-color: #4A2C5A; color: #D4A5D4; } /* Muted purple background, soft purple text */
+.dark .speaker-color-3 { background-color: #1F4A3C; color: #A8D5A8; } /* Muted green background, soft green text */
+.dark .speaker-color-4 { background-color: #5A3A1F; color: #E6B366; } /* Muted orange background, soft orange text */
+.dark .speaker-color-5 { background-color: #5A2C3E; color: #E6A5C4; } /* Muted pink background, soft pink text */
+.dark .speaker-color-6 { background-color: #1F4A47; color: #A5D5D0; } /* Muted teal background, soft teal text */
+.dark .speaker-color-7 { background-color: #3A4A1F; color: #C4D5A5; } /* Muted lime background, soft lime text */
+.dark .speaker-color-8 { background-color: #5A3A1F; color: #E6C266; } /* Muted amber background, soft amber text */
 
 /* Meeting/Created time styling improvements */
 .recording-metadata {
