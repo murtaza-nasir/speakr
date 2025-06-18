@@ -266,6 +266,9 @@
                                 <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-key mr-2"></i> Change Password
                                 </button>
+                                <button id="manageSpeakersBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                    <i class="fas fa-users mr-2"></i> Manage Speakers
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -304,6 +307,81 @@
                     <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">Change Password</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Manage Speakers Modal -->
+    <div id="manageSpeakersModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Speakers</h3>
+                <button id="closeSpeakersModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-sm text-[var(--text-muted)] mb-4">
+                    Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.
+                </p>
+                
+                <!-- Loading state -->
+                <div id="speakersLoading" class="text-center py-8 hidden">
+                    <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                    <p class="text-[var(--text-muted)] mt-2">Loading speakers...</p>
+                </div>
+                
+                <!-- Error state -->
+                <div id="speakersError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <span id="speakersErrorMessage">Failed to load speakers</span>
+                </div>
+                
+                <!-- Empty state -->
+                <div id="speakersEmpty" class="text-center py-8 hidden">
+                    <i class="fas fa-users text-4xl text-[var(--text-light)] mb-4"></i>
+                    <p class="text-[var(--text-muted)]">No speakers saved yet</p>
+                    <p class="text-sm text-[var(--text-light)]">Speakers will appear here when you use speaker names in your recordings</p>
+                </div>
+                
+                <!-- Speakers list -->
+                <div id="speakersList" class="space-y-2 max-h-96 overflow-y-auto">
+                    <!-- Speakers will be populated here -->
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center pt-4 border-t border-[var(--border-primary)]">
+                <div class="text-sm text-[var(--text-muted)]">
+                    <span id="speakersCount">0</span> speakers saved
+                </div>
+                <div class="flex space-x-3">
+                    <button id="deleteAllSpeakersBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-trash mr-2"></i> Delete All
+                    </button>
+                    <button id="closeSpeakersBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete All Speakers Confirmation Modal -->
+    <div id="deleteAllSpeakersModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 hidden">
+        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-exclamation-triangle text-[var(--text-danger)] text-2xl mr-3"></i>
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Delete All Speakers</h3>
+            </div>
+            <p class="text-[var(--text-secondary)] mb-6">
+                Are you sure you want to delete all saved speakers? This action cannot be undone.
+            </p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancelDeleteAllBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">
+                    Cancel
+                </button>
+                <button id="confirmDeleteAllBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">
+                    <i class="fas fa-trash mr-2"></i> Delete All
+                </button>
+            </div>
         </div>
     </div>
 
@@ -398,6 +476,260 @@
                 alert('New password and confirmation do not match.');
             }
         });
+
+        // Manage Speakers Modal functionality
+        const manageSpeakersBtn = document.getElementById('manageSpeakersBtn');
+        const manageSpeakersModal = document.getElementById('manageSpeakersModal');
+        const closeSpeakersModalBtn = document.getElementById('closeSpeakersModalBtn');
+        const closeSpeakersBtn = document.getElementById('closeSpeakersBtn');
+        const deleteAllSpeakersBtn = document.getElementById('deleteAllSpeakersBtn');
+        const deleteAllSpeakersModal = document.getElementById('deleteAllSpeakersModal');
+        const cancelDeleteAllBtn = document.getElementById('cancelDeleteAllBtn');
+        const confirmDeleteAllBtn = document.getElementById('confirmDeleteAllBtn');
+        
+        const speakersLoading = document.getElementById('speakersLoading');
+        const speakersError = document.getElementById('speakersError');
+        const speakersErrorMessage = document.getElementById('speakersErrorMessage');
+        const speakersEmpty = document.getElementById('speakersEmpty');
+        const speakersList = document.getElementById('speakersList');
+        const speakersCount = document.getElementById('speakersCount');
+
+        let speakers = [];
+
+        // Open speakers modal
+        manageSpeakersBtn.addEventListener('click', () => {
+            manageSpeakersModal.classList.remove('hidden');
+            loadSpeakers();
+        });
+
+        // Close speakers modal functions
+        function closeSpeakersModal() {
+            manageSpeakersModal.classList.add('hidden');
+        }
+
+        closeSpeakersModalBtn.addEventListener('click', closeSpeakersModal);
+        closeSpeakersBtn.addEventListener('click', closeSpeakersModal);
+
+        // Close modal when clicking outside
+        manageSpeakersModal.addEventListener('click', (event) => {
+            if (event.target === manageSpeakersModal) {
+                closeSpeakersModal();
+            }
+        });
+
+        // Load speakers from API
+        async function loadSpeakers() {
+            showLoadingState();
+            
+            try {
+                const response = await fetch('/speakers');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                speakers = await response.json();
+                displaySpeakers();
+            } catch (error) {
+                console.error('Error loading speakers:', error);
+                showErrorState(error.message);
+            }
+        }
+
+        // Show loading state
+        function showLoadingState() {
+            speakersLoading.classList.remove('hidden');
+            speakersError.classList.add('hidden');
+            speakersEmpty.classList.add('hidden');
+            speakersList.classList.add('hidden');
+        }
+
+        // Show error state
+        function showErrorState(message) {
+            speakersLoading.classList.add('hidden');
+            speakersError.classList.remove('hidden');
+            speakersEmpty.classList.add('hidden');
+            speakersList.classList.add('hidden');
+            speakersErrorMessage.textContent = message;
+            updateSpeakersCount(0);
+        }
+
+        // Display speakers
+        function displaySpeakers() {
+            speakersLoading.classList.add('hidden');
+            speakersError.classList.add('hidden');
+            
+            if (speakers.length === 0) {
+                speakersEmpty.classList.remove('hidden');
+                speakersList.classList.add('hidden');
+                deleteAllSpeakersBtn.disabled = true;
+            } else {
+                speakersEmpty.classList.add('hidden');
+                speakersList.classList.remove('hidden');
+                deleteAllSpeakersBtn.disabled = false;
+                renderSpeakersList();
+            }
+            
+            updateSpeakersCount(speakers.length);
+        }
+
+        // Render speakers list
+        function renderSpeakersList() {
+            speakersList.innerHTML = '';
+            
+            speakers.forEach(speaker => {
+                const speakerItem = createSpeakerItem(speaker);
+                speakersList.appendChild(speakerItem);
+            });
+        }
+
+        // Create speaker item element
+        function createSpeakerItem(speaker) {
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:bg-[var(--bg-accent)] transition-colors duration-200';
+            
+            const createdDate = new Date(speaker.created_at).toLocaleDateString();
+            const lastUsedDate = new Date(speaker.last_used).toLocaleDateString();
+            
+            div.innerHTML = `
+                <div class="flex-1">
+                    <div class="flex items-center">
+                        <i class="fas fa-user text-[var(--text-muted)] mr-2"></i>
+                        <span class="font-medium text-[var(--text-primary)]">${escapeHtml(speaker.name)}</span>
+                    </div>
+                    <div class="text-xs text-[var(--text-muted)] mt-1">
+                        Used ${speaker.use_count} time${speaker.use_count !== 1 ? 's' : ''} • 
+                        Last used: ${lastUsedDate} • 
+                        Created: ${createdDate}
+                    </div>
+                </div>
+                <button class="delete-speaker-btn ml-3 p-2 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded-md transition-colors duration-200" 
+                        data-speaker-id="${speaker.id}" 
+                        title="Delete speaker">
+                    <i class="fas fa-trash text-sm"></i>
+                </button>
+            `;
+            
+            // Add delete functionality
+            const deleteBtn = div.querySelector('.delete-speaker-btn');
+            deleteBtn.addEventListener('click', () => deleteSpeaker(speaker.id, speaker.name));
+            
+            return div;
+        }
+
+        // Delete individual speaker
+        async function deleteSpeaker(speakerId, speakerName) {
+            if (!confirm(`Are you sure you want to delete "${speakerName}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/speakers/${speakerId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Remove from local array
+                speakers = speakers.filter(s => s.id !== speakerId);
+                displaySpeakers();
+                showToast(`Speaker "${speakerName}" deleted successfully`);
+            } catch (error) {
+                console.error('Error deleting speaker:', error);
+                showToast(`Failed to delete speaker: ${error.message}`, 'error');
+            }
+        }
+
+        // Delete all speakers
+        deleteAllSpeakersBtn.addEventListener('click', () => {
+            deleteAllSpeakersModal.classList.remove('hidden');
+        });
+
+        // Cancel delete all
+        cancelDeleteAllBtn.addEventListener('click', () => {
+            deleteAllSpeakersModal.classList.add('hidden');
+        });
+
+        // Close delete all modal when clicking outside
+        deleteAllSpeakersModal.addEventListener('click', (event) => {
+            if (event.target === deleteAllSpeakersModal) {
+                deleteAllSpeakersModal.classList.add('hidden');
+            }
+        });
+
+        // Confirm delete all speakers
+        confirmDeleteAllBtn.addEventListener('click', async () => {
+            deleteAllSpeakersModal.classList.add('hidden');
+            
+            try {
+                // Delete all speakers one by one
+                const deletePromises = speakers.map(speaker => 
+                    fetch(`/speakers/${speaker.id}`, { method: 'DELETE' })
+                );
+                
+                const results = await Promise.allSettled(deletePromises);
+                
+                // Check for any failures
+                const failures = results.filter(result => result.status === 'rejected');
+                if (failures.length > 0) {
+                    console.error('Some speakers failed to delete:', failures);
+                    showToast(`${failures.length} speaker(s) failed to delete`, 'error');
+                }
+                
+                // Reload speakers list
+                await loadSpeakers();
+                showToast(`${speakers.length === 0 ? 'All speakers' : (results.length - failures.length) + ' speakers'} deleted successfully`);
+            } catch (error) {
+                console.error('Error deleting all speakers:', error);
+                showToast(`Failed to delete speakers: ${error.message}`, 'error');
+            }
+        });
+
+        // Update speakers count
+        function updateSpeakersCount(count) {
+            speakersCount.textContent = count;
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full ${
+                type === 'error' 
+                    ? 'bg-[var(--bg-danger)] text-[var(--text-button)]' 
+                    : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'
+            }`;
+            toast.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2"></i>
+                    <span>${escapeHtml(message)}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 10);
+            
+            // Animate out and remove
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
     </script>
 </body>
 </html>

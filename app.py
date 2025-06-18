@@ -596,6 +596,20 @@ def delete_speaker(speaker_id):
         app.logger.error(f"Error deleting speaker: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/speakers/delete_all', methods=['DELETE'])
+@login_required
+def delete_all_speakers():
+    """Delete all speakers for the current user."""
+    try:
+        deleted_count = Speaker.query.filter_by(user_id=current_user.id).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'deleted_count': deleted_count})
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting all speakers: {e}")
+        return jsonify({'error': str(e)}), 500
+
 def update_speaker_usage(speaker_names):
     """Helper function to update speaker usage statistics."""
     if not speaker_names or not current_user.is_authenticated:
