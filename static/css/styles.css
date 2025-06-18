@@ -970,3 +970,19 @@ body {
     }
 
 }
+
+/* Responsive title that shrinks font size instead of wrapping */
+.responsive-title {
+    font-size: clamp(1.25rem, 4vw, 1.5rem); /* Responsive font size between 1.25rem and 1.5rem */
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/* Ensure the title container doesn't grow beyond available space */
+.responsive-title:parent {
+    min-width: 0;
+    flex: 1;
+}
