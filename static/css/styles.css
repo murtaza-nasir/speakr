@@ -719,3 +719,24 @@ body {
   max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
+
+/* Responsive adjustments for mobile */
+@media (max-width: 1023px) {
+    /* Ensure modals are not too wide on small screens */
+    .fixed.inset-0 .w-full.max-w-md,
+    .fixed.inset-0 .w-full.max-w-lg,
+    .fixed.inset-0 .w-full.max-w-4xl {
+        max-width: 95vw !important;
+        max-height: 90vh;
+    }
+
+    /* Ensure the main content area is visible when the mobile menu is closed */
+    .main-content-area {
+        display: block !important;
+    }
+
+    /* Hide the desktop sidebar by default on mobile */
+    .sidebar-container:not(.fixed) {
+        display: none;
+    }
+}

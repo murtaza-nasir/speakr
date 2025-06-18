@@ -74,6 +74,18 @@
                             <i class="fas fa-sign-out-alt mr-2"></i> Logout
                         </a>
                     </div>
+                </div>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="px-4 py-2 ml-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                    <i class="fas fa-sign-in-alt mr-1"></i> Login
+                </a>
+                <a href="{{ url_for('register') }}" class="px-4 py-2 ml-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] border border-[var(--border-secondary)] rounded-lg">
+                    <i class="fas fa-user-plus mr-1"></i> Register
+                </a>
+                {% endif %}
+                </div>
+            </div>
+        </header>
 
         <!-- Reprocess Confirmation Modal -->
         <div v-if="showReprocessModal" @click="cancelReprocess" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
@@ -232,18 +244,6 @@
                 </div>
             </div>
         </div>
-                </div>
-                {% else %}
-                <a href="{{ url_for('login') }}" class="px-4 py-2 ml-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
-                    <i class="fas fa-sign-in-alt mr-1"></i> Login
-                </a>
-                <a href="{{ url_for('register') }}" class="px-4 py-2 ml-2 text-[var(--text-secondary)] hover:text-[var(--text-accent)] border border-[var(--border-secondary)] rounded-lg">
-                    <i class="fas fa-user-plus mr-1"></i> Register
-                </a>
-                {% endif %}
-                </div>
-            </div>
-        </header>
 
         <!-- Overlay for mobile fly-in menu -->
         <div v-if="isMobileMenuOpen" @click="closeMobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"></div>
