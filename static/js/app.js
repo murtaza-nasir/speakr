@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const recordings = ref([]);
         const selectedRecording = ref(null);
         const selectedTab = ref('summary'); // For Summary/Notes tabs
+        const selectedMobileTab = ref('transcript'); // For mobile 5-tab layout
         const searchQuery = ref(''); // Search input for filtering recordings
 
         // --- Multi-Upload State ---
@@ -73,7 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Inline editing state
         const editingParticipants = ref(false);
-        const editingMeetingDate = ref(false);
+        const editingMeetingDate = ref(false); // For desktop
+        const editingMobileMeetingDate = ref(false); // For mobile metadata tab
         const editingSummary = ref(false);
         const editingNotes = ref(false);
 
@@ -1540,12 +1542,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.userSelect = '';
         };
         
+        // Mobile tab switching
+        const switchMobileTab = (tabName) => {
+            selectedMobileTab.value = tabName;
+        };
+        
         // Clear chat messages when recording changes
         watch(selectedRecording, (newVal) => {
             chatMessages.value = [];
             showChat.value = false;
             selectedTab.value = 'summary'; // Reset tab when recording changes
+            selectedMobileTab.value = 'transcript'; // Reset mobile tab when recording changes
+            editingMobileMeetingDate.value = false; // Reset mobile edit state
         });
+
+        const toggleEditMobileMeetingDate = () => {
+            editingMobileMeetingDate.value = !editingMobileMeetingDate.value;
+            if (!editingMobileMeetingDate.value && selectedRecording.value) {
+                // If toggling off (i.e., saving), call saveInlineEdit
+                saveInlineEdit('meeting_date');
+            }
+        };
 
         return {
             // State
@@ -1577,6 +1594,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleInbox, toggleHighlight,
             // Inline editing methods
             toggleEditParticipants, toggleEditMeetingDate, toggleEditSummary, toggleEditNotes, saveInlineEdit,
+            editingMobileMeetingDate, // Expose for mobile
             // Chat Methods
             sendChatMessage, copyMessage, copyTranscription,
             // User menu
@@ -1615,6 +1633,10 @@ document.addEventListener('DOMContentLoaded', () => {
             highlightedTranscript,
             highlightSpeakerInTranscript,
             useAsrEndpoint,
+            // Mobile tabs
+            selectedMobileTab,
+            switchMobileTab,
+            toggleEditMobileMeetingDate, // Expose for mobile
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja

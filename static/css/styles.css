@@ -115,15 +115,29 @@ body {
     .sidebar-container.fixed {
         height: 100vh; /* Full viewport height */
         overflow-y: auto; /* Allow scrolling within the fly-in menu */
+        z-index: 9999 !important; /* Ensure it's above everything else */
     }
+    /* .main-content-area styling for mobile is handled by v-if in html now */
+    /*
     .main-content-area {
         transition: filter 0.3s ease-in-out;
     }
     body.mobile-menu-open .main-content-area {
-        filter: blur(4px); /* Optional: blur background when menu is open */
+        filter: blur(4px); 
     }
+    */
     body.mobile-menu-open {
         overflow: hidden; /* Prevent body scroll when mobile menu is open */
+    }
+    
+    /* Fix for mobile sidebar visibility */
+    .sidebar-container {
+        z-index: 50 !important; /* Ensure proper z-index */
+    }
+    
+    /* Ensure the mobile sidebar shows above the overlay */
+    .fixed.inset-y-0.left-0.z-40 {
+        z-index: 50 !important;
     }
 }
 
@@ -720,6 +734,219 @@ body {
   overflow-y: auto;
 }
 
+/* Mobile Tabbed Layout */
+@media (max-width: 1023px) {
+    /* Desktop layout's main content is hidden via v-if="!isMobileScreen" in HTML */
+    /* .desktop-layout {
+        display: none !important;
+    } */
+    
+    /* Show mobile layout only on mobile */
+    .mobile-layout {
+        display: flex !important;
+        flex-direction: column;
+        height: calc(100vh - 120px); /* Account for header and footer */
+        overflow: hidden;
+    }
+    
+    /* Mobile audio player section */
+    .mobile-audio-section {
+        flex-shrink: 0;
+        padding: 1rem;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-primary);
+    }
+    
+    /* Mobile tab navigation */
+    .mobile-tab-nav {
+        flex-shrink: 0;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-primary);
+        padding: 0 1rem;
+    }
+    
+    .mobile-tab-nav .tab-list {
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    
+    .mobile-tab-nav .tab-list::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .mobile-tab-button {
+        flex-shrink: 0;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .mobile-tab-button.active {
+        color: var(--text-accent);
+        border-bottom-color: var(--border-focus);
+    }
+    
+    .mobile-tab-button:hover {
+        color: var(--text-secondary);
+    }
+    
+    /* Mobile tab content area */
+    .mobile-tab-content {
+        flex: 1;
+        overflow: hidden;
+        background-color: var(--bg-secondary);
+    }
+    
+    .mobile-tab-panel {
+        height: 100%;
+        overflow-y: auto;
+        padding: 1rem;
+        display: none;
+    }
+    
+    .mobile-tab-panel.active {
+        display: block;
+    }
+    
+    /* Mobile tab content styling */
+    .mobile-transcript-content,
+    .mobile-summary-content,
+    .mobile-notes-content,
+    .mobile-metadata-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .mobile-content-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-primary);
+    }
+    
+    .mobile-content-title {
+        font-weight: 600;
+        color: var(--text-secondary);
+        flex: 1;
+    }
+    
+    .mobile-content-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .mobile-action-btn {
+        padding: 0.5rem;
+        background: none;
+        border: 1px solid var(--border-secondary);
+        border-radius: 0.375rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.875rem;
+    }
+    
+    .mobile-action-btn:hover {
+        background-color: var(--bg-tertiary);
+        color: var(--text-accent);
+    }
+    
+    .mobile-content-box {
+        flex: 1;
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-primary);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        overflow-y: auto;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        min-height: 0;
+    }
+    
+    /* Mobile chat layout */
+    .mobile-chat-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .mobile-chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: var(--bg-secondary); /* Changed from --bg-tertiary */
+        border: 1px solid var(--border-primary);
+        border-radius: 0.75rem 0.75rem 0 0;
+        margin-bottom: 0;
+    }
+    
+    .mobile-chat-input {
+        background-color: var(--bg-tertiary);
+        border: 1px solid var(--border-primary);
+        border-top: none;
+        border-radius: 0 0 0.75rem 0.75rem;
+        padding: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .mobile-chat-input textarea { /* Changed from input to textarea */
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid var(--border-secondary);
+        border-radius: 0.375rem;
+        background-color: var(--bg-input);
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        line-height: 1.5; /* Added for consistent line height */
+        resize: none; /* Prevent manual resizing */
+        min-height: calc(1.5em + 1rem); /* Approx 1 line with padding */
+        max-height: calc(1.5em * 4 + 1rem); /* Approx 4 lines with padding */
+        overflow-y: auto; /* Allow scrolling after max-height */
+    }
+    
+    .mobile-chat-input button {
+        padding: 0.5rem 1rem;
+        background-color: var(--bg-button);
+        color: var(--text-button);
+        border: none;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    
+    .mobile-chat-input button:disabled {
+        background-color: var(--bg-tertiary);
+        color: var(--text-muted);
+        cursor: not-allowed;
+    }
+}
+
+/* Hide mobile layout on desktop */
+@media (min-width: 1024px) {
+    .mobile-layout {
+        display: none !important;
+    }
+    
+    .desktop-layout {
+        display: block !important;
+    }
+}
+
 /* Responsive adjustments for mobile */
 @media (max-width: 1023px) {
     /* Ensure modals are not too wide on small screens */
@@ -735,8 +962,4 @@ body {
         display: block !important;
     }
 
-    /* Hide the desktop sidebar by default on mobile */
-    .sidebar-container:not(.fixed) {
-        display: none;
-    }
 }

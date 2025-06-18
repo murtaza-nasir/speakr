@@ -246,7 +246,7 @@
         </div>
 
         <!-- Overlay for mobile fly-in menu -->
-        <div v-if="isMobileMenuOpen" @click="closeMobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"></div>
+        <div v-if="isMobileMenuOpen" @click="closeMobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"></div>
 
         <div v-if="globalError" class="mb-4 p-4 bg-[var(--bg-danger-light)] border border-[var(--border-danger)] text-[var(--text-danger-strong)] rounded-lg" role="alert">
              <div class="flex justify-between items-center">
@@ -274,6 +274,260 @@
 
             {% if current_user.is_authenticated %}
             <div v-if="currentView === 'gallery'" class="flex-grow flex flex-col rounded-lg relative">
+                <!-- Mobile Layout (shown only on mobile when recording is selected) -->
+                <div v-if="selectedRecording" class="mobile-layout bg-[var(--bg-secondary)] rounded-lg shadow-md">
+                    <!-- New Mobile Header Section -->
+                    <div class="p-4 border-b border-[var(--border-primary)]">
+                        <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2 truncate" :title="selectedRecording.title || 'Loading...'">
+                            ${ selectedRecording.title || 'Loading...' }
+                        </h3>
+                        <div class="flex items-center justify-between mb-3">
+                            <span v-if="selectedRecording.status" :class="getStatusClass(selectedRecording.status)" class="status-badge text-xs">
+                                ${ formatStatus(selectedRecording.status) }
+                            </span>
+                            <div class="flex space-x-2">
+                                <button @click="toggleInbox(selectedRecording)" 
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105" 
+                                        :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+                                        :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                                    <i class="fas fa-inbox"></i>
+                                </button>
+                                <button @click="toggleHighlight(selectedRecording)" 
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105"
+                                        :class="selectedRecording.is_highlighted ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200 dark:bg-yellow-700 dark:text-yellow-200 dark:hover:bg-yellow-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+                                        :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                            <button @click="editRecording(selectedRecording)" class="mobile-action-btn flex items-center justify-center"><i class="fas fa-edit mr-1"></i> Details</button>
+                            <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="mobile-action-btn flex items-center justify-center"><i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'" class="mr-1"></i> Tx Reprocess</button>
+                            <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="mobile-action-btn flex items-center justify-center"><i class="fas fa-sync-alt mr-1"></i> Sum Reprocess</button>
+                            <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0" class="mobile-action-btn flex items-center justify-center"><i class="fas fa-user-tag mr-1"></i> Speakers</button>
+                            <button @click="confirmDelete(selectedRecording)" class="mobile-action-btn flex items-center justify-center col-span-2 sm:col-span-1 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] hover:bg-[var(--bg-danger)] hover:text-[var(--text-button)]"><i class="fas fa-trash mr-1"></i> Delete</button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Audio Player Section -->
+                    <div class="mobile-audio-section border-b border-[var(--border-primary)]">
+                        <h4 class="font-semibold text-sm text-[var(--text-secondary)] mb-1">Audio Player</h4>
+                        <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
+                            <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Tab Navigation -->
+                    <div class="mobile-tab-nav">
+                        <div class="tab-list">
+                            <button @click="switchMobileTab('transcript')" 
+                                    :class="selectedMobileTab === 'transcript' ? 'active' : ''"
+                                    class="mobile-tab-button">
+                                <i class="fas fa-file-text mr-1"></i> Transcript
+                            </button>
+                            <button @click="switchMobileTab('summary')" 
+                                    :class="selectedMobileTab === 'summary' ? 'active' : ''"
+                                    class="mobile-tab-button">
+                                <i class="fas fa-file-alt mr-1"></i> Summary
+                            </button>
+                            <button @click="switchMobileTab('notes')" 
+                                    :class="selectedMobileTab === 'notes' ? 'active' : ''"
+                                    class="mobile-tab-button">
+                                <i class="fas fa-sticky-note mr-1"></i> Notes
+                            </button>
+                            <button @click="switchMobileTab('chat')" 
+                                    :class="selectedMobileTab === 'chat' ? 'active' : ''"
+                                    class="mobile-tab-button">
+                                <i class="fas fa-comments mr-1"></i> Chat
+                            </button>
+                            <button @click="switchMobileTab('metadata')" 
+                                    :class="selectedMobileTab === 'metadata' ? 'active' : ''"
+                                    class="mobile-tab-button">
+                                <i class="fas fa-info-circle mr-1"></i> Metadata
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Tab Content -->
+                    <div class="mobile-tab-content">
+                        <!-- Transcript Tab -->
+                        <div class="mobile-tab-panel" :class="{ active: selectedMobileTab === 'transcript' }">
+                            <div class="mobile-transcript-content">
+                                <div class="mobile-content-header">
+                                    <h4 class="mobile-content-title">Transcription</h4>
+                                    <div class="mobile-content-actions">
+                                        <button @click="copyTranscription($event)" class="mobile-action-btn" title="Copy to clipboard">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                        <!-- Reprocess transcription button moved to main header -->
+                                    </div>
+                                </div>
+                                <div class="mobile-content-box">
+                                    <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'">
+                                        <pre class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
+                                    </div>
+                                    <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
+                                        <p class="font-medium mb-2">Processing Failed:</p>
+                                        <pre class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'An unknown error occurred.' }</pre>
+                                    </div>
+                                    <div v-else class="flex items-center justify-center text-[var(--text-muted)] h-full">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i> Transcription in progress...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Tab -->
+                        <div class="mobile-tab-panel" :class="{ active: selectedMobileTab === 'summary' }">
+                            <div class="mobile-summary-content">
+                                <div class="mobile-content-header">
+                                    <h4 class="mobile-content-title">Summary</h4>
+                                    <div class="mobile-content-actions">
+                                        <button @click="toggleEditSummary" class="mobile-action-btn" title="Edit Summary">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <!-- Reprocess summary and Identify Speakers buttons moved to main header -->
+                                    </div>
+                                </div>
+                                <div class="mobile-content-box summary-box">
+                                    <div v-if="selectedRecording.status === 'COMPLETED'" class="h-full">
+                                        <div v-if="!editingSummary" class="h-full overflow-y-auto" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'"></div>
+                                        <textarea v-else v-model="selectedRecording.summary" @blur="saveInlineEdit('summary')" class="w-full h-full bg-transparent border-none focus:ring-0 focus:outline-none resize-none" placeholder="Enter summary"></textarea>
+                                    </div>
+                                    <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)] h-full overflow-y-auto" v-html="selectedRecording.summary_html || selectedRecording.summary || 'Summary generation failed or was skipped.'"></div>
+                                    <div v-else class="flex items-center justify-center text-[var(--text-muted)] h-full">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i> Summary pending...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes Tab -->
+                        <div class="mobile-tab-panel" :class="{ active: selectedMobileTab === 'notes' }">
+                            <div class="mobile-notes-content">
+                                <div class="mobile-content-header">
+                                    <h4 class="mobile-content-title">Notes</h4>
+                                    <div class="mobile-content-actions">
+                                        <button @click="toggleEditNotes" class="mobile-action-btn" title="Edit Notes">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mobile-content-box notes-box">
+                                    <div v-if="!editingNotes" v-html="selectedRecording.notes_html || selectedRecording.notes || 'No notes'"></div>
+                                    <textarea v-else v-model="selectedRecording.notes" @blur="saveInlineEdit('notes')" class="w-full h-full bg-transparent border-none focus:ring-0 focus:outline-none resize-none" placeholder="Enter notes"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Tab -->
+                        <div class="mobile-tab-panel" :class="{ active: selectedMobileTab === 'chat' }">
+                            <div class="mobile-chat-content">
+                                <div class="mobile-chat-messages" ref="chatMessagesRef">
+                                    <div v-if="chatMessages.length === 0" class="flex items-center justify-center h-full text-[var(--text-muted)]">
+                                        <div class="text-center">
+                                            <i class="fas fa-comments text-2xl mb-2"></i>
+                                            <p>Ask questions about the transcript</p>
+                                        </div>
+                                    </div>
+                                    <div v-for="(message, index) in chatMessages" :key="index" class="message" :class="message.role === 'user' ? 'user-message bg-[var(--bg-accent)] text-[var(--text-accent)]' : 'ai-message bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-grow" v-if="message.role === 'user'">${ message.content }</div>
+                                            <div class="flex-grow" v-else v-html="message.html || message.content"></div>
+                                            <button v-if="message.role === 'assistant'" @click="copyMessage(message.content, $event)" class="ml-2 text-[var(--text-light)] hover:text-[var(--text-muted)]" title="Copy response">
+                                                <i class="fas fa-copy text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div v-if="isChatLoading" class="message ai-message bg-[var(--bg-tertiary)] text-[var(--text-secondary)]">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i> Thinking...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mobile-chat-input">
+                                    <textarea
+                                        v-model="chatInput" 
+                                        @keyup.enter.exact="sendChatMessage"
+                                        @keyup.enter.shift.exact.prevent="chatInput += '\n'"
+                                        placeholder="Ask about the transcript... (Shift+Enter for new line)" 
+                                        :disabled="isChatLoading || !selectedRecording || selectedRecording.status !== 'COMPLETED'"
+                                        class="custom-scrollbar"
+                                    ></textarea>
+                                    <button 
+                                        @click="sendChatMessage" 
+                                        :disabled="!chatInput.trim() || isChatLoading || !selectedRecording || selectedRecording.status !== 'COMPLETED'"
+                                    >
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Metadata Tab -->
+                        <div class="mobile-tab-panel" :class="{ active: selectedMobileTab === 'metadata' }">
+                            <div class="mobile-metadata-content">
+                                <div class="mobile-content-header">
+                                    <h4 class="mobile-content-title">Metadata</h4>
+                                </div>
+                                <div class="mobile-content-box">
+                                    <!-- Participants Section (Editable) -->
+                                    <div class="mb-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <dt class="font-medium text-[var(--text-primary)]">Participants</dt>
+                                            <button @click="toggleEditParticipants" class="mobile-action-btn" title="Edit Participants">
+                                                <i class="fas" :class="editingParticipants ? 'fa-check' : 'fa-edit'"></i>
+                                            </button>
+                                        </div>
+                                        <div v-if="!editingParticipants" class="text-sm text-[var(--text-secondary)]">
+                                            ${ selectedRecording.participants || 'None specified' }
+                                        </div>
+                                        <textarea v-else v-model="selectedRecording.participants" @blur="saveInlineEdit('participants')" class="w-full p-2 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] text-[var(--text-primary)] resize-none" rows="2" placeholder="Enter participants"></textarea>
+                                    </div>
+
+                                    <!-- Other Metadata -->
+                                    <div class="space-y-3">
+                                        <div class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                            <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">Original Filename</dt>
+                                            <dd class="text-sm text-[var(--text-secondary)] break-all">${ selectedRecording.original_filename || 'N/A' }</dd>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                            <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">File Size</dt>
+                                            <dd class="text-sm text-[var(--text-secondary)]">${ formatFileSize(selectedRecording.file_size) }</dd>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                            <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">Created</dt>
+                                            <dd class="text-sm text-[var(--text-secondary)]">${ new Date(selectedRecording.created_at).toLocaleString() }</dd>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                            <div class="flex justify-between items-center mb-0.5">
+                                                <dt class="font-medium text-sm text-[var(--text-primary)]">Meeting Date</dt>
+                                                <button @click="toggleEditMobileMeetingDate" class="mobile-action-btn text-xs" :title="editingMobileMeetingDate ? 'Save Date' : 'Edit Date'">
+                                                    <i class="fas" :class="editingMobileMeetingDate ? 'fa-check' : 'fa-edit'"></i>
+                                                </button>
+                                            </div>
+                                            <div v-if="!editingMobileMeetingDate" 
+                                                 @click="toggleEditMobileMeetingDate"
+                                                 class="text-sm text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-accent)]">
+                                                ${ selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'Click to add' }
+                                            </div>
+                                            <input v-else 
+                                                   type="date" 
+                                                   v-model="selectedRecording.meeting_date" 
+                                                   @blur="saveInlineEdit('meeting_date'); editingMobileMeetingDate = false;" 
+                                                   class="w-full p-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] text-[var(--text-primary)]">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Layout (shown only on desktop) -->
+                <div class="desktop-layout">
                 <!-- Sidebar toggle button that appears when sidebar is collapsed - positioned at the left edge of main content, aligned with title -->
                 <button v-if="isSidebarCollapsed && !isMobileScreen"  
                         @click="toggleSidebar" 
@@ -286,12 +540,10 @@
                     <!-- Sidebar: Conditional classes for mobile fly-in and desktop normal -->
                     <div 
                         :class="{
-                            'fixed inset-y-0 left-0 z-40 w-4/5 max-w-xs bg-[var(--bg-secondary)] shadow-xl transform transition-transform duration-300 ease-in-out': isMobileScreen,
+                            'fixed inset-y-0 left-0 z-50 w-4/5 max-w-xs bg-[var(--bg-secondary)] shadow-xl transform transition-transform duration-300 ease-in-out': isMobileScreen,
                             'translate-x-0': isMobileScreen && isMobileMenuOpen,
                             '-translate-x-full': isMobileScreen && !isMobileMenuOpen,
-                            'lg:col-span-1 sidebar-container max-h-85vh': !isMobileScreen,
-                            'hidden': isMobileScreen && !isMobileMenuOpen, /* Ensure hidden when not open on mobile */
-                            'block': isMobileScreen && isMobileMenuOpen /* Ensure block when open on mobile */
+                            'lg:col-span-1 sidebar-container max-h-85vh': !isMobileScreen
                         }"
                         v-show="isMobileMenuOpen || (!isMobileScreen && !isSidebarCollapsed)"
                         class="bg-[var(--bg-secondary)] p-4 rounded-lg shadow-md lg:sticky lg:top-6">
@@ -390,7 +642,7 @@
                         </div>
                     </div>
 
-                     <div :class="(!isMobileScreen && isSidebarCollapsed) ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col max-h-85vh main-content-area">
+                     <div v-if="!isMobileScreen" :class="(!isMobileScreen && isSidebarCollapsed) ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col max-h-85vh main-content-area">
                         <div v-if="selectedRecording" class="flex-grow flex flex-col">
                             <div class="flex flex-col sm:flex-row justify-between items-start mb-4 border-b border-[var(--border-primary)] pb-4">
                                 <div class="mb-3 sm:mb-0 max-w-lg">
@@ -673,6 +925,16 @@
                             <p class="text-lg font-medium mb-2">Select a recording from the list to view details.</p>
                             <p>Or, drag and drop audio file(s) anywhere on this page to upload.</p>
                         </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Mobile fallback when no recording selected -->
+                <div v-if="!selectedRecording" class="mobile-layout">
+                    <div class="flex flex-col items-center justify-center text-center text-[var(--text-muted)] h-full p-8">
+                        <i class="fas fa-hand-pointer text-4xl text-[var(--text-light)] mb-4"></i>
+                        <p class="text-lg font-medium mb-2">Select a recording from the menu to view details.</p>
+                        <p>Tap the menu button in the header to browse recordings.</p>
                     </div>
                 </div>
             </div>
