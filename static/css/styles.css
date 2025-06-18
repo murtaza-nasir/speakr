@@ -239,7 +239,7 @@ div[v-if="!editingNotes"] {
     flex-direction: column;
     height: 100%;
     gap: 1rem;
-    overflow-y: auto; /* Enable scrolling for content that exceeds container */
+    overflow: hidden; /* Prevent this container from scrolling */
     min-height: 0; /* Allows flex to work properly */
 }
 
@@ -260,7 +260,7 @@ div[v-if="!editingNotes"] {
 
 /* Transcription section - takes up significant space */
 .transcription-section {
-    flex: 2;
+    /* flex: 2; */ /* Removed: Let JavaScript control flex values */
     min-height: 0; /* Allows flex to work properly */
     overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
     display: flex;
@@ -269,12 +269,12 @@ div[v-if="!editingNotes"] {
 
 /* Tab content section - takes up remaining space and aligns with chat box */
 .tab-section {
-    flex: 1;
+    /* flex: 1; */ /* Removed: Let JavaScript control flex values */
     min-height: 100px; /* Minimum height to prevent collapsing too much */
     overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
     display: flex;
     flex-direction: column;
-    height: 100%; /* Ensure it takes full height */
+    /* height: 100%; */ /* Removed: Let flex property control height */
 }
 
 /* Audio player section - small fixed height */

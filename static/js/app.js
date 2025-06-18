@@ -80,6 +80,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const editingSummary = ref(false);
         const editingNotes = ref(false);
 
+        // --- Main Column Resize State ---
+        const leftMainColumn = ref(null);
+        const rightMainColumn = ref(null);
+        const mainColumnResizer = ref(null);
+        const mainContentColumns = ref(null);
+        const isResizingMainColumns = ref(false);
+        let initialMainColumnResizeX = 0;
+        let initialLeftMainColumnWidthPx = 0;
+        const MIN_MAIN_COLUMN_WIDTH_PERCENT = 20; // Min width for left column
+        const MAX_MAIN_COLUMN_WIDTH_PERCENT = 75; // Max width for left column
+
+        // --- Vertical Resize State ---
+        const transcriptionSection = ref(null);
+        const tabSection = ref(null);
+        const verticalResizeHandle = ref(null);
+        const isResizingVertical = ref(false);
+        let initialVerticalResizeY = 0;
+        let initialTranscriptionHeightPx = 0;
+        let initialTabHeightPx = 0;
+        
+        // Resizable panels state
+        const transcriptionFlex = ref(2);
+        const tabsFlex = ref(1);
+
+        // Track initialization status
+        const isDesktopLayoutInitialized = ref(false);
+
         // --- Computed Properties ---
         // Filter recordings based on search query
         const filteredRecordings = computed(() => {
@@ -134,7 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
          const finishedFilesInQueue = computed(() => uploadQueue.value.filter(item => ['completed', 'failed'].includes(item.status)));
 
         const isMobileScreen = computed(() => {
-            return windowWidth.value < 1024; // Tailwind's lg breakpoint
+            // Align with Tailwind's 'lg' breakpoint for sidebar visibility and mobile menu toggling
+            return windowWidth.value < 1024; 
         });
 
         const identifiedSpeakers = computed(() => {
@@ -952,7 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Lifecycle Hooks ---
-        onMounted(() => {
+        onMounted(async () => {
             // Check for the ASR endpoint flag from the template
             const appDiv = document.getElementById('app');
             if (appDiv) {
@@ -961,21 +989,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             loadRecordings();
             initializeDarkMode(); // Initialize dark mode on load            
-            // Check initial screen size
-            // This is a bit of a hack as isMobileScreen is computed,
-            // but we need to react to its initial value for listeners.
-            // A better way might be to have a separate ref for windowWidth and watch it.
+            
+            // Check initial screen size and handle window resize
             const updateMobileStatus = () => {
                 windowWidth.value = window.innerWidth;
                 // If transitioning from mobile to desktop and mobile menu was open, close it.
                 if (!isMobileScreen.value && isMobileMenuOpen.value) {
                     closeMobileMenu();
                 }
-                // If transitioning to desktop, ensure sidebar state is respected
-                // (e.g. if it was collapsed, it should remain collapsed or open based on isSidebarCollapsed)
             };
-            updateMobileStatus(); // Call on mount
+            
             window.addEventListener('resize', updateMobileStatus);
+            updateMobileStatus(); // Set initial window width
 
             // Close mobile menu on escape key
             const handleEsc = (e) => {
@@ -985,6 +1010,256 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             document.addEventListener('keydown', handleEsc);
         });
+        
+        // --- Main Column Resizer Methods ---
+        const loadMainColumnWidths = () => {
+            if (isMobileScreen.value || !leftMainColumn.value) return;
+
+            const savedLeftWidthPercent = localStorage.getItem('mainColumnLeftWidthPercent');
+            if (savedLeftWidthPercent) {
+                const percent = parseFloat(savedLeftWidthPercent);
+                if (percent >= MIN_MAIN_COLUMN_WIDTH_PERCENT && percent <= MAX_MAIN_COLUMN_WIDTH_PERCENT) {
+                    leftMainColumn.value.style.width = `${percent}%`;
+                } else {
+                    // If stored value is out of bounds, apply default
+                    leftMainColumn.value.style.width = '40%'; // Default
+                    localStorage.removeItem('mainColumnLeftWidthPercent'); // Clear invalid stored value
+                }
+            } else if (leftMainColumn.value.style.width === '') {
+                 // If no saved width and no inline style, set default.
+                 // HTML already has 40%, but this is a fallback.
+                leftMainColumn.value.style.width = '40%';
+            }
+        };
+
+        const saveMainColumnWidths = (leftWidthPercentString) => {
+            if (isMobileScreen.value) return;
+            localStorage.setItem('mainColumnLeftWidthPercent', leftWidthPercentString);
+        };
+
+        const initMainColumnResizer = () => {
+            if (mainColumnResizer.value && !isMobileScreen.value) {
+                mainColumnResizer.value.addEventListener('mousedown', startMainColumnResize);
+            }
+        };
+
+        const startMainColumnResize = (event) => {
+            if (isMobileScreen.value || !leftMainColumn.value || !mainContentColumns.value) return;
+            event.preventDefault();
+
+            isResizingMainColumns.value = true;
+            initialMainColumnResizeX = event.clientX;
+            initialLeftMainColumnWidthPx = leftMainColumn.value.offsetWidth;
+
+            document.addEventListener('mousemove', handleMainColumnResize);
+            document.addEventListener('mouseup', stopMainColumnResize);
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+        };
+
+        const handleMainColumnResize = (event) => {
+            if (!isResizingMainColumns.value || !leftMainColumn.value || !mainContentColumns.value || !mainColumnResizer.value) return;
+
+            const dx = event.clientX - initialMainColumnResizeX;
+            let newLeftWidthPx = initialLeftMainColumnWidthPx + dx;
+
+            const parentWidthPx = mainContentColumns.value.offsetWidth;
+            const resizerActualWidth = mainColumnResizer.value.offsetWidth;
+            const resizerMarginLeft = parseFloat(getComputedStyle(mainColumnResizer.value).marginLeft);
+            const resizerMarginRight = parseFloat(getComputedStyle(mainColumnResizer.value).marginRight);
+            const resizerTotalSpacePx = resizerActualWidth + resizerMarginLeft + resizerMarginRight;
+
+            const effectiveParentWidthPx = parentWidthPx - resizerTotalSpacePx;
+
+            if (effectiveParentWidthPx <= 0) return; // Guard against division by zero or invalid state
+            
+            // Calculate pixel constraints
+            const minLeftPx = (MIN_MAIN_COLUMN_WIDTH_PERCENT / 100) * effectiveParentWidthPx;
+            const maxLeftPx = (MAX_MAIN_COLUMN_WIDTH_PERCENT / 100) * effectiveParentWidthPx;
+
+            newLeftWidthPx = Math.max(minLeftPx, Math.min(maxLeftPx, newLeftWidthPx));
+            
+            const newLeftWidthPercent = (newLeftWidthPx / effectiveParentWidthPx) * 100;
+
+            leftMainColumn.value.style.width = `${newLeftWidthPercent.toFixed(2)}%`;
+        };
+
+        const stopMainColumnResize = () => {
+            if (!isResizingMainColumns.value) return;
+            isResizingMainColumns.value = false;
+
+            document.removeEventListener('mousemove', handleMainColumnResize);
+            document.removeEventListener('mouseup', stopMainColumnResize);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+
+            if (leftMainColumn.value && leftMainColumn.value.style.width) {
+                saveMainColumnWidths(parseFloat(leftMainColumn.value.style.width).toFixed(2));
+            }
+        };
+        
+        // Watch for screen size changes to re-init or clear resizer
+        watch(isMobileScreen, (isMobile) => {
+            if (isMobile) {
+                if (mainColumnResizer.value) {
+                    mainColumnResizer.value.removeEventListener('mousedown', startMainColumnResize);
+                }
+                // Optionally reset widths to default for mobile if needed, though CSS should handle layout
+            } else {
+                // Desktop: ensure elements are available and initialize
+                nextTick(() => { // Ensure DOM is updated
+                    initializeDesktopLayout();
+                });
+            }
+        });
+
+        // --- Vertical Resizer Methods ---
+        const initVerticalResizer = () => {
+            transcriptionSection.value = document.querySelector('.transcription-section');
+            tabSection.value = document.querySelector('.tab-section');
+            verticalResizeHandle.value = document.querySelector('.resize-handle');
+            
+            if (verticalResizeHandle.value && !isMobileScreen.value) {
+                verticalResizeHandle.value.addEventListener('mousedown', startVerticalResize);
+                console.log('Vertical resizer initialized with addEventListener');
+                return true; // Successfully initialized
+            } else {
+                console.log('Vertical resizer elements not found:', {
+                    transcriptionSection: !!transcriptionSection.value,
+                    tabSection: !!tabSection.value,
+                    verticalResizeHandle: !!verticalResizeHandle.value,
+                    isMobileScreen: isMobileScreen.value
+                });
+                return false; // Failed to initialize
+            }
+        };
+
+        const startVerticalResize = (event) => {
+            if (isMobileScreen.value || !transcriptionSection.value || !tabSection.value) return;
+            event.preventDefault();
+
+            isResizingVertical.value = true;
+            initialVerticalResizeY = event.clientY;
+            initialTranscriptionHeightPx = transcriptionSection.value.offsetHeight;
+            initialTabHeightPx = tabSection.value.offsetHeight;
+
+            document.addEventListener('mousemove', handleVerticalResize);
+            document.addEventListener('mouseup', stopVerticalResize);
+            document.body.style.cursor = 'ns-resize';
+            document.body.style.userSelect = 'none';
+            
+            console.log('Started vertical resize');
+        };
+
+        const handleVerticalResize = (event) => {
+            if (!isResizingVertical.value || !transcriptionSection.value || !tabSection.value) return;
+
+            const dy = event.clientY - initialVerticalResizeY;
+            const totalHeight = initialTranscriptionHeightPx + initialTabHeightPx;
+            
+            let newTranscriptionHeight = initialTranscriptionHeightPx + dy;
+            let newTabHeight = totalHeight - newTranscriptionHeight;
+            
+            // Enforce minimum heights
+            const minHeight = 100; // Minimum height in pixels
+            if (newTranscriptionHeight < minHeight) {
+                newTranscriptionHeight = minHeight;
+                newTabHeight = totalHeight - minHeight;
+            } else if (newTabHeight < minHeight) {
+                newTabHeight = minHeight;
+                newTranscriptionHeight = totalHeight - minHeight;
+            }
+            
+            // Convert to flex values (proportional)
+            const newTranscriptionFlex = newTranscriptionHeight / totalHeight * 3; // Scale to reasonable flex values
+            const newTabFlex = newTabHeight / totalHeight * 3;
+            
+            transcriptionFlex.value = Math.max(0.5, newTranscriptionFlex);
+            tabsFlex.value = Math.max(0.5, newTabFlex);
+        };
+
+        const stopVerticalResize = () => {
+            if (!isResizingVertical.value) return;
+            isResizingVertical.value = false;
+
+            document.removeEventListener('mousemove', handleVerticalResize);
+            document.removeEventListener('mouseup', stopVerticalResize);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            
+            console.log('Stopped vertical resize');
+        };
+
+        // Helper function to initialize desktop layout
+        const initializeDesktopLayout = () => {
+            console.log('Attempting to initialize desktop layout...');
+            
+            // First check if we're actually in desktop mode
+            if (isMobileScreen.value) {
+                console.log('Skipping desktop layout initialization - mobile screen detected');
+                return false;
+            }
+            
+            // Check if desktop layout elements are visible and rendered
+            const desktopLayout = document.querySelector('.desktop-layout');
+            if (!desktopLayout) {
+                console.log('Desktop layout container not found');
+                return false;
+            }
+            
+            // Check if desktop layout is actually visible (not hidden by CSS)
+            const desktopLayoutStyle = window.getComputedStyle(desktopLayout);
+            if (desktopLayoutStyle.display === 'none') {
+                console.log('Desktop layout is hidden by CSS');
+                return false;
+            }
+            
+            leftMainColumn.value = document.getElementById('leftMainColumn');
+            rightMainColumn.value = document.getElementById('rightMainColumn');
+            mainColumnResizer.value = document.getElementById('mainColumnResizer');
+            mainContentColumns.value = document.getElementById('mainContentColumns');
+            
+            let mainColumnsInitialized = false;
+            if (leftMainColumn.value && rightMainColumn.value && mainColumnResizer.value && mainContentColumns.value) {
+                // Additional check to ensure elements are actually visible
+                const leftStyle = window.getComputedStyle(leftMainColumn.value);
+                const rightStyle = window.getComputedStyle(rightMainColumn.value);
+                
+                if (leftStyle.display !== 'none' && rightStyle.display !== 'none') {
+                    loadMainColumnWidths();
+                    initMainColumnResizer();
+                    mainColumnsInitialized = true;
+                    console.log('Main columns initialized successfully');
+                } else {
+                    console.log('Main column elements are hidden by CSS');
+                }
+            } else {
+                console.log('Main column elements not found:', {
+                    leftMainColumn: !!leftMainColumn.value,
+                    rightMainColumn: !!rightMainColumn.value,
+                    mainColumnResizer: !!mainColumnResizer.value,
+                    mainContentColumns: !!mainContentColumns.value
+                });
+            }
+            
+            // Initialize vertical resizer
+            const verticalInitialized = initVerticalResizer();
+            
+            // Initialize vertical resizing flex values
+            const defaultTranscriptionFlex = 2; // Default initial value
+            const defaultTabsFlex = 1;       // Default initial value
+
+            transcriptionFlex.value = defaultTranscriptionFlex;
+            tabsFlex.value = defaultTabsFlex;
+            
+            console.log('Initialized vertical flex values:', { transcriptionFlex: transcriptionFlex.value, tabsFlex: tabsFlex.value });
+            
+            // Return true if at least one resizer was initialized successfully
+            const success = mainColumnsInitialized || verticalInitialized;
+            console.log('Desktop layout initialization result:', { mainColumnsInitialized, verticalInitialized, success });
+            return success;
+        };
+
 
         // --- Watchers ---
          watch(uploadQueue, (newQueue, oldQueue) => {
@@ -1286,13 +1561,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // --- Chat functionality ---
-        // Resizable panels state
-        const transcriptionFlex = ref(2);
-        const tabsFlex = ref(1);
-        const isResizing = ref(false);
-        const startY = ref(0);
-        const startTranscriptionFlex = ref(0);
-        const startTabsFlex = ref(0);
         
         const showChat = ref(false);
         const chatMessages = ref([]);
@@ -1494,54 +1762,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
 
         
-        // Resize functionality
-        const startResize = (e) => {
-            isResizing.value = true;
-            startY.value = e.clientY;
-            startTranscriptionFlex.value = transcriptionFlex.value;
-            startTabsFlex.value = tabsFlex.value;
-            
-            // Add event listeners for mousemove and mouseup
-            document.addEventListener('mousemove', handleResize);
-            document.addEventListener('mouseup', stopResize);
-            
-            // Prevent text selection during resize
-            document.body.style.userSelect = 'none';
-        };
-        
-        const handleResize = (e) => {
-            if (!isResizing.value) return;
-            
-            const deltaY = e.clientY - startY.value;
-            const totalFlex = startTranscriptionFlex.value + startTabsFlex.value;
-            
-            // Calculate new flex values based on mouse movement
-            // Moving down increases transcription section, decreases tabs
-            // This is more intuitive - drag down to make transcription bigger
-            const flexChange = deltaY / 200; // Reduced sensitivity (was 10)
-            
-            let newTranscriptionFlex = Math.max(1, startTranscriptionFlex.value + flexChange);
-            let newTabsFlex = Math.max(0.5, totalFlex - newTranscriptionFlex);
-            
-            // Ensure minimum heights are maintained
-            if (newTranscriptionFlex < 1) {
-                newTranscriptionFlex = 1;
-                newTabsFlex = totalFlex - 1;
-            } else if (newTabsFlex < 0.5) {
-                newTabsFlex = 0.5;
-                newTranscriptionFlex = totalFlex - 0.5;
-            }
-            
-            transcriptionFlex.value = newTranscriptionFlex;
-            tabsFlex.value = newTabsFlex;
-        };
-        
-        const stopResize = () => {
-            isResizing.value = false;
-            document.removeEventListener('mousemove', handleResize);
-            document.removeEventListener('mouseup', stopResize);
-            document.body.style.userSelect = '';
-        };
         
         // Mobile tab switching
         const switchMobileTab = (tabName) => {
@@ -1555,6 +1775,18 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedTab.value = 'summary'; // Reset tab when recording changes
             selectedMobileTab.value = 'transcript'; // Reset mobile tab when recording changes
             editingMobileMeetingDate.value = false; // Reset mobile edit state
+            
+            // Initialize desktop layout when a recording is first selected
+            if (newVal && !isMobileScreen.value && !isDesktopLayoutInitialized.value) {
+                // Use nextTick to ensure Vue has rendered the conditional elements
+                nextTick(() => {
+                    const success = initializeDesktopLayout();
+                    if (success) {
+                        isDesktopLayoutInitialized.value = true;
+                        console.log('Desktop layout initialized after recording selection');
+                    }
+                });
+            }
         });
 
         const toggleEditMobileMeetingDate = () => {
@@ -1576,8 +1808,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Chat State
             showChat, chatMessages, chatInput, isChatLoading, chatMessagesRef, // <-- Added chatMessagesRef
             // Resize functionality
-            transcriptionFlex, tabsFlex, isResizing, startY, startTranscriptionFlex, startTabsFlex,
-            startResize, handleResize, stopResize,
+            transcriptionFlex, tabsFlex,
             // Computed
             groupedRecordings, totalInQueue, completedInQueue, queuedFiles, finishedFilesInQueue, isMobileScreen,
             // Inline editing state
@@ -1639,8 +1870,11 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedMobileTab,
             switchMobileTab,
             toggleEditMobileMeetingDate, // Expose for mobile
+            // Main column resizer refs (not needed in template but good practice if they were)
+            // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns 
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja
 }).mount('#app');
+
 });

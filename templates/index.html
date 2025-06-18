@@ -324,12 +324,12 @@
                                 </button>
                                 <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                        title="Reprocess Transcription">
+                                        :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
                                     <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
                                 </button>
                                 <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                        title="Reprocess Summary">
+                                        title="Reprocess summary">
                                     <i class="fas fa-sync-alt"></i>
                                 </button>
                                 <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
@@ -685,12 +685,6 @@
                                 <div class="mb-3 sm:mb-0 max-w-lg">
                                      <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
                                         <span style="hyphens: auto; overflow-wrap: break-word; min-width: 0;">${ selectedRecording.title || 'Loading...' }</span>
-                                        <span v-if="selectedRecording.is_inbox" class="ml-4 bg-blue-50 text-blue-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity cursor-pointer" title="Mark as Read" @click="toggleInbox(selectedRecording)">
-                                            <i class="fas fa-inbox"></i>
-                                        </span>
-                                        <span v-if="selectedRecording.is_highlighted" class="ml-3 bg-yellow-50 text-yellow-600 px-1.5 py-1 rounded-md opacity-90 hover:opacity-100 transition-opacity" title="Highlighted">
-                                            <i class="fas fa-star"></i>
-                                        </span>
                                      </h3>
                                     <p class="text-sm text-[var(--text-muted)] mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                                         <!-- Display Meeting Date with edit functionality -->
@@ -724,35 +718,50 @@
                                     <!-- Removed separate Status Badge span -->
                                 </div>
                                 <div class="flex space-x-1.5 flex-shrink-0">
-                                    <button @click="toggleInbox(selectedRecording)" 
-                                            class="p-1.5 rounded-md text-xs transition-all hover:scale-105" 
-                                            :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                    <button @click="toggleInbox(selectedRecording)"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105"
+                                            :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
                                             :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
                                         <i class="fas fa-inbox"></i>
                                     </button>
                                     <button @click="toggleHighlight(selectedRecording)" 
-                                            class="p-1.5 rounded-md text-xs transition-all hover:scale-105"
-                                            :class="selectedRecording.is_highlighted ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105"
+                                            :class="selectedRecording.is_highlighted ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200 dark:bg-yellow-700 dark:text-yellow-200 dark:hover:bg-yellow-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
                                             :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
                                         <i class="fas fa-star"></i>
                                     </button>
-                                    <button @click="editRecording(selectedRecording)" 
-                                            class="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-xs transition-all hover:scale-105"
+                                    <button @click="editRecording(selectedRecording)"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                             title="Edit Details">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button @click="confirmDelete(selectedRecording)" 
-                                            class="p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-xs transition-all hover:scale-105"
-                                            title="Delete">
+                                    <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                            :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                                        <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
+                                    </button>
+                                    <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                            title="Reprocess summary">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                            title="Identify Speakers">
+                                        <i class="fas fa-user-tag"></i>
+                                    </button>
+                                    <button @click="confirmDelete(selectedRecording)"
+                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] hover:bg-[var(--bg-danger)] hover:text-[var(--text-button)]"
+                                            title="Delete Recording">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Main content area with flex layout -->
-                            <div class="flex flex-col md:flex-row gap-6 flex-grow overflow-y-auto" style="max-height: 75vh;">
+                            <div id="mainContentColumns" class="flex flex-col md:flex-row flex-grow overflow-y-auto" style="max-height: 75vh;">
                                 <!-- Left Column: Participants, Transcription, Summary & Notes -->
-                                <div class="md:w-2/5 content-column left-content">
+                                <div id="leftMainColumn" class="content-column left-content md:flex-shrink-0" style="width: 40%;">
                                     <!-- Participants Section -->
                                     <div class="participants-section">
                                         <div class="flex justify-between items-center mb-1">
@@ -773,12 +782,6 @@
                                                 <button @click="copyTranscription($event)" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Copy to clipboard">
                                                     <i class="fas fa-copy"></i>
                                                 </button>
-                                                <button @click="reprocessTranscription(selectedRecording.id)"
-                                                        v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                                                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded"
-                                                        :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                                                    <i :class="useAsrEndpoint ? 'fas fa-cogs' : 'fas fa-sync-alt'"></i>
-                                                </button>
                                             </div>
                                         </div>
                                         <div class="transcription-box custom-scrollbar relative">
@@ -798,7 +801,6 @@
                                     <!-- Resizable Handle -->
                                     <div 
                                         class="resize-handle cursor-ns-resize h-2 bg-[var(--border-primary)] hover:bg-[var(--border-accent)] rounded-full my-1 flex items-center justify-center"
-                                        @mousedown="startResize"
                                         title="Drag to resize">
                                         <div class="w-10 h-1 bg-[var(--text-light)] rounded-full"></div>
                                     </div>
@@ -829,18 +831,6 @@
                                                     <template v-if="selectedTab === 'summary'">
                                                         <button @click="toggleEditSummary" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" title="Edit Summary">
                                                             <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button @click="reprocessSummary(selectedRecording.id)" 
-                                                                v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                                                                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded" 
-                                                                title="Reprocess summary">
-                                                            <i class="fas fa-sync-alt"></i>
-                                                        </button>
-                                                        <button @click="openSpeakerModal"
-                                                                v-if="identifiedSpeakers.length > 0"
-                                                                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1 rounded"
-                                                                title="Identify Speakers">
-                                                            <i class="fas fa-user-tag"></i>
                                                         </button>
                                                     </template>
                                                     <!-- Notes buttons - shown when notes tab is active -->
@@ -897,8 +887,15 @@
                                     </div>
                                 </div>
 
+                                <!-- Resizer Handle for Main Columns -->
+                                <div id="mainColumnResizer" 
+                                     class="hidden md:flex items-center justify-center w-2 bg-transparent hover:bg-[var(--border-accent)] cursor-ew-resize flex-shrink-0 mx-1 group" 
+                                     title="Drag to resize columns">
+                                    <div class="w-1 h-16 bg-[var(--border-primary)] group-hover:bg-[var(--text-accent)] rounded-full transition-colors duration-150"></div>
+                                </div>
+
                                 <!-- Right Column: Audio & Chat -->
-                                <div class="md:w-3/5 content-column right-content">
+                                <div id="rightMainColumn" class="content-column right-content flex-grow">
                                     <!-- Audio Player Section -->
                                     <div class="audio-section">
                                         <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
