@@ -182,7 +182,7 @@
                                     <div>
                                         <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]">Preferred Output Language</label>
                                         <input type="text" name="output_language" id="output_language" value="{{ current_user.output_language or '' }}" placeholder="e.g., English, Spanish, Chinese" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <p class="text-xs text-[var(--text-light)] mt-1">Language for titles, summaries, and chat. Leave blank for default (usually English or transcription language).</p>
+                                        <p class="text-xs text-[var(--text-light)] mt-1">Language for titles, summaries, and chat. Leave blank for default (default behavior of your chosen model).</p>
                                     </div>
                                     <div>
                                         <label for="summary_prompt" class="block text-sm font-medium text-[var(--text-muted)]">Custom Summary Prompt</label>

@@ -487,8 +487,7 @@
                                                 <i class="fas fa-chevron-down speaker-legend-toggle"></i>
                                             </div>
                                             <div class="speaker-legend-content">
-                                                <div v-for="speaker in processedTranscription.speakers" :key="speaker.name" class="speaker-legend-item">
-                                                    <div :class="speaker.color" class="speaker-color-dot"></div>
+                                                <div v-for="speaker in processedTranscription.speakers" :key="speaker.name" :class="[speaker.color, 'speaker-legend-item']">
                                                     <span class="speaker-name">${ speaker.name }</span>
                                                 </div>
                                             </div>
@@ -928,8 +927,7 @@
                                                         <i class="fas fa-chevron-down speaker-legend-toggle"></i>
                                                     </div>
                                                     <div class="speaker-legend-content">
-                                                        <div v-for="speaker in processedTranscription.speakers" :key="speaker.name" class="speaker-legend-item">
-                                                            <div :class="speaker.color" class="speaker-color-dot"></div>
+                                                        <div v-for="speaker in processedTranscription.speakers" :key="speaker.name" :class="[speaker.color, 'speaker-legend-item']">
                                                             <span class="speaker-name">${ speaker.name }</span>
                                                         </div>
                                                     </div>
@@ -1367,7 +1365,7 @@
                  <div v-if="currentlyProcessingFile" class="mb-3 pb-3 border-b border-dashed border-[var(--border-secondary)]">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-xs font-medium text-[var(--text-primary)] truncate mr-2" :title="currentlyProcessingFile.file.name">
-                            <i class="fas fa-spinner fa-spin text-[var(--text-accent)] mr-1"></i> Processing: ${ currentlyProcessingFile.file.name }
+                            <i class="fas fa-spinner fa-spin text-[var(--text-accent)] mr-1"></i> Processing: <span class="truncate">${ currentlyProcessingFile.file.name }</span>
                         </p>
                         <span class="text-xs text-[var(--text-muted)] flex-shrink-0">${ formatFileSize(currentlyProcessingFile.file.size) }</span>
                     </div>
