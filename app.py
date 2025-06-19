@@ -445,9 +445,13 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
     if USE_ASR_ENDPOINT:
         with app_context:
             recording = db.session.get(Recording, recording_id)
-            user_diarize = recording.owner.diarize if recording.owner else False
+            # Environment variable ASR_DIARIZE overrides user setting
+            if 'ASR_DIARIZE' in os.environ:
+                diarize_setting = ASR_DIARIZE
+            else:
+                diarize_setting = recording.owner.diarize if recording.owner else False
             user_transcription_language = recording.owner.transcription_language if recording.owner else None
-        transcribe_audio_asr(app_context, recording_id, filepath, original_filename, language=user_transcription_language, diarize=user_diarize)
+        transcribe_audio_asr(app_context, recording_id, filepath, original_filename, language=user_transcription_language, diarize=diarize_setting)
         return
 
     with app_context: # Need app context for db operations in thread
@@ -1001,11 +1005,15 @@ def reprocess_transcription(recording_id):
             language = data.get('language') or (recording.owner.transcription_language if recording.owner else None)
             min_speakers = data.get('min_speakers')
             max_speakers = data.get('max_speakers')
-            user_diarize = recording.owner.diarize if recording.owner else ASR_DIARIZE
+            # Environment variable ASR_DIARIZE overrides user setting
+            if 'ASR_DIARIZE' in os.environ:
+                diarize_setting = ASR_DIARIZE
+            else:
+                diarize_setting = recording.owner.diarize if recording.owner else False
 
             thread = threading.Thread(
                 target=transcribe_audio_asr,
-                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", language, user_diarize, min_speakers, max_speakers)
+                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", language, diarize_setting, min_speakers, max_speakers)
             )
         else:
             app.logger.info(f"Using standard transcription API for reprocessing recording {recording_id}")
@@ -1334,7 +1342,6 @@ def account():
         user_name = request.form.get('user_name')
         user_job_title = request.form.get('user_job_title')
         user_company = request.form.get('user_company')
-        diarize = 'diarize' in request.form
 
         current_user.transcription_language = transcription_lang if transcription_lang else None
         current_user.output_language = output_lang if output_lang else None
@@ -1342,14 +1349,25 @@ def account():
         current_user.name = user_name if user_name else None
         current_user.job_title = user_job_title if user_job_title else None
         current_user.company = user_company if user_company else None
-        current_user.diarize = diarize
+        
+        # Only update diarize if it's not locked by env var
+        if 'ASR_DIARIZE' not in os.environ:
+            current_user.diarize = 'diarize' in request.form
         
         db.session.commit()
         flash('Account details updated successfully!', 'success')
         return redirect(url_for('account'))
         
     default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, key next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered."""
-    return render_template('account.html', title='Account', default_summary_prompt_text=default_summary_prompt_text)
+    
+    asr_diarize_locked = 'ASR_DIARIZE' in os.environ
+    
+    return render_template('account.html', 
+                           title='Account', 
+                           default_summary_prompt_text=default_summary_prompt_text,
+                           use_asr_endpoint=USE_ASR_ENDPOINT,
+                           asr_diarize_locked=asr_diarize_locked,
+                           asr_diarize_env_value=ASR_DIARIZE)
 
 @app.route('/change_password', methods=['POST'])
 @login_required

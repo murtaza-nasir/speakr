@@ -6,16 +6,97 @@ This project is dual-licensed. See the [License](#license) section for details.
 
 Speakr is a personal, self-hosted web application designed for transcribing audio recordings (like meetings), generating concise summaries and titles, and interacting with the content through a chat interface. Keep all your meeting notes and insights securely on your own server.
 
-## Screenshots
-![image](static/img/speakr1.png)
-![image](static/img/speakr2.png)
-![image](static/img/speakr3.png)
-![image](static/img/speakr4.png)
+<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+    <img src="static/img/hero-shot.png" alt="Hero Shot" style="max-width: 48%; height: auto;"/>
+    <img src="static/img/multilingual-support.png" alt="Multilingual Support" style="max-width: 48%; height: auto;"/>
+</div>
+
+## Features Showcase
+
+<details>
+<summary><strong>Transcription and Chat</strong></summary>
+<div style="display: flex; justify-content: center;">
+  <figure>
+    <img src="static/img/transcription-chat-bubble-view.png" alt="Transcription and Chat" width="400"/>
+    <figcaption style="text-align: center;">Integrated Chat</figcaption>
+  </figure>
+</div>
+</details>
+
+<details>
+<summary><strong>Light and Dark Mode</strong></summary>
+<div style="display: flex; justify-content: space-around;">
+  <figure>
+    <img src="static/img/light-mode.png" alt="Light Mode" width="400"/>
+    <figcaption style="text-align: center;">Light Mode</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/dark-mode.png" alt="Dark Mode" width="400"/>
+    <figcaption style="text-align: center;">Dark Mode</figcaption>
+  </figure>
+</div>
+</details>
+
+<details>
+<summary><strong>Intuitive Transcription Views</strong></summary>
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+  <figure>
+    <img src="static/img/simple-transcription-view.png" alt="Simple Transcription View" width="400"/>
+    <figcaption style="text-align: center;">Simple View</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/transcription-bubble-view.png" alt="Bubble View" width="400"/>
+    <figcaption style="text-align: center;">Bubble View</figcaption>
+  </figure>
+</div>
+</details>
+
+<details>
+<summary><strong>Speaker Identification</strong></summary>
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+  <figure>
+    <img src="static/img/intuitive-speaker-identification.png" alt="Intuitive Speaker Identification" width="400"/>
+    <figcaption style="text-align: center;">AI-Assisted Identification</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/manual-auto-speaker-identification.png" alt="Manual and Auto Speaker ID" width="400"/>
+    <figcaption style="text-align: center;">Manual & Auto Options</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/speaker-suggestions.png" alt="Speaker Suggestions" width="400"/>
+    <figcaption style="text-align: center;">Saved Speaker Suggestions</figcaption>
+  </figure>
+</div>
+</details>
+
+<details>
+<summary><strong>ASR and API Options</strong></summary>
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+  <figure>
+    <img src="static/img/transcription-with-asr.png" alt="Transcription with ASR" width="400"/>
+    <figcaption style="text-align: center;">With ASR Webservice</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/transcription-without-asr.png" alt="Transcription without ASR" width="400"/>
+    <figcaption style="text-align: center;">With OpenAI-Compatible API</figcaption>
+  </figure>
+</div>
+</details>
+
+<details>
+<summary><strong>Advanced Features</strong></summary>
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+  <figure>
+    <img src="static/img/reprocessing-transcript.png" alt="Reprocessing Transcript" width="400"/>
+    <figcaption style="text-align: center;">Reprocess with New Settings</figcaption>
+  </figure>
+</div>
+</details>
 
 ## What's New?
 
 *   **Simplified Docker Setup:** Configuration is now managed via a single `.env` file, making setup faster and easier.
-*   **ASR Webservice Integration:** Added support for a powerful ASR (Automatic Speech Recognition) webservice.
+*   **Advanced ASR Integration:** Added support for ASR endpoints using the [`onerahmet/openai-whisper-asr-webservice`](https://github.com/ahmetoner/whisper-asr-webservice) package. This integration is necessary for the speaker diarization feature.
 *   **Speaker Diarization:** Identify and label different speakers in your recordings. **Note: This feature requires the ASR Webservice method with the `whisperx` engine.**
 *   **Transcription Reprocessing:** A new "Reprocess" button allows you to re-run transcription with different settings (e.g., to add diarization).
 *   **Speaker Identification:** A new modal helps you name speakers, with highlighting for clarity. You can also automatically identify speakers using an LLM.
@@ -170,6 +251,8 @@ services:
     restart: unless-stopped
 ```
 
+**A Note on Diarization Accuracy:** For best results, it is often better to set the number of speakers slightly higher (e.g., by 1-2) than the actual number present. You can easily merge speakers later in the speaker identification modal.
+
 Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webservice` image. Other ASR webservices might work but have not been tested. For more information on the recommended service and its various configurations, please see the official resources.
 
 ## Usage Guide
@@ -214,6 +297,13 @@ This project is **dual-licensed**:
     Please contact **speakr maintainers** for details on obtaining a commercial license.
 
 **You must choose one of these licenses** under which to use, modify, or distribute this software. If you are using or distributing the software without a commercial license agreement, you must adhere to the terms of the AGPLv3.
+
+## Roadmap
+
+Speakr is actively being developed. Future planned features include:
+
+*   **Quick Language Switching:** A faster way to change transcription or output languages on the fly.
+*   **Large File Chunking:** Automatic splitting of large audio files to support transcription endpoints with file size limits (like OpenAI's 25MB limit).
 
 ## Contributing
 

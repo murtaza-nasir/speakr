@@ -189,13 +189,27 @@
                                         <textarea name="summary_prompt" id="summary_prompt" rows="6" placeholder="Describe how you want your summaries structured. Leave blank to use the default prompt." class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or default_summary_prompt_text }}</textarea>
                                         <p class="text-xs text-[var(--text-light)] mt-1">This prompt will be used to generate the summary for your transcriptions. You can use placeholders like {{transcription}} and {{language_directive}} if needed, though the system will try to intelligently place the transcription content.</p>
                                     </div>
+                                    {% if use_asr_endpoint %}
                                     <div>
                                         <label for="diarize" class="flex items-center text-sm font-medium text-[var(--text-muted)]">
-                                            <input type="checkbox" name="diarize" id="diarize" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" {% if current_user.diarize %}checked{% endif %}>
+                                            <input type="checkbox" name="diarize" id="diarize" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                                   {% if asr_diarize_locked %}
+                                                       disabled
+                                                       {% if asr_diarize_env_value %}checked{% endif %}
+                                                   {% else %}
+                                                       {% if current_user.diarize %}checked{% endif %}
+                                                   {% endif %}>
                                             <span class="ml-2">Enable Diarization</span>
                                         </label>
-                                        <p class="text-xs text-[var(--text-light)] mt-1">When using the ASR endpoint, this will enable speaker diarization.</p>
+                                        <p class="text-xs text-[var(--text-light)] mt-1">
+                                            When using the ASR endpoint, this will enable speaker diarization.
+                                            {% if asr_diarize_locked %}
+                                                <br>
+                                                <strong class="text-[var(--text-warn-strong)]">This setting is currently locked by the environment variable <code>ASR_DIARIZE</code>.</strong>
+                                            {% endif %}
+                                        </p>
                                     </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             
