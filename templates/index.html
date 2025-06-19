@@ -399,7 +399,7 @@
                                 <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                                    <i :class="useAsrEndpoint ? 'fas fa-redo-alt' : 'fas fa-sync-alt'"></i>
+                                    <i class="fas fa-redo-alt"></i>
                                 </button>
                                 <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
@@ -830,7 +830,7 @@
                                         <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                 class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                                 :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                                            <i :class="useAsrEndpoint ? 'fas fa-redo-alt' : 'fas fa-sync-alt'"></i>
+                                            <i class="fas fa-redo-alt"></i>
                                         </button>
                                         <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                 class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
