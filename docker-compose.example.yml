@@ -5,61 +5,32 @@ services:
     restart: unless-stopped
     ports:
       - "8899:8899"
-    # VOLUME CONFIGURATION OPTIONS:
-    # Uncomment ONE of the following volume configurations:
     
-    # Option 1: Using specific host paths for both volumes
-    volumes:
-      - /path/to/uploads:/data/uploads    # Replace with your custom path
-      - /path/to/instance:/data/instance  # Replace with your custom path
-    
-    # Option 2: Using Docker-managed volumes for both
-    # volumes:
-    #   - speakr-uploads:/data/uploads    # Docker will manage this volume
-    #   - speakr-instance:/data/instance  # Docker will manage this volume
-    
-    # Option 3: Mixed approach - custom path for uploads, Docker-managed for instance
-    # volumes:
-    #   - /path/to/uploads:/data/uploads  # Replace with your custom path
-    #   - speakr-instance:/data/instance  # Docker will manage this volume
-    
-    environment:
-      # Database and upload folder configuration
-      - SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
-      - UPLOAD_FOLDER=/data/uploads
-     
-      # Text model configuration
-      - TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
-      - TEXT_MODEL_API_KEY=your_text_model_api_key_here
-      - TEXT_MODEL_NAME=openai/gpt-4o-mini
-     
-      # Whisper model configuration
-      - TRANSCRIPTION_BASE_URL=http://your_local_api_url:port/v1/
-      - TRANSCRIPTION_API_KEY=your_transcription_api_key_here
-      - WHISPER_MODEL=Systran/faster-distil-whisper-large-v3
-     
-      # Application settings
-      # Transcription and Output languages are now per-user settings, configurable on the Account page in the app.
-      - ALLOW_REGISTRATION=false
-      - SUMMARY_MAX_TOKENS=8000 # Optional: Max tokens for title/summary generation (default: 3000)
-      - CHAT_MAX_TOKENS=5000    # Optional: Max tokens for chat responses (default: 2000)
-     
-      # Admin user creation
-      - ADMIN_USERNAME=admin
-      - ADMIN_EMAIL=admin@example.com
-      - ADMIN_PASSWORD=securepassword
+    # --- Configuration ---
+    # Environment variables are loaded from the .env file.
+    #
+    # To get started:
+    # 1. Choose your desired transcription method.
+    # 2. Copy the corresponding example file to .env:
+    #
+    #    For standard Whisper API:
+    #    cp env.whisper.example .env
+    #
+    #    For a custom ASR endpoint:
+    #    cp env.asr.example .env
+    #
+    # 3. Edit the .env file to add your API keys and settings.
+    env_file:
+      - .env
 
-# IMPORTANT: Uncomment this section if you're using any Docker-managed volumes
-# (required for Options 2 and 3 above)
-# volumes:
-#   speakr-uploads:
-#     # This defines the Docker-managed volume
-#   speakr-instance:
-#     # This defines the Docker-managed volume
-#
-# For custom volume names, use:
-# volumes:
-#   speakr-uploads:
-#     name: custom-speakr-uploads-name
-#   speakr-instance:
-#     name: custom-speakr-instance-name
+    # --- Volume Configuration ---
+    # Choose ONE of the following volume configurations.
+    # Option 1 (Recommended): Bind mounts to local folders.
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+
+    # Option 2: Docker-managed volumes.
+    # volumes:
+    #   - speakr-uploads:/data/uploads
+    #   - speakr-instance:/data/instance
