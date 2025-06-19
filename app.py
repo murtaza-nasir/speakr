@@ -17,6 +17,8 @@ import threading
 from dotenv import load_dotenv # Import load_dotenv
 import httpx 
 import re
+import subprocess
+import mimetypes
 import markdown
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
@@ -131,6 +133,7 @@ class Recording(db.Model):
     original_filename = db.Column(db.String(500), nullable=True) # Store the original uploaded filename
     is_inbox = db.Column(db.Boolean, default=True)  # New recordings are marked as inbox by default
     is_highlighted = db.Column(db.Boolean, default=False)  # Recordings can be highlighted by the user
+    mime_type = db.Column(db.String(100), nullable=True)
 
     def to_dict(self):
         return {
@@ -149,7 +152,8 @@ class Recording(db.Model):
             'original_filename': self.original_filename, # <-- ADDED: Include original filename
             'user_id': self.user_id,
             'is_inbox': self.is_inbox,
-            'is_highlighted': self.is_highlighted
+            'is_highlighted': self.is_highlighted,
+            'mime_type': self.mime_type
         }
 
 # --- Forms for Authentication ---
@@ -226,6 +230,8 @@ with app.app_context():
             app.logger.info("Added company column to user table")
         if add_column_if_not_exists(engine, 'user', 'diarize', 'BOOLEAN'):
             app.logger.info("Added diarize column to user table")
+        if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
+            app.logger.info("Added mime_type column to recording table")
             
     except Exception as e:
         app.logger.error(f"Error during database migration: {e}")
@@ -392,7 +398,7 @@ JSON Response:"""
 
         db.session.commit()
 
-def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, language=None, diarize=False, min_speakers=None, max_speakers=None):
+def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -421,7 +427,10 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 if max_speakers:
                     params['max_speakers'] = max_speakers
 
-                files = {'audio_file': (original_filename, audio_file, 'audio/mpeg')}
+                # Use the stored mime_type, or guess it, with a fallback.
+                content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+                app.logger.info(f"Using MIME type {content_type} for ASR upload.")
+                files = {'audio_file': (original_filename, audio_file, content_type)}
                 
                 with httpx.Client() as client:
                     response = client.post(url, params=params, files=files, timeout=None)
@@ -440,7 +449,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 recording.transcription = f"ASR processing failed: {str(e)}"
                 db.session.commit()
 
-def transcribe_audio_task(app_context, recording_id, filepath, original_filename):
+def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr):
     """Runs the transcription and summarization in a background thread."""
     if USE_ASR_ENDPOINT:
         with app_context:
@@ -451,7 +460,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
             user_transcription_language = recording.owner.transcription_language if recording.owner else None
-        transcribe_audio_asr(app_context, recording_id, filepath, original_filename, language=user_transcription_language, diarize=diarize_setting)
+        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, mime_type=recording.mime_type, language=user_transcription_language, diarize=diarize_setting)
         return
 
     with app_context: # Need app context for db operations in thread
@@ -461,7 +470,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, original_filename
             return
 
         try:
-            app.logger.info(f"Starting transcription for recording {recording_id} ({original_filename})...")
+            app.logger.info(f"Starting transcription for recording {recording_id} ({filename_for_asr})...")
             recording.status = 'PROCESSING'
             db.session.commit()
 
@@ -990,6 +999,39 @@ def reprocess_transcription(recording_id):
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
             return jsonify({'error': 'Recording is already being processed'}), 400
 
+        # --- Convert file if necessary before reprocessing ---
+        filepath = recording.audio_path
+        filename_for_asr = recording.original_filename or os.path.basename(filepath)
+        filename_lower = filename_for_asr.lower()
+
+        if not (filename_lower.endswith('.wav') or filename_lower.endswith('.mp3') or filename_lower.endswith('.flac')):
+            app.logger.info(f"Reprocessing: Unsupported format detected ({filename_lower}). Converting to WAV.")
+            base_filepath, _ = os.path.splitext(filepath)
+            wav_filepath = f"{base_filepath}.wav"
+
+            try:
+                subprocess.run(
+                    ['ffmpeg', '-i', filepath, '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
+                    check=True, capture_output=True, text=True
+                )
+                app.logger.info(f"Successfully converted {filepath} to {wav_filepath}")
+                os.remove(filepath)
+                filepath = wav_filepath
+                filename_for_asr = os.path.basename(wav_filepath)
+                
+                # Update database with new path and mime type
+                recording.audio_path = filepath
+                recording.mime_type, _ = mimetypes.guess_type(filepath)
+                db.session.commit()
+
+            except FileNotFoundError:
+                app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
+                return jsonify({'error': 'Audio conversion tool (ffmpeg) not found on server.'}), 500
+            except subprocess.CalledProcessError as e:
+                app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
+                return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
+
+        # --- Proceed with reprocessing ---
         recording.transcription = None
         recording.summary = None
         recording.status = 'PROCESSING'
@@ -1005,7 +1047,6 @@ def reprocess_transcription(recording_id):
             language = data.get('language') or (recording.owner.transcription_language if recording.owner else None)
             min_speakers = data.get('min_speakers')
             max_speakers = data.get('max_speakers')
-            # Environment variable ASR_DIARIZE overrides user setting
             if 'ASR_DIARIZE' in os.environ:
                 diarize_setting = ASR_DIARIZE
             else:
@@ -1013,13 +1054,13 @@ def reprocess_transcription(recording_id):
 
             thread = threading.Thread(
                 target=transcribe_audio_asr,
-                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}", language, diarize_setting, min_speakers, max_speakers)
+                args=(app.app_context(), recording.id, filepath, filename_for_asr, recording.mime_type, language, diarize_setting, min_speakers, max_speakers)
             )
         else:
             app.logger.info(f"Using standard transcription API for reprocessing recording {recording_id}")
             thread = threading.Thread(
                 target=transcribe_audio_task,
-                args=(app.app_context(), recording.id, recording.audio_path, recording.original_filename or f"Recording {recording.id}")
+                args=(app.app_context(), recording.id, filepath, filename_for_asr)
             )
         
         thread.start()
@@ -1759,33 +1800,63 @@ def upload_file():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
 
-        original_filename = file.filename # <-- ADDED: Capture original filename
+        original_filename = file.filename
         safe_filename = secure_filename(original_filename)
-        # Ensure filepath uses the configured UPLOAD_FOLDER
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}")
 
-        # Get file size before saving
+        # Get original file size
         file.seek(0, os.SEEK_END)
-        file_size = file.tell()
+        original_file_size = file.tell()
         file.seek(0)
 
-        # Check size limit again
-        if file_size > app.config['MAX_CONTENT_LENGTH']:
+        # Check size limit before saving
+        if original_file_size > app.config['MAX_CONTENT_LENGTH']:
             raise RequestEntityTooLarge()
 
         file.save(filepath)
         app.logger.info(f"File saved to {filepath}")
 
-        # Create initial database entry with PENDING status and filename as placeholder title
+        # --- Convert non-wav/mp3 files to WAV ---
+        filename_lower = original_filename.lower()
+        if not (filename_lower.endswith('.wav') or filename_lower.endswith('.mp3') or filename_lower.endswith('.flac')):
+            app.logger.info(f"Unsupported format detected ({filename_lower}). Converting to WAV.")
+            
+            base_filepath, _ = os.path.splitext(filepath)
+            wav_filepath = f"{base_filepath}.wav"
+
+            try:
+                # Using -acodec pcm_s16le for standard WAV format, 16kHz sample rate, mono
+                subprocess.run(
+                    ['ffmpeg', '-i', filepath, '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
+                    check=True, capture_output=True, text=True
+                )
+                app.logger.info(f"Successfully converted {filepath} to {wav_filepath}")
+                os.remove(filepath)
+                filepath = wav_filepath
+            except FileNotFoundError:
+                app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
+                return jsonify({'error': 'Audio conversion tool (ffmpeg) not found on server.'}), 500
+            except subprocess.CalledProcessError as e:
+                app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
+                return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
+
+        # Get final file size (of original or converted file)
+        final_file_size = os.path.getsize(filepath)
+
+        # Determine MIME type of the final file
+        mime_type, _ = mimetypes.guess_type(filepath)
+        app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
+
+        # Create initial database entry
         recording = Recording(
             audio_path=filepath,
-            original_filename=original_filename, # <-- ADDED: Save original filename
-            # Use original filename (without path part) as initial title
+            original_filename=original_filename,
             title=f"Recording - {original_filename}",
-            file_size=file_size,
-            status='PENDING', # Explicitly set status
-            meeting_date=datetime.utcnow().date(), # <-- ADDED: Default meeting_date to today
-            user_id=current_user.id # Associate with the current user
+            file_size=final_file_size,
+            status='PENDING',
+            meeting_date=datetime.utcnow().date(),
+            user_id=current_user.id,
+            mime_type=mime_type
         )
         db.session.add(recording)
         db.session.commit()
@@ -1794,14 +1865,12 @@ def upload_file():
         # --- Start transcription & summarization in background thread ---
         thread = threading.Thread(
             target=transcribe_audio_task,
-            # Pass original filename for logging clarity
-            args=(app.app_context(), recording.id, filepath, original_filename) # Pass original_filename here too
+            args=(app.app_context(), recording.id, filepath, os.path.basename(filepath))
         )
         thread.start()
         app.logger.info(f"Background processing thread started for recording ID: {recording.id}")
 
-        # Return the initial recording data and ID immediately
-        return jsonify(recording.to_dict()), 202 # 202 Accepted
+        return jsonify(recording.to_dict()), 202
 
     except RequestEntityTooLarge:
         max_size_mb = app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
@@ -1811,7 +1880,7 @@ def upload_file():
             'max_size_mb': max_size_mb
         }), 413
     except Exception as e:
-        db.session.rollback() # Rollback if initial save failed
+        db.session.rollback()
         app.logger.error(f"Error during file upload: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 

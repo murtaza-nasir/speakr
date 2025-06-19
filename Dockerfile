@@ -5,6 +5,7 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching

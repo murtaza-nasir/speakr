@@ -107,7 +107,7 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 
 ## Features
 
-*   **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc.) via drag-and-drop or file selection.
+*   **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc. depending on your transcription endpoint) via drag-and-drop or file selection.
 *   **Transcription:** Choose between a standard OpenAI-compatible API or a more advanced ASR Webservice.
 *   **Speaker Diarization:** (ASR/WhisperX only) Automatically detect and separate different speakers in the transcript.
 *   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
@@ -255,7 +255,7 @@ services:
       - "9000:9000"
     environment:
       - ASR_MODEL=distil-large-v3 # or large-v3, medium
-      - ASR_COMPUTE_TYPE=fp16     # or int8, fp32
+      - ASR_COMPUTE_TYPE=float16     # or int8, float32
       - ASR_ENGINE=whisperx        # REQUIRED for diarization
       - HF_TOKEN=your_hugging_face_token # Optional
     deploy:
