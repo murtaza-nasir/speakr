@@ -802,89 +802,89 @@
 
                      <div v-if="!isMobileScreen" :class="(!isMobileScreen && isSidebarCollapsed) ? 'lg:col-span-4' : 'lg:col-span-3'" class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-md flex flex-col max-h-85vh main-content-area">
                         <div v-if="selectedRecording" class="flex-grow flex flex-col">
-                            <div class="flex flex-col sm:flex-row justify-between items-start mb-4 border-b border-[var(--border-primary)] pb-4">
-                                <div class="mb-3 sm:mb-0 max-w-lg">
-                                     <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
-                                        <span class="responsive-title" style="min-width: 0;">${ selectedRecording.title || 'Loading...' }</span>
-                                     </h3>
-                                    <div class="recording-metadata">
-                                        <!-- Display Meeting Date with edit functionality -->
-                                        <div class="metadata-item">
-                                            <i class="fas fa-calendar-alt metadata-icon"></i>
-                                            <span class="metadata-label">Meeting:</span>
-                                            <span v-if="!editingMeetingDate" 
-                                                  @click="toggleEditMeetingDate" 
-                                                  class="metadata-value editable">
-                                                ${ selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'Click to add' }
-                                            </span>
-                                            <span v-else class="inline-flex items-center">
-                                                <input type="date" 
-                                                       v-model="selectedRecording.meeting_date" 
-                                                       @blur="saveInlineEdit('meeting_date')" 
-                                                       class="metadata-edit-input" />
-                                                <button @click="saveInlineEdit('meeting_date')" 
-                                                        class="metadata-edit-button">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                            </span>
-                                        </div>
-                                        
-                                        <div class="metadata-item">
-                                            <i class="fas fa-clock metadata-icon"></i>
-                                            <span class="metadata-label">Created:</span>
-                                            <span class="metadata-value">${ new Date(selectedRecording.created_at).toLocaleString() }</span>
-                                        </div>
-                                        
-                                        <!-- Status Badge -->
-                                        <div v-if="selectedRecording.status !== 'COMPLETED'" class="metadata-item">
-                                            <i class="fas fa-info-circle metadata-icon"></i>
-                                            <span class="metadata-label">Status:</span>
-                                            <span :class="getStatusClass(selectedRecording.status)" class="status-badge">
-                                                ${ formatStatus(selectedRecording.status) }
-                                            </span>
-                                        </div>
+                            <div class="recording-header">
+                                <div class="recording-title-row">
+                                    <div class="responsive-title-container">
+                                         <h3 class="text-2xl font-semibold text-[var(--text-primary)] flex items-center">
+                                            <span class="responsive-title">${ selectedRecording.title || 'Loading...' }</span>
+                                         </h3>
                                     </div>
-                                    <!-- Removed Size from here -->
-                                    <!-- Removed separate Status Badge span -->
+                                    <div class="responsive-button-container">
+                                        <button @click="toggleInbox(selectedRecording)"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105"
+                                                :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+                                                :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                                            <i class="fas fa-inbox"></i>
+                                        </button>
+                                        <button @click="toggleHighlight(selectedRecording)" 
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105"
+                                                :class="selectedRecording.is_highlighted ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200 dark:bg-yellow-700 dark:text-yellow-200 dark:hover:bg-yellow-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
+                                                :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                                            <i class="fas fa-star"></i>
+                                        </button>
+                                        <button @click="editRecording(selectedRecording)"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                                title="Edit Details">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                                :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                                            <i :class="useAsrEndpoint ? 'fas fa-redo-alt' : 'fas fa-sync-alt'"></i>
+                                        </button>
+                                        <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                                title="Reprocess summary">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                                title="Identify Speakers">
+                                            <i class="fas fa-user-tag"></i>
+                                        </button>
+                                        <button @click="confirmDelete(selectedRecording)"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] hover:bg-[var(--bg-danger)] hover:text-[var(--text-button)]"
+                                                title="Delete Recording">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="flex space-x-1.5 flex-shrink-0">
-                                    <button @click="toggleInbox(selectedRecording)"
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105"
-                                            :class="selectedRecording.is_inbox ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-800 dark:text-blue-200 dark:hover:bg-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
-                                            :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
-                                        <i class="fas fa-inbox"></i>
-                                    </button>
-                                    <button @click="toggleHighlight(selectedRecording)" 
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105"
-                                            :class="selectedRecording.is_highlighted ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200 dark:bg-yellow-700 dark:text-yellow-200 dark:hover:bg-yellow-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'"
-                                            :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
-                                        <i class="fas fa-star"></i>
-                                    </button>
-                                    <button @click="editRecording(selectedRecording)"
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                            title="Edit Details">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                            :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                                        <i :class="useAsrEndpoint ? 'fas fa-redo-alt' : 'fas fa-sync-alt'"></i>
-                                    </button>
-                                    <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                            title="Reprocess summary">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
-                                    <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                            title="Identify Speakers">
-                                        <i class="fas fa-user-tag"></i>
-                                    </button>
-                                    <button @click="confirmDelete(selectedRecording)"
-                                            class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] hover:bg-[var(--bg-danger)] hover:text-[var(--text-button)]"
-                                            title="Delete Recording">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                <div class="recording-metadata-row">
+                                    <!-- Display Meeting Date with edit functionality -->
+                                    <div class="metadata-item">
+                                        <i class="fas fa-calendar-alt metadata-icon"></i>
+                                        <span class="metadata-label">Meeting:</span>
+                                        <span v-if="!editingMeetingDate" 
+                                              @click="toggleEditMeetingDate" 
+                                              class="metadata-value editable">
+                                            ${ selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'Click to add' }
+                                        </span>
+                                        <span v-else class="inline-flex items-center">
+                                            <input type="date" 
+                                                   v-model="selectedRecording.meeting_date" 
+                                                   @blur="saveInlineEdit('meeting_date')" 
+                                                   class="metadata-edit-input" />
+                                            <button @click="saveInlineEdit('meeting_date')" 
+                                                    class="metadata-edit-button">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="metadata-item">
+                                        <i class="fas fa-clock metadata-icon"></i>
+                                        <span class="metadata-label">Created:</span>
+                                        <span class="metadata-value">${ new Date(selectedRecording.created_at).toLocaleString() }</span>
+                                    </div>
+                                    
+                                    <!-- Status Badge -->
+                                    <div v-if="selectedRecording.status !== 'COMPLETED'" class="metadata-item">
+                                        <i class="fas fa-info-circle metadata-icon"></i>
+                                        <span class="metadata-label">Status:</span>
+                                        <span :class="getStatusClass(selectedRecording.status)" class="status-badge">
+                                            ${ formatStatus(selectedRecording.status) }
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
