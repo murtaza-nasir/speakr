@@ -12,7 +12,7 @@
     --bg-danger-hover: #b91c1c; /* red-700 */
     --bg-danger-light: #fee2e2; /* red-100 */
     --bg-info-light: #dbeafe; /* blue-100 */
-    --bg-warn-light: #fef3c7; /* amber-100 */
+    --bg-warn-light: #e0f2fe; /* cyan-50 - soft, friendly light blue */
     --bg-success-light: #d1fae5; /* green-100 */
     --bg-pending-light: #f5f5f4; /* stone-100 */
     --bg-input: #ffffff; /* white */
@@ -27,7 +27,7 @@
     --text-danger: #b91c1c; /* red-700 */
     --text-danger-strong: #991b1b; /* red-800 */
     --text-info-strong: #1e40af; /* blue-800 */
-    --text-warn-strong: #92400e; /* amber-800 */
+    --text-warn-strong: #0369a1; /* sky-700 - friendly blue tone */
     --text-success-strong: #065f46; /* green-800 */
     --text-pending-strong: #44403c; /* stone-700 */
 
@@ -60,7 +60,7 @@
     --bg-danger-hover: #ef4444; /* red-500 */
     --bg-danger-light: #7f1d1d; /* red-900 */
     --bg-info-light: #1e3a8a; /* blue-900 */
-    --bg-warn-light: #78350f; /* amber-900 */
+    --bg-warn-light: #164e63; /* cyan-800 - soft, friendly dark blue */
     --bg-success-light: #064e3b; /* green-900 */
     --bg-pending-light: #292524; /* stone-800 */
     --bg-input: #374151; /* gray-700 */
@@ -75,7 +75,7 @@
     --text-danger: #f87171; /* red-400 */
     --text-danger-strong: #fca5a5; /* red-300 */
     --text-info-strong: #93c5fd; /* blue-300 */
-    --text-warn-strong: #fcd34d; /* amber-300 */
+    --text-warn-strong: #67e8f9; /* cyan-300 - soft, friendly cyan text */
     --text-success-strong: #6ee7b7; /* green-300 */
     --text-pending-strong: #d6d3d1; /* stone-300 */
 
@@ -739,11 +739,108 @@ body {
 }
 
 .speaker-highlight {
-    background-color: var(--bg-accent);
-    color: var(--text-accent);
     padding: 3px 6px;
     border-radius: 6px;
-    box-shadow: 0 0 10px var(--bg-accent-hover);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+/* Speaker-specific highlight styles that match speaker colors - reduced glow */
+.speaker-highlight.speaker-color-1 {
+    background-color: #E3F2FD;
+    color: #0D47A1;
+    box-shadow: 0 0 8px rgba(227, 242, 253, 0.6), 0 0 12px rgba(13, 71, 161, 0.2);
+}
+
+.speaker-highlight.speaker-color-2 {
+    background-color: #F3E5F5;
+    color: #6A1B9A;
+    box-shadow: 0 0 8px rgba(243, 229, 245, 0.6), 0 0 12px rgba(106, 27, 154, 0.2);
+}
+
+.speaker-highlight.speaker-color-3 {
+    background-color: #E8F5E8;
+    color: #1B5E20;
+    box-shadow: 0 0 8px rgba(232, 245, 232, 0.6), 0 0 12px rgba(27, 94, 32, 0.2);
+}
+
+.speaker-highlight.speaker-color-4 {
+    background-color: #FFF3E0;
+    color: #E65100;
+    box-shadow: 0 0 8px rgba(255, 243, 224, 0.6), 0 0 12px rgba(230, 81, 0, 0.2);
+}
+
+.speaker-highlight.speaker-color-5 {
+    background-color: #FCE4EC;
+    color: #AD1457;
+    box-shadow: 0 0 8px rgba(252, 228, 236, 0.6), 0 0 12px rgba(173, 20, 87, 0.2);
+}
+
+.speaker-highlight.speaker-color-6 {
+    background-color: #E0F7FA;
+    color: #006064;
+    box-shadow: 0 0 8px rgba(224, 247, 250, 0.6), 0 0 12px rgba(0, 96, 100, 0.2);
+}
+
+.speaker-highlight.speaker-color-7 {
+    background-color: #FFF9C4;
+    color: #F57F17;
+    box-shadow: 0 0 8px rgba(255, 249, 196, 0.6), 0 0 12px rgba(245, 127, 23, 0.2);
+}
+
+.speaker-highlight.speaker-color-8 {
+    background-color: #EFEBE9;
+    color: #5D4037;
+    box-shadow: 0 0 8px rgba(239, 235, 233, 0.6), 0 0 12px rgba(93, 64, 55, 0.2);
+}
+
+/* Dark mode speaker-specific highlights - reduced glow */
+.dark .speaker-highlight.speaker-color-1 {
+    background-color: #1E3A5F;
+    color: #A5C9EA;
+    box-shadow: 0 0 8px rgba(30, 58, 95, 0.6), 0 0 12px rgba(165, 201, 234, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-2 {
+    background-color: #4A2C5A;
+    color: #D4A5D4;
+    box-shadow: 0 0 8px rgba(74, 44, 90, 0.6), 0 0 12px rgba(212, 165, 212, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-3 {
+    background-color: #1F4A3C;
+    color: #A8D5A8;
+    box-shadow: 0 0 8px rgba(31, 74, 60, 0.6), 0 0 12px rgba(168, 213, 168, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-4 {
+    background-color: #5A3A1F;
+    color: #E6B366;
+    box-shadow: 0 0 8px rgba(90, 58, 31, 0.6), 0 0 12px rgba(230, 179, 102, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-5 {
+    background-color: #5A2C3E;
+    color: #E6A5C4;
+    box-shadow: 0 0 8px rgba(90, 44, 62, 0.6), 0 0 12px rgba(230, 165, 196, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-6 {
+    background-color: #1F4A47;
+    color: #A5D5D0;
+    box-shadow: 0 0 8px rgba(31, 74, 71, 0.6), 0 0 12px rgba(165, 213, 208, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-7 {
+    background-color: #4A4A1F;
+    color: #E6E266;
+    box-shadow: 0 0 8px rgba(74, 74, 31, 0.6), 0 0 12px rgba(230, 226, 102, 0.2);
+}
+
+.dark .speaker-highlight.speaker-color-8 {
+    background-color: #3E2723;
+    color: #D7CCC8;
+    box-shadow: 0 0 8px rgba(62, 39, 35, 0.6), 0 0 12px rgba(215, 204, 200, 0.2);
 }
 
 /* Speaker Legend and Bubble Styles */
@@ -1078,25 +1175,25 @@ body {
     margin-right: 0.25rem;
 }
 
-/* Speaker colors - using a pleasant, accessible color palette */
-.speaker-color-1 { background-color: #E3F2FD; color: #1565C0; } /* Light Blue */
-.speaker-color-2 { background-color: #F3E5F5; color: #7B1FA2; } /* Light Purple */
-.speaker-color-3 { background-color: #E8F5E8; color: #2E7D32; } /* Light Green */
-.speaker-color-4 { background-color: #FFF3E0; color: #EF6C00; } /* Light Orange */
-.speaker-color-5 { background-color: #FCE4EC; color: #C2185B; } /* Light Pink */
-.speaker-color-6 { background-color: #E0F2F1; color: #00695C; } /* Light Teal */
-.speaker-color-7 { background-color: #F1F8E9; color: #558B2F; } /* Light Lime */
-.speaker-color-8 { background-color: #FFF8E1; color: #F57F17; } /* Light Amber */
+/* Speaker colors - enhanced palette with better variation and contrast */
+.speaker-color-1 { background-color: #E3F2FD; color: #0D47A1; } /* Deep Blue */
+.speaker-color-2 { background-color: #F3E5F5; color: #6A1B9A; } /* Deep Purple */
+.speaker-color-3 { background-color: #E8F5E8; color: #1B5E20; } /* Deep Green */
+.speaker-color-4 { background-color: #FFF3E0; color: #E65100; } /* Deep Orange */
+.speaker-color-5 { background-color: #FCE4EC; color: #AD1457; } /* Deep Pink */
+.speaker-color-6 { background-color: #E0F7FA; color: #006064; } /* Deep Cyan */
+.speaker-color-7 { background-color: #FFF9C4; color: #F57F17; } /* Deep Yellow */
+.speaker-color-8 { background-color: #EFEBE9; color: #5D4037; } /* Deep Brown */
 
-/* Dark mode speaker colors - tasteful pastels inspired by light mode */
+/* Dark mode speaker colors - tasteful muted pastels with better variation */
 .dark .speaker-color-1 { background-color: #1E3A5F; color: #A5C9EA; } /* Muted blue background, soft blue text */
 .dark .speaker-color-2 { background-color: #4A2C5A; color: #D4A5D4; } /* Muted purple background, soft purple text */
 .dark .speaker-color-3 { background-color: #1F4A3C; color: #A8D5A8; } /* Muted green background, soft green text */
 .dark .speaker-color-4 { background-color: #5A3A1F; color: #E6B366; } /* Muted orange background, soft orange text */
 .dark .speaker-color-5 { background-color: #5A2C3E; color: #E6A5C4; } /* Muted pink background, soft pink text */
 .dark .speaker-color-6 { background-color: #1F4A47; color: #A5D5D0; } /* Muted teal background, soft teal text */
-.dark .speaker-color-7 { background-color: #3A4A1F; color: #C4D5A5; } /* Muted lime background, soft lime text */
-.dark .speaker-color-8 { background-color: #5A3A1F; color: #E6C266; } /* Muted amber background, soft amber text */
+.dark .speaker-color-7 { background-color: #4A4A1F; color: #E6E266; } /* Muted yellow background, soft yellow text */
+.dark .speaker-color-8 { background-color: #3E2723; color: #D7CCC8; } /* Muted brown background, soft brown text */
 
 /* Meeting/Created time styling improvements */
 .recording-metadata {

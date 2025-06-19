@@ -237,12 +237,12 @@
                 <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0">
                     <h3 class="text-xl font-bold text-[var(--text-primary)]">Identify Speakers</h3>
                     <!-- Warning for too many speakers -->
-                    <div v-if="identifiedSpeakers.length > 8" class="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <div v-if="identifiedSpeakers.length > 8" class="mt-3 p-3 bg-[var(--bg-warn-light)] border border-amber-300 dark:border-amber-800 rounded-lg">
                         <div class="flex items-start">
-                            <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 mt-0.5 mr-2"></i>
+                            <i class="fas fa-exclamation-triangle text-[var(--text-warn-strong)] mt-0.5 mr-2"></i>
                             <div class="text-sm">
-                                <p class="font-medium text-amber-800 dark:text-amber-200">More speakers than available colors</p>
-                                <p class="text-amber-700 dark:text-amber-300 mt-1">
+                                <p class="font-medium text-[var(--text-warn-strong)]">More speakers than available colors</p>
+                                <p class="text-[var(--text-warn-strong)] mt-1">
                                     You have ${ identifiedSpeakers.length } speakers, but only 8 unique colors are available. 
                                     Colors will repeat after the 8th speaker.
                                 </p>
@@ -252,17 +252,23 @@
                 </div>
                 <div class="flex-grow flex overflow-hidden modal-content">
                     <div class="w-1/3 p-6 space-y-4 overflow-y-auto custom-scrollbar border-r border-[var(--border-primary)]">
-                        <div v-for="(speaker, index) in identifiedSpeakers" :key="speaker" class="space-y-2">
-                            <!-- Speaker label with color indicator -->
-                            <div class="flex items-center space-x-2">
-                                <div :class="speakerMap[speaker].color" class="w-4 h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
-                                <span class="font-mono text-sm text-[var(--text-muted)] flex-grow">${ speaker }</span>
-                                <span v-if="index >= 8" class="text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 rounded-full" title="Color repeats from speaker ${ ((index % 8) + 1) }">
-                                    Repeat
-                                </span>
+                        <div v-for="(speaker, index) in identifiedSpeakers" :key="speaker" class="space-y-3">
+                            <!-- Speaker label with color indicator and "This is Me" checkbox on same line -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <div :class="speakerMap[speaker].color" class="w-4 h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
+                                    <span class="font-mono text-sm text-[var(--text-muted)]">${ speaker }</span>
+                                    <span v-if="index >= 8" class="text-xs text-[var(--text-warn-strong)] bg-[var(--bg-warn-light)] px-2 py-0.5 rounded-full" title="Color repeats from speaker ${ ((index % 8) + 1) }">
+                                        Repeat
+                                    </span>
+                                </div>
+                                <label class="flex items-center text-sm text-[var(--text-muted)]">
+                                    <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="ml-2">Me</span>
+                                </label>
                             </div>
                             
-                            <!-- Autocomplete input field -->
+                            <!-- Autocomplete input field - disabled when "This is Me" is checked -->
                             <div class="relative">
                                 <input 
                                     type="text" 
@@ -270,17 +276,18 @@
                                     @input="searchSpeakers($event.target.value, speaker)"
                                     @focus="highlightSpeakerInTranscript(speaker)" 
                                     @blur="setTimeout(() => speakerSuggestions[speaker] = [], 200)"
-                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" 
-                                    :placeholder="'Enter name for ' + speaker"
+                                    :disabled="speakerMap[speaker].isMe"
+                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed" 
+                                    :placeholder="speakerMap[speaker].isMe ? 'Me' : 'Enter name for ' + speaker"
                                     autocomplete="off">
                                 
                                 <!-- Loading indicator -->
-                                <div v-if="loadingSuggestions[speaker]" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <div v-if="loadingSuggestions[speaker] && !speakerMap[speaker].isMe" class="absolute right-3 top-1/2 transform -translate-y-1/2">
                                     <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-sm"></i>
                                 </div>
                                 
                                 <!-- Suggestions dropdown -->
-                                <div v-if="speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0" 
+                                <div v-if="speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0 && !speakerMap[speaker].isMe" 
                                      class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     <div class="py-1">
                                         <div v-for="suggestion in speakerSuggestions[speaker]" 
@@ -301,11 +308,6 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            <label class="flex items-center text-sm text-[var(--text-muted)]">
-                                <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                <span class="ml-2">This is Me</span>
-                            </label>
                         </div>
                     </div>
                     <div class="w-2/3 p-6 overflow-y-auto custom-scrollbar speaker-modal-transcript" v-html="highlightedTranscript">
@@ -317,7 +319,7 @@
                         <span class="ml-2">Regenerate summary after updating names</span>
                     </label>
                 </div>
-                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0">
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
                     <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
                     <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
                 </div>
