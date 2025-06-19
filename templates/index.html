@@ -1224,6 +1224,11 @@
 
         <footer class="text-center py-4 mt-8 text-xs text-[var(--text-light)] border-t border-[var(--border-primary)]">
             Speakr &copy; ${ new Date().getFullYear() }
+            <span class="mx-2">|</span>
+            <a href="https://github.com/murtaza-nasir/speakr" target="_blank" rel="noopener noreferrer" class="hover:text-[var(--text-accent)] transition-colors duration-200">
+                <i class="fab fa-github mr-1"></i>
+                GitHub
+            </a>
         </footer>
 
          <div v-if="showEditModal" @click="cancelEdit" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
