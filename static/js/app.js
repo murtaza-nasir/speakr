@@ -91,8 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const isResizingMainColumns = ref(false);
         let initialMainColumnResizeX = 0;
         let initialLeftMainColumnWidthPx = 0;
-        const MIN_MAIN_COLUMN_WIDTH_PERCENT = 20; // Min width for left column
-        const MAX_MAIN_COLUMN_WIDTH_PERCENT = 75; // Max width for left column
+        const MIN_MAIN_COLUMN_WIDTH_PERCENT = 30; // Min width for left column
+        const MAX_MAIN_COLUMN_WIDTH_PERCENT = 70; // Max width for left column (ensures right column gets at least 20%)
+        const ABSOLUTE_MIN_COLUMN_PX = 50; // Absolute minimum pixel width for either column
 
         // --- Vertical Resize State ---
         const transcriptionSection = ref(null);
@@ -418,6 +419,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isMobileScreen.value) {
                 isSidebarCollapsed.value = !isSidebarCollapsed.value;
                 // localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.value);
+                
+                // Ensure main content layout is preserved after sidebar toggle
+                nextTick(() => {
+                    // Re-initialize layout if needed to maintain column widths
+                    if (leftMainColumn.value && mainContentColumns.value) {
+                        // Preserve the current column width percentage
+                        const currentWidth = leftMainColumn.value.style.width;
+                        if (currentWidth) {
+                            // Force a layout recalculation to ensure the resizer still works
+                            leftMainColumn.value.style.width = currentWidth;
+                        }
+                    }
+                });
             }
         };
 
@@ -1190,17 +1204,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const savedLeftWidthPercent = localStorage.getItem('mainColumnLeftWidthPercent');
             if (savedLeftWidthPercent) {
                 const percent = parseFloat(savedLeftWidthPercent);
+                // Validate against the new percentage-based constraints
                 if (percent >= MIN_MAIN_COLUMN_WIDTH_PERCENT && percent <= MAX_MAIN_COLUMN_WIDTH_PERCENT) {
                     leftMainColumn.value.style.width = `${percent}%`;
                 } else {
-                    // If stored value is out of bounds, apply default
-                    leftMainColumn.value.style.width = '40%'; // Default
+                    // If stored value is out of bounds, apply default within valid range
+                    const defaultPercent = Math.max(MIN_MAIN_COLUMN_WIDTH_PERCENT, Math.min(40, MAX_MAIN_COLUMN_WIDTH_PERCENT));
+                    leftMainColumn.value.style.width = `${defaultPercent}%`;
                     localStorage.removeItem('mainColumnLeftWidthPercent'); // Clear invalid stored value
                 }
             } else if (leftMainColumn.value.style.width === '') {
-                 // If no saved width and no inline style, set default.
-                 // HTML already has 40%, but this is a fallback.
-                leftMainColumn.value.style.width = '40%';
+                // If no saved width and no inline style, set default within valid range
+                const defaultPercent = Math.max(MIN_MAIN_COLUMN_WIDTH_PERCENT, Math.min(40, MAX_MAIN_COLUMN_WIDTH_PERCENT));
+                leftMainColumn.value.style.width = `${defaultPercent}%`;
             }
         };
 
@@ -1233,25 +1249,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isResizingMainColumns.value || !leftMainColumn.value || !mainContentColumns.value || !mainColumnResizer.value) return;
 
             const dx = event.clientX - initialMainColumnResizeX;
-            let newLeftWidthPx = initialLeftMainColumnWidthPx + dx;
-
-            const parentWidthPx = mainContentColumns.value.offsetWidth;
+            
+            // Get CURRENT parent width (not cached) to handle sidebar state changes
+            const currentParentWidthPx = mainContentColumns.value.offsetWidth;
             const resizerActualWidth = mainColumnResizer.value.offsetWidth;
-            const resizerMarginLeft = parseFloat(getComputedStyle(mainColumnResizer.value).marginLeft);
-            const resizerMarginRight = parseFloat(getComputedStyle(mainColumnResizer.value).marginRight);
+            const resizerMarginLeft = parseFloat(getComputedStyle(mainColumnResizer.value).marginLeft) || 0;
+            const resizerMarginRight = parseFloat(getComputedStyle(mainColumnResizer.value).marginRight) || 0;
             const resizerTotalSpacePx = resizerActualWidth + resizerMarginLeft + resizerMarginRight;
 
-            const effectiveParentWidthPx = parentWidthPx - resizerTotalSpacePx;
+            const currentEffectiveParentWidthPx = currentParentWidthPx - resizerTotalSpacePx;
 
-            if (effectiveParentWidthPx <= 0) return; // Guard against division by zero or invalid state
+            if (currentEffectiveParentWidthPx <= 0) return; // Guard against division by zero or invalid state
             
-            // Calculate pixel constraints
-            const minLeftPx = (MIN_MAIN_COLUMN_WIDTH_PERCENT / 100) * effectiveParentWidthPx;
-            const maxLeftPx = (MAX_MAIN_COLUMN_WIDTH_PERCENT / 100) * effectiveParentWidthPx;
+            // Calculate new width based on mouse movement
+            let newLeftWidthPx = initialLeftMainColumnWidthPx + dx;
+            
+            // Apply constraints smoothly - use pixel-based constraints for better control
+            const minLeftPx = Math.max(ABSOLUTE_MIN_COLUMN_PX, (MIN_MAIN_COLUMN_WIDTH_PERCENT / 100) * currentEffectiveParentWidthPx);
+            const maxLeftPx = Math.min(currentEffectiveParentWidthPx - ABSOLUTE_MIN_COLUMN_PX, (MAX_MAIN_COLUMN_WIDTH_PERCENT / 100) * currentEffectiveParentWidthPx);
 
-            newLeftWidthPx = Math.max(minLeftPx, Math.min(maxLeftPx, newLeftWidthPx));
+            // Smooth constraint application - don't snap to limits immediately
+            if (newLeftWidthPx < minLeftPx) {
+                newLeftWidthPx = minLeftPx;
+            } else if (newLeftWidthPx > maxLeftPx) {
+                newLeftWidthPx = maxLeftPx;
+            }
             
-            const newLeftWidthPercent = (newLeftWidthPx / effectiveParentWidthPx) * 100;
+            // Calculate percentage based on CURRENT effective width
+            const newLeftWidthPercent = (newLeftWidthPx / currentEffectiveParentWidthPx) * 100;
 
             leftMainColumn.value.style.width = `${newLeftWidthPercent.toFixed(2)}%`;
         };

@@ -571,12 +571,55 @@ div[v-if="!editingNotes"] {
     overflow-y: auto; /* Allow scrolling */
 }
 
-/* Ensure the lg:col-span-3 container can grow properly and scroll */
-.lg\:col-span-3.bg-\[var\(--bg-secondary\)\].p-6.rounded-lg.shadow-md.flex.flex-col.max-h-85vh {
+/* Ensure the main content container can grow properly and scroll - works for both col-span-3 and col-span-4 */
+.lg\:col-span-3.bg-\[var\(--bg-secondary\)\].p-6.rounded-lg.shadow-md.flex.flex-col.max-h-85vh,
+.lg\:col-span-4.bg-\[var\(--bg-secondary\)\].p-6.rounded-lg.shadow-md.flex.flex-col.max-h-85vh {
     /* max-height: none !important; /* Let Tailwind class 'max-h-85vh' apply */
     height: 100%; /* Occupy the height of its grid cell */
     flex: 1; /* For its own children, as it's a flex container */
     overflow-y: auto; /* Allow its own content to scroll if it exceeds its height (max 85vh) */
+}
+
+/* Ensure the main content area maintains its internal layout regardless of sidebar state */
+.main-content-area {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Ensure the main content columns container maintains consistent behavior */
+#mainContentColumns {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%; /* Ensure full width usage */
+}
+
+/* Ensure left and right columns maintain their proportional widths */
+#leftMainColumn {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    flex-shrink: 0; /* Prevent shrinking */
+    /* Width is controlled by inline style */
+}
+
+#rightMainColumn {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    /* Width will be calculated as remaining space */
+}
+
+/* Ensure the main column resizer remains functional */
+#mainColumnResizer {
+    flex-shrink: 0;
 }
 
 /* Modern toast notification styles */
@@ -1675,6 +1718,7 @@ body {
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
+    flex-shrink: 0 !important; /* Prevent resizer from shrinking */
 }
 
 #mainColumnResizer .w-1 {
@@ -1687,6 +1731,65 @@ body {
 
 #mainColumnResizer:hover .w-1 {
     background-color: var(--border-accent) !important;
+}
+
+/* Ensure consistent layout behavior when sidebar is collapsed */
+.sidebar-container.lg\:col-span-1 {
+    transition: all 0.3s ease;
+}
+
+/* Smooth transition for main content area when sidebar toggles */
+.main-content-area {
+    transition: all 0.3s ease;
+}
+
+/* Preserve column widths during sidebar transitions */
+.content-column {
+    transition: none !important; /* Disable transitions on content columns to prevent layout shifts */
+}
+
+/* Ensure the grid container adapts smoothly */
+.grid.grid-cols-1.lg\:grid-cols-4.gap-6.flex-grow {
+    transition: all 0.3s ease;
+}
+
+/* Force consistent internal layout regardless of parent grid span */
+.main-content-area #mainContentColumns {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+}
+
+/* Ensure left column maintains its set width - respect inline styles */
+.main-content-area #leftMainColumn {
+    flex-shrink: 0 !important;
+    min-width: 0 !important;
+    /* Don't override width - let inline style control it */
+}
+
+/* Ensure right column fills remaining space */
+.main-content-area #rightMainColumn {
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+
+/* Specific rule to ensure inline width styles are respected */
+#leftMainColumn[style*="width"] {
+    flex-basis: auto !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+/* Prevent layout shifts when grid span changes */
+.main-content-area .recording-header,
+.main-content-area .participants-section,
+.main-content-area .transcription-section,
+.main-content-area .tab-section,
+.main-content-area .audio-section,
+.main-content-area .chat-section {
+    width: 100% !important;
+    max-width: none !important;
 }
 
 /* Discrete vertical resize divider */
