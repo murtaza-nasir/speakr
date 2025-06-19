@@ -98,6 +98,8 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 *   **Simplified Docker Setup:** Configuration is now managed via a single `.env` file, making setup faster and easier.
 *   **Advanced ASR Integration:** Added support for ASR endpoints using the [`onerahmet/openai-whisper-asr-webservice`](https://github.com/ahmetoner/whisper-asr-webservice) package. This integration is necessary for the speaker diarization feature.
 *   **Speaker Diarization:** Identify and label different speakers in your recordings. **Note: This feature requires the ASR Webservice method with the `whisperx` engine.**
+*   **Speaker Auto-Detection:** When using speaker diarization, the system can automatically attemtpt to detect participant names based on the transcript, so you don't have to specify it manually.
+*   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
 *   **Transcription Reprocessing:** A new "Reprocess" button allows you to re-run transcription with different settings (e.g., to add diarization).
 *   **Speaker Identification:** A new modal helps you name speakers, with highlighting for clarity. You can also automatically identify speakers using an LLM.
 *   **Saved Speaker Profiles:** Save identified speakers for auto-completion in future transcriptions. View and manage them on your Account page.
@@ -108,6 +110,7 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 *   **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc.) via drag-and-drop or file selection.
 *   **Transcription:** Choose between a standard OpenAI-compatible API or a more advanced ASR Webservice.
 *   **Speaker Diarization:** (ASR/WhisperX only) Automatically detect and separate different speakers in the transcript.
+*   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
 *   **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs.
 *   **Interactive Chat:** Ask questions and interact with the transcription content using an AI model.
 *   **Metadata Editing:** Edit titles, participants, meeting dates, summaries, and notes.
@@ -122,78 +125,90 @@ The recommended method is to use the pre-built Docker image, which is fast and s
 
 You do not need to clone this repository for this method. You only need Docker installed.
 
-1.  **Download the `docker-compose.yml` file:**
-    This file tells Docker how to run Speakr. Download it from the repository:
-    ```bash
-    curl -o docker-compose.yml https://raw.githubusercontent.com/murtaza-nasir/speakr/main/docker-compose.example.yml
-    ```
-    *(If you don't have `curl`, you can use `wget` or just copy the contents of `docker-compose.example.yml` from the repository into a new file named `docker-compose.yml`)*
+1.  **Create the `docker-compose.yml` file:**
+    Create a new file named `docker-compose.yml` and paste the following content into it:
 
-2.  **Download a Configuration (`.env`) Template:**
-    Your choice here depends on which transcription method you want to use. Download one of the templates and rename it to `.env`.
+    ```yaml
+    services:
+      app:
+        image: learnedmachine/speakr:latest
+        container_name: speakr
+        restart: unless-stopped
+        ports:
+          - "8899:8899"
+        env_file:
+          - .env
+        volumes:
+          - ./uploads:/data/uploads
+          - ./instance:/data/instance
+    ```
+
+2.  **Create a Configuration (`.env`) File:**
+    Your choice here depends on which transcription method you want to use. Create a new file named `.env` and paste one of the following templates into it.
 
     *   **Option A: Standard API (e.g., OpenAI, local API)**
         This is the simplest method.
-        ```bash
-        curl -o .env https://raw.githubusercontent.com/murtaza-nasir/speakr/main/env.whisper.example
-        ```
-        Now, **edit the `.env` file** with your API keys and settings. Here are a few examples of what your configuration could look like:
 
-        *Example 1: Using OpenRouter for Chat and OpenAI for Transcription*
         ```dotenv
+        # --- Text Generation Model (for summaries, titles, etc.) ---
         TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
-        TEXT_MODEL_API_KEY=your_openrouter_key
+        TEXT_MODEL_API_KEY=your_openrouter_api_key
         TEXT_MODEL_NAME=openai/gpt-4o-mini
 
+        # --- Transcription Service (OpenAI Whisper API) ---
         TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
-        TRANSCRIPTION_API_KEY=your_openai_key
+        TRANSCRIPTION_API_KEY=your_openai_api_key
         WHISPER_MODEL=whisper-1
-        ```
-        *Example 2: Using OpenAI for both Chat and Transcription*
-        ```dotenv
-        TEXT_MODEL_BASE_URL=https://api.openai.com/v1
-        TEXT_MODEL_API_KEY=your_openai_key
-        TEXT_MODEL_NAME=gpt-4o-mini
 
-        TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
-        TRANSCRIPTION_API_KEY=your_openai_key
-        WHISPER_MODEL=whisper-1
-        ```
-        *Example 3: Using a self-hosted local Whisper API*
-        ```dotenv
-        TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
-        TEXT_MODEL_API_KEY=your_openrouter_key
-        TEXT_MODEL_NAME=openai/gpt-4o-mini
+        # --- Application Settings ---
+        ALLOW_REGISTRATION=false
+        SUMMARY_MAX_TOKENS=8000
+        CHAT_MAX_TOKENS=5000
 
-        TRANSCRIPTION_BASE_URL=http://192.168.1.100:8080/v1
-        TRANSCRIPTION_API_KEY=none
-        WHISPER_MODEL=large-v3
+        # --- Admin User (created on first run) ---
+        ADMIN_USERNAME=admin
+        ADMIN_EMAIL=admin@example.com
+        ADMIN_PASSWORD=changeme
+
+        # --- Docker Settings (rarely need to be changed) ---
+        SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
+        UPLOAD_FOLDER=/data/uploads
         ```
+        Now, **edit the `.env` file** with your API keys and settings.
 
     *   **Option B: ASR Webservice (for Speaker Diarization)**
-        This method requires a separate ASR webservice container but enables speaker identification.
-        ```bash
-        curl -o .env https://raw.githubusercontent.com/murtaza-nasir/speakr/main/env.asr.example
-        ```
-        Now, **edit the `.env` file** with your ASR service URL and other settings. It will look like this:
-        *Example for a local ASR service:*
-        ```dotenv
-        # This flag tells the app to use the ASR endpoint
-        USE_ASR_ENDPOINT=true
+        This method requires a separate ASR webservice container but enables speaker identification. This has been tested with the `onerahmet/openai-whisper-asr-webservice` image.
 
-        # ASR Endpoint Details
-        ASR_BASE_URL=http://192.168.68.85:9000
+        ```dotenv
+        # --- Text Generation Model (for summaries, titles, etc.) ---
+        TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+        TEXT_MODEL_API_KEY=your_openrouter_api_key
+        TEXT_MODEL_NAME=openai/gpt-4o-mini
+
+        # --- Transcription Service (ASR Endpoint) ---
+        USE_ASR_ENDPOINT=true
+        ASR_BASE_URL=http://your_asr_host:9000
         ASR_ENCODE=true
         ASR_TASK=transcribe
-        ASR_DIARIZE=true # Must be true to enable diarization
+        ASR_DIARIZE=true
         ASR_MIN_SPEAKERS=1
         ASR_MAX_SPEAKERS=5
 
-        # --- Text Generation Model ---
-        TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
-        TEXT_MODEL_API_KEY=your_openrouter_key
-        TEXT_MODEL_NAME=openai/gpt-4o-mini
+        # --- Application Settings ---
+        ALLOW_REGISTRATION=false
+        SUMMARY_MAX_TOKENS=8000
+        CHAT_MAX_TOKENS=5000
+
+        # --- Admin User (created on first run) ---
+        ADMIN_USERNAME=admin
+        ADMIN_EMAIL=admin@example.com
+        ADMIN_PASSWORD=changeme
+
+        # --- Docker Settings (rarely need to be changed) ---
+        SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
+        UPLOAD_FOLDER=/data/uploads
         ```
+        Now, **edit the `.env` file** with your ASR service URL and other settings.
 
 3.  **Start the Application:**
     In your terminal, in the same directory as your `docker-compose.yml` and `.env` files, run:
@@ -210,9 +225,11 @@ If you want to modify the code or build the Docker image yourself, clone the rep
     git clone https://github.com/murtaza-nasir/speakr.git
     cd speakr
     ```
-2.  **Create a `.env` file:**
-    Copy one of the examples (`env.whisper.example` or `env.asr.example`) and customize it.
+2.  **Create `docker-compose.yml` and `.env` files:**
+    Copy the example files from the repository.
     ```bash
+    cp docker-compose.example.yml docker-compose.yml
+    
     # For standard API
     cp env.whisper.example .env
 
@@ -271,12 +288,13 @@ Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webser
     *   **Edit** the title, participants, and other metadata.
     *   **Chat with Transcript:** Use the chat panel to ask questions about the recording.
 5.  **Speaker Diarization Workflow:**
-    *   This requires using the ASR endpoint method.
-    *   After a recording is processed, click the **Reprocess** button.
-    *   In the modal, ensure the "Diarize" checkbox is ticked and set the number of speakers.
-    *   Once reprocessing is complete, click **Identify Speakers**.
-    *   In the speaker modal, you can assign names to each speaker ID. You can also use the **Auto Identify** button to let an LLM attempt to name them based on context.
-    *   Saved speakers will be available for auto-complete in future sessions.
+    *   To enable speaker diarization, you must use the ASR endpoint method and set `ASR_DIARIZE=true` in your `.env` file.
+    *   When a recording is processed with this option, speakers will be automatically detected and assigned generic labels (e.g., `SPEAKER 00`, `SPEAKER 01`).
+    *   After processing, click the **Identify Speakers** button on the transcription page.
+    *   In the speaker identification modal, you can manually assign names to each speaker.
+    *   Alternatively, use the **Auto Identify** button to let an AI model attempt to identify and name the speakers based on the conversation context.
+    *   Saved speakers will be suggested for auto-completion in future sessions.
+    *   You can also use the **Reprocess** button to re-transcribe the audio with different diarization settings if needed.
 
 ## License
 
