@@ -1,7 +1,11 @@
 # Speakr - Audio Transcription and Summarization App
 import os
 import sys
-from flask import Flask, render_template, request, jsonify, send_file, Markup, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
+try:
+    from flask import Markup
+except ImportError:
+    from markupsafe import Markup
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from openai import OpenAI # Keep using the OpenAI library
@@ -704,6 +708,168 @@ def update_speakers(recording_id):
         db.session.rollback()
         app.logger.error(f"Error updating speakers for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+def identify_speakers_from_text(transcription):
+    """
+    Uses an LLM to identify speakers from a transcription.
+    """
+    if not TEXT_MODEL_API_KEY:
+        raise ValueError("TEXT_MODEL_API_KEY not configured.")
+
+    # Extract existing speaker labels (e.g., SPEAKER_00, SPEAKER_01) in order of appearance
+    all_labels = re.findall(r'\[(SPEAKER_\d+)\]', transcription)
+    seen = set()
+    speaker_labels = [x for x in all_labels if not (x in seen or seen.add(x))]
+    
+    if not speaker_labels:
+        return {}
+
+    prompt = f"""Analyze the following transcription and identify the names of the speakers. The speakers are labeled as {', '.join(speaker_labels)}. Based on the context of the conversation, determine the most likely name for each speaker label.
+
+Transcription:
+---
+{transcription[:28000]}
+---
+
+Respond with a single JSON object where keys are the speaker labels (e.g., "SPEAKER_00") and values are the identified full names. If a name cannot be determined, use the value "Unknown".
+
+Example:
+{{
+  "SPEAKER_00": "John Doe",
+  "SPEAKER_01": "Jane Smith",
+  "SPEAKER_02": "Unknown"
+}}
+
+JSON Response:
+"""
+
+    try:
+        completion = client.chat.completions.create(
+            model=TEXT_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers. Your response must be a single, valid JSON object."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"}
+        )
+        response_content = completion.choices[0].message.content
+        speaker_map = json.loads(response_content)
+
+        # Post-process the map to replace "Unknown" with an empty string
+        for speaker_label, identified_name in speaker_map.items():
+            if identified_name.strip().lower() == "unknown":
+                speaker_map[speaker_label] = ""
+                
+        return speaker_map
+    except Exception as e:
+        app.logger.error(f"Error calling LLM for speaker identification: {e}")
+        raise
+
+def identify_unidentified_speakers_from_text(transcription, unidentified_speakers):
+    """
+    Uses an LLM to identify only the unidentified speakers from a transcription.
+    """
+    if not TEXT_MODEL_API_KEY:
+        raise ValueError("TEXT_MODEL_API_KEY not configured.")
+
+    if not unidentified_speakers:
+        return {}
+
+    prompt = f"""Analyze the following transcription and identify the names of the UNIDENTIFIED speakers only. The unidentified speakers are labeled as {', '.join(unidentified_speakers)}. Based on the context of the conversation, determine the most likely name for each of these speaker labels.
+
+Note: Only identify the speakers listed above. Other speakers in the transcription may already be identified and should be ignored.
+
+Transcription:
+---
+{transcription[:28000]}
+---
+
+Respond with a single JSON object where keys are the unidentified speaker labels (e.g., "SPEAKER_01") and values are the identified full names. If a name cannot be determined, use the value "Unknown".
+
+Example:
+{{
+  "SPEAKER_01": "Jane Smith",
+  "SPEAKER_03": "Unknown"
+}}
+
+JSON Response:
+"""
+
+    try:
+        completion = client.chat.completions.create(
+            model=TEXT_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers. Your response must be a single, valid JSON object containing only the requested unidentified speakers."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"}
+        )
+        response_content = completion.choices[0].message.content
+        speaker_map = json.loads(response_content)
+
+        # Post-process the map to replace "Unknown" with an empty string
+        for speaker_label, identified_name in speaker_map.items():
+            if identified_name.strip().lower() == "unknown":
+                speaker_map[speaker_label] = ""
+                
+        return speaker_map
+    except Exception as e:
+        app.logger.error(f"Error calling LLM for speaker identification: {e}")
+        raise
+
+@app.route('/recording/<int:recording_id>/auto_identify_speakers', methods=['POST'])
+@login_required
+def auto_identify_speakers(recording_id):
+    """
+    Automatically identifies speakers in a transcription using an LLM.
+    Only identifies speakers that haven't been identified yet.
+    """
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to modify this recording'}), 403
+
+        if not recording.transcription:
+            return jsonify({'error': 'No transcription available for speaker identification'}), 400
+
+        # Get the current speaker map from the request
+        data = request.json or {}
+        current_speaker_map = data.get('current_speaker_map', {})
+        
+        # Extract all speaker labels from transcription
+        all_labels = re.findall(r'\[(SPEAKER_\d+)\]', recording.transcription)
+        seen = set()
+        speaker_labels = [x for x in all_labels if not (x in seen or seen.add(x))]
+        
+        # Filter out speakers that already have names assigned
+        unidentified_speakers = []
+        for speaker_label in speaker_labels:
+            speaker_info = current_speaker_map.get(speaker_label, {})
+            speaker_name = speaker_info.get('name', '').strip() if isinstance(speaker_info, dict) else str(speaker_info).strip()
+            
+            # Only include speakers that don't have names or have empty names
+            if not speaker_name:
+                unidentified_speakers.append(speaker_label)
+        
+        if not unidentified_speakers:
+            return jsonify({'success': True, 'speaker_map': {}, 'message': 'All speakers are already identified'})
+
+        # Call the helper function with only unidentified speakers
+        speaker_map = identify_unidentified_speakers_from_text(recording.transcription, unidentified_speakers)
+
+        return jsonify({'success': True, 'speaker_map': speaker_map})
+
+    except ValueError as ve:
+        # Handle cases where API key is not set
+        return jsonify({'error': str(ve)}), 503
+    except Exception as e:
+        app.logger.error(f"Error during auto speaker identification for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': f'An unexpected error occurred: {e}'}), 500
 
 # --- Chat with Transcription ---
 @app.route('/chat', methods=['POST'])

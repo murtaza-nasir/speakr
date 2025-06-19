@@ -319,9 +319,21 @@
                         <span class="ml-2">Regenerate summary after updating names</span>
                     </label>
                 </div>
-                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
-                    <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-between items-center border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
+                    <div>
+                        <button @click="autoIdentifySpeakers" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center" :disabled="isAutoIdentifying">
+                            <i class="fas fa-magic mr-2"></i>
+                            <span v-if="!isAutoIdentifying">Auto Identify</span>
+                            <span v-else>
+                                <i class="fas fa-spinner fa-spin mr-2"></i>
+                                Identifying...
+                            </span>
+                        </button>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                        <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
+                    </div>
                 </div>
             </div>
         </div>

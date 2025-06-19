@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const recordingToDelete = ref(null);
         const reprocessType = ref(null); // 'transcription' or 'summary'
         const reprocessRecording = ref(null);
+        const isAutoIdentifying = ref(false);
         const asrReprocessOptions = reactive({
             language: '',
             min_speakers: null,
@@ -1570,6 +1571,7 @@ document.addEventListener('DOMContentLoaded', () => {
             highlightedSpeaker.value = null;
             speakerSuggestions.value = {};
             loadingSuggestions.value = {};
+            isAutoIdentifying.value = false;
             showSpeakerModal.value = true;
         };
 
@@ -1627,6 +1629,60 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         };
         
+        const autoIdentifySpeakers = async () => {
+            if (!selectedRecording.value) {
+                showToast('No recording selected.', 'fa-exclamation-circle');
+                return;
+            }
+        
+            isAutoIdentifying.value = true;
+            showToast('Starting automatic speaker identification...', 'fa-magic');
+        
+            try {
+                const response = await fetch(`/recording/${selectedRecording.value.id}/auto_identify_speakers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_speaker_map: speakerMap.value
+                    })
+                });
+        
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Unknown error occurred during auto-identification.');
+                }
+        
+                // Check if there's a message (e.g., all speakers already identified)
+                if (data.message) {
+                    showToast(data.message, 'fa-info-circle');
+                    return;
+                }
+        
+                // Update speakerMap with the identified names (only for unidentified speakers)
+                let identifiedCount = 0;
+                for (const speakerId in data.speaker_map) {
+                    if (speakerMap.value[speakerId]) {
+                        speakerMap.value[speakerId].name = data.speaker_map[speakerId];
+                        if (data.speaker_map[speakerId]) { // Only count non-empty names
+                            identifiedCount++;
+                        }
+                    }
+                }
+        
+                if (identifiedCount > 0) {
+                    showToast(`${identifiedCount} speaker(s) identified successfully!`, 'fa-check-circle');
+                } else {
+                    showToast('No speakers could be identified from the context.', 'fa-info-circle');
+                }
+        
+            } catch (error) {
+                console.error('Auto Identify Speakers Error:', error);
+                showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 5000);
+            } finally {
+                isAutoIdentifying.value = false;
+            }
+        };
+
         const performReprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers) => {
             if (!recordingId) {
                 setGlobalError('No recording ID provided for reprocessing.');
@@ -2094,6 +2150,8 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingSuggestions,
             searchSpeakers,
             selectSpeakerSuggestion,
+            autoIdentifySpeakers,
+            isAutoIdentifying,
             // Main column resizer refs (not needed in template but good practice if they were)
             // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns 
          }
