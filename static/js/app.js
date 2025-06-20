@@ -1994,36 +1994,29 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!chatInput.value.trim() || isChatLoading.value || !selectedRecording.value || selectedRecording.value.status !== 'COMPLETED') {
                 return;
             }
-            
+        
             const message = chatInput.value.trim();
-
-            // Ensure chatMessages.value is an array before pushing
+        
             if (!Array.isArray(chatMessages.value)) {
-                console.warn('chatMessages.value was not an array! Resetting. Value was:', chatMessages.value);
-                chatMessages.value = []; // Reset if corrupted
+                chatMessages.value = [];
             }
-
+        
             chatMessages.value.push({ role: 'user', content: message });
             chatInput.value = '';
             isChatLoading.value = true;
-            
-            // Scroll to bottom of chat
+        
             await nextTick();
-            // Use the correctly named ref
-            if (chatMessagesRef.value) { 
+            if (chatMessagesRef.value) {
                 chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
             }
-            
+        
+            let assistantMessage = null;
+        
             try {
-                // Prepare message history for the API call
-                // We need to convert our UI messages to the format expected by the API
                 const messageHistory = chatMessages.value
-                    .slice(0, -1) // Exclude the message we just added (it will be sent separately)
-                    .map(msg => ({
-                        role: msg.role,
-                        content: msg.content
-                    }));
-                
+                    .slice(0, -1) // Exclude the new user message
+                    .map(msg => ({ role: msg.role, content: msg.content }));
+        
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2033,24 +2026,75 @@ document.addEventListener('DOMContentLoaded', () => {
                         message_history: messageHistory
                     })
                 });
-                
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Failed to get chat response');
-                
-                chatMessages.value.push({ 
-                    role: 'assistant', 
-                    content: data.response,
-                    html: data.response_html 
-                });
+        
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to get chat response');
+                }
+        
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+        
+                const processStream = async () => {
+                    let isFirstChunk = true;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+        
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const jsonStr = line.substring(6);
+                                if (jsonStr) {
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        if (data.delta) {
+                                            if (isFirstChunk) {
+                                                isChatLoading.value = false;
+                                                assistantMessage = reactive({ role: 'assistant', content: '', html: '' });
+                                                chatMessages.value.push(assistantMessage);
+                                                isFirstChunk = false;
+                                            }
+                                            assistantMessage.content += data.delta;
+                                            assistantMessage.html = marked.parse(assistantMessage.content);
+                                            
+                                            await nextTick();
+                                            if (chatMessagesRef.value) {
+                                                chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+                                            }
+                                        }
+                                        if (data.end_of_stream) {
+                                            return;
+                                        }
+                                        if (data.error) {
+                                            throw new Error(data.error);
+                                        }
+                                    } catch (e) {
+                                        console.error('Error parsing stream data:', e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+        
+                await processStream();
+        
             } catch (error) {
                 console.error('Chat Error:', error);
-                setGlobalError(`Chat error: ${error.message}`);
-                chatMessages.value.push({ role: 'assistant', content: `Error: ${error.message}` });
+                if (assistantMessage) {
+                    assistantMessage.content = `Error: ${error.message}`;
+                    assistantMessage.html = `<span class="text-red-500">Error: ${error.message}</span>`;
+                } else {
+                    chatMessages.value.push({ role: 'assistant', content: `Error: ${error.message}`, html: `<span class="text-red-500">Error: ${error.message}</span>` });
+                }
             } finally {
                 isChatLoading.value = false;
-                // Scroll to bottom of chat
                 await nextTick();
-                 // Use the correctly named ref
                 if (chatMessagesRef.value) {
                     chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
                 }

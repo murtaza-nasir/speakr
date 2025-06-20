@@ -1,7 +1,7 @@
 # Speakr - Audio Transcription and Summarization App
 import os
 import sys
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response
 try:
     from flask import Markup
 except ImportError:
@@ -1046,7 +1046,6 @@ def chat_with_transcription():
             return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
             
         # Prepare the system prompt with the transcription
-        # output_language_chat = os.environ.get("OUTPUT_LANGUAGE", None) # Get preferred output language for chat - Now from user
         user_chat_output_language = current_user.output_language if current_user.is_authenticated else None
         
         language_instruction = ""
@@ -1073,40 +1072,39 @@ Additional context and notes about the meeting:
 {recording.notes or "none"}
 """
         
-        # Call the LLM
-        try:
-            # Prepare messages array with system prompt and conversation history
-            messages = [{"role": "system", "content": system_prompt}]
-            
-            # Add message history if provided
-            if message_history:
-                messages.extend(message_history)
-            
-            # Add the current user message
-            messages.append({"role": "user", "content": user_message})
-            
-            completion = client.chat.completions.create(
-                model=TEXT_MODEL_NAME,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000"))
-            )
-            
-            response_content = completion.choices[0].message.content
-            
-            # Convert markdown in the response to HTML
-            response_html = md_to_html(response_content)
-            
-            return jsonify({
-                'response': response_content,
-                'response_html': response_html,
-                'success': True
-            })
-            
-        except Exception as chat_error:
-            app.logger.error(f"Error calling OpenRouter API for chat: {str(chat_error)}")
-            return jsonify({'error': f'Chat service error: {str(chat_error)}'}), 500
-            
+        # Prepare messages array with system prompt and conversation history
+        messages = [{"role": "system", "content": system_prompt}]
+        if message_history:
+            messages.extend(message_history)
+        messages.append({"role": "user", "content": user_message})
+
+        def generate():
+            try:
+                # Enable streaming
+                stream = client.chat.completions.create(
+                    model=TEXT_MODEL_NAME,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
+                    stream=True
+                )
+                
+                for chunk in stream:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        # Yield the content in SSE format
+                        yield f"data: {json.dumps({'delta': content})}\n\n"
+                
+                # Signal the end of the stream
+                yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+
+            except Exception as e:
+                app.logger.error(f"Error during chat stream generation: {str(e)}")
+                # Yield an error message in SSE format
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return Response(generate(), mimetype='text/event-stream')
+
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500

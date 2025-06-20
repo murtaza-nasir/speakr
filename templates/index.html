@@ -11,6 +11,7 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -1178,7 +1179,7 @@
                                                     class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
                                                     :disabled="!chatInput.trim() || isChatLoading || !selectedRecording || selectedRecording.status !== 'COMPLETED'"
                                                 >
-                                                    <i class="fas fa-paper-plane"></i>
+                                                    <i class="fas" :class="isChatLoading ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
                                                 </button>
                                             </div>
                                         </div>
