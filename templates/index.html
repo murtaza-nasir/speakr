@@ -689,6 +689,14 @@
                                             <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">Created</dt>
                                             <dd class="text-sm text-[var(--text-secondary)]">${ new Date(selectedRecording.created_at).toLocaleString() }</dd>
                                         </div>
+                                        <div v-if="selectedRecording.completed_at" class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                            <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">Processed On</dt>
+                                            <dd class="text-sm text-[var(--text-secondary)]">${ new Date(selectedRecording.completed_at).toLocaleString() }</dd>
+                                        </div>
+                                        <div v-if="selectedRecording.processing_time_seconds" class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
+                                            <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">Processing Time</dt>
+                                            <dd class="text-sm text-[var(--text-secondary)]">${ selectedRecording.processing_time_seconds.toFixed(2) } seconds</dd>
+                                        </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
                                             <div class="flex justify-between items-center mb-0.5">
                                                 <dt class="font-medium text-sm text-[var(--text-primary)]">Meeting Date</dt>
@@ -1086,14 +1094,22 @@
                                             <!-- Metadata Panel (in separate tab) -->
                                             <div v-show="selectedTab === 'metadata'" class="h-full">
                                                 <div class="metadata-panel custom-scrollbar tab-content-box">
-                                                    <dl>
-                                                        <div v-if="selectedRecording.original_filename">
-                                                            <dt>Original Filename</dt>
-                                                            <dd>${ selectedRecording.original_filename }</dd>
+                                                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4 text-sm">
+                                                        <div class="metadata-grid-item">
+                                                            <dt><i class="fas fa-file-alt mr-2 text-[var(--text-muted)]"></i>Original Filename</dt>
+                                                            <dd>${ selectedRecording.original_filename || 'N/A' }</dd>
                                                         </div>
-                                                        <div>
-                                                            <dt>File Size</dt>
+                                                        <div class="metadata-grid-item">
+                                                            <dt><i class="fas fa-database mr-2 text-[var(--text-muted)]"></i>File Size</dt>
                                                             <dd>${ formatFileSize(selectedRecording.file_size) }</dd>
+                                                        </div>
+                                                        <div v-if="selectedRecording.completed_at" class="metadata-grid-item">
+                                                            <dt><i class="fas fa-check-circle mr-2 text-[var(--text-muted)]"></i>Processed On</dt>
+                                                            <dd>${ new Date(selectedRecording.completed_at).toLocaleString() }</dd>
+                                                        </div>
+                                                        <div v-if="selectedRecording.processing_time_seconds" class="metadata-grid-item">
+                                                            <dt><i class="fas fa-hourglass-half mr-2 text-[var(--text-muted)]"></i>Processing Time</dt>
+                                                            <dd>${ selectedRecording.processing_time_seconds.toFixed(2) } seconds</dd>
                                                         </div>
                                                     </dl>
                                                 </div>

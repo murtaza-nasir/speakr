@@ -154,6 +154,8 @@ class Recording(db.Model):
     is_inbox = db.Column(db.Boolean, default=True)  # New recordings are marked as inbox by default
     is_highlighted = db.Column(db.Boolean, default=False)  # Recordings can be highlighted by the user
     mime_type = db.Column(db.String(100), nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    processing_time_seconds = db.Column(db.Integer, nullable=True)
 
     def to_dict(self):
         return {
@@ -167,6 +169,8 @@ class Recording(db.Model):
             'summary_html': md_to_html(self.summary) if self.summary else "",
             'status': self.status,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'processing_time_seconds': self.processing_time_seconds,
             'meeting_date': self.meeting_date.isoformat() if self.meeting_date else None, # <-- ADDED: Include meeting_date
             'file_size': self.file_size,
             'original_filename': self.original_filename, # <-- ADDED: Include original filename
@@ -252,6 +256,10 @@ with app.app_context():
             app.logger.info("Added diarize column to user table")
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
+            app.logger.info("Added completed_at column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
+            app.logger.info("Added processing_time_seconds column to recording table")
             
     except Exception as e:
         app.logger.error(f"Error during database migration: {e}")
@@ -409,12 +417,16 @@ JSON Response:"""
             recording.title = raw_title.strip() if isinstance(raw_title, str) else "[Title not generated]"
             recording.summary = raw_summary.strip() if isinstance(raw_summary, str) else "[Summary not generated]"
             recording.status = 'COMPLETED'
+            recording.completed_at = datetime.utcnow()
+            recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
             app.logger.info(f"Title and summary processed successfully for recording {recording_id}.")
 
         except Exception as summary_e:
             app.logger.error(f"Error calling OpenRouter API for summary ({recording_id}): {str(summary_e)}")
             recording.summary = f"[AI summary generation failed: API Error ({str(summary_e)})]"
             recording.status = 'COMPLETED'
+            recording.completed_at = datetime.utcnow()
+            recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
 
         db.session.commit()
 
