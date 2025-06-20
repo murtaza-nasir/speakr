@@ -2247,15 +2247,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (audioPlayer) {
+                const wasPlaying = !audioPlayer.paused;
                 audioPlayer.currentTime = time;
-                audioPlayer.play();
+                if (wasPlaying) {
+                    audioPlayer.play();
+                }
             } else {
                 console.warn(`Audio player not found for context: ${context}`);
                 // Fallback to old method if new one fails
                 const oldPlayer = document.querySelector('audio');
                 if(oldPlayer) {
+                    const wasPlaying = !oldPlayer.paused;
                     oldPlayer.currentTime = time;
-                    oldPlayer.play();
+                    if (wasPlaying) {
+                        oldPlayer.play();
+                    }
                 }
             }
         };
