@@ -416,7 +416,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 params = {
                     'encode': ASR_ENCODE,
                     'task': ASR_TASK,
-                    'output': 'txt'
+                    'output': 'json'
                 }
                 if language:
                     params['language'] = language
@@ -435,6 +435,8 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 with httpx.Client() as client:
                     response = client.post(url, params=params, files=files, timeout=None)
                     response.raise_for_status()
+                    # The ASR service now returns JSON as a string.
+                    # We will store it directly. The frontend will parse it.
                     recording.transcription = response.text
             
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
@@ -677,26 +679,56 @@ def update_speakers(recording_id):
         if not speaker_map:
             return jsonify({'error': 'No speaker map provided'}), 400
 
-        transcription = recording.transcription
-        new_participants = []
+        transcription_text = recording.transcription
+        is_json = False
+        try:
+            transcription_data = json.loads(transcription_text)
+            is_json = isinstance(transcription_data, dict) and 'segments' in transcription_data
+        except (json.JSONDecodeError, TypeError):
+            is_json = False
+
         speaker_names_used = []
 
-        for speaker_label, new_name_info in speaker_map.items():
-            new_name = new_name_info['name']
-            if new_name_info.get('isMe'):
-                new_name = current_user.name or 'Me'
+        if is_json:
+            # Handle JSON transcript
+            for segment in transcription_data.get('segments', []):
+                original_speaker_label = segment.get('speaker')
+                if original_speaker_label in speaker_map:
+                    new_name_info = speaker_map[original_speaker_label]
+                    new_name = new_name_info.get('name', '').strip()
+                    if new_name_info.get('isMe'):
+                        new_name = current_user.name or 'Me'
+                    
+                    if new_name:
+                        segment['speaker'] = new_name
+                        if new_name not in speaker_names_used:
+                            speaker_names_used.append(new_name)
             
-            if new_name:
-                # Regex to handle variations like [SPEAKER_00], [ SPEAKER_00 ], etc.
-                transcription = re.sub(r'\[\s*' + re.escape(speaker_label) + r'\s*\]', f'[{new_name}]', transcription)
-                if new_name not in new_participants:
-                    new_participants.append(new_name)
-                    speaker_names_used.append(new_name)
+            recording.transcription = json.dumps(transcription_data)
+            
+            # Update participants from the final list of speakers in the JSON
+            if transcription_data.get('segments'):
+                final_speakers = set(seg.get('speaker') for seg in transcription_data['segments'] if seg.get('speaker'))
+                recording.participants = ', '.join(sorted(list(final_speakers)))
 
-        recording.transcription = transcription
-        if new_participants:
-            recording.participants = ', '.join(new_participants)
-        
+        else:
+            # Handle plain text transcript
+            new_participants = []
+            for speaker_label, new_name_info in speaker_map.items():
+                new_name = new_name_info.get('name', '').strip()
+                if new_name_info.get('isMe'):
+                    new_name = current_user.name or 'Me'
+                
+                if new_name:
+                    transcription_text = re.sub(r'\[\s*' + re.escape(speaker_label) + r'\s*\]', f'[{new_name}]', transcription_text, flags=re.IGNORECASE)
+                    if new_name not in new_participants:
+                        new_participants.append(new_name)
+            
+            recording.transcription = transcription_text
+            if new_participants:
+                recording.participants = ', '.join(new_participants)
+            speaker_names_used = new_participants
+
         # Update speaker usage statistics
         if speaker_names_used:
             update_speaker_usage(speaker_names_used)

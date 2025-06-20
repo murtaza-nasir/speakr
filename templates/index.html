@@ -18,7 +18,8 @@
         id="app" 
         class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col" 
         :class="{ 'use-asr-endpoint': useAsrEndpoint }"
-        data-use-asr-endpoint="{{ use_asr_endpoint }}">
+        data-use-asr-endpoint="{{ use_asr_endpoint }}"
+        data-current-user-name="{{ current_user.name or '' }}">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
              <h1 class="text-3xl font-bold text-[var(--text-primary)] cursor-pointer flex items-center" @click="switchToGalleryView" title="Go to Gallery">
                 <img src="{{ url_for('static', filename='img/favicon.svg') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
@@ -263,7 +264,7 @@
                                     </span>
                                 </div>
                                 <label class="flex items-center text-sm text-[var(--text-muted)]">
-                                    <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" @blur="clearSpeakerHighlight" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                     <span class="ml-2">Me</span>
                                 </label>
                             </div>
@@ -275,7 +276,7 @@
                                     v-model="speakerMap[speaker].name" 
                                     @input="searchSpeakers($event.target.value, speaker)"
                                     @focus="highlightSpeakerInTranscript(speaker)" 
-                                    @blur="setTimeout(() => speakerSuggestions[speaker] = [], 200)"
+                                    @blur="clearSpeakerHighlight(); setTimeout(() => speakerSuggestions[speaker] = [], 200)"
                                     :disabled="speakerMap[speaker].isMe"
                                     class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed" 
                                     :placeholder="speakerMap[speaker].isMe ? 'Me' : 'Enter name for ' + speaker"
@@ -315,14 +316,27 @@
                         <div class="mb-4 flex-shrink-0">
                             <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
                             <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
-                                <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
+                                <audio controls class="w-full h-10 speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>
                         </div>
                         
                         <!-- Transcript Section -->
-                        <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript" v-html="highlightedTranscript">
+                        <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript">
+                            <div v-if="processedTranscription.isJson">
+                                <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment mb-2">
+                                    <div v-if="segment.showSpeaker" 
+                                         :class="[segment.color, 'speaker-tablet', 'font-semibold', 'mb-1', { 'speaker-highlight': highlightedSpeaker === segment.speaker }]"
+                                         :data-speaker-id="segment.speaker">
+                                        ${ segment.speaker }
+                                    </div>
+                                    <div class="speaker-text" @click="seekAudioFromEvent">
+                                        <span v-for="word in segment.words" :key="word.start" class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5" :data-start-time="word.start">${ word.displayWord }</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else v-html="highlightedTranscript" @click="seekAudioFromEvent"></div>
                         </div>
                     </div>
                 </div>
@@ -523,17 +537,26 @@
                                         <!-- Transcription Content -->
                                         <div v-if="processedTranscription.hasDialogue">
                                             <!-- Simple View -->
-                                            <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view">
+                                            <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view" @click="seekAudioFromEvent">
                                                 <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment">
                                                     <div v-if="segment.showSpeaker" :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
-                                                    <div class="speaker-text">${ segment.text }</div>
+                                                    <div class="speaker-text">
+                                                        <span v-if="processedTranscription.isJson" v-for="word in segment.words" :key="word.start" class="word" :data-start-time="word.start">${ word.displayWord }</span>
+                                                        <span v-else>${ segment.text }</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <!-- Bubble View -->
-                                            <div v-else class="transcription-with-speakers">
-                                                <div v-for="(segment, index) in processedTranscription.segments" :key="index" 
-                                                     :class="[segment.color, 'speaker-bubble', { 'speaker-me': segment.speaker && segment.speaker.toLowerCase().includes('me') }]">
-                                                    <div class="speaker-bubble-content">${ segment.text }</div>
+                                            <div v-else class="transcription-with-speakers" @click="seekAudioFromEvent">
+                                                <div v-for="(row, index) in processedTranscription.bubbleRows" :key="index"
+                                                     :class="['bubble-row', { 'speaker-me': row.isMe }]">
+                                                    <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="bubbleIndex"
+                                                         :class="[row.color, 'speaker-bubble', { 'speaker-me': row.isMe }]">
+                                                        <div class="speaker-bubble-content">
+                                                            <span v-if="processedTranscription.isJson" v-for="word in bubble.words" :key="word.start" class="word" :data-start-time="word.start">${ word.displayWord }</span>
+                                                            <span v-else>${ bubble.text }</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -961,21 +984,27 @@
                                                 </div>
                                                 
                                                 <!-- Transcription Content -->
-                                                <div v-if="processedTranscription.hasDialogue">
+                                                <div v-if="processedTranscription.hasDialogue" @click="seekAudioFromEvent">
                                                     <!-- Simple View -->
                                                     <div v-if="transcriptionViewMode === 'simple'" class="transcription-simple-view">
                                                         <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment">
                                                             <div v-if="segment.showSpeaker" :class="[segment.color, 'speaker-tablet']">${ segment.speaker }</div>
-                                                            <div class="speaker-text">${ segment.text }</div>
+                                                            <div class="speaker-text">
+                                                                <span v-if="processedTranscription.isJson" v-for="word in segment.words" :key="word.start" class="word" :data-start-time="word.start">${ word.displayWord }</span>
+                                                                <span v-else>${ segment.text }</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <!-- Bubble View -->
                                                     <div v-else class="transcription-with-speakers">
-                                                        <div v-for="(row, index) in processedTranscription.bubbleRows" :key="index" 
+                                                        <div v-for="(row, index) in processedTranscription.bubbleRows" :key="index"
                                                              :class="['bubble-row', { 'speaker-me': row.isMe }]">
-                                                            <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="bubbleIndex" 
+                                                            <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="bubbleIndex"
                                                                  :class="[row.color, 'speaker-bubble', { 'speaker-me': row.isMe }]">
-                                                                <div class="speaker-bubble-content">${ bubble.text }</div>
+                                                                <div class="speaker-bubble-content">
+                                                                    <span v-if="processedTranscription.isJson" v-for="word in bubble.words" :key="word.start" class="word" :data-start-time="word.start">${ word.displayWord }</span>
+                                                                    <span v-else>${ bubble.text }</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

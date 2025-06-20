@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMobileUserMenuOpen = ref(false); // Mobile user icon dropdown menu state
         const windowWidth = ref(window.innerWidth); // For reactive screen size
         const useAsrEndpoint = ref(false);
+        const currentUserName = ref('');
 
         // --- Audio Recording State ---
         const isRecording = ref(false);
@@ -173,14 +174,35 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!selectedRecording.value?.transcription) {
                 return [];
             }
-            // Match both [SPEAKER_XX] and [Name] patterns
-            const speakerRegex = /\[([^\]]+)\]:/g;
-            const speakers = new Set();
-            let match;
-            while ((match = speakerRegex.exec(selectedRecording.value.transcription)) !== null) {
-                speakers.add(match[1]);
+            
+            const transcription = selectedRecording.value.transcription;
+            let transcriptionData;
+
+            try {
+                transcriptionData = JSON.parse(transcription);
+            } catch (e) {
+                transcriptionData = null;
             }
-            return Array.from(speakers);
+
+            if (transcriptionData && transcriptionData.segments) {
+                // JSON format - extract speakers from segments
+                const speakers = new Set();
+                transcriptionData.segments.forEach(segment => {
+                    if (segment.speaker) {
+                        speakers.add(segment.speaker);
+                    }
+                });
+                return Array.from(speakers);
+            } else {
+                // Plain text format - use regex to find speaker patterns
+                const speakerRegex = /\[([^\]]+)\]:/g;
+                const speakers = new Set();
+                let match;
+                while ((match = speakerRegex.exec(transcription)) !== null) {
+                    speakers.add(match[1]);
+                }
+                return Array.from(speakers);
+            }
         });
 
         const processedTranscription = computed(() => {
@@ -189,129 +211,157 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const transcription = selectedRecording.value.transcription;
-            
-            // Check if transcription has speaker labels
-            const speakerRegex = /\[([^\]]+)\]:\s*/g;
-            const hasDialogue = speakerRegex.test(transcription);
-            
-            if (!hasDialogue) {
-                return { 
-                    hasDialogue: false, 
-                    content: transcription, 
-                    speakers: [],
-                    simpleSegments: [],
-                    bubbleRows: []
+            let transcriptionData;
+
+            try {
+                transcriptionData = JSON.parse(transcription);
+            } catch (e) {
+                transcriptionData = null;
+            }
+
+            if (transcriptionData && transcriptionData.segments) {
+                // JSON processing logic
+                const speakerColors = {};
+                const speakerList = Array.from(new Set(transcriptionData.segments.map(seg => seg.speaker)));
+                speakerList.forEach((speaker, index) => {
+                    speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
+                });
+
+                const simpleSegments = transcriptionData.segments.map(segment => ({
+                    speaker: (speakerMap.value[segment.speaker]?.name || segment.speaker),
+                    text: segment.text,
+                    words: segment.words.map((word, index) => ({
+                        ...word,
+                        // Add a click handler or data attribute for seeking
+                        'data-start-time': word.start,
+                        // Add space after word unless it's the last word in the segment
+                        displayWord: word.word + (index < segment.words.length - 1 ? ' ' : '')
+                    })),
+                    color: speakerColors[segment.speaker] || 'speaker-color-1'
+                }));
+
+                // Process simple segments to add showSpeaker flag for proper display
+                const processedSimpleSegments = [];
+                let lastSpeaker = null;
+                simpleSegments.forEach(segment => {
+                    processedSimpleSegments.push({
+                        ...segment,
+                        showSpeaker: segment.speaker !== lastSpeaker
+                    });
+                    lastSpeaker = segment.speaker;
+                });
+
+                const bubbleRows = [];
+                let lastBubbleSpeaker = null;
+                simpleSegments.forEach(segment => {
+                    if (segment.speaker !== lastBubbleSpeaker) {
+                        bubbleRows.push({
+                            speaker: segment.speaker,
+                            color: segment.color,
+                            isMe: segment.speaker && segment.speaker.toLowerCase().includes('me'),
+                            bubbles: []
+                        });
+                        lastBubbleSpeaker = segment.speaker;
+                    }
+                    bubbleRows[bubbleRows.length - 1].bubbles.push({
+                        text: segment.text,
+                        words: segment.words,
+                        color: segment.color
+                    });
+                });
+
+                return {
+                    hasDialogue: true,
+                    isJson: true,
+                    segments: simpleSegments,
+                    simpleSegments: processedSimpleSegments,
+                    bubbleRows: bubbleRows,
+                    speakers: speakerList.map(speaker => ({
+                        name: (speakerMap.value[speaker]?.name || speaker),
+                        color: speakerColors[speaker] || 'speaker-color-1'
+                    }))
                 };
-            }
 
-            // Reset regex for processing
-            speakerRegex.lastIndex = 0;
-            
-            // Extract speakers and assign colors
-            const speakers = new Set();
-            let match;
-            const tempTranscription = transcription;
-            while ((match = speakerRegex.exec(tempTranscription)) !== null) {
-                speakers.add(match[1]);
-            }
-            
-            const speakerList = Array.from(speakers);
-            const speakerColors = {};
-            speakerList.forEach((speaker, index) => {
-                speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
-            });
+            } else {
+                // Fallback for plain text transcription
+                const speakerRegex = /\[([^\]]+)\]:\s*/g;
+                const hasDialogue = speakerRegex.test(transcription);
 
-            // Process transcription into dialogue segments
-            const segments = [];
-            const lines = transcription.split('\n');
-            let currentSpeaker = null;
-            let currentText = '';
+                if (!hasDialogue) {
+                    return {
+                        hasDialogue: false,
+                        isJson: false,
+                        content: transcription,
+                        speakers: [],
+                        simpleSegments: [],
+                        bubbleRows: []
+                    };
+                }
 
-            for (const line of lines) {
-                const speakerMatch = line.match(/^\[([^\]]+)\]:\s*(.*)$/);
-                
-                if (speakerMatch) {
-                    // Save previous segment if exists
-                    if (currentSpeaker && currentText.trim()) {
+                speakerRegex.lastIndex = 0;
+                const speakers = new Set();
+                let match;
+                while ((match = speakerRegex.exec(transcription)) !== null) {
+                    speakers.add(match[1]);
+                }
+
+                const speakerList = Array.from(speakers);
+                const speakerColors = {};
+                speakerList.forEach((speaker, index) => {
+                    speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
+                });
+
+                const segments = [];
+                const lines = transcription.split('\n');
+                let currentSpeaker = null;
+                let currentText = '';
+
+                for (const line of lines) {
+                    const speakerMatch = line.match(/^\[([^\]]+)\]:\s*(.*)$/);
+                    if (speakerMatch) {
+                        if (currentSpeaker && currentText.trim()) {
+                            segments.push({
+                                speaker: currentSpeaker,
+                                text: currentText.trim(),
+                                color: speakerColors[currentSpeaker] || 'speaker-color-1'
+                            });
+                        }
+                        currentSpeaker = speakerMatch[1];
+                        currentText = speakerMatch[2];
+                    } else if (currentSpeaker && line.trim()) {
+                        currentText += ' ' + line.trim();
+                    } else if (!currentSpeaker && line.trim()) {
                         segments.push({
-                            speaker: currentSpeaker,
-                            text: currentText.trim(),
-                            color: speakerColors[currentSpeaker] || 'speaker-color-1'
+                            speaker: null,
+                            text: line.trim(),
+                            color: 'speaker-color-1'
                         });
                     }
-                    
-                    // Start new segment
-                    currentSpeaker = speakerMatch[1];
-                    currentText = speakerMatch[2];
-                } else if (currentSpeaker && line.trim()) {
-                    // Continue current speaker's text
-                    currentText += ' ' + line.trim();
-                } else if (!currentSpeaker && line.trim()) {
-                    // Text without speaker (shouldn't happen in dialogue, but handle gracefully)
+                }
+
+                if (currentSpeaker && currentText.trim()) {
                     segments.push({
-                        speaker: null,
-                        text: line.trim(),
-                        color: 'speaker-color-1'
+                        speaker: currentSpeaker,
+                        text: currentText.trim(),
+                        color: speakerColors[currentSpeaker] || 'speaker-color-1'
                     });
                 }
-            }
 
-            // Don't forget the last segment
-            if (currentSpeaker && currentText.trim()) {
-                segments.push({
-                    speaker: currentSpeaker,
-                    text: currentText.trim(),
-                    color: speakerColors[currentSpeaker] || 'speaker-color-1'
-                });
-            }
-
-            // Process segments for simple view (only show speaker icon when speaker changes)
-            const simpleSegments = [];
-            let lastSpeaker = null;
-            
-            segments.forEach(segment => {
-                simpleSegments.push({
-                    ...segment,
-                    showSpeaker: segment.speaker !== lastSpeaker
-                });
-                lastSpeaker = segment.speaker;
-            });
-
-            // Process segments for bubble view (group consecutive segments by speaker)
-            const bubbleRows = [];
-            let currentRow = null;
-            
-            segments.forEach(segment => {
-                // Split long text into smaller chunks for better bubble layout
-                const maxChunkLength = 200; // Increased for better bundling
-                const chunks = [];
-                
-                if (segment.text.length <= maxChunkLength) {
-                    chunks.push(segment.text);
-                } else {
-                    // Split by sentences first, then by length if needed
-                    const sentences = segment.text.split(/(?<=[.!?])\s+/);
-                    let currentChunk = '';
-                    
-                    sentences.forEach(sentence => {
-                        if (currentChunk.length + sentence.length <= maxChunkLength) {
-                            currentChunk += (currentChunk ? ' ' : '') + sentence;
-                        } else {
-                            if (currentChunk) chunks.push(currentChunk);
-                            currentChunk = sentence;
-                        }
+                const simpleSegments = [];
+                let lastSpeaker = null;
+                segments.forEach(segment => {
+                    simpleSegments.push({
+                        ...segment,
+                        showSpeaker: segment.speaker !== lastSpeaker
                     });
-                    
-                    if (currentChunk) chunks.push(currentChunk);
-                }
-                
-                chunks.forEach((chunk, chunkIndex) => {
-                    // Check if we need a new row (different speaker only)
-                    // Remove the bubble count limit to allow better bundling
+                    lastSpeaker = segment.speaker;
+                });
+
+                const bubbleRows = [];
+                let currentRow = null;
+                segments.forEach(segment => {
                     if (!currentRow || currentRow.speaker !== segment.speaker) {
-                        
                         if (currentRow) bubbleRows.push(currentRow);
-                        
                         currentRow = {
                             speaker: segment.speaker,
                             color: segment.color,
@@ -319,27 +369,25 @@ document.addEventListener('DOMContentLoaded', () => {
                             isMe: segment.speaker && segment.speaker.toLowerCase().includes('me')
                         };
                     }
-                    
                     currentRow.bubbles.push({
-                        text: chunk,
+                        text: segment.text,
                         color: segment.color
                     });
                 });
-            });
-            
-            // Don't forget the last row
-            if (currentRow) bubbleRows.push(currentRow);
+                if (currentRow) bubbleRows.push(currentRow);
 
-            return {
-                hasDialogue: true,
-                segments: segments,
-                simpleSegments: simpleSegments,
-                bubbleRows: bubbleRows,
-                speakers: speakerList.map(speaker => ({
-                    name: speaker,
-                    color: speakerColors[speaker] || 'speaker-color-1'
-                }))
-            };
+                return {
+                    hasDialogue: true,
+                    isJson: false,
+                    segments: segments,
+                    simpleSegments: simpleSegments,
+                    bubbleRows: bubbleRows,
+                    speakers: speakerList.map(speaker => ({
+                        name: speaker,
+                        color: speakerColors[speaker] || 'speaker-color-1'
+                    }))
+                };
+            }
         });
 
         const highlightedTranscript = computed(() => {
@@ -1172,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (appDiv) {
                 const asrFlag = appDiv.dataset.useAsrEndpoint;
                 useAsrEndpoint.value = asrFlag === 'True' || asrFlag === 'true';
+                currentUserName.value = appDiv.dataset.currentUserName || '';
             }
             loadRecordings();
             initializeDarkMode(); // Initialize dark mode on load            
@@ -1473,6 +1522,14 @@ document.addEventListener('DOMContentLoaded', () => {
              }
          }, { deep: true });
 
+        watch(speakerMap, (newMap) => {
+            for (const speakerId in newMap) {
+                if (newMap[speakerId].isMe) {
+                    newMap[speakerId].name = currentUserName.value || 'Me';
+                }
+            }
+        }, { deep: true });
+
 
         // --- Reprocessing functionality ---
         const confirmReprocess = (type, recording) => {
@@ -1643,15 +1700,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const highlightSpeakerInTranscript = (speakerId) => {
             highlightedSpeaker.value = speakerId;
-            nextTick(() => {
-                const modalTranscript = document.querySelector('.speaker-modal-transcript');
-                if (modalTranscript) {
-                    const firstInstance = modalTranscript.querySelector(`.speaker-tag[data-speaker-id="${speakerId}"]`);
-                    if (firstInstance) {
-                        firstInstance.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll to the first instance in the transcript when a speaker is focused
+            if (speakerId) {
+                nextTick(() => {
+                    const modalTranscript = document.querySelector('div.speaker-modal-transcript');
+                    if (modalTranscript) {
+                        const firstInstance = modalTranscript.querySelector(`[data-speaker-id="${speakerId}"]`);
+                        if (firstInstance) {
+                            firstInstance.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                     }
-                }
-            });
+                });
+            }
+        };
+
+        const clearSpeakerHighlight = () => {
+            highlightedSpeaker.value = null;
         };
         
         const autoIdentifySpeakers = async () => {
@@ -2093,6 +2157,44 @@ document.addEventListener('DOMContentLoaded', () => {
             transcriptionViewMode.value = transcriptionViewMode.value === 'simple' ? 'bubble' : 'simple';
         };
 
+        const seekAudio = (time, context = 'main') => {
+            let audioPlayer = null;
+            if (context === 'modal') {
+                // The audio player in the modal has the class directly on the audio element
+                audioPlayer = document.querySelector('audio.speaker-modal-transcript');
+            } else {
+                audioPlayer = document.querySelector('.main-content-area audio');
+            }
+
+            if (audioPlayer) {
+                audioPlayer.currentTime = time;
+                audioPlayer.play();
+            } else {
+                console.warn(`Audio player not found for context: ${context}`);
+                // Fallback to old method if new one fails
+                const oldPlayer = document.querySelector('audio');
+                if(oldPlayer) {
+                    oldPlayer.currentTime = time;
+                    oldPlayer.play();
+                }
+            }
+        };
+
+        const seekAudioFromEvent = (event) => {
+            const wordSpan = event.target.closest('[data-start-time]');
+            if (!wordSpan) return;
+
+            const time = parseFloat(wordSpan.dataset.startTime);
+            if (isNaN(time)) return;
+
+            // Determine context by checking if we're inside the speaker modal
+            // The speaker modal has a specific structure with showSpeakerModal condition
+            const isInSpeakerModal = event.target.closest('.speaker-modal-transcript') !== null;
+            const context = isInSpeakerModal ? 'modal' : 'main';
+            
+            seekAudio(time, context);
+        };
+
         return {
             // State
             currentView, dragover, recordings, selectedRecording, // currentRecording removed
@@ -2161,7 +2263,9 @@ document.addEventListener('DOMContentLoaded', () => {
             closeSpeakerModal,
             saveSpeakerNames,
             highlightedTranscript,
+            highlightedSpeaker,
             highlightSpeakerInTranscript,
+            clearSpeakerHighlight,
             useAsrEndpoint,
             // Mobile tabs
             selectedMobileTab,
@@ -2178,7 +2282,9 @@ document.addEventListener('DOMContentLoaded', () => {
             autoIdentifySpeakers,
             isAutoIdentifying,
             // Main column resizer refs (not needed in template but good practice if they were)
-            // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns 
+            // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns,
+            seekAudio,
+            seekAudioFromEvent
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja
