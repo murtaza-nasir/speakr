@@ -108,6 +108,7 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 ## Features
 
 *   **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc. depending on your transcription endpoint) via drag-and-drop or file selection.
+*   **Browser Recording:** Record audio directly in your browser from the "New Recording" screen (requires HTTPS or browser configuration for HTTP - see [Deployment Guide](DEPLOYMENT_GUIDE.md#browser-recording-feature)).
 *   **Transcription:** Choose between a standard OpenAI-compatible API or a more advanced ASR Webservice.
 *   **Speaker Diarization:** (ASR/WhisperX only) Automatically detect and separate different speakers in the transcript.
 *   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
@@ -118,6 +119,8 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 *   **Customization:** Users can set their own language preferences, custom summarization prompts, and professional context to improve AI results.
 
 ## Setup Instructions
+
+**For detailed deployment instructions, see the [Deployment Guide](DEPLOYMENT_GUIDE.md)**
 
 The recommended method is to use the pre-built Docker image, which is fast and simple.
 
@@ -270,7 +273,11 @@ services:
 
 **A Note on Diarization Accuracy:** For best results, it is often better to set the number of speakers slightly higher (e.g., by 1-2) than the actual number present. You can easily merge speakers later in the speaker identification modal.
 
-Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webservice` image. Other ASR webservices might work but have not been tested. For more information on the recommended service and its various configurations, please see the official resources.
+Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webservice` image. Other ASR webservices might work but have not been tested.
+
+**Important for ASR Setup:** Speaker diarization requires a Hugging Face token and accepting terms for gated models (pyannote). If you encounter issues, check the ASR container logs with `docker logs whisper-asr-webservice` for troubleshooting.
+
+**For complete ASR setup instructions, model configurations, troubleshooting, and logs analysis, see the [Deployment Guide](DEPLOYMENT_GUIDE.md#advanced-asr-configuration)**
 
 ## Usage Guide
 
@@ -280,7 +287,10 @@ Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webser
     *   Define a custom summarization prompt to tailor summaries to your needs.
     *   Add your name, job title, and company to provide more context for AI chat interactions.
     *   View and manage your saved speakers.
-3.  **Upload:** Go to **New Recording** or drag-and-drop an audio file onto the page. The upload and processing status will appear in a popup.
+3.  **Upload or Record:** 
+    *   **Upload:** Go to **New Recording** or drag-and-drop an audio file onto the page
+    *   **Record:** Use the browser recording feature in the "New Recording" screen to record directly from your microphone (requires HTTPS or browser configuration - see [Browser Recording Setup](DEPLOYMENT_GUIDE.md#browser-recording-feature))
+    *   The upload and processing status will appear in a popup.
 4.  **View and Interact:**
     *   The main **Gallery** lists your recordings. Click one to view its details.
     *   **Listen** to the audio with the built-in player.
