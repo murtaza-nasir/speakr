@@ -227,6 +227,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Updated to handle new simplified JSON format (array of segments)
             if (transcriptionData && Array.isArray(transcriptionData)) {
+                // If no segments have a speaker, it wasn't diarized. Treat as plain text.
+                const wasDiarized = transcriptionData.some(segment => segment.speaker);
+
+                if (!wasDiarized) {
+                    const plainText = transcriptionData.map(segment => segment.sentence).join('\n');
+                    return {
+                        hasDialogue: false,
+                        isJson: false, // Treat as plain text for rendering
+                        content: plainText,
+                        speakers: [],
+                        simpleSegments: [],
+                        bubbleRows: []
+                    };
+                }
+                
                 const speakerColors = {};
                 const speakerList = identifiedSpeakers.value; // Use computed property which is already sorted
                 speakerList.forEach((speaker, index) => {
@@ -255,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bubbleRows = [];
                 let lastBubbleSpeaker = null;
                 simpleSegments.forEach(segment => {
-                    if (segment.speaker !== lastBubbleSpeaker) {
+                    if (bubbleRows.length === 0 || segment.speaker !== lastBubbleSpeaker) {
                         bubbleRows.push({
                             speaker: segment.speaker,
                             color: segment.color,
@@ -1456,30 +1471,34 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const handleVerticalResize = (event) => {
-            if (!isResizingVertical.value || !transcriptionSection.value || !tabSection.value) return;
+            if (!isResizingVertical.value) return;
 
-            const dy = event.clientY - initialVerticalResizeY;
-            const totalHeight = initialTranscriptionHeightPx + initialTabHeightPx;
-            
-            let newTranscriptionHeight = initialTranscriptionHeightPx + dy;
-            let newTabHeight = totalHeight - newTranscriptionHeight;
-            
-            // Enforce minimum heights
-            const minHeight = 100; // Minimum height in pixels
-            if (newTranscriptionHeight < minHeight) {
-                newTranscriptionHeight = minHeight;
-                newTabHeight = totalHeight - minHeight;
-            } else if (newTabHeight < minHeight) {
-                newTabHeight = minHeight;
-                newTranscriptionHeight = totalHeight - minHeight;
-            }
-            
-            // Convert to flex values (proportional)
-            const newTranscriptionFlex = newTranscriptionHeight / totalHeight * 3; // Scale to reasonable flex values
-            const newTabFlex = newTabHeight / totalHeight * 3;
-            
-            transcriptionFlex.value = Math.max(0.5, newTranscriptionFlex);
-            tabsFlex.value = Math.max(0.5, newTabFlex);
+            requestAnimationFrame(() => {
+                if (!transcriptionSection.value || !tabSection.value) return;
+
+                const dy = event.clientY - initialVerticalResizeY;
+                const totalHeight = initialTranscriptionHeightPx + initialTabHeightPx;
+                
+                let newTranscriptionHeight = initialTranscriptionHeightPx + dy;
+                
+                // Enforce minimum heights (e.g., 100px)
+                const minHeight = 100;
+                if (newTranscriptionHeight < minHeight) {
+                    newTranscriptionHeight = minHeight;
+                } else if (totalHeight - newTranscriptionHeight < minHeight) {
+                    newTranscriptionHeight = totalHeight - minHeight;
+                }
+                
+                const newTabHeight = totalHeight - newTranscriptionHeight;
+
+                // Convert heights to flex-grow values
+                // The sum of flex-grow values will be used for proportioning
+                const newTranscriptionFlex = newTranscriptionHeight / totalHeight;
+                const newTabFlex = newTabHeight / totalHeight;
+
+                transcriptionFlex.value = newTranscriptionFlex;
+                tabsFlex.value = newTabFlex;
+            });
         };
 
         const stopVerticalResize = () => {

@@ -555,7 +555,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <pre v-else class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
+                                        <pre v-else class="whitespace-pre-wrap font-sans">${ processedTranscription.content || 'No transcription available.' }</pre>
                                     </div>
                                     <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
                                         <p class="font-medium mb-2">Processing Failed:</p>
@@ -1010,7 +1010,7 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <pre v-else class="whitespace-pre-wrap font-sans">${ selectedRecording.transcription || 'No transcription available.' }</pre>
+                                                <pre v-else class="whitespace-pre-wrap font-sans">${ processedTranscription.content || 'No transcription available.' }</pre>
                                             </div>
                                             <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
                                                 <p class="font-medium mb-2">Processing Failed:</p>
@@ -1070,10 +1070,9 @@
                                             <!-- Summary Panel -->
                                             <div v-show="selectedTab === 'summary'" class="h-full">
                                                 <div v-if="selectedRecording.status === 'COMPLETED'" class="h-full">
-                                                    <div v-if="!editingSummary" class="content-box h-full flex flex-col min-h-0"> 
-                                                        <div class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)]" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
+                                                    <div v-if="!editingSummary" class="content-box h-full flex flex-col min-h-0">
+                                                        <div class="summary-box custom-scrollbar" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'">
                                                         </div>
-
                                                     </div>
                                                     <textarea v-else v-model="selectedRecording.summary" @blur="saveInlineEdit('summary')" class="summary-box custom-scrollbar bg-[var(--bg-tertiary)] border-[var(--border-primary)] text-[var(--text-secondary)] w-full focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] tab-content-box" placeholder="Enter summary"></textarea>
                                                 </div>

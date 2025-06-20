@@ -206,8 +206,22 @@ main {
     white-space: nowrap; 
     min-width: 0; 
 }
- /* Unified style for content boxes (summary, notes, transcription) */
-.summary-box, .transcription-box, .notes-box {
+.summary-box,
+.notes-box {
+    flex: 1; /* Take up available space in content-box */
+    min-height: 0; /* Critical for flex shrinking */
+    max-height: 100%; /* Prevent expansion beyond parent */
+    overflow-y: auto; /* Enable scrolling */
+    /* Keep existing styling */
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+
+.transcription-box {
     background-color: var(--bg-tertiary);
     padding: 1rem; /* p-4 */
     border-radius: 0.75rem; /* rounded-xl */
@@ -248,9 +262,8 @@ div[v-if="!editingNotes"] {
     display: flex;
     flex-direction: column;
     height: 100%;
-    gap: 1rem;
+    min-height: 0; /* Allow flex to work properly */
     overflow: hidden; /* Prevent this container from scrolling */
-    min-height: 0; /* Allows flex to work properly */
 }
 
 /* Right column content (audio player, chat) */
@@ -271,20 +284,18 @@ div[v-if="!editingNotes"] {
 /* Transcription section - takes up significant space */
 .transcription-section {
     /* flex: 2; */ /* Removed: Let JavaScript control flex values */
-    min-height: 0; /* Allows flex to work properly */
-    overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
+    min-height: 0; /* Critical for flex shrinking */
+    overflow: hidden; /* Contain overflow to enable proper flex behavior */
     display: flex;
     flex-direction: column;
 }
 
 /* Tab content section - takes up remaining space and aligns with chat box */
 .tab-section {
-    /* flex: 1; */ /* Removed: Let JavaScript control flex values */
-    min-height: 100px; /* Minimum height to prevent collapsing too much */
-    overflow-y: auto; /* Changed from hidden to auto to enable scrolling */
+    min-height: 0; /* Critical for flex items */
+    overflow: hidden; /* Prevent internal overflow from affecting layout */
     display: flex;
     flex-direction: column;
-    /* height: 100%; */ /* Removed: Let flex property control height */
 }
 
 /* Audio player section - small fixed height */
@@ -392,10 +403,14 @@ div[v-if="!editingNotes"] {
  }
  
  /* Hover edit button styles */
- .content-box {
-     position: relative;
-     overflow-y: auto; /* Allow content to scroll */
- }
+.content-box {
+    position: relative;
+    height: 100%; /* Fill the available flex space */
+    min-height: 0; /* Allow shrinking */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent overflow from affecting parent layout */
+}
  
  .hover-edit-btn {
      position: absolute;

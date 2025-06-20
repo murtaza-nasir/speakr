@@ -323,8 +323,6 @@ transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openr
 # ASR endpoint configuration
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL')
-ASR_ENCODE = os.environ.get('ASR_ENCODE', 'true').lower() == 'true'
-ASR_TASK = os.environ.get('ASR_TASK', 'transcribe')
 ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
 ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS')
 ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS')
@@ -367,33 +365,27 @@ def generate_summary_task(app_context, recording_id, start_time):
             user_summary_prompt = recording.owner.summary_prompt
             user_output_language = recording.owner.output_language
 
-        default_summary_prompt = """Analyze the following audio transcription and generate a concise title and a brief summary.
+        default_summary_prompt = """Analyze the following audio transcription and generate a concise title and a detailed, well-structured summary in Markdown format.
 
 Transcription:
 \"\"\"
 {transcription}
 \"\"\"
 
-Respond STRICTLY with a JSON object containing two keys: "title" (a short, descriptive title, max 6 words without using words introductory words and phrases like brief, "discussion on", "Meeting about" etc.) and "minutes" (a paragraph summarizing the key points, max 150 words). The title should get to the point without inroductory phrases as we have very little space to show the title.
+Respond STRICTLY with a JSON object containing two keys: "title" and "summary".
+
+1.  **title**: A short, descriptive title (max 6-8 words). Avoid introductory phrases like "Discussion on" or "Meeting about".
+2.  **summary**: A detailed summary in Markdown format. It should include the following sections:
+    *   **Key Issues Discussed**: A bulleted list of the main topics.
+    *   **Key Decisions Made**: A bulleted list of any decisions reached.
+    *   **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned.
+
 {language_directive}
+
 Example Format:
 {{
-  "title": "Q3 Results for SPERO Program",
-  "summary": "### Minutes
-
-**Meeting Participants:**  
-- Bob  
-- Alice  
-
----
-
-**1. Introduction and Overview:**
-- Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
-....
-### Key Issues Discussed
-....
-//and so on and so forth. Make sure not to miss any nuance or details. 
-"
+  "title": "Q3 Strategy and Project Phoenix",
+  "summary": "### Key Issues Discussed\\n- Review of Q2 performance and its impact on Q3 planning.\\n- Feasibility and timeline for Project Phoenix.\\n- Budget constraints and resource allocation for new initiatives.\\n\\n### Key Decisions Made\\n- Project Phoenix is approved to proceed with a revised timeline.\\n- The marketing budget will be reallocated to support the new launch.\\n\\n### Action Items\\n- **Alice**: Finalize the Project Phoenix roadmap by next Friday.\\n- **Bob**: Present the revised budget to the finance committee."
 }}
 
 JSON Response:"""
@@ -481,8 +473,8 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             with open(filepath, 'rb') as audio_file:
                 url = f"{ASR_BASE_URL}/asr"
                 params = {
-                    'encode': ASR_ENCODE,
-                    'task': ASR_TASK,
+                    'encode': True,
+                    'task': 'transcribe',
                     'output': 'json'
                 }
                 if language:
