@@ -184,16 +184,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 transcriptionData = null;
             }
 
-            if (transcriptionData && transcriptionData.segments) {
+            // Updated to handle new simplified JSON format (array of segments)
+            if (transcriptionData && Array.isArray(transcriptionData)) {
                 // JSON format - extract speakers from segments
                 const speakers = new Set();
-                transcriptionData.segments.forEach(segment => {
+                transcriptionData.forEach(segment => {
                     if (segment.speaker) {
                         speakers.add(segment.speaker);
                     }
                 });
-                return Array.from(speakers);
-            } else {
+                return Array.from(speakers).sort(); // Sort for consistent color mapping
+            } else if (typeof transcription === 'string') {
                 // Plain text format - use regex to find speaker patterns
                 const speakerRegex = /\[([^\]]+)\]:/g;
                 const speakers = new Set();
@@ -201,8 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 while ((match = speakerRegex.exec(transcription)) !== null) {
                     speakers.add(match[1]);
                 }
-                return Array.from(speakers);
+                return Array.from(speakers).sort();
             }
+            return [];
         });
 
         const processedTranscription = computed(() => {
@@ -219,28 +221,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 transcriptionData = null;
             }
 
-            if (transcriptionData && transcriptionData.segments) {
-                // JSON processing logic
+            // Updated to handle new simplified JSON format (array of segments)
+            if (transcriptionData && Array.isArray(transcriptionData)) {
                 const speakerColors = {};
-                const speakerList = Array.from(new Set(transcriptionData.segments.map(seg => seg.speaker)));
+                const speakerList = identifiedSpeakers.value; // Use computed property which is already sorted
                 speakerList.forEach((speaker, index) => {
                     speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
                 });
 
-                const simpleSegments = transcriptionData.segments.map(segment => ({
+                const simpleSegments = transcriptionData.map(segment => ({
+                    speakerId: segment.speaker,
                     speaker: (speakerMap.value[segment.speaker]?.name || segment.speaker),
-                    text: segment.text,
-                    words: segment.words.map((word, index) => ({
-                        ...word,
-                        // Add a click handler or data attribute for seeking
-                        'data-start-time': word.start,
-                        // Add space after word unless it's the last word in the segment
-                        displayWord: word.word + (index < segment.words.length - 1 ? ' ' : '')
-                    })),
+                    sentence: segment.sentence,
+                    startTime: segment.start_time,
+                    endTime: segment.end_time,
                     color: speakerColors[segment.speaker] || 'speaker-color-1'
                 }));
 
-                // Process simple segments to add showSpeaker flag for proper display
                 const processedSimpleSegments = [];
                 let lastSpeaker = null;
                 simpleSegments.forEach(segment => {
@@ -258,14 +255,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         bubbleRows.push({
                             speaker: segment.speaker,
                             color: segment.color,
-                            isMe: segment.speaker && segment.speaker.toLowerCase().includes('me'),
+                            isMe: segment.speaker && (typeof segment.speaker === 'string') && segment.speaker.toLowerCase().includes('me'),
                             bubbles: []
                         });
                         lastBubbleSpeaker = segment.speaker;
                     }
                     bubbleRows[bubbleRows.length - 1].bubbles.push({
-                        text: segment.text,
-                        words: segment.words,
+                        sentence: segment.sentence,
+                        startTime: segment.startTime,
                         color: segment.color
                     });
                 });
@@ -322,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (currentSpeaker && currentText.trim()) {
                             segments.push({
                                 speaker: currentSpeaker,
-                                text: currentText.trim(),
+                                sentence: currentText.trim(),
                                 color: speakerColors[currentSpeaker] || 'speaker-color-1'
                             });
                         }
@@ -333,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (!currentSpeaker && line.trim()) {
                         segments.push({
                             speaker: null,
-                            text: line.trim(),
+                            sentence: line.trim(),
                             color: 'speaker-color-1'
                         });
                     }
@@ -342,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentSpeaker && currentText.trim()) {
                     segments.push({
                         speaker: currentSpeaker,
-                        text: currentText.trim(),
+                        sentence: currentText.trim(),
                         color: speakerColors[currentSpeaker] || 'speaker-color-1'
                     });
                 }
@@ -352,7 +349,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 segments.forEach(segment => {
                     simpleSegments.push({
                         ...segment,
-                        showSpeaker: segment.speaker !== lastSpeaker
+                        showSpeaker: segment.speaker !== lastSpeaker,
+                        // Ensure sentence property exists for plain text
+                        sentence: segment.sentence || segment.text 
                     });
                     lastSpeaker = segment.speaker;
                 });
@@ -370,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         };
                     }
                     currentRow.bubbles.push({
-                        text: segment.text,
+                        sentence: segment.sentence,
                         color: segment.color
                     });
                 });
@@ -2092,26 +2091,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Get the button that was clicked
             const button = event.currentTarget;
+            let textToCopy = '';
             
-            // Show visual feedback on button
+            try {
+                const transcriptionData = JSON.parse(selectedRecording.value.transcription);
+                if (Array.isArray(transcriptionData)) {
+                    // It's our simplified JSON, format it for copying
+                    textToCopy = transcriptionData.map(segment => {
+                        const speakerName = speakerMap.value[segment.speaker]?.name || segment.speaker;
+                        return `[${speakerName}]: ${segment.sentence}`;
+                    }).join('\n');
+                } else {
+                    // It's some other JSON or plain text, copy as is
+                    textToCopy = selectedRecording.value.transcription;
+                }
+            } catch (e) {
+                // Not JSON, so it's plain text
+                textToCopy = selectedRecording.value.transcription;
+            }
+
             animateCopyButton(button);
             
             if (navigator.clipboard && window.isSecureContext) {
-                // Use clipboard API if available (secure context)
-                navigator.clipboard.writeText(selectedRecording.value.transcription)
+                navigator.clipboard.writeText(textToCopy)
                     .then(() => {
                         showToast('Transcription copied to clipboard!');
                     })
                     .catch(err => {
                         console.error('Copy failed:', err);
                         showToast('Failed to copy: ' + err.message, 'fa-exclamation-circle');
-                        fallbackCopyTextToClipboard(selectedRecording.value.transcription);
+                        fallbackCopyTextToClipboard(textToCopy);
                     });
             } else {
-                // Fallback for non-secure contexts
-                fallbackCopyTextToClipboard(selectedRecording.value.transcription);
+                fallbackCopyTextToClipboard(textToCopy);
             }
         };
         
@@ -2181,14 +2194,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const seekAudioFromEvent = (event) => {
-            const wordSpan = event.target.closest('[data-start-time]');
-            if (!wordSpan) return;
+            const segmentElement = event.target.closest('[data-start-time]');
+            if (!segmentElement) return;
 
-            const time = parseFloat(wordSpan.dataset.startTime);
+            const time = parseFloat(segmentElement.dataset.startTime);
             if (isNaN(time)) return;
 
             // Determine context by checking if we're inside the speaker modal
-            // The speaker modal has a specific structure with showSpeakerModal condition
             const isInSpeakerModal = event.target.closest('.speaker-modal-transcript') !== null;
             const context = isInSpeakerModal ? 'modal' : 'main';
             

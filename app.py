@@ -44,6 +44,26 @@ def md_to_html(text):
     ])
     return html
 
+def format_transcription_for_llm(transcription_text):
+    """
+    Formats transcription for LLM. If it's our simplified JSON, convert it to plain text.
+    Otherwise, return as is.
+    """
+    try:
+        transcription_data = json.loads(transcription_text)
+        if isinstance(transcription_data, list):
+            # It's our simplified JSON format
+            formatted_lines = []
+            for segment in transcription_data:
+                speaker = segment.get('speaker', 'Unknown Speaker')
+                sentence = segment.get('sentence', '')
+                formatted_lines.append(f"[{speaker}]: {sentence}")
+            return "\n".join(formatted_lines)
+    except (json.JSONDecodeError, TypeError):
+        # Not a JSON, or not the format we expect, so return as is.
+        pass
+    return transcription_text
+
 app = Flask(__name__)
 # Use environment variables or default paths for Docker compatibility
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
@@ -435,9 +455,23 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 with httpx.Client() as client:
                     response = client.post(url, params=params, files=files, timeout=None)
                     response.raise_for_status()
-                    # The ASR service now returns JSON as a string.
-                    # We will store it directly. The frontend will parse it.
-                    recording.transcription = response.text
+                    
+                    # Parse the JSON response from ASR
+                    asr_response_data = response.json()
+                    
+                    # Simplify the JSON data
+                    simplified_segments = []
+                    if 'segments' in asr_response_data and isinstance(asr_response_data['segments'], list):
+                        for segment in asr_response_data['segments']:
+                            simplified_segments.append({
+                                'speaker': segment.get('speaker'),
+                                'sentence': segment.get('text', '').strip(),
+                                'start_time': segment.get('start'),
+                                'end_time': segment.get('end')
+                            })
+                    
+                    # Store the simplified JSON as a string
+                    recording.transcription = json.dumps(simplified_segments)
             
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
             generate_summary_task(app_context, recording_id)
@@ -683,15 +717,16 @@ def update_speakers(recording_id):
         is_json = False
         try:
             transcription_data = json.loads(transcription_text)
-            is_json = isinstance(transcription_data, dict) and 'segments' in transcription_data
+            # Updated check for our new simplified JSON format (a list of segment objects)
+            is_json = isinstance(transcription_data, list)
         except (json.JSONDecodeError, TypeError):
             is_json = False
 
         speaker_names_used = []
 
         if is_json:
-            # Handle JSON transcript
-            for segment in transcription_data.get('segments', []):
+            # Handle new simplified JSON transcript (list of segments)
+            for segment in transcription_data:
                 original_speaker_label = segment.get('speaker')
                 if original_speaker_label in speaker_map:
                     new_name_info = speaker_map[original_speaker_label]
@@ -707,9 +742,8 @@ def update_speakers(recording_id):
             recording.transcription = json.dumps(transcription_data)
             
             # Update participants from the final list of speakers in the JSON
-            if transcription_data.get('segments'):
-                final_speakers = set(seg.get('speaker') for seg in transcription_data['segments'] if seg.get('speaker'))
-                recording.participants = ', '.join(sorted(list(final_speakers)))
+            final_speakers = set(seg.get('speaker') for seg in transcription_data if seg.get('speaker'))
+            recording.participants = ', '.join(sorted(list(final_speakers)))
 
         else:
             # Handle plain text transcript
@@ -761,8 +795,11 @@ def identify_speakers_from_text(transcription):
     if not TEXT_MODEL_API_KEY:
         raise ValueError("TEXT_MODEL_API_KEY not configured.")
 
+    # The transcription passed here could be JSON, so we format it.
+    formatted_transcription = format_transcription_for_llm(transcription)
+
     # Extract existing speaker labels (e.g., SPEAKER_00, SPEAKER_01) in order of appearance
-    all_labels = re.findall(r'\[(SPEAKER_\d+)\]', transcription)
+    all_labels = re.findall(r'\[(SPEAKER_\d+)\]', formatted_transcription)
     seen = set()
     speaker_labels = [x for x in all_labels if not (x in seen or seen.add(x))]
     
@@ -773,7 +810,7 @@ def identify_speakers_from_text(transcription):
 
 Transcription:
 ---
-{transcription[:28000]}
+{formatted_transcription[:28000]}
 ---
 
 Respond with a single JSON object where keys are the speaker labels (e.g., "SPEAKER_00") and values are the identified full names. If a name cannot be determined, use the value "Unknown".
@@ -818,6 +855,9 @@ def identify_unidentified_speakers_from_text(transcription, unidentified_speaker
     if not TEXT_MODEL_API_KEY:
         raise ValueError("TEXT_MODEL_API_KEY not configured.")
 
+    # The transcription passed here could be JSON, so we format it.
+    formatted_transcription = format_transcription_for_llm(transcription)
+
     if not unidentified_speakers:
         return {}
 
@@ -827,7 +867,7 @@ Note: Only identify the speakers listed above. Other speakers in the transcripti
 
 Transcription:
 ---
-{transcription[:28000]}
+{formatted_transcription[:28000]}
 ---
 
 Respond with a single JSON object where keys are the unidentified speaker labels (e.g., "SPEAKER_01") and values are the identified full names. If a name cannot be determined, use the value "Unknown".
@@ -887,7 +927,8 @@ def auto_identify_speakers(recording_id):
         current_speaker_map = data.get('current_speaker_map', {})
         
         # Extract all speaker labels from transcription
-        all_labels = re.findall(r'\[(SPEAKER_\d+)\]', recording.transcription)
+        formatted_transcription = format_transcription_for_llm(recording.transcription)
+        all_labels = re.findall(r'\[(SPEAKER_\d+)\]', formatted_transcription)
         seen = set()
         speaker_labels = [x for x in all_labels if not (x in seen or seen.add(x))]
         
@@ -905,7 +946,7 @@ def auto_identify_speakers(recording_id):
             return jsonify({'success': True, 'speaker_map': {}, 'message': 'All speakers are already identified'})
 
         # Call the helper function with only unidentified speakers
-        speaker_map = identify_unidentified_speakers_from_text(recording.transcription, unidentified_speakers)
+        speaker_map = identify_unidentified_speakers_from_text(formatted_transcription, unidentified_speakers)
 
         return jsonify({'success': True, 'speaker_map': speaker_map})
 
@@ -959,6 +1000,8 @@ def chat_with_transcription():
         user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
         user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
 
+        formatted_transcription = format_transcription_for_llm(recording.transcription)
+        
         system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
 
 Following are the meeting participants and their roles:
@@ -966,7 +1009,7 @@ Following are the meeting participants and their roles:
 
 Following is the meeting transcript:
 <<start transcript>>
-{recording.transcription or "No transcript available."}
+{formatted_transcription or "No transcript available."}
 <<end transcript>>
 
 Additional context and notes about the meeting:
