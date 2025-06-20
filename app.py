@@ -741,8 +741,8 @@ def update_speakers(recording_id):
             
             recording.transcription = json.dumps(transcription_data)
             
-            # Update participants from the final list of speakers in the JSON
-            final_speakers = set(seg.get('speaker') for seg in transcription_data if seg.get('speaker'))
+            # Update participants from the final list of speakers in the JSON, filtering out blank names
+            final_speakers = {seg.get('speaker') for seg in transcription_data if seg.get('speaker') and str(seg.get('speaker')).strip()}
             recording.participants = ', '.join(sorted(list(final_speakers)))
 
         else:

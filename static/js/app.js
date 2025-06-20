@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // JSON format - extract speakers from segments
                 const speakers = new Set();
                 transcriptionData.forEach(segment => {
-                    if (segment.speaker) {
+                    if (segment.speaker && String(segment.speaker).trim()) {
                         speakers.add(segment.speaker);
                     }
                 });
@@ -201,7 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const speakers = new Set();
                 let match;
                 while ((match = speakerRegex.exec(transcription)) !== null) {
-                    speakers.add(match[1]);
+                    const speaker = match[1].trim();
+                    if (speaker) {
+                        speakers.add(speaker);
+                    }
                 }
                 return Array.from(speakers).sort();
             }
@@ -1688,12 +1691,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const saveSpeakerNames = async () => {
             if (!selectedRecording.value) return;
 
+            // Create a filtered speaker map that excludes entries with blank names
+            const filteredSpeakerMap = Object.entries(speakerMap.value).reduce((acc, [speakerId, speakerData]) => {
+                if (speakerData.name && speakerData.name.trim() !== '') {
+                    acc[speakerId] = speakerData;
+                }
+                return acc;
+            }, {});
+
             try {
                 const response = await fetch(`/recording/${selectedRecording.value.id}/update_speakers`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        speaker_map: speakerMap.value,
+                        speaker_map: filteredSpeakerMap, // Send the filtered map
                         regenerate_summary: regenerateSummaryAfterSpeakerUpdate.value
                     })
                 });
@@ -1773,11 +1784,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update speakerMap with the identified names (only for unidentified speakers)
                 let identifiedCount = 0;
                 for (const speakerId in data.speaker_map) {
-                    if (speakerMap.value[speakerId]) {
-                        speakerMap.value[speakerId].name = data.speaker_map[speakerId];
-                        if (data.speaker_map[speakerId]) { // Only count non-empty names
-                            identifiedCount++;
-                        }
+                    const identifiedName = data.speaker_map[speakerId];
+                    if (speakerMap.value[speakerId] && identifiedName && identifiedName.trim() !== '') {
+                        speakerMap.value[speakerId].name = identifiedName;
+                        identifiedCount++;
                     }
                 }
         
