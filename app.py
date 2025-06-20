@@ -25,6 +25,8 @@ from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+import pytz
+from babel.dates import format_datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -86,6 +88,34 @@ bcrypt.init_app(app)
 def inject_now():
     return {'now': datetime.now()}
 
+# --- Timezone Formatting Filter ---
+@app.template_filter('localdatetime')
+def local_datetime_filter(dt):
+    """Format a UTC datetime object to the user's local timezone."""
+    if dt is None:
+        return ""
+    
+    # Get timezone from .env, default to UTC
+    user_tz_name = os.environ.get('TIMEZONE', 'UTC')
+    try:
+        user_tz = pytz.timezone(user_tz_name)
+    except pytz.UnknownTimeZoneError:
+        user_tz = pytz.utc
+        app.logger.warning(f"Invalid TIMEZONE '{user_tz_name}' in .env. Defaulting to UTC.")
+
+    # If the datetime object is naive, assume it's UTC
+    if dt.tzinfo is None:
+        dt = pytz.utc.localize(dt)
+
+    # Convert to the user's timezone
+    local_dt = dt.astimezone(user_tz)
+    
+    # Format it nicely
+    return format_datetime(local_dt, format='medium', locale='en_US')
+
+# Ensure upload and instance directories exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 # Ensure upload and instance directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 # Assuming the instance folder is handled correctly by Flask or created by setup.sh
@@ -130,8 +160,8 @@ class Speaker(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'last_used': self.last_used.isoformat() if self.last_used else None,
+            'created_at': self.created_at,
+            'last_used': self.last_used,
             'use_count': self.use_count
         }
 
@@ -168,8 +198,8 @@ class Recording(db.Model):
             'summary': self.summary,
             'summary_html': md_to_html(self.summary) if self.summary else "",
             'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'created_at': local_datetime_filter(self.created_at),
+            'completed_at': local_datetime_filter(self.completed_at),
             'processing_time_seconds': self.processing_time_seconds,
             'meeting_date': self.meeting_date.isoformat() if self.meeting_date else None, # <-- ADDED: Include meeting_date
             'file_size': self.file_size,
@@ -305,7 +335,7 @@ if USE_ASR_ENDPOINT:
     app.logger.info(f"ASR endpoint is enabled at: {ASR_BASE_URL}")
 
 # --- Background Transcription & Summarization Task ---
-def generate_summary_task(app_context, recording_id):
+def generate_summary_task(app_context, recording_id, start_time):
     """Generates title and summary for a recording."""
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -418,7 +448,8 @@ JSON Response:"""
             recording.summary = raw_summary.strip() if isinstance(raw_summary, str) else "[Summary not generated]"
             recording.status = 'COMPLETED'
             recording.completed_at = datetime.utcnow()
-            recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
+            # This is now calculated at the end of the transcription task
+            # recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
             app.logger.info(f"Title and summary processed successfully for recording {recording_id}.")
 
         except Exception as summary_e:
@@ -426,11 +457,15 @@ JSON Response:"""
             recording.summary = f"[AI summary generation failed: API Error ({str(summary_e)})]"
             recording.status = 'COMPLETED'
             recording.completed_at = datetime.utcnow()
-            recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
+            # This is now calculated at the end of the transcription task
+            # recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
 
+        end_time = datetime.utcnow()
+        recording.processing_time_seconds = (end_time - start_time).total_seconds()
+        app.logger.info(f"Recording {recording_id} processing time: {recording.processing_time_seconds} seconds.")
         db.session.commit()
 
-def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None):
+def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -486,7 +521,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     recording.transcription = json.dumps(simplified_segments)
             
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
-            generate_summary_task(app_context, recording_id)
+            generate_summary_task(app_context, recording_id, start_time)
 
         except Exception as e:
             db.session.rollback()
@@ -497,7 +532,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 recording.transcription = f"ASR processing failed: {str(e)}"
                 db.session.commit()
 
-def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr):
+def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time):
     """Runs the transcription and summarization in a background thread."""
     if USE_ASR_ENDPOINT:
         with app_context:
@@ -508,7 +543,15 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr)
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
             user_transcription_language = recording.owner.transcription_language if recording.owner else None
-        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, mime_type=recording.mime_type, language=user_transcription_language, diarize=diarize_setting)
+        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, start_time, mime_type=recording.mime_type, language=user_transcription_language, diarize=diarize_setting)
+        
+        # After ASR task completes, calculate processing time
+        with app_context:
+            recording = db.session.get(Recording, recording_id)
+            if recording.status in ['COMPLETED', 'FAILED']:
+                end_time = datetime.utcnow()
+                recording.processing_time_seconds = (end_time - start_time).total_seconds()
+                db.session.commit()
         return
 
     with app_context: # Need app context for db operations in thread
@@ -553,7 +596,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr)
                 transcript = transcription_client.audio.transcriptions.create(**transcription_params)
             recording.transcription = transcript.text
             app.logger.info(f"Transcription completed for recording {recording_id}. Text length: {len(recording.transcription)}")
-            generate_summary_task(app_context, recording_id)
+            generate_summary_task(app_context, recording_id, start_time)
 
         except Exception as e:
             db.session.rollback() # Rollback if any step failed critically
@@ -569,7 +612,9 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr)
                 # Add error note to summary if appropriate stage was reached
                 if recording.status == 'SUMMARIZING' and not recording.summary:
                      recording.summary = f"[Processing failed during summarization: {str(e)}]"
-
+                
+                end_time = datetime.utcnow()
+                recording.processing_time_seconds = (end_time - start_time).total_seconds()
                 db.session.commit()
 
 @app.route('/speakers', methods=['GET'])
@@ -1139,15 +1184,17 @@ def reprocess_transcription(recording_id):
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
 
+            start_time = datetime.utcnow()
             thread = threading.Thread(
                 target=transcribe_audio_asr,
-                args=(app.app_context(), recording.id, filepath, filename_for_asr, recording.mime_type, language, diarize_setting, min_speakers, max_speakers)
+                args=(app.app_context(), recording.id, filepath, filename_for_asr, start_time, recording.mime_type, language, diarize_setting, min_speakers, max_speakers)
             )
         else:
             app.logger.info(f"Using standard transcription API for reprocessing recording {recording_id}")
+            start_time = datetime.utcnow()
             thread = threading.Thread(
                 target=transcribe_audio_task,
-                args=(app.app_context(), recording.id, filepath, filename_for_asr)
+                args=(app.app_context(), recording.id, filepath, filename_for_asr, start_time)
             )
         
         thread.start()
@@ -1950,9 +1997,10 @@ def upload_file():
         app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
         # --- Start transcription & summarization in background thread ---
+        start_time = datetime.utcnow()
         thread = threading.Thread(
             target=transcribe_audio_task,
-            args=(app.app_context(), recording.id, filepath, os.path.basename(filepath))
+            args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time)
         )
         thread.start()
         app.logger.info(f"Background processing thread started for recording ID: {recording.id}")

@@ -579,9 +579,9 @@
                                         <!-- Reprocess summary and Identify Speakers buttons moved to main header -->
                                     </div>
                                 </div>
-                                <div class="mobile-content-box summary-box">
+                                <div class="mobile-content-box summary-box" style="overflow-y: auto;">
                                     <div v-if="selectedRecording.status === 'COMPLETED'" class="h-full">
-                                        <div v-if="!editingSummary" class="h-full overflow-y-auto" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'"></div>
+                                        <div v-if="!editingSummary" class="prose-styles" v-html="selectedRecording.summary_html || selectedRecording.summary || 'No summary generated.'"></div>
                                         <textarea v-else v-model="selectedRecording.summary" @blur="saveInlineEdit('summary')" class="w-full h-full bg-transparent border-none focus:ring-0 focus:outline-none resize-none" placeholder="Enter summary"></textarea>
                                     </div>
                                     <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)] h-full overflow-y-auto" v-html="selectedRecording.summary_html || selectedRecording.summary || 'Summary generation failed or was skipped.'"></div>
@@ -695,7 +695,7 @@
                                         </div>
                                         <div v-if="selectedRecording.processing_time_seconds" class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
                                             <dt class="font-medium text-sm text-[var(--text-primary)] mb-0.5">Processing Time</dt>
-                                            <dd class="text-sm text-[var(--text-secondary)]">${ selectedRecording.processing_time_seconds.toFixed(2) } seconds</dd>
+                                            <dd class="text-sm text-[var(--text-secondary)]">${ formatDuration(selectedRecording.processing_time_seconds) }</dd>
                                         </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg">
                                             <div class="flex justify-between items-center mb-0.5">
@@ -966,7 +966,7 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="transcription-box custom-scrollbar relative">
+                                        <div class="transcription-box custom-scrollbar relative" style="max-height: 40vh; overflow-y: auto;">
                                             <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'" class="copyable">
                                                 <!-- Speaker Legend (if dialogue detected and bubble view) -->
                                                 <div v-if="processedTranscription.hasDialogue && transcriptionViewMode === 'bubble'" class="speaker-legend" :class="{ expanded: legendExpanded }">
@@ -1109,7 +1109,7 @@
                                                         </div>
                                                         <div v-if="selectedRecording.processing_time_seconds" class="metadata-grid-item">
                                                             <dt><i class="fas fa-hourglass-half mr-2 text-[var(--text-muted)]"></i>Processing Time</dt>
-                                                            <dd>${ selectedRecording.processing_time_seconds.toFixed(2) } seconds</dd>
+                                                            <dd>${ formatDuration(selectedRecording.processing_time_seconds) }</dd>
                                                         </div>
                                                     </dl>
                                                 </div>

@@ -440,6 +440,38 @@ document.addEventListener('DOMContentLoaded', () => {
             return size + ' ' + sizes[i];
         };
 
+        const formatDuration = (totalSeconds) => {
+            if (totalSeconds == null || totalSeconds < 0) return 'N/A';
+
+            if (totalSeconds < 1) {
+                return `${totalSeconds.toFixed(2)} seconds`;
+            }
+            
+            totalSeconds = Math.round(totalSeconds);
+
+            if (totalSeconds < 60) {
+                return `${totalSeconds} sec`;
+            }
+
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            let parts = [];
+            if (hours > 0) {
+                parts.push(`${hours} hr`);
+            }
+            if (minutes > 0) {
+                parts.push(`${minutes} min`);
+            }
+            // Only show seconds if duration is less than an hour
+            if (hours === 0 && seconds > 0) {
+                parts.push(`${seconds} sec`);
+            }
+
+            return parts.join(' ');
+        };
+
         // --- Dark Mode ---
         const toggleDarkMode = () => {
             isDarkMode.value = !isDarkMode.value;
@@ -2281,6 +2313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelDelete, deleteRecording, switchToUploadView, switchToGalleryView,
             formatFileSize, setGlobalError, handleDragLeave, formatStatus, getStatusClass,
             formatDisplayDate, // <-- ADDED: Expose date formatting function
+            formatDuration,
             toggleDarkMode, // <-- Added toggleDarkMode
             toggleSidebar, isSidebarCollapsed, // <-- Added sidebar state and function
             toggleMobileMenu, closeMobileMenu, isMobileMenuOpen, // <-- Added mobile menu state and functions
