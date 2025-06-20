@@ -118,6 +118,59 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 *   **User Management:** Secure user registration and login system with an admin dashboard for managing users.
 *   **Customization:** Users can set their own language preferences, custom summarization prompts, and professional context to improve AI results.
 
+## API Endpoint Requirements
+
+Speakr integrates with external APIs for transcription and text generation. Here are the exact endpoints each service must implement:
+
+### Transcription Services
+
+**Standard Whisper API Method:**
+- **Endpoint:** `/audio/transcriptions` 
+- **Method:** POST
+- **Format:** OpenAI Whisper API compatible
+- **Used for:** Audio transcription
+- **When:** When `USE_ASR_ENDPOINT=false` (default)
+
+**Common providers using this method:**
+- **OpenAI Whisper API** (`https://api.openai.com/v1`) - The original OpenAI service
+- **OpenRouter** (`https://openrouter.ai/api/v1`) - Multi-provider API gateway
+- **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, or custom deployments
+- **Other API providers** - Any service implementing the OpenAI Whisper API format
+
+**ASR Webservice Method:**
+- **Endpoint:** `/asr`
+- **Method:** POST  
+- **Format:** Custom ASR webservice format
+- **Used for:** Audio transcription with speaker diarization support
+- **When:** When `USE_ASR_ENDPOINT=true`
+
+**Recommended provider:**
+- **onerahmet/openai-whisper-asr-webservice** - Docker image that provides the `/asr` endpoint with WhisperX engine support for speaker diarization
+
+### Text Generation Services
+
+**Chat Completions API:**
+- **Endpoint:** `/chat/completions`
+- **Method:** POST
+- **Format:** OpenAI Chat Completions API compatible
+- **Used for:** 
+  - AI-generated titles and summaries
+  - Interactive chat with transcriptions
+  - Automatic speaker identification
+  - Summary reprocessing
+- **When:** Always (for all text generation features)
+
+**Common providers using this method:**
+- **OpenAI** (`https://api.openai.com/v1`) - GPT models
+- **OpenRouter** (`https://openrouter.ai/api/v1`) - Access to multiple LLM providers
+- **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, vLLM, or custom deployments
+- **Other API providers** - Anthropic, Google, Azure OpenAI, or any service implementing the OpenAI Chat Completions format
+
+**Example API Base URLs:**
+- OpenAI: `https://api.openai.com/v1`
+- OpenRouter: `https://openrouter.ai/api/v1`
+- Local APIs: `http://localhost:1234/v1`
+
 ## Setup Instructions
 
 **For detailed deployment instructions, see the [Deployment Guide](DEPLOYMENT_GUIDE.md)**
@@ -147,18 +200,18 @@ You do not need to clone this repository for this method. You only need Docker i
     ```
 
 2.  **Create a Configuration (`.env`) File:**
-    Your choice here depends on which transcription method you want to use. Create a new file named `.env` and paste one of the following templates into it.
+    Your choice here depends on which transcription method you want to use. See the [API Endpoint Requirements](#api-endpoint-requirements) section above for details on what endpoints each service must implement. Create a new file named `.env` and paste one of the following templates into it.
 
-    *   **Option A: Standard API (e.g., OpenAI, local API)**
-        This is the simplest method.
+    *   **Option A: Standard Whisper API Method**
+        Uses the `/audio/transcriptions` endpoint. This is the simplest method and works with OpenAI, OpenRouter, local APIs, and other providers implementing the OpenAI Whisper API format.
 
         ```dotenv
-        # --- Text Generation Model (for summaries, titles, etc.) ---
+        # --- Text Generation Model (uses /chat/completions endpoint) ---
         TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
         TEXT_MODEL_API_KEY=your_openrouter_api_key
         TEXT_MODEL_NAME=openai/gpt-4o-mini
 
-        # --- Transcription Service (OpenAI Whisper API) ---
+        # --- Transcription Service (uses /audio/transcriptions endpoint) ---
         TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
         TRANSCRIPTION_API_KEY=your_openai_api_key
         WHISPER_MODEL=whisper-1
@@ -179,16 +232,16 @@ You do not need to clone this repository for this method. You only need Docker i
         ```
         Now, **edit the `.env` file** with your API keys and settings.
 
-    *   **Option B: ASR Webservice (for Speaker Diarization)**
-        This method requires a separate ASR webservice container but enables speaker identification. This has been tested with the `onerahmet/openai-whisper-asr-webservice` image.
+    *   **Option B: ASR Webservice Method (for Speaker Diarization)**
+        Uses the `/asr` endpoint. This method requires a separate ASR webservice container but enables speaker identification. This has been tested with the `onerahmet/openai-whisper-asr-webservice` image.
 
         ```dotenv
-        # --- Text Generation Model (for summaries, titles, etc.) ---
+        # --- Text Generation Model (uses /chat/completions endpoint) ---
         TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
         TEXT_MODEL_API_KEY=your_openrouter_api_key
         TEXT_MODEL_NAME=openai/gpt-4o-mini
 
-        # --- Transcription Service (ASR Endpoint) ---
+        # --- Transcription Service (uses /asr endpoint) ---
         USE_ASR_ENDPOINT=true
         ASR_BASE_URL=http://your_asr_host:9000
         ASR_ENCODE=true

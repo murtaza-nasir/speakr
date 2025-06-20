@@ -8,6 +8,59 @@ This guide covers different deployment methods for Speakr, from simple setups to
 - Basic understanding of environment variables
 - API keys for your chosen AI providers
 
+## API Endpoint Requirements
+
+Before setting up Speakr, it's important to understand what API endpoints your services must provide. Speakr integrates with (locally hosted or cloud based) external APIs for transcription and text generation using specific endpoint formats.
+
+### Transcription Services
+
+**Standard Whisper API Method:**
+- **Endpoint:** `/audio/transcriptions` 
+- **Method:** POST
+- **Format:** OpenAI Whisper API compatible
+- **Used for:** Audio transcription
+- **When:** When `USE_ASR_ENDPOINT=false` (default)
+
+**_Common providers using this method:_**
+- **OpenAI Whisper API** (`https://api.openai.com/v1`) - The original OpenAI service
+- **OpenRouter** (`https://openrouter.ai/api/v1`) - Multi-provider API gateway
+- **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, or custom deployments
+- **Other API providers** - Any service implementing the OpenAI Whisper API format
+
+**ASR Webservice Method:**
+- **Endpoint:** `/asr`
+- **Method:** POST  
+- **Format:** Custom ASR webservice format
+- **Used for:** Audio transcription with speaker diarization support
+- **When:** When `USE_ASR_ENDPOINT=true`
+
+**_Recommended provider:_**
+- **onerahmet/openai-whisper-asr-webservice** - Docker image that provides the `/asr` endpoint with WhisperX engine support for speaker diarization
+
+### Text Generation Services
+
+**Chat Completions API:**
+- **Endpoint:** `/chat/completions`
+- **Method:** POST
+- **Format:** OpenAI Chat Completions API compatible
+- **Used for:** 
+  - AI-generated titles and summaries
+  - Interactive chat with transcriptions
+  - Automatic speaker identification
+  - Summary reprocessing
+- **When:** Always (for all text generation features, e.g., title generation, summarization, chat, etc.)
+
+**Common providers using this method:**
+- **OpenAI** (`https://api.openai.com/v1`) - GPT models
+- **OpenRouter** (`https://openrouter.ai/api/v1`) - Access to multiple LLM providers
+- **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, vLLM, or custom deployments
+- **Other API providers** - Anthropic, Google, Azure OpenAI, or any service implementing the OpenAI Chat Completions format
+
+**Example API Base URLs:**
+- OpenAI: `https://api.openai.com/v1`
+- OpenRouter: `https://openrouter.ai/api/v1`
+- Local APIs: `http://localhost:1234/v1`
+
 ## Quick Start (Recommended)
 
 The fastest way to get started is using the pre-built Docker image with a simple configuration.
@@ -79,18 +132,18 @@ docker compose up -d --build
 
 ## Configuration Options
 
-### 1. Standard API Transcription (Simple Setup)
+### 1. Standard Whisper API Method (Simple Setup)
 
-This method uses OpenAI's Whisper API or compatible services. It's the simplest to set up but doesn't support speaker diarization.
+This method uses the `/audio/transcriptions` endpoint from OpenAI's Whisper API or compatible services. It's the simplest to set up but doesn't support speaker diarization. See the [API Endpoint Requirements](#api-endpoint-requirements) section above for compatible providers.
 
 **Create .env file:**
 ```env
-# --- Text Generation Model (for summaries, titles, etc.) ---
+# --- Text Generation Model (uses /chat/completions endpoint) ---
 TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
 TEXT_MODEL_API_KEY=your_openrouter_api_key_here
 TEXT_MODEL_NAME=openai/gpt-4o-mini
 
-# --- Transcription Service (OpenAI Whisper API) ---
+# --- Transcription Service (uses /audio/transcriptions endpoint) ---
 TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
 TRANSCRIPTION_API_KEY=your_openai_api_key_here
 WHISPER_MODEL=whisper-1
@@ -110,9 +163,9 @@ SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
 UPLOAD_FOLDER=/data/uploads
 ```
 
-### 2. ASR Endpoint with Speaker Diarization (Advanced Setup)
+### 2. ASR Webservice Method (Advanced Setup)
 
-This method enables speaker identification and diarization but requires running a separate ASR service.
+This method uses the `/asr` endpoint and enables speaker identification and diarization but requires running a separate ASR service. See the [API Endpoint Requirements](#api-endpoint-requirements) section above for details on the `/asr` endpoint format.
 
 #### Option 2.1: Single Docker Compose File
 
