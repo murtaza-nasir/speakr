@@ -622,18 +622,6 @@ div[v-if="!editingNotes"] {
     flex-shrink: 0;
 }
 
-/* Modern toast notification styles */
- .toast-container {
-     position: fixed;
-     bottom: 20px;
-     right: 20px;
-     z-index: 1000;
-     display: flex;
-     flex-direction: column;
-     align-items: flex-end;
-     gap: 12px;
- }
- 
 /* Form styling for edit modal */
 .form-group {
     position: relative;
@@ -1673,12 +1661,15 @@ body {
 }
 
 /* Toast notifications */
-.toast-container {
+#toastContainer {
     position: fixed;
-    top: 20px;
+    bottom: 20px;
     right: 20px;
     z-index: 9999;
-    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
 }
 
 .toast {
