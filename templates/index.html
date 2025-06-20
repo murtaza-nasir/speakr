@@ -310,7 +310,20 @@
                             </div>
                         </div>
                     </div>
-                    <div class="w-2/3 p-6 overflow-y-auto custom-scrollbar speaker-modal-transcript" v-html="highlightedTranscript">
+                    <div class="w-2/3 p-6 flex flex-col overflow-hidden">
+                        <!-- Audio Player Section -->
+                        <div class="mb-4 flex-shrink-0">
+                            <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
+                            <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
+                                <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
+                        </div>
+                        
+                        <!-- Transcript Section -->
+                        <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript" v-html="highlightedTranscript">
+                        </div>
                     </div>
                 </div>
                 <div class="p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex-shrink-0">
