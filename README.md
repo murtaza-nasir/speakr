@@ -131,7 +131,7 @@ Speakr integrates with external APIs for transcription and text generation. Here
 - **Used for:** Audio transcription
 - **When:** When `USE_ASR_ENDPOINT=false` (default)
 
-**Common providers using this method:**
+**_Common providers using this method:_**
 - **OpenAI Whisper API** (`https://api.openai.com/v1`) - The original OpenAI service
 - **OpenRouter** (`https://openrouter.ai/api/v1`) - Multi-provider API gateway
 - **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, or custom deployments
@@ -144,7 +144,7 @@ Speakr integrates with external APIs for transcription and text generation. Here
 - **Used for:** Audio transcription with speaker diarization support
 - **When:** When `USE_ASR_ENDPOINT=true`
 
-**Recommended provider:**
+**_Recommended provider:_**
 - **onerahmet/openai-whisper-asr-webservice** - Docker image that provides the `/asr` endpoint with WhisperX engine support for speaker diarization
 
 ### Text Generation Services
@@ -160,13 +160,13 @@ Speakr integrates with external APIs for transcription and text generation. Here
   - Summary reprocessing
 - **When:** Always (for all text generation features)
 
-**Common providers using this method:**
+**_Common providers using this method:_**
 - **OpenAI** (`https://api.openai.com/v1`) - GPT models
 - **OpenRouter** (`https://openrouter.ai/api/v1`) - Access to multiple LLM providers
 - **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, vLLM, or custom deployments
 - **Other API providers** - Anthropic, Google, Azure OpenAI, or any service implementing the OpenAI Chat Completions format
 
-**Example API Base URLs:**
+**_Example API Base URLs:_**
 - OpenAI: `https://api.openai.com/v1`
 - OpenRouter: `https://openrouter.ai/api/v1`
 - Local APIs: `http://localhost:1234/v1`
