@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const windowWidth = ref(window.innerWidth); // For reactive screen size
         const useAsrEndpoint = ref(false);
         const currentUserName = ref('');
+        const playerVolume = ref(1.0); // Default to full volume
 
         // --- Audio Recording State ---
         const isRecording = ref(false);
@@ -916,6 +917,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) throw new Error(data.error || 'Failed to load recordings');
                 recordings.value = data;
 
+                // After loading recordings, check for a saved recording ID
+                const lastRecordingId = localStorage.getItem('lastSelectedRecordingId');
+                if (lastRecordingId) {
+                    const recordingToSelect = recordings.value.find(r => r.id == lastRecordingId);
+                    if (recordingToSelect) {
+                        selectRecording(recordingToSelect);
+                    }
+                }
 
                 // On load, check for any recordings stuck in PENDING, PROCESSING, or SUMMARIZING
                 // and ensure polling is active if the queue processor isn't running.
@@ -977,7 +986,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
          const selectRecording = (recording) => {
-             selectedRecording.value = recording;
+            selectedRecording.value = recording;
+            if (recording && recording.id) {
+                localStorage.setItem('lastSelectedRecordingId', recording.id);
+            } else {
+                localStorage.removeItem('lastSelectedRecordingId');
+            }
              // Optional: Check if polling needs to be restarted if user selects an incomplete item
              // This logic is complex and might be redundant with the loadRecordings check.
              // Let's rely on loadRecordings and the queue processor for robustness.
@@ -1222,7 +1236,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUserName.value = appDiv.dataset.currentUserName || '';
             }
             loadRecordings();
-            initializeDarkMode(); // Initialize dark mode on load            
+            initializeDarkMode(); // Initialize dark mode on load
+            
+            // Load saved settings
+            const savedVolume = localStorage.getItem('playerVolume');
+            if (savedVolume !== null) {
+                playerVolume.value = parseFloat(savedVolume);
+            }
+            const savedTranscriptionViewMode = localStorage.getItem('transcriptionViewMode');
+            if (savedTranscriptionViewMode) {
+                transcriptionViewMode.value = savedTranscriptionViewMode;
+            }
             
             // Check initial screen size and handle window resize
             const updateMobileStatus = () => {
@@ -2168,6 +2192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Toggle transcription view mode
         const toggleTranscriptionViewMode = () => {
             transcriptionViewMode.value = transcriptionViewMode.value === 'simple' ? 'bubble' : 'simple';
+            localStorage.setItem('transcriptionViewMode', transcriptionViewMode.value);
         };
 
         const seekAudio = (time, context = 'main') => {
@@ -2206,6 +2231,22 @@ document.addEventListener('DOMContentLoaded', () => {
             
             seekAudio(time, context);
         };
+
+        const onPlayerVolumeChange = (event) => {
+            const newVolume = event.target.volume;
+            playerVolume.value = newVolume;
+            localStorage.setItem('playerVolume', newVolume);
+        };
+
+        // Watch for volume changes to apply to all audio elements
+        watch(playerVolume, (newVolume) => {
+            const audioElements = document.querySelectorAll('audio');
+            audioElements.forEach(audio => {
+                if (audio.volume !== newVolume) {
+                    audio.volume = newVolume;
+                }
+            });
+        });
 
         return {
             // State
@@ -2296,7 +2337,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Main column resizer refs (not needed in template but good practice if they were)
             // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns,
             seekAudio,
-            seekAudioFromEvent
+            seekAudioFromEvent,
+            playerVolume,
+            onPlayerVolumeChange
          }
     },
     delimiters: ['${', '}'] // Keep Vue delimiters distinct from Flask's Jinja

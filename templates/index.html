@@ -316,7 +316,7 @@
                         <div class="mb-4 flex-shrink-0">
                             <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
                             <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
-                                <audio controls class="w-full h-10 speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
+                                <audio controls class="w-full h-10 speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>
@@ -447,7 +447,7 @@
                     <div class="mobile-audio-section border-b border-[var(--border-primary)]">
                         <h4 class="font-semibold text-sm text-[var(--text-secondary)] mb-1">Audio Player</h4>
                         <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
-                            <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
+                            <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                                 Your browser does not support the audio element.
                             </audio>
                         </div>
@@ -1115,7 +1115,7 @@
                                     <div class="audio-section">
                                         <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
                                         <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
-                                            <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id">
+                                            <audio controls class="w-full h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                                                 Your browser does not support the audio element.
                                             </audio>
                                         </div>
@@ -1217,7 +1217,7 @@
                         </div>
                         <div v-if="audioBlobURL" class="mt-4 p-4 border border-[var(--border-primary)] rounded-lg bg-[var(--bg-tertiary)]">
                             <p class="text-sm text-[var(--text-secondary)] mb-2 font-medium">Preview your recording:</p>
-                            <audio :src="audioBlobURL" controls class="w-full rounded"></audio>
+                            <audio :src="audioBlobURL" controls class="w-full rounded" :volume="playerVolume" @volumechange="onPlayerVolumeChange"></audio>
                             <div class="mt-3 flex flex-col sm:flex-row sm:justify-center sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                                 <button @click="uploadRecordedAudio" class="w-full sm:w-auto px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
                                     <i class="fas fa-upload mr-1"></i> Upload Recording
