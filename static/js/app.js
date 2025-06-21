@@ -176,6 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const identifiedSpeakers = computed(() => {
+            // Ensure we have a valid recording and transcription
             if (!selectedRecording.value?.transcription) {
                 return [];
             }
@@ -2401,23 +2402,38 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         // Clear chat messages when recording changes
-        watch(selectedRecording, (newVal) => {
-            chatMessages.value = [];
-            showChat.value = false;
-            selectedTab.value = 'summary'; // Reset tab when recording changes
-            selectedMobileTab.value = 'transcript'; // Reset mobile tab when recording changes
-            editingMobileMeetingDate.value = false; // Reset mobile edit state
-            
-            // Initialize desktop layout when a recording is first selected
-            if (newVal && !isMobileScreen.value && !isDesktopLayoutInitialized.value) {
-                // Use nextTick to ensure Vue has rendered the conditional elements
-                nextTick(() => {
-                    const success = initializeDesktopLayout();
-                    if (success) {
-                        isDesktopLayoutInitialized.value = true;
-                        console.log('Desktop layout initialized after recording selection');
-                    }
-                });
+        watch(selectedRecording, (newVal, oldVal) => {
+            // Only clear and reset if we're actually changing recordings
+            if (newVal?.id !== oldVal?.id) {
+                chatMessages.value = [];
+                showChat.value = false;
+                selectedTab.value = 'summary'; // Reset tab when recording changes
+                selectedMobileTab.value = 'transcript'; // Reset mobile tab when recording changes
+                editingMobileMeetingDate.value = false; // Reset mobile edit state
+                
+                // Clear speaker-related data to ensure fresh loading
+                speakerMap.value = {};
+                highlightedSpeaker.value = null;
+                speakerSuggestions.value = {};
+                loadingSuggestions.value = {};
+                
+                // Reset editing states
+                editingParticipants.value = false;
+                editingMeetingDate.value = false;
+                editingSummary.value = false;
+                editingNotes.value = false;
+                
+                // Initialize desktop layout when a recording is first selected
+                if (newVal && !isMobileScreen.value && !isDesktopLayoutInitialized.value) {
+                    // Use nextTick to ensure Vue has rendered the conditional elements
+                    nextTick(() => {
+                        const success = initializeDesktopLayout();
+                        if (success) {
+                            isDesktopLayoutInitialized.value = true;
+                            console.log('Desktop layout initialized after recording selection');
+                        }
+                    });
+                }
             }
         });
 
