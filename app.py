@@ -38,10 +38,57 @@ bcrypt = Bcrypt()
 def md_to_html(text):
     if not text:
         return ""
+    
+    # Pre-process the text to ensure proper list formatting
+    def fix_list_spacing(text):
+        lines = text.split('\n')
+        result = []
+        in_list = False
+        
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            
+            # Check if this line is a list item (starts with -, *, +, or number.)
+            is_list_item = (
+                stripped.startswith(('- ', '* ', '+ ')) or
+                (stripped and stripped[0].isdigit() and '. ' in stripped[:10])
+            )
+            
+            # Check if previous line was a list item
+            prev_line = lines[i-1].strip() if i > 0 else ""
+            prev_was_list = (
+                prev_line.startswith(('- ', '* ', '+ ')) or
+                (prev_line and prev_line[0].isdigit() and '. ' in prev_line[:10])
+            )
+            
+            # If we're starting a new list or continuing a list, ensure proper spacing
+            if is_list_item:
+                if not in_list and result and result[-1].strip():
+                    # Starting a new list - add blank line before
+                    result.append('')
+                in_list = True
+            elif in_list and stripped and not is_list_item:
+                # Ending a list - add blank line after the list
+                if result and result[-1].strip():
+                    result.append('')
+                in_list = False
+            
+            result.append(line)
+        
+        return '\n'.join(result)
+    
+    # Fix list spacing
+    processed_text = fix_list_spacing(text)
+    
     # Convert markdown to HTML with extensions for tables, code highlighting, etc.
-    html = markdown.markdown(text, extensions=[
-        'extra',            # Includes many useful extensions like sane_lists, fenced_code, tables, etc.
-        'codehilite',       # Syntax highlighting for code blocks (ensure Pygments is installed)
+    html = markdown.markdown(processed_text, extensions=[
+        'fenced_code',      # Fenced code blocks
+        'tables',           # Table support
+        'attr_list',        # Attribute lists
+        'def_list',         # Definition lists
+        'footnotes',        # Footnotes
+        'abbr',             # Abbreviations
+        'codehilite',       # Syntax highlighting for code blocks
         'smarty'            # Smart quotes, dashes, etc.
     ])
     return html
