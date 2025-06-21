@@ -976,21 +976,29 @@ def identify_unidentified_speakers_from_text(transcription, unidentified_speaker
     if not unidentified_speakers:
         return {}
 
-    prompt = f"""Analyze the following transcription and identify the names of the UNIDENTIFIED speakers only. The unidentified speakers are labeled as {', '.join(unidentified_speakers)}. Based on the context of the conversation, determine the most likely name for each of these speaker labels.
+    prompt = f"""Analyze the following conversation transcript and identify the names of the UNIDENTIFIED speakers based on the context and content of their dialogue. 
 
-Note: Only identify the speakers listed above. Other speakers in the transcription may already be identified and should be ignored.
+The speakers that need to be identified are: {', '.join(unidentified_speakers)}
 
-Transcription:
----
+Look for clues in the conversation such as:
+- Names mentioned by other speakers when addressing someone
+- Self-introductions or references to their own name
+- Context clues about roles, relationships, or positions
+- Any direct mentions of names in the dialogue
+
+Here is the complete conversation transcript:
+
 {formatted_transcription[:28000]}
----
 
-Respond with a single JSON object where keys are the unidentified speaker labels (e.g., "SPEAKER_01") and values are the identified full names. If a name cannot be determined, use the value "Unknown".
+Based on the conversation above, identify the most likely real names for the unidentified speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.
 
-Example:
+Respond with a single JSON object where keys are the speaker labels (e.g., "SPEAKER_01") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string "".
+
+Example format:
 {{
   "SPEAKER_01": "Jane Smith",
-  "SPEAKER_03": "Unknown"
+  "SPEAKER_03": "Bob Johnson",
+  "SPEAKER_05": ""
 }}
 
 JSON Response:
@@ -1000,7 +1008,7 @@ JSON Response:
         completion = client.chat.completions.create(
             model=TEXT_MODEL_NAME,
             messages=[
-                {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers. Your response must be a single, valid JSON object containing only the requested unidentified speakers."},
+                {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.2,
@@ -1011,7 +1019,7 @@ JSON Response:
 
         # Post-process the map to replace "Unknown" with an empty string
         for speaker_label, identified_name in speaker_map.items():
-            if identified_name.strip().lower() == "unknown":
+            if identified_name and identified_name.strip().lower() in ["unknown", "n/a", "not available", "unclear"]:
                 speaker_map[speaker_label] = ""
                 
         return speaker_map
@@ -1061,7 +1069,7 @@ def auto_identify_speakers(recording_id):
             return jsonify({'success': True, 'speaker_map': {}, 'message': 'All speakers are already identified'})
 
         # Call the helper function with only unidentified speakers
-        speaker_map = identify_unidentified_speakers_from_text(formatted_transcription, unidentified_speakers)
+        speaker_map = identify_unidentified_speakers_from_text(recording.transcription, unidentified_speakers)
 
         return jsonify({'success': True, 'speaker_map': speaker_map})
 
