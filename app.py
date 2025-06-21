@@ -1134,7 +1134,7 @@ def reprocess_transcription(recording_id):
 
             try:
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
                     check=True, capture_output=True, text=True
                 )
                 app.logger.info(f"Successfully converted {filepath} to {wav_filepath}")
@@ -1952,7 +1952,7 @@ def upload_file():
             try:
                 # Using -acodec pcm_s16le for standard WAV format, 16kHz sample rate, mono
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
                     check=True, capture_output=True, text=True
                 )
                 app.logger.info(f"Successfully converted {filepath} to {wav_filepath}")
