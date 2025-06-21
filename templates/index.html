@@ -976,7 +976,7 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="transcription-box custom-scrollbar relative" style="max-height: 40vh; overflow-y: auto;">
+                                        <div class="transcription-box custom-scrollbar relative">
                                             <div v-if="selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'SUMMARIZING'" class="copyable">
                                                 <!-- Speaker Legend (if dialogue detected and bubble view) -->
                                                 <div v-if="processedTranscription.hasDialogue && transcriptionViewMode === 'bubble'" class="speaker-legend" :class="{ expanded: legendExpanded }">
