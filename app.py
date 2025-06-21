@@ -848,14 +848,14 @@ def update_speakers(recording_id):
             
             recording.transcription = json.dumps(transcription_data)
             
-            # Update participants only from speakers that were actually given names (not left blank)
+            # Update participants only from speakers that were actually given names (not default labels)
             final_speakers = set()
             for seg in transcription_data:
                 speaker = seg.get('speaker')
                 if speaker and str(speaker).strip():
-                    # Only include this speaker in participants if they were given a name
-                    # (i.e., they exist in the speaker_map that was sent from frontend)
-                    if speaker in speaker_map:
+                    # Only include speakers that have been given actual names (not default labels like "SPEAKER_01", "SPEAKER_09", etc.)
+                    # Check if this speaker was updated with a real name (not a default label)
+                    if not re.match(r'^SPEAKER_\d+$', str(speaker), re.IGNORECASE):
                         final_speakers.add(speaker)
             recording.participants = ', '.join(sorted(list(final_speakers)))
 
