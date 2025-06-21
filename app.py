@@ -790,8 +790,15 @@ def update_speakers(recording_id):
             
             recording.transcription = json.dumps(transcription_data)
             
-            # Update participants from the final list of speakers in the JSON, filtering out blank names
-            final_speakers = {seg.get('speaker') for seg in transcription_data if seg.get('speaker') and str(seg.get('speaker')).strip()}
+            # Update participants only from speakers that were actually given names (not left blank)
+            final_speakers = set()
+            for seg in transcription_data:
+                speaker = seg.get('speaker')
+                if speaker and str(speaker).strip():
+                    # Only include this speaker in participants if they were given a name
+                    # (i.e., they exist in the speaker_map that was sent from frontend)
+                    if speaker in speaker_map:
+                        final_speakers.add(speaker)
             recording.participants = ', '.join(sorted(list(final_speakers)))
 
         else:

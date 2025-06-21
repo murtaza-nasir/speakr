@@ -256,14 +256,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
                 });
 
+                // Only use speakerMap if it contains speakers that actually exist in this recording
+                const currentRecordingSpeakers = new Set(speakerList);
+                const relevantSpeakerMap = {};
+                for (const [speakerId, speakerData] of Object.entries(speakerMap.value)) {
+                    if (currentRecordingSpeakers.has(speakerId)) {
+                        relevantSpeakerMap[speakerId] = speakerData;
+                    }
+                }
+
                 const simpleSegments = transcriptionData.map(segment => ({
                     speakerId: segment.speaker,
-                    speaker: (speakerMap.value[segment.speaker]?.name || segment.speaker),
+                    speaker: (relevantSpeakerMap[segment.speaker]?.name || segment.speaker),
                     sentence: segment.sentence,
                     startTime: segment.start_time,
                     endTime: segment.end_time,
                     color: speakerColors[segment.speaker] || 'speaker-color-1'
                 }));
+
+                // Create a unique list of speakers *after* names have been mapped.
+                const uniqueSpeakers = [...new Map(simpleSegments.map(item => [item.speaker, item])).values()];
 
                 const processedSimpleSegments = [];
                 let lastSpeaker = null;
@@ -300,9 +312,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     segments: simpleSegments,
                     simpleSegments: processedSimpleSegments,
                     bubbleRows: bubbleRows,
-                    speakers: speakerList.map(speaker => ({
-                        name: (speakerMap.value[speaker]?.name || speaker),
-                        color: speakerColors[speaker] || 'speaker-color-1'
+                    speakers: uniqueSpeakers.map(speaker => ({
+                        name: speaker.speaker,
+                        color: speaker.color
                     }))
                 };
 
@@ -1124,15 +1136,18 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
          const selectRecording = (recording) => {
+            // CRITICAL FIX: Reset the speakerMap state synchronously *before*
+            // updating the selected recording. This prevents a race condition where
+            // computed properties could re-evaluate using the new recording data
+            // but the old, stale speakerMap from a previous interaction.
+            speakerMap.value = {};
+
             selectedRecording.value = recording;
             if (recording && recording.id) {
                 localStorage.setItem('lastSelectedRecordingId', recording.id);
             } else {
                 localStorage.removeItem('lastSelectedRecordingId');
             }
-             // Optional: Check if polling needs to be restarted if user selects an incomplete item
-             // This logic is complex and might be redundant with the loadRecordings check.
-             // Let's rely on loadRecordings and the queue processor for robustness.
          };
 
         const editRecording = (recording) => {
@@ -1808,6 +1823,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         const openSpeakerModal = () => {
+            // Clear any existing speaker map data first
+            speakerMap.value = {};
+            
+            // Initialize speaker map only for speakers in the current recording
             speakerMap.value = identifiedSpeakers.value.reduce((acc, speaker, index) => {
                 acc[speaker] = { 
                     name: '', 
@@ -1816,6 +1835,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 return acc;
             }, {});
+            
             highlightedSpeaker.value = null;
             speakerSuggestions.value = {};
             loadingSuggestions.value = {};
@@ -1826,6 +1846,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const closeSpeakerModal = () => {
             showSpeakerModal.value = false;
             highlightedSpeaker.value = null;
+            // Clear the speaker map to prevent stale data from persisting
+            speakerMap.value = {};
+            speakerSuggestions.value = {};
+            loadingSuggestions.value = {};
         };
 
         const saveSpeakerNames = async () => {
@@ -1852,7 +1876,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Failed to update speakers');
 
-                // Update the recording in the UI
+                // On success, close the modal and clear the speakerMap state *before*
+                // updating the recording data. This prevents a race condition where the
+                // view could re-render using the new data but the old, lingering speakerMap.
+                closeSpeakerModal();
+
+                // The backend returns the fully updated recording object.
+                // We can directly update our local state with this fresh data.
                 const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
                 if (index !== -1) {
                     recordings.value[index] = data.recording;
@@ -1860,8 +1890,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedRecording.value = data.recording;
 
                 showToast('Speaker names updated successfully!', 'fa-check-circle');
-                closeSpeakerModal();
 
+                // If a summary regeneration was requested, start polling for its status.
                 if (regenerateSummaryAfterSpeakerUpdate.value) {
                     startReprocessingPoll(selectedRecording.value.id);
                 }
@@ -2411,8 +2441,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 selectedMobileTab.value = 'transcript'; // Reset mobile tab when recording changes
                 editingMobileMeetingDate.value = false; // Reset mobile edit state
                 
-                // Clear speaker-related data to ensure fresh loading
-                speakerMap.value = {};
+                // The critical speakerMap reset is now handled in selectRecording.
+                // We still reset other speaker-related UI state here.
                 highlightedSpeaker.value = null;
                 speakerSuggestions.value = {};
                 loadingSuggestions.value = {};
