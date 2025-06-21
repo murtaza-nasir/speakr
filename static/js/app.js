@@ -39,9 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const showEditModal = ref(false);
         const showDeleteModal = ref(false);
         const showReprocessModal = ref(false);
+        const showResetModal = ref(false);
         const showSpeakerModal = ref(false);
         const editingRecording = ref(null); // Holds a *copy* for the modal
         const recordingToDelete = ref(null);
+        const recordingToReset = ref(null);
         const reprocessType = ref(null); // 'transcription' or 'summary'
         const reprocessRecording = ref(null);
         const isAutoIdentifying = ref(false);
@@ -2002,6 +2004,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        const confirmReset = (recording) => {
+            recordingToReset.value = recording;
+            showResetModal.value = true;
+        };
+
+        const cancelReset = () => {
+            showResetModal.value = false;
+            recordingToReset.value = null;
+        };
+
+        const executeReset = async () => {
+            if (!recordingToReset.value) return;
+            const recordingId = recordingToReset.value.id;
+            
+            // Close the modal first
+            cancelReset();
+
+            try {
+                const response = await fetch(`/recording/${recordingId}/reset_status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to reset status');
+                
+                // Update the recording in the UI
+                const index = recordings.value.findIndex(r => r.id === recordingId);
+                if (index !== -1) {
+                    recordings.value[index] = data.recording;
+                }
+                
+                // Update selected recording if it's the one being reset
+                if (selectedRecording.value?.id === recordingId) {
+                    selectedRecording.value = data.recording;
+                }
+                
+                showToast('Recording status has been reset.', 'fa-check-circle');
+                
+            } catch (error) {
+                console.error('Reset Status Error:', error);
+                setGlobalError(`Failed to reset status: ${error.message}`);
+            }
+        };
+
         // --- Chat functionality ---
         
         const showChat = ref(false);
@@ -2367,7 +2414,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             // State
             currentView, dragover, recordings, selectedRecording, // currentRecording removed
-            showEditModal, showDeleteModal, editingRecording, recordingToDelete,
+            showEditModal, showDeleteModal, showResetModal, editingRecording, recordingToDelete, recordingToReset,
             isLoadingRecordings, globalError, maxFileSizeMB, isDarkMode, // <-- Added isDarkMode
             // Multi-upload State
             uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
@@ -2416,6 +2463,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Reprocessing
             reprocessTranscription,
             reprocessSummary,
+            confirmReset,
+            cancelReset,
+            executeReset,
             showReprocessModal,
             reprocessType,
             reprocessRecording,

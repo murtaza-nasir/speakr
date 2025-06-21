@@ -233,6 +233,28 @@
                 </div>
             </div>
         </div>
+        <!-- Reset Status Confirmation Modal -->
+        <div v-if="showResetModal" @click="cancelReset" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+                <div class="p-6 text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-800 mb-4">
+                        <i class="fas fa-exclamation-triangle text-2xl text-orange-500 dark:text-orange-300"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Reset Recording Status?</h3>
+                    <p class="text-sm text-[var(--text-muted)] mb-6">
+                        This will mark the recording as 'Failed'. This is useful if processing is stuck. You will be able to reprocess it afterwards.
+                    </p>
+                </div>
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3">
+                    <button @click="cancelReset" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">
+                        Cancel
+                    </button>
+                    <button @click="executeReset" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                        Yes, Reset Status
+                    </button>
+                </div>
+            </div>
+        </div>
         <!-- Speaker Identification Modal -->
         <div v-if="showSpeakerModal" @click="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
@@ -429,6 +451,11 @@
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         title="Reprocess summary">
                                     <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button @click="confirmReset(selectedRecording)" v-if="selectedRecording && (selectedRecording.status === 'PROCESSING' || selectedRecording.status === 'SUMMARIZING')"
+                                        class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-orange-100 text-orange-600 hover:bg-orange-200 dark:bg-orange-700 dark:text-orange-200 dark:hover:bg-orange-600"
+                                        title="Reset Stuck Status">
+                                    <i class="fas fa-power-off"></i>
                                 </button>
                                 <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
                                         class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
@@ -884,6 +911,11 @@
                                                 class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                                 title="Reprocess summary">
                                             <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <button @click="confirmReset(selectedRecording)" v-if="selectedRecording && (selectedRecording.status === 'PROCESSING' || selectedRecording.status === 'SUMMARIZING')"
+                                                class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-orange-100 text-orange-600 hover:bg-orange-200 dark:bg-orange-700 dark:text-orange-200 dark:hover:bg-orange-600"
+                                                title="Reset Stuck Status">
+                                            <i class="fas fa-power-off"></i>
                                         </button>
                                         <button @click="openSpeakerModal" v-if="identifiedSpeakers.length > 0"
                                                 class="p-2 rounded-md text-sm transition-all hover:scale-105 bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"

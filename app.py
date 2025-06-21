@@ -1459,6 +1459,32 @@ JSON Response:"""
         app.logger.error(f"Error reprocessing summary for recording {recording_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/recording/<int:recording_id>/reset_status', methods=['POST'])
+@login_required
+def reset_status(recording_id):
+    """Resets the status of a stuck recording to FAILED."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to modify this recording'}), 403
+
+        # Only allow resetting if it's stuck in a processing state
+        if recording.status in ['PROCESSING', 'SUMMARIZING']:
+            recording.status = 'FAILED'
+            recording.summary = (recording.summary or "") + "\n\n[Manually reset from stuck state]"
+            db.session.commit()
+            app.logger.info(f"Manually reset status for recording {recording_id} to FAILED.")
+            return jsonify({'success': True, 'message': 'Recording status has been reset.', 'recording': recording.to_dict()})
+        else:
+            return jsonify({'error': f'Recording is not in a processing state. Current status: {recording.status}'}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error resetting status for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # --- Authentication Routes ---
 @app.route('/register', methods=['GET', 'POST'])
