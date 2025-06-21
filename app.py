@@ -820,9 +820,10 @@ def update_speakers(recording_id):
 
         if regenerate_summary:
             app.logger.info(f"Regenerating summary for recording {recording_id} after speaker update.")
+            start_time = datetime.utcnow()
             thread = threading.Thread(
                 target=generate_summary_task,
-                args=(app.app_context(), recording.id)
+                args=(app.app_context(), recording.id, start_time)
             )
             thread.start()
         
