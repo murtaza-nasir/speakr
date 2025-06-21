@@ -98,14 +98,14 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 *   **Simplified Docker Setup:** Configuration is now managed via a single `.env` file, making setup faster and easier.
 *   **Advanced ASR Integration:** Added support for ASR endpoints using the [`onerahmet/openai-whisper-asr-webservice`](https://github.com/ahmetoner/whisper-asr-webservice) package. This integration is necessary for the speaker diarization feature.
 *   **Speaker Diarization:** Identify and label different speakers in your recordings. **Note: This feature requires the ASR Webservice method with the `whisperx` engine.**
-*   **Speaker Auto-Detection:** When using speaker diarization, the system can automatically attemtpt to detect participant names based on the transcript, so you don't have to specify it manually.
-*   **Clickable Timestamps:** Each transcribed sentence now includes a timestamp. Clicking it will jump the audio player to that specific point in the recording, making it easier to identify speakers and verify transcription accuracy.
-*   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
-*   **Transcription Reprocessing:** A new "Reprocess" button allows you to re-run transcription with different settings (e.g., to add diarization).
-*   **Speaker Identification:** A new modal helps you name speakers, with highlighting for clarity. You can also automatically identify speakers using an LLM.
-*   **Saved Speaker Profiles:** Save identified speakers for auto-completion in future transcriptions. View and manage them on your Account page.
+*   **Speaker Auto-Detection:** When using speaker diarization, the system can automatically attemtpt to detect participant names based on the transcript, so you don't have to specify it manually. **(/ASR method only)**
+*   **Clickable Timestamps:** Each transcribed sentence now includes a timestamp. Clicking it will jump the audio player to that specific point in the recording, making it easier to identify speakers and verify transcription accuracy. **(/ASR method only)**
+*   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers. **(/ASR method only)**
+*   **Transcription Reprocessing:** A new "Reprocess" button allows you to re-run transcription with different settings (e.g., to add diarization). 
+*   **Speaker Identification:** A new modal helps you name speakers, with highlighting for clarity. You can also automatically identify speakers using an LLM. **(/ASR method only)**
+*   **Saved Speaker Profiles:** Save identified speakers for auto-completion in future transcriptions. View and manage them on your Account page. **(/ASR method only)**
 *   **Enhanced Summaries:** Summarization now includes user context (name, title) and allows for custom prompts.
-*   **Streaming Chat Responses:** The chat interface now streams responses token-by-token, providing a more interactive and responsive experience.
+*   **Streaming Chat Responses:** The chat interface now streams responses, providing a more interactive and responsive experience.
 *   **UI Preferences Saved:** Your preferences for audio volume and transcription view (simple vs. bubble) are now saved locally in your browser and automatically applied on your next visit.
 *   **Last Viewed Recording:** The application now remembers the last recording you viewed and will take you there directly when you revisit the page.
 *   **Performance Tracking:** The processing time for transcriptions is now tracked and displayed, giving you insight into the performance of your setup.
