@@ -226,8 +226,6 @@ TEXT_MODEL_NAME=openai/gpt-4o-mini
 # --- Transcription Service (ASR Endpoint) ---
 USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://whisper-asr:9000
-ASR_ENCODE=true
-ASR_TASK=transcribe
 ASR_DIARIZE=true
 ASR_MIN_SPEAKERS=1
 ASR_MAX_SPEAKERS=5
@@ -398,8 +396,6 @@ WHISPER_MODEL=whisper-1
 ```env
 USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://localhost:9000  # or remote IP
-ASR_ENCODE=true
-ASR_TASK=transcribe
 ASR_DIARIZE=true
 ASR_MIN_SPEAKERS=1
 ASR_MAX_SPEAKERS=5
