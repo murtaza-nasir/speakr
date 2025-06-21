@@ -1,6 +1,6 @@
-/* Dark Mode CSS Variables */
+/* Color Scheme CSS Variables */
 :root {
-    /* Light mode variables */
+    /* Default Light Theme (Blue) */
     --bg-primary: #f3f4f6; /* gray-100 */
     --bg-secondary: #ffffff; /* white */
     --bg-tertiary: #f9fafb; /* gray-50 */
@@ -47,8 +47,94 @@
     --border-success: #059669;
 }
 
+/* Light Theme Variants */
+.theme-light-emerald {
+    --bg-primary: #f6fdf8; /* soft green-tinted background */
+    --bg-secondary: #f9fefb; /* very light green */
+    --bg-tertiary: #f1fcf3; /* noticeable but soft green tint */
+    --bg-accent: #ecfaf0; /* light green accent */
+    --bg-accent-hover: #e6f7ea; /* slightly deeper green */
+    --bg-button: #059669; /* keep button visible */
+    --bg-button-hover: #047857; /* keep button visible */
+    --text-accent: #047857; /* keep accent text visible */
+    --border-primary: #e8f5eb; /* light green border */
+    --border-secondary: #d1f2d8; /* soft green border */
+    --border-accent: #b8e6c1; /* medium green border */
+    --border-focus: #10b981; /* keep focus visible */
+    --ring-focus: #e6f7ea; /* soft green ring */
+    --bg-audio-player: linear-gradient(to right, #f1fcf3, #f6fdf8); /* soft green gradient */
+}
+
+.theme-light-purple {
+    --bg-primary: #faf8ff; /* soft purple-tinted background */
+    --bg-secondary: #fcfaff; /* very light purple */
+    --bg-tertiary: #f5f2ff; /* noticeable but soft purple tint */
+    --bg-accent: #f0ebff; /* light purple accent */
+    --bg-accent-hover: #ebe4ff; /* slightly deeper purple */
+    --bg-button: #7c3aed; /* keep button visible */
+    --bg-button-hover: #6d28d9; /* keep button visible */
+    --text-accent: #6d28d9; /* keep accent text visible */
+    --border-primary: #ede9fe; /* light purple border */
+    --border-secondary: #ddd6fe; /* soft purple border */
+    --border-accent: #c4b5fd; /* medium purple border */
+    --border-focus: #8b5cf6; /* keep focus visible */
+    --ring-focus: #ebe4ff; /* soft purple ring */
+    --bg-audio-player: linear-gradient(to right, #f5f2ff, #faf8ff); /* soft purple gradient */
+}
+
+.theme-light-rose {
+    --bg-primary: #fdf8fb; /* soft rose-tinted background */
+    --bg-secondary: #fefafc; /* very light rose */
+    --bg-tertiary: #fcf2f6; /* noticeable but soft rose tint */
+    --bg-accent: #faebf1; /* light rose accent */
+    --bg-accent-hover: #f7e4ec; /* slightly deeper rose */
+    --bg-button: #e11d48; /* keep button visible */
+    --bg-button-hover: #be185d; /* keep button visible */
+    --text-accent: #be185d; /* keep accent text visible */
+    --border-primary: #fce7f3; /* light rose border */
+    --border-secondary: #f9d2e4; /* soft rose border */
+    --border-accent: #f3a8c7; /* medium rose border */
+    --border-focus: #ec4899; /* keep focus visible */
+    --ring-focus: #f7e4ec; /* soft rose ring */
+    --bg-audio-player: linear-gradient(to right, #fcf2f6, #fdf8fb); /* soft rose gradient */
+}
+
+.theme-light-amber {
+    --bg-primary: #fdfaf6; /* soft amber-tinted background */
+    --bg-secondary: #fefcf9; /* very light amber */
+    --bg-tertiary: #fcf6f1; /* noticeable but soft amber tint */
+    --bg-accent: #faf0e6; /* light amber accent */
+    --bg-accent-hover: #f7e9db; /* slightly deeper amber */
+    --bg-button: #d97706; /* keep button visible */
+    --bg-button-hover: #b45309; /* keep button visible */
+    --text-accent: #b45309; /* keep accent text visible */
+    --border-primary: #fef3c7; /* light amber border */
+    --border-secondary: #fde68a; /* soft amber border */
+    --border-accent: #fcd34d; /* medium amber border */
+    --border-focus: #f59e0b; /* keep focus visible */
+    --ring-focus: #f7e9db; /* soft amber ring */
+    --bg-audio-player: linear-gradient(to right, #fcf6f1, #fdfaf6); /* soft amber gradient */
+}
+
+.theme-light-teal {
+    --bg-primary: #f6fdfc; /* soft teal-tinted background */
+    --bg-secondary: #f9fefe; /* very light teal */
+    --bg-tertiary: #f1fcfa; /* noticeable but soft teal tint */
+    --bg-accent: #ecfbf8; /* light teal accent */
+    --bg-accent-hover: #e6f9f5; /* slightly deeper teal */
+    --bg-button: #0d9488; /* keep button visible */
+    --bg-button-hover: #0f766e; /* keep button visible */
+    --text-accent: #0f766e; /* keep accent text visible */
+    --border-primary: #ccfbf1; /* light teal border */
+    --border-secondary: #99f6e4; /* soft teal border */
+    --border-accent: #5eead4; /* medium teal border */
+    --border-focus: #14b8a6; /* keep focus visible */
+    --ring-focus: #e6f9f5; /* soft teal ring */
+    --bg-audio-player: linear-gradient(to right, #f1fcfa, #f6fdfc); /* soft teal gradient */
+}
+
+/* Dark Theme Base */
 .dark {
-    /* Dark mode variables */
     --bg-primary: #111827; /* gray-900 */
     --bg-secondary: #1f2937; /* gray-800 */
     --bg-tertiary: #374151; /* gray-700 */
@@ -89,6 +175,92 @@
     --scrollbar-track: #2d3748; /* gray-800 */
     --scrollbar-thumb: #4a5568; /* gray-600 */
     --scrollbar-thumb-hover: #718096; /* gray-500 */
+}
+
+/* Dark Theme Variants */
+.dark.theme-dark-emerald {
+    --bg-primary: #1a2420; /* lighter dark with emerald tint */
+    --bg-secondary: #243028; /* medium dark with emerald hint */
+    --bg-tertiary: #2e3c30; /* lighter dark with emerald hint */
+    --bg-accent: #384838; /* visible emerald accent */
+    --bg-accent-hover: #425440; /* lighter emerald accent */
+    --bg-button: #059669; /* keep button visible */
+    --bg-button-hover: #10b981; /* keep button visible */
+    --text-accent: #7dd3ae; /* muted pastel emerald text */
+    --border-primary: #3a4540; /* visible emerald border */
+    --border-secondary: #485548; /* lighter emerald border */
+    --border-accent: #556550; /* medium emerald border */
+    --border-focus: #10b981; /* keep focus visible */
+    --ring-focus: #384838; /* visible ring */
+    --bg-audio-player: linear-gradient(to right, #2e3c30, #384838); /* visible emerald gradient */
+}
+
+.dark.theme-dark-purple {
+    --bg-primary: #1e1a24; /* lighter dark with purple tint */
+    --bg-secondary: #2a2430; /* medium dark with purple hint */
+    --bg-tertiary: #36303c; /* lighter dark with purple hint */
+    --bg-accent: #423c48; /* visible purple accent */
+    --bg-accent-hover: #4e4854; /* lighter purple accent */
+    --bg-button: #7c3aed; /* keep button visible */
+    --bg-button-hover: #8b5cf6; /* keep button visible */
+    --text-accent: #b8a5d4; /* muted pastel purple text */
+    --border-primary: #484050; /* visible purple border */
+    --border-secondary: #555058; /* lighter purple border */
+    --border-accent: #626060; /* medium purple border */
+    --border-focus: #8b5cf6; /* keep focus visible */
+    --ring-focus: #423c48; /* visible ring */
+    --bg-audio-player: linear-gradient(to right, #36303c, #423c48); /* visible purple gradient */
+}
+
+.dark.theme-dark-rose {
+    --bg-primary: #241a20; /* lighter dark with rose tint */
+    --bg-secondary: #302428; /* medium dark with rose hint */
+    --bg-tertiary: #3c3030; /* lighter dark with rose hint */
+    --bg-accent: #483c40; /* visible rose accent */
+    --bg-accent-hover: #54484c; /* lighter rose accent */
+    --bg-button: #e11d48; /* keep button visible */
+    --bg-button-hover: #f43f5e; /* keep button visible */
+    --text-accent: #d4a5b4; /* muted pastel rose text */
+    --border-primary: #504048; /* visible rose border */
+    --border-secondary: #585050; /* lighter rose border */
+    --border-accent: #606058; /* medium rose border */
+    --border-focus: #f43f5e; /* keep focus visible */
+    --ring-focus: #483c40; /* visible ring */
+    --bg-audio-player: linear-gradient(to right, #3c3030, #483c40); /* visible rose gradient */
+}
+
+.dark.theme-dark-amber {
+    --bg-primary: #24201a; /* lighter dark with amber tint */
+    --bg-secondary: #302824; /* medium dark with amber hint */
+    --bg-tertiary: #3c342e; /* lighter dark with amber hint */
+    --bg-accent: #484038; /* visible amber accent */
+    --bg-accent-hover: #544c42; /* lighter amber accent */
+    --bg-button: #d97706; /* keep button visible */
+    --bg-button-hover: #f59e0b; /* keep button visible */
+    --text-accent: #d4c5a5; /* muted pastel amber text */
+    --border-primary: #504840; /* visible amber border */
+    --border-secondary: #585548; /* lighter amber border */
+    --border-accent: #606250; /* medium amber border */
+    --border-focus: #f59e0b; /* keep focus visible */
+    --ring-focus: #484038; /* visible ring */
+    --bg-audio-player: linear-gradient(to right, #3c342e, #484038); /* visible amber gradient */
+}
+
+.dark.theme-dark-teal {
+    --bg-primary: #1a2424; /* lighter dark with teal tint */
+    --bg-secondary: #243030; /* medium dark with teal hint */
+    --bg-tertiary: #2e3c3c; /* lighter dark with teal hint */
+    --bg-accent: #384848; /* visible teal accent */
+    --bg-accent-hover: #425454; /* lighter teal accent */
+    --bg-button: #0d9488; /* keep button visible */
+    --bg-button-hover: #14b8a6; /* keep button visible */
+    --text-accent: #a5d4d0; /* muted pastel teal text */
+    --border-primary: #404848; /* visible teal border */
+    --border-secondary: #485555; /* lighter teal border */
+    --border-accent: #506262; /* medium teal border */
+    --border-focus: #14b8a6; /* keep focus visible */
+    --ring-focus: #384848; /* visible ring */
+    --bg-audio-player: linear-gradient(to right, #2e3c3c, #384848); /* visible teal gradient */
 }
 
 /* Modern UI styles */
@@ -1822,4 +1994,429 @@ body {
 
 .resize-handle:hover .w-10 {
     background-color: var(--border-accent) !important;
+}
+
+/* Color Scheme Modal Styles */
+.color-scheme-modal {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+    transition: all 0.3s ease-in-out;
+}
+
+.color-scheme-modal-content {
+    background-color: var(--bg-secondary);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 42rem;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(1);
+    transition: all 0.3s ease-in-out;
+}
+
+.color-scheme-header {
+    background: linear-gradient(135deg, var(--bg-accent), var(--bg-secondary));
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.color-scheme-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.color-scheme-subtitle {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+.color-scheme-body {
+    padding: 1.5rem;
+    max-height: calc(90vh - 200px);
+    overflow-y: auto;
+}
+
+.color-scheme-section {
+    margin-bottom: 2rem;
+}
+
+.color-scheme-section:last-child {
+    margin-bottom: 0;
+}
+
+.color-scheme-section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.color-scheme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.color-scheme-option {
+    border: 2px solid var(--border-primary);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: var(--bg-tertiary);
+    position: relative;
+    overflow: hidden;
+}
+
+.color-scheme-option:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.color-scheme-option.active {
+    border-color: var(--border-focus);
+    background-color: var(--bg-accent);
+    box-shadow: 0 0 0 3px var(--ring-focus);
+}
+
+.color-scheme-preview {
+    height: 60px;
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.color-scheme-preview-segment {
+    flex: 1;
+    transition: all 0.2s ease;
+}
+
+.color-scheme-option:hover .color-scheme-preview-segment {
+    transform: scale(1.02);
+}
+
+.color-scheme-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.color-scheme-description {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.color-scheme-check {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: var(--bg-button);
+    color: var(--text-button);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.2s ease;
+}
+
+.color-scheme-option.active .color-scheme-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.color-scheme-footer {
+    background-color: var(--bg-tertiary);
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.color-scheme-close-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.color-scheme-close-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.color-scheme-reset-btn {
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-secondary);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.color-scheme-reset-btn:hover {
+    background-color: var(--bg-danger-light);
+    color: var(--text-danger);
+    border-color: var(--border-danger);
+}
+
+/* Color scheme preview colors */
+.preview-blue-primary { background-color: #2563eb; }
+.preview-blue-secondary { background-color: #dbeafe; }
+.preview-blue-tertiary { background-color: #93c5fd; }
+
+.preview-emerald-primary { background-color: #059669; }
+.preview-emerald-secondary { background-color: #d1fae5; }
+.preview-emerald-tertiary { background-color: #6ee7b7; }
+
+.preview-purple-primary { background-color: #7c3aed; }
+.preview-purple-secondary { background-color: #e9d5ff; }
+.preview-purple-tertiary { background-color: #c4b5fd; }
+
+.preview-rose-primary { background-color: #e11d48; }
+.preview-rose-secondary { background-color: #fce7f3; }
+.preview-rose-tertiary { background-color: #f9a8d4; }
+
+.preview-amber-primary { background-color: #d97706; }
+.preview-amber-secondary { background-color: #fef3c7; }
+.preview-amber-tertiary { background-color: #fcd34d; }
+
+.preview-teal-primary { background-color: #0d9488; }
+.preview-teal-secondary { background-color: #ccfbf1; }
+.preview-teal-tertiary { background-color: #5eead4; }
+
+/* Dark theme preview colors */
+.preview-dark-blue-primary { background-color: #1e3a8a; }
+.preview-dark-blue-secondary { background-color: #1e40af; }
+.preview-dark-blue-tertiary { background-color: #60a5fa; }
+
+.preview-dark-emerald-primary { background-color: #064e3b; }
+.preview-dark-emerald-secondary { background-color: #065f46; }
+.preview-dark-emerald-tertiary { background-color: #6ee7b7; }
+
+.preview-dark-purple-primary { background-color: #581c87; }
+.preview-dark-purple-secondary { background-color: #6b21a8; }
+.preview-dark-purple-tertiary { background-color: #c4b5fd; }
+
+.preview-dark-rose-primary { background-color: #881337; }
+.preview-dark-rose-secondary { background-color: #9f1239; }
+.preview-dark-rose-tertiary { background-color: #fda4af; }
+
+.preview-dark-amber-primary { background-color: #78350f; }
+.preview-dark-amber-secondary { background-color: #92400e; }
+.preview-dark-amber-tertiary { background-color: #fcd34d; }
+
+.preview-dark-teal-primary { background-color: #134e4a; }
+.preview-dark-teal-secondary { background-color: #115e59; }
+.preview-dark-teal-tertiary { background-color: #5eead4; }
+
+/* Responsive adjustments for color scheme modal */
+@media (max-width: 768px) {
+    .color-scheme-modal {
+        padding: 0.5rem;
+    }
+    
+    .color-scheme-modal-content {
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+    
+    .color-scheme-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .color-scheme-header {
+        padding: 1rem;
+    }
+    
+    .color-scheme-body {
+        padding: 1rem;
+    }
+    
+    .color-scheme-footer {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
+
+/* Enhanced Audio Player Styling for Better Dark Mode Visibility */
+.audio-player-container {
+    background: var(--bg-audio-player);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.dark .audio-player-container {
+    border: 1px solid var(--border-secondary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Audio player controls styling */
+.audio-player-container audio {
+    width: 100%;
+    height: 40px;
+    background-color: var(--bg-tertiary);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-primary);
+    outline: none;
+}
+
+.dark .audio-player-container audio {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    filter: brightness(1.2) contrast(1.1);
+}
+
+/* Audio player controls for WebKit browsers */
+.audio-player-container audio::-webkit-media-controls-panel {
+    background-color: var(--bg-tertiary);
+    border-radius: 0.5rem;
+}
+
+.dark .audio-player-container audio::-webkit-media-controls-panel {
+    background-color: var(--bg-secondary);
+    filter: brightness(1.3);
+}
+
+.audio-player-container audio::-webkit-media-controls-play-button,
+.audio-player-container audio::-webkit-media-controls-pause-button {
+    background-color: var(--bg-button);
+    border-radius: 50%;
+    margin: 0 0.25rem;
+}
+
+.dark .audio-player-container audio::-webkit-media-controls-play-button,
+.dark .audio-player-container audio::-webkit-media-controls-pause-button {
+    filter: brightness(1.4) contrast(1.2);
+}
+
+.audio-player-container audio::-webkit-media-controls-timeline {
+    background-color: var(--border-primary);
+    border-radius: 0.25rem;
+    margin: 0 0.5rem;
+}
+
+.dark .audio-player-container audio::-webkit-media-controls-timeline {
+    background-color: var(--border-secondary);
+    filter: brightness(1.5);
+}
+
+.audio-player-container audio::-webkit-media-controls-current-time-display,
+.audio-player-container audio::-webkit-media-controls-time-remaining-display {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.dark .audio-player-container audio::-webkit-media-controls-current-time-display,
+.dark .audio-player-container audio::-webkit-media-controls-time-remaining-display {
+    color: var(--text-primary);
+    filter: brightness(1.3);
+}
+
+/* Audio player volume controls */
+.audio-player-container audio::-webkit-media-controls-volume-slider {
+    background-color: var(--border-primary);
+    border-radius: 0.25rem;
+}
+
+.dark .audio-player-container audio::-webkit-media-controls-volume-slider {
+    background-color: var(--border-secondary);
+    filter: brightness(1.4);
+}
+
+.audio-player-container audio::-webkit-media-controls-mute-button {
+    background-color: transparent;
+}
+
+.dark .audio-player-container audio::-webkit-media-controls-mute-button {
+    filter: brightness(1.5) contrast(1.2);
+}
+
+/* Custom audio player wrapper for better control */
+.custom-audio-wrapper {
+    position: relative;
+    background: var(--bg-audio-player);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dark .custom-audio-wrapper {
+    border: 1px solid var(--border-secondary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: var(--bg-audio-player);
+}
+
+/* Audio player title/metadata styling */
+.audio-player-title {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dark .audio-player-title {
+    color: var(--text-primary);
+}
+
+.audio-player-icon {
+    color: var(--text-accent);
+    font-size: 1rem;
+}
+
+/* Audio player duration/time display */
+.audio-player-time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    text-align: center;
+}
+
+.dark .audio-player-time {
+    color: var(--text-secondary);
 }

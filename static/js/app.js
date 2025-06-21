@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const globalError = ref(null);
         const maxFileSizeMB = ref(250); // Default, could fetch from config if needed
         const isDarkMode = ref(false); // Dark mode state
+        const currentColorScheme = ref('blue'); // Current color scheme
+        const showColorSchemeModal = ref(false); // Color scheme modal state
         const isSidebarCollapsed = ref(false); // Sidebar state
         const isUserMenuOpen = ref(false); // User dropdown menu state
         const isMobileMenuOpen = ref(false); // Mobile fly-in menu state
@@ -515,7 +517,87 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.documentElement.classList.remove('dark');
             }
         };
-        // --- End Dark Mode ---
+
+        // --- Color Scheme Management ---
+        const colorSchemes = {
+            light: [
+                { id: 'blue', name: 'Ocean Blue', description: 'Classic blue theme with professional appeal', class: '' },
+                { id: 'emerald', name: 'Forest Emerald', description: 'Fresh green theme for a natural feel', class: 'theme-light-emerald' },
+                { id: 'purple', name: 'Royal Purple', description: 'Elegant purple theme with sophistication', class: 'theme-light-purple' },
+                { id: 'rose', name: 'Sunset Rose', description: 'Warm pink theme with gentle energy', class: 'theme-light-rose' },
+                { id: 'amber', name: 'Golden Amber', description: 'Warm yellow theme for brightness', class: 'theme-light-amber' },
+                { id: 'teal', name: 'Ocean Teal', description: 'Cool teal theme for tranquility', class: 'theme-light-teal' }
+            ],
+            dark: [
+                { id: 'blue', name: 'Midnight Blue', description: 'Deep blue theme for focused work', class: '' },
+                { id: 'emerald', name: 'Dark Forest', description: 'Rich green theme for comfortable viewing', class: 'theme-dark-emerald' },
+                { id: 'purple', name: 'Deep Purple', description: 'Mysterious purple theme for creativity', class: 'theme-dark-purple' },
+                { id: 'rose', name: 'Dark Rose', description: 'Muted pink theme with subtle warmth', class: 'theme-dark-rose' },
+                { id: 'amber', name: 'Dark Amber', description: 'Warm brown theme for cozy sessions', class: 'theme-dark-amber' },
+                { id: 'teal', name: 'Deep Teal', description: 'Dark teal theme for calm focus', class: 'theme-dark-teal' }
+            ]
+        };
+
+        const applyColorScheme = (schemeId, mode = null) => {
+            const targetMode = mode || (isDarkMode.value ? 'dark' : 'light');
+            const scheme = colorSchemes[targetMode].find(s => s.id === schemeId);
+            
+            if (!scheme) {
+                console.warn(`Color scheme '${schemeId}' not found for mode '${targetMode}'`);
+                return;
+            }
+
+            // Remove all existing theme classes
+            const allThemeClasses = [
+                ...colorSchemes.light.map(s => s.class),
+                ...colorSchemes.dark.map(s => s.class)
+            ].filter(c => c !== '');
+
+            document.documentElement.classList.remove(...allThemeClasses);
+
+            // Apply new theme class if it's not the default
+            if (scheme.class) {
+                document.documentElement.classList.add(scheme.class);
+            }
+
+            // Update current scheme
+            currentColorScheme.value = schemeId;
+            
+            // Save to localStorage
+            localStorage.setItem('colorScheme', schemeId);
+            
+            console.log(`Applied color scheme: ${scheme.name} (${targetMode} mode)`);
+        };
+
+        const initializeColorScheme = () => {
+            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            currentColorScheme.value = savedScheme;
+            applyColorScheme(savedScheme);
+        };
+
+        const openColorSchemeModal = () => {
+            showColorSchemeModal.value = true;
+        };
+
+        const closeColorSchemeModal = () => {
+            showColorSchemeModal.value = false;
+        };
+
+        const selectColorScheme = (schemeId) => {
+            applyColorScheme(schemeId);
+            showToast(`Applied ${colorSchemes[isDarkMode.value ? 'dark' : 'light'].find(s => s.id === schemeId)?.name} theme`, 'fa-palette');
+        };
+
+        const resetColorScheme = () => {
+            applyColorScheme('blue');
+            showToast('Reset to default Ocean Blue theme', 'fa-undo');
+        };
+
+        // Watch for dark mode changes to reapply color scheme
+        watch(isDarkMode, () => {
+            applyColorScheme(currentColorScheme.value);
+        });
+        // --- End Color Scheme Management ---
 
         // --- Sidebar Toggle ---
         const toggleSidebar = () => { // This is for DESKTOP sidebar
@@ -1292,6 +1374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             loadRecordings();
             initializeDarkMode(); // Initialize dark mode on load
+            initializeColorScheme(); // Initialize color scheme on load
             
             // Load saved settings
             const savedVolume = localStorage.getItem('playerVolume');
@@ -2501,6 +2584,14 @@ document.addEventListener('DOMContentLoaded', () => {
             selectSpeakerSuggestion,
             autoIdentifySpeakers,
             isAutoIdentifying,
+            // Color scheme functionality
+            currentColorScheme,
+            showColorSchemeModal,
+            colorSchemes,
+            openColorSchemeModal,
+            closeColorSchemeModal,
+            selectColorScheme,
+            resetColorScheme,
             // Main column resizer refs (not needed in template but good practice if they were)
             // leftMainColumn, rightMainColumn, mainColumnResizer, mainContentColumns,
             seekAudio,

@@ -49,6 +49,9 @@
                         <a href="{{ url_for('account') }}" @click="isMobileUserMenuOpen = false" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-user-circle mr-2"></i> Account
                         </a>
+                        <button @click="openColorSchemeModal(); isMobileUserMenuOpen = false;" class="w-full text-left px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas fa-palette mr-2"></i> Color Schemes
+                        </button>
                         {% if current_user.is_admin %}
                         <a href="{{ url_for('admin') }}" @click="isMobileUserMenuOpen = false" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-user-shield mr-2"></i> Admin
@@ -86,6 +89,9 @@
                         <a href="{{ url_for('account') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-user-circle mr-2"></i> Account
                         </a>
+                        <button @click="openColorSchemeModal(); isUserMenuOpen = false;" class="w-full text-left px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas fa-palette mr-2"></i> Color Schemes
+                        </button>
                         {% if current_user.is_admin %}
                         <a href="{{ url_for('admin') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-user-shield mr-2"></i> Admin
@@ -380,6 +386,119 @@
                         <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
                         <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Scheme Modal -->
+        <div v-if="showColorSchemeModal" @click="closeColorSchemeModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                <!-- Header -->
+                <div class="p-6 border-b border-[var(--border-primary)] flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                                <i class="fas fa-palette text-white text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-[var(--text-primary)]">Color Schemes</h3>
+                                <p class="text-sm text-[var(--text-muted)]">Choose your preferred color theme</p>
+                            </div>
+                        </div>
+                        <button @click="closeColorSchemeModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-200 rounded-full h-8 w-8 flex items-center justify-center hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="p-6 overflow-y-auto custom-scrollbar modal-content flex-grow">
+                    <!-- Current Mode Indicator -->
+                    <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <i :class="isDarkMode ? 'fas fa-moon' : 'fas fa-sun'" class="text-[var(--text-accent)] mr-3"></i>
+                                <div>
+                                    <p class="font-medium text-[var(--text-primary)]">Current Mode: ${ isDarkMode ? 'Dark' : 'Light' }</p>
+                                    <p class="text-sm text-[var(--text-muted)]">Switch between light and dark modes using the toggle in the header</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-[var(--text-secondary)]">Active Theme</p>
+                                <p class="text-xs text-[var(--text-muted)]">${ colorSchemes[isDarkMode ? 'dark' : 'light'].find(s => s.id === currentColorScheme)?.name || 'Unknown' }</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Light Mode Themes -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center">
+                            <i class="fas fa-sun text-yellow-500 mr-2"></i>
+                            Light Mode Themes
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="scheme in colorSchemes.light" :key="'light-' + scheme.id" 
+                                 @click="selectColorScheme(scheme.id)"
+                                 class="cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-lg"
+                                 :class="!isDarkMode && currentColorScheme === scheme.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]'">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-semibold text-[var(--text-primary)]">${ scheme.name }</h5>
+                                    <div v-if="!isDarkMode && currentColorScheme === scheme.id" class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-white text-xs"></i>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-[var(--text-muted)] mb-3">${ scheme.description }</p>
+                                <!-- Color Preview -->
+                                <div class="flex space-x-2">
+                                    <div class="w-6 h-6 rounded-full" :class="scheme.id === 'blue' ? 'bg-blue-500' : scheme.id === 'emerald' ? 'bg-emerald-500' : scheme.id === 'purple' ? 'bg-purple-500' : scheme.id === 'rose' ? 'bg-rose-500' : scheme.id === 'amber' ? 'bg-amber-500' : 'bg-teal-500'"></div>
+                                    <div class="w-6 h-6 rounded-full" :class="scheme.id === 'blue' ? 'bg-blue-100' : scheme.id === 'emerald' ? 'bg-emerald-100' : scheme.id === 'purple' ? 'bg-purple-100' : scheme.id === 'rose' ? 'bg-rose-100' : scheme.id === 'amber' ? 'bg-amber-100' : 'bg-teal-100'"></div>
+                                    <div class="w-6 h-6 rounded-full bg-gray-100"></div>
+                                    <div class="w-6 h-6 rounded-full bg-white border border-gray-200"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dark Mode Themes -->
+                    <div>
+                        <h4 class="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center">
+                            <i class="fas fa-moon text-blue-400 mr-2"></i>
+                            Dark Mode Themes
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="scheme in colorSchemes.dark" :key="'dark-' + scheme.id" 
+                                 @click="selectColorScheme(scheme.id)"
+                                 class="cursor-pointer p-4 rounded-lg border-2 transition-all duration-200 hover:shadow-lg"
+                                 :class="isDarkMode && currentColorScheme === scheme.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]'">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h5 class="font-semibold text-[var(--text-primary)]">${ scheme.name }</h5>
+                                    <div v-if="isDarkMode && currentColorScheme === scheme.id" class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-white text-xs"></i>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-[var(--text-muted)] mb-3">${ scheme.description }</p>
+                                <!-- Color Preview -->
+                                <div class="flex space-x-2">
+                                    <div class="w-6 h-6 rounded-full" :class="scheme.id === 'blue' ? 'bg-blue-600' : scheme.id === 'emerald' ? 'bg-emerald-600' : scheme.id === 'purple' ? 'bg-purple-600' : scheme.id === 'rose' ? 'bg-rose-600' : scheme.id === 'amber' ? 'bg-amber-600' : 'bg-teal-600'"></div>
+                                    <div class="w-6 h-6 rounded-full" :class="scheme.id === 'blue' ? 'bg-blue-900' : scheme.id === 'emerald' ? 'bg-emerald-900' : scheme.id === 'purple' ? 'bg-purple-900' : scheme.id === 'rose' ? 'bg-rose-900' : scheme.id === 'amber' ? 'bg-amber-900' : 'bg-teal-900'"></div>
+                                    <div class="w-6 h-6 rounded-full bg-gray-700"></div>
+                                    <div class="w-6 h-6 rounded-full bg-gray-900 border border-gray-600"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-between items-center border-t border-[var(--border-primary)] flex-shrink-0">
+                    <button @click="resetColorScheme" class="px-4 py-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-200 flex items-center">
+                        <i class="fas fa-undo mr-2"></i>
+                        Reset to Default
+                    </button>
+                    <button @click="closeColorSchemeModal" class="px-6 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors duration-200 flex items-center shadow-sm">
+                        <i class="fas fa-check mr-2"></i>
+                        Done
+                    </button>
                 </div>
             </div>
         </div>
