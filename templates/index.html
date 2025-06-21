@@ -555,7 +555,16 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <pre v-else class="whitespace-pre-wrap font-sans">${ processedTranscription.content || 'No transcription available.' }</pre>
+                                        <div v-else @click="seekAudioFromEvent">
+                                            <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
+                                                <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" 
+                                                     class="cursor-pointer hover:bg-[var(--bg-tertiary)] p-1 rounded" 
+                                                     :data-start-time="segment.startTime">
+                                                    <span>${ segment.sentence }</span>
+                                                </div>
+                                            </div>
+                                            <pre v-else class="whitespace-pre-wrap font-sans">${ processedTranscription.content || 'No transcription available.' }</pre>
+                                        </div>
                                     </div>
                                     <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
                                         <p class="font-medium mb-2">Processing Failed:</p>
@@ -1010,7 +1019,16 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <pre v-else class="whitespace-pre-wrap font-sans">${ processedTranscription.content || 'No transcription available.' }</pre>
+                                                <div v-else @click="seekAudioFromEvent">
+                                                    <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
+                                                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" 
+                                                             class="cursor-pointer hover:bg-[var(--bg-tertiary)] p-1 rounded" 
+                                                             :data-start-time="segment.startTime">
+                                                            <span>${ segment.sentence }</span>
+                                                        </div>
+                                                    </div>
+                                                    <pre v-else class="whitespace-pre-wrap font-sans">${ processedTranscription.content || 'No transcription available.' }</pre>
+                                                </div>
                                             </div>
                                             <div v-else-if="selectedRecording.status === 'FAILED'" class="text-[var(--text-danger)]">
                                                 <p class="font-medium mb-2">Processing Failed:</p>

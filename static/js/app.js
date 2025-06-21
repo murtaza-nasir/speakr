@@ -231,13 +231,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const wasDiarized = transcriptionData.some(segment => segment.speaker);
 
                 if (!wasDiarized) {
-                    const plainText = transcriptionData.map(segment => segment.sentence).join('\n');
+                    const segments = transcriptionData.map(segment => ({
+                        sentence: segment.sentence,
+                        startTime: segment.start_time,
+                    }));
                     return {
                         hasDialogue: false,
-                        isJson: false, // Treat as plain text for rendering
-                        content: plainText,
+                        isJson: true,
+                        content: segments.map(s => s.sentence).join('\n'),
+                        simpleSegments: segments,
                         speakers: [],
-                        simpleSegments: [],
                         bubbleRows: []
                     };
                 }
@@ -2226,17 +2229,19 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const transcriptionData = JSON.parse(selectedRecording.value.transcription);
                 if (Array.isArray(transcriptionData)) {
-                    // It's our simplified JSON, format it for copying
-                    textToCopy = transcriptionData.map(segment => {
-                        const speakerName = speakerMap.value[segment.speaker]?.name || segment.speaker;
-                        return `[${speakerName}]: ${segment.sentence}`;
-                    }).join('\n');
+                    const wasDiarized = transcriptionData.some(segment => segment.speaker);
+                    if (wasDiarized) {
+                        textToCopy = transcriptionData.map(segment => {
+                            const speakerName = speakerMap.value[segment.speaker]?.name || segment.speaker;
+                            return `[${speakerName}]: ${segment.sentence}`;
+                        }).join('\n');
+                    } else {
+                        textToCopy = transcriptionData.map(segment => segment.sentence).join('\n');
+                    }
                 } else {
-                    // It's some other JSON or plain text, copy as is
                     textToCopy = selectedRecording.value.transcription;
                 }
             } catch (e) {
-                // Not JSON, so it's plain text
                 textToCopy = selectedRecording.value.transcription;
             }
 
