@@ -1129,18 +1129,27 @@ def reprocess_transcription(recording_id):
 
         if not (filename_lower.endswith('.wav') or filename_lower.endswith('.mp3') or filename_lower.endswith('.flac')):
             app.logger.info(f"Reprocessing: Unsupported format detected ({filename_lower}). Converting to WAV.")
-            base_filepath, _ = os.path.splitext(filepath)
-            wav_filepath = f"{base_filepath}.wav"
+            base_filepath, file_ext = os.path.splitext(filepath)
+            temp_wav_filepath = f"{base_filepath}_temp.wav"
+            final_wav_filepath = f"{base_filepath}.wav"
 
             try:
+                # Convert to a temporary file first
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', temp_wav_filepath],
                     check=True, capture_output=True, text=True
                 )
-                app.logger.info(f"Successfully converted {filepath} to {wav_filepath}")
-                os.remove(filepath)
-                filepath = wav_filepath
-                filename_for_asr = os.path.basename(wav_filepath)
+                app.logger.info(f"Successfully converted {filepath} to {temp_wav_filepath}")
+
+                # If the original file is not the same as the final wav file, remove it
+                if filepath.lower() != final_wav_filepath.lower():
+                    os.remove(filepath)
+                
+                # Rename the temporary file to the final filename
+                os.rename(temp_wav_filepath, final_wav_filepath)
+                
+                filepath = final_wav_filepath
+                filename_for_asr = os.path.basename(filepath)
                 
                 # Update database with new path and mime type
                 recording.audio_path = filepath
@@ -1947,16 +1956,24 @@ def upload_file():
             app.logger.info(f"Unsupported format detected ({filename_lower}). Converting to WAV.")
             
             base_filepath, _ = os.path.splitext(filepath)
+            temp_wav_filepath = f"{base_filepath}_temp.wav"
             wav_filepath = f"{base_filepath}.wav"
 
             try:
                 # Using -acodec pcm_s16le for standard WAV format, 16kHz sample rate, mono
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', wav_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', temp_wav_filepath],
                     check=True, capture_output=True, text=True
                 )
-                app.logger.info(f"Successfully converted {filepath} to {wav_filepath}")
-                os.remove(filepath)
+                app.logger.info(f"Successfully converted {filepath} to {temp_wav_filepath}")
+                
+                # If the original file is not the same as the final wav file, remove it
+                if filepath.lower() != wav_filepath.lower():
+                    os.remove(filepath)
+                
+                # Rename the temporary file to the final filename
+                os.rename(temp_wav_filepath, wav_filepath)
+                
                 filepath = wav_filepath
             except FileNotFoundError:
                 app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
