@@ -498,16 +498,74 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     # Parse the JSON response from ASR
                     asr_response_data = response.json()
                     
+                    # Debug logging for ASR response
+                    app.logger.info(f"ASR response keys: {list(asr_response_data.keys())}")
+                    
+                    # Log the complete raw JSON response (truncated for readability)
+                    import json as json_module
+                    raw_json_str = json_module.dumps(asr_response_data, indent=2)
+                    if len(raw_json_str) > 5000:
+                        app.logger.info(f"Raw ASR response (first 5000 chars): {raw_json_str[:5000]}...")
+                    else:
+                        app.logger.info(f"Raw ASR response: {raw_json_str}")
+                    
+                    if 'segments' in asr_response_data:
+                        app.logger.info(f"Number of segments: {len(asr_response_data['segments'])}")
+                        
+                        # Collect all unique speakers from the response
+                        all_speakers = set()
+                        segments_with_speakers = 0
+                        segments_without_speakers = 0
+                        
+                        for segment in asr_response_data['segments']:
+                            if 'speaker' in segment and segment['speaker'] is not None:
+                                all_speakers.add(segment['speaker'])
+                                segments_with_speakers += 1
+                            else:
+                                segments_without_speakers += 1
+                        
+                        app.logger.info(f"Unique speakers found in raw response: {sorted(list(all_speakers))}")
+                        app.logger.info(f"Segments with speakers: {segments_with_speakers}, without speakers: {segments_without_speakers}")
+                        
+                        # Log first few segments for debugging
+                        for i, segment in enumerate(asr_response_data['segments'][:5]):
+                            segment_keys = list(segment.keys())
+                            app.logger.info(f"Segment {i} keys: {segment_keys}")
+                            app.logger.info(f"Segment {i}: speaker='{segment.get('speaker')}', text='{segment.get('text', '')[:50]}...'")
+                    
                     # Simplify the JSON data
                     simplified_segments = []
                     if 'segments' in asr_response_data and isinstance(asr_response_data['segments'], list):
-                        for segment in asr_response_data['segments']:
+                        last_known_speaker = None
+                        
+                        for i, segment in enumerate(asr_response_data['segments']):
+                            speaker = segment.get('speaker')
+                            text = segment.get('text', '').strip()
+                            
+                            # If segment doesn't have a speaker, use the previous segment's speaker
+                            if speaker is None:
+                                if last_known_speaker is not None:
+                                    speaker = last_known_speaker
+                                    app.logger.info(f"Assigned speaker '{speaker}' to segment {i} from previous segment")
+                                else:
+                                    speaker = 'UNKNOWN_SPEAKER'
+                                    app.logger.warning(f"No previous speaker available for segment {i}, using UNKNOWN_SPEAKER")
+                            else:
+                                # Update the last known speaker when we have a valid one
+                                last_known_speaker = speaker
+                            
                             simplified_segments.append({
-                                'speaker': segment.get('speaker'),
-                                'sentence': segment.get('text', '').strip(),
+                                'speaker': speaker,
+                                'sentence': text,
                                 'start_time': segment.get('start'),
                                 'end_time': segment.get('end')
                             })
+                    
+                    # Log final simplified segments count
+                    app.logger.info(f"Created {len(simplified_segments)} simplified segments")
+                    null_speaker_count = sum(1 for seg in simplified_segments if seg['speaker'] is None)
+                    if null_speaker_count > 0:
+                        app.logger.warning(f"Found {null_speaker_count} segments with null speakers in final output")
                     
                     # Store the simplified JSON as a string
                     recording.transcription = json.dumps(simplified_segments)

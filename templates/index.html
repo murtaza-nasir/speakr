@@ -384,7 +384,15 @@
                     </div>
                     <div class="flex space-x-3">
                         <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                        <button @click="saveSpeakerNames" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Names</button>
+                        <button 
+                            @click="saveSpeakerNames" 
+                            :disabled="!hasSpeakerNames"
+                            :class="hasSpeakerNames 
+                                ? 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer' 
+                                : 'px-4 py-2 bg-gray-400 text-gray-200 rounded-lg cursor-not-allowed'"
+                        >
+                            Save Names
+                        </button>
                     </div>
                 </div>
             </div>

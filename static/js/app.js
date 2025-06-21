@@ -216,6 +216,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return [];
         });
 
+        const hasSpeakerNames = computed(() => {
+            // Check if any speaker has a non-empty name
+            return Object.values(speakerMap.value).some(speakerData => 
+                speakerData.name && speakerData.name.trim() !== ''
+            );
+        });
+
         const processedTranscription = computed(() => {
             if (!selectedRecording.value?.transcription) {
                 return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [] };
@@ -2608,6 +2615,7 @@ document.addEventListener('DOMContentLoaded', () => {
             speakerMap,
             regenerateSummaryAfterSpeakerUpdate,
             identifiedSpeakers,
+            hasSpeakerNames,
             openSpeakerModal,
             closeSpeakerModal,
             saveSpeakerNames,
