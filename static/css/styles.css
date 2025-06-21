@@ -279,6 +279,7 @@ div[v-if="!editingNotes"] {
 /* Participants section - small fixed height */
 .participants-section {
     flex-shrink: 0;
+    margin-bottom: 1rem; /* Add space below participants box */
 }
 
 /* Transcription section - takes up significant space */
