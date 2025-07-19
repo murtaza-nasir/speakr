@@ -661,18 +661,26 @@ docker exec -it speakr sqlite3 /data/instance/transcriptions.db
 
 ## Browser Recording Feature
 
-Speakr includes a built-in browser recording feature available in the "New Recording" screen. This allows you to record audio directly from your browser's microphone without needing external recording software.
+Speakr includes a powerful in-browser recording feature on the "New Recording" screen, allowing you to capture audio directly without external software.
 
-### Important Requirements
+### Recording Modes
 
-**For HTTPS/SSL Sites:**
-- Recording works automatically on sites with valid SSL certificates
-- No additional configuration needed
+- **Microphone:** Records audio from your microphone. This is ideal for dictating notes or recording your side of a conversation.
+- **System Audio:** Captures all audio playing from your computer, such as online meetings (Zoom, Teams), videos, or other applications.
+- **Both:** Reliably records both your microphone and system audio simultaneously into a single audio track. This is the recommended mode for capturing online meetings where you are an active participant.
 
-**For HTTP Sites (Development/Local):**
-Modern browsers require HTTPS for microphone access due to security policies. For development or local deployments without SSL, you need to enable browser flags:
+### Important Requirements for System Audio
 
-#### Google Chrome: Allow Microphone on HTTP Sites
+The ability to record **system audio** (and therefore "both") relies on the browser's Screen Capture API. For security reasons, this API has strict requirements:
+
+- **HTTPS is Mandatory:** You **must** access Speakr through a secure `https://` connection. This feature will not work over `http://`, with the exception of `http://localhost`.
+- **User Permission:** When you start a system audio recording, your browser will prompt you to share your screen. You must select a screen or tab to share and **ensure you check the "Share system audio" (or similar) checkbox to grant permission.** Recording audio from a single application window is often not supported.
+
+### Local Development Setup (HTTP)
+
+For local development without setting up SSL, most browsers will block the system audio recording feature. To enable it for testing on `http://localhost`:
+
+#### Google Chrome (Recommended)
 
 1. **Open Chrome**
 2. Go to: `chrome://flags`
@@ -691,11 +699,13 @@ Modern browsers require HTTPS for microphone access due to security policies. Fo
 5. Double-click to change from `false` to `true`
 6. Restart Firefox
 
-> **⚠️ Security Warning:** These settings reduce browser security. Only use for development/testing. For production deployments, always use HTTPS with valid SSL certificates.
+**Note on Firefox System Audio:** While the above setting enables microphone recording on HTTP, Firefox's security model is very strict regarding system audio. As of recent tests, capturing system audio (and therefore "Both" mode) does not work reliably in Firefox even with SSL. **For system audio recording, Chrome is the recommended browser.**
+
+> **⚠️ Security Warning:** Modifying browser flags reduces security. Only use these settings for local development and testing. For production deployments, **always use HTTPS with a valid SSL certificate.**
 
 ### Production Deployment with SSL
 
-For production use, deploy behind a reverse proxy with SSL:
+For production use, it is essential to deploy Speakr behind a reverse proxy that handles SSL/TLS termination. This ensures the application is served over HTTPS, enabling all recording features securely.
 
 **Example with Nginx:**
 ```nginx
@@ -718,6 +728,7 @@ server {
 
 **Example with Traefik:**
 ```yaml
+# In your docker-compose.yml for the Speakr service
 labels:
   - "traefik.enable=true"
   - "traefik.http.routers.speakr.rule=Host(`your-domain.com`)"
@@ -727,12 +738,12 @@ labels:
 
 ### Recording Workflow
 
-1. **Access Recording:** Go to "New Recording" screen
-2. **Start Recording:** Click the record button (requires microphone permission)
-3. **Record Audio:** Speak into your microphone
-4. **Stop Recording:** Click stop when finished
-5. **Upload:** Click upload to process the recording using your configured transcription service
-
-**Note:** This is not live transcription - the audio is recorded first, then transcribed using your regular workflow (either OpenAI API or ASR endpoint).
+1.  **Access Recording:** Go to the "New Recording" screen.
+2.  **Choose Mode:** Select "Microphone", "System Audio", or "Both".
+3.  **Grant Permissions:** 
+    - For **Microphone**, allow access when prompted.
+    - For **System Audio** or **Both**, select a screen or tab to share and **ensure you check the "Share system audio" box**.
+4.  **Record:** The visualizer(s) will confirm that audio is being captured.
+5.  **Stop & Upload:** Stop the recording when finished and click "Upload" to process it.
 
 This guide should cover all the deployment scenarios you need. Choose the method that best fits your infrastructure and requirements!

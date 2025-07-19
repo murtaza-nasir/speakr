@@ -1,4 +1,4 @@
-const CACHE_NAME = 'whispertranscribe-cache-v3';
+const CACHE_NAME = 'Speakr-cache-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/static/offline.html',
@@ -7,7 +7,7 @@ const ASSETS_TO_CACHE = [
   '/static/js/app.js',
   '/static/img/icon-192x192.png', // Assuming you will add this
   '/static/img/icon-512x512.png', // Assuming you will add this
-  '/static/img/favicon.svg',      // Keep existing SVG as a fallback or for other uses
+  '/static/img/favicon.ico',      // Keep existing SVG as a fallback or for other uses
   // HTML templates (these are typically served via routes, but caching the routes themselves is handled by fetch strategies)
   // We cache '/' which should serve the main page.
   // Other specific page routes like /login, /register, /account will be handled by networkFirst.

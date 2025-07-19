@@ -1,8 +1,8 @@
 {
-  "id": "com.whispertranscribe.app",
-  "name": "WhisperTranscribe",
+  "id": "com.speakr.app",
+  "name": "Speakr",
   "short_name": "WhisperT",
-  "description": "WhisperTranscribe Application - Audio transcription and summarization",
+  "description": "Speakr - Audio transcription and summarization",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -38,6 +38,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    },
+    {
+      "src": "/static/img/icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [

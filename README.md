@@ -4,10 +4,12 @@
 
 This project is dual-licensed. See the [License](#license) section for details.
 
-Speakr is a personal, self-hosted web application designed for transcribing audio recordings (like meetings), generating concise summaries and titles, and interacting with the content through a chat interface. Keep all your meeting notes and insights securely on your own server.
+Speakr is your intelligent note-taking companion - a personal, self-hosted web application that transforms audio recordings into organized, searchable notes. Whether you're capturing meetings on your phone, recording lectures, or documenting interviews, Speakr automatically transcribes your audio with speaker identification, generates concise summaries, and lets you interact with your content through an AI chat interface. Keep all your notes and insights securely on your own server, accessible from any device.
+
+**Perfect for mobile note-taking:** Start the app on your phone, hit record, and get back diarized transcriptions that identify who said what - turning any conversation into structured, searchable notes.
 
 <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-    <img src="static/img/hero-shot.png" alt="Hero Shot" style="max-width: 48%; height: auto;"/>
+    <img src="static/img/main.png" alt="Hero Shot" style="max-width: 48%; height: auto;"/>
     <img src="static/img/multilingual-support.png" alt="Multilingual Support" style="max-width: 48%; height: auto;"/>
 </div>
 
@@ -70,50 +72,47 @@ Speakr is a personal, self-hosted web application designed for transcribing audi
 </details>
 
 <details>
-<summary><strong>ASR and API Options</strong></summary>
+<summary><strong>Record Meetings & Take Notes</strong></summary>
 <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
   <figure>
-    <img src="static/img/transcription-with-asr.png" alt="Transcription with ASR" width="400"/>
-    <figcaption style="text-align: center;">With ASR Webservice</figcaption>
+    <img src="static/img/rec1.png" alt="Transcription with ASR" width="400"/>
+    <figcaption style="text-align: center;">Recording options</figcaption>
   </figure>
   <figure>
-    <img src="static/img/transcription-without-asr.png" alt="Transcription without ASR" width="400"/>
-    <figcaption style="text-align: center;">With OpenAI-Compatible API</figcaption>
+    <img src="static/img/rec2.png" alt="Transcription without ASR" width="400"/>
+    <figcaption style="text-align: center;">Record Phone/Computer Microphone</figcaption>
   </figure>
-</div>
-</details>
-
-<details>
-<summary><strong>Advanced Features</strong></summary>
-<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-  <figure>
-    <img src="static/img/reprocessing-transcript.png" alt="Reprocessing Transcript" width="400"/>
-    <figcaption style="text-align: center;">Reprocess with New Settings</figcaption>
+    <figure>
+    <img src="static/img/rec3.png" alt="Transcription without ASR" width="400"/>
+    <figcaption style="text-align: center;">Record both Microphone and Computer Sounds (e.g., zoom meeting)</figcaption>
   </figure>
 </div>
 </details>
 
 ## What's New?
 
-*   **Simplified Docker Setup:** Configuration is now managed via a single `.env` file, making setup faster and easier.
-*   **Advanced ASR Integration:** Added support for ASR endpoints using the [`onerahmet/openai-whisper-asr-webservice`](https://github.com/ahmetoner/whisper-asr-webservice) package. This integration is necessary for the speaker diarization feature.
-*   **Speaker Diarization:** Identify and label different speakers in your recordings. **Note: This feature requires the ASR Webservice method with the `whisperx` engine.**
-*   **Speaker Auto-Detection:** When using speaker diarization, the system can automatically attemtpt to detect participant names based on the transcript, so you don't have to specify it manually. **(/ASR method only)**
-*   **Clickable Timestamps:** Each transcribed sentence now includes a timestamp. Clicking it will jump the audio player to that specific point in the recording, making it easier to identify speakers and verify transcription accuracy. **(/ASR method only)**
-*   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers. **(/ASR method only)**
-*   **Transcription Reprocessing:** A new "Reprocess" button allows you to re-run transcription with different settings (e.g., to add diarization). 
-*   **Speaker Identification:** A new modal helps you name speakers, with highlighting for clarity. You can also automatically identify speakers using an LLM. **(/ASR method only)**
-*   **Saved Speaker Profiles:** Save identified speakers for auto-completion in future transcriptions. View and manage them on your Account page. **(/ASR method only)**
-*   **Enhanced Summaries:** Summarization now includes user context (name, title) and allows for custom prompts.
-*   **Streaming Chat Responses:** The chat interface now streams responses, providing a more interactive and responsive experience.
-*   **UI Preferences Saved:** Your preferences for audio volume and transcription view (simple vs. bubble) are now saved locally in your browser and automatically applied on your next visit.
-*   **Last Viewed Recording:** The application now remembers the last recording you viewed and will take you there directly when you revisit the page.
-*   **Performance Tracking:** The processing time for transcriptions is now tracked and displayed, giving you insight into the performance of your setup.
+*   **Secure Sharing System:** Share your transcriptions publicly with customizable permissions - control whether to include summaries and notes, manage shared links, and revoke access anytime.
+*   **Enhanced Recording & Note-Taking:** Completely redesigned recording interface with real-time notepad during recording. Perfect for mobile note-taking with improved system audio capture and dual visualizers.
+*   **Advanced Speaker Diarization:** Automatically identify and label different speakers in your recordings with AI-powered speaker detection and saved speaker profiles for future sessions.
+*   **Mobile-Optimized Experience:** Seamless recording and note-taking on phones and tablets - start recording on your phone and get back diarized transcriptions with speaker identification.
+*   **Automated File Processing:** "Black hole" directory feature for automatic audio file processing - drag and drop recordings from your computer's audio devices for instant transcription.
+*   **AMR File Support:** Added support for AMR audio files commonly used by mobile devices and voice recorders.
+*   **Transcript Editing:** Edit and update transcriptions in both simple and ASR modes to perfect your notes.
+*   **Enhanced Markdown Editor:** Improved summary and notes editor with markdown support for better formatting and organization.
+*   **Configurable Logging:** Dynamic logging control for better debugging and troubleshooting.
+*   **Clickable Timestamps:** Jump to specific points in recordings by clicking timestamps in transcriptions for easy verification and speaker identification.
+*   **Streaming Chat Responses:** Interactive AI chat with real-time streaming responses for better user experience.
 
 ## Features
 
-*   **Audio Upload:** Upload audio files (MP3, WAV, M4A, etc. depending on your transcription endpoint) via drag-and-drop or file selection.
-*   **Browser Recording:** Record audio directly in your browser from the "New Recording" screen (requires HTTPS or browser configuration for HTTP - see [Deployment Guide](DEPLOYMENT_GUIDE.md#browser-recording-feature)).
+*   **Audio Upload:** Upload audio files (MP3, WAV, M4A, AMR, and many other formats) via drag-and-drop or file selection.
+*   **Automated File Processing:** "Black hole" directory monitoring for automatic batch processing of audio files without manual uploads.
+*   **Advanced Browser Recording:** Record audio directly in your browser with multiple options:
+    *   **Microphone:** Record your voice.
+    -   **System Audio:** Capture audio from other applications (e.g., online meetings). **Note: To record system audio, you must select to share a "tab" or "screen" in your browser's screen sharing prompt and ensure the "share audio" checkbox is enabled.**
+    -   **Both:** Reliably record both your microphone and system audio simultaneously.
+    *   Features dual real-time audio visualizers.
+    *   *(Note: System audio capture requires a secure context (HTTPS) or specific browser configuration. See the [Deployment Guide](DEPLOYMENT_GUIDE.md#browser-recording-feature) for details.)*
 *   **Transcription:** Choose between a standard OpenAI-compatible API or a more advanced ASR Webservice.
 *   **Speaker Diarization:** (ASR/WhisperX only) Automatically detect and separate different speakers in the transcript.
 *   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
@@ -345,7 +344,9 @@ Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webser
     *   View and manage your saved speakers.
 3.  **Upload or Record:** 
     *   **Upload:** Go to **New Recording** or drag-and-drop an audio file onto the page
-    *   **Record:** Use the browser recording feature in the "New Recording" screen to record directly from your microphone (requires HTTPS or browser configuration - see [Browser Recording Setup](DEPLOYMENT_GUIDE.md#browser-recording-feature))
+    *   **Record:** Use the browser recording feature in the "New Recording" screen to record directly from your microphone (requires HTTPS or browser configuration - see [Browser Recording Setup](DEPLOYMENT_GUIDE.md#browser-recording-feature)).
+        *   **System Audio Recording:** To capture system audio (e.g., from a video conference), you must select to share a specific **browser tab** or your **entire screen** in the browser's sharing dialog. Make sure to also check the box to **"Share tab audio"** or **"Share system audio"**. Recording audio from a single application window is often not supported.
+    *   **Automated Processing:** Drop files into the monitored directory for automatic batch processing (see [Automated File Processing](#automated-file-processing) below)
     *   The upload and processing status will appear in a popup.
 4.  **View and Interact:**
     *   The main **Gallery** lists your recordings. Click one to view its details.
@@ -361,6 +362,185 @@ Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webser
     *   Alternatively, use the **Auto Identify** button to let an AI model attempt to identify and name the speakers based on the conversation context.
     *   Saved speakers will be suggested for auto-completion in future sessions.
     *   You can also use the **Reprocess** button to re-transcribe the audio with different diarization settings if needed.
+
+## Automated File Processing
+
+Speakr includes a powerful "black hole" directory monitoring feature that automatically processes audio files without manual uploads. This is perfect for batch processing scenarios where you want to drop files into a directory and have them automatically transcribed.
+
+### How It Works
+
+1. **File Monitoring:** Speakr monitors a designated directory for new audio files
+2. **Automatic Detection:** When new audio files are detected, they are automatically queued for processing
+3. **File Stability Check:** Files are checked for stability (not being written to) before processing
+4. **Automatic Processing:** Files are moved to the uploads directory and processed using your configured transcription settings
+5. **Database Integration:** Processed recordings appear in your gallery with the title "Auto-processed - [filename]"
+
+### Setup Instructions
+
+#### 1. Enable Auto-Processing
+
+Add these environment variables to your `.env` file:
+
+```dotenv
+# Enable automated file processing
+ENABLE_AUTO_PROCESSING=true
+
+# Directory to monitor (inside container)
+AUTO_PROCESS_WATCH_DIR=/data/auto-process
+
+# How often to check for new files (seconds)
+AUTO_PROCESS_CHECK_INTERVAL=30
+
+# Processing mode (see modes below)
+AUTO_PROCESS_MODE=admin_only
+```
+
+#### 2. Mount the Auto-Process Directory
+
+Update your `docker-compose.yml` to mount the auto-process directory:
+
+```yaml
+services:
+  app:
+    image: learnedmachine/speakr:latest
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+      - ./auto-process:/data/auto-process  # Add this line
+```
+
+#### 3. Create the Directory
+
+Create the auto-process directory on your host system:
+
+```bash
+mkdir auto-process
+```
+
+#### 4. Restart the Container
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+### Processing Modes
+
+Speakr supports three different auto-processing modes:
+
+#### Mode 1: Admin Only (Default)
+```dotenv
+AUTO_PROCESS_MODE=admin_only
+```
+- All files in the main auto-process directory are assigned to the admin user
+- Simple setup, good for single-user scenarios
+
+#### Mode 2: User Directories
+```dotenv
+AUTO_PROCESS_MODE=user_directories
+```
+- Create subdirectories for each user: `auto-process/user123/` or `auto-process/123/`
+- Files are automatically assigned to the corresponding user
+- Example structure:
+  ```
+  auto-process/
+  ├── user1/          # Files for user ID 1
+  ├── user5/          # Files for user ID 5
+  └── 123/            # Files for user ID 123
+  ```
+
+#### Mode 3: Single User
+```dotenv
+AUTO_PROCESS_MODE=single_user
+AUTO_PROCESS_DEFAULT_USERNAME=john_doe
+```
+- All files are assigned to a specific username
+- Useful when you want all auto-processed files to go to a specific non-admin user
+
+### Supported File Formats
+
+The auto-processor supports the same audio formats as manual uploads:
+- **Common formats:** MP3, WAV, M4A, FLAC, AAC, OGG
+- **Mobile formats:** AMR, 3GP, 3GPP
+- **Video formats:** MP4, MOV, WEBM, WMA
+
+Files in unsupported formats are automatically converted to WAV using ffmpeg.
+
+### Usage Examples
+
+#### Basic Usage (Admin Mode)
+```bash
+# Copy files to the auto-process directory
+cp /path/to/meeting1.mp3 auto-process/
+cp /path/to/meeting2.wav auto-process/
+
+# Files will be automatically processed within 30 seconds (default interval)
+```
+
+#### User Directory Mode
+```bash
+# Create user directories
+mkdir -p auto-process/user1
+mkdir -p auto-process/user5
+
+# Drop files for specific users
+cp meeting_with_john.mp3 auto-process/user1/
+cp team_standup.wav auto-process/user5/
+```
+
+#### Batch Processing
+```bash
+# Process multiple files at once
+cp /recordings/*.mp3 auto-process/
+cp /meetings/2024-01/*.wav auto-process/
+```
+
+### Monitoring and Logs
+
+Check the container logs to monitor auto-processing activity:
+
+```bash
+docker logs speakr -f
+```
+
+You'll see log entries like:
+```
+File monitor started in 'admin_only' mode, watching: /data/auto-process
+Found new audio file for user 1: /data/auto-process/meeting.mp3
+Copied /data/auto-process/meeting.mp3 to /data/uploads/auto_20250119021530_meeting.mp3
+Created recording record with ID: 123 for user: admin
+Started background processing for recording ID: 123
+```
+
+### Best Practices
+
+1. **File Naming:** Use descriptive filenames as they become part of the auto-generated title
+2. **Batch Processing:** You can drop multiple files at once; they'll be processed sequentially
+3. **Network Shares:** Mount network drives or NAS shares to the auto-process directory for remote file drops
+4. **Monitoring:** Set up log monitoring to track processing status and catch any errors
+5. **Cleanup:** Processed files are automatically moved and deleted from the auto-process directory
+
+### Troubleshooting
+
+**Files not being processed:**
+- Check that `ENABLE_AUTO_PROCESSING=true` in your `.env` file
+- Verify the auto-process directory is properly mounted
+- Check container logs for error messages
+
+**Permission issues:**
+- Ensure the auto-process directory has proper read/write permissions
+- The container runs as the user specified in the Docker configuration
+
+**Processing errors:**
+- Check that your transcription API is properly configured
+- Verify ffmpeg is available in the container for file conversion
+- Monitor container logs for specific error messages
 
 ## License
 

@@ -2,6 +2,7 @@
 import os
 import sys
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response
+from urllib.parse import urlparse, urljoin
 try:
     from flask import Markup
 except ImportError:
@@ -12,6 +13,7 @@ from openai import OpenAI # Keep using the OpenAI library
 import json
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy import select
 import threading
 from dotenv import load_dotenv # Import load_dotenv
@@ -23,13 +25,236 @@ import markdown
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
+from flask_wtf.csrf import CSRFProtect
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import pytz
 from babel.dates import format_datetime
+import ast
+import logging
+import secrets
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Configure logging
+log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(log_level)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
+# Get the root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(log_level)
+root_logger.addHandler(handler)
+
+# Also configure Flask's logger
+app_logger = logging.getLogger('werkzeug')
+app_logger.setLevel(log_level)
+app_logger.addHandler(handler)
+
+# --- Rate Limiting Setup ---
+limiter = Limiter(
+    get_remote_address,
+    app=None,  # Defer initialization
+    default_limits=["200 per day", "50 per hour"]
+)
+
+def auto_close_json(json_string):
+    """
+    Attempts to close an incomplete JSON string by appending necessary brackets and braces.
+    This is a simplified parser and may not handle all edge cases, but is
+    designed to fix unterminated strings from API responses.
+    """
+    if not isinstance(json_string, str):
+        return json_string
+
+    stack = []
+    in_string = False
+    escape_next = False
+
+    for char in json_string:
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == '\\':
+            escape_next = True
+            continue
+
+        if char == '"':
+            # We don't handle escaped quotes inside strings perfectly,
+            # but this is a simple heuristic.
+            if not escape_next:
+                in_string = not in_string
+
+        if not in_string:
+            if char == '{':
+                stack.append('}')
+            elif char == '[':
+                stack.append(']')
+            elif char == '}':
+                if stack and stack[-1] == '}':
+                    stack.pop()
+            elif char == ']':
+                if stack and stack[-1] == ']':
+                    stack.pop()
+
+    # If we are inside a string at the end, close it.
+    if in_string:
+        json_string += '"'
+    
+    # Close any remaining open structures
+    while stack:
+        json_string += stack.pop()
+
+    return json_string
+
+def safe_json_loads(json_string, fallback_value=None):
+    """
+    Safely parse JSON with preprocessing to handle common LLM JSON formatting issues.
+    
+    Args:
+        json_string (str): The JSON string to parse
+        fallback_value: Value to return if parsing fails (default: None)
+    
+    Returns:
+        Parsed JSON object or fallback_value if parsing fails
+    """
+    if not json_string or not isinstance(json_string, str):
+        app.logger.warning(f"Invalid JSON input: {type(json_string)} - {json_string}")
+        return fallback_value
+    
+    # Step 1: Clean the input string
+    cleaned_json = json_string.strip()
+    
+    # Step 2: Extract JSON from markdown code blocks if present
+    json_match = re.search(r'```(?:json)?\s*(.*?)\s*```', cleaned_json, re.DOTALL)
+    if json_match:
+        cleaned_json = json_match.group(1).strip()
+    
+    # Step 3: Try multiple parsing strategies
+    parsing_strategies = [
+        # Strategy 1: Direct parsing (for well-formed JSON)
+        lambda x: json.loads(x),
+        
+        # Strategy 2: Fix common escape issues
+        lambda x: json.loads(preprocess_json_escapes(x)),
+        
+        # Strategy 3: Use ast.literal_eval as fallback for simple cases
+        lambda x: ast.literal_eval(x) if x.startswith(('{', '[')) else None,
+        
+        # Strategy 4: Extract JSON object/array using regex
+        lambda x: json.loads(extract_json_object(x)),
+        
+        # Strategy 5: Auto-close incomplete JSON and parse
+        lambda x: json.loads(auto_close_json(x)),
+    ]
+    
+    for i, strategy in enumerate(parsing_strategies):
+        try:
+            result = strategy(cleaned_json)
+            if result is not None:
+                if i > 0:  # Log if we had to use a fallback strategy
+                    app.logger.info(f"JSON parsed successfully using strategy {i+1}")
+                return result
+        except (json.JSONDecodeError, ValueError, SyntaxError) as e:
+            if i == 0:  # Only log the first failure to avoid spam
+                app.logger.debug(f"JSON parsing strategy {i+1} failed: {e}")
+            continue
+    
+    # All strategies failed
+    app.logger.error(f"All JSON parsing strategies failed for: {cleaned_json[:200]}...")
+    return fallback_value
+
+def preprocess_json_escapes(json_string):
+    """
+    Preprocess JSON string to fix common escape issues from LLM responses.
+    Uses a more sophisticated approach to handle nested quotes properly.
+    """
+    if not json_string:
+        return json_string
+    
+    result = []
+    i = 0
+    in_string = False
+    escape_next = False
+    expecting_value = False  # Track if we're expecting a value (after :)
+    
+    while i < len(json_string):
+        char = json_string[i]
+        
+        if escape_next:
+            # This character is escaped, add it as-is
+            result.append(char)
+            escape_next = False
+        elif char == '\\':
+            # This is an escape character
+            result.append(char)
+            escape_next = True
+        elif char == ':' and not in_string:
+            # We found a colon, next string will be a value
+            result.append(char)
+            expecting_value = True
+        elif char == ',' and not in_string:
+            # We found a comma, reset expecting_value
+            result.append(char)
+            expecting_value = False
+        elif char == '"':
+            if not in_string:
+                # Starting a string
+                in_string = True
+                result.append(char)
+            else:
+                # We're in a string, check if this quote should be escaped
+                # Look ahead to see if this is the end of the string value
+                j = i + 1
+                while j < len(json_string) and json_string[j].isspace():
+                    j += 1
+                
+                # For keys (not expecting_value), only end on colon
+                # For values (expecting_value), end on comma, closing brace, or closing bracket
+                if expecting_value:
+                    end_chars = ',}]'
+                else:
+                    end_chars = ':'
+                
+                if j < len(json_string) and json_string[j] in end_chars:
+                    # This is the end of the string
+                    in_string = False
+                    result.append(char)
+                    if not expecting_value:
+                        # We just finished a key, next will be expecting value
+                        expecting_value = True
+                else:
+                    # This is an inner quote that should be escaped
+                    result.append('\\"')
+        else:
+            result.append(char)
+        
+        i += 1
+    
+    return ''.join(result)
+
+def extract_json_object(text):
+    """
+    Extract the first complete JSON object or array from text using regex.
+    """
+    # Look for JSON object
+    obj_match = re.search(r'\{.*\}', text, re.DOTALL)
+    if obj_match:
+        return obj_match.group(0)
+    
+    # Look for JSON array
+    arr_match = re.search(r'\[.*\]', text, re.DOTALL)
+    if arr_match:
+        return arr_match.group(0)
+    
+    # Return original if no JSON structure found
+    return text
 
 # Initialize Flask-Bcrypt
 bcrypt = Bcrypt()
@@ -120,15 +345,29 @@ app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
 app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024  # 250MB max file size
 # Set a secret key for session management and CSRF protection
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-production')
+
+# Apply ProxyFix to handle headers from a reverse proxy (like Nginx or Caddy)
+# This is crucial for request.is_secure to work correctly behind an SSL-terminating proxy.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+# --- Secure Session Cookie Configuration ---
+# In a production environment (e.g., when not in debug mode), these should be enabled.
+if not app.debug:
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 db = SQLAlchemy()
 db.init_app(app)
 
-# Initialize Flask-Login
+# Initialize Flask-Login and other extensions
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
 bcrypt.init_app(app)
+limiter.init_app(app)  # Initialize the limiter
+csrf = CSRFProtect(app)
 
 # Add context processor to make 'now' available to all templates
 @app.context_processor
@@ -212,6 +451,93 @@ class Speaker(db.Model):
             'use_count': self.use_count
         }
 
+class SystemSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    setting_type = db.Column(db.String(50), nullable=False, default='string')  # string, integer, boolean, float
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'key': self.key,
+            'value': self.value,
+            'description': self.description,
+            'setting_type': self.setting_type,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+    
+    @staticmethod
+    def get_setting(key, default_value=None):
+        """Get a system setting value by key, with optional default."""
+        setting = SystemSetting.query.filter_by(key=key).first()
+        if setting:
+            # Convert value based on type
+            if setting.setting_type == 'integer':
+                try:
+                    return int(setting.value) if setting.value is not None else default_value
+                except (ValueError, TypeError):
+                    return default_value
+            elif setting.setting_type == 'boolean':
+                return setting.value.lower() in ('true', '1', 'yes') if setting.value else default_value
+            elif setting.setting_type == 'float':
+                try:
+                    return float(setting.value) if setting.value is not None else default_value
+                except (ValueError, TypeError):
+                    return default_value
+            else:  # string
+                return setting.value if setting.value is not None else default_value
+        return default_value
+    
+    @staticmethod
+    def set_setting(key, value, description=None, setting_type='string'):
+        """Set a system setting value."""
+        setting = SystemSetting.query.filter_by(key=key).first()
+        if setting:
+            setting.value = str(value) if value is not None else None
+            setting.updated_at = datetime.utcnow()
+            if description:
+                setting.description = description
+            if setting_type:
+                setting.setting_type = setting_type
+        else:
+            setting = SystemSetting(
+                key=key,
+                value=str(value) if value is not None else None,
+                description=description,
+                setting_type=setting_type
+            )
+            db.session.add(setting)
+        db.session.commit()
+        return setting
+
+class Share(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(32), unique=True, nullable=False, default=lambda: secrets.token_urlsafe(16))
+    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    share_summary = db.Column(db.Boolean, default=True)
+    share_notes = db.Column(db.Boolean, default=True)
+    
+    user = db.relationship('User', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
+    recording = db.relationship('Recording', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'public_id': self.public_id,
+            'recording_id': self.recording_id,
+            'created_at': local_datetime_filter(self.created_at),
+            'share_summary': self.share_summary,
+            'share_notes': self.share_notes,
+            'recording_title': self.recording.title if self.recording else "N/A"
+        }
+
 class Recording(db.Model):
     # Add user_id foreign key to associate recordings with users
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -233,6 +559,8 @@ class Recording(db.Model):
     mime_type = db.Column(db.String(100), nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
     processing_time_seconds = db.Column(db.Integer, nullable=True)
+    processing_source = db.Column(db.String(50), default='upload')  # upload, auto_process, recording
+    error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
 
     def to_dict(self):
         return {
@@ -258,10 +586,100 @@ class Recording(db.Model):
         }
 
 # --- Forms for Authentication ---
+# --- Custom Password Validator ---
+def password_check(form, field):
+    password = field.data
+    if len(password) < 8:
+        raise ValidationError('Password must be at least 8 characters long.')
+    if not re.search(r'[A-Z]', password):
+        raise ValidationError('Password must contain at least one uppercase letter.')
+    if not re.search(r'[a-z]', password):
+        raise ValidationError('Password must contain at least one lowercase letter.')
+    if not re.search(r'[0-9]', password):
+        raise ValidationError('Password must contain at least one number.')
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        raise ValidationError('Password must contain at least one special character.')
+
+# --- Share Routes ---
+@app.route('/share/<string:public_id>', methods=['GET'])
+def view_shared_recording(public_id):
+    share = Share.query.filter_by(public_id=public_id).first_or_404()
+    recording = share.recording
+    
+    # Create a limited dictionary for the public view
+    recording_data = {
+        'id': recording.id,
+        'public_id': share.public_id,
+        'title': recording.title,
+        'participants': recording.participants,
+        'transcription': recording.transcription,
+        'summary': md_to_html(recording.summary) if share.share_summary else None,
+        'notes': md_to_html(recording.notes) if share.share_notes else None,
+        'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
+        'mime_type': recording.mime_type
+    }
+    
+    return render_template('share.html', recording=recording_data)
+
+@app.route('/api/recording/<int:recording_id>/share', methods=['POST'])
+@login_required
+def create_share(recording_id):
+    if not request.is_secure:
+        return jsonify({'error': 'Sharing is only available over a secure (HTTPS) connection.'}), 403
+        
+    recording = db.session.get(Recording, recording_id)
+    if not recording or recording.user_id != current_user.id:
+        return jsonify({'error': 'Recording not found or you do not have permission to share it.'}), 404
+        
+    data = request.json
+    share_summary = data.get('share_summary', True)
+    share_notes = data.get('share_notes', True)
+    
+    share = Share(
+        recording_id=recording.id,
+        user_id=current_user.id,
+        share_summary=share_summary,
+        share_notes=share_notes
+    )
+    db.session.add(share)
+    db.session.commit()
+    
+    share_url = url_for('view_shared_recording', public_id=share.public_id, _external=True)
+    
+    return jsonify({'success': True, 'share_url': share_url, 'share': share.to_dict()}), 201
+
+@app.route('/api/shares', methods=['GET'])
+@login_required
+def get_shares():
+    shares = Share.query.filter_by(user_id=current_user.id).order_by(Share.created_at.desc()).all()
+    return jsonify([share.to_dict() for share in shares])
+
+@app.route('/api/share/<int:share_id>', methods=['PUT'])
+@login_required
+def update_share(share_id):
+    share = Share.query.filter_by(id=share_id, user_id=current_user.id).first_or_404()
+    data = request.json
+    
+    if 'share_summary' in data:
+        share.share_summary = data['share_summary']
+    if 'share_notes' in data:
+        share.share_notes = data['share_notes']
+        
+    db.session.commit()
+    return jsonify({'success': True, 'share': share.to_dict()})
+
+@app.route('/api/share/<int:share_id>', methods=['DELETE'])
+@login_required
+def delete_share(share_id):
+    share = Share.query.filter_by(id=share_id, user_id=current_user.id).first_or_404()
+    db.session.delete(share)
+    db.session.commit()
+    return jsonify({'success': True})
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
+    password = PasswordField('Password', validators=[DataRequired(), password_check])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
     
@@ -337,6 +755,29 @@ with app.app_context():
             app.logger.info("Added completed_at column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
             app.logger.info("Added processing_time_seconds column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'processing_source', 'VARCHAR(50) DEFAULT "upload"'):
+            app.logger.info("Added processing_source column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'error_message', 'TEXT'):
+            app.logger.info("Added error_message column to recording table")
+        
+        # Initialize default system settings
+        if not SystemSetting.query.filter_by(key='transcript_length_limit').first():
+            SystemSetting.set_setting(
+                key='transcript_length_limit',
+                value='30000',
+                description='Maximum number of characters to send from transcript to LLM for summarization and chat. Use -1 for no limit.',
+                setting_type='integer'
+            )
+            app.logger.info("Initialized default transcript_length_limit setting")
+            
+        if not SystemSetting.query.filter_by(key='max_file_size_mb').first():
+            SystemSetting.set_setting(
+                key='max_file_size_mb',
+                value='250',
+                description='Maximum file size allowed for audio uploads in megabytes (MB).',
+                setting_type='integer'
+            )
+            app.logger.info("Initialized default max_file_size_mb setting")
             
     except Exception as e:
         app.logger.error(f"Error during database migration: {e}")
@@ -439,12 +880,20 @@ JSON Response:"""
 
         language_directive = f"Please provide the title and summary in {user_output_language}." if user_output_language else ""
         
+        # Get configurable transcript length limit
+        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        if transcript_limit == -1:
+            # No limit
+            transcript_text = recording.transcription
+        else:
+            transcript_text = recording.transcription[:transcript_limit]
+        
         if user_summary_prompt:
             prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
             
 Transcription:
 \"\"\"
-{recording.transcription[:50000]} 
+{transcript_text} 
 \"\"\"
 
 Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
@@ -456,7 +905,7 @@ For the "summary": {user_summary_prompt}.
 
 JSON Response:"""
         else:
-            prompt_text = default_summary_prompt.format(transcription=recording.transcription[:30000], language_directive=language_directive)
+            prompt_text = default_summary_prompt.format(transcription=transcript_text, language_directive=language_directive)
         
         system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
         if user_output_language:
@@ -478,7 +927,7 @@ JSON Response:"""
             json_match = re.search(r'```(?:json)?(.*?)```|(.+)', response_content, re.DOTALL)
             sanitized_response = json_match.group(1) if json_match.group(1) else json_match.group(2)
             sanitized_response = sanitized_response.strip()
-            summary_data = json.loads(sanitized_response)
+            summary_data = safe_json_loads(sanitized_response, {})
             
             raw_title = summary_data.get("title")
             raw_summary = summary_data.get("summary")
@@ -968,11 +1417,19 @@ def identify_speakers_from_text(transcription):
     if not speaker_labels:
         return {}
 
+    # Get configurable transcript length limit
+    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+    if transcript_limit == -1:
+        # No limit
+        transcript_text = formatted_transcription
+    else:
+        transcript_text = formatted_transcription[:transcript_limit]
+
     prompt = f"""Analyze the following transcription and identify the names of the speakers. The speakers are labeled as {', '.join(speaker_labels)}. Based on the context of the conversation, determine the most likely name for each speaker label.
 
 Transcription:
 ---
-{formatted_transcription[:28000]}
+{transcript_text}
 ---
 
 Respond with a single JSON object where keys are the speaker labels (e.g., "SPEAKER_00") and values are the identified full names. If a name cannot be determined, use the value "Unknown".
@@ -998,7 +1455,7 @@ JSON Response:
             response_format={"type": "json_object"}
         )
         response_content = completion.choices[0].message.content
-        speaker_map = json.loads(response_content)
+        speaker_map = safe_json_loads(response_content, {})
 
         # Post-process the map to replace "Unknown" with an empty string
         for speaker_label, identified_name in speaker_map.items():
@@ -1023,6 +1480,14 @@ def identify_unidentified_speakers_from_text(transcription, unidentified_speaker
     if not unidentified_speakers:
         return {}
 
+    # Get configurable transcript length limit
+    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+    if transcript_limit == -1:
+        # No limit
+        transcript_text = formatted_transcription
+    else:
+        transcript_text = formatted_transcription[:transcript_limit]
+
     prompt = f"""Analyze the following conversation transcript and identify the names of the UNIDENTIFIED speakers based on the context and content of their dialogue. 
 
 The speakers that need to be identified are: {', '.join(unidentified_speakers)}
@@ -1035,7 +1500,7 @@ Look for clues in the conversation such as:
 
 Here is the complete conversation transcript:
 
-{formatted_transcription[:28000]}
+{transcript_text}
 
 Based on the conversation above, identify the most likely real names for the unidentified speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.
 
@@ -1062,7 +1527,7 @@ JSON Response:
             response_format={"type": "json_object"}
         )
         response_content = completion.choices[0].message.content
-        speaker_map = json.loads(response_content)
+        speaker_map = safe_json_loads(response_content, {})
 
         # Post-process the map to replace "Unknown" with an empty string
         for speaker_label, identified_name in speaker_map.items():
@@ -1171,6 +1636,14 @@ def chat_with_transcription():
 
         formatted_transcription = format_transcription_for_llm(recording.transcription)
         
+        # Get configurable transcript length limit for chat
+        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        if transcript_limit == -1:
+            # No limit
+            chat_transcript = formatted_transcription
+        else:
+            chat_transcript = formatted_transcription[:transcript_limit]
+        
         system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
 
 Following are the meeting participants and their roles:
@@ -1178,7 +1651,7 @@ Following are the meeting participants and their roles:
 
 Following is the meeting transcript:
 <<start transcript>>
-{formatted_transcription or "No transcript available."}
+{chat_transcript or "No transcript available."}
 <<end transcript>>
 
 Additional context and notes about the meeting:
@@ -1247,8 +1720,9 @@ def reprocess_transcription(recording_id):
         filename_for_asr = recording.original_filename or os.path.basename(filepath)
         filename_lower = filename_for_asr.lower()
 
-        if not (filename_lower.endswith('.wav') or filename_lower.endswith('.mp3') or filename_lower.endswith('.flac')):
-            app.logger.info(f"Reprocessing: Unsupported format detected ({filename_lower}). Converting to WAV.")
+        supported_formats = ('.wav', '.mp3', '.flac')
+        if not filename_lower.endswith(supported_formats):
+            app.logger.info(f"Reprocessing: Converting {filename_lower} format to WAV.")
             base_filepath, file_ext = os.path.splitext(filepath)
             temp_wav_filepath = f"{base_filepath}_temp.wav"
             final_wav_filepath = f"{base_filepath}.wav"
@@ -1413,12 +1887,20 @@ JSON Response:"""
                     
                     language_directive = f"Please provide the title and summary in {user_output_language}." if user_output_language else ""
                     
+                    # Get configurable transcript length limit for reprocessing
+                    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+                    if transcript_limit == -1:
+                        # No limit
+                        transcript_text = recording.transcription
+                    else:
+                        transcript_text = recording.transcription[:transcript_limit]
+                    
                     if user_summary_prompt:
                         prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
                 
 Transcription:
 \"\"\"
-{recording.transcription[:50000]} 
+{transcript_text} 
 \"\"\"
 
 Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
@@ -1430,7 +1912,7 @@ For the "summary": {user_summary_prompt}.
 
 JSON Response:"""
                     else:
-                        prompt_text = default_summary_prompt.format(transcription=recording.transcription[:30000], language_directive=language_directive)
+                        prompt_text = default_summary_prompt.format(transcription=transcript_text, language_directive=language_directive)
                     
                     system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
                     if user_output_language:
@@ -1484,7 +1966,7 @@ JSON Response:"""
                         db.session.commit()
                         return
                         
-                    summary_data = json.loads(sanitized_response)
+                    summary_data = safe_json_loads(sanitized_response, {})
                     
                     # Check if the parsed JSON is empty or doesn't contain expected keys
                     if not summary_data or (not summary_data.get("title") and not summary_data.get("summary")):
@@ -1582,7 +2064,7 @@ JSON Response:"""
 @app.route('/recording/<int:recording_id>/reset_status', methods=['POST'])
 @login_required
 def reset_status(recording_id):
-    """Resets the status of a stuck recording to FAILED."""
+    """Resets the status of a stuck or failed recording."""
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording:
@@ -1591,15 +2073,15 @@ def reset_status(recording_id):
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to modify this recording'}), 403
 
-        # Only allow resetting if it's stuck in a processing state
-        if recording.status in ['PROCESSING', 'SUMMARIZING']:
+        # Allow resetting if it's stuck or failed
+        if recording.status in ['PROCESSING', 'SUMMARIZING', 'FAILED']:
             recording.status = 'FAILED'
-            recording.summary = (recording.summary or "") + "\n\n[Manually reset from stuck state]"
+            recording.error_message = "Manually reset from stuck or failed state."
             db.session.commit()
             app.logger.info(f"Manually reset status for recording {recording_id} to FAILED.")
             return jsonify({'success': True, 'message': 'Recording status has been reset.', 'recording': recording.to_dict()})
         else:
-            return jsonify({'error': f'Recording is not in a processing state. Current status: {recording.status}'}), 400
+            return jsonify({'error': f'Recording is not in a state that can be reset. Current status: {recording.status}'}), 400
 
     except Exception as e:
         db.session.rollback()
@@ -1608,6 +2090,7 @@ def reset_status(recording_id):
 
 # --- Authentication Routes ---
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def register():
     # Check if registration is allowed
     allow_registration = os.environ.get('ALLOW_REGISTRATION', 'true').lower() == 'true'
@@ -1630,7 +2113,13 @@ def register():
     
     return render_template('register.html', title='Register', form=form)
 
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -1641,6 +2130,8 @@ def login():
         if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
+            if not is_safe_url(next_page):
+                return redirect(url_for('index'))
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Login unsuccessful. Please check email and password.', 'danger')
@@ -1650,7 +2141,7 @@ def login():
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 @app.route('/account', methods=['GET', 'POST'])
 @login_required
@@ -1692,6 +2183,7 @@ def account():
 
 @app.route('/change_password', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def change_password():
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
@@ -1704,6 +2196,13 @@ def change_password():
     
     if new_password != confirm_password:
         flash('New password and confirmation do not match.', 'danger')
+        return redirect(url_for('account'))
+        
+    # Custom validation for new password
+    try:
+        password_check(None, type('obj', (object,), {'data': new_password}))
+    except ValidationError as e:
+        flash(str(e), 'danger')
         return redirect(url_for('account'))
     
     # Check if current password is correct
@@ -1956,8 +2455,82 @@ def admin_get_stats():
         'total_queries': total_queries
     })
 
+@app.route('/admin/settings', methods=['GET'])
+@login_required
+def admin_get_settings():
+    # Check if user is admin
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    settings = SystemSetting.query.all()
+    return jsonify([setting.to_dict() for setting in settings])
+
+@app.route('/admin/settings', methods=['POST'])
+@login_required
+def admin_update_setting():
+    # Check if user is admin
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    key = data.get('key')
+    value = data.get('value')
+    description = data.get('description')
+    setting_type = data.get('setting_type', 'string')
+    
+    if not key:
+        return jsonify({'error': 'Setting key is required'}), 400
+    
+    # Validate setting type
+    valid_types = ['string', 'integer', 'boolean', 'float']
+    if setting_type not in valid_types:
+        return jsonify({'error': f'Invalid setting type. Must be one of: {", ".join(valid_types)}'}), 400
+    
+    # Validate value based on type
+    if setting_type == 'integer':
+        try:
+            int(value) if value is not None and value != '' else None
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Value must be a valid integer'}), 400
+    elif setting_type == 'float':
+        try:
+            float(value) if value is not None and value != '' else None
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Value must be a valid number'}), 400
+    elif setting_type == 'boolean':
+        if value not in ['true', 'false', '1', '0', 'yes', 'no', True, False, 1, 0]:
+            return jsonify({'error': 'Value must be a valid boolean (true/false, 1/0, yes/no)'}), 400
+    
+    try:
+        setting = SystemSetting.set_setting(key, value, description, setting_type)
+        return jsonify(setting.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating setting {key}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# --- Configuration API ---
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Get application configuration settings for the frontend."""
+    try:
+        # Get configurable file size limit
+        max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)
+        
+        return jsonify({
+            'max_file_size_mb': max_file_size_mb,
+            'use_asr_endpoint': USE_ASR_ENDPOINT
+        })
+    except Exception as e:
+        app.logger.error(f"Error fetching configuration: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # --- Flask Routes ---
 @app.route('/')
+@login_required
 def index():
     # Pass the ASR config to the template
     return render_template('index.html', use_asr_endpoint=USE_ASR_ENDPOINT)
@@ -1975,6 +2548,23 @@ def get_recordings():
         return jsonify([recording.to_dict() for recording in recordings])
     except Exception as e:
         app.logger.error(f"Error fetching recordings: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inbox_recordings', methods=['GET'])
+@login_required
+def get_inbox_recordings():
+    """Get recordings that are in the inbox and currently processing."""
+    try:
+        stmt = select(Recording).where(
+            Recording.user_id == current_user.id,
+            Recording.is_inbox == True,
+            Recording.status.in_(['PENDING', 'PROCESSING', 'SUMMARIZING'])
+        ).order_by(Recording.created_at.desc())
+        
+        recordings = db.session.execute(stmt).scalars().all()
+        return jsonify([recording.to_dict() for recording in recordings])
+    except Exception as e:
+        app.logger.error(f"Error fetching inbox recordings: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/save', methods=['POST'])
@@ -2019,8 +2609,42 @@ def save_metadata():
 
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error saving metadata for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error saving metadata for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred while saving.'}), 500
+
+@app.route('/recording/<int:recording_id>/update_transcription', methods=['POST'])
+@login_required
+def update_transcription(recording_id):
+    """Updates the transcription content for a recording."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to edit this recording'}), 403
+
+        data = request.json
+        new_transcription = data.get('transcription')
+
+        if new_transcription is None:
+            return jsonify({'error': 'No transcription data provided'}), 400
+
+        # The incoming data could be a JSON string (from ASR edit) or plain text
+        recording.transcription = new_transcription
+        
+        # Optional: If the transcription changes, we might want to indicate that the summary is outdated.
+        # For now, we'll just save the transcript. A "regenerate summary" button could be a good follow-up.
+
+        db.session.commit()
+        app.logger.info(f"Transcription for recording {recording_id} was updated.")
+        
+        return jsonify({'success': True, 'message': 'Transcription updated successfully.', 'recording': recording.to_dict()})
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating transcription for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred while updating the transcription.'}), 500
 
 # Toggle inbox status endpoint
 @app.route('/recording/<int:recording_id>/toggle_inbox', methods=['POST'])
@@ -2042,8 +2666,8 @@ def toggle_inbox(recording_id):
         return jsonify({'success': True, 'is_inbox': recording.is_inbox})
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error toggling inbox status for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error toggling inbox status for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 # Toggle highlighted status endpoint
 @app.route('/recording/<int:recording_id>/toggle_highlight', methods=['POST'])
@@ -2065,8 +2689,8 @@ def toggle_highlight(recording_id):
         return jsonify({'success': True, 'is_highlighted': recording.is_highlighted})
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error toggling highlighted status for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error toggling highlighted status for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
 @app.route('/upload', methods=['POST'])
@@ -2096,10 +2720,16 @@ def upload_file():
         file.save(filepath)
         app.logger.info(f"File saved to {filepath}")
 
-        # --- Convert non-wav/mp3 files to WAV ---
+        # --- Convert non-wav/mp3/flac files to WAV ---
         filename_lower = original_filename.lower()
-        if not (filename_lower.endswith('.wav') or filename_lower.endswith('.mp3') or filename_lower.endswith('.flac')):
-            app.logger.info(f"Unsupported format detected ({filename_lower}). Converting to WAV.")
+        supported_formats = ('.wav', '.mp3', '.flac')
+        convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm')
+        
+        if not filename_lower.endswith(supported_formats):
+            if filename_lower.endswith(convertible_formats):
+                app.logger.info(f"Converting {filename_lower} format to WAV for processing.")
+            else:
+                app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to WAV.")
             
             base_filepath, _ = os.path.splitext(filepath)
             temp_wav_filepath = f"{base_filepath}_temp.wav"
@@ -2135,6 +2765,9 @@ def upload_file():
         mime_type, _ = mimetypes.guess_type(filepath)
         app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
 
+        # Get notes from the form
+        notes = request.form.get('notes')
+
         # Create initial database entry
         recording = Recording(
             audio_path=filepath,
@@ -2144,7 +2777,9 @@ def upload_file():
             status='PENDING',
             meeting_date=datetime.utcnow().date(),
             user_id=current_user.id,
-            mime_type=mime_type
+            mime_type=mime_type,
+            notes=notes,
+            processing_source='upload'  # Track that this was manually uploaded
         )
         db.session.add(recording)
         db.session.commit()
@@ -2171,7 +2806,7 @@ def upload_file():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error during file upload: {e}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
 
 
 # Status Endpoint
@@ -2190,8 +2825,8 @@ def get_status(recording_id):
             
         return jsonify(recording.to_dict())
     except Exception as e:
-        app.logger.error(f"Error fetching status for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error fetching status for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 # Get Audio Endpoint
 @app.route('/audio/<int:recording_id>')
@@ -2210,8 +2845,23 @@ def get_audio(recording_id):
             return jsonify({'error': 'Audio file missing from server'}), 404
         return send_file(recording.audio_path)
     except Exception as e:
-        app.logger.error(f"Error serving audio for recording {recording_id}: {e}")
-        return jsonify({'error': str(e)}), 500
+        app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+@app.route('/share/audio/<string:public_id>')
+def get_shared_audio(public_id):
+    try:
+        share = Share.query.filter_by(public_id=public_id).first_or_404()
+        recording = share.recording
+        if not recording or not recording.audio_path:
+            return jsonify({'error': 'Recording or audio file not found'}), 404
+        if not os.path.exists(recording.audio_path):
+            app.logger.error(f"Audio file missing from server: {recording.audio_path}")
+            return jsonify({'error': 'Audio file missing from server'}), 404
+        return send_file(recording.audio_path)
+    except Exception as e:
+        app.logger.error(f"Error serving shared audio for public_id {public_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 # Delete Recording Endpoint
 @app.route('/recording/<int:recording_id>', methods=['DELETE'])
@@ -2242,9 +2892,126 @@ def delete_recording(recording_id):
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Error deleting recording {recording_id}: {e}")
+        app.logger.error(f"Error deleting recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred while deleting.'}), 500
+
+
+# --- Auto-Processing File Monitor Integration ---
+def initialize_file_monitor():
+    """Initialize file monitor after app is fully loaded to avoid circular imports."""
+    try:
+        # Import here to avoid circular imports
+        import file_monitor
+        file_monitor.start_file_monitor()
+        app.logger.info("File monitor initialization completed")
+    except Exception as e:
+        app.logger.warning(f"File monitor initialization failed: {e}")
+
+def get_file_monitor_functions():
+    """Get file monitor functions, handling import errors gracefully."""
+    try:
+        import file_monitor
+        return file_monitor.start_file_monitor, file_monitor.stop_file_monitor, file_monitor.get_file_monitor_status
+    except ImportError as e:
+        app.logger.warning(f"File monitor not available: {e}")
+        
+        # Create stub functions if file_monitor is not available
+        def start_file_monitor():
+            pass
+        def stop_file_monitor():
+            pass
+        def get_file_monitor_status():
+            return {'running': False, 'error': 'File monitor module not available'}
+        
+        return start_file_monitor, stop_file_monitor, get_file_monitor_status
+
+# --- Auto-Processing API Endpoints ---
+@app.route('/admin/auto-process/status', methods=['GET'])
+@login_required
+def admin_get_auto_process_status():
+    """Get the status of the automated file processing system."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        _, _, get_file_monitor_status = get_file_monitor_functions()
+        status = get_file_monitor_status()
+        
+        # Add configuration info
+        config = {
+            'enabled': os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower() == 'true',
+            'watch_directory': os.environ.get('AUTO_PROCESS_WATCH_DIR', '/data/auto-process'),
+            'check_interval': int(os.environ.get('AUTO_PROCESS_CHECK_INTERVAL', '30')),
+            'mode': os.environ.get('AUTO_PROCESS_MODE', 'admin_only'),
+            'default_username': os.environ.get('AUTO_PROCESS_DEFAULT_USERNAME')
+        }
+        
+        return jsonify({
+            'status': status,
+            'config': config
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting auto-process status: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/auto-process/start', methods=['POST'])
+@login_required
+def admin_start_auto_process():
+    """Start the automated file processing system."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        start_file_monitor, _, _ = get_file_monitor_functions()
+        start_file_monitor()
+        return jsonify({'success': True, 'message': 'Auto-processing started'})
+    except Exception as e:
+        app.logger.error(f"Error starting auto-process: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/auto-process/stop', methods=['POST'])
+@login_required
+def admin_stop_auto_process():
+    """Stop the automated file processing system."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        _, stop_file_monitor, _ = get_file_monitor_functions()
+        stop_file_monitor()
+        return jsonify({'success': True, 'message': 'Auto-processing stopped'})
+    except Exception as e:
+        app.logger.error(f"Error stopping auto-process: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/auto-process/config', methods=['POST'])
+@login_required
+def admin_update_auto_process_config():
+    """Update auto-processing configuration (requires restart)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No configuration data provided'}), 400
+        
+        # This endpoint would typically update environment variables or config files
+        # For now, we'll just return the current config and note that restart is required
+        return jsonify({
+            'success': True, 
+            'message': 'Configuration updated. Restart required to apply changes.',
+            'note': 'Environment variables need to be updated manually and application restarted.'
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error updating auto-process config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Initialize file monitor after app setup
+with app.app_context():
+    initialize_file_monitor()
 
 if __name__ == '__main__':
     # Consider using waitress or gunicorn for production

@@ -1,3 +1,12 @@
+body.unloaded {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+[v-cloak] {
+    display: none;
+}
+
 /* Color Scheme CSS Variables */
 :root {
     /* Default Light Theme (Blue) */
@@ -16,7 +25,7 @@
     --bg-success-light: #d1fae5; /* green-100 */
     --bg-pending-light: #f5f5f4; /* stone-100 */
     --bg-input: #ffffff; /* white */
-    --bg-audio-player: linear-gradient(to right, #eff6ff, #eef2ff); /* blue-50, indigo-50 */
+    --bg-audio-player: var(--bg-tertiary);
 
     --text-primary: #1f2937; /* gray-800 */
     --text-secondary: #374151; /* gray-700 */
@@ -56,13 +65,14 @@
     --bg-accent-hover: #e6f7ea; /* slightly deeper green */
     --bg-button: #059669; /* keep button visible */
     --bg-button-hover: #047857; /* keep button visible */
+    --bg-input: #ffffff; /* white input background */
     --text-accent: #047857; /* keep accent text visible */
     --border-primary: #e8f5eb; /* light green border */
     --border-secondary: #d1f2d8; /* soft green border */
     --border-accent: #b8e6c1; /* medium green border */
     --border-focus: #10b981; /* keep focus visible */
     --ring-focus: #e6f7ea; /* soft green ring */
-    --bg-audio-player: linear-gradient(to right, #f1fcf3, #f6fdf8); /* soft green gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-purple {
@@ -73,13 +83,14 @@
     --bg-accent-hover: #ebe4ff; /* slightly deeper purple */
     --bg-button: #7c3aed; /* keep button visible */
     --bg-button-hover: #6d28d9; /* keep button visible */
+    --bg-input: #ffffff; /* white input background */
     --text-accent: #6d28d9; /* keep accent text visible */
     --border-primary: #ede9fe; /* light purple border */
     --border-secondary: #ddd6fe; /* soft purple border */
     --border-accent: #c4b5fd; /* medium purple border */
     --border-focus: #8b5cf6; /* keep focus visible */
     --ring-focus: #ebe4ff; /* soft purple ring */
-    --bg-audio-player: linear-gradient(to right, #f5f2ff, #faf8ff); /* soft purple gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-rose {
@@ -90,13 +101,14 @@
     --bg-accent-hover: #f7e4ec; /* slightly deeper rose */
     --bg-button: #e11d48; /* keep button visible */
     --bg-button-hover: #be185d; /* keep button visible */
+    --bg-input: #ffffff; /* white input background */
     --text-accent: #be185d; /* keep accent text visible */
     --border-primary: #fce7f3; /* light rose border */
     --border-secondary: #f9d2e4; /* soft rose border */
     --border-accent: #f3a8c7; /* medium rose border */
     --border-focus: #ec4899; /* keep focus visible */
     --ring-focus: #f7e4ec; /* soft rose ring */
-    --bg-audio-player: linear-gradient(to right, #fcf2f6, #fdf8fb); /* soft rose gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-amber {
@@ -107,13 +119,14 @@
     --bg-accent-hover: #f7e9db; /* slightly deeper amber */
     --bg-button: #d97706; /* keep button visible */
     --bg-button-hover: #b45309; /* keep button visible */
+    --bg-input: #ffffff; /* white input background */
     --text-accent: #b45309; /* keep accent text visible */
     --border-primary: #fef3c7; /* light amber border */
     --border-secondary: #fde68a; /* soft amber border */
     --border-accent: #fcd34d; /* medium amber border */
     --border-focus: #f59e0b; /* keep focus visible */
     --ring-focus: #f7e9db; /* soft amber ring */
-    --bg-audio-player: linear-gradient(to right, #fcf6f1, #fdfaf6); /* soft amber gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-teal {
@@ -124,13 +137,14 @@
     --bg-accent-hover: #e6f9f5; /* slightly deeper teal */
     --bg-button: #0d9488; /* keep button visible */
     --bg-button-hover: #0f766e; /* keep button visible */
+    --bg-input: #ffffff; /* white input background */
     --text-accent: #0f766e; /* keep accent text visible */
     --border-primary: #ccfbf1; /* light teal border */
     --border-secondary: #99f6e4; /* soft teal border */
     --border-accent: #5eead4; /* medium teal border */
     --border-focus: #14b8a6; /* keep focus visible */
     --ring-focus: #e6f9f5; /* soft teal ring */
-    --bg-audio-player: linear-gradient(to right, #f1fcfa, #f6fdfc); /* soft teal gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 /* Dark Theme Base */
@@ -150,7 +164,7 @@
     --bg-success-light: #064e3b; /* green-900 */
     --bg-pending-light: #292524; /* stone-800 */
     --bg-input: #374151; /* gray-700 */
-    --bg-audio-player: linear-gradient(to right, #374151, #4b5563); /* gray-700, gray-600 */
+    --bg-audio-player: var(--bg-secondary);
 
     --text-primary: #f3f4f6; /* gray-100 */
     --text-secondary: #d1d5db; /* gray-300 */
@@ -186,13 +200,14 @@
     --bg-accent-hover: #425440; /* lighter emerald accent */
     --bg-button: #059669; /* keep button visible */
     --bg-button-hover: #10b981; /* keep button visible */
+    --bg-input: #2e3c30; /* darker emerald input background */
     --text-accent: #7dd3ae; /* muted pastel emerald text */
     --border-primary: #3a4540; /* visible emerald border */
     --border-secondary: #485548; /* lighter emerald border */
     --border-accent: #556550; /* medium emerald border */
     --border-focus: #10b981; /* keep focus visible */
     --ring-focus: #384838; /* visible ring */
-    --bg-audio-player: linear-gradient(to right, #2e3c30, #384838); /* visible emerald gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .dark.theme-dark-purple {
@@ -203,13 +218,14 @@
     --bg-accent-hover: #4e4854; /* lighter purple accent */
     --bg-button: #7c3aed; /* keep button visible */
     --bg-button-hover: #8b5cf6; /* keep button visible */
+    --bg-input: #36303c; /* darker purple input background */
     --text-accent: #b8a5d4; /* muted pastel purple text */
     --border-primary: #484050; /* visible purple border */
     --border-secondary: #555058; /* lighter purple border */
     --border-accent: #626060; /* medium purple border */
     --border-focus: #8b5cf6; /* keep focus visible */
     --ring-focus: #423c48; /* visible ring */
-    --bg-audio-player: linear-gradient(to right, #36303c, #423c48); /* visible purple gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .dark.theme-dark-rose {
@@ -220,13 +236,14 @@
     --bg-accent-hover: #54484c; /* lighter rose accent */
     --bg-button: #e11d48; /* keep button visible */
     --bg-button-hover: #f43f5e; /* keep button visible */
+    --bg-input: #3c3030; /* darker rose input background */
     --text-accent: #d4a5b4; /* muted pastel rose text */
     --border-primary: #504048; /* visible rose border */
     --border-secondary: #585050; /* lighter rose border */
     --border-accent: #606058; /* medium rose border */
     --border-focus: #f43f5e; /* keep focus visible */
     --ring-focus: #483c40; /* visible ring */
-    --bg-audio-player: linear-gradient(to right, #3c3030, #483c40); /* visible rose gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .dark.theme-dark-amber {
@@ -237,13 +254,14 @@
     --bg-accent-hover: #544c42; /* lighter amber accent */
     --bg-button: #d97706; /* keep button visible */
     --bg-button-hover: #f59e0b; /* keep button visible */
+    --bg-input: #3c342e; /* darker amber input background */
     --text-accent: #d4c5a5; /* muted pastel amber text */
     --border-primary: #504840; /* visible amber border */
     --border-secondary: #585548; /* lighter amber border */
     --border-accent: #606250; /* medium amber border */
     --border-focus: #f59e0b; /* keep focus visible */
     --ring-focus: #484038; /* visible ring */
-    --bg-audio-player: linear-gradient(to right, #3c342e, #484038); /* visible amber gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 .dark.theme-dark-teal {
@@ -254,22 +272,34 @@
     --bg-accent-hover: #425454; /* lighter teal accent */
     --bg-button: #0d9488; /* keep button visible */
     --bg-button-hover: #14b8a6; /* keep button visible */
+    --bg-input: #2e3c3c; /* darker teal input background */
     --text-accent: #a5d4d0; /* muted pastel teal text */
     --border-primary: #404848; /* visible teal border */
     --border-secondary: #485555; /* lighter teal border */
     --border-accent: #506262; /* medium teal border */
     --border-focus: #14b8a6; /* keep focus visible */
     --ring-focus: #384848; /* visible ring */
-    --bg-audio-player: linear-gradient(to right, #2e3c3c, #384848); /* visible teal gradient */
+    --bg-audio-player: var(--bg-tertiary);
 }
 
 /* Modern UI styles */
 .height-100 { height: 100%; }
 .drag-area { transition: background-color 0.3s ease, border-color 0.3s ease; }
-.custom-scrollbar::-webkit-scrollbar { width: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 12px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 12px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+/* Global Scrollbar Styles */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
 html { /* Apply base colors to html for smoother transitions */
     background-color: var(--bg-primary); 
     color: var(--text-primary); 
@@ -542,6 +572,20 @@ div[v-if="!editingNotes"] {
  .status-completed { color: #065f46; background-color: #d1fae5; } /* text-green-800 bg-green-100 */
  .status-failed { color: #991b1b; background-color: #fee2e2; } /* text-red-800 bg-red-100 */
  .status-pending { color: #57534e; background-color: #f5f5f4; } /* text-stone-700 bg-stone-100 */
+ .status-highlighted { color: #d97706; background-color: #fef3c7; border: 1px solid #f59e0b; } /* text-amber-700 bg-amber-100 border-amber-500 */
+ .status-inbox { color: #1d4ed8; background-color: #dbeafe; border: 1px solid #3b82f6; } /* text-blue-700 bg-blue-100 border-blue-500 */
+ 
+ /* Clickable badge styles */
+ .clickable-badge {
+     cursor: pointer;
+     transition: all 0.2s ease;
+ }
+ 
+ .clickable-badge:hover {
+     transform: translateY(-1px);
+     box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+     opacity: 0.8;
+ }
  
  /* Transcription box with flex layout */
  .transcription-box {
@@ -553,27 +597,35 @@ div[v-if="!editingNotes"] {
  
  /* Modern copy button styles */
  .copy-btn {
-     position: sticky;
-     top: 10px;
-     right: 10px;
-     float: right;
-     background-color: rgba(255, 255, 255, 0.9);
-     border: 1px solid #e5e7eb;
-     border-radius: 0.5rem;
-     padding: 0.35rem 0.75rem;
-     font-size: 0.75rem;
-     cursor: pointer;
-     z-index: 10;
-     transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-     margin-bottom: 10px;
-     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    border-radius: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
  }
  
  .copy-btn:hover {
-     background-color: #f3f4f6;
+     background-color: var(--bg-accent-hover);
      transform: translateY(-1px);
      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
  }
+
+ .dark .copy-btn {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-secondary);
+    color: var(--text-primary);
+}
+
+.dark .copy-btn:hover {
+    background-color: var(--bg-tertiary);
+}
  
  /* Hover edit button styles */
 .content-box {
@@ -663,6 +715,16 @@ div[v-if="!editingNotes"] {
      background-color: #f3f4f6;
      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
      padding: 0.875rem 1rem;
+ }
+
+ .dark .ai-message {
+     background-color: #374151;
+     color: #f3f4f6;
+ }
+
+ .dark .user-message {
+     background-color: #1e40af;
+     color: #ffffff;
  }
  
  .copyable {
@@ -793,6 +855,7 @@ div[v-if="!editingNotes"] {
     min-height: 0;
     overflow: hidden;
     flex-shrink: 0; /* Prevent shrinking */
+    border-right: 1px solid var(--border-primary);
     /* Width is controlled by inline style */
 }
 
@@ -1394,6 +1457,11 @@ body {
     margin-right: 0.25rem;
 }
 
+.dark .view-mode-toggle {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-secondary);
+}
+
 /* Speaker colors - enhanced palette with better variation and contrast */
 .speaker-color-1 { background-color: #E3F2FD; color: #0D47A1; } /* Deep Blue */
 .speaker-color-2 { background-color: #F3E5F5; color: #6A1B9A; } /* Deep Purple */
@@ -1892,24 +1960,22 @@ body {
     width: 12px !important;
     background-color: transparent !important;
     cursor: ew-resize !important;
-    margin: 0 2px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 0 !important;
-    flex-shrink: 0 !important; /* Prevent resizer from shrinking */
+    margin: 0 -6px !important;
+    position: relative;
+    z-index: 10;
 }
 
-#mainColumnResizer .w-1 {
-    width: 4px !important;
-    height: 60px !important;
-    background-color: var(--text-light) !important;
-    border-radius: 2px !important;
-    transition: background-color 0.15s ease !important;
-}
-
-#mainColumnResizer:hover .w-1 {
-    background-color: var(--border-accent) !important;
+#mainColumnResizer:hover::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 60px;
+    background-color: var(--border-accent);
+    border-radius: 2px;
+    transition: background-color 0.15s ease;
 }
 
 /* Ensure consistent layout behavior when sidebar is collapsed */
@@ -2305,7 +2371,6 @@ body {
 .dark .audio-player-container audio {
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-secondary);
-    filter: brightness(1.2) contrast(1.1);
 }
 
 /* Audio player controls for WebKit browsers */
@@ -2316,7 +2381,11 @@ body {
 
 .dark .audio-player-container audio::-webkit-media-controls-panel {
     background-color: var(--bg-secondary);
-    filter: brightness(1.3);
+}
+
+.audio-player-container audio::-webkit-media-controls-enclosure {
+    border: none;
+    background: none;
 }
 
 .audio-player-container audio::-webkit-media-controls-play-button,
@@ -2328,7 +2397,6 @@ body {
 
 .dark .audio-player-container audio::-webkit-media-controls-play-button,
 .dark .audio-player-container audio::-webkit-media-controls-pause-button {
-    filter: brightness(1.4) contrast(1.2);
 }
 
 .audio-player-container audio::-webkit-media-controls-timeline {
@@ -2339,7 +2407,6 @@ body {
 
 .dark .audio-player-container audio::-webkit-media-controls-timeline {
     background-color: var(--border-secondary);
-    filter: brightness(1.5);
 }
 
 .audio-player-container audio::-webkit-media-controls-current-time-display,
@@ -2351,7 +2418,6 @@ body {
 .dark .audio-player-container audio::-webkit-media-controls-current-time-display,
 .dark .audio-player-container audio::-webkit-media-controls-time-remaining-display {
     color: var(--text-primary);
-    filter: brightness(1.3);
 }
 
 /* Audio player volume controls */
@@ -2362,7 +2428,6 @@ body {
 
 .dark .audio-player-container audio::-webkit-media-controls-volume-slider {
     background-color: var(--border-secondary);
-    filter: brightness(1.4);
 }
 
 .audio-player-container audio::-webkit-media-controls-mute-button {
@@ -2370,7 +2435,6 @@ body {
 }
 
 .dark .audio-player-container audio::-webkit-media-controls-mute-button {
-    filter: brightness(1.5) contrast(1.2);
 }
 
 /* Custom audio player wrapper for better control */
@@ -2419,4 +2483,524 @@ body {
 
 .dark .audio-player-time {
     color: var(--text-secondary);
+}
+
+/* ASR Editor Table Styles */
+.asr-editor-table {
+    width: 100%;
+    border-collapse: collapse; /* Changed to collapse */
+}
+
+.asr-editor-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--border-primary);
+}
+
+.asr-editor-table td {
+    padding: 0.25rem; /* Reduced padding */
+    vertical-align: middle;
+    border: 1px solid var(--border-primary);
+}
+
+/* Custom Number Input with Subtle Spinners */
+.custom-number-input {
+    position: relative;
+}
+
+.custom-number-input input[type="number"] {
+    -moz-appearance: textfield;
+    padding-right: 1.75rem; /* Space for spinners */
+}
+
+.custom-number-input input[type="number"]::-webkit-inner-spin-button,
+.custom-number-input input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.number-spinners {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.custom-number-input:hover .number-spinners {
+    opacity: 1;
+}
+
+.number-spinners button {
+    height: 50%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.number-spinners button:hover {
+    color: var(--text-primary);
+}
+
+.number-spinners button svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+/* Speaker Combobox Styles */
+.speaker-combobox {
+    position: relative;
+}
+
+.speaker-combobox-input {
+    width: 100%;
+    padding-right: 2rem; /* Space for dropdown arrow */
+}
+
+.speaker-combobox-arrow {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.speaker-combobox-suggestions {
+    position: absolute;
+    z-index: 10;
+    width: 100%;
+    margin-top: 0.25rem;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.speaker-suggestion-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.speaker-suggestion-item:hover {
+    background-color: var(--bg-accent);
+}
+
+/* Markdown Editor Styles */
+.markdown-editor-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.markdown-editor-container .EasyMDEContainer {
+    background: var(--bg-input);
+    border: none;
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.markdown-editor-container .EasyMDEContainer .CodeMirror {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: none;
+    border-radius: 0 0 0.75rem 0.75rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden !important;
+}
+
+/* Fix double scrolling by ensuring only the wrapper scrolls */
+.markdown-editor-container .EasyMDEContainer .CodeMirror-scroll {
+    overflow: auto !important;
+    height: 100% !important;
+}
+
+.markdown-editor-container .EasyMDEContainer .CodeMirror-sizer {
+    min-height: 100% !important;
+}
+
+.markdown-editor-container .EasyMDEContainer .CodeMirror-focused {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ring-focus);
+}
+
+.markdown-editor-container .EasyMDEContainer .editor-toolbar {
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-secondary);
+    border-radius: 0.75rem 0.75rem 0 0;
+    padding: 0.5rem;
+    flex-shrink: 0;
+}
+
+.markdown-editor-container .EasyMDEContainer .editor-toolbar button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+    margin: 0 0.125rem;
+    transition: all 0.2s ease;
+}
+
+.markdown-editor-container .EasyMDEContainer .editor-toolbar button:hover {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border-color: var(--border-accent);
+}
+
+.markdown-editor-container .EasyMDEContainer .editor-toolbar button.active {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border-color: var(--border-accent);
+}
+
+/* EasyMDE Fullscreen Mode Fixes */
+.EasyMDEContainer .editor-fullscreen {
+    z-index: 9999 !important;
+}
+
+/* Force hide speaker legend during any fullscreen mode - comprehensive approach */
+.editor-fullscreen .speaker-legend,
+.CodeMirror-fullscreen .speaker-legend,
+body:has(.editor-fullscreen) .speaker-legend,
+body:has(.CodeMirror-fullscreen) .speaker-legend {
+    display: none !important;
+}
+
+/* Alternative: Lower z-index approach for speaker legend during fullscreen */
+.editor-fullscreen ~ .speaker-legend,
+.CodeMirror-fullscreen ~ .speaker-legend,
+.editor-fullscreen + .speaker-legend,
+.CodeMirror-fullscreen + .speaker-legend {
+    z-index: -1 !important;
+}
+
+/* Target the specific fullscreen container that EasyMDE creates */
+.CodeMirror-fullscreen-wrapper {
+    z-index: 9999 !important;
+}
+
+/* Ensure fullscreen editor is above everything */
+.CodeMirror-fullscreen {
+    z-index: 9999 !important;
+}
+
+/* Hide speaker legend when any fullscreen editor is active */
+body.CodeMirror-fullscreen .speaker-legend,
+.CodeMirror-fullscreen .speaker-legend {
+    display: none !important;
+}
+
+.markdown-editor-container .EasyMDEContainer .editor-preview {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    padding: 1rem;
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.markdown-editor-container .EasyMDEContainer .editor-preview-side {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border-left: 1px solid var(--border-secondary);
+}
+
+/* Dark mode adjustments for markdown editor */
+.dark .markdown-editor-container .EasyMDEContainer .CodeMirror {
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.dark .markdown-editor-container .EasyMDEContainer .editor-toolbar {
+    background: var(--bg-tertiary);
+    border-bottom-color: var(--border-secondary);
+}
+
+.dark .markdown-editor-container .EasyMDEContainer .editor-toolbar button {
+    color: var(--text-secondary);
+}
+
+.dark .markdown-editor-container .EasyMDEContainer .editor-toolbar button:hover,
+.dark .markdown-editor-container .EasyMDEContainer .editor-toolbar button.active {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border-color: var(--border-accent);
+}
+
+/* Markdown preview styling in notes */
+.notes-preview h1, .notes-preview h2, .notes-preview h3,
+.notes-preview h4, .notes-preview h5, .notes-preview h6 {
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.notes-preview h1 { font-size: 1.5rem; }
+.notes-preview h2 { font-size: 1.25rem; }
+.notes-preview h3 { font-size: 1.125rem; }
+
+.notes-preview p {
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+
+.notes-preview ul, .notes-preview ol {
+    margin-left: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.notes-preview li {
+    margin-bottom: 0.25rem;
+}
+
+.notes-preview code {
+    background-color: var(--bg-tertiary);
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.875rem;
+}
+
+.notes-preview pre {
+    background-color: var(--bg-tertiary);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 0.75rem;
+}
+
+.notes-preview pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+.notes-preview blockquote {
+    border-left: 4px solid var(--border-accent);
+    padding-left: 1rem;
+    margin-left: 0;
+    margin-bottom: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.notes-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.notes-preview th, .notes-preview td {
+    border: 1px solid var(--border-secondary);
+    padding: 0.5rem;
+    text-align: left;
+}
+
+.notes-preview th {
+    background-color: var(--bg-tertiary);
+    font-weight: 600;
+}
+
+/* Recording notes editor styles */
+.recording-notes-editor .EasyMDEContainer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-secondary);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.summary-editor-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.recording-notes-editor .CodeMirror,
+.recording-notes-editor .editor-preview,
+.recording-notes-editor .editor-preview-side {
+    flex-grow: 1;
+    background: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.recording-notes-editor .editor-toolbar {
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.recording-notes-editor .editor-toolbar button {
+    color: var(--text-secondary);
+    border: none;
+}
+
+.recording-notes-editor .editor-toolbar button:hover,
+.recording-notes-editor .editor-toolbar button.active {
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border: none;
+}
+
+.recording-notes-editor .CodeMirror-cursor {
+    border-left: 1px solid var(--text-primary);
+}
+
+/* Recording notes textarea theme-aware styling */
+.recording-notes-editor textarea {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-secondary) !important;
+}
+
+.recording-notes-editor textarea:focus {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 2px var(--ring-focus) !important;
+}
+
+/* Ensure all textareas in recording view use theme colors */
+.recording-notes-editor textarea,
+textarea[ref="recordingNotesEditor"] {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-secondary) !important;
+}
+
+/* Dark mode specific adjustments for recording notes */
+.dark .recording-notes-editor textarea,
+.dark textarea[ref="recordingNotesEditor"] {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-secondary) !important;
+}
+
+/* Focus states for recording notes textarea */
+.recording-notes-editor textarea:focus,
+textarea[ref="recordingNotesEditor"]:focus {
+    outline: none !important;
+    border-color: var(--border-focus) !important;
+    box-shadow: 0 0 0 2px var(--ring-focus) !important;
+}
+
+.mobile-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.mobile-header {
+    flex-shrink: 0;
+}
+
+.mobile-audio-player {
+    flex-shrink: 0;
+}
+
+.mobile-tabs {
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.mobile-content {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* --- New Sidebar & Main Content Layout --- */
+
+/* Sidebar Container */
+.sidebar {
+    position: fixed; /* Changed to fixed to overlay correctly */
+    top: 69px; /* Height of the header */
+    left: 0;
+    bottom: 0;
+    width: 320px; /* w-80 */
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-primary);
+    z-index: 50; /* Higher z-index to be above backdrop */
+    transform: translateX(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar.collapsed {
+    transform: translateX(-100%);
+}
+
+/* Wrapper to prevent sidebar's own content from squishing */
+.sidebar-content-wrapper {
+    width: 320px; /* Fixed width */
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main Content Area */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding-left: 320px; /* Default space for the sidebar */
+}
+
+.main-content.sidebar-open {
+    padding-left: 320px;
+}
+
+/* When sidebar is collapsed, main content takes full width */
+.main-content:not(.sidebar-open) {
+    padding-left: 0;
+}
+
+/* --- Responsive Styles --- */
+@media (max-width: 1023px) {
+    /* On mobile, main content always takes full width */
+    .main-content {
+        padding-left: 0 !important;
+    }
+
+    /* Sidebar is an overlay on mobile */
+    .sidebar {
+        top: 0; /* Cover full height on mobile */
+        z-index: 60; /* Higher z-index for mobile overlay */
+    }
 }
