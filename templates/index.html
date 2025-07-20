@@ -683,14 +683,14 @@
                                                 title="Identify Speakers">
                                             <i class="fas fa-user-tag"></i>
                                         </button>
-                                        <button @click="confirmDelete(selectedRecording)" 
-                                                class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
                                         <button @click="openShareModal(selectedRecording)"
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                                                 title="Share Recording">
                                             <i class="fas fa-share-alt"></i>
+                                        </button>
+                                        <button @click="confirmDelete(selectedRecording)" 
+                                                class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
                                 </div>
