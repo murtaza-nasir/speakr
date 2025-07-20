@@ -479,7 +479,8 @@
                                     <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'"><i class="fas fa-redo-alt"></i></button>
                                         <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Reprocess summary"><i class="fas fa-sync-alt"></i></button>
                                         <button @click="confirmReset(selectedRecording)" v-if="['PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500" title="Reset stuck processing"><i class="fas fa-undo"></i></button>
-                                        <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Identify Speakers"><i class="fas fa-user-tag"></i></button>
+                                    <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Identify Speakers"><i class="fas fa-user-tag"></i></button>
+                                    <button @click="openShareModal(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Share Recording"><i class="fas fa-share-alt"></i></button>
                                     <button @click="confirmDelete(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
@@ -487,7 +488,15 @@
 
                         <!-- Mobile Audio Player -->
                         <div class="bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
-                            <audio controls :src="'/audio/' + selectedRecording.id" class="w-full"></audio>
+                            <div class="audio-player-container">
+                                <audio controls 
+                                       :src="'/audio/' + selectedRecording.id" 
+                                       :volume="playerVolume"
+                                       @volumechange="onPlayerVolumeChange"
+                                       class="w-full">
+                                    Your browser does not support the audio element.
+                                </audio>
+                            </div>
                         </div>
 
                         <!-- Mobile Tab Navigation -->

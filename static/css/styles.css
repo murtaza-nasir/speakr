@@ -1657,15 +1657,32 @@ body {
         display: block;
     }
     
-    /* Mobile tab content styling */
-    .mobile-transcript-content,
-    .mobile-summary-content,
-    .mobile-notes-content,
-    .mobile-metadata-content {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
+/* Mobile tab content styling */
+.mobile-content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+/* Mobile fullscreen button for editors */
+.mobile-fullscreen-btn {
+    padding: 0.375rem;
+    background: none;
+    border: 1px solid var(--border-secondary);
+    border-radius: 0.375rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.mobile-fullscreen-btn:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-accent);
+}
     
     .mobile-content-header {
         display: flex;
@@ -3172,5 +3189,20 @@ textarea[ref="recordingNotesEditor"]:focus {
     .sidebar {
         top: 0; /* Cover full height on mobile */
         z-index: 60; /* Higher z-index for mobile overlay */
+    }
+    
+    /* Make buttons smaller in mobile view */
+    .mobile-action-btn,
+    .p-2.rounded-lg {
+        padding: 0.375rem !important;
+        min-width: 1.5rem !important;
+        height: 1.5rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    /* Ensure icons are properly sized */
+    .mobile-action-btn i,
+    .p-2.rounded-lg i {
+        font-size: 0.875rem !important;
     }
 }
