@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Admin Dashboard - Speakr</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -549,11 +550,20 @@
                 
                 const updateSetting = async (key, value, description, settingType) => {
                     try {
+                        // Get CSRF token
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        
+                        const headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        
+                        if (csrfToken) {
+                            headers['X-CSRFToken'] = csrfToken;
+                        }
+                        
                         const response = await fetch('/admin/settings', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: headers,
                             body: JSON.stringify({
                                 key: key,
                                 value: value,
@@ -589,11 +599,20 @@
                     }
                     
                     try {
+                        // Get CSRF token
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        
+                        const headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        
+                        if (csrfToken) {
+                            headers['X-CSRFToken'] = csrfToken;
+                        }
+                        
                         const response = await fetch('/admin/users', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: headers,
                             body: JSON.stringify({
                                 username: newUser.value.username,
                                 email: newUser.value.email,
@@ -645,11 +664,20 @@
                             payload.password = editingUser.value.password;
                         }
                         
+                        // Get CSRF token
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        
+                        const headers = {
+                            'Content-Type': 'application/json'
+                        };
+                        
+                        if (csrfToken) {
+                            headers['X-CSRFToken'] = csrfToken;
+                        }
+                        
                         const response = await fetch(`/admin/users/${editingUser.value.id}`, {
                             method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
+                            headers: headers,
                             body: JSON.stringify(payload)
                         });
                         
@@ -675,8 +703,18 @@
                 
                 const deleteUser = async () => {
                     try {
+                        // Get CSRF token
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        
+                        const headers = {};
+                        
+                        if (csrfToken) {
+                            headers['X-CSRFToken'] = csrfToken;
+                        }
+                        
                         const response = await fetch(`/admin/users/${userToDelete.value.id}`, {
-                            method: 'DELETE'
+                            method: 'DELETE',
+                            headers: headers
                         });
                         
                         if (!response.ok) {
@@ -697,8 +735,18 @@
                 
                 const toggleAdminStatus = async (user) => {
                     try {
+                        // Get CSRF token
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        
+                        const headers = {};
+                        
+                        if (csrfToken) {
+                            headers['X-CSRFToken'] = csrfToken;
+                        }
+                        
                         const response = await fetch(`/admin/users/${user.id}/toggle-admin`, {
-                            method: 'POST'
+                            method: 'POST',
+                            headers: headers
                         });
                         
                         if (!response.ok) {

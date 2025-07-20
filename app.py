@@ -351,11 +351,11 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # --- Secure Session Cookie Configuration ---
-# In a production environment (e.g., when not in debug mode), these should be enabled.
-if not app.debug:
-    app.config['SESSION_COOKIE_SECURE'] = True
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# For local network usage, disable secure cookies to allow HTTP connections
+# Only enable secure cookies in production when HTTPS is actually being used
+app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP for local network usage
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Still protect against XSS
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 
 db = SQLAlchemy()
 db.init_app(app)
@@ -2139,6 +2139,7 @@ def login():
     return render_template('login.html', title='Login', form=form)
 
 @app.route('/logout')
+@csrf.exempt
 def logout():
     logout_user()
     return redirect(url_for('login'))
