@@ -2689,6 +2689,8 @@ body {
 /* EasyMDE Fullscreen Mode Fixes */
 .EasyMDEContainer .editor-fullscreen {
     z-index: 9999 !important;
+    /* Add top padding to ensure toolbar is visible below the app header */
+    padding-top: 0 !important; /* Reset padding - we'll handle this in the CodeMirror element */
 }
 
 /* Force hide speaker legend during any fullscreen mode - comprehensive approach */
@@ -2714,13 +2716,133 @@ body:has(.CodeMirror-fullscreen) .speaker-legend {
 
 /* Ensure fullscreen editor is above everything */
 .CodeMirror-fullscreen {
-    z-index: 9999 !important;
+    z-index: 99998 !important; /* Just below the toolbar */
+    /* Add top padding to ensure content starts below the toolbar */
+    padding-top: 20px !important; /* Increased padding to match toolbar height */
+    margin-top: 0 !important; /* Remove any margin */
+    box-sizing: border-box !important; /* Ensure padding is included in height */
+}
+
+/* Ensure the editor toolbar is visible in fullscreen mode */
+.editor-toolbar.fullscreen {
+    position: fixed !important;
+    top: 0 !important; /* Position at the very top of the screen */
+    z-index: 99999 !important; /* Extremely high z-index to be above everything */
+    background-color: var(--bg-tertiary) !important;
+    border-bottom: 1px solid var(--border-secondary) !important;
+    width: 100% !important; /* Full width */
+    padding: 5px !important; /* Reduced padding */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important; /* Add shadow for better visibility */
+    height: 60px !important; /* Further increased height to ensure buttons are fully visible */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    box-sizing: border-box !important; /* Ensure padding is included in height */
+}
+
+/* Ensure the editor preview is properly positioned in fullscreen mode */
+.editor-preview-side.editor-preview-active-side {
+    top: 60px !important; /* Match the padding-top of the editor */
+    padding-top: 0 !important; /* Remove default padding */
+    background-color: var(--bg-input) !important; /* Match editor background */
+    margin-top: 0 !important; /* Remove any margin */
+    z-index: 99997 !important; /* Below the editor but above other elements */
+}
+
+/* Ensure the editor preview in split-screen mode is properly positioned */
+.CodeMirror-sided.CodeMirror-fullscreen {
+    padding-top: 20px !important; /* Match the padding of regular fullscreen mode */
+    width: 50% !important; /* Ensure editor takes exactly half the width */
+    background-color: var(--bg-input) !important; /* Match editor background */
+    margin-top: 0 !important; /* Remove any margin */
+    box-sizing: border-box !important; /* Ensure padding is included in height */
+}
+
+/* Fix the split-screen preview to match the editor */
+.editor-preview-active-side.editor-preview-side {
+    top: 60px !important; /* Match the editor padding */
+    padding-top: 0 !important; /* Remove default padding */
+    margin-top: 0 !important; /* Remove any margin */
+    height: calc(100% - 60px) !important; /* Adjust height to account for top position */
+    border-top: none !important; /* Remove top border */
+    background-color: var(--bg-input) !important; /* Match editor background */
+    z-index: 99997 !important; /* Below the editor but above other elements */
+    box-sizing: border-box !important; /* Ensure padding is included in height */
 }
 
 /* Hide speaker legend when any fullscreen editor is active */
 body.CodeMirror-fullscreen .speaker-legend,
 .CodeMirror-fullscreen .speaker-legend {
     display: none !important;
+}
+
+/* Ensure the save/cancel buttons are visible in fullscreen mode */
+.markdown-editor-container .flex.justify-end.gap-2.mt-2 {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    z-index: 100000 !important; /* Above everything else */
+    background-color: var(--bg-secondary) !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid var(--border-primary) !important;
+}
+
+/* Additional fixes for fullscreen mode */
+body.fullscreen-mode {
+    overflow: hidden !important; /* Prevent scrolling when in fullscreen mode */
+}
+
+/* Ensure the editor container is properly positioned in fullscreen mode */
+.CodeMirror-fullscreen-wrapper {
+    z-index: 99998 !important; /* Below the toolbar but above other elements */
+}
+
+/* Ensure the editor is properly positioned in fullscreen mode */
+.CodeMirror-fullscreen .CodeMirror-scroll {
+    padding-top: 0 !important; /* Remove default padding */
+    margin-top: 0 !important; /* Remove any margin */
+}
+
+/* Additional fixes for toolbar buttons to ensure they're fully visible */
+.editor-toolbar.fullscreen button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 40px !important; /* Increased height for better visibility */
+    width: 40px !important; /* Increased width for better visibility */
+    margin: 0 3px !important; /* Increased margin for better spacing */
+    padding: 0 !important;
+    font-size: 18px !important; /* Increased font size for better visibility */
+    line-height: 1 !important;
+    background-color: var(--bg-secondary) !important; /* Add background color for better visibility */
+    border: 1px solid var(--border-secondary) !important; /* Add border for better visibility */
+    border-radius: 4px !important; /* Add border radius for better visibility */
+}
+
+/* Add hover state for toolbar buttons */
+.editor-toolbar.fullscreen button:hover {
+    background-color: var(--bg-accent) !important;
+    color: var(--text-accent) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Add active state for toolbar buttons */
+.editor-toolbar.fullscreen button.active {
+    background-color: var(--bg-accent) !important;
+    color: var(--text-accent) !important;
+    border-color: var(--border-accent) !important;
+}
+
+/* Ensure the editor toolbar wrapper is properly positioned */
+.editor-toolbar-wrapper {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 99999 !important;
 }
 
 .markdown-editor-container .EasyMDEContainer .editor-preview {
@@ -2734,6 +2856,8 @@ body.CodeMirror-fullscreen .speaker-legend,
     background: var(--bg-input);
     color: var(--text-primary);
     border-left: 1px solid var(--border-secondary);
+    padding-top: 0 !important; /* Remove default padding */
+    box-sizing: border-box !important; /* Ensure padding is included in height */
 }
 
 /* Dark mode adjustments for markdown editor */
