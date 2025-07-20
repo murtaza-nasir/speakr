@@ -12,3 +12,4 @@ python-dotenv==1.0.0
 markdown==3.5.1
 pytz==2024.1
 Babel==2.12.1
+bleach==6.1.0

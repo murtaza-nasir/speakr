@@ -358,8 +358,8 @@
                 </div>
 
                 <!-- Recording View -->
-                <div v-else-if="currentView === 'recording'" class="flex-1 flex flex-col p-4 md:p-8 bg-[var(--bg-primary)]">
-                    <div class="flex-1 flex flex-col max-w-4xl w-full mx-auto bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-primary)] overflow-hidden">
+                <div v-else-if="currentView === 'recording'" class="flex-1 flex flex-col p-4 md:p-8 bg-[var(--bg-primary)] min-h-0 overflow-y-auto">
+                    <div class="flex-1 flex flex-col max-w-4xl w-full mx-auto bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-primary)] min-h-0">
                         <!-- Top: Visualizer and Status -->
                         <div class="flex-shrink-0 p-4 md:p-6 text-center bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)]">
                             <div v-if="isRecording" class="w-full mx-auto mb-4">

@@ -2442,7 +2442,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         ],
                         previewClass: ["editor-preview", "notes-preview"],
                         theme: isDarkMode.value ? "dark" : "light",
-                        initialValue: recordingNotes.value || ""
+                        initialValue: recordingNotes.value || "",
+                        maxHeight: "300px",  // Add height constraint to prevent unlimited growth
+                        minHeight: "150px"   // Minimum height for usability
                     });
                     
                     // Sync changes back to the reactive variable

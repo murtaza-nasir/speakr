@@ -22,6 +22,7 @@ import re
 import subprocess
 import mimetypes
 import markdown
+import bleach
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
@@ -260,6 +261,53 @@ def extract_json_object(text):
 bcrypt = Bcrypt()
 
 # Helper function to convert markdown to HTML
+def sanitize_html(text):
+    """
+    Sanitize HTML content to prevent XSS attacks and code execution.
+    This function removes dangerous content while preserving safe formatting.
+    """
+    if not text:
+        return ""
+    
+    # First, remove any template syntax that could be dangerous
+    # Remove Jinja2/Flask template syntax
+    text = re.sub(r'\{\{.*?\}\}', '', text, flags=re.DOTALL)
+    text = re.sub(r'\{%.*?%\}', '', text, flags=re.DOTALL)
+    
+    # Remove other template-like syntax
+    text = re.sub(r'<%.*?%>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<\?.*?\?>', '', text, flags=re.DOTALL)
+    
+    # Define allowed tags and attributes for safe HTML
+    allowed_tags = [
+        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'a', 'img', 'table', 'thead', 
+        'tbody', 'tr', 'th', 'td', 'dl', 'dt', 'dd', 'div', 'span', 'hr', 'sup', 'sub'
+    ]
+    
+    allowed_attributes = {
+        'a': ['href', 'title'],
+        'img': ['src', 'alt', 'title', 'width', 'height'],
+        'code': ['class'],  # For syntax highlighting
+        'pre': ['class'],   # For syntax highlighting
+        'div': ['class'],   # For code blocks
+        'span': ['class'],  # For syntax highlighting
+        'th': ['align'],
+        'td': ['align'],
+        'table': ['class']
+    }
+    
+    # Sanitize the HTML to remove dangerous content
+    sanitized_html = bleach.clean(
+        text,
+        tags=allowed_tags,
+        attributes=allowed_attributes,
+        protocols=['http', 'https', 'mailto'],
+        strip=True  # Strip disallowed tags instead of escaping them
+    )
+    
+    return sanitized_html
+
 def md_to_html(text):
     if not text:
         return ""
@@ -316,7 +364,9 @@ def md_to_html(text):
         'codehilite',       # Syntax highlighting for code blocks
         'smarty'            # Smart quotes, dashes, etc.
     ])
-    return html
+    
+    # Apply sanitization to the generated HTML
+    return sanitize_html(html)
 
 def format_transcription_for_llm(transcription_text):
     """
@@ -2584,11 +2634,11 @@ def save_metadata():
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to edit this recording'}), 403
 
-        # Update fields if provided
+        # Update fields if provided (with sanitization for notes and summary)
         if 'title' in data: recording.title = data['title']
         if 'participants' in data: recording.participants = data['participants']
-        if 'notes' in data: recording.notes = data['notes']
-        if 'summary' in data: recording.summary = data['summary'] # <-- ADDED: Allow saving edited summary
+        if 'notes' in data: recording.notes = sanitize_html(data['notes']) if data['notes'] else data['notes']
+        if 'summary' in data: recording.summary = sanitize_html(data['summary']) if data['summary'] else data['summary']
         if 'is_inbox' in data: recording.is_inbox = data['is_inbox']
         if 'is_highlighted' in data: recording.is_highlighted = data['is_highlighted']
         if 'meeting_date' in data:

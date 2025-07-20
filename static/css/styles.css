@@ -2879,11 +2879,51 @@ body.CodeMirror-fullscreen .speaker-legend,
     border-left: 1px solid var(--text-primary);
 }
 
-/* Recording notes textarea theme-aware styling */
+/* Recording notes editor - fixed height with internal scrolling */
+.recording-notes-editor {
+    flex: 1 !important; /* Take available space in flex container */
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 200px !important; /* Minimum usable height */
+    max-height: none !important; /* Allow parent to control max height */
+    overflow: hidden !important; /* Prevent container from growing */
+}
+
+.recording-notes-editor .EasyMDEContainer {
+    height: 100% !important; /* Fill parent container */
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.recording-notes-editor .EasyMDEContainer .CodeMirror {
+    flex: 1 !important; /* Take all available space */
+    height: auto !important; /* Let flex control height */
+    min-height: 0 !important; /* Allow flex shrinking */
+    overflow: hidden !important; /* Prevent CodeMirror from growing */
+}
+
+.recording-notes-editor .EasyMDEContainer .CodeMirror-scroll {
+    height: 100% !important; /* Fill CodeMirror container */
+    overflow-y: auto !important; /* Enable internal scrolling */
+    min-height: 0 !important; /* Allow flex shrinking */
+}
+
+.recording-notes-editor .EasyMDEContainer .CodeMirror-sizer {
+    min-height: auto !important; /* Don't force content to fill editor */
+}
+
+/* Recording notes textarea fallback - fixed height with internal scrolling */
 .recording-notes-editor textarea {
     background-color: var(--bg-input) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-secondary) !important;
+    flex: 1 !important; /* Take available space */
+    height: auto !important; /* Let flex control height */
+    min-height: 200px !important; /* Minimum usable height */
+    max-height: none !important; /* No max height - let parent control */
+    overflow-y: auto !important; /* Enable internal scrolling */
+    resize: none !important; /* Prevent manual resizing */
 }
 
 .recording-notes-editor textarea:focus {
@@ -2892,12 +2932,18 @@ body.CodeMirror-fullscreen .speaker-legend,
     box-shadow: 0 0 0 2px var(--ring-focus) !important;
 }
 
-/* Ensure all textareas in recording view use theme colors */
+/* Ensure all textareas in recording view use theme colors and fixed height */
 .recording-notes-editor textarea,
 textarea[ref="recordingNotesEditor"] {
     background-color: var(--bg-input) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-secondary) !important;
+    flex: 1 !important; /* Take available space */
+    height: auto !important; /* Let flex control height */
+    min-height: 200px !important; /* Minimum usable height */
+    max-height: none !important; /* No max height - let parent control */
+    overflow-y: auto !important; /* Enable internal scrolling */
+    resize: none !important; /* Prevent manual resizing */
 }
 
 /* Dark mode specific adjustments for recording notes */
