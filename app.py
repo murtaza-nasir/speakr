@@ -392,7 +392,7 @@ app = Flask(__name__)
 # Use environment variables or default paths for Docker compatibility
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
-app.config['MAX_CONTENT_LENGTH'] = 250 * 1024 * 1024  # 250MB max file size
+# MAX_CONTENT_LENGTH will be set dynamically after database initialization
 # Set a secret key for session management and CSRF protection
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-production')
 
@@ -2790,7 +2790,8 @@ def upload_file():
         file.seek(0)
 
         # Check size limit before saving
-        if original_file_size > app.config['MAX_CONTENT_LENGTH']:
+        max_content_length = app.config.get('MAX_CONTENT_LENGTH')
+        if max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
 
         file.save(filepath)
@@ -3086,8 +3087,13 @@ def admin_update_auto_process_config():
         app.logger.error(f"Error updating auto-process config: {e}")
         return jsonify({'error': str(e)}), 500
 
-# Initialize file monitor after app setup
 with app.app_context():
+    # Set dynamic MAX_CONTENT_LENGTH based on database setting
+    max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)
+    app.config['MAX_CONTENT_LENGTH'] = max_file_size_mb * 1024 * 1024
+    app.logger.info(f"Set MAX_CONTENT_LENGTH to {max_file_size_mb}MB from database setting")
+
+    # Initialize file monitor after app setup
     initialize_file_monitor()
 
 if __name__ == '__main__':

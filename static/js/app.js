@@ -1679,10 +1679,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                     
                     if (isAudioFile) {
+                        // Check OpenAI-specific 25MB limit when not using ASR endpoint
+                        if (!useAsrEndpoint.value && fileObject.size > 25 * 1024 * 1024) {
+                            setGlobalError(`File "${fileObject.name}" exceeds OpenAI's 25MB limit. Please use a smaller file or enable the ASR endpoint for larger files.`);
+                            continue;
+                        }
+                        
+                        // Check general file size limit
                         if (fileObject.size > maxFileSizeMB.value * 1024 * 1024) {
                             setGlobalError(`File "${fileObject.name}" exceeds the maximum size of ${maxFileSizeMB.value} MB and was skipped.`);
                             continue;
                         }
+                        
                         const clientId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
                         uploadQueue.value.push({
                             file: fileObject, 
