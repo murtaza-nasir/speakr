@@ -880,7 +880,7 @@ def format_api_error_message(error_str):
     
     # Check for token limit errors
     if 'maximum context length' in error_lower and 'tokens' in error_lower:
-        return "[Summary generation failed: The transcription is too long for AI processing. Try using a different LLM with a larger context size.]"
+        return "[Summary generation failed: The transcription is too long for AI processing. Request your admin to try using a different LLM with a larger context size, or set a limit for the transcript_length_limit in the system settings.]"
     
     # Check for other common API errors
     if 'rate limit' in error_lower:
@@ -2601,6 +2601,17 @@ def get_config():
         })
     except Exception as e:
         app.logger.error(f"Error fetching configuration: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/csrf-token', methods=['GET'])
+def get_csrf_token():
+    """Get a fresh CSRF token for the frontend."""
+    try:
+        from flask_wtf.csrf import generate_csrf
+        token = generate_csrf()
+        return jsonify({'csrf_token': token})
+    except Exception as e:
+        app.logger.error(f"Error generating CSRF token: {e}")
         return jsonify({'error': str(e)}), 500
 
 # --- Flask Routes ---
