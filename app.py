@@ -871,6 +871,30 @@ if USE_ASR_ENDPOINT:
     app.logger.info(f"ASR endpoint is enabled at: {ASR_BASE_URL}")
 
 # --- Background Transcription & Summarization Task ---
+def format_api_error_message(error_str):
+    """
+    Formats API error messages to be more user-friendly.
+    Specifically handles token limit errors with helpful suggestions.
+    """
+    error_lower = error_str.lower()
+    
+    # Check for token limit errors
+    if 'maximum context length' in error_lower and 'tokens' in error_lower:
+        return "[Summary generation failed: The transcription is too long for AI processing. Try using a different LLM with a larger context size.]"
+    
+    # Check for other common API errors
+    if 'rate limit' in error_lower:
+        return "[Summary generation failed: API rate limit exceeded. Please try again in a few minutes.]"
+    
+    if 'insufficient funds' in error_lower or 'quota exceeded' in error_lower:
+        return "[Summary generation failed: API quota exceeded. Please contact support.]"
+    
+    if 'timeout' in error_lower:
+        return "[Summary generation failed: Request timed out. Please try again.]"
+    
+    # For other errors, show a generic message
+    return f"[Summary generation failed: {error_str}]"
+
 def generate_summary_task(app_context, recording_id, start_time):
     """Generates title and summary for a recording."""
     with app_context:
@@ -992,7 +1016,7 @@ JSON Response:"""
 
         except Exception as summary_e:
             app.logger.error(f"Error calling OpenRouter API for summary ({recording_id}): {str(summary_e)}")
-            recording.summary = f"[AI summary generation failed: API Error ({str(summary_e)})]"
+            recording.summary = format_api_error_message(str(summary_e))
             recording.status = 'COMPLETED'
             recording.completed_at = datetime.utcnow()
             # This is now calculated at the end of the transcription task
@@ -2090,7 +2114,7 @@ JSON Response:"""
                     
                 except Exception as summary_e:
                     app.logger.error(f"Error during summary reprocessing for recording {recording_id}: {str(summary_e)}")
-                    recording.summary = f"[AI summary generation failed: API Error ({str(summary_e)})]"
+                    recording.summary = format_api_error_message(str(summary_e))
                     recording.status = 'COMPLETED'
                     db.session.commit()
         
@@ -2603,6 +2627,7 @@ def get_recordings():
 
 @app.route('/api/inbox_recordings', methods=['GET'])
 @login_required
+@limiter.limit("1250 per hour")  # Allow frequent polling for inbox recordings
 def get_inbox_recordings():
     """Get recordings that are in the inbox and currently processing."""
     try:
@@ -2863,6 +2888,7 @@ def upload_file():
 # Status Endpoint
 @app.route('/status/<int:recording_id>', methods=['GET'])
 @login_required
+@limiter.limit("1250 per hour")  # Allow frequent polling for status checks
 def get_status(recording_id):
     """Endpoint to check the transcription/summarization status."""
     try:
