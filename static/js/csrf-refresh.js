@@ -24,13 +24,25 @@ class CSRFManager {
     async performTokenRefresh() {
         try {
             console.log('Refreshing CSRF token...');
-            const response = await fetch('/api/csrf-token', {
+            
+            // Use the original fetch to avoid recursion
+            const originalFetch = window.originalFetch || fetch;
+            const response = await originalFetch('/api/csrf-token', {
                 method: 'GET',
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to refresh CSRF token: ${response.status}`);
+                throw new Error(`Failed to refresh CSRF token: ${response.status} ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Expected JSON response but got ${contentType}. Response: ${text.substring(0, 200)}`);
             }
 
             const data = await response.json();
@@ -41,6 +53,12 @@ class CSRFManager {
                 if (metaTag) {
                     metaTag.setAttribute('content', this.token);
                 }
+                
+                // Update Vue.js reactive token if available
+                if (window.app && window.app.csrfToken !== undefined) {
+                    window.app.csrfToken = this.token;
+                }
+                
                 console.log('CSRF token refreshed successfully');
                 return this.token;
             } else {
@@ -53,44 +71,80 @@ class CSRFManager {
     }
 
     setupFetchInterceptor() {
-        const originalFetch = window.fetch;
+        // Store original fetch if not already stored
+        if (!window.originalFetch) {
+            window.originalFetch = window.fetch;
+        }
         
-        window.fetch = async (url, options = {}) => {
-            // Add CSRF token to headers
+        const originalFetch = window.originalFetch;
+        const self = this;
+        
+        window.fetch = async function(url, options = {}) {
+            // Skip CSRF token for the token refresh endpoint to avoid recursion
+            if (url.includes('/api/csrf-token')) {
+                return originalFetch(url, options);
+            }
+
+            // Add CSRF token to headers for API requests
             const newOptions = { ...options };
-            newOptions.headers = {
-                'X-CSRFToken': this.token,
-                ...newOptions.headers
-            };
+            if (url.startsWith('/api/') || url.startsWith('/upload') || url.startsWith('/save') || 
+                url.startsWith('/recording/') || url.startsWith('/chat') || url.startsWith('/speakers')) {
+                
+                newOptions.headers = {
+                    'X-CSRFToken': self.token,
+                    ...newOptions.headers
+                };
+            }
 
             // Make the request
             let response = await originalFetch(url, newOptions);
 
-            // Check if the request failed due to CSRF token expiration
-            if (response.status === 400) {
+            // Check for CSRF token expiration
+            if ((response.status === 400 || response.status === 403) && 
+                (url.startsWith('/api/') || url.startsWith('/upload') || url.startsWith('/save') || 
+                 url.startsWith('/recording/') || url.startsWith('/chat') || url.startsWith('/speakers'))) {
+                
                 try {
-                    const errorData = await response.clone().json();
-                    const errorMessage = errorData.error || '';
+                    // Try to parse as JSON first
+                    const responseClone = response.clone();
+                    let isCSRFError = false;
                     
-                    // Check if it's a CSRF token error
-                    if (errorMessage.toLowerCase().includes('csrf') || 
-                        errorMessage.toLowerCase().includes('token')) {
-                        
+                    try {
+                        const errorData = await responseClone.json();
+                        const errorMessage = errorData.error || '';
+                        isCSRFError = errorMessage.toLowerCase().includes('csrf') || 
+                                     errorMessage.toLowerCase().includes('token');
+                    } catch (jsonError) {
+                        // If JSON parsing fails, check if it's an HTML error page
+                        const textResponse = await response.clone().text();
+                        isCSRFError = textResponse.toLowerCase().includes('csrf') || 
+                                     textResponse.toLowerCase().includes('token') ||
+                                     textResponse.includes('<!doctype') || // HTML error page
+                                     textResponse.includes('<html');
+                    }
+                    
+                    if (isCSRFError) {
                         console.log('CSRF token expired, attempting refresh and retry...');
                         
-                        // Refresh the token
-                        await this.refreshToken();
-                        
-                        // Retry the original request with the new token
-                        newOptions.headers['X-CSRFToken'] = this.token;
-                        response = await originalFetch(url, newOptions);
-                        
-                        if (response.ok) {
-                            console.log('Request succeeded after CSRF token refresh');
+                        try {
+                            // Refresh the token
+                            await self.refreshToken();
+                            
+                            // Retry the original request with the new token
+                            newOptions.headers['X-CSRFToken'] = self.token;
+                            response = await originalFetch(url, newOptions);
+                            
+                            if (response.ok) {
+                                console.log('Request succeeded after CSRF token refresh');
+                            } else {
+                                console.warn('Request still failed after CSRF token refresh:', response.status);
+                            }
+                        } catch (refreshError) {
+                            console.error('Failed to refresh CSRF token during retry:', refreshError);
+                            // Return the original failed response
                         }
                     }
                 } catch (parseError) {
-                    // If we can't parse the error response, just return the original response
                     console.warn('Could not parse error response for CSRF check:', parseError);
                 }
             }
@@ -103,9 +157,28 @@ class CSRFManager {
     getToken() {
         return this.token;
     }
+
+    // Method to manually refresh token (for periodic refresh)
+    async manualRefresh() {
+        try {
+            await this.refreshToken();
+            return true;
+        } catch (error) {
+            console.error('Manual CSRF token refresh failed:', error);
+            return false;
+        }
+    }
 }
 
 // Initialize CSRF manager when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.csrfManager = new CSRFManager();
+    
+    // Set up periodic token refresh every 45 minutes (before 1-hour expiration)
+    setInterval(() => {
+        if (window.csrfManager) {
+            console.log('Performing periodic CSRF token refresh...');
+            window.csrfManager.manualRefresh();
+        }
+    }, 45 * 60 * 1000); // 45 minutes
 });

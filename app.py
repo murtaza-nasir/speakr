@@ -2812,11 +2812,13 @@ def get_config():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/csrf-token', methods=['GET'])
+@csrf.exempt  # Exempt this endpoint from CSRF protection since it's providing tokens
 def get_csrf_token():
     """Get a fresh CSRF token for the frontend."""
     try:
         from flask_wtf.csrf import generate_csrf
         token = generate_csrf()
+        app.logger.info("Fresh CSRF token generated successfully")
         return jsonify({'csrf_token': token})
     except Exception as e:
         app.logger.error(f"Error generating CSRF token: {e}")

@@ -2,17 +2,8 @@ const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue
 
 // Wait for the DOM to be fully loaded before mounting the Vue app
 document.addEventListener('DOMContentLoaded', () => {
-    // CSRF Protection for Fetch API
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const originalFetch = window.fetch;
-    window.fetch = function(url, options) {
-        const newOptions = { ...options };
-        newOptions.headers = {
-            'X-CSRFToken': csrfToken,
-            ...newOptions.headers
-        };
-        return originalFetch(url, newOptions);
-    };
+    // CSRF Token Integration with Vue.js
+    const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
