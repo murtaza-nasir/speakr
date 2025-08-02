@@ -95,17 +95,18 @@ class AudioChunkingService:
             wav_filename = f"{base_name}_converted.wav"
             wav_path = os.path.join(temp_dir, wav_filename)
             
-            # Convert to WAV using the same settings we use for chunks
+            # Convert to 32kbps MP3 using the same settings we use for chunks
             cmd = [
                 'ffmpeg', '-i', file_path,
-                '-acodec', 'pcm_s16le',
+                '-acodec', 'mp3',
+                '-ab', '32k',
                 '-ar', '16000',
                 '-ac', '1',
                 '-y',  # Overwrite output file
                 wav_path
             ]
             
-            logger.info(f"Converting {file_path} to WAV format for accurate chunking...")
+            logger.info(f"Converting {file_path} to 32kbps MP3 format for accurate chunking...")
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 raise ValueError(f"ffmpeg conversion failed: {result.stderr}")
@@ -142,21 +143,23 @@ class AudioChunkingService:
             # Calculate actual bitrate from the WAV file
             bitrate_bytes_per_sec = wav_size / wav_duration
             
-            # Calculate chunk duration to stay under size limit with safety margin
-            safety_factor = 0.9  # Use 90% of max size for safety
-            target_chunk_size = self.max_chunk_size_bytes * safety_factor
+            # Use a more aggressive target to create larger chunks
+            # Target 22MB chunks (88% of 25MB limit) for better efficiency
+            safety_factor = 0.88  # Use 88% of max size for optimal efficiency
+            target_chunk_size = 25 * 1024 * 1024 * safety_factor  # Target 22MB chunks
             
             chunk_duration = (target_chunk_size / bitrate_bytes_per_sec) - self.overlap_seconds
             
-            # Ensure reasonable chunk size (minimum 60 seconds, maximum 20 minutes)
-            chunk_duration = max(60, min(1200, chunk_duration))
+            # Ensure reasonable chunk size (minimum 5 minutes, maximum 45 minutes)
+            # Larger minimum for better efficiency, larger maximum for fewer chunks
+            chunk_duration = max(300, min(2700, chunk_duration))
             
-            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s based on WAV bitrate {bitrate_bytes_per_sec:.0f} bytes/sec")
+            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s (target: {target_chunk_size/1024/1024:.1f}MB) based on bitrate {bitrate_bytes_per_sec:.0f} bytes/sec")
             return chunk_duration
             
         except Exception as e:
             logger.error(f"Error calculating chunk duration from WAV: {e}")
-            return 300  # Default 5 minutes
+            return 600  # Default 10 minutes (increased from 5)
     
     def create_chunks(self, file_path: str, temp_dir: str) -> List[Dict[str, Any]]:
         """

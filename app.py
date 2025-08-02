@@ -1305,7 +1305,7 @@ def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_a
                 api_key=transcription_api_key,
                 base_url=transcription_base_url,
                 http_client=http_client_with_timeout,
-                max_retries=2,  # Limit retries to avoid excessive delays
+                max_retries=3,  # Increased retries for better reliability
                 timeout=300.0   # 5 minute timeout for API calls
             )
             whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
@@ -3025,43 +3025,61 @@ def upload_file():
         file.save(filepath)
         app.logger.info(f"File saved to {filepath}")
 
-        # --- Convert non-wav/mp3/flac files to WAV ---
+        # --- Convert files only when chunking is needed ---
         filename_lower = original_filename.lower()
-        supported_formats = ('.wav', '.mp3', '.flac')
-        convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm')
         
-        if not filename_lower.endswith(supported_formats):
+        # Check if chunking will be needed for this file
+        needs_chunking_for_processing = (chunking_service and 
+                                       ENABLE_CHUNKING and 
+                                       not USE_ASR_ENDPOINT and
+                                       original_file_size > (25 * 1024 * 1024))  # 25MB threshold
+        
+        # Define supported formats based on whether chunking is needed
+        if needs_chunking_for_processing:
+            # For chunking: only support formats that work well with chunking
+            supported_formats = ('.wav', '.mp3', '.flac')
+            convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm')
+        else:
+            # For direct transcription: support WebM and other formats directly
+            supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
+            convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma')
+        
+        # Only convert if file is not in supported formats AND chunking is needed
+        if not filename_lower.endswith(supported_formats) and needs_chunking_for_processing:
             if filename_lower.endswith(convertible_formats):
-                app.logger.info(f"Converting {filename_lower} format to WAV for processing.")
+                app.logger.info(f"Converting {filename_lower} format to 32kbps MP3 for chunking processing.")
             else:
-                app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to WAV.")
+                app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to 32kbps MP3 for chunking.")
             
             base_filepath, _ = os.path.splitext(filepath)
-            temp_wav_filepath = f"{base_filepath}_temp.wav"
-            wav_filepath = f"{base_filepath}.wav"
+            temp_mp3_filepath = f"{base_filepath}_temp.mp3"
+            mp3_filepath = f"{base_filepath}.mp3"
 
             try:
-                # Using -acodec pcm_s16le for standard WAV format, 16kHz sample rate, mono
+                # Convert to 32kbps MP3 for optimal size/quality balance
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', temp_wav_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'mp3', '-ab', '32k', '-ar', '16000', '-ac', '1', temp_mp3_filepath],
                     check=True, capture_output=True, text=True
                 )
-                app.logger.info(f"Successfully converted {filepath} to {temp_wav_filepath}")
+                app.logger.info(f"Successfully converted {filepath} to {temp_mp3_filepath} (32kbps MP3)")
                 
-                # If the original file is not the same as the final wav file, remove it
-                if filepath.lower() != wav_filepath.lower():
+                # If the original file is not the same as the final mp3 file, remove it
+                if filepath.lower() != mp3_filepath.lower():
                     os.remove(filepath)
                 
                 # Rename the temporary file to the final filename
-                os.rename(temp_wav_filepath, wav_filepath)
+                os.rename(temp_mp3_filepath, mp3_filepath)
                 
-                filepath = wav_filepath
+                filepath = mp3_filepath
             except FileNotFoundError:
                 app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
                 return jsonify({'error': 'Audio conversion tool (ffmpeg) not found on server.'}), 500
             except subprocess.CalledProcessError as e:
                 app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
                 return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
+        elif not filename_lower.endswith(supported_formats):
+            # File is not supported and chunking is not needed - log but don't convert
+            app.logger.info(f"File format {filename_lower} will be processed directly without conversion (chunking not needed)")
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)

@@ -79,6 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const animationFrameId = ref(null);
             const recordingMode = ref('microphone'); // 'microphone', 'system', or 'both'
             const activeStreams = ref([]); // Track active streams for cleanup
+            
+            // --- Recording Size Monitoring ---
+            const estimatedFileSize = ref(0);
+            const fileSizeWarningShown = ref(false);
+            const recordingQuality = ref('optimized'); // 'optimized', 'standard', 'high'
+            const actualBitrate = ref(0);
+            const maxRecordingMB = ref(200); // Maximum recording size before auto-stop
+            const sizeCheckInterval = ref(null);
 
             // --- Modal State ---
             const showEditModal = ref(false);
@@ -714,6 +722,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
     
                 return parts.join(' ');
+            };
+
+            // --- Recording Size Monitoring Functions ---
+            const updateFileSizeEstimate = () => {
+                if (!isRecording.value || !actualBitrate.value) return;
+                
+                // Calculate estimated size based on recording time and bitrate
+                const recordingTimeSeconds = recordingTime.value;
+                const estimatedBits = actualBitrate.value * recordingTimeSeconds;
+                const estimatedBytes = estimatedBits / 8;
+                estimatedFileSize.value = estimatedBytes;
+                
+                // Check if we're approaching the size limit
+                const sizeMB = estimatedBytes / (1024 * 1024);
+                const warningThresholdMB = maxRecordingMB.value * 0.8; // 80% of max size
+                
+                if (sizeMB > warningThresholdMB && !fileSizeWarningShown.value) {
+                    fileSizeWarningShown.value = true;
+                    showToast(`Recording size is ${formatFileSize(estimatedBytes)}. Consider stopping soon to avoid auto-stop at ${maxRecordingMB.value}MB.`, 'fa-exclamation-triangle', 5000);
+                }
+                
+                // Auto-stop if we exceed the maximum size
+                if (sizeMB > maxRecordingMB.value) {
+                    console.log(`Auto-stopping recording: size ${formatFileSize(estimatedBytes)} exceeds limit of ${maxRecordingMB.value}MB`);
+                    stopRecording();
+                    showToast(`Recording automatically stopped at ${formatFileSize(estimatedBytes)} to prevent excessive file size.`, 'fa-stop-circle', 7000);
+                }
+            };
+
+            const startSizeMonitoring = () => {
+                if (sizeCheckInterval.value) {
+                    clearInterval(sizeCheckInterval.value);
+                }
+                
+                // Reset size monitoring state
+                estimatedFileSize.value = 0;
+                fileSizeWarningShown.value = false;
+                
+                // Start monitoring every 5 seconds
+                sizeCheckInterval.value = setInterval(updateFileSizeEstimate, 5000);
+            };
+
+            const stopSizeMonitoring = () => {
+                if (sizeCheckInterval.value) {
+                    clearInterval(sizeCheckInterval.value);
+                    sizeCheckInterval.value = null;
+                }
             };
 
             // --- Enhanced Date Utility Functions ---
@@ -2000,29 +2055,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Combine streams if we have both
                     if (micStream && systemStream) {
-                        audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
-                        
-                        const micSource = audioContext.value.createMediaStreamSource(micStream);
-                        const systemSource = audioContext.value.createMediaStreamSource(systemStream);
-                        const destination = audioContext.value.createMediaStreamDestination();
-                        
-                        micSource.connect(destination);
-                        systemSource.connect(destination);
-                        
-                        // The destination stream contains the mixed audio
-                        combinedStream = destination.stream;
-
-                        // We also need to add the video track from the system stream to keep the browser's "sharing this screen" UI active.
-                        // This video track will not be recorded.
-                        const videoTrack = systemStream.getVideoTracks()[0];
-                        if (videoTrack) {
-                            combinedStream.addTrack(videoTrack);
+                        try {
+                            audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
+                            
+                            const micSource = audioContext.value.createMediaStreamSource(micStream);
+                            const systemSource = audioContext.value.createMediaStreamSource(systemStream);
+                            const destination = audioContext.value.createMediaStreamDestination();
+                            
+                            micSource.connect(destination);
+                            systemSource.connect(destination);
+                            
+                            // Create a new MediaStream with only the audio track from the destination
+                            const mixedAudioTrack = destination.stream.getAudioTracks()[0];
+                            if (!mixedAudioTrack) {
+                                throw new Error('Failed to create mixed audio track');
+                            }
+                            
+                            combinedStream = new MediaStream([mixedAudioTrack]);
+                            
+                            // Verify the stream has audio tracks
+                            if (combinedStream.getAudioTracks().length === 0) {
+                                throw new Error('Combined stream has no audio tracks');
+                            }
+                            
+                            console.log('Successfully created combined audio stream with', combinedStream.getAudioTracks().length, 'audio tracks');
+                            showToast('Recording both microphone and system audio', 'fa-microphone');
+                            
+                        } catch (error) {
+                            console.error('Failed to combine audio streams:', error);
+                            // Fallback to system audio only
+                            if (audioContext.value) {
+                                audioContext.value.close().catch(e => console.error("Error closing AudioContext:", e));
+                                audioContext.value = null;
+                            }
+                            combinedStream = systemStream;
+                            showToast('Failed to combine audio, using system audio only', 'fa-exclamation-triangle');
                         }
-                        
-                        showToast('Recording both microphone and system audio', 'fa-microphone');
                     } else if (systemStream) {
-                        combinedStream = systemStream;
-                        showToast('Recording system audio only', 'fa-desktop');
+                        // For system audio only, create a new stream with just the audio tracks
+                        const audioTracks = systemStream.getAudioTracks();
+                        if (audioTracks.length > 0) {
+                            combinedStream = new MediaStream(audioTracks);
+                            console.log('Created system audio stream with', audioTracks.length, 'audio tracks');
+                            showToast('Recording system audio only', 'fa-desktop');
+                        } else {
+                            throw new Error('System stream has no audio tracks');
+                        }
                     } else if (micStream) {
                         combinedStream = micStream;
                         showToast('Recording microphone only', 'fa-microphone');
@@ -2037,48 +2115,107 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Best option: Opus codec at 32kbps (excellent compression for speech)
                             {
                                 mimeType: 'audio/webm;codecs=opus',
-                                audioBitsPerSecond: 32000
+                                audioBitsPerSecond: 32000,
+                                description: 'Optimized (32kbps Opus)'
                             },
-                            // Fallback 1: Opus at 64kbps (slightly higher quality)
+                            // Good option: Opus at 64kbps (slightly higher quality)
                             {
                                 mimeType: 'audio/webm;codecs=opus',
-                                audioBitsPerSecond: 64000
+                                audioBitsPerSecond: 64000,
+                                description: 'Good quality (64kbps Opus)'
                             },
-                            // Fallback 2: WebM with reduced bitrate
+                            // Fallback 1: WebM with reduced bitrate
                             {
                                 mimeType: 'audio/webm',
-                                audioBitsPerSecond: 48000
+                                audioBitsPerSecond: 64000,
+                                description: 'Standard WebM (64kbps)'
                             },
-                            // Fallback 3: MP4 with reduced bitrate
+                            // Fallback 2: MP4 with reduced bitrate
                             {
                                 mimeType: 'audio/mp4',
-                                audioBitsPerSecond: 48000
+                                audioBitsPerSecond: 64000,
+                                description: 'Standard MP4 (64kbps)'
+                            },
+                            // Fallback 3: Just the codec without bitrate
+                            {
+                                mimeType: 'audio/webm;codecs=opus',
+                                description: 'Opus codec (default bitrate)'
+                            },
+                            // Fallback 4: Just WebM without bitrate
+                            {
+                                mimeType: 'audio/webm',
+                                description: 'WebM (default bitrate)'
                             }
                         ];
 
                         // Test each option to find the first supported one
                         for (const options of optionsList) {
                             if (MediaRecorder.isTypeSupported(options.mimeType)) {
-                                console.log(`Using optimized audio recording: ${options.mimeType} at ${options.audioBitsPerSecond}bps`);
-                                showToast('Recording optimized for transcription', 'fa-compress-alt');
+                                console.log(`Testing audio recording option: ${options.description} - ${options.mimeType}`);
                                 return options;
                             }
                         }
 
                         // Final fallback: no options (browser default)
                         console.log('Using browser default audio recording settings');
-                        showToast('Recording with default quality', 'fa-microphone');
-                        return undefined;
+                        return null;
                     };
 
-                    const recorderOptions = getOptimizedRecorderOptions();
-                    mediaRecorder.value = recorderOptions 
-                        ? new MediaRecorder(combinedStream, recorderOptions)
-                        : new MediaRecorder(combinedStream);
+                    // Try to create MediaRecorder with progressive fallbacks
+                    let mediaRecorderCreated = false;
+                    let recorderOptions = getOptimizedRecorderOptions();
+                    let attemptCount = 0;
+                    
+                    while (!mediaRecorderCreated && attemptCount < 5) {
+                        try {
+                            attemptCount++;
+                            
+                            if (recorderOptions && attemptCount === 1) {
+                                // First attempt: try with full options
+                                console.log(`Attempt ${attemptCount}: Trying ${recorderOptions.description}`);
+                                mediaRecorder.value = new MediaRecorder(combinedStream, recorderOptions);
+                                actualBitrate.value = recorderOptions.audioBitsPerSecond || 64000;
+                                showToast(`Recording: ${recorderOptions.description}`, 'fa-compress-alt', 3000);
+                            } else if (recorderOptions && attemptCount === 2 && recorderOptions.audioBitsPerSecond) {
+                                // Second attempt: try same mime type without bitrate constraint
+                                console.log(`Attempt ${attemptCount}: Trying ${recorderOptions.mimeType} without bitrate`);
+                                mediaRecorder.value = new MediaRecorder(combinedStream, { mimeType: recorderOptions.mimeType });
+                                actualBitrate.value = 128000; // Estimate
+                                showToast(`Recording: ${recorderOptions.mimeType} (default bitrate)`, 'fa-compress-alt', 3000);
+                            } else {
+                                // Final attempt: browser default
+                                console.log(`Attempt ${attemptCount}: Using browser default`);
+                                mediaRecorder.value = new MediaRecorder(combinedStream);
+                                actualBitrate.value = 128000; // Estimate browser default
+                                showToast('Recording with browser default settings', 'fa-microphone', 3000);
+                            }
+                            
+                            mediaRecorderCreated = true;
+                            console.log(`MediaRecorder created successfully on attempt ${attemptCount}`);
+                            
+                        } catch (error) {
+                            console.warn(`MediaRecorder creation attempt ${attemptCount} failed:`, error);
+                            mediaRecorder.value = null;
+                            
+                            if (attemptCount >= 5) {
+                                throw new Error(`Failed to create MediaRecorder after ${attemptCount} attempts. Last error: ${error.message}`);
+                            }
+                        }
+                    }
+                    
+                    if (!mediaRecorder.value) {
+                        throw new Error('Failed to create MediaRecorder with any configuration');
+                    }
+                    
+                    console.log(`Recording with estimated bitrate: ${actualBitrate.value} bps`);
+                    
                     mediaRecorder.value.ondataavailable = event => audioChunks.value.push(event.data);
                     mediaRecorder.value.onstop = () => {
                         const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
                         audioBlobURL.value = URL.createObjectURL(audioBlob);
+                        
+                        // Stop size monitoring
+                        stopSizeMonitoring();
                         
                         // Stop all active streams
                         activeStreams.value.forEach(stream => {
@@ -2128,6 +2265,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     recordingTime.value = 0;
                     recordingInterval.value = setInterval(() => recordingTime.value++, 1000);
                     
+                    // Start size monitoring
+                    startSizeMonitoring();
+                    
                     // Switch to recording view
                     currentView.value = 'recording';
                     
@@ -2152,6 +2292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mediaRecorder.value && isRecording.value) {
                     mediaRecorder.value.stop();
                     isRecording.value = false;
+                    stopSizeMonitoring();
                     cancelAnimationFrame(animationFrameId.value);
                     animationFrameId.value = null;
                 }

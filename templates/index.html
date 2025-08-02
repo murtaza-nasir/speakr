@@ -392,6 +392,22 @@
                             <div>
                                 <div class="text-2xl font-mono text-[var(--text-accent)]">${formatTime(recordingTime)}</div>
                                 <p class="text-sm text-[var(--text-muted)]">${ isRecording ? 'Recording in progress...' : 'Recording finished' }</p>
+                                <!-- Real-time file size display -->
+                                <div v-if="isRecording && estimatedFileSize > 0" class="mt-2">
+                                    <p class="text-xs text-[var(--text-muted)]">
+                                        Estimated size: <span class="font-mono">${formatFileSize(estimatedFileSize)}</span>
+                                        <span v-if="actualBitrate > 0" class="ml-2">
+                                            (${Math.round(actualBitrate / 1000)}kbps)
+                                        </span>
+                                    </p>
+                                    <!-- Size warning indicator -->
+                                    <div v-if="estimatedFileSize > (maxRecordingMB * 1024 * 1024 * 0.8)" class="mt-1">
+                                        <div class="flex items-center text-xs text-amber-600 dark:text-amber-400">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                                            <span>Approaching ${maxRecordingMB}MB limit</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
