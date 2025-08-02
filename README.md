@@ -91,6 +91,15 @@ Speakr is your intelligent note-taking companion - a personal, self-hosted web a
 
 ## What's New?
 
+### Version 0.4.2 (Latest)
+
+*   **Large File Chunking Support:** Automatic splitting of large audio files for transcription endpoints with file size limits (like OpenAI's 25MB limit). Files are intelligently chunked, processed separately, and seamlessly merged back together.
+*   **Optimized File Processing:** Eliminated uncompressed WAV file creation throughout the application. WebM recordings stay as WebM, and conversions use 32kbps MP3 for optimal size/quality balance.
+*   **Enhanced CSRF Protection:** Fixed session timeout issues and improved security for long recording sessions.
+*   **Improved Recording Reliability:** Fixed errors related to in-app recording and long recording sessions.
+
+### Version 0.4.1 (Previous Release)
+
 *   **Secure Sharing System:** Share your transcriptions publicly with customizable permissions - control whether to include summaries and notes, manage shared links, and revoke access anytime.
 *   **Enhanced Recording & Note-Taking:** Completely redesigned recording interface with real-time notepad during recording. Perfect for mobile note-taking with improved system audio capture and dual visualizers.
 *   **Advanced Speaker Diarization:** Automatically identify and label different speakers in your recordings with AI-powered speaker detection and saved speaker profiles for future sessions.
@@ -224,6 +233,11 @@ You do not need to clone this repository for this method. You only need Docker i
         ALLOW_REGISTRATION=false
         SUMMARY_MAX_TOKENS=8000
         CHAT_MAX_TOKENS=5000
+
+        # --- Large File Chunking (for endpoints with file size limits) ---
+        ENABLE_CHUNKING=true
+        CHUNK_SIZE_MB=20
+        CHUNK_OVERLAP_SECONDS=3
 
         # --- Admin User (created on first run) ---
         ADMIN_USERNAME=admin
@@ -466,11 +480,14 @@ AUTO_PROCESS_DEFAULT_USERNAME=john_doe
 ### Supported File Formats
 
 The auto-processor supports the same audio formats as manual uploads:
-- **Common formats:** MP3, WAV, M4A, FLAC, AAC, OGG
+- **Common formats:** MP3, WAV, M4A, FLAC, AAC, OGG, WebM
 - **Mobile formats:** AMR, 3GP, 3GPP
-- **Video formats:** MP4, MOV, WEBM, WMA
+- **Video formats:** MP4, MOV, WMA
 
-Files in unsupported formats are automatically converted to WAV using ffmpeg.
+**File Processing:**
+- **Supported formats** (MP3, WAV, FLAC, WebM, M4A, AAC, OGG) are processed directly without conversion
+- **Unsupported formats** are automatically converted to 32kbps MP3 using ffmpeg for optimal size/quality balance
+- **No uncompressed WAV files** are created to minimize storage usage
 
 ### Usage Examples
 
@@ -567,7 +584,6 @@ This project is **dual-licensed**:
 Speakr is actively being developed. Future planned features include:
 
 *   **Quick Language Switching:** A faster way to change transcription or output languages on the fly.
-*   **Large File Chunking:** Automatic splitting of large audio files to support transcription endpoints with file size limits (like OpenAI's 25MB limit).
 
 ## Contributing
 

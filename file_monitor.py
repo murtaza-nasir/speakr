@@ -354,6 +354,7 @@ class FileMonitor:
     def _convert_file_if_needed(self, file_path, original_filename):
         """
         Convert audio file to supported format if needed.
+        Uses 32kbps MP3 for optimal size/quality balance.
         
         Args:
             file_path (Path): Current file path
@@ -363,33 +364,40 @@ class FileMonitor:
             Path: Path to the final (possibly converted) file
         """
         filename_lower = original_filename.lower()
-        supported_formats = ('.wav', '.mp3', '.flac')
+        
+        # Support WebM and other formats directly when possible
+        supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
+        convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov')
         
         if filename_lower.endswith(supported_formats):
+            self.logger.info(f"File format {filename_lower} is supported, no conversion needed")
             return file_path
             
-        # Need to convert
-        self.logger.info(f"Converting {filename_lower} format to WAV")
+        if not filename_lower.endswith(convertible_formats):
+            self.logger.warning(f"Unknown file format {filename_lower}, attempting conversion anyway")
+            
+        # Need to convert to 32kbps MP3 for optimal size
+        self.logger.info(f"Converting {filename_lower} format to 32kbps MP3")
         
         base_path = file_path.with_suffix('')
-        temp_wav_path = base_path.with_suffix('.temp.wav')
-        final_wav_path = base_path.with_suffix('.wav')
+        temp_mp3_path = base_path.with_suffix('.temp.mp3')
+        final_mp3_path = base_path.with_suffix('.mp3')
         
         try:
-            # Convert using ffmpeg
+            # Convert to 32kbps MP3 for optimal size/quality balance
             subprocess.run([
                 'ffmpeg', '-i', str(file_path), '-y', 
-                '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', 
-                str(temp_wav_path)
+                '-acodec', 'mp3', '-ab', '32k', '-ar', '16000', '-ac', '1', 
+                str(temp_mp3_path)
             ], check=True, capture_output=True, text=True)
             
-            self.logger.info(f"Successfully converted {file_path} to {temp_wav_path}")
+            self.logger.info(f"Successfully converted {file_path} to {temp_mp3_path} (32kbps MP3)")
             
             # Remove original and rename temp file
             file_path.unlink()
-            temp_wav_path.rename(final_wav_path)
+            temp_mp3_path.rename(final_mp3_path)
             
-            return final_wav_path
+            return final_mp3_path
             
         except FileNotFoundError:
             self.logger.error("ffmpeg not found. Please ensure ffmpeg is installed.")

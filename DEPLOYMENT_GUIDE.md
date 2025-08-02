@@ -22,10 +22,18 @@ Before setting up Speakr, it's important to understand what API endpoints your s
 - **When:** When `USE_ASR_ENDPOINT=false` (default)
 
 **_Common providers using this method:_**
-- **OpenAI Whisper API** (`https://api.openai.com/v1`) - The original OpenAI service
+- **OpenAI Whisper API** (`https://api.openai.com/v1`) - The original OpenAI service (25MB file size limit)
 - **OpenRouter** (`https://openrouter.ai/api/v1`) - Multi-provider API gateway
 - **Local APIs** (`http://localhost:1234/v1`) - Self-hosted solutions like LM Studio, Ollama, or custom deployments
 - **Other API providers** - Any service implementing the OpenAI Whisper API format
+
+**Large File Support:**
+Speakr automatically handles large files that exceed API limits (like OpenAI's 25MB limit) through intelligent chunking:
+- Files are automatically split into optimally-sized chunks (22MB each for OpenAI)
+- Each chunk is processed separately and transcriptions are seamlessly merged
+- No user intervention required - the process is completely transparent
+- Chunking uses 32kbps MP3 conversion for optimal size/quality balance
+- Original file format is preserved when possible (no chunking needed for smaller files)
 
 **ASR Webservice Method:**
 - **Endpoint:** `/asr`
@@ -152,6 +160,11 @@ WHISPER_MODEL=whisper-1
 ALLOW_REGISTRATION=false
 SUMMARY_MAX_TOKENS=8000
 CHAT_MAX_TOKENS=5000
+
+# --- Large File Chunking (for endpoints with file size limits) ---
+ENABLE_CHUNKING=true
+CHUNK_SIZE_MB=20
+CHUNK_OVERLAP_SECONDS=3
 
 # --- Admin User (created on first run) ---
 ADMIN_USERNAME=admin
@@ -400,6 +413,346 @@ ASR_DIARIZE=true
 ASR_MIN_SPEAKERS=1
 ASR_MAX_SPEAKERS=5
 ```
+
+## Large File Chunking Configuration
+
+Speakr automatically handles large files that exceed transcription API limits through intelligent chunking. This is particularly useful for endpoints like OpenAI's Whisper API which has a 25MB file size limit.
+
+### Environment Variables
+
+```env
+# Enable automatic chunking for large files (default: true)
+ENABLE_CHUNKING=true
+
+# Maximum chunk size in MB (default: 20MB for safety margin with 25MB limits)
+# Adjust based on your transcription endpoint's file size limit
+CHUNK_SIZE_MB=20
+
+# Overlap between chunks in seconds to ensure no speech is lost at boundaries
+# Recommended: 3-5 seconds for natural speech (default: 3)
+CHUNK_OVERLAP_SECONDS=3
+```
+
+### How Chunking Works
+
+1. **Automatic Detection:** Speakr automatically detects when a file exceeds the configured chunk size
+2. **Intelligent Splitting:** Files are split into overlapping chunks using 32kbps MP3 conversion for optimal size/quality
+3. **Processing:** Each chunk is processed separately through your transcription API
+4. **Seamless Merging:** Transcriptions are automatically merged back together with overlap handling
+5. **Transparent Process:** Users see a single transcription result with no indication that chunking occurred
+
+### Configuration Guidelines
+
+**For OpenAI Whisper API (25MB limit):**
+```env
+ENABLE_CHUNKING=true
+CHUNK_SIZE_MB=20          # 20MB provides 5MB safety margin
+CHUNK_OVERLAP_SECONDS=3   # 3 seconds overlap for speech continuity
+```
+
+**For APIs with different limits:**
+```env
+ENABLE_CHUNKING=true
+CHUNK_SIZE_MB=45          # For 50MB limit APIs
+CHUNK_OVERLAP_SECONDS=5   # Longer overlap for better accuracy
+```
+
+**To disable chunking (for unlimited APIs):**
+```env
+ENABLE_CHUNKING=false
+```
+
+### Performance Considerations
+
+- **Chunk Size:** Larger chunks mean fewer API calls but higher risk of hitting limits
+- **Overlap:** More overlap improves accuracy but increases processing time
+- **API Costs:** Chunking may increase API usage due to overlap processing
+- **Processing Time:** Large files will take longer due to sequential chunk processing
+
+### Troubleshooting Chunking
+
+**Files still failing with size errors:**
+- Reduce `CHUNK_SIZE_MB` (try 15MB for OpenAI)
+- Check that `ENABLE_CHUNKING=true`
+- Verify your API endpoint's actual file size limit
+
+**Poor transcription quality at chunk boundaries:**
+- Increase `CHUNK_OVERLAP_SECONDS` (try 5-10 seconds)
+- Ensure audio has natural speech pauses for better splitting
+
+**Chunking not working:**
+- Only applies to Standard Whisper API method (`USE_ASR_ENDPOINT=false`)
+- Check container logs for chunking-related messages
+
+## Automated File Processing ("Black Hole" Directory)
+
+Speakr includes a powerful automated file processing feature that monitors a designated directory for new audio files and automatically processes them without manual uploads. This is perfect for batch processing scenarios, integration with recording devices, or automated workflows.
+
+### How It Works
+
+1. **File Monitoring:** Speakr continuously monitors a designated directory for new audio files
+2. **Automatic Detection:** When new audio files are detected, they are automatically queued for processing
+3. **File Stability Check:** Files are checked for stability (not being written to) before processing begins
+4. **Automatic Processing:** Files are moved to the uploads directory and processed using your configured transcription settings
+5. **Database Integration:** Processed recordings appear in your gallery with the title "Auto-processed - [filename]"
+6. **Cleanup:** Original files are automatically removed from the monitored directory after successful processing
+
+### Environment Variables
+
+```env
+# Enable automated file processing (default: false)
+ENABLE_AUTO_PROCESSING=true
+
+# Directory to monitor for new audio files (inside container)
+AUTO_PROCESS_WATCH_DIR=/data/auto-process
+
+# How often to check for new files in seconds (default: 30)
+AUTO_PROCESS_CHECK_INTERVAL=30
+
+# Processing mode: admin_only, user_directories, or single_user (default: admin_only)
+AUTO_PROCESS_MODE=admin_only
+
+# For single_user mode: specify which username to assign all files to
+AUTO_PROCESS_DEFAULT_USERNAME=your_username
+```
+
+### Docker Volume Configuration
+
+To use automated file processing, you must mount the auto-process directory in your Docker configuration:
+
+```yaml
+services:
+  app:
+    image: learnedmachine/speakr:latest
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+      - ./auto-process:/data/auto-process  # Required for automated processing
+```
+
+### Processing Modes
+
+#### Mode 1: Admin Only (Default)
+```env
+AUTO_PROCESS_MODE=admin_only
+```
+- All files in the main auto-process directory are assigned to the admin user
+- Simple setup, good for single-user scenarios or admin-managed processing
+- Directory structure: `auto-process/file.mp3`
+
+#### Mode 2: User Directories
+```env
+AUTO_PROCESS_MODE=user_directories
+```
+- Create subdirectories for each user using their user ID
+- Files are automatically assigned to the corresponding user
+- Directory structure:
+  ```
+  auto-process/
+  ├── user1/file1.mp3     # Assigned to user ID 1
+  ├── user5/file2.wav     # Assigned to user ID 5
+  ├── 123/file3.m4a       # Assigned to user ID 123
+  └── invalid/            # Files in invalid directories are ignored
+  ```
+
+#### Mode 3: Single User
+```env
+AUTO_PROCESS_MODE=single_user
+AUTO_PROCESS_DEFAULT_USERNAME=john_doe
+```
+- All files are assigned to a specific username (not user ID)
+- Useful when you want all auto-processed files to go to a specific non-admin user
+- Directory structure: `auto-process/file.mp3`
+
+### Setup Instructions
+
+#### 1. Enable Auto-Processing in Environment
+
+Add to your `.env` file:
+```env
+# Basic setup (admin_only mode)
+ENABLE_AUTO_PROCESSING=true
+AUTO_PROCESS_WATCH_DIR=/data/auto-process
+AUTO_PROCESS_CHECK_INTERVAL=30
+AUTO_PROCESS_MODE=admin_only
+```
+
+#### 2. Update Docker Compose Configuration
+
+```yaml
+services:
+  app:
+    image: learnedmachine/speakr:latest
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+      - ./auto-process:/data/auto-process  # Add this line
+```
+
+#### 3. Create the Auto-Process Directory
+
+```bash
+# Create the directory on your host system
+mkdir auto-process
+
+# For user_directories mode, create user subdirectories
+mkdir -p auto-process/user1
+mkdir -p auto-process/user5
+```
+
+#### 4. Restart the Container
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+### Supported File Formats
+
+The auto-processor supports the same audio formats as manual uploads:
+- **Common formats:** MP3, WAV, M4A, FLAC, AAC, OGG, WebM
+- **Mobile formats:** AMR, 3GP, 3GPP
+- **Video formats:** MP4, MOV, WMA
+
+**File Processing:**
+- **Supported formats** are processed directly without conversion
+- **Unsupported formats** are automatically converted to 32kbps MP3 using ffmpeg
+- **No uncompressed WAV files** are created to minimize storage usage
+
+### Usage Examples
+
+#### Basic Usage (Admin Mode)
+```bash
+# Copy files to the auto-process directory
+cp /path/to/meeting1.mp3 auto-process/
+cp /path/to/meeting2.wav auto-process/
+
+# Files will be automatically processed within 30 seconds (default interval)
+```
+
+#### User Directory Mode
+```bash
+# Create user directories (if not already created)
+mkdir -p auto-process/user1
+mkdir -p auto-process/user5
+
+# Drop files for specific users
+cp meeting_with_john.mp3 auto-process/user1/
+cp team_standup.wav auto-process/user5/
+```
+
+#### Batch Processing
+```bash
+# Process multiple files at once
+cp /recordings/*.mp3 auto-process/
+cp /meetings/2024-01/*.wav auto-process/
+```
+
+#### Network Share Integration
+```bash
+# Mount a network share to the auto-process directory
+# In docker-compose.yml:
+volumes:
+  - /mnt/network-recordings:/data/auto-process
+```
+
+### Monitoring and Logs
+
+Monitor auto-processing activity through container logs:
+
+```bash
+# View real-time logs
+docker logs speakr -f
+
+# View recent logs
+docker logs speakr --tail 100
+```
+
+**Example log entries:**
+```
+File monitor started in 'admin_only' mode, watching: /data/auto-process
+Found new audio file for user 1: /data/auto-process/meeting.mp3
+Copied /data/auto-process/meeting.mp3 to /data/uploads/auto_20250119021530_meeting.mp3
+Created recording record with ID: 123 for user: admin
+Started background processing for recording ID: 123
+Processing completed for recording ID: 123
+```
+
+### Best Practices
+
+1. **File Naming:** Use descriptive filenames as they become part of the auto-generated title
+2. **Batch Processing:** You can drop multiple files at once; they'll be processed sequentially
+3. **Network Shares:** Mount network drives or NAS shares to the auto-process directory for remote file drops
+4. **Monitoring:** Set up log monitoring to track processing status and catch any errors
+5. **Cleanup:** Processed files are automatically moved and deleted from the auto-process directory
+6. **File Stability:** The system waits for files to be stable (not being written to) before processing
+7. **Error Handling:** Failed files are logged but don't stop processing of other files
+
+### Integration Scenarios
+
+#### Recording Device Integration
+```bash
+# Configure recording devices to save directly to auto-process directory
+# Example: OBS Studio, Audacity, or hardware recorders
+```
+
+#### Automated Workflow Integration
+```bash
+# Use with cron jobs or other automation tools
+# Example: Process files from a specific source every hour
+0 * * * * cp /source/recordings/*.mp3 /path/to/speakr/auto-process/
+```
+
+#### Multi-User Environments
+```env
+# Configure for multiple users with separate directories
+AUTO_PROCESS_MODE=user_directories
+
+# Users can drop files in their respective directories:
+# auto-process/user1/ - for user ID 1
+# auto-process/user2/ - for user ID 2
+```
+
+### Troubleshooting
+
+**Files not being processed:**
+- Check that `ENABLE_AUTO_PROCESSING=true` in your `.env` file
+- Verify the auto-process directory is properly mounted in docker-compose.yml
+- Check container logs for error messages: `docker logs speakr`
+- Ensure the directory exists on the host system
+
+**Permission issues:**
+- Ensure the auto-process directory has proper read/write permissions
+- The container runs as the user specified in the Docker configuration
+- Try: `sudo chown -R 1000:1000 ./auto-process`
+
+**Processing errors:**
+- Check that your transcription API is properly configured
+- Verify ffmpeg is available in the container for file conversion
+- Monitor container logs for specific error messages
+- Ensure API keys and endpoints are correctly configured
+
+**User assignment issues (user_directories mode):**
+- Verify user directories are named correctly (e.g., `user1`, `user5`, `123`)
+- Check that the user IDs exist in your Speakr database
+- Files in incorrectly named directories will be ignored
+
+**Files being processed multiple times:**
+- Ensure files are completely written before being placed in the auto-process directory
+- The system includes file stability checks, but very large files may need more time
+- Consider increasing `AUTO_PROCESS_CHECK_INTERVAL` for large file scenarios
 
 ## Advanced ASR Configuration
 
