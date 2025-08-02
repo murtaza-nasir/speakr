@@ -1679,13 +1679,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                     
                     if (isAudioFile) {
-                        // Check OpenAI-specific 25MB limit when not using ASR endpoint
-                        if (!useAsrEndpoint.value && fileObject.size > 25 * 1024 * 1024) {
-                            setGlobalError(`File "${fileObject.name}" exceeds OpenAI's 25MB limit. Please use a smaller file or enable the ASR endpoint for larger files.`);
-                            continue;
-                        }
-                        
-                        // Check general file size limit
+                        // Only check general file size limit (chunking handles OpenAI 25MB limit automatically)
                         if (fileObject.size > maxFileSizeMB.value * 1024 * 1024) {
                             setGlobalError(`File "${fileObject.name}" exceeds the maximum size of ${maxFileSizeMB.value} MB and was skipped.`);
                             continue;
@@ -2045,8 +2039,51 @@ document.addEventListener('DOMContentLoaded', () => {
                         throw new Error('No audio streams available for recording.');
                     }
 
-                    // Setup MediaRecorder
-                    mediaRecorder.value = new MediaRecorder(combinedStream);
+                    // Setup MediaRecorder with optimized settings for transcription
+                    const getOptimizedRecorderOptions = () => {
+                        // Define transcription-optimized options in order of preference
+                        const optionsList = [
+                            // Best option: Opus codec at 32kbps (excellent compression for speech)
+                            {
+                                mimeType: 'audio/webm;codecs=opus',
+                                audioBitsPerSecond: 32000
+                            },
+                            // Fallback 1: Opus at 64kbps (slightly higher quality)
+                            {
+                                mimeType: 'audio/webm;codecs=opus',
+                                audioBitsPerSecond: 64000
+                            },
+                            // Fallback 2: WebM with reduced bitrate
+                            {
+                                mimeType: 'audio/webm',
+                                audioBitsPerSecond: 48000
+                            },
+                            // Fallback 3: MP4 with reduced bitrate
+                            {
+                                mimeType: 'audio/mp4',
+                                audioBitsPerSecond: 48000
+                            }
+                        ];
+
+                        // Test each option to find the first supported one
+                        for (const options of optionsList) {
+                            if (MediaRecorder.isTypeSupported(options.mimeType)) {
+                                console.log(`Using optimized audio recording: ${options.mimeType} at ${options.audioBitsPerSecond}bps`);
+                                showToast('Recording optimized for transcription', 'fa-compress-alt');
+                                return options;
+                            }
+                        }
+
+                        // Final fallback: no options (browser default)
+                        console.log('Using browser default audio recording settings');
+                        showToast('Recording with default quality', 'fa-microphone');
+                        return undefined;
+                    };
+
+                    const recorderOptions = getOptimizedRecorderOptions();
+                    mediaRecorder.value = recorderOptions 
+                        ? new MediaRecorder(combinedStream, recorderOptions)
+                        : new MediaRecorder(combinedStream);
                     mediaRecorder.value.ondataavailable = event => audioChunks.value.push(event.data);
                     mediaRecorder.value.onstop = () => {
                         const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
@@ -3159,6 +3196,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     console.error('Error polling for inbox recordings:', error);
                 }
+            };
+
+            // --- Audio Format Detection ---
+            const detectSupportedAudioFormats = () => {
+                const formats = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm;codecs=vp9',
+                    'audio/webm',
+                    'audio/mp4;codecs=mp4a.40.2',
+                    'audio/mp4',
+                    'audio/ogg;codecs=opus',
+                    'audio/wav'
+                ];
+
+                const supportedFormats = formats.filter(format => MediaRecorder.isTypeSupported(format));
+                console.log('Supported audio recording formats:', supportedFormats);
+                
+                if (supportedFormats.length === 0) {
+                    console.warn('No optimized audio formats supported, will use browser default');
+                }
+                
+                return supportedFormats;
             };
 
             // --- System Audio Detection ---

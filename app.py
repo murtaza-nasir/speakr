@@ -36,6 +36,7 @@ from babel.dates import format_datetime
 import ast
 import logging
 import secrets
+import time
 from audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 
 # Load environment variables from .env file
@@ -1283,12 +1284,29 @@ def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_a
             
             app.logger.info(f"Created {len(chunks)} chunks, processing each with Whisper API...")
             
-            # Process each chunk
+            # Process each chunk with proper timeout and retry handling
             chunk_results = []
+            
+            # Create HTTP client with proper timeouts
+            timeout_config = httpx.Timeout(
+                connect=30.0,    # 30 seconds to establish connection
+                read=300.0,      # 5 minutes to read response (for large audio files)
+                write=60.0,      # 1 minute to write request
+                pool=10.0        # 10 seconds to get connection from pool
+            )
+            
+            http_client_with_timeout = httpx.Client(
+                verify=True,
+                timeout=timeout_config,
+                limits=httpx.Limits(max_connections=5, max_keepalive_connections=2)
+            )
+            
             transcription_client = OpenAI(
                 api_key=transcription_api_key,
                 base_url=transcription_base_url,
-                http_client=http_client_no_proxy
+                http_client=http_client_with_timeout,
+                max_retries=2,  # Limit retries to avoid excessive delays
+                timeout=300.0   # 5 minute timeout for API calls
             )
             whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
             
@@ -1300,42 +1318,101 @@ def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_a
                     user_transcription_language = recording.owner.transcription_language
             
             for i, chunk in enumerate(chunks):
-                try:
-                    app.logger.info(f"Processing chunk {i+1}/{len(chunks)}: {chunk['filename']} ({chunk['size_mb']:.1f}MB)")
-                    
-                    with open(chunk['path'], 'rb') as chunk_file:
-                        transcription_params = {
-                            "model": whisper_model,
-                            "file": chunk_file
-                        }
+                max_chunk_retries = 3
+                chunk_retry_count = 0
+                chunk_success = False
+                
+                while chunk_retry_count < max_chunk_retries and not chunk_success:
+                    try:
+                        retry_suffix = f" (retry {chunk_retry_count + 1}/{max_chunk_retries})" if chunk_retry_count > 0 else ""
+                        app.logger.info(f"Processing chunk {i+1}/{len(chunks)}: {chunk['filename']} ({chunk['size_mb']:.1f}MB){retry_suffix}")
                         
-                        if user_transcription_language:
-                            transcription_params["language"] = user_transcription_language
+                        # Log detailed timing for each step
+                        step_start_time = time.time()
                         
-                        transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                        # Step 1: File opening
+                        file_open_start = time.time()
+                        with open(chunk['path'], 'rb') as chunk_file:
+                            file_open_time = time.time() - file_open_start
+                            app.logger.info(f"Chunk {i+1}: File opened in {file_open_time:.2f}s")
+                            
+                            # Step 2: Prepare transcription parameters
+                            param_start = time.time()
+                            transcription_params = {
+                                "model": whisper_model,
+                                "file": chunk_file
+                            }
+                            
+                            if user_transcription_language:
+                                transcription_params["language"] = user_transcription_language
+                            
+                            param_time = time.time() - param_start
+                            app.logger.info(f"Chunk {i+1}: Parameters prepared in {param_time:.2f}s")
+                            
+                            # Step 3: API call with detailed timing
+                            api_start = time.time()
+                            app.logger.info(f"Chunk {i+1}: Starting API call to {transcription_base_url}")
+                            
+                            # Log connection details
+                            app.logger.info(f"Chunk {i+1}: Using timeout config - connect: 30s, read: 300s, write: 60s")
+                            app.logger.info(f"Chunk {i+1}: Max retries: 2, API timeout: 300s")
+                            
+                            transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                            
+                            api_time = time.time() - api_start
+                            app.logger.info(f"Chunk {i+1}: API call completed in {api_time:.2f}s")
+                            
+                            # Step 4: Process response
+                            response_start = time.time()
+                            chunk_result = {
+                                'index': chunk['index'],
+                                'start_time': chunk['start_time'],
+                                'end_time': chunk['end_time'],
+                                'duration': chunk['duration'],
+                                'size_mb': chunk['size_mb'],
+                                'transcription': transcript.text,
+                                'filename': chunk['filename'],
+                                'processing_time': api_time  # Store the actual API processing time
+                            }
+                            chunk_results.append(chunk_result)
+                            response_time = time.time() - response_start
+                            
+                            total_time = time.time() - step_start_time
+                            app.logger.info(f"Chunk {i+1}: Response processed in {response_time:.2f}s")
+                            app.logger.info(f"Chunk {i+1}: Total processing time: {total_time:.2f}s")
+                            app.logger.info(f"Chunk {i+1} transcribed successfully: {len(transcript.text)} characters")
+                            chunk_success = True
+                            
+                    except Exception as chunk_error:
+                        chunk_retry_count += 1
+                        error_msg = str(chunk_error)
                         
-                        chunk_result = {
-                            'index': chunk['index'],
-                            'start_time': chunk['start_time'],
-                            'end_time': chunk['end_time'],
-                            'transcription': transcript.text,
-                            'filename': chunk['filename']
-                        }
-                        chunk_results.append(chunk_result)
-                        
-                        app.logger.info(f"Chunk {i+1} transcribed successfully: {len(transcript.text)} characters")
-                        
-                except Exception as chunk_error:
-                    app.logger.error(f"Error processing chunk {i+1} ({chunk['filename']}): {chunk_error}")
-                    # Continue with other chunks, but note the failure
-                    chunk_result = {
-                        'index': chunk['index'],
-                        'start_time': chunk['start_time'],
-                        'end_time': chunk['end_time'],
-                        'transcription': f"[Chunk {i+1} transcription failed: {str(chunk_error)}]",
-                        'filename': chunk['filename']
-                    }
-                    chunk_results.append(chunk_result)
+                        if chunk_retry_count < max_chunk_retries:
+                            # Determine wait time based on error type
+                            if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
+                                wait_time = 30  # 30 seconds for timeout errors
+                            elif "rate limit" in error_msg.lower():
+                                wait_time = 60  # 1 minute for rate limit errors
+                            else:
+                                wait_time = 15  # 15 seconds for other errors
+                            
+                            app.logger.warning(f"Chunk {i+1} failed (attempt {chunk_retry_count}/{max_chunk_retries}): {chunk_error}. Retrying in {wait_time} seconds...")
+                            time.sleep(wait_time)
+                        else:
+                            app.logger.error(f"Chunk {i+1} failed after {max_chunk_retries} attempts: {chunk_error}")
+                            # Add failed chunk to results
+                            chunk_result = {
+                                'index': chunk['index'],
+                                'start_time': chunk['start_time'],
+                                'end_time': chunk['end_time'],
+                                'transcription': f"[Chunk {i+1} transcription failed after {max_chunk_retries} attempts: {str(chunk_error)}]",
+                                'filename': chunk['filename']
+                            }
+                            chunk_results.append(chunk_result)
+                
+                # Add small delay between chunks to avoid overwhelming the API
+                if i < len(chunks) - 1:  # Don't delay after the last chunk
+                    time.sleep(2)
             
             # Merge transcriptions
             app.logger.info(f"Merging {len(chunk_results)} chunk transcriptions...")
@@ -1343,6 +1420,17 @@ def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_a
             
             if not merged_transcription.strip():
                 raise ChunkProcessingError("Merged transcription is empty")
+            
+            # Log detailed performance statistics and analysis
+            chunking_service.log_processing_statistics(chunk_results)
+            
+            # Get performance recommendations
+            recommendations = chunking_service.get_performance_recommendations(chunk_results)
+            if recommendations:
+                app.logger.info("=== PERFORMANCE RECOMMENDATIONS ===")
+                for i, rec in enumerate(recommendations, 1):
+                    app.logger.info(f"{i}. {rec}")
+                app.logger.info("=== END RECOMMENDATIONS ===")
             
             app.logger.info(f"Chunked transcription completed. Final length: {len(merged_transcription)} characters")
             return merged_transcription
@@ -2920,9 +3008,16 @@ def upload_file():
         original_file_size = file.tell()
         file.seek(0)
 
-        # Check size limit before saving
+        # Check size limit before saving - only enforce if chunking is disabled or using ASR endpoint
         max_content_length = app.config.get('MAX_CONTENT_LENGTH')
-        if max_content_length and original_file_size > max_content_length:
+        
+        # Skip size check if chunking is enabled and using OpenAI Whisper API
+        should_enforce_size_limit = True
+        if ENABLE_CHUNKING and chunking_service and not USE_ASR_ENDPOINT:
+            should_enforce_size_limit = False
+            app.logger.info(f"Chunking enabled for OpenAI Whisper API - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+        
+        if should_enforce_size_limit and max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
 
         file.save(filepath)

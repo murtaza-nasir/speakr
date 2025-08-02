@@ -32,6 +32,7 @@ class AudioChunkingService:
         self.max_chunk_size_mb = max_chunk_size_mb
         self.overlap_seconds = overlap_seconds
         self.max_chunk_size_bytes = max_chunk_size_mb * 1024 * 1024
+        self.chunk_stats = []  # Track processing statistics
         
     def needs_chunking(self, file_path: str, use_asr_endpoint: bool = False) -> bool:
         """
@@ -77,46 +78,92 @@ class AudioChunkingService:
             logger.error(f"Error getting audio duration for {file_path}: {e}")
             return None
     
-    def calculate_chunk_duration(self, file_path: str) -> Optional[float]:
+    def convert_to_wav_and_get_info(self, file_path: str, temp_dir: str) -> Tuple[str, float, float]:
         """
-        Calculate optimal chunk duration based on file size and bitrate.
+        Convert the input file to WAV format and get its size and duration info.
         
         Args:
-            file_path: Path to the audio file
+            file_path: Path to the source audio file
+            temp_dir: Directory to store the temporary WAV file
             
         Returns:
-            Chunk duration in seconds, or None if unable to calculate
+            Tuple of (wav_file_path, duration_seconds, size_bytes)
         """
         try:
-            file_size = os.path.getsize(file_path)
-            duration = self.get_audio_duration(file_path)
+            # Generate WAV filename
+            base_name = os.path.splitext(os.path.basename(file_path))[0]
+            wav_filename = f"{base_name}_converted.wav"
+            wav_path = os.path.join(temp_dir, wav_filename)
             
-            if not duration:
-                # Fallback: assume reasonable bitrate for chunk calculation
-                # For 16kHz mono PCM: ~32KB/s, for MP3: ~128kbps = ~16KB/s
-                estimated_bitrate_bytes_per_sec = 32000  # Conservative estimate
-                chunk_duration = (self.max_chunk_size_bytes / estimated_bitrate_bytes_per_sec) - self.overlap_seconds
-                return max(60, chunk_duration)  # Minimum 60 seconds per chunk
+            # Convert to WAV using the same settings we use for chunks
+            cmd = [
+                'ffmpeg', '-i', file_path,
+                '-acodec', 'pcm_s16le',
+                '-ar', '16000',
+                '-ac', '1',
+                '-y',  # Overwrite output file
+                wav_path
+            ]
             
-            # Calculate actual bitrate
-            bitrate_bytes_per_sec = file_size / duration
+            logger.info(f"Converting {file_path} to WAV format for accurate chunking...")
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise ValueError(f"ffmpeg conversion failed: {result.stderr}")
             
-            # Calculate chunk duration to stay under size limit
-            chunk_duration = (self.max_chunk_size_bytes / bitrate_bytes_per_sec) - self.overlap_seconds
+            if not os.path.exists(wav_path):
+                raise ValueError("WAV file was not created")
             
-            # Ensure reasonable chunk size (minimum 60 seconds, maximum 30 minutes)
-            chunk_duration = max(60, min(1800, chunk_duration))
+            # Get the size and duration of the converted WAV file
+            wav_size = os.path.getsize(wav_path)
+            wav_duration = self.get_audio_duration(wav_path)
             
-            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s for file {file_path}")
+            if not wav_duration:
+                raise ValueError("Could not determine WAV file duration")
+            
+            logger.info(f"Converted WAV: {wav_size/1024/1024:.1f}MB, {wav_duration:.1f}s")
+            return wav_path, wav_duration, wav_size
+            
+        except Exception as e:
+            logger.error(f"Error converting file to WAV: {e}")
+            raise
+
+    def calculate_chunk_duration_from_wav(self, wav_size: float, wav_duration: float) -> float:
+        """
+        Calculate optimal chunk duration based on actual WAV file size.
+        
+        Args:
+            wav_size: Size of the WAV file in bytes
+            wav_duration: Duration of the WAV file in seconds
+            
+        Returns:
+            Chunk duration in seconds
+        """
+        try:
+            # Calculate actual bitrate from the WAV file
+            bitrate_bytes_per_sec = wav_size / wav_duration
+            
+            # Calculate chunk duration to stay under size limit with safety margin
+            safety_factor = 0.9  # Use 90% of max size for safety
+            target_chunk_size = self.max_chunk_size_bytes * safety_factor
+            
+            chunk_duration = (target_chunk_size / bitrate_bytes_per_sec) - self.overlap_seconds
+            
+            # Ensure reasonable chunk size (minimum 60 seconds, maximum 20 minutes)
+            chunk_duration = max(60, min(1200, chunk_duration))
+            
+            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s based on WAV bitrate {bitrate_bytes_per_sec:.0f} bytes/sec")
             return chunk_duration
             
         except Exception as e:
-            logger.error(f"Error calculating chunk duration for {file_path}: {e}")
+            logger.error(f"Error calculating chunk duration from WAV: {e}")
             return 300  # Default 5 minutes
     
     def create_chunks(self, file_path: str, temp_dir: str) -> List[Dict[str, Any]]:
         """
         Split audio file into overlapping chunks.
+        
+        First converts the file to WAV format to get accurate size information,
+        then calculates optimal chunk duration based on the actual WAV file size.
         
         Args:
             file_path: Path to the source audio file
@@ -126,15 +173,14 @@ class AudioChunkingService:
             List of chunk information dictionaries
         """
         chunks = []
+        wav_path = None
         
         try:
-            duration = self.get_audio_duration(file_path)
-            if not duration:
-                raise ValueError("Could not determine audio duration")
+            # Step 1: Convert to WAV and get accurate size/duration info
+            wav_path, wav_duration, wav_size = self.convert_to_wav_and_get_info(file_path, temp_dir)
             
-            chunk_duration = self.calculate_chunk_duration(file_path)
-            if not chunk_duration:
-                raise ValueError("Could not calculate chunk duration")
+            # Step 2: Calculate optimal chunk duration based on actual WAV file
+            chunk_duration = self.calculate_chunk_duration_from_wav(wav_size, wav_duration)
             
             step_duration = chunk_duration - self.overlap_seconds
             current_start = 0
@@ -142,9 +188,9 @@ class AudioChunkingService:
             
             logger.info(f"Splitting {file_path} into chunks of {chunk_duration}s with {self.overlap_seconds}s overlap")
             
-            while current_start < duration:
+            while current_start < wav_duration:
                 # Calculate end time for this chunk
-                chunk_end = min(current_start + chunk_duration, duration)
+                chunk_end = min(current_start + chunk_duration, wav_duration)
                 actual_duration = chunk_end - current_start
                 
                 # Skip very short chunks at the end
@@ -156,14 +202,12 @@ class AudioChunkingService:
                 chunk_filename = f"{base_name}_chunk_{chunk_index:03d}.wav"
                 chunk_path = os.path.join(temp_dir, chunk_filename)
                 
-                # Extract chunk using ffmpeg
+                # Extract chunk from the converted WAV file (more efficient than re-converting)
                 cmd = [
-                    'ffmpeg', '-i', file_path,
+                    'ffmpeg', '-i', wav_path,
                     '-ss', str(current_start),
                     '-t', str(actual_duration),
-                    '-acodec', 'pcm_s16le',
-                    '-ar', '16000',
-                    '-ac', '1',
+                    '-acodec', 'copy',  # Copy codec since it's already in the right format
                     '-y',  # Overwrite output file
                     chunk_path
                 ]
@@ -176,6 +220,10 @@ class AudioChunkingService:
                 # Verify chunk was created and get its size
                 if os.path.exists(chunk_path):
                     chunk_size = os.path.getsize(chunk_path)
+                    
+                    # Verify chunk size is within limits
+                    if chunk_size > self.max_chunk_size_bytes:
+                        logger.warning(f"Chunk {chunk_index} is {chunk_size/1024/1024:.1f}MB, exceeds {self.max_chunk_size_mb}MB limit")
                     
                     chunk_info = {
                         'index': chunk_index,
@@ -210,6 +258,14 @@ class AudioChunkingService:
                 except Exception:
                     pass
             raise
+        finally:
+            # Clean up the temporary WAV file
+            if wav_path and os.path.exists(wav_path):
+                try:
+                    os.remove(wav_path)
+                    logger.debug(f"Cleaned up temporary WAV file: {wav_path}")
+                except Exception as e:
+                    logger.warning(f"Error cleaning up temporary WAV file: {e}")
     
     def merge_transcriptions(self, chunk_results: List[Dict[str, Any]]) -> str:
         """
@@ -334,12 +390,173 @@ class AudioChunkingService:
         similarity = intersection / union if union > 0 else 0
         return similarity >= threshold
     
-    def cleanup_chunks(self, chunks: List[Dict[str, Any]]) -> None:
+    def analyze_chunk_audio_properties(self, chunk_path: str) -> Dict[str, Any]:
         """
-        Clean up temporary chunk files.
+        Analyze audio properties of a chunk that might affect processing time.
+        
+        Args:
+            chunk_path: Path to the chunk file
+            
+        Returns:
+            Dictionary with audio analysis results
+        """
+        try:
+            # Get detailed audio information using ffprobe
+            cmd = [
+                'ffprobe', '-v', 'quiet', '-print_format', 'json',
+                '-show_format', '-show_streams', chunk_path
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            probe_data = json.loads(result.stdout)
+            
+            audio_stream = None
+            for stream in probe_data.get('streams', []):
+                if stream.get('codec_type') == 'audio':
+                    audio_stream = stream
+                    break
+            
+            if not audio_stream:
+                return {'error': 'No audio stream found'}
+            
+            format_info = probe_data.get('format', {})
+            
+            analysis = {
+                'duration': float(format_info.get('duration', 0)),
+                'size_bytes': int(format_info.get('size', 0)),
+                'bitrate': int(format_info.get('bit_rate', 0)),
+                'sample_rate': int(audio_stream.get('sample_rate', 0)),
+                'channels': int(audio_stream.get('channels', 0)),
+                'codec': audio_stream.get('codec_name', 'unknown'),
+                'bits_per_sample': int(audio_stream.get('bits_per_raw_sample', 0)),
+            }
+            
+            # Calculate some derived metrics
+            if analysis['duration'] > 0:
+                analysis['effective_bitrate'] = (analysis['size_bytes'] * 8) / analysis['duration']
+                analysis['compression_ratio'] = analysis['bitrate'] / analysis['effective_bitrate'] if analysis['effective_bitrate'] > 0 else 0
+            
+            return analysis
+            
+        except Exception as e:
+            logger.warning(f"Error analyzing chunk audio properties: {e}")
+            return {'error': str(e)}
+    
+    def log_processing_statistics(self, chunk_results: List[Dict[str, Any]]) -> None:
+        """
+        Log detailed statistics about chunk processing performance.
+        
+        Args:
+            chunk_results: List of chunk processing results with timing info
+        """
+        if not chunk_results:
+            return
+        
+        logger.info("=== CHUNK PROCESSING STATISTICS ===")
+        
+        total_chunks = len(chunk_results)
+        processing_times = []
+        sizes = []
+        durations = []
+        
+        for i, result in enumerate(chunk_results):
+            processing_time = result.get('processing_time', 0)
+            chunk_size = result.get('size_mb', 0)
+            chunk_duration = result.get('duration', 0)
+            
+            processing_times.append(processing_time)
+            sizes.append(chunk_size)
+            durations.append(chunk_duration)
+            
+            # Log individual chunk stats
+            rate = chunk_duration / processing_time if processing_time > 0 else 0
+            logger.info(f"Chunk {i+1}: {processing_time:.1f}s processing, {chunk_size:.1f}MB, {chunk_duration:.1f}s audio (rate: {rate:.2f}x)")
+        
+        # Calculate summary statistics
+        if processing_times:
+            avg_time = sum(processing_times) / len(processing_times)
+            min_time = min(processing_times)
+            max_time = max(processing_times)
+            
+            avg_size = sum(sizes) / len(sizes)
+            avg_duration = sum(durations) / len(durations)
+            
+            total_audio_time = sum(durations)
+            total_processing_time = sum(processing_times)
+            overall_rate = total_audio_time / total_processing_time if total_processing_time > 0 else 0
+            
+            logger.info(f"Summary: {total_chunks} chunks, {total_audio_time:.1f}s audio in {total_processing_time:.1f}s")
+            logger.info(f"Average: {avg_time:.1f}s processing, {avg_size:.1f}MB, {avg_duration:.1f}s audio")
+            logger.info(f"Range: {min_time:.1f}s - {max_time:.1f}s processing time")
+            logger.info(f"Overall rate: {overall_rate:.2f}x realtime")
+            
+            # Identify performance outliers
+            if max_time > avg_time * 2:
+                slow_chunks = [i for i, t in enumerate(processing_times) if t > avg_time * 1.5]
+                logger.warning(f"Performance outliers detected: chunks {[i+1 for i in slow_chunks]} took significantly longer")
+                
+                # Suggest possible causes
+                logger.info("Possible causes for slow processing:")
+                logger.info("- OpenAI API server load/performance variations")
+                logger.info("- Network latency or connection issues")
+                logger.info("- Audio content complexity (silence, noise, multiple speakers)")
+                logger.info("- Temporary API rate limiting or throttling")
+        
+        logger.info("=== END STATISTICS ===")
+    
+    def get_performance_recommendations(self, chunk_results: List[Dict[str, Any]]) -> List[str]:
+        """
+        Generate performance recommendations based on processing results.
+        
+        Args:
+            chunk_results: List of chunk processing results
+            
+        Returns:
+            List of recommendation strings
+        """
+        recommendations = []
+        
+        if not chunk_results:
+            return recommendations
+        
+        processing_times = [r.get('processing_time', 0) for r in chunk_results]
+        
+        if processing_times:
+            avg_time = sum(processing_times) / len(processing_times)
+            max_time = max(processing_times)
+            
+            # Check for high variance in processing times
+            if max_time > avg_time * 3:
+                recommendations.append("High variance in processing times detected. Consider implementing retry logic with exponential backoff.")
+            
+            # Check for overall slow processing
+            total_audio = sum(r.get('duration', 0) for r in chunk_results)
+            total_processing = sum(processing_times)
+            rate = total_audio / total_processing if total_processing > 0 else 0
+            
+            if rate < 0.5:  # Less than 0.5x realtime
+                recommendations.append("Overall processing is slow. Consider using smaller chunks or a different transcription service.")
+            
+            # Check for timeout issues
+            if any(t > 300 for t in processing_times):  # 5+ minutes
+                recommendations.append("Some chunks took over 5 minutes. Consider implementing timeout handling and chunk retry logic.")
+            
+            # Check chunk size optimization
+            avg_size = sum(r.get('size_mb', 0) for r in chunk_results) / len(chunk_results)
+            if avg_size < 10:
+                recommendations.append("Chunks are relatively small. Consider increasing chunk size for better efficiency.")
+            elif avg_size > 22:
+                recommendations.append("Chunks are close to size limit. Consider reducing chunk size for more reliable processing.")
+        
+        return recommendations
+    
+    def cleanup_chunks(self, chunks: List[Dict[str, Any]], temp_wav_path: str = None) -> None:
+        """
+        Clean up temporary chunk files and WAV file.
         
         Args:
             chunks: List of chunk information dictionaries
+            temp_wav_path: Optional path to temporary WAV file to clean up
         """
         for chunk in chunks:
             try:
@@ -349,6 +566,14 @@ class AudioChunkingService:
                     logger.debug(f"Cleaned up chunk file: {chunk_path}")
             except Exception as e:
                 logger.warning(f"Error cleaning up chunk {chunk.get('filename', 'unknown')}: {e}")
+        
+        # Clean up temporary WAV file if provided
+        if temp_wav_path and os.path.exists(temp_wav_path):
+            try:
+                os.remove(temp_wav_path)
+                logger.debug(f"Cleaned up temporary WAV file: {temp_wav_path}")
+            except Exception as e:
+                logger.warning(f"Error cleaning up temporary WAV file: {e}")
 
 class ChunkProcessingError(Exception):
     """Exception raised when chunk processing fails."""
