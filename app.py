@@ -36,6 +36,7 @@ from babel.dates import format_datetime
 import ast
 import logging
 import secrets
+from audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 
 # Load environment variables from .env file
 load_dotenv()
@@ -865,6 +866,17 @@ ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
 ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS')
 ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS')
 
+# Audio chunking configuration for large files with OpenAI Whisper API
+ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
+CHUNK_SIZE_MB = int(os.environ.get('CHUNK_SIZE_MB', '20'))  # 20MB default for safety margin
+CHUNK_OVERLAP_SECONDS = int(os.environ.get('CHUNK_OVERLAP_SECONDS', '3'))  # 3 seconds overlap
+
+# Initialize chunking service
+chunking_service = AudioChunkingService(
+    max_chunk_size_mb=CHUNK_SIZE_MB,
+    overlap_seconds=CHUNK_OVERLAP_SECONDS
+) if ENABLE_CHUNKING else None
+
 app.logger.info(f"Using OpenRouter model for summaries: {TEXT_MODEL_NAME}")
 app.logger.info(f"Using Whisper API at: {transcription_base_url}")
 if USE_ASR_ENDPOINT:
@@ -1185,36 +1197,19 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             recording.status = 'PROCESSING'
             db.session.commit()
 
-            # --- Step 1: Transcription ---
-            with open(filepath, 'rb') as audio_file:
-                transcription_client = OpenAI(
-                    api_key=transcription_api_key,
-                    base_url=transcription_base_url,
-                    http_client=http_client_no_proxy
-                )
-                whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
-                
-                user_transcription_language = None
-                user_output_language = None
-                if recording and recording.owner:
-                    user_transcription_language = recording.owner.transcription_language
-                    user_output_language = recording.owner.output_language
-                
-                transcription_language = user_transcription_language
-
-                transcription_params = {
-                    "model": whisper_model,
-                    "file": audio_file
-                }
-
-                if transcription_language:
-                    transcription_params["language"] = transcription_language
-                    app.logger.info(f"Using transcription language: {transcription_language}")
-                else:
-                    app.logger.info("Transcription language not set, using auto-detection or service default.")
-
-                transcript = transcription_client.audio.transcriptions.create(**transcription_params)
-            recording.transcription = transcript.text
+            # Check if chunking is needed for large files
+            needs_chunking = (chunking_service and 
+                            ENABLE_CHUNKING and 
+                            chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT))
+            
+            if needs_chunking:
+                app.logger.info(f"File {filepath} is large ({os.path.getsize(filepath)/1024/1024:.1f}MB), using chunking for transcription")
+                transcription_text = transcribe_with_chunking(app_context, recording_id, filepath, filename_for_asr)
+            else:
+                # --- Standard transcription for smaller files ---
+                transcription_text = transcribe_single_file(filepath, recording)
+            
+            recording.transcription = transcription_text
             app.logger.info(f"Transcription completed for recording {recording_id}. Text length: {len(recording.transcription)}")
             generate_summary_task(app_context, recording_id, start_time)
 
@@ -1236,6 +1231,131 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
                 end_time = datetime.utcnow()
                 recording.processing_time_seconds = (end_time - start_time).total_seconds()
                 db.session.commit()
+
+def transcribe_single_file(filepath, recording):
+    """Transcribe a single audio file using OpenAI Whisper API."""
+    with open(filepath, 'rb') as audio_file:
+        transcription_client = OpenAI(
+            api_key=transcription_api_key,
+            base_url=transcription_base_url,
+            http_client=http_client_no_proxy
+        )
+        whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
+        
+        user_transcription_language = None
+        if recording and recording.owner:
+            user_transcription_language = recording.owner.transcription_language
+        
+        transcription_language = user_transcription_language
+
+        transcription_params = {
+            "model": whisper_model,
+            "file": audio_file
+        }
+
+        if transcription_language:
+            transcription_params["language"] = transcription_language
+            app.logger.info(f"Using transcription language: {transcription_language}")
+        else:
+            app.logger.info("Transcription language not set, using auto-detection or service default.")
+
+        transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+        return transcript.text
+
+def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_asr):
+    """Transcribe a large audio file using chunking."""
+    import tempfile
+    
+    with app_context:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            raise ValueError(f"Recording {recording_id} not found")
+    
+    # Create temporary directory for chunks
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            # Create chunks
+            app.logger.info(f"Creating chunks for large file: {filepath}")
+            chunks = chunking_service.create_chunks(filepath, temp_dir)
+            
+            if not chunks:
+                raise ChunkProcessingError("No chunks were created from the audio file")
+            
+            app.logger.info(f"Created {len(chunks)} chunks, processing each with Whisper API...")
+            
+            # Process each chunk
+            chunk_results = []
+            transcription_client = OpenAI(
+                api_key=transcription_api_key,
+                base_url=transcription_base_url,
+                http_client=http_client_no_proxy
+            )
+            whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
+            
+            # Get user language preference
+            user_transcription_language = None
+            with app_context:
+                recording = db.session.get(Recording, recording_id)
+                if recording and recording.owner:
+                    user_transcription_language = recording.owner.transcription_language
+            
+            for i, chunk in enumerate(chunks):
+                try:
+                    app.logger.info(f"Processing chunk {i+1}/{len(chunks)}: {chunk['filename']} ({chunk['size_mb']:.1f}MB)")
+                    
+                    with open(chunk['path'], 'rb') as chunk_file:
+                        transcription_params = {
+                            "model": whisper_model,
+                            "file": chunk_file
+                        }
+                        
+                        if user_transcription_language:
+                            transcription_params["language"] = user_transcription_language
+                        
+                        transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                        
+                        chunk_result = {
+                            'index': chunk['index'],
+                            'start_time': chunk['start_time'],
+                            'end_time': chunk['end_time'],
+                            'transcription': transcript.text,
+                            'filename': chunk['filename']
+                        }
+                        chunk_results.append(chunk_result)
+                        
+                        app.logger.info(f"Chunk {i+1} transcribed successfully: {len(transcript.text)} characters")
+                        
+                except Exception as chunk_error:
+                    app.logger.error(f"Error processing chunk {i+1} ({chunk['filename']}): {chunk_error}")
+                    # Continue with other chunks, but note the failure
+                    chunk_result = {
+                        'index': chunk['index'],
+                        'start_time': chunk['start_time'],
+                        'end_time': chunk['end_time'],
+                        'transcription': f"[Chunk {i+1} transcription failed: {str(chunk_error)}]",
+                        'filename': chunk['filename']
+                    }
+                    chunk_results.append(chunk_result)
+            
+            # Merge transcriptions
+            app.logger.info(f"Merging {len(chunk_results)} chunk transcriptions...")
+            merged_transcription = chunking_service.merge_transcriptions(chunk_results)
+            
+            if not merged_transcription.strip():
+                raise ChunkProcessingError("Merged transcription is empty")
+            
+            app.logger.info(f"Chunked transcription completed. Final length: {len(merged_transcription)} characters")
+            return merged_transcription
+            
+        except Exception as e:
+            app.logger.error(f"Chunking transcription failed for {filepath}: {e}")
+            # Clean up chunks if they exist
+            if 'chunks' in locals():
+                chunking_service.cleanup_chunks(chunks)
+            raise ChunkProcessingError(f"Chunked transcription failed: {str(e)}")
+        finally:
+            # Cleanup is handled by tempfile.TemporaryDirectory context manager
+            pass
 
 @app.route('/speakers', methods=['GET'])
 @login_required

@@ -1874,8 +1874,15 @@ document.addEventListener('DOMContentLoaded', () => {
                             startProcessingQueue();
 
                         } else if (data.status === 'PROCESSING') {
-                            processingMessage.value = 'Transcription in progress...';
-                            processingProgress.value = Math.round(Math.min(65, processingProgress.value + Math.random() * 5));
+                            // Check if this is a large file that might be using chunking
+                            const isLargeFile = fileItem.file.size > 25 * 1024 * 1024; // 25MB
+                            if (isLargeFile) {
+                                processingMessage.value = 'Processing large file (chunking may be used)...';
+                                processingProgress.value = Math.round(Math.min(70, processingProgress.value + Math.random() * 3));
+                            } else {
+                                processingMessage.value = 'Transcription in progress...';
+                                processingProgress.value = Math.round(Math.min(65, processingProgress.value + Math.random() * 5));
+                            }
                         } else if (data.status === 'SUMMARIZING') {
                             processingMessage.value = 'Generating title & summary...';
                             processingProgress.value = Math.round(Math.min(95, processingProgress.value + Math.random() * 5));
