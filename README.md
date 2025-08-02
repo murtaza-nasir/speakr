@@ -46,12 +46,12 @@
 ## Screenshots
 
 
-<table align="center" style="width:100%; border: none;">
+<table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center" width="50%" style="border: none;">
+    <td align="center" width="50%">
       <img src="static/img/main2.png" alt="Main" width="90%"/>
     </td>
-    <td align="center" width="50%" style="border: none;">
+    <td align="center" width="50%">
       <img src="static/img/multilingual-support.png" alt="Multilingual" width="90%"/>
     </td>
   </tr>
@@ -66,13 +66,13 @@
 </p>
 
 <details><summary><strong>Light & dark</strong></summary>
-<table align="center" style="width:100%; border: none;">
+<table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center" width="50%" style="border: none;">
+    <td align="center" width="50%">
       <img src="static/img/light-mode.png" alt="Light Mode" width="90%"/>
       <br><em>Light</em>
     </td>
-    <td align="center" width="50%" style="border: none;">
+    <td align="center" width="50%">
       <img src="static/img/dark-mode.png" alt="Dark Mode" width="90%"/>
       <br><em>Dark</em>
     </td>
@@ -82,13 +82,13 @@
 </details>
 
 <details><summary><strong>Transcription views</strong></summary>
-<table align="center" style="width:100%; border: none;">
+<table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center" width="50%" style="border: none;">
+    <td align="center" width="50%">
       <img src="static/img/simple-transcription-view.png" alt="Simple View" width="90%"/>
       <br><em>Simple</em>
     </td>
-    <td align="center" width="50%" style="border: none;">
+    <td align="center" width="50%">
       <img src="static/img/transcription-bubble-view.png" alt="Bubble View" width="90%"/>
       <br><em>Bubble</em>
     </td>
@@ -97,17 +97,17 @@
 </details>
 
 <details><summary><strong>Speaker identification</strong></summary>
-<table align="center" style="width:100%; border: none;">
+<table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/intuitive-speaker-identification.png" alt="AI-assisted" width="90%"/>
       <br><em>AI-assisted</em>
     </td>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/manual-auto-speaker-identification.png" alt="Manual & Auto" width="90%"/>
       <br><em>Manual & Auto</em>
     </td>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/speaker-suggestions.png" alt="Suggestions" width="90%"/>
       <br><em>Saved Suggestions</em>
     </td>
@@ -116,24 +116,22 @@
 </details>
 
 <details><summary><strong>Recordings & notes</strong></summary>
-<table align="center" style="width:100%; border: none;">
+<table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/rec1.png" alt="Options" width="90%"/>
       <br><em>Recording Options</em>
     </td>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/rec2.png" alt="Mic" width="90%"/>
       <br><em>Mic/System Audio</em>
     </td>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/rec3.png" alt="Both" width="90%"/>
       <br><em>Mic + System Audio</em>
     </td>
   </tr>
 </table>
-</details>
-
 </details>
 
 ---
@@ -150,15 +148,15 @@
 * **Customizable AI:** Configure the specific AI models, API endpoints (compatible with OpenAI, OpenRouter, local models), and custom prompts for summarization and chat.
 * **Multi-User Support:** Includes a complete user management system with an admin dashboard.
 
-<table align="center" style="width:100%; border: none;">
+<table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/rec1.png" alt="Transcription and Chat" width="90%"/>
     </td>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/rec3.png" alt="Speaker Identification" width="90%"/>
     </td>
-    <td align="center" width="33%" style="border: none;">
+    <td align="center" width="33%">
       <img src="static/img/intuitive-speaker-identification.png" alt="Speaker Identification" width="90%"/>
     </td>
   </tr>
@@ -294,27 +292,6 @@ Follow these steps if you want to modify the code or build the Docker image your
     * **Upload:** Drag and drop an audio file onto the dashboard or use the **New Recording** page.
     * **Record:** Use the in-browser recorder. You can record your mic, system audio, or both. **Note:** To capture system audio (e.g., from a meeting), you must share a **browser tab** or your **entire screen** and ensure the **"Share audio"** checkbox is enabled.
     * **Automated:** If enabled, simply drop files into the monitored "black hole" directory.
-
-    <details>
-    <summary><strong>Recording Interface Showcase</strong></summary>
-    <table align="center" style="width:100%; border: none;">
-  <tr>
-    <td align="center" width="33%" style="border: none;">
-      <img src="static/img/rec1.png" alt="Recording options" width="90%"/>
-      <br><em>Recording Options</em>
-    </td>
-    <td align="center" width="33%" style="border: none;">
-      <img src="static/img/rec2.png" alt="Record from microphone" width="90%"/>
-      <br><em>Record from Phone/Computer Microphone</em>
-    </td>
-    <td align="center" width="33%" style="border: none;">
-      <img src="static/img/rec3.png" alt="Record microphone and system audio" width="90%"/>
-      <br><em>Record Mic & System Audio (e.g., Zoom meeting)</em>
-    </td>
-  </tr>
-</table>
-    </details>
-
 4.  **Interact with Your Transcript:**
     * From the gallery, click a recording to view its details.
     * Read the transcript, listen to the audio, and review the AI-generated summary.
@@ -323,9 +300,7 @@ Follow these steps if you want to modify the code or build the Docker image your
 5.  **Identify Speakers (Diarization):**
     * If you used the ASR method with diarization enabled, click the **Identify Speakers** button.
     * In the modal, assign names to the detected speakers (e.g., `SPEAKER 00`, `SPEAKER 01`). You can use the **Auto Identify** feature to let the AI suggest names based on the conversation.
-
 ---
-
 <details>
 <summary><strong>Advanced Configuration & Technical Details</strong></summary>
 
