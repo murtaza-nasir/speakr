@@ -1,135 +1,310 @@
-# Speakr
-
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0) [![Docker Build and Publish](https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml)
-
-This project is dual-licensed. See the [License](#license) section for details.
-
-Speakr is your intelligent note-taking companion - a personal, self-hosted web application that transforms audio recordings into organized, searchable notes. Whether you're capturing meetings on your phone, recording lectures, or documenting interviews, Speakr automatically transcribes your audio with speaker identification, generates concise summaries, and lets you interact with your content through an AI chat interface. Keep all your notes and insights securely on your own server, accessible from any device.
-
-**Perfect for mobile note-taking:** Start the app on your phone, hit record, and get back diarized transcriptions that identify who said what - turning any conversation into structured, searchable notes.
-
-<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-    <img src="static/img/main.png" alt="Hero Shot" style="max-width: 48%; height: auto;"/>
-    <img src="static/img/multilingual-support.png" alt="Multilingual Support" style="max-width: 48%; height: auto;"/>
+<div align="center">
+    <img src="static/img/icon-32x32.png" alt="Speakr Logo" width="32"/>
 </div>
 
-## Features Showcase
+<h1 align="center">Speakr</h1>
+<p align="center">Self-hosted, intelligent note-taking for meetings and recordings</p>
+
+<p align="center">
+  <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
+</p>
+
+> Speakr is an intelligent, self-hosted web application that transforms your audio recordings into organized, searchable, and insightful notes. By running on your own server, it ensures your sensitive conversations and data remain completely private.
+
+> Designed for a wide range of uses, Speakr is trusted by professionals for meeting minutes, by therapists for session notes, by students for lecture capture, and even for transcribing D&D sessions. It automatically transcribes audio with speaker identification, generates concise summaries, and provides an AI chat interface to interact with your content.
+
+<div align="center">
+    <img src="static/img/main.png" alt="Speakr Main Interface" width="750"/>
+</div>
+
+---
+
+## What's New?
+
+### Latest Release (Version 0.4.2)
+* **Large File Chunking Support:** Automatically splits large audio files to work with transcription services that have file size limits (e.g., OpenAI's 25MB limit).
+* **Optimized File Processing:** Improved efficiency by minimizing file conversions and using compressed formats.
+* **Enhanced Security:** Strengthened CSRF protection and fixed session timeout issues.
+* **Improved Recording Reliability:** Addressed several bugs related to in-browser recording.
 
 <details>
-<summary><strong>Transcription and Chat</strong></summary>
+<summary><strong>Previous Version History</strong></summary>
+
+### Version 0.4.1 
+* **Secure Sharing System:** Share transcriptions via public links with customizable permissions.
+* **Enhanced Recording & Note-Taking:** Redesigned recording interface with a real-time notepad.
+* **Advanced Speaker Diarization:** AI-powered speaker detection and saved speaker profiles.
+* **"Black hole" Directory:** Feature for automatic, hands-free audio file processing.
+* **Transcript Editing:** Manually edit and correct transcriptions.
+* **Clickable Timestamps:** Navigate audio by clicking timestamps in the transcript.
+* **Streaming Chat Responses:** More interactive and responsive AI chat.
+
+</details>
+
+---
+## Screenshots
+
+
+<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+  <img src="static/img/main2.png" alt="Main" style="max-width: 48%; height: auto;"/>
+  <img src="static/img/multilingual-support.png" alt="Multilingual" style="max-width: 48%; height: auto;"/>
+</div>
+
+---
+<details><summary><strong>Transcription & chat</strong></summary>
 <div style="display: flex; justify-content: center;">
   <figure>
     <img src="static/img/transcription-chat-bubble-view.png" alt="Transcription and Chat" width="400"/>
     <figcaption style="text-align: center;">Integrated Chat</figcaption>
   </figure>
 </div>
-</details>
 
-<details>
-<summary><strong>Light and Dark Mode</strong></summary>
+<details><summary><strong>Light & dark</strong></summary>
 <div style="display: flex; justify-content: space-around;">
   <figure>
     <img src="static/img/light-mode.png" alt="Light Mode" width="400"/>
-    <figcaption style="text-align: center;">Light Mode</figcaption>
+    <figcaption style="text-align: center;">Light</figcaption>
   </figure>
   <figure>
     <img src="static/img/dark-mode.png" alt="Dark Mode" width="400"/>
-    <figcaption style="text-align: center;">Dark Mode</figcaption>
+    <figcaption style="text-align: center;">Dark</figcaption>
   </figure>
 </div>
 </details>
+</details>
 
-<details>
-<summary><strong>Intuitive Transcription Views</strong></summary>
+<details><summary><strong>Transcription views</strong></summary>
 <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
   <figure>
-    <img src="static/img/simple-transcription-view.png" alt="Simple Transcription View" width="400"/>
-    <figcaption style="text-align: center;">Simple View</figcaption>
+    <img src="static/img/simple-transcription-view.png" alt="Simple View" width="400"/>
+    <figcaption style="text-align: center;">Simple</figcaption>
   </figure>
   <figure>
     <img src="static/img/transcription-bubble-view.png" alt="Bubble View" width="400"/>
-    <figcaption style="text-align: center;">Bubble View</figcaption>
+    <figcaption style="text-align: center;">Bubble</figcaption>
   </figure>
 </div>
+</details>
+
+<details><summary><strong>Speaker identification</strong></summary>
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+  <figure>
+    <img src="static/img/intuitive-speaker-identification.png" alt="AI-assisted" width="400"/>
+    <figcaption style="text-align: center;">AI-assisted</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/manual-auto-speaker-identification.png" alt="Manual & Auto" width="400"/>
+    <figcaption style="text-align: center;">Manual & Auto</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/speaker-suggestions.png" alt="Suggestions" width="400"/>
+    <figcaption style="text-align: center;">Saved Suggestions</figcaption>
+  </figure>
+</div>
+</details>
+
+<details><summary><strong>Recordings & notes</strong></summary>
+<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+  <figure>
+    <img src="static/img/rec1.png" alt="Options" width="400"/>
+    <figcaption style="text-align: center;">Recording Options</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/rec2.png" alt="Mic" width="400"/>
+    <figcaption style="text-align: center;">Mic/System Audio</figcaption>
+  </figure>
+  <figure>
+    <img src="static/img/rec3.png" alt="Both" width="400"/>
+    <figcaption style="text-align: center;">Mic + System Audio</figcaption>
+  </figure>
+</div>
+</details>
+
+</details>
+
+---
+
+## Core Features
+
+* **Self-Hosted and Private:** Keep full control over your data by hosting Speakr on your own server.
+* **Advanced Transcription & Diarization:** Get accurate transcripts with optional AI-powered speaker identification (diarization) to know who said what.
+* **AI-Powered Insights:** Automatically generate titles and summaries for your recordings. Use the integrated chat to ask questions and pull insights directly from the transcript.
+* **Install as a PWA App:** Install on your phone for quick and easy recordings and note capture. 
+* **Versatile Recording & Upload:** Upload existing audio files or record directly in the browser or PWA app. Capture audio from your microphone, your system's audio (e.g., for an online meeting), or both simultaneously.
+* **Automated Processing:** Designate a "black hole" directory for drag-and-drop batch processing of audio files.
+* **Secure Sharing:** Create shareable links for your transcripts with granular controls, allowing you to include or exclude summaries and notes.
+* **Customizable AI:** Configure the specific AI models, API endpoints (compatible with OpenAI, OpenRouter, local models), and custom prompts for summarization and chat.
+* **Multi-User Support:** Includes a complete user management system with an admin dashboard.
+
+<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+    <img src="static/img/rec1.png" alt="Transcription and Chat" style="max-width: 25%; height: auto;"/>
+    <img src="static/img/rec3.png" alt="Speaker Identification" style="max-width: 25%; height: auto;"/>
+    <img src="static/img/intuitive-speaker-identification.png" alt="Speaker Identification" style="max-width: 48%; height: auto;"/>
+</div>
+
+---
+
+## Getting Started
+
+The recommended setup method uses Docker, which is simple and fast.
+
+<details>
+<summary><strong>Easy Setup: Docker Compose (Recommended)</strong></summary>
+
+You only need Docker installed for this method; you do not need to clone the repository.
+
+1.  **Create `docker-compose.yml`**
+    Create a file named `docker-compose.yml` and add the following content:
+    ```yaml
+    services:
+      app:
+        image: learnedmachine/speakr:latest
+        container_name: speakr
+        restart: unless-stopped
+        ports:
+          - "8899:8899"
+        env_file:
+          - .env
+        volumes:
+          - ./uploads:/data/uploads
+          - ./instance:/data/instance
+    ```
+
+2.  **Create Configuration (`.env`) File**
+    Create a file named `.env` in the same directory. Your configuration will depend on whether you need speaker identification (diarization).
+
+    * **Option A: Standard Whisper API (No Speaker Diarization)**
+        This is the simplest method and works with any OpenAI Whisper-compatible API (like OpenAI, OpenRouter, or local LLMs).
+
+        ```dotenv
+        # --- Text Generation Model (uses /chat/completions endpoint) ---
+        TEXT_MODEL_BASE_URL=[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)
+        TEXT_MODEL_API_KEY=your_openrouter_api_key
+        TEXT_MODEL_NAME=openai/gpt-4o-mini
+
+        # --- Transcription Service (uses /audio/transcriptions endpoint) ---
+        TRANSCRIPTION_BASE_URL=[https://api.openai.com/v1](https://api.openai.com/v1)
+        TRANSCRIPTION_API_KEY=your_openai_api_key
+        WHISPER_MODEL=whisper-1
+        
+        # --- Large File Chunking (for endpoints with file size limits) ---
+        ENABLE_CHUNKING=true
+        CHUNK_SIZE_MB=20
+
+        # --- Application Settings ---
+        ALLOW_REGISTRATION=false
+        ADMIN_USERNAME=admin
+        ADMIN_EMAIL=admin@example.com
+        ADMIN_PASSWORD=changeme
+        
+        # --- Docker Settings ---
+        SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
+        UPLOAD_FOLDER=/data/uploads
+        ```
+
+    * **Option B: ASR Webservice (With Speaker Diarization)**
+        This method enables speaker identification but requires running a separate ASR webservice container. See the **Advanced Configuration** section below for details on setting up the ASR service.
+
+        ```dotenv
+        # --- Text Generation Model (uses /chat/completions endpoint) ---
+        TEXT_MODEL_BASE_URL=[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)
+        TEXT_MODEL_API_KEY=your_openrouter_api_key
+        TEXT_MODEL_NAME=openai/gpt-4o-mini
+
+        # --- Transcription Service (uses /asr endpoint) ---
+        USE_ASR_ENDPOINT=true
+        ASR_BASE_URL=http://your_asr_host:9000  # URL of your running ASR webservice
+        ASR_DIARIZE=true
+        ASR_MIN_SPEAKERS=1
+        ASR_MAX_SPEAKERS=5
+
+        # --- Application Settings ---
+        ALLOW_REGISTRATION=false
+        ADMIN_USERNAME=admin
+        ADMIN_EMAIL=admin@example.com
+        ADMIN_PASSWORD=changeme
+        
+        # --- Docker Settings ---
+        SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
+        UPLOAD_FOLDER=/data/uploads
+        ```
+
+3.  **Start the Application**
+    After editing your `.env` file with your API keys and settings, run the following command:
+    ```bash
+    docker compose up -d
+    ```
+    Access the application at `http://localhost:8899`. The admin user will be created on the first run.
+
 </details>
 
 <details>
-<summary><strong>Speaker Identification</strong></summary>
-<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-  <figure>
-    <img src="static/img/intuitive-speaker-identification.png" alt="Intuitive Speaker Identification" width="400"/>
-    <figcaption style="text-align: center;">AI-Assisted Identification</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/manual-auto-speaker-identification.png" alt="Manual and Auto Speaker ID" width="400"/>
-    <figcaption style="text-align: center;">Manual & Auto Options</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/speaker-suggestions.png" alt="Speaker Suggestions" width="400"/>
-    <figcaption style="text-align: center;">Saved Speaker Suggestions</figcaption>
-  </figure>
-</div>
+<summary><strong>Advanced Setup: Build from Source</strong></summary>
+
+Follow these steps if you want to modify the code or build the Docker image yourself.
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone [https://github.com/murtaza-nasir/speakr.git](https://github.com/murtaza-nasir/speakr.git)
+    cd speakr
+    ```
+2.  **Create Configuration Files:**
+    Copy the example files. Use `env.whisper.example` for the standard API method or `env.asr.example` for the ASR webservice method.
+    ```bash
+    cp docker-compose.example.yml docker-compose.yml
+    cp env.whisper.example .env # Or cp env.asr.example .env
+    ```
+    Edit the `.env` file with your custom settings and API keys.
+
+3.  **Build and Start:**
+    ```bash
+    docker compose up -d --build
+    ```
 </details>
+
+---
+
+## Usage Guide
+
+1.  **Login:** Access the application (e.g., `http://localhost:8899`) and log in. The admin account is created from the `.env` variables on the first launch.
+2.  **Set Preferences (Recommended):** Navigate to your **Account** page to set your default language, customize the AI summarization prompt, and add professional context to improve chat results.
+3.  **Add a Recording:**
+    * **Upload:** Drag and drop an audio file onto the dashboard or use the **New Recording** page.
+    * **Record:** Use the in-browser recorder. You can record your mic, system audio, or both. **Note:** To capture system audio (e.g., from a meeting), you must share a **browser tab** or your **entire screen** and ensure the **"Share audio"** checkbox is enabled.
+    * **Automated:** If enabled, simply drop files into the monitored "black hole" directory.
+
+    <details>
+    <summary><strong>Recording Interface Showcase</strong></summary>
+    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
+      <figure>
+        <img src="static/img/rec1.png" alt="Recording options" width="400"/>
+        <figcaption style="text-align: center;">Recording Options</figcaption>
+      </figure>
+      <figure>
+        <img src="static/img/rec2.png" alt="Record from microphone" width="400"/>
+        <figcaption style="text-align: center;">Record from Phone/Computer Microphone</figcaption>
+      </figure>
+      <figure>
+        <img src="static/img/rec3.png" alt="Record microphone and system audio" width="400"/>
+        <figcaption style="text-align: center;">Record Mic & System Audio (e.g., Zoom meeting)</figcaption>
+      </figure>
+    </div>
+    </details>
+
+4.  **Interact with Your Transcript:**
+    * From the gallery, click a recording to view its details.
+    * Read the transcript, listen to the audio, and review the AI-generated summary.
+    * Edit metadata like titles and participants.
+    * Use the **Chat** panel to ask questions about the content.
+5.  **Identify Speakers (Diarization):**
+    * If you used the ASR method with diarization enabled, click the **Identify Speakers** button.
+    * In the modal, assign names to the detected speakers (e.g., `SPEAKER 00`, `SPEAKER 01`). You can use the **Auto Identify** feature to let the AI suggest names based on the conversation.
+
+---
 
 <details>
-<summary><strong>Record Meetings & Take Notes</strong></summary>
-<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-  <figure>
-    <img src="static/img/rec1.png" alt="Transcription with ASR" width="400"/>
-    <figcaption style="text-align: center;">Recording options</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/rec2.png" alt="Transcription without ASR" width="400"/>
-    <figcaption style="text-align: center;">Record Phone/Computer Microphone</figcaption>
-  </figure>
-    <figure>
-    <img src="static/img/rec3.png" alt="Transcription without ASR" width="400"/>
-    <figcaption style="text-align: center;">Record both Microphone and Computer Sounds (e.g., zoom meeting)</figcaption>
-  </figure>
-</div>
-</details>
-
-## What's New?
-
-### Version 0.4.2 (Latest)
-
-*   **Large File Chunking Support:** Automatic splitting of large audio files for transcription endpoints with file size limits (like OpenAI's 25MB limit). Files are intelligently chunked, processed separately, and seamlessly merged back together.
-*   **Optimized File Processing:** Eliminated uncompressed WAV file creation throughout the application. WebM recordings stay as WebM, and conversions use 32kbps MP3 for optimal size/quality balance.
-*   **Enhanced CSRF Protection:** Fixed session timeout issues and improved security for long recording sessions.
-*   **Improved Recording Reliability:** Fixed errors related to in-app recording and long recording sessions.
-
-### Version 0.4.1 (Previous Release)
-
-*   **Secure Sharing System:** Share your transcriptions publicly with customizable permissions - control whether to include summaries and notes, manage shared links, and revoke access anytime.
-*   **Enhanced Recording & Note-Taking:** Completely redesigned recording interface with real-time notepad during recording. Perfect for mobile note-taking with improved system audio capture and dual visualizers.
-*   **Advanced Speaker Diarization:** Automatically identify and label different speakers in your recordings with AI-powered speaker detection and saved speaker profiles for future sessions.
-*   **Mobile-Optimized Experience:** Seamless recording and note-taking on phones and tablets - start recording on your phone and get back diarized transcriptions with speaker identification.
-*   **Automated File Processing:** "Black hole" directory feature for automatic audio file processing - drag and drop recordings from your computer's audio devices for instant transcription.
-*   **AMR File Support:** Added support for AMR audio files commonly used by mobile devices and voice recorders.
-*   **Transcript Editing:** Edit and update transcriptions in both simple and ASR modes to perfect your notes.
-*   **Enhanced Markdown Editor:** Improved summary and notes editor with markdown support for better formatting and organization.
-*   **Configurable Logging:** Dynamic logging control for better debugging and troubleshooting.
-*   **Clickable Timestamps:** Jump to specific points in recordings by clicking timestamps in transcriptions for easy verification and speaker identification.
-*   **Streaming Chat Responses:** Interactive AI chat with real-time streaming responses for better user experience.
-
-## Features
-
-*   **Audio Upload:** Upload audio files (MP3, WAV, M4A, AMR, and many other formats) via drag-and-drop or file selection.
-*   **Automated File Processing:** "Black hole" directory monitoring for automatic batch processing of audio files without manual uploads.
-*   **Advanced Browser Recording:** Record audio directly in your browser with multiple options:
-    *   **Microphone:** Record your voice.
-    -   **System Audio:** Capture audio from other applications (e.g., online meetings). **Note: To record system audio, you must select to share a "tab" or "screen" in your browser's screen sharing prompt and ensure the "share audio" checkbox is enabled.**
-    -   **Both:** Reliably record both your microphone and system audio simultaneously.
-    *   Features dual real-time audio visualizers.
-    *   *(Note: System audio capture requires a secure context (HTTPS) or specific browser configuration. See the [Deployment Guide](DEPLOYMENT_GUIDE.md#browser-recording-feature) for details.)*
-*   **Transcription:** Choose between a standard OpenAI-compatible API or a more advanced ASR Webservice.
-*   **Speaker Diarization:** (ASR/WhisperX only) Automatically detect and separate different speakers in the transcript.
-*   **Intuitive Speaker Labeling:** A new, more intuitive interface for identifying and labeling speakers.
-*   **AI Summarization & Titling:** Generates concise titles and summaries using configurable LLMs.
-*   **Interactive Chat:** Ask questions and interact with the transcription content using an AI model.
-*   **Metadata Editing:** Edit titles, participants, meeting dates, summaries, and notes.
-*   **User Management:** Secure user registration and login system with an admin dashboard for managing users.
-*   **Customization:** Users can set their own language preferences, custom summarization prompts, and professional context to improve AI results.
+<summary><strong>Advanced Configuration & Technical Details</strong></summary>
 
 ## API Endpoint Requirements
 
@@ -188,105 +363,7 @@ Speakr integrates with external APIs for transcription and text generation. Here
 
 **For detailed deployment instructions, see the [Deployment Guide](DEPLOYMENT_GUIDE.md)**
 
-The recommended method is to use the pre-built Docker image, which is fast and simple.
-
-### Easy Setup (Pre-built Docker Image)
-
-You do not need to clone this repository for this method. You only need Docker installed.
-
-1.  **Create the `docker-compose.yml` file:**
-    Create a new file named `docker-compose.yml` and paste the following content into it:
-
-    ```yaml
-    services:
-      app:
-        image: learnedmachine/speakr:latest
-        container_name: speakr
-        restart: unless-stopped
-        ports:
-          - "8899:8899"
-        env_file:
-          - .env
-        volumes:
-          - ./uploads:/data/uploads
-          - ./instance:/data/instance
-    ```
-
-2.  **Create a Configuration (`.env`) File:**
-    Your choice here depends on which transcription method you want to use. See the [API Endpoint Requirements](#api-endpoint-requirements) section above for details on what endpoints each service must implement. Create a new file named `.env` and paste one of the following templates into it.
-
-    *   **Option A: Standard Whisper API Method**
-        Uses the `/audio/transcriptions` endpoint. This is the simplest method and works with OpenAI, OpenRouter, local APIs, and other providers implementing the OpenAI Whisper API format.
-
-        ```dotenv
-        # --- Text Generation Model (uses /chat/completions endpoint) ---
-        TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
-        TEXT_MODEL_API_KEY=your_openrouter_api_key
-        TEXT_MODEL_NAME=openai/gpt-4o-mini
-
-        # --- Transcription Service (uses /audio/transcriptions endpoint) ---
-        TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
-        TRANSCRIPTION_API_KEY=your_openai_api_key
-        WHISPER_MODEL=whisper-1
-
-        # --- Application Settings ---
-        ALLOW_REGISTRATION=false
-        SUMMARY_MAX_TOKENS=8000
-        CHAT_MAX_TOKENS=5000
-
-        # --- Large File Chunking (for endpoints with file size limits) ---
-        ENABLE_CHUNKING=true
-        CHUNK_SIZE_MB=20
-        CHUNK_OVERLAP_SECONDS=3
-
-        # --- Admin User (created on first run) ---
-        ADMIN_USERNAME=admin
-        ADMIN_EMAIL=admin@example.com
-        ADMIN_PASSWORD=changeme
-
-        # --- Docker Settings (rarely need to be changed) ---
-        SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
-        UPLOAD_FOLDER=/data/uploads
-        ```
-        Now, **edit the `.env` file** with your API keys and settings.
-
-    *   **Option B: ASR Webservice Method (for Speaker Diarization)**
-        Uses the `/asr` endpoint. This method requires a separate ASR webservice container but enables speaker identification. This has been tested with the `onerahmet/openai-whisper-asr-webservice` image. See the [Deployment Guide](DEPLOYMENT_GUIDE.md#2-asr-webservice-method-advanced-setup) for instructions on how to run the ASR service.
-
-        ```dotenv
-        # --- Text Generation Model (uses /chat/completions endpoint) ---
-        TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
-        TEXT_MODEL_API_KEY=your_openrouter_api_key
-        TEXT_MODEL_NAME=openai/gpt-4o-mini
-
-        # --- Transcription Service (uses /asr endpoint) ---
-        USE_ASR_ENDPOINT=true
-        ASR_BASE_URL=http://your_asr_host:9000  # URL of your running ASR webservice
-        ASR_DIARIZE=true
-        ASR_MIN_SPEAKERS=1
-        ASR_MAX_SPEAKERS=5
-
-        # --- Application Settings ---
-        ALLOW_REGISTRATION=false
-        SUMMARY_MAX_TOKENS=8000
-        CHAT_MAX_TOKENS=5000
-
-        # --- Admin User (created on first run) ---
-        ADMIN_USERNAME=admin
-        ADMIN_EMAIL=admin@example.com
-        ADMIN_PASSWORD=changeme
-
-        # --- Docker Settings (rarely need to be changed) ---
-        SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
-        UPLOAD_FOLDER=/data/uploads
-        ```
-        Now, **edit the `.env` file** with your ASR service URL and other settings.
-
-3.  **Start the Application:**
-    In your terminal, in the same directory as your `docker-compose.yml` and `.env` files, run:
-    ```bash
-    docker compose up -d
-    ```
+The recommended method is to use the pre-built Docker image, which is fast and simple. This is explained above. 
 
 ### Advanced Setup (Build from Source)
 
@@ -347,35 +424,6 @@ Speakr has been tested with the recommended `onerahmet/openai-whisper-asr-webser
 **Important for ASR Setup:** Speaker diarization requires a Hugging Face token and accepting terms for gated models (pyannote). If you encounter issues, check the ASR container logs with `docker logs whisper-asr-webservice` for troubleshooting.
 
 **For complete ASR setup instructions, model configurations, troubleshooting, and logs analysis, see the [Deployment Guide](DEPLOYMENT_GUIDE.md#advanced-asr-configuration)**
-
-## Usage Guide
-
-1.  **Register/Login:** Access the application at `http://localhost:8899`. The admin user is created from the `ADMIN_*` variables in your `.env` file on first launch.
-2.  **Set Preferences (Recommended):** Go to your **Account** page. Here you can:
-    *   Set your preferred transcription and output languages.
-    *   Define a custom summarization prompt to tailor summaries to your needs.
-    *   Add your name, job title, and company to provide more context for AI chat interactions.
-    *   View and manage your saved speakers.
-3.  **Upload or Record:** 
-    *   **Upload:** Go to **New Recording** or drag-and-drop an audio file onto the page
-    *   **Record:** Use the browser recording feature in the "New Recording" screen to record directly from your microphone (requires HTTPS or browser configuration - see [Browser Recording Setup](DEPLOYMENT_GUIDE.md#browser-recording-feature)).
-        *   **System Audio Recording:** To capture system audio (e.g., from a video conference), you must select to share a specific **browser tab** or your **entire screen** in the browser's sharing dialog. Make sure to also check the box to **"Share tab audio"** or **"Share system audio"**. Recording audio from a single application window is often not supported.
-    *   **Automated Processing:** Drop files into the monitored directory for automatic batch processing (see [Automated File Processing](#automated-file-processing) below)
-    *   The upload and processing status will appear in a popup.
-4.  **View and Interact:**
-    *   The main **Gallery** lists your recordings. Click one to view its details.
-    *   **Listen** to the audio with the built-in player.
-    *   **Read** the transcription and the AI-generated summary.
-    *   **Edit** the title, participants, and other metadata.
-    *   **Chat with Transcript:** Use the chat panel to ask questions about the recording.
-5.  **Speaker Diarization Workflow:**
-    *   To enable speaker diarization, you must use the ASR endpoint method and set `ASR_DIARIZE=true` in your `.env` file.
-    *   When a recording is processed with this option, speakers will be automatically detected and assigned generic labels (e.g., `SPEAKER 00`, `SPEAKER 01`).
-    *   After processing, click the **Identify Speakers** button on the transcription page.
-    *   In the speaker identification modal, you can manually assign names to each speaker.
-    *   Alternatively, use the **Auto Identify** button to let an AI model attempt to identify and name the speakers based on the conversation context.
-    *   Saved speakers will be suggested for auto-completion in future sessions.
-    *   You can also use the **Reprocess** button to re-transcribe the audio with different diarization settings if needed.
 
 ## Automated File Processing
 
@@ -481,13 +529,11 @@ AUTO_PROCESS_DEFAULT_USERNAME=john_doe
 
 The auto-processor supports the same audio formats as manual uploads:
 - **Common formats:** MP3, WAV, M4A, FLAC, AAC, OGG, WebM
-- **Mobile formats:** AMR, 3GP, 3GPP
-- **Video formats:** MP4, MOV, WMA
+- **Mobile formats:** AMR
 
 **File Processing:**
 - **Supported formats** (MP3, WAV, FLAC, WebM, M4A, AAC, OGG) are processed directly without conversion
 - **Unsupported formats** are automatically converted to 32kbps MP3 using ffmpeg for optimal size/quality balance
-- **No uncompressed WAV files** are created to minimize storage usage
 
 ### Usage Examples
 
@@ -535,29 +581,9 @@ Created recording record with ID: 123 for user: admin
 Started background processing for recording ID: 123
 ```
 
-### Best Practices
+</details>
 
-1. **File Naming:** Use descriptive filenames as they become part of the auto-generated title
-2. **Batch Processing:** You can drop multiple files at once; they'll be processed sequentially
-3. **Network Shares:** Mount network drives or NAS shares to the auto-process directory for remote file drops
-4. **Monitoring:** Set up log monitoring to track processing status and catch any errors
-5. **Cleanup:** Processed files are automatically moved and deleted from the auto-process directory
-
-### Troubleshooting
-
-**Files not being processed:**
-- Check that `ENABLE_AUTO_PROCESSING=true` in your `.env` file
-- Verify the auto-process directory is properly mounted
-- Check container logs for error messages
-
-**Permission issues:**
-- Ensure the auto-process directory has proper read/write permissions
-- The container runs as the user specified in the Docker configuration
-
-**Processing errors:**
-- Check that your transcription API is properly configured
-- Verify ffmpeg is available in the container for file conversion
-- Monitor container logs for specific error messages
+-----
 
 ## License
 
@@ -581,13 +607,10 @@ This project is **dual-licensed**:
 
 ## Roadmap
 
-Speakr is actively being developed. Future planned features include:
-
-*   **Quick Language Switching:** A faster way to change transcription or output languages on the fly.
+Speakr is in active development. Planned features include a faster way to switch transcription languages on the fly.
 
 ## Contributing
 
-While direct code contributions are not the primary focus at this stage, feedback, bug reports, and feature suggestions are highly valuable! Please feel free to open an Issue on the GitHub repository.
+Feedback, bug reports, and feature suggestions are highly encouraged\! Please open an issue on the GitHub repository to share your thoughts.
 
-**Note on Future Contributions and CLAs:**
-Should this project begin accepting code contributions from external developers in the future, signing a **Contributor License Agreement (CLA)** will be **required** before any pull requests can be merged. This policy ensures that the project maintainer receives the necessary rights to distribute all contributions under both the AGPLv3 and the commercial license options offered. Details on the CLA process will be provided if and when the project formally opens up to external code contributions.
+**Note on Code Contributions:** Should the project begin formally accepting external code contributions, a Contributor License Agreement (CLA) will be required. 
