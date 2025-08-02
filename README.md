@@ -23,7 +23,7 @@
 ## What's New?
 
 ### Latest Release (Version 0.4.2)
-* **Large File Chunking Support:** Automatically splits large audio files to work with transcription services that have file size limits (e.g., OpenAI's 25MB limit).
+* **Large File Chunking Support:** Automatically splits large audio files to work with transcription services that have file size limits (e.g., OpenAI's 25MB limit). Review release notes for instructions or keep reading below.
 * **Optimized File Processing:** Improved efficiency by minimizing file conversions and using compressed formats.
 * **Enhanced Security:** Strengthened CSRF protection and fixed session timeout issues.
 * **Improved Recording Reliability:** Addressed several bugs related to in-browser recording.
@@ -46,79 +46,92 @@
 ## Screenshots
 
 
-<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-  <img src="static/img/main2.png" alt="Main" style="max-width: 48%; height: auto;"/>
-  <img src="static/img/multilingual-support.png" alt="Multilingual" style="max-width: 48%; height: auto;"/>
-</div>
+<table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="50%" style="border: none;">
+      <img src="static/img/main2.png" alt="Main" width="90%"/>
+    </td>
+    <td align="center" width="50%" style="border: none;">
+      <img src="static/img/multilingual-support.png" alt="Multilingual" width="90%"/>
+    </td>
+  </tr>
+</table>
 
 ---
 <details><summary><strong>Transcription & chat</strong></summary>
-<div style="display: flex; justify-content: center;">
-  <figure>
-    <img src="static/img/transcription-chat-bubble-view.png" alt="Transcription and Chat" width="400"/>
-    <figcaption style="text-align: center;">Integrated Chat</figcaption>
-  </figure>
-</div>
+<p align="center">
+  <img src="static/img/transcription-chat-bubble-view.png" alt="Transcription and Chat" width="400"/>
+  <br>
+  <em>Integrated Chat</em>
+</p>
 
 <details><summary><strong>Light & dark</strong></summary>
-<div style="display: flex; justify-content: space-around;">
-  <figure>
-    <img src="static/img/light-mode.png" alt="Light Mode" width="400"/>
-    <figcaption style="text-align: center;">Light</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/dark-mode.png" alt="Dark Mode" width="400"/>
-    <figcaption style="text-align: center;">Dark</figcaption>
-  </figure>
-</div>
+<table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="50%" style="border: none;">
+      <img src="static/img/light-mode.png" alt="Light Mode" width="90%"/>
+      <br><em>Light</em>
+    </td>
+    <td align="center" width="50%" style="border: none;">
+      <img src="static/img/dark-mode.png" alt="Dark Mode" width="90%"/>
+      <br><em>Dark</em>
+    </td>
+  </tr>
+</table>
 </details>
 </details>
 
 <details><summary><strong>Transcription views</strong></summary>
-<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-  <figure>
-    <img src="static/img/simple-transcription-view.png" alt="Simple View" width="400"/>
-    <figcaption style="text-align: center;">Simple</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/transcription-bubble-view.png" alt="Bubble View" width="400"/>
-    <figcaption style="text-align: center;">Bubble</figcaption>
-  </figure>
-</div>
+<table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="50%" style="border: none;">
+      <img src="static/img/simple-transcription-view.png" alt="Simple View" width="90%"/>
+      <br><em>Simple</em>
+    </td>
+    <td align="center" width="50%" style="border: none;">
+      <img src="static/img/transcription-bubble-view.png" alt="Bubble View" width="90%"/>
+      <br><em>Bubble</em>
+    </td>
+  </tr>
+</table>
 </details>
 
 <details><summary><strong>Speaker identification</strong></summary>
-<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-  <figure>
-    <img src="static/img/intuitive-speaker-identification.png" alt="AI-assisted" width="400"/>
-    <figcaption style="text-align: center;">AI-assisted</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/manual-auto-speaker-identification.png" alt="Manual & Auto" width="400"/>
-    <figcaption style="text-align: center;">Manual & Auto</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/speaker-suggestions.png" alt="Suggestions" width="400"/>
-    <figcaption style="text-align: center;">Saved Suggestions</figcaption>
-  </figure>
-</div>
+<table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/intuitive-speaker-identification.png" alt="AI-assisted" width="90%"/>
+      <br><em>AI-assisted</em>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/manual-auto-speaker-identification.png" alt="Manual & Auto" width="90%"/>
+      <br><em>Manual & Auto</em>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/speaker-suggestions.png" alt="Suggestions" width="90%"/>
+      <br><em>Saved Suggestions</em>
+    </td>
+  </tr>
+</table>
 </details>
 
 <details><summary><strong>Recordings & notes</strong></summary>
-<div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-  <figure>
-    <img src="static/img/rec1.png" alt="Options" width="400"/>
-    <figcaption style="text-align: center;">Recording Options</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/rec2.png" alt="Mic" width="400"/>
-    <figcaption style="text-align: center;">Mic/System Audio</figcaption>
-  </figure>
-  <figure>
-    <img src="static/img/rec3.png" alt="Both" width="400"/>
-    <figcaption style="text-align: center;">Mic + System Audio</figcaption>
-  </figure>
-</div>
+<table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec1.png" alt="Options" width="90%"/>
+      <br><em>Recording Options</em>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec2.png" alt="Mic" width="90%"/>
+      <br><em>Mic/System Audio</em>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec3.png" alt="Both" width="90%"/>
+      <br><em>Mic + System Audio</em>
+    </td>
+  </tr>
+</table>
 </details>
 
 </details>
@@ -137,11 +150,19 @@
 * **Customizable AI:** Configure the specific AI models, API endpoints (compatible with OpenAI, OpenRouter, local models), and custom prompts for summarization and chat.
 * **Multi-User Support:** Includes a complete user management system with an admin dashboard.
 
-<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-    <img src="static/img/rec1.png" alt="Transcription and Chat" style="max-width: 25%; height: auto;"/>
-    <img src="static/img/rec3.png" alt="Speaker Identification" style="max-width: 25%; height: auto;"/>
-    <img src="static/img/intuitive-speaker-identification.png" alt="Speaker Identification" style="max-width: 48%; height: auto;"/>
-</div>
+<table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec1.png" alt="Transcription and Chat" width="90%"/>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec3.png" alt="Speaker Identification" width="90%"/>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/intuitive-speaker-identification.png" alt="Speaker Identification" width="90%"/>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -276,20 +297,22 @@ Follow these steps if you want to modify the code or build the Docker image your
 
     <details>
     <summary><strong>Recording Interface Showcase</strong></summary>
-    <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-      <figure>
-        <img src="static/img/rec1.png" alt="Recording options" width="400"/>
-        <figcaption style="text-align: center;">Recording Options</figcaption>
-      </figure>
-      <figure>
-        <img src="static/img/rec2.png" alt="Record from microphone" width="400"/>
-        <figcaption style="text-align: center;">Record from Phone/Computer Microphone</figcaption>
-      </figure>
-      <figure>
-        <img src="static/img/rec3.png" alt="Record microphone and system audio" width="400"/>
-        <figcaption style="text-align: center;">Record Mic & System Audio (e.g., Zoom meeting)</figcaption>
-      </figure>
-    </div>
+    <table align="center" style="width:100%; border: none;">
+  <tr>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec1.png" alt="Recording options" width="90%"/>
+      <br><em>Recording Options</em>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec2.png" alt="Record from microphone" width="90%"/>
+      <br><em>Record from Phone/Computer Microphone</em>
+    </td>
+    <td align="center" width="33%" style="border: none;">
+      <img src="static/img/rec3.png" alt="Record microphone and system audio" width="90%"/>
+      <br><em>Record Mic & System Audio (e.g., Zoom meeting)</em>
+    </td>
+  </tr>
+</table>
     </details>
 
 4.  **Interact with Your Transcript:**
@@ -356,4 +379,4 @@ Speakr is in active development. Planned features include a faster way to switch
 
 Feedback, bug reports, and feature suggestions are highly encouraged\! Please open an issue on the GitHub repository to share your thoughts.
 
-**Note on Code Contributions:** Should the project begin formally accepting external code contributions, a Contributor License Agreement (CLA) will be required. 
+**Note on Code Contributions:** Should the project begin formally accepting external code contributions, a Contributor License Agreement (CLA) will be required.
