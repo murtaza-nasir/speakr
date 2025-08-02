@@ -3617,7 +3617,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 closeSharesList,
                 updateShare,
                 deleteShare,
-                copyShareLink
+                copyShareLink,
+                
+                // Recording Size Monitoring
+                estimatedFileSize,
+                fileSizeWarningShown,
+                recordingQuality,
+                actualBitrate,
+                maxRecordingMB,
+                sizeCheckInterval,
+                updateFileSizeEstimate,
+                startSizeMonitoring,
+                stopSizeMonitoring
             }
         },
         delimiters: ['${', '}']
