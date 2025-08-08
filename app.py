@@ -1154,7 +1154,10 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     recording.transcription = json.dumps(simplified_segments)
             
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
-            generate_summary_task(app_context, recording_id, start_time)
+            try:
+                generate_summary_task(app_context, recording_id, start_time)
+            except NameError:
+                pass
 
         except Exception as e:
             db.session.rollback()
