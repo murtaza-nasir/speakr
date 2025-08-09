@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Enhanced Search & Organization State ---
             const sortBy = ref('created_at'); // 'created_at' or 'meeting_date'
+            const selectedTagFilter = ref(null); // For filtering by clicked tag
 
             // --- UI State ---
             const browser = ref('unknown');
@@ -94,9 +95,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const uploadMinSpeakers = ref(1);
             const uploadMaxSpeakers = ref(5);
 
+            // Tag Selection
+            const availableTags = ref([]);
+            const selectedTagId = ref('');
+            const selectedTag = computed(() => {
+                return availableTags.value.find(tag => tag.id == selectedTagId.value) || null;
+            });
+
             // --- Modal State ---
             const showEditModal = ref(false);
             const showDeleteModal = ref(false);
+            const showEditTagsModal = ref(false);
+            const selectedNewTagId = ref('');
             const showReprocessModal = ref(false);
             const showResetModal = ref(false);
             const showSpeakerModal = ref(false);
@@ -181,51 +191,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const query = searchQuery.value.toLowerCase().trim();
                 
-                // Check for date search syntax (date:YYYY-MM-DD or date:today, date:yesterday, etc.)
-                const dateMatch = query.match(/date:(\S+)/);
-                if (dateMatch) {
-                    const dateQuery = dateMatch[1];
-                    return recordings.value.filter(recording => {
-                        const recordingDate = getDateForSorting(recording);
-                        if (!recordingDate) return false;
-                        
-                        if (dateQuery === 'today') {
-                            return isToday(recordingDate);
-                        } else if (dateQuery === 'yesterday') {
-                            return isYesterday(recordingDate);
-                        } else if (dateQuery === 'thisweek') {
-                            return isThisWeek(recordingDate);
-                        } else if (dateQuery === 'lastweek') {
-                            return isLastWeek(recordingDate);
-                        } else if (dateQuery === 'thismonth') {
-                            return isThisMonth(recordingDate);
-                        } else if (dateQuery === 'lastmonth') {
-                            return isLastMonth(recordingDate);
-                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
-                            // Exact date match
-                            const searchDate = new Date(dateQuery + 'T00:00:00');
-                            return isSameDay(recordingDate, searchDate);
-                        } else if (/^\d{4}-\d{2}$/.test(dateQuery)) {
-                            // Month match (YYYY-MM)
-                            const [year, month] = dateQuery.split('-');
-                            return recordingDate.getFullYear() === parseInt(year) && 
-                                   recordingDate.getMonth() === parseInt(month) - 1;
-                        } else if (/^\d{4}$/.test(dateQuery)) {
-                            // Year match
-                            return recordingDate.getFullYear() === parseInt(dateQuery);
-                        }
-                        return false;
-                    });
-                }
+                // Parse different search parts
+                const dateMatches = [...query.matchAll(/date:(\S+)/g)];
+                const tagMatches = [...query.matchAll(/tag:(\S+)/g)];
                 
-                // Regular text search
+                // Remove special syntax from query to get regular text search
+                let textQuery = query.replace(/date:\S+/g, '').replace(/tag:\S+/g, '').trim();
+                
                 return recordings.value.filter(recording => {
-                    return (
-                        (recording.title && recording.title.toLowerCase().includes(query)) ||
-                        (recording.participants && recording.participants.toLowerCase().includes(query)) ||
-                        (recording.transcription && recording.transcription.toLowerCase().includes(query)) ||
-                        (recording.notes && recording.notes.toLowerCase().includes(query))
-                    );
+                    let matches = true;
+                    
+                    // Check date filters (ALL must match if multiple)
+                    if (dateMatches.length > 0) {
+                        const dateMatched = dateMatches.every(match => {
+                            const dateQuery = match[1];
+                            const recordingDate = getDateForSorting(recording);
+                            if (!recordingDate) return false;
+                            
+                            if (dateQuery === 'today') {
+                                return isToday(recordingDate);
+                            } else if (dateQuery === 'yesterday') {
+                                return isYesterday(recordingDate);
+                            } else if (dateQuery === 'thisweek') {
+                                return isThisWeek(recordingDate);
+                            } else if (dateQuery === 'lastweek') {
+                                return isLastWeek(recordingDate);
+                            } else if (dateQuery === 'thismonth') {
+                                return isThisMonth(recordingDate);
+                            } else if (dateQuery === 'lastmonth') {
+                                return isLastMonth(recordingDate);
+                            } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
+                                const searchDate = new Date(dateQuery + 'T00:00:00');
+                                return isSameDay(recordingDate, searchDate);
+                            } else if (/^\d{4}-\d{2}$/.test(dateQuery)) {
+                                const [year, month] = dateQuery.split('-');
+                                return recordingDate.getFullYear() === parseInt(year) && 
+                                       recordingDate.getMonth() === parseInt(month) - 1;
+                            } else if (/^\d{4}$/.test(dateQuery)) {
+                                return recordingDate.getFullYear() === parseInt(dateQuery);
+                            }
+                            return false;
+                        });
+                        matches = matches && dateMatched;
+                    }
+                    
+                    // Check tag filters (ALL must match if multiple)
+                    if (tagMatches.length > 0) {
+                        const tagMatched = tagMatches.every(match => {
+                            const tagQuery = match[1].toLowerCase();
+                            if (!recording.tags || recording.tags.length === 0) return false;
+                            return recording.tags.some(tag => 
+                                tag.name.toLowerCase().includes(tagQuery)
+                            );
+                        });
+                        matches = matches && tagMatched;
+                    }
+                    
+                    // Check text search if there's remaining text
+                    if (textQuery) {
+                        const textMatched = (
+                            (recording.title && recording.title.toLowerCase().includes(textQuery)) ||
+                            (recording.participants && recording.participants.toLowerCase().includes(textQuery)) ||
+                            (recording.transcription && recording.transcription.toLowerCase().includes(textQuery)) ||
+                            (recording.notes && recording.notes.toLowerCase().includes(textQuery)) ||
+                            (recording.tags && recording.tags.length > 0 &&
+                             recording.tags.some(tag => tag.name.toLowerCase().includes(textQuery)))
+                        );
+                        matches = matches && textMatched;
+                    }
+                    
+                    return matches;
                 });
             });
             
@@ -1795,6 +1830,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             formData.append('notes', nextFileItem.notes);
                         }
                         
+                        // Add tag if selected
+                        if (selectedTagId.value) {
+                            formData.append('tag_id', selectedTagId.value);
+                        }
+                        
                         // Add ASR advanced options if ASR endpoint is enabled
                         if (useAsrEndpoint.value) {
                             if (uploadLanguage.value) {
@@ -2008,6 +2048,145 @@ document.addEventListener('DOMContentLoaded', () => {
                     recordings.value = [];
                 } finally {
                     isLoadingRecordings.value = false;
+                }
+            };
+
+            const loadTags = async () => {
+                try {
+                    const response = await fetch('/api/tags');
+                    if (response.ok) {
+                        availableTags.value = await response.json();
+                    } else {
+                        console.warn('Failed to load tags:', response.status);
+                        availableTags.value = [];
+                    }
+                } catch (error) {
+                    console.warn('Error loading tags:', error);
+                    availableTags.value = [];
+                }
+            };
+
+            const onTagSelected = () => {
+                // When a tag is selected, apply its default settings if ASR is enabled
+                if (selectedTag.value && useAsrEndpoint.value) {
+                    if (selectedTag.value.default_language) {
+                        uploadLanguage.value = selectedTag.value.default_language;
+                    }
+                    if (selectedTag.value.default_min_speakers) {
+                        uploadMinSpeakers.value = selectedTag.value.default_min_speakers;
+                    }
+                    if (selectedTag.value.default_max_speakers) {
+                        uploadMaxSpeakers.value = selectedTag.value.default_max_speakers;
+                    }
+                }
+            };
+
+            // Tag helper functions
+            const getRecordingTags = (recording) => {
+                if (!recording || !recording.tags) return [];
+                return recording.tags || [];
+            };
+
+            const getAvailableTagsForRecording = (recording) => {
+                if (!recording || !availableTags.value) return [];
+                const recordingTagIds = getRecordingTags(recording).map(tag => tag.id);
+                return availableTags.value.filter(tag => !recordingTagIds.includes(tag.id));
+            };
+            const filterByTag = (tag) => {
+                searchQuery.value = `tag:${tag.name}`;
+            };
+            const clearTagFilter = () => {
+                searchQuery.value = '';
+            };
+
+            const editRecordingTags = (recording) => {
+                editingRecording.value = recording;
+                selectedNewTagId.value = '';
+                showEditTagsModal.value = true;
+            };
+
+            const closeEditTagsModal = () => {
+                showEditTagsModal.value = false;
+                editingRecording.value = null;
+                selectedNewTagId.value = '';
+            };
+
+            const addTagToRecording = async () => {
+                if (!selectedNewTagId.value || !editingRecording.value) return;
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    
+                    const response = await fetch(`/api/recordings/${editingRecording.value.id}/tags`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ tag_id: selectedNewTagId.value })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to add tag');
+                    }
+                    
+                    // Update local recording data
+                    const tagToAdd = availableTags.value.find(tag => tag.id == selectedNewTagId.value);
+                    if (tagToAdd) {
+                        if (!editingRecording.value.tags) {
+                            editingRecording.value.tags = [];
+                        }
+                        editingRecording.value.tags.push(tagToAdd);
+                        
+                        // Also update in recordings list if it's a different object
+                        const recordingInList = recordings.value.find(r => r.id === editingRecording.value.id);
+                        if (recordingInList && recordingInList !== editingRecording.value) {
+                            if (!recordingInList.tags) {
+                                recordingInList.tags = [];
+                            }
+                            recordingInList.tags.push(tagToAdd);
+                        }
+                    }
+                    
+                    selectedNewTagId.value = '';
+                    
+                } catch (error) {
+                    console.error('Error adding tag to recording:', error);
+                    setGlobalError(`Failed to add tag: ${error.message}`);
+                }
+            };
+
+            const removeTagFromRecording = async (tagId) => {
+                if (!editingRecording.value) return;
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    
+                    const response = await fetch(`/api/recordings/${editingRecording.value.id}/tags/${tagId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to remove tag');
+                    }
+                    
+                    // Update local recording data
+                    editingRecording.value.tags = editingRecording.value.tags.filter(tag => tag.id !== tagId);
+                    
+                    // Also update in recordings list if it's a different object
+                    const recordingInList = recordings.value.find(r => r.id === editingRecording.value.id);
+                    if (recordingInList && recordingInList !== editingRecording.value && recordingInList.tags) {
+                        recordingInList.tags = recordingInList.tags.filter(tag => tag.id !== tagId);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error removing tag from recording:', error);
+                    setGlobalError(`Failed to remove tag: ${error.message}`);
                 }
             };
 
@@ -3435,6 +3614,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detectBrowser();
                 
                 loadRecordings();
+                loadTags();
                 initializeDarkMode();
                 initializeColorScheme();
                 
@@ -3524,10 +3704,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+                availableTags, selectedTagId, selectedTag, onTagSelected,
                 showSystemAudioHelp,
                 
                 // Modal State
                 showEditModal, showDeleteModal, showResetModal, editingRecording, recordingToDelete,
+                showEditTagsModal, selectedNewTagId, editRecordingTags, closeEditTagsModal, addTagToRecording, removeTagFromRecording,
+                getRecordingTags, getAvailableTagsForRecording, filterByTag, clearTagFilter,
                 showTextEditorModal, showAsrEditorModal, editingTranscriptionContent, editingSegments, availableSpeakers,
                 
                 // Inline Editing

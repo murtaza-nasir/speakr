@@ -605,7 +605,7 @@ class Tag(db.Model):
             'default_min_speakers': self.default_min_speakers,
             'default_max_speakers': self.default_max_speakers,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'recording_count': self.recordings.count() if hasattr(self.recordings, 'count') else len(self.recordings)
+            'recording_count': len([r for r in self.recordings])
         }
 
 class Share(db.Model):
@@ -1231,7 +1231,7 @@ JSON Response:"""
         app.logger.info(f"Recording {recording_id} processing time: {recording.processing_time_seconds} seconds.")
         db.session.commit()
 
-def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None):
+def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -1393,7 +1393,8 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
                            language=user_transcription_language, 
                            diarize=diarize_setting,
                            min_speakers=final_min_speakers,
-                           max_speakers=final_max_speakers)
+                           max_speakers=final_max_speakers,
+                           tag_id=tag_id)
         
         # After ASR task completes, calculate processing time
         with app_context:
