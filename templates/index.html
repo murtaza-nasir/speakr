@@ -274,19 +274,7 @@
 
             <!-- Main Content -->
             <main class="main-content" 
-                  :class="{ 'sidebar-open': !isSidebarCollapsed }"
-                  @dragover.prevent="handleDragOver"
-                  @dragleave="handleDragLeave"
-                  @drop.prevent="handleDrop">
-                
-                <!-- Drag Overlay -->
-                <div v-if="dragover" class="absolute inset-0 bg-[var(--bg-accent)] bg-opacity-90 flex items-center justify-center z-50 pointer-events-none">
-                    <div class="text-center p-8 bg-[var(--bg-secondary)] rounded-xl shadow-2xl border-2 border-dashed border-[var(--border-accent)]">
-                        <i class="fas fa-cloud-upload-alt text-6xl text-[var(--text-accent)] mb-4"></i>
-                        <h3 class="text-2xl font-bold text-[var(--text-primary)] mb-2">Drop Audio Files Here</h3>
-                        <p class="text-[var(--text-muted)]">Release to upload your audio files</p>
-                    </div>
-                </div>
+                  :class="{ 'sidebar-open': !isSidebarCollapsed }">
 
                 <div class="flex-1 flex flex-col overflow-hidden">
                 <!-- Upload View -->
@@ -710,7 +698,11 @@
                                         </div>
                                         <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                                             <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                            <p class="text-[var(--text-muted)]">No summary available</p>
+                                            <p class="text-[var(--text-muted)] mb-4">No summary available</p>
+                                            <button @click="generateSummary" 
+                                                    class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                                                <i class="fas fa-magic mr-2"></i>Generate Summary
+                                            </button>
                                         </div>
                                         <div v-else class="summary-box h-full" v-html="selectedRecording.summary_html || selectedRecording.summary"></div>
                                     </div>
@@ -1064,7 +1056,11 @@
                                             
                                             <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                                                 <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                                <p class="text-[var(--text-muted)]">No summary available</p>
+                                                <p class="text-[var(--text-muted)] mb-4">No summary available</p>
+                                                <button @click="generateSummary" 
+                                                        class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                                                    <i class="fas fa-magic mr-2"></i>Generate Summary
+                                                </button>
                                             </div>
                                             
                                             <div v-else class="content-box">
