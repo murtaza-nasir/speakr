@@ -234,9 +234,10 @@ You only need Docker installed for this method; you do not need to clone the rep
         # --- Transcription Service (uses /asr endpoint) ---
         USE_ASR_ENDPOINT=true
         ASR_BASE_URL=http://your_asr_host:9000  # URL of your running ASR webservice
-        ASR_DIARIZE=true
-        ASR_MIN_SPEAKERS=1
-        ASR_MAX_SPEAKERS=5
+        # Speaker diarization is automatically enabled with ASR
+        # Optional overrides (defaults shown):
+        # ASR_MIN_SPEAKERS=1
+        # ASR_MAX_SPEAKERS=5
 
         # --- Application Settings ---
         ALLOW_REGISTRATION=false

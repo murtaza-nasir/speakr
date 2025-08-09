@@ -863,9 +863,20 @@ transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openr
 # ASR endpoint configuration
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL')
-ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
-ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS')
-ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS')
+
+# When using ASR endpoint, automatically enable diarization and set sensible defaults
+# Users can still override these if needed, but they default to the expected ASR behavior
+if USE_ASR_ENDPOINT:
+    # Default to diarization enabled for ASR (can be overridden by setting ASR_DIARIZE=false)
+    ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
+    # Default speaker range for most conversations
+    ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS', '1')
+    ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS', '5')
+else:
+    # When not using ASR, these settings are irrelevant
+    ASR_DIARIZE = False
+    ASR_MIN_SPEAKERS = None
+    ASR_MAX_SPEAKERS = None
 
 # Audio chunking configuration for large files with OpenAI Whisper API
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'

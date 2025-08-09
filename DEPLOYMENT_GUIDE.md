@@ -239,9 +239,10 @@ TEXT_MODEL_NAME=openai/gpt-4o-mini
 # --- Transcription Service (ASR Endpoint) ---
 USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://whisper-asr:9000
-ASR_DIARIZE=true
-ASR_MIN_SPEAKERS=1
-ASR_MAX_SPEAKERS=5
+# Speaker diarization is automatically enabled with ASR
+# Optional overrides (defaults shown):
+# ASR_MIN_SPEAKERS=1
+# ASR_MAX_SPEAKERS=5
 
 # --- Application Settings ---
 ALLOW_REGISTRATION=false
@@ -409,9 +410,10 @@ WHISPER_MODEL=whisper-1
 ```env
 USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://localhost:9000  # or remote IP
-ASR_DIARIZE=true
-ASR_MIN_SPEAKERS=1
-ASR_MAX_SPEAKERS=5
+# Speaker diarization is automatically enabled
+# Optional overrides if needed:
+# ASR_MIN_SPEAKERS=2  # Override default of 1
+# ASR_MAX_SPEAKERS=10 # Override default of 5
 ```
 
 ## Large File Chunking Configuration
