@@ -567,6 +567,47 @@ class SystemSetting(db.Model):
         db.session.commit()
         return setting
 
+# Many-to-many relationship table for recordings and tags
+recording_tags = db.Table('recording_tags',
+    db.Column('recording_id', db.Integer, db.ForeignKey('recording.id'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
+)
+
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    color = db.Column(db.String(7), default='#3B82F6')  # Hex color for UI
+    
+    # Custom settings for this tag
+    custom_prompt = db.Column(db.Text, nullable=True)  # Custom summarization prompt
+    default_language = db.Column(db.String(10), nullable=True)  # Default transcription language
+    default_min_speakers = db.Column(db.Integer, nullable=True)  # Default min speakers for ASR
+    default_max_speakers = db.Column(db.Integer, nullable=True)  # Default max speakers for ASR
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('tags', lazy=True, cascade='all, delete-orphan'))
+    recordings = db.relationship('Recording', secondary=recording_tags, backref=db.backref('tags', lazy='dynamic'))
+    
+    # Unique constraint: tag name must be unique per user
+    __table_args__ = (db.UniqueConstraint('name', 'user_id', name='_user_tag_uc'),)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'color': self.color,
+            'custom_prompt': self.custom_prompt,
+            'default_language': self.default_language,
+            'default_min_speakers': self.default_min_speakers,
+            'default_max_speakers': self.default_max_speakers,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'recording_count': self.recordings.count() if hasattr(self.recordings, 'count') else len(self.recordings)
+        }
+
 class Share(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     public_id = db.Column(db.String(32), unique=True, nullable=False, default=lambda: secrets.token_urlsafe(16))
@@ -634,7 +675,8 @@ class Recording(db.Model):
             'user_id': self.user_id,
             'is_inbox': self.is_inbox,
             'is_highlighted': self.is_highlighted,
-            'mime_type': self.mime_type
+            'mime_type': self.mime_type,
+            'tags': [tag.to_dict() for tag in self.tags] if self.tags else []
         }
 
 # --- Forms for Authentication ---
@@ -727,6 +769,114 @@ def delete_share(share_id):
     db.session.delete(share)
     db.session.commit()
     return jsonify({'success': True})
+
+# --- Tag API Endpoints ---
+@app.route('/api/tags', methods=['GET'])
+@login_required
+def get_tags():
+    """Get all tags for the current user."""
+    tags = Tag.query.filter_by(user_id=current_user.id).order_by(Tag.name).all()
+    return jsonify([tag.to_dict() for tag in tags])
+
+@app.route('/api/tags', methods=['POST'])
+@login_required
+def create_tag():
+    """Create a new tag."""
+    data = request.get_json()
+    
+    if not data or not data.get('name'):
+        return jsonify({'error': 'Tag name is required'}), 400
+    
+    # Check if tag with same name already exists for this user
+    existing_tag = Tag.query.filter_by(name=data['name'], user_id=current_user.id).first()
+    if existing_tag:
+        return jsonify({'error': 'Tag with this name already exists'}), 400
+    
+    tag = Tag(
+        name=data['name'],
+        user_id=current_user.id,
+        color=data.get('color', '#3B82F6'),
+        custom_prompt=data.get('custom_prompt'),
+        default_language=data.get('default_language'),
+        default_min_speakers=data.get('default_min_speakers'),
+        default_max_speakers=data.get('default_max_speakers')
+    )
+    
+    db.session.add(tag)
+    db.session.commit()
+    
+    return jsonify(tag.to_dict()), 201
+
+@app.route('/api/tags/<int:tag_id>', methods=['PUT'])
+@login_required
+def update_tag(tag_id):
+    """Update a tag."""
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    data = request.get_json()
+    
+    if 'name' in data:
+        # Check if new name conflicts with another tag
+        existing_tag = Tag.query.filter_by(name=data['name'], user_id=current_user.id).filter(Tag.id != tag_id).first()
+        if existing_tag:
+            return jsonify({'error': 'Another tag with this name already exists'}), 400
+        tag.name = data['name']
+    
+    if 'color' in data:
+        tag.color = data['color']
+    if 'custom_prompt' in data:
+        tag.custom_prompt = data['custom_prompt']
+    if 'default_language' in data:
+        tag.default_language = data['default_language']
+    if 'default_min_speakers' in data:
+        tag.default_min_speakers = data['default_min_speakers']
+    if 'default_max_speakers' in data:
+        tag.default_max_speakers = data['default_max_speakers']
+    
+    tag.updated_at = datetime.utcnow()
+    db.session.commit()
+    
+    return jsonify(tag.to_dict())
+
+@app.route('/api/tags/<int:tag_id>', methods=['DELETE'])
+@login_required
+def delete_tag(tag_id):
+    """Delete a tag."""
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    db.session.delete(tag)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/recordings/<int:recording_id>/tags', methods=['POST'])
+@login_required
+def add_tag_to_recording(recording_id):
+    """Add a tag to a recording."""
+    recording = Recording.query.filter_by(id=recording_id, user_id=current_user.id).first_or_404()
+    data = request.get_json()
+    
+    tag_id = data.get('tag_id')
+    if not tag_id:
+        return jsonify({'error': 'tag_id is required'}), 400
+    
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    
+    if tag not in recording.tags:
+        recording.tags.append(tag)
+        db.session.commit()
+    
+    return jsonify({'success': True, 'tags': [t.to_dict() for t in recording.tags]})
+
+@app.route('/api/recordings/<int:recording_id>/tags/<int:tag_id>', methods=['DELETE'])
+@login_required
+def remove_tag_from_recording(recording_id, tag_id):
+    """Remove a tag from a recording."""
+    recording = Recording.query.filter_by(id=recording_id, user_id=current_user.id).first_or_404()
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    
+    if tag in recording.tags:
+        recording.tags.remove(tag)
+        db.session.commit()
+    
+    return jsonify({'success': True, 'tags': [t.to_dict() for t in recording.tags]})
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -919,8 +1069,15 @@ def format_api_error_message(error_str):
     # For other errors, show a generic message
     return f"[Summary generation failed: {error_str}]"
 
-def generate_summary_task(app_context, recording_id, start_time):
-    """Generates title and summary for a recording."""
+def generate_summary_task(app_context, recording_id, start_time, tag_id=None):
+    """Generates title and summary for a recording.
+    
+    Args:
+        app_context: Flask app context
+        recording_id: ID of the recording
+        start_time: Processing start time
+        tag_id: Optional tag ID to use custom prompt from
+    """
     with app_context:
         recording = db.session.get(Recording, recording_id)
         if not recording:
@@ -947,6 +1104,23 @@ def generate_summary_task(app_context, recording_id, start_time):
 
         user_summary_prompt = None
         user_output_language = None
+        tag_custom_prompt = None
+        
+        # Check if recording has a tag with custom prompt
+        if recording.tags:
+            for tag in recording.tags:
+                if tag.custom_prompt:
+                    tag_custom_prompt = tag.custom_prompt
+                    app.logger.info(f"Using custom prompt from tag '{tag.name}' for recording {recording_id}")
+                    break
+        
+        # Get tag by ID if provided (for backwards compatibility)
+        if not tag_custom_prompt and tag_id:
+            tag = db.session.get(Tag, tag_id)
+            if tag and tag.custom_prompt:
+                tag_custom_prompt = tag.custom_prompt
+                app.logger.info(f"Using custom prompt from tag '{tag.name}' for recording {recording_id}")
+        
         if recording.owner:
             user_summary_prompt = recording.owner.summary_prompt
             user_output_language = recording.owner.output_language
@@ -986,7 +1160,13 @@ JSON Response:"""
         else:
             transcript_text = recording.transcription[:transcript_limit]
         
-        if user_summary_prompt:
+        # Priority order: tag custom prompt > user summary prompt > default prompt
+        active_prompt = tag_custom_prompt or user_summary_prompt
+        
+        if active_prompt:
+            prompt_source = "tag" if tag_custom_prompt else "user"
+            app.logger.info(f"Using {prompt_source} custom prompt for recording {recording_id}")
+            
             prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
             
 Transcription:
@@ -997,7 +1177,7 @@ Transcription:
 Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
 
 For the "title": create a short, descriptive title (max 6 words, no introductory phrases like "brief", "discussion on", "Meeting about").
-For the "summary": {user_summary_prompt}. 
+For the "summary": {active_prompt}. 
 
 {language_directive}
 
@@ -1165,7 +1345,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     recording.transcription = json.dumps(simplified_segments)
             
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
-            generate_summary_task(app_context, recording_id, start_time)
+            generate_summary_task(app_context, recording_id, start_time, tag_id)
 
         except Exception as e:
             db.session.rollback()
@@ -1176,7 +1356,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 recording.transcription = f"ASR processing failed: {str(e)}"
                 db.session.commit()
 
-def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None):
+def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None, tag_id=None):
     """Runs the transcription and summarization in a background thread.
     
     Args:
@@ -1188,6 +1368,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
         language: Optional language code override (from upload form)
         min_speakers: Optional minimum speakers override (from upload form)
         max_speakers: Optional maximum speakers override (from upload form)
+        tag_id: Optional tag ID to apply custom prompt from
     """
     if USE_ASR_ENDPOINT:
         with app_context:
@@ -1248,7 +1429,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             
             recording.transcription = transcription_text
             app.logger.info(f"Transcription completed for recording {recording_id}. Text length: {len(recording.transcription)}")
-            generate_summary_task(app_context, recording_id, start_time)
+            generate_summary_task(app_context, recording_id, start_time, tag_id)
 
         except Exception as e:
             db.session.rollback() # Rollback if any step failed critically
@@ -3127,10 +3308,25 @@ def upload_file():
         # Get notes from the form
         notes = request.form.get('notes')
         
+        # Get selected tag if provided
+        tag_id = request.form.get('tag_id')
+        tag = None
+        if tag_id:
+            tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first()
+        
         # Get ASR advanced options if provided
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers')
         max_speakers = request.form.get('max_speakers')
+        
+        # Apply tag defaults if tag is selected and values are not explicitly provided
+        if tag:
+            if not language and tag.default_language:
+                language = tag.default_language
+            if not min_speakers and tag.default_min_speakers:
+                min_speakers = str(tag.default_min_speakers)
+            if not max_speakers and tag.default_max_speakers:
+                max_speakers = str(tag.default_max_speakers)
 
         # Create initial database entry
         recording = Recording(
@@ -3147,22 +3343,30 @@ def upload_file():
         )
         db.session.add(recording)
         db.session.commit()
+        
+        # Add tag to recording if selected
+        if tag:
+            recording.tags.append(tag)
+            db.session.commit()
+            app.logger.info(f"Added tag '{tag.name}' to recording {recording.id}")
+        
         app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
         # --- Start transcription & summarization in background thread ---
         start_time = datetime.utcnow()
         
-        # Pass ASR parameters to the transcription task if using ASR endpoint
+        # Pass ASR parameters and tag to the transcription task
         if USE_ASR_ENDPOINT:
             thread = threading.Thread(
                 target=transcribe_audio_task,
                 args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
-                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers}
+                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers, 'tag_id': tag.id if tag else None}
             )
         else:
             thread = threading.Thread(
                 target=transcribe_audio_task,
-                args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time)
+                args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
+                kwargs={'tag_id': tag.id if tag else None}
             )
         thread.start()
         app.logger.info(f"Background processing thread started for recording ID: {recording.id}")
