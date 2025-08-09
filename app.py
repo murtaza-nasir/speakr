@@ -1176,8 +1176,19 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 recording.transcription = f"ASR processing failed: {str(e)}"
                 db.session.commit()
 
-def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time):
-    """Runs the transcription and summarization in a background thread."""
+def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None):
+    """Runs the transcription and summarization in a background thread.
+    
+    Args:
+        app_context: Flask app context
+        recording_id: ID of the recording to process
+        filepath: Path to the audio file
+        filename_for_asr: Filename to use for ASR
+        start_time: Processing start time
+        language: Optional language code override (from upload form)
+        min_speakers: Optional minimum speakers override (from upload form)
+        max_speakers: Optional maximum speakers override (from upload form)
+    """
     if USE_ASR_ENDPOINT:
         with app_context:
             recording = db.session.get(Recording, recording_id)
@@ -1186,8 +1197,22 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
                 diarize_setting = ASR_DIARIZE
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
-            user_transcription_language = recording.owner.transcription_language if recording.owner else None
-        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, start_time, mime_type=recording.mime_type, language=user_transcription_language, diarize=diarize_setting)
+            
+            # Use language from upload form if provided, otherwise use user's default
+            if language:
+                user_transcription_language = language
+            else:
+                user_transcription_language = recording.owner.transcription_language if recording.owner else None
+        # Use min/max speakers from upload form if provided, otherwise use defaults
+        final_min_speakers = min_speakers if min_speakers else ASR_MIN_SPEAKERS
+        final_max_speakers = max_speakers if max_speakers else ASR_MAX_SPEAKERS
+        
+        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, start_time, 
+                           mime_type=recording.mime_type, 
+                           language=user_transcription_language, 
+                           diarize=diarize_setting,
+                           min_speakers=final_min_speakers,
+                           max_speakers=final_max_speakers)
         
         # After ASR task completes, calculate processing time
         with app_context:
@@ -3101,6 +3126,11 @@ def upload_file():
 
         # Get notes from the form
         notes = request.form.get('notes')
+        
+        # Get ASR advanced options if provided
+        language = request.form.get('language', '')
+        min_speakers = request.form.get('min_speakers')
+        max_speakers = request.form.get('max_speakers')
 
         # Create initial database entry
         recording = Recording(
@@ -3121,10 +3151,19 @@ def upload_file():
 
         # --- Start transcription & summarization in background thread ---
         start_time = datetime.utcnow()
-        thread = threading.Thread(
-            target=transcribe_audio_task,
-            args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time)
-        )
+        
+        # Pass ASR parameters to the transcription task if using ASR endpoint
+        if USE_ASR_ENDPOINT:
+            thread = threading.Thread(
+                target=transcribe_audio_task,
+                args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
+                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers}
+            )
+        else:
+            thread = threading.Thread(
+                target=transcribe_audio_task,
+                args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time)
+            )
         thread.start()
         app.logger.info(f"Background processing thread started for recording ID: {recording.id}")
 

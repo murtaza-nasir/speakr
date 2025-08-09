@@ -87,6 +87,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const actualBitrate = ref(0);
             const maxRecordingMB = ref(200); // Maximum recording size before auto-stop
             const sizeCheckInterval = ref(null);
+            
+            // Advanced Options for ASR
+            const showAdvancedOptions = ref(false);
+            const uploadLanguage = ref('');  // Empty string for auto-detect
+            const uploadMinSpeakers = ref(1);
+            const uploadMaxSpeakers = ref(5);
 
             // --- Modal State ---
             const showEditModal = ref(false);
@@ -1787,6 +1793,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         formData.append('file', nextFileItem.file);
                         if (nextFileItem.notes) {
                             formData.append('notes', nextFileItem.notes);
+                        }
+                        
+                        // Add ASR advanced options if ASR endpoint is enabled
+                        if (useAsrEndpoint.value) {
+                            if (uploadLanguage.value) {
+                                formData.append('language', uploadLanguage.value);
+                            }
+                            formData.append('min_speakers', uploadMinSpeakers.value.toString());
+                            formData.append('max_speakers', uploadMaxSpeakers.value.toString());
                         }
 
                         processingMessage.value = 'Uploading file...';
@@ -3508,6 +3523,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,
+                showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
                 showSystemAudioHelp,
                 
                 // Modal State
