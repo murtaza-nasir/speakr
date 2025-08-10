@@ -3891,14 +3891,16 @@ def upload_file():
         
         # Apply precedence hierarchy: user input > tag defaults > environment variables > auto-detect
         
-        # Apply tag defaults if tag is selected and values are not explicitly provided by user
-        if tag:
-            if not language and tag.default_language:
-                language = tag.default_language
-            if min_speakers is None and tag.default_min_speakers:
-                min_speakers = tag.default_min_speakers
-            if max_speakers is None and tag.default_max_speakers:
-                max_speakers = tag.default_max_speakers
+        # Apply tag defaults if tags are selected and values are not explicitly provided by user
+        # Use first tag's defaults (highest priority)
+        if selected_tags:
+            first_tag = selected_tags[0]
+            if not language and first_tag.default_language:
+                language = first_tag.default_language
+            if min_speakers is None and first_tag.default_min_speakers:
+                min_speakers = first_tag.default_min_speakers
+            if max_speakers is None and first_tag.default_max_speakers:
+                max_speakers = first_tag.default_max_speakers
         
         # Apply environment variable defaults if still no values are set
         if min_speakers is None and ASR_MIN_SPEAKERS:
