@@ -3850,11 +3850,27 @@ def upload_file():
         # Get notes from the form
         notes = request.form.get('notes')
         
-        # Get selected tag if provided
-        tag_id = request.form.get('tag_id')
-        tag = None
-        if tag_id:
+        # Get selected tags if provided (multiple tags support)
+        selected_tags = []
+        tag_index = 0
+        while True:
+            tag_id_key = f'tag_ids[{tag_index}]'
+            tag_id = request.form.get(tag_id_key)
+            if not tag_id:
+                break
+            
             tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first()
+            if tag:
+                selected_tags.append(tag)
+            tag_index += 1
+        
+        # For backward compatibility with single tag uploads
+        if not selected_tags:
+            single_tag_id = request.form.get('tag_id')
+            if single_tag_id:
+                tag = Tag.query.filter_by(id=single_tag_id, user_id=current_user.id).first()
+                if tag:
+                    selected_tags.append(tag)
         
         # Get ASR advanced options if provided
         language = request.form.get('language', '')
@@ -3912,38 +3928,41 @@ def upload_file():
         db.session.add(recording)
         db.session.commit()
         
-        # Add tag to recording if selected
-        if tag:
-            # Create new association with order 1 (first tag for this recording)
+        # Add tags to recording if selected (preserve order)
+        for order, tag in enumerate(selected_tags, 1):
             new_association = RecordingTag(
                 recording_id=recording.id,
                 tag_id=tag.id,
-                order=1,
+                order=order,
                 added_at=datetime.utcnow()
             )
             db.session.add(new_association)
+        
+        if selected_tags:
             db.session.commit()
-            app.logger.info(f"Added tag '{tag.name}' to recording {recording.id}")
+            tag_names = [tag.name for tag in selected_tags]
+            app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: {', '.join(tag_names)}")
         
         app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
         # --- Start transcription & summarization in background thread ---
         start_time = datetime.utcnow()
         
-        # Pass ASR parameters and tag to the transcription task
+        # Pass ASR parameters and first tag to the transcription task (for compatibility with existing functions)
+        first_tag = selected_tags[0] if selected_tags else None
         if USE_ASR_ENDPOINT:
-            app.logger.info(f"Starting ASR transcription thread for recording {recording.id} with params: language={language}, min_speakers={min_speakers}, max_speakers={max_speakers}, tag_id={tag.id if tag else None}")
+            app.logger.info(f"Starting ASR transcription thread for recording {recording.id} with params: language={language}, min_speakers={min_speakers}, max_speakers={max_speakers}, tag_id={first_tag.id if first_tag else None}")
             thread = threading.Thread(
                 target=transcribe_audio_task,
                 args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
-                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers, 'tag_id': tag.id if tag else None}
+                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers, 'tag_id': first_tag.id if first_tag else None}
             )
         else:
-            app.logger.info(f"Starting Whisper transcription thread for recording {recording.id} with tag_id={tag.id if tag else None}")
+            app.logger.info(f"Starting Whisper transcription thread for recording {recording.id} with tag_id={first_tag.id if first_tag else None}")
             thread = threading.Thread(
                 target=transcribe_audio_task,
                 args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
-                kwargs={'tag_id': tag.id if tag else None}
+                kwargs={'tag_id': first_tag.id if first_tag else None}
             )
         thread.start()
         app.logger.info(f"Background processing thread started for recording ID: {recording.id}")

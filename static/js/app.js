@@ -97,9 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Tag Selection
             const availableTags = ref([]);
-            const selectedTagId = ref('');
-            const selectedTag = computed(() => {
-                return availableTags.value.find(tag => tag.id == selectedTagId.value) || null;
+            const selectedTagIds = ref([]); // Changed to array for multiple selection
+            const selectedTags = computed(() => {
+                return selectedTagIds.value.map(tagId => 
+                    availableTags.value.find(tag => tag.id == tagId)
+                ).filter(Boolean); // Filter out undefined tags
             });
 
             // --- Modal State ---
@@ -1881,10 +1883,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             formData.append('notes', nextFileItem.notes);
                         }
                         
-                        // Add tag if selected
-                        if (selectedTagId.value) {
-                            formData.append('tag_id', selectedTagId.value);
-                        }
+                        // Add tags if selected (multiple tags)
+                        selectedTagIds.value.forEach((tagId, index) => {
+                            formData.append(`tag_ids[${index}]`, tagId);
+                        });
                         
                         // Add ASR advanced options if ASR endpoint is enabled
                         if (useAsrEndpoint.value) {
@@ -2122,20 +2124,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            const onTagSelected = () => {
-                // When a tag is selected, apply its default settings if ASR is enabled
-                if (selectedTag.value && useAsrEndpoint.value) {
-                    if (selectedTag.value.default_language) {
-                        uploadLanguage.value = selectedTag.value.default_language;
+            const addTagToSelection = (tagId) => {
+                if (!selectedTagIds.value.includes(tagId)) {
+                    selectedTagIds.value.push(tagId);
+                    applyTagDefaults();
+                }
+            };
+
+            const removeTagFromSelection = (tagId) => {
+                const index = selectedTagIds.value.indexOf(tagId);
+                if (index > -1) {
+                    selectedTagIds.value.splice(index, 1);
+                    applyTagDefaults();
+                }
+            };
+
+            const applyTagDefaults = () => {
+                // Apply defaults from the first selected tag (highest priority)
+                const firstTag = selectedTags.value[0];
+                if (firstTag && useAsrEndpoint.value) {
+                    if (firstTag.default_language) {
+                        uploadLanguage.value = firstTag.default_language;
                     }
-                    if (selectedTag.value.default_min_speakers) {
-                        uploadMinSpeakers.value = selectedTag.value.default_min_speakers;
+                    if (firstTag.default_min_speakers) {
+                        uploadMinSpeakers.value = firstTag.default_min_speakers;
                     }
-                    if (selectedTag.value.default_max_speakers) {
-                        uploadMaxSpeakers.value = selectedTag.value.default_max_speakers;
+                    if (firstTag.default_max_speakers) {
+                        uploadMaxSpeakers.value = firstTag.default_max_speakers;
                     }
                 }
             };
+
+            // Legacy function for backward compatibility
+            const onTagSelected = applyTagDefaults;
 
             // Tag helper functions
             const getRecordingTags = (recording) => {
@@ -3849,7 +3870,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
-                availableTags, selectedTagId, selectedTag, onTagSelected,
+                availableTags, selectedTagIds, selectedTags, onTagSelected, addTagToSelection, removeTagFromSelection,
                 showSystemAudioHelp,
                 
                 // Modal State
