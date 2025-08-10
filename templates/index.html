@@ -206,33 +206,12 @@
                                                  ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]' 
                                                  : 'bg-[var(--bg-tertiary)] border-transparent hover:bg-[var(--bg-accent-hover)]'
                                          ]">
-                                        <div class="flex items-start justify-between">
-                                            <div class="flex-1 min-w-0">
-                                                <h4 class="font-medium text-sm truncate" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
-                                                    ${recording.title || 'Untitled Recording'}
-                                                </h4>
-                                                <p class="text-xs text-[var(--text-muted)] mt-1">
-                                                    ${formatDisplayDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
-                                                </p>
-                                                <div v-if="getRecordingTags(recording).length > 0" class="flex flex-wrap gap-1 mt-1">
-                                                    <button v-for="tag in getRecordingTags(recording).slice(0, 2)" :key="tag.id"
-                                                            @click.stop="filterByTag(tag)"
-                                                            class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium text-white hover:opacity-80 transition-opacity cursor-pointer"
-                                                            :style="{ backgroundColor: tag.color }"
-                                                            :title="'Filter by ' + tag.name">
-                                                        <span v-text="tag.name"></span>
-                                                    </button>
-                                                    <span v-if="getRecordingTags(recording).length > 2" 
-                                                          class="inline-flex items-center px-1.5 py-0.5 rounded text-xs text-[var(--text-muted)]"
-                                                          :title="getRecordingTags(recording).slice(2).map(t => t.name).join(', ')">
-                                                        +${getRecordingTags(recording).length - 2} more
-                                                    </span>
-                                                </div>
-                                                <div v-if="recording.participants" class="text-xs text-[var(--text-muted)] mt-1 truncate">
-                                                    ${recording.participants}
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center gap-1 ml-2">
+                                        <!-- Title and Status Row -->
+                                        <div class="flex items-center justify-between mb-1">
+                                            <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                                                ${recording.title || 'Untitled Recording'}
+                                            </h4>
+                                            <div class="flex items-center gap-1 flex-shrink-0">
                                                 <!-- Show Failed status for failed recordings -->
                                                 <span v-if="recording.status === 'FAILED'" 
                                                       class="status-badge status-failed">
@@ -263,6 +242,36 @@
                                                     </span>
                                                 </template>
                                             </div>
+                                        </div>
+
+                                        <!-- Date -->
+                                        <p class="text-xs text-[var(--text-muted)] mt-1 flex items-center">
+                                            <i class="fas fa-calendar-alt mr-1.5 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                                            ${formatDisplayDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
+                                        </p>
+
+                                        <!-- Participants -->
+                                        <div v-if="recording.participants" class="text-xs text-[var(--text-muted)] mt-1 flex items-start">
+                                            <i class="fas fa-users mr-1.5 text-[var(--text-muted)] flex-shrink-0" style="font-size: 10px; margin-top: 2px;"></i>
+                                            <span class="truncate">
+                                                ${recording.participants}
+                                            </span>
+                                        </div>
+
+                                        <!-- Tags -->
+                                        <div v-if="getRecordingTags(recording).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                            <button v-for="tag in getRecordingTags(recording).slice(0, 2)" :key="tag.id"
+                                                    @click.stop="filterByTag(tag)"
+                                                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium text-white hover:opacity-80 transition-opacity cursor-pointer"
+                                                    :style="{ backgroundColor: tag.color }"
+                                                    :title="'Filter by ' + tag.name">
+                                                <span v-text="tag.name"></span>
+                                            </button>
+                                            <span v-if="getRecordingTags(recording).length > 2" 
+                                                  class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"
+                                                  :title="getRecordingTags(recording).slice(2).map(t => t.name).join(', ')">
+                                                +${getRecordingTags(recording).length - 2} more
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
