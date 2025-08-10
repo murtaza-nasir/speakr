@@ -92,8 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Advanced Options for ASR
             const showAdvancedOptions = ref(false);
             const uploadLanguage = ref('');  // Empty string for auto-detect
-            const uploadMinSpeakers = ref(1);
-            const uploadMaxSpeakers = ref(5);
+            const uploadMinSpeakers = ref('');  // Empty string for auto-detect
+            const uploadMaxSpeakers = ref('');  // Empty string for auto-detect
 
             // Tag Selection
             const availableTags = ref([]);
@@ -1856,6 +1856,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (nextFileItem) {
                     console.log(`Processing next file: ${nextFileItem.file.name} (Client ID: ${nextFileItem.clientId})`);
                     currentlyProcessingFile.value = nextFileItem;
+                    
+                    // Check if this is a "reload" item (existing recording being tracked)
+                    if (nextFileItem.clientId.startsWith('reload-')) {
+                        // Skip upload, go directly to polling existing recording
+                        console.log(`Skipping upload for existing recording: ${nextFileItem.recordingId}`);
+                        nextFileItem.status = 'processing';
+                        startStatusPolling(nextFileItem, nextFileItem.recordingId);
+                        return;
+                    }
+                    
                     nextFileItem.status = 'uploading';
                     processingMessage.value = 'Preparing upload...';
                     processingProgress.value = 5;
@@ -1877,8 +1887,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (uploadLanguage.value) {
                                 formData.append('language', uploadLanguage.value);
                             }
-                            formData.append('min_speakers', uploadMinSpeakers.value.toString());
-                            formData.append('max_speakers', uploadMaxSpeakers.value.toString());
+                            // Only send speaker limits if they're actually set
+                            if (uploadMinSpeakers.value && uploadMinSpeakers.value !== '') {
+                                formData.append('min_speakers', uploadMinSpeakers.value.toString());
+                            }
+                            if (uploadMaxSpeakers.value && uploadMaxSpeakers.value !== '') {
+                                formData.append('max_speakers', uploadMaxSpeakers.value.toString());
+                            }
                         }
 
                         processingMessage.value = 'Uploading file...';

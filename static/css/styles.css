@@ -765,18 +765,25 @@ div[v-if="!editingNotes"] {
  }
  
  .ai-message code, .summary-box code, .notes-box code {
-     background-color: #f1f1f1; /* Consider using var(--bg-tertiary) or similar for theme consistency */
-     padding: 0.1rem 0.3rem;
+     background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+     padding: 0.125rem 0.25rem;
      border-radius: 0.25rem;
-     font-family: monospace;
-     font-size: 0.9em;
+     font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+     font-size: 0.875rem;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
  }
  
  .ai-message pre, .summary-box pre, .notes-box pre {
-     background-color: #f1f1f1; /* Consider using var(--bg-tertiary) or similar */
+     background-color: var(--bg-tertiary);
+     color: var(--text-primary);
      padding: 0.75rem;
-     border-radius: 0.25rem;
+     border-radius: 0.5rem;
      overflow-x: auto;
+     white-space: pre-wrap;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
      margin-bottom: 0.75rem;
  }
  
@@ -784,6 +791,10 @@ div[v-if="!editingNotes"] {
      background-color: transparent;
      padding: 0;
      border-radius: 0;
+     color: inherit;
+     white-space: pre-wrap;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
  }
  
  .ai-message table, .summary-box table, .notes-box table {
