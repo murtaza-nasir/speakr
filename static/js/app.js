@@ -397,6 +397,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const completedInQueue = computed(() => uploadQueue.value.filter(item => item.status === 'completed' || item.status === 'failed').length);
             const finishedFilesInQueue = computed(() => uploadQueue.value.filter(item => ['completed', 'failed'].includes(item.status)));
 
+            const clearCompletedUploads = () => {
+                uploadQueue.value = uploadQueue.value.filter(item => !['completed', 'failed'].includes(item.status));
+            };
+
             const identifiedSpeakers = computed(() => {
                 // Ensure we have a valid recording and transcription
                 if (!selectedRecording.value?.transcription) {
@@ -3840,7 +3844,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Upload State
                 uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
                 isProcessingActive, progressPopupMinimized, progressPopupClosed,
-                totalInQueue, completedInQueue, finishedFilesInQueue,
+                totalInQueue, completedInQueue, finishedFilesInQueue, clearCompletedUploads,
                 
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,

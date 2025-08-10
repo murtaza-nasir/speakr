@@ -314,26 +314,19 @@ def md_to_html(text):
     if not text:
         return ""
     
-    # Pre-process the text to ensure proper list formatting
+    # Fix list spacing
     def fix_list_spacing(text):
         lines = text.split('\n')
         result = []
         in_list = False
         
-        for i, line in enumerate(lines):
+        for line in lines:
             stripped = line.strip()
             
             # Check if this line is a list item (starts with -, *, +, or number.)
             is_list_item = (
                 stripped.startswith(('- ', '* ', '+ ')) or
                 (stripped and stripped[0].isdigit() and '. ' in stripped[:10])
-            )
-            
-            # Check if previous line was a list item
-            prev_line = lines[i-1].strip() if i > 0 else ""
-            prev_was_list = (
-                prev_line.startswith(('- ', '* ', '+ ')) or
-                (prev_line and prev_line[0].isdigit() and '. ' in prev_line[:10])
             )
             
             # If we're starting a new list or continuing a list, ensure proper spacing
@@ -3188,17 +3181,33 @@ def account():
         
     default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, any next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered.
 
+CRITICAL FORMATTING REQUIREMENTS:
+- Each **Bold Key:** value pair MUST be on its own separate line
+- Add a blank line after bold headers when followed by bullet point lists  
+- Never put multiple **Bold:** items on the same line
+- Use proper markdown with consistent line breaks
+
 Example Format:
 
 ### Minutes
 
-**Meeting Participants:**  
+**Case:** Wisconsin Central v. United States
+
+**Court:** U.S. Supreme Court  
+
+**Date:** Not specified
+
+**Counsel:** John Dupree (Petitioner), Cynthia Covner (Respondent)
+
+**Meeting Participants:**
+
 - Bob  
 - Alice  
 
 ---
 
 **1. Introduction and Overview:**
+
 - Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
 ....
 ### Key Issues Discussed

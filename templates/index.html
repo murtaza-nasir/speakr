@@ -1270,6 +1270,11 @@
                         <span class="text-sm text-[var(--text-muted)]">(${completedInQueue}/${totalInQueue})</span>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button v-if="completedInQueue > 0" @click="clearCompletedUploads()" 
+                                class="px-2 py-1 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] rounded transition-colors text-[var(--text-secondary)]"
+                                title="Clear completed uploads">
+                            <i class="fas fa-broom mr-1"></i>Clear
+                        </button>
                         <button @click="progressPopupMinimized = !progressPopupMinimized" 
                                 class="p-1 rounded hover:bg-[var(--bg-accent)] transition-colors">
                             <i :class="progressPopupMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
