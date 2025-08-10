@@ -811,8 +811,9 @@
                             <!-- Summary Panel -->
                             <div v-if="mobileTab === 'summary'" class="h-full flex flex-col space-y-4">
                                 <div class="flex items-center justify-end gap-2 flex-shrink-0">
-                                    <button @click="copySummary" class="copy-btn"><i class="fas fa-copy"></i></button>
-                                    <button @click="toggleEditSummary" class="copy-btn"><i class="fas fa-edit"></i></button>
+                                    <button @click="copySummary" class="copy-btn" title="Copy Summary"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadSummary" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
+                                    <button @click="toggleEditSummary" class="copy-btn" title="Edit Summary"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="editingSummary" class="h-full flex flex-col">
@@ -844,8 +845,9 @@
                             <!-- Notes Panel -->
                             <div v-if="mobileTab === 'notes'" class="h-full flex flex-col space-y-4">
                                 <div class="flex items-center justify-end gap-2 flex-shrink-0">
-                                    <button @click="copyNotes" class="copy-btn"><i class="fas fa-copy"></i></button>
-                                    <button @click="toggleEditNotes" class="copy-btn"><i class="fas fa-edit"></i></button>
+                                    <button @click="copyNotes" class="copy-btn" title="Copy Notes"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadNotes" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
+                                    <button @click="toggleEditNotes" class="copy-btn" title="Edit Notes"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="editingNotes" class="h-full flex flex-col">
