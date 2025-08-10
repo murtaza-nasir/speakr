@@ -90,6 +90,9 @@
                         <a href="#" id="tab-shares" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
                             Shared Transcripts
                         </a>
+                        <a href="#" id="tab-tags" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
+                            Tag Management
+                        </a>
                     </nav>
                 </div>
 
@@ -252,6 +255,43 @@
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
                 </div>
+
+                <div id="content-tags" class="hidden">
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Tag Management</h2>
+                    
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-[var(--text-secondary)]">Organize your recordings with custom tags. Each tag can have its own summary prompt and default ASR settings.</p>
+                            <button id="createTagBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <i class="fas fa-plus mr-2"></i> Create Tag
+                            </button>
+                        </div>
+                        
+                        <!-- Loading state -->
+                        <div id="tagsLoading" class="text-center py-8 hidden">
+                            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                            <p class="text-[var(--text-muted)] mt-2">Loading tags...</p>
+                        </div>
+                        
+                        <!-- Error state -->
+                        <div id="tagsError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <span id="tagsErrorMessage">Failed to load tags</span>
+                        </div>
+                        
+                        <!-- Empty state -->
+                        <div id="tagsEmpty" class="text-center py-12 hidden">
+                            <i class="fas fa-tags text-4xl text-[var(--text-light)] mb-4"></i>
+                            <p class="text-[var(--text-muted)] text-lg mb-2">No tags created yet</p>
+                            <p class="text-sm text-[var(--text-light)]">Create your first tag to organize your recordings</p>
+                        </div>
+                        
+                        <!-- Tags grid -->
+                        <div id="tagsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Tags will be populated here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -365,12 +405,81 @@
         </div>
     </div>
 
+    <!-- Create/Edit Tag Modal -->
+    <div id="tagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="tagModalTitle" class="text-xl font-semibold text-[var(--text-primary)]">Create Tag</h3>
+                <button id="closeTagModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+            </div>
+            
+            <form id="tagForm" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" id="tagId" name="tag_id">
+                
+                <div>
+                    <label for="tagName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Tag Name *</label>
+                    <input type="text" id="tagName" name="name" required maxlength="50" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Meetings, Interviews">
+                </div>
+                
+                <div>
+                    <label for="tagColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="color" id="tagColor" name="color" value="#3B82F6" class="w-12 h-10 rounded border border-[var(--border-secondary)]">
+                        <span class="text-sm text-[var(--text-muted)]">Choose a color for easy identification</span>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="tagCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Custom Summary Prompt</label>
+                    <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag"></textarea>
+                    <p class="text-xs text-[var(--text-light)] mt-1">Leave blank to use your default summary prompt</p>
+                </div>
+                
+                {% if use_asr_endpoint %}
+                <div class="border-t border-[var(--border-primary)] pt-4">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">ASR Default Settings</h4>
+                    <p class="text-xs text-[var(--text-light)] mb-3">These settings will be applied by default when using this tag with ASR transcription</p>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label for="tagLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Default Language</label>
+                            <input type="text" id="tagLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="tagMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Min Speakers</label>
+                                <input type="number" id="tagMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                            </div>
+                            
+                            <div>
+                                <label for="tagMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Max Speakers</label>
+                                <input type="number" id="tagMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
+                    <button type="button" id="cancelTagBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
+                    <button type="submit" id="saveTagBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                        <i class="fas fa-save mr-2"></i> Save Tag
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const tabAccount = document.getElementById('tab-account');
             const tabShares = document.getElementById('tab-shares');
+            const tabTags = document.getElementById('tab-tags');
             const contentAccount = document.getElementById('content-account');
             const contentShares = document.getElementById('content-shares');
+            const contentTags = document.getElementById('content-tags');
             const sharesContainer = document.getElementById('shares-container');
 
             function showAccountTab() {
@@ -378,8 +487,11 @@
                 tabAccount.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 contentAccount.classList.remove('hidden');
                 contentShares.classList.add('hidden');
+                contentTags.classList.add('hidden');
             }
 
             function showSharesTab() {
@@ -387,9 +499,25 @@
                 tabShares.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 contentShares.classList.remove('hidden');
                 contentAccount.classList.add('hidden');
+                contentTags.classList.add('hidden');
                 loadShares();
+            }
+
+            function showTagsTab() {
+                tabTags.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabTags.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                contentTags.classList.remove('hidden');
+                contentAccount.classList.add('hidden');
+                contentShares.classList.add('hidden');
+                loadTags();
             }
 
             tabAccount.addEventListener('click', (e) => {
@@ -400,6 +528,11 @@
             tabShares.addEventListener('click', (e) => {
                 e.preventDefault();
                 showSharesTab();
+            });
+
+            tabTags.addEventListener('click', (e) => {
+                e.preventDefault();
+                showTagsTab();
             });
 
             async function loadShares() {
@@ -876,6 +1009,302 @@
                 }, 300);
             }, 3000);
         }
+
+        // ===== TAG MANAGEMENT FUNCTIONALITY =====
+        
+        // Tag management elements
+        const createTagBtn = document.getElementById('createTagBtn');
+        const tagModal = document.getElementById('tagModal');
+        const closeTagModalBtn = document.getElementById('closeTagModalBtn');
+        const cancelTagBtn = document.getElementById('cancelTagBtn');
+        const tagForm = document.getElementById('tagForm');
+        const tagModalTitle = document.getElementById('tagModalTitle');
+        const saveTagBtn = document.getElementById('saveTagBtn');
+        
+        const tagsLoading = document.getElementById('tagsLoading');
+        const tagsError = document.getElementById('tagsError');
+        const tagsErrorMessage = document.getElementById('tagsErrorMessage');
+        const tagsEmpty = document.getElementById('tagsEmpty');
+        const tagsGrid = document.getElementById('tagsGrid');
+
+        let tags = [];
+        let isEditingTag = false;
+
+        // Load tags from API
+        async function loadTags() {
+            showTagsLoadingState();
+            
+            try {
+                const response = await fetch('/api/tags');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                tags = await response.json();
+                displayTags();
+            } catch (error) {
+                console.error('Error loading tags:', error);
+                showTagsErrorState(error.message);
+            }
+        }
+
+        // Show loading state
+        function showTagsLoadingState() {
+            tagsLoading.classList.remove('hidden');
+            tagsError.classList.add('hidden');
+            tagsEmpty.classList.add('hidden');
+            tagsGrid.classList.add('hidden');
+        }
+
+        // Show error state
+        function showTagsErrorState(message) {
+            tagsLoading.classList.add('hidden');
+            tagsError.classList.remove('hidden');
+            tagsEmpty.classList.add('hidden');
+            tagsGrid.classList.add('hidden');
+            tagsErrorMessage.textContent = message;
+        }
+
+        // Display tags
+        function displayTags() {
+            tagsLoading.classList.add('hidden');
+            tagsError.classList.add('hidden');
+            
+            if (tags.length === 0) {
+                tagsEmpty.classList.remove('hidden');
+                tagsGrid.classList.add('hidden');
+            } else {
+                tagsEmpty.classList.add('hidden');
+                tagsGrid.classList.remove('hidden');
+                renderTagsGrid();
+            }
+        }
+
+        // Render tags grid
+        function renderTagsGrid() {
+            tagsGrid.innerHTML = '';
+            
+            tags.forEach(tag => {
+                const tagCard = createTagCard(tag);
+                tagsGrid.appendChild(tagCard);
+            });
+        }
+
+        // Create tag card element
+        function createTagCard(tag) {
+            const div = document.createElement('div');
+            div.className = 'bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] hover:shadow-md transition-shadow duration-200';
+            
+            div.innerHTML = `
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center">
+                        <div class="w-4 h-4 rounded-full mr-3" style="background-color: ${escapeHtml(tag.color)}"></div>
+                        <h3 class="font-semibold text-[var(--text-primary)]">${escapeHtml(tag.name)}</h3>
+                    </div>
+                    <div class="flex space-x-1">
+                        <button class="edit-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] rounded" 
+                                data-tag-id="${tag.id}" title="Edit tag">
+                            <i class="fas fa-edit text-sm"></i>
+                        </button>
+                        <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] rounded" 
+                                data-tag-id="${tag.id}" title="Delete tag">
+                            <i class="fas fa-trash text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="space-y-2 text-sm text-[var(--text-muted)]">
+                    ${tag.custom_prompt ? `
+                        <div>
+                            <span class="font-medium">Custom Prompt:</span>
+                            <span class="text-xs">${escapeHtml(tag.custom_prompt.substring(0, 60))}${tag.custom_prompt.length > 60 ? '...' : ''}</span>
+                        </div>
+                    ` : ''}
+                    
+                    ${tag.default_language || tag.default_min_speakers || tag.default_max_speakers ? `
+                        <div class="pt-2 border-t border-[var(--border-secondary)]">
+                            <span class="font-medium text-xs">ASR Defaults:</span>
+                            <div class="flex flex-wrap gap-2 mt-1">
+                                ${tag.default_language ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Lang: ${escapeHtml(tag.default_language)}</span>` : ''}
+                                ${tag.default_min_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Min: ${tag.default_min_speakers}</span>` : ''}
+                                ${tag.default_max_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Max: ${tag.default_max_speakers}</span>` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Add event listeners
+            const editBtn = div.querySelector('.edit-tag-btn');
+            const deleteBtn = div.querySelector('.delete-tag-btn');
+            
+            editBtn.addEventListener('click', () => editTag(tag));
+            deleteBtn.addEventListener('click', () => deleteTag(tag.id, tag.name));
+            
+            return div;
+        }
+
+        // Create tag modal functionality
+        createTagBtn.addEventListener('click', () => {
+            openTagModal();
+        });
+
+        // Close tag modal functions
+        function closeTagModal() {
+            tagModal.classList.add('hidden');
+            tagForm.reset();
+            isEditingTag = false;
+            document.getElementById('tagId').value = '';
+        }
+
+        closeTagModalBtn.addEventListener('click', closeTagModal);
+        cancelTagBtn.addEventListener('click', closeTagModal);
+
+        // Close modal when clicking outside
+        tagModal.addEventListener('click', (event) => {
+            if (event.target === tagModal) {
+                closeTagModal();
+            }
+        });
+
+        // Open tag modal for create
+        function openTagModal(tag = null) {
+            if (tag) {
+                // Edit mode
+                isEditingTag = true;
+                tagModalTitle.textContent = 'Edit Tag';
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Tag';
+                
+                // Populate form
+                document.getElementById('tagId').value = tag.id;
+                document.getElementById('tagName').value = tag.name;
+                document.getElementById('tagColor').value = tag.color;
+                document.getElementById('tagCustomPrompt').value = tag.custom_prompt || '';
+                
+                if (document.getElementById('tagLanguage')) {
+                    document.getElementById('tagLanguage').value = tag.default_language || '';
+                }
+                if (document.getElementById('tagMinSpeakers')) {
+                    document.getElementById('tagMinSpeakers').value = tag.default_min_speakers || '';
+                }
+                if (document.getElementById('tagMaxSpeakers')) {
+                    document.getElementById('tagMaxSpeakers').value = tag.default_max_speakers || '';
+                }
+            } else {
+                // Create mode
+                isEditingTag = false;
+                tagModalTitle.textContent = 'Create Tag';
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Tag';
+                tagForm.reset();
+                document.getElementById('tagColor').value = '#3B82F6';
+            }
+            
+            tagModal.classList.remove('hidden');
+        }
+
+        // Edit tag
+        function editTag(tag) {
+            openTagModal(tag);
+        }
+
+        // Delete tag
+        async function deleteTag(tagId, tagName) {
+            if (!confirm(`Are you sure you want to delete "${tagName}"?`)) {
+                return;
+            }
+            
+            try {
+                const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                
+                const headers = {};
+                if (csrfToken) {
+                    headers['X-CSRFToken'] = csrfToken;
+                }
+                
+                const response = await fetch(`/api/tags/${tagId}`, {
+                    method: 'DELETE',
+                    headers: headers
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Remove from local array
+                tags = tags.filter(t => t.id !== tagId);
+                displayTags();
+                showToast(`Tag "${tagName}" deleted successfully`);
+            } catch (error) {
+                console.error('Error deleting tag:', error);
+                showToast(`Failed to delete tag: ${error.message}`, 'error');
+            }
+        }
+
+        // Save tag form submission
+        tagForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(tagForm);
+            const tagData = {
+                name: formData.get('name'),
+                color: formData.get('color'),
+                custom_prompt: formData.get('custom_prompt') || null,
+                default_language: formData.get('default_language') || null,
+                default_min_speakers: formData.get('default_min_speakers') ? parseInt(formData.get('default_min_speakers')) : null,
+                default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null
+            };
+            
+            try {
+                const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                
+                const headers = { 'Content-Type': 'application/json' };
+                if (csrfToken) {
+                    headers['X-CSRFToken'] = csrfToken;
+                }
+                
+                let url = '/api/tags';
+                let method = 'POST';
+                
+                if (isEditingTag) {
+                    url += `/${formData.get('tag_id')}`;
+                    method = 'PUT';
+                }
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: headers,
+                    body: JSON.stringify(tagData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const savedTag = await response.json();
+                
+                if (isEditingTag) {
+                    // Update existing tag in local array
+                    const index = tags.findIndex(t => t.id === savedTag.id);
+                    if (index !== -1) {
+                        tags[index] = savedTag;
+                    }
+                    showToast(`Tag "${savedTag.name}" updated successfully`);
+                } else {
+                    // Add new tag to local array
+                    tags.push(savedTag);
+                    showToast(`Tag "${savedTag.name}" created successfully`);
+                }
+                
+                displayTags();
+                closeTagModal();
+            } catch (error) {
+                console.error('Error saving tag:', error);
+                showToast(`Failed to save tag: ${error.message}`, 'error');
+            }
+        });
+
     </script>
 </body>
 </html>

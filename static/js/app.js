@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- Enhanced Search & Organization State ---
             const sortBy = ref('created_at'); // 'created_at' or 'meeting_date'
+            const selectedTagFilter = ref(null); // For filtering by clicked tag
 
             // --- UI State ---
             const browser = ref('unknown');
@@ -69,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const systemAudioError = ref('');
             const recordingNotes = ref('');
             const showSystemAudioHelp = ref(false);
+            // ASR options for recording view
+            const asrLanguage = ref('');  // Empty string for auto-detect
+            const asrMinSpeakers = ref('');  // Empty string for auto-detect
+            const asrMaxSpeakers = ref('');  // Empty string for auto-detect
             const audioContext = ref(null);
             const analyser = ref(null);
             const micAnalyser = ref(null);
@@ -87,10 +92,27 @@ document.addEventListener('DOMContentLoaded', () => {
             const actualBitrate = ref(0);
             const maxRecordingMB = ref(200); // Maximum recording size before auto-stop
             const sizeCheckInterval = ref(null);
+            
+            // Advanced Options for ASR
+            const showAdvancedOptions = ref(false);
+            const uploadLanguage = ref('');  // Empty string for auto-detect
+            const uploadMinSpeakers = ref('');  // Empty string for auto-detect
+            const uploadMaxSpeakers = ref('');  // Empty string for auto-detect
+
+            // Tag Selection
+            const availableTags = ref([]);
+            const selectedTagIds = ref([]); // Changed to array for multiple selection
+            const selectedTags = computed(() => {
+                return selectedTagIds.value.map(tagId => 
+                    availableTags.value.find(tag => tag.id == tagId)
+                ).filter(Boolean); // Filter out undefined tags
+            });
 
             // --- Modal State ---
             const showEditModal = ref(false);
             const showDeleteModal = ref(false);
+            const showEditTagsModal = ref(false);
+            const selectedNewTagId = ref('');
             const showReprocessModal = ref(false);
             const showResetModal = ref(false);
             const showSpeakerModal = ref(false);
@@ -175,51 +197,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const query = searchQuery.value.toLowerCase().trim();
                 
-                // Check for date search syntax (date:YYYY-MM-DD or date:today, date:yesterday, etc.)
-                const dateMatch = query.match(/date:(\S+)/);
-                if (dateMatch) {
-                    const dateQuery = dateMatch[1];
-                    return recordings.value.filter(recording => {
-                        const recordingDate = getDateForSorting(recording);
-                        if (!recordingDate) return false;
-                        
-                        if (dateQuery === 'today') {
-                            return isToday(recordingDate);
-                        } else if (dateQuery === 'yesterday') {
-                            return isYesterday(recordingDate);
-                        } else if (dateQuery === 'thisweek') {
-                            return isThisWeek(recordingDate);
-                        } else if (dateQuery === 'lastweek') {
-                            return isLastWeek(recordingDate);
-                        } else if (dateQuery === 'thismonth') {
-                            return isThisMonth(recordingDate);
-                        } else if (dateQuery === 'lastmonth') {
-                            return isLastMonth(recordingDate);
-                        } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
-                            // Exact date match
-                            const searchDate = new Date(dateQuery + 'T00:00:00');
-                            return isSameDay(recordingDate, searchDate);
-                        } else if (/^\d{4}-\d{2}$/.test(dateQuery)) {
-                            // Month match (YYYY-MM)
-                            const [year, month] = dateQuery.split('-');
-                            return recordingDate.getFullYear() === parseInt(year) && 
-                                   recordingDate.getMonth() === parseInt(month) - 1;
-                        } else if (/^\d{4}$/.test(dateQuery)) {
-                            // Year match
-                            return recordingDate.getFullYear() === parseInt(dateQuery);
-                        }
-                        return false;
-                    });
-                }
+                // Parse different search parts
+                const dateMatches = [...query.matchAll(/date:(\S+)/g)];
+                const tagMatches = [...query.matchAll(/tag:(\S+)/g)];
                 
-                // Regular text search
+                // Remove special syntax from query to get regular text search
+                let textQuery = query.replace(/date:\S+/g, '').replace(/tag:\S+/g, '').trim();
+                
                 return recordings.value.filter(recording => {
-                    return (
-                        (recording.title && recording.title.toLowerCase().includes(query)) ||
-                        (recording.participants && recording.participants.toLowerCase().includes(query)) ||
-                        (recording.transcription && recording.transcription.toLowerCase().includes(query)) ||
-                        (recording.notes && recording.notes.toLowerCase().includes(query))
-                    );
+                    let matches = true;
+                    
+                    // Check date filters (ALL must match if multiple)
+                    if (dateMatches.length > 0) {
+                        const dateMatched = dateMatches.every(match => {
+                            const dateQuery = match[1];
+                            const recordingDate = getDateForSorting(recording);
+                            if (!recordingDate) return false;
+                            
+                            if (dateQuery === 'today') {
+                                return isToday(recordingDate);
+                            } else if (dateQuery === 'yesterday') {
+                                return isYesterday(recordingDate);
+                            } else if (dateQuery === 'thisweek') {
+                                return isThisWeek(recordingDate);
+                            } else if (dateQuery === 'lastweek') {
+                                return isLastWeek(recordingDate);
+                            } else if (dateQuery === 'thismonth') {
+                                return isThisMonth(recordingDate);
+                            } else if (dateQuery === 'lastmonth') {
+                                return isLastMonth(recordingDate);
+                            } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
+                                const searchDate = new Date(dateQuery + 'T00:00:00');
+                                return isSameDay(recordingDate, searchDate);
+                            } else if (/^\d{4}-\d{2}$/.test(dateQuery)) {
+                                const [year, month] = dateQuery.split('-');
+                                return recordingDate.getFullYear() === parseInt(year) && 
+                                       recordingDate.getMonth() === parseInt(month) - 1;
+                            } else if (/^\d{4}$/.test(dateQuery)) {
+                                return recordingDate.getFullYear() === parseInt(dateQuery);
+                            }
+                            return false;
+                        });
+                        matches = matches && dateMatched;
+                    }
+                    
+                    // Check tag filters (ALL must match if multiple)
+                    if (tagMatches.length > 0) {
+                        const tagMatched = tagMatches.every(match => {
+                            const tagQuery = match[1].toLowerCase();
+                            if (!recording.tags || recording.tags.length === 0) return false;
+                            return recording.tags.some(tag => 
+                                tag.name.toLowerCase().includes(tagQuery)
+                            );
+                        });
+                        matches = matches && tagMatched;
+                    }
+                    
+                    // Check text search if there's remaining text
+                    if (textQuery) {
+                        const textMatched = (
+                            (recording.title && recording.title.toLowerCase().includes(textQuery)) ||
+                            (recording.participants && recording.participants.toLowerCase().includes(textQuery)) ||
+                            (recording.transcription && recording.transcription.toLowerCase().includes(textQuery)) ||
+                            (recording.notes && recording.notes.toLowerCase().includes(textQuery)) ||
+                            (recording.tags && recording.tags.length > 0 &&
+                             recording.tags.some(tag => tag.name.toLowerCase().includes(textQuery)))
+                        );
+                        matches = matches && textMatched;
+                    }
+                    
+                    return matches;
                 });
             });
             
@@ -355,6 +402,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalInQueue = computed(() => uploadQueue.value.length);
             const completedInQueue = computed(() => uploadQueue.value.filter(item => item.status === 'completed' || item.status === 'failed').length);
             const finishedFilesInQueue = computed(() => uploadQueue.value.filter(item => ['completed', 'failed'].includes(item.status)));
+
+            const clearCompletedUploads = () => {
+                uploadQueue.value = uploadQueue.value.filter(item => !['completed', 'failed'].includes(item.status));
+            };
 
             const identifiedSpeakers = computed(() => {
                 // Ensure we have a valid recording and transcription
@@ -844,6 +895,43 @@ document.addEventListener('DOMContentLoaded', () => {
             const reprocessSummary = (recordingId) => {
                 const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
                 confirmReprocess('summary', recording);
+            };
+            
+            const generateSummary = async () => {
+                if (!selectedRecording.value) return;
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/generate_summary`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to generate summary');
+                    }
+                    
+                    // Update the recording status to show it's being processed
+                    selectedRecording.value.status = 'SUMMARIZING';
+                    
+                    // Also update in recordings list if it exists
+                    const recordingInList = recordings.value.find(r => r.id === selectedRecording.value.id);
+                    if (recordingInList) {
+                        recordingInList.status = 'SUMMARIZING';
+                    }
+                    
+                    showToast('Summary generation started', 'success');
+                    
+                } catch (error) {
+                    console.error('Error generating summary:', error);
+                    setGlobalError(`Failed to generate summary: ${error.message}`);
+                }
             };
 
             const resetRecordingStatus = async (recordingId) => {
@@ -1715,6 +1803,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const file of files) {
                     const fileObject = file.file ? file.file : file;
                     const notes = file.notes || null;
+                    const tags = file.tags || selectedTags.value || [];
+                    const asrOptions = file.asrOptions || {
+                        language: asrLanguage.value,
+                        min_speakers: asrMinSpeakers.value,
+                        max_speakers: asrMaxSpeakers.value
+                    };
 
                     // Check if it's an audio file or has AMR extension
                     const isAudioFile = fileObject && (
@@ -1735,6 +1829,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         uploadQueue.value.push({
                             file: fileObject, 
                             notes: notes,
+                            tags: tags,
+                            asrOptions: asrOptions,
                             status: 'queued', 
                             recordingId: null, 
                             clientId: clientId, 
@@ -1778,6 +1874,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (nextFileItem) {
                     console.log(`Processing next file: ${nextFileItem.file.name} (Client ID: ${nextFileItem.clientId})`);
                     currentlyProcessingFile.value = nextFileItem;
+                    
+                    // Check if this is a "reload" item (existing recording being tracked)
+                    if (nextFileItem.clientId.startsWith('reload-')) {
+                        // Skip upload, go directly to polling existing recording
+                        console.log(`Skipping upload for existing recording: ${nextFileItem.recordingId}`);
+                        nextFileItem.status = 'processing';
+                        startStatusPolling(nextFileItem, nextFileItem.recordingId);
+                        return;
+                    }
+                    
                     nextFileItem.status = 'uploading';
                     processingMessage.value = 'Preparing upload...';
                     processingProgress.value = 5;
@@ -1787,6 +1893,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         formData.append('file', nextFileItem.file);
                         if (nextFileItem.notes) {
                             formData.append('notes', nextFileItem.notes);
+                        }
+                        
+                        // Add tags if selected (multiple tags)
+                        // Use tags from the queue item if available, otherwise use global selectedTagIds
+                        const tagsToUse = nextFileItem.tags || selectedTags.value || [];
+                        tagsToUse.forEach((tag, index) => {
+                            const tagId = tag.id || tag; // Handle both tag objects and tag IDs
+                            formData.append(`tag_ids[${index}]`, tagId);
+                        });
+                        
+                        // Add ASR advanced options if ASR endpoint is enabled
+                        if (useAsrEndpoint.value) {
+                            // Use ASR options from the queue item if available, otherwise use global values
+                            const asrOpts = nextFileItem.asrOptions || {};
+                            const language = asrOpts.language || uploadLanguage.value;
+                            const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
+                            const maxSpeakers = asrOpts.max_speakers || uploadMaxSpeakers.value;
+                            
+                            if (language) {
+                                formData.append('language', language);
+                            }
+                            // Only send speaker limits if they're actually set
+                            if (minSpeakers && minSpeakers !== '') {
+                                formData.append('min_speakers', minSpeakers.toString());
+                            }
+                            if (maxSpeakers && maxSpeakers !== '') {
+                                formData.append('max_speakers', maxSpeakers.toString());
+                            }
                         }
 
                         processingMessage.value = 'Uploading file...';
@@ -1915,7 +2049,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         } else if (data.status === 'PROCESSING') {
                             // Check if this is a large file that might be using chunking
-                            const isLargeFile = fileItem.file.size > 25 * 1024 * 1024; // 25MB
+                            // Note: This is just for UI feedback, actual chunking threshold is handled server-side
+                            const chunkThreshold = 25 * 1024 * 1024; // Default UI threshold
+                            const isLargeFile = fileItem.file.size > chunkThreshold;
                             if (isLargeFile) {
                                 processingMessage.value = 'Processing large file (chunking may be used)...';
                                 processingProgress.value = Math.round(Math.min(70, processingProgress.value + Math.random() * 3));
@@ -1996,16 +2132,184 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            const loadTags = async () => {
+                try {
+                    const response = await fetch('/api/tags');
+                    if (response.ok) {
+                        availableTags.value = await response.json();
+                    } else {
+                        console.warn('Failed to load tags:', response.status);
+                        availableTags.value = [];
+                    }
+                } catch (error) {
+                    console.warn('Error loading tags:', error);
+                    availableTags.value = [];
+                }
+            };
+
+            const addTagToSelection = (tagId) => {
+                if (!selectedTagIds.value.includes(tagId)) {
+                    selectedTagIds.value.push(tagId);
+                    applyTagDefaults();
+                }
+            };
+
+            const removeTagFromSelection = (tagId) => {
+                const index = selectedTagIds.value.indexOf(tagId);
+                if (index > -1) {
+                    selectedTagIds.value.splice(index, 1);
+                    applyTagDefaults();
+                }
+            };
+
+            const applyTagDefaults = () => {
+                // Apply defaults from the first selected tag (highest priority)
+                const firstTag = selectedTags.value[0];
+                if (firstTag && useAsrEndpoint.value) {
+                    if (firstTag.default_language) {
+                        uploadLanguage.value = firstTag.default_language;
+                    }
+                    if (firstTag.default_min_speakers) {
+                        uploadMinSpeakers.value = firstTag.default_min_speakers;
+                    }
+                    if (firstTag.default_max_speakers) {
+                        uploadMaxSpeakers.value = firstTag.default_max_speakers;
+                    }
+                }
+            };
+
+            // Legacy function for backward compatibility
+            const onTagSelected = applyTagDefaults;
+
+            // Tag helper functions
+            const getRecordingTags = (recording) => {
+                if (!recording || !recording.tags) return [];
+                return recording.tags || [];
+            };
+
+            const getAvailableTagsForRecording = (recording) => {
+                if (!recording || !availableTags.value) return [];
+                const recordingTagIds = getRecordingTags(recording).map(tag => tag.id);
+                return availableTags.value.filter(tag => !recordingTagIds.includes(tag.id));
+            };
+            const filterByTag = (tag) => {
+                searchQuery.value = `tag:${tag.name}`;
+            };
+            const clearTagFilter = () => {
+                searchQuery.value = '';
+            };
+
+            const editRecordingTags = (recording) => {
+                editingRecording.value = recording;
+                selectedNewTagId.value = '';
+                showEditTagsModal.value = true;
+            };
+
+            const closeEditTagsModal = () => {
+                showEditTagsModal.value = false;
+                editingRecording.value = null;
+                selectedNewTagId.value = '';
+            };
+
+            const addTagToRecording = async () => {
+                if (!selectedNewTagId.value || !editingRecording.value) return;
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    
+                    const response = await fetch(`/api/recordings/${editingRecording.value.id}/tags`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ tag_id: selectedNewTagId.value })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to add tag');
+                    }
+                    
+                    // Update local recording data
+                    const tagToAdd = availableTags.value.find(tag => tag.id == selectedNewTagId.value);
+                    if (tagToAdd) {
+                        if (!editingRecording.value.tags) {
+                            editingRecording.value.tags = [];
+                        }
+                        editingRecording.value.tags.push(tagToAdd);
+                        
+                        // Also update in recordings list if it's a different object
+                        const recordingInList = recordings.value.find(r => r.id === editingRecording.value.id);
+                        if (recordingInList && recordingInList !== editingRecording.value) {
+                            if (!recordingInList.tags) {
+                                recordingInList.tags = [];
+                            }
+                            recordingInList.tags.push(tagToAdd);
+                        }
+                    }
+                    
+                    selectedNewTagId.value = '';
+                    
+                } catch (error) {
+                    console.error('Error adding tag to recording:', error);
+                    setGlobalError(`Failed to add tag: ${error.message}`);
+                }
+            };
+
+            const removeTagFromRecording = async (tagId) => {
+                if (!editingRecording.value) return;
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    
+                    const response = await fetch(`/api/recordings/${editingRecording.value.id}/tags/${tagId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to remove tag');
+                    }
+                    
+                    // Update local recording data
+                    editingRecording.value.tags = editingRecording.value.tags.filter(tag => tag.id !== tagId);
+                    
+                    // Also update in recordings list if it's a different object
+                    const recordingInList = recordings.value.find(r => r.id === editingRecording.value.id);
+                    if (recordingInList && recordingInList !== editingRecording.value && recordingInList.tags) {
+                        recordingInList.tags = recordingInList.tags.filter(tag => tag.id !== tagId);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error removing tag from recording:', error);
+                    setGlobalError(`Failed to remove tag: ${error.message}`);
+                }
+            };
+
             // --- Audio Recording ---
             const startRecording = async (mode = 'microphone') => {
                 recordingMode.value = mode;
                 
                 try {
+                    // Load tags if not already loaded
+                    if (availableTags.value.length === 0) {
+                        await loadTags();
+                    }
+                    
                     // Reset state
                     audioChunks.value = [];
                     audioBlobURL.value = null;
                     recordingNotes.value = '';
                     activeStreams.value = [];
+                    // Clear previous tag selection and ASR options for fresh recording
+                    selectedTags.value = [];
+                    asrLanguage.value = '';
+                    asrMinSpeakers.value = '';
+                    asrMaxSpeakers.value = '';
 
                     let combinedStream = null;
                     let micStream = null;
@@ -2306,8 +2610,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 const recordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
 
-                // Pass notes along with the file
-                addFilesToQueue([{ file: recordedFile, notes: recordingNotes.value }]);
+                // Pass notes, tags, and ASR options along with the file
+                addFilesToQueue([{ 
+                    file: recordedFile, 
+                    notes: recordingNotes.value,
+                    tags: selectedTags.value,
+                    asrOptions: {
+                        language: asrLanguage.value,
+                        min_speakers: asrMinSpeakers.value,
+                        max_speakers: asrMaxSpeakers.value
+                    }
+                }]);
                 discardRecording();
                 
                 // Switch back to upload view
@@ -2324,6 +2637,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 recordingTime.value = 0;
                 if (recordingInterval.value) clearInterval(recordingInterval.value);
                 recordingNotes.value = '';
+                // Clear tags and ASR options for fresh start
+                selectedTags.value = [];
+                asrLanguage.value = '';
+                asrMinSpeakers.value = '';
+                asrMaxSpeakers.value = '';
             };
 
             const drawSingleVisualizer = (analyserNode, canvasElement) => {
@@ -3078,6 +3396,95 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            const downloadSummary = async () => {
+                if (!selectedRecording.value || !selectedRecording.value.summary) {
+                    showToast('No summary available to download.', 'fa-exclamation-circle');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/download/summary`);
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to download summary', 'fa-exclamation-circle');
+                        return;
+                    }
+                    
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    
+                    // Get filename from response headers or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'summary.docx';
+                    if (contentDisposition) {
+                        const matches = /filename="(.+)"/.exec(contentDisposition);
+                        if (matches) {
+                            filename = matches[1];
+                        }
+                    }
+                    a.download = filename;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showToast('Summary downloaded successfully!');
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    showToast('Failed to download summary', 'fa-exclamation-circle');
+                }
+            };
+
+            const downloadNotes = async () => {
+                if (!selectedRecording.value || !selectedRecording.value.notes) {
+                    showToast('No notes available to download.', 'fa-exclamation-circle');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/download/notes`);
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to download notes', 'fa-exclamation-circle');
+                        return;
+                    }
+                    
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    
+                    // Get filename from response headers or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'notes.docx';
+                    if (contentDisposition) {
+                        const matches = /filename="(.+)"/.exec(contentDisposition);
+                        if (matches) {
+                            filename = matches[1];
+                        }
+                    }
+                    a.download = filename;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showToast('Notes downloaded successfully!');
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    showToast('Failed to download notes', 'fa-exclamation-circle');
+                }
+            };
+
+
             const openShareModal = (recording) => {
                 recordingToShare.value = recording;
                 shareOptions.share_summary = true;
@@ -3420,6 +3827,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 detectBrowser();
                 
                 loadRecordings();
+                loadTags();
                 initializeDarkMode();
                 initializeColorScheme();
                 
@@ -3504,14 +3912,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Upload State
                 uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
                 isProcessingActive, progressPopupMinimized, progressPopupClosed,
-                totalInQueue, completedInQueue, finishedFilesInQueue,
+                totalInQueue, completedInQueue, finishedFilesInQueue, clearCompletedUploads,
                 
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,
+                showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+                asrLanguage, asrMinSpeakers, asrMaxSpeakers,
+                availableTags, selectedTagIds, selectedTags, onTagSelected, addTagToSelection, removeTagFromSelection,
                 showSystemAudioHelp,
                 
                 // Modal State
                 showEditModal, showDeleteModal, showResetModal, editingRecording, recordingToDelete,
+                showEditTagsModal, selectedNewTagId, editRecordingTags, closeEditTagsModal, addTagToRecording, removeTagFromRecording,
+                getRecordingTags, getAvailableTagsForRecording, filterByTag, clearTagFilter,
                 showTextEditorModal, showAsrEditorModal, editingTranscriptionContent, editingSegments, availableSpeakers,
                 
                 // Inline Editing
@@ -3554,10 +3967,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelEditNotes, saveEditNotes, initializeMarkdownEditor, saveInlineEdit,
                 sendChatMessage, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
+                downloadSummary, downloadNotes,
                 toggleInbox, toggleHighlight,
                 toggleTranscriptionViewMode,
                 reprocessTranscription,
                 reprocessSummary,
+                generateSummary,
                 resetRecordingStatus,
                 confirmReset,
                 cancelReset,

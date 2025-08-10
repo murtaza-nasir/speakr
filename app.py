@@ -23,6 +23,14 @@ import subprocess
 import mimetypes
 import markdown
 import bleach
+
+# Add common audio MIME type mappings that might be missing
+mimetypes.add_type('audio/mp4', '.m4a')
+mimetypes.add_type('audio/aac', '.aac')
+mimetypes.add_type('audio/x-m4a', '.m4a')
+mimetypes.add_type('audio/webm', '.webm')
+mimetypes.add_type('audio/flac', '.flac')
+mimetypes.add_type('audio/ogg', '.ogg')
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
@@ -314,26 +322,19 @@ def md_to_html(text):
     if not text:
         return ""
     
-    # Pre-process the text to ensure proper list formatting
+    # Fix list spacing
     def fix_list_spacing(text):
         lines = text.split('\n')
         result = []
         in_list = False
         
-        for i, line in enumerate(lines):
+        for line in lines:
             stripped = line.strip()
             
             # Check if this line is a list item (starts with -, *, +, or number.)
             is_list_item = (
                 stripped.startswith(('- ', '* ', '+ ')) or
                 (stripped and stripped[0].isdigit() and '. ' in stripped[:10])
-            )
-            
-            # Check if previous line was a list item
-            prev_line = lines[i-1].strip() if i > 0 else ""
-            prev_was_list = (
-                prev_line.startswith(('- ', '* ', '+ ')) or
-                (prev_line and prev_line[0].isdigit() and '. ' in prev_line[:10])
             )
             
             # If we're starting a new list or continuing a list, ensure proper spacing
@@ -567,6 +568,54 @@ class SystemSetting(db.Model):
         db.session.commit()
         return setting
 
+# Many-to-many relationship table for recordings and tags
+class RecordingTag(db.Model):
+    __tablename__ = 'recording_tags'
+    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id'), primary_key=True)
+    added_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
+    order = db.Column(db.Integer, nullable=False, default=0)
+    
+    # Relationships
+    recording = db.relationship('Recording', back_populates='tag_associations')
+    tag = db.relationship('Tag', back_populates='recording_associations')
+
+class Tag(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    color = db.Column(db.String(7), default='#3B82F6')  # Hex color for UI
+    
+    # Custom settings for this tag
+    custom_prompt = db.Column(db.Text, nullable=True)  # Custom summarization prompt
+    default_language = db.Column(db.String(10), nullable=True)  # Default transcription language
+    default_min_speakers = db.Column(db.Integer, nullable=True)  # Default min speakers for ASR
+    default_max_speakers = db.Column(db.Integer, nullable=True)  # Default max speakers for ASR
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('tags', lazy=True, cascade='all, delete-orphan'))
+    # Use association object for many-to-many with order tracking
+    recording_associations = db.relationship('RecordingTag', back_populates='tag', cascade='all, delete-orphan')
+    
+    # Unique constraint: tag name must be unique per user
+    __table_args__ = (db.UniqueConstraint('name', 'user_id', name='_user_tag_uc'),)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'color': self.color,
+            'custom_prompt': self.custom_prompt,
+            'default_language': self.default_language,
+            'default_min_speakers': self.default_min_speakers,
+            'default_max_speakers': self.default_max_speakers,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'recording_count': len(self.recording_associations)
+        }
+
 class Share(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     public_id = db.Column(db.String(32), unique=True, nullable=False, default=lambda: secrets.token_urlsafe(16))
@@ -613,6 +662,14 @@ class Recording(db.Model):
     processing_time_seconds = db.Column(db.Integer, nullable=True)
     processing_source = db.Column(db.String(50), default='upload')  # upload, auto_process, recording
     error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
+    
+    # Relationships
+    tag_associations = db.relationship('RecordingTag', back_populates='recording', cascade='all, delete-orphan', order_by='RecordingTag.order')
+    
+    @property
+    def tags(self):
+        """Get tags ordered by the order they were added to this recording."""
+        return [assoc.tag for assoc in sorted(self.tag_associations, key=lambda x: x.order)]
 
     def to_dict(self):
         return {
@@ -634,7 +691,8 @@ class Recording(db.Model):
             'user_id': self.user_id,
             'is_inbox': self.is_inbox,
             'is_highlighted': self.is_highlighted,
-            'mime_type': self.mime_type
+            'mime_type': self.mime_type,
+            'tags': [tag.to_dict() for tag in self.tags] if self.tags else []
         }
 
 # --- Forms for Authentication ---
@@ -728,6 +786,128 @@ def delete_share(share_id):
     db.session.commit()
     return jsonify({'success': True})
 
+# --- Tag API Endpoints ---
+@app.route('/api/tags', methods=['GET'])
+@login_required
+def get_tags():
+    """Get all tags for the current user."""
+    tags = Tag.query.filter_by(user_id=current_user.id).order_by(Tag.name).all()
+    return jsonify([tag.to_dict() for tag in tags])
+
+@app.route('/api/tags', methods=['POST'])
+@login_required
+def create_tag():
+    """Create a new tag."""
+    data = request.get_json()
+    
+    if not data or not data.get('name'):
+        return jsonify({'error': 'Tag name is required'}), 400
+    
+    # Check if tag with same name already exists for this user
+    existing_tag = Tag.query.filter_by(name=data['name'], user_id=current_user.id).first()
+    if existing_tag:
+        return jsonify({'error': 'Tag with this name already exists'}), 400
+    
+    tag = Tag(
+        name=data['name'],
+        user_id=current_user.id,
+        color=data.get('color', '#3B82F6'),
+        custom_prompt=data.get('custom_prompt'),
+        default_language=data.get('default_language'),
+        default_min_speakers=data.get('default_min_speakers'),
+        default_max_speakers=data.get('default_max_speakers')
+    )
+    
+    db.session.add(tag)
+    db.session.commit()
+    
+    return jsonify(tag.to_dict()), 201
+
+@app.route('/api/tags/<int:tag_id>', methods=['PUT'])
+@login_required
+def update_tag(tag_id):
+    """Update a tag."""
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    data = request.get_json()
+    
+    if 'name' in data:
+        # Check if new name conflicts with another tag
+        existing_tag = Tag.query.filter_by(name=data['name'], user_id=current_user.id).filter(Tag.id != tag_id).first()
+        if existing_tag:
+            return jsonify({'error': 'Another tag with this name already exists'}), 400
+        tag.name = data['name']
+    
+    if 'color' in data:
+        tag.color = data['color']
+    if 'custom_prompt' in data:
+        tag.custom_prompt = data['custom_prompt']
+    if 'default_language' in data:
+        tag.default_language = data['default_language']
+    if 'default_min_speakers' in data:
+        tag.default_min_speakers = data['default_min_speakers']
+    if 'default_max_speakers' in data:
+        tag.default_max_speakers = data['default_max_speakers']
+    
+    tag.updated_at = datetime.utcnow()
+    db.session.commit()
+    
+    return jsonify(tag.to_dict())
+
+@app.route('/api/tags/<int:tag_id>', methods=['DELETE'])
+@login_required
+def delete_tag(tag_id):
+    """Delete a tag."""
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    db.session.delete(tag)
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/recordings/<int:recording_id>/tags', methods=['POST'])
+@login_required
+def add_tag_to_recording(recording_id):
+    """Add a tag to a recording."""
+    recording = Recording.query.filter_by(id=recording_id, user_id=current_user.id).first_or_404()
+    data = request.get_json()
+    
+    tag_id = data.get('tag_id')
+    if not tag_id:
+        return jsonify({'error': 'tag_id is required'}), 400
+    
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    
+    # Check if tag is already associated with recording
+    existing_association = RecordingTag.query.filter_by(recording_id=recording_id, tag_id=tag_id).first()
+    if not existing_association:
+        # Get the next order number for this recording
+        max_order = db.session.query(db.func.max(RecordingTag.order)).filter_by(recording_id=recording_id).scalar() or 0
+        
+        # Create new association with proper order
+        new_association = RecordingTag(
+            recording_id=recording_id,
+            tag_id=tag_id,
+            order=max_order + 1,
+            added_at=datetime.utcnow()
+        )
+        db.session.add(new_association)
+        db.session.commit()
+    
+    return jsonify({'success': True, 'tags': [t.to_dict() for t in recording.tags]})
+
+@app.route('/api/recordings/<int:recording_id>/tags/<int:tag_id>', methods=['DELETE'])
+@login_required
+def remove_tag_from_recording(recording_id, tag_id):
+    """Remove a tag from a recording."""
+    recording = Recording.query.filter_by(id=recording_id, user_id=current_user.id).first_or_404()
+    tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first_or_404()
+    
+    # Find and remove the association
+    association = RecordingTag.query.filter_by(recording_id=recording_id, tag_id=tag_id).first()
+    if association:
+        db.session.delete(association)
+        db.session.commit()
+    
+    return jsonify({'success': True, 'tags': [t.to_dict() for t in recording.tags]})
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -811,6 +991,36 @@ with app.app_context():
             app.logger.info("Added processing_source column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'error_message', 'TEXT'):
             app.logger.info("Added error_message column to recording table")
+            
+        # Add columns to recording_tags for order tracking
+        if add_column_if_not_exists(engine, 'recording_tags', 'added_at', 'DATETIME'):
+            app.logger.info("Added added_at column to recording_tags table")
+        if add_column_if_not_exists(engine, 'recording_tags', 'order', '"order" INTEGER DEFAULT 0'):
+            app.logger.info("Added order column to recording_tags table")
+            
+            # Update existing records to have proper order values (approximate by tag_id)
+            try:
+                from sqlalchemy import text
+                with engine.connect() as conn:
+                    # Get existing associations without order values and assign them
+                    existing_associations = conn.execute(text('''
+                        SELECT recording_id, tag_id, 
+                               ROW_NUMBER() OVER (PARTITION BY recording_id ORDER BY tag_id) as row_num
+                        FROM recording_tags 
+                        WHERE "order" = 0
+                    ''')).fetchall()
+                    
+                    for assoc in existing_associations:
+                        conn.execute(text('''
+                            UPDATE recording_tags 
+                            SET "order" = :order_num 
+                            WHERE recording_id = :rec_id AND tag_id = :tag_id
+                        '''), {"order_num": assoc.row_num, "rec_id": assoc.recording_id, "tag_id": assoc.tag_id})
+                    
+                    conn.commit()
+                    app.logger.info(f"Updated order values for {len(existing_associations)} existing tag associations")
+            except Exception as e:
+                app.logger.warning(f"Could not update existing tag order values: {e}")
         
         # Initialize default system settings
         if not SystemSetting.query.filter_by(key='transcript_length_limit').first():
@@ -842,19 +1052,18 @@ TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo") # De
 
 http_client_no_proxy = httpx.Client(verify=True) # verify=True is default, but good to be explicit
 
-if not TEXT_MODEL_API_KEY:
-    app.logger.warning("TEXT_MODEL_API_KEY not found. Title/Summary generation DISABLED.")
-else:
-    try:
-        # ---> Pass the custom httpx_client <---
-        client = OpenAI(
-            api_key=TEXT_MODEL_API_KEY,
-            base_url=TEXT_MODEL_BASE_URL,
-            http_client=http_client_no_proxy # Pass the proxy-disabled client
-        )
-        app.logger.info(f"OpenRouter client initialized. Using model: {TEXT_MODEL_NAME}")
-    except Exception as client_init_e:
-         app.logger.error(f"Failed to initialize OpenRouter client: {client_init_e}", exc_info=True)
+try:
+    # Always attempt to create client - use API key if provided, otherwise use placeholder
+    api_key = TEXT_MODEL_API_KEY or "not-needed"
+    client = OpenAI(
+        api_key=api_key,
+        base_url=TEXT_MODEL_BASE_URL,
+        http_client=http_client_no_proxy
+    )
+    app.logger.info(f"LLM client initialized for endpoint: {TEXT_MODEL_BASE_URL}. Using model: {TEXT_MODEL_NAME}")
+except Exception as client_init_e:
+    app.logger.error(f"Failed to initialize LLM client: {client_init_e}", exc_info=True)
+    client = None
 
 # Store details for the transcription client (potentially different)
 transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
@@ -863,9 +1072,20 @@ transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openr
 # ASR endpoint configuration
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL')
-ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
-ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS')
-ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS')
+
+# When using ASR endpoint, automatically enable diarization and set sensible defaults
+# Users can still override these if needed, but they default to the expected ASR behavior
+if USE_ASR_ENDPOINT:
+    # Default to diarization enabled for ASR (can be overridden by setting ASR_DIARIZE=false)
+    ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
+    # Default speaker range for most conversations (None means auto-detect)
+    ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS')
+    ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS')
+else:
+    # When not using ASR, these settings are irrelevant
+    ASR_DIARIZE = False
+    ASR_MIN_SPEAKERS = None
+    ASR_MAX_SPEAKERS = None
 
 # Audio chunking configuration for large files with OpenAI Whisper API
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
@@ -908,96 +1128,247 @@ def format_api_error_message(error_str):
     # For other errors, show a generic message
     return f"[Summary generation failed: {error_str}]"
 
-def generate_summary_task(app_context, recording_id, start_time):
-    """Generates title and summary for a recording."""
+def generate_title_task(app_context, recording_id):
+    """Generates only a title for a recording based on transcription.
+    
+    Args:
+        app_context: Flask app context
+        recording_id: ID of the recording
+    """
+    with app_context:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            app.logger.error(f"Error: Recording {recording_id} not found for title generation.")
+            return
+            
+        if client is None:
+            app.logger.warning(f"Skipping title generation for {recording_id}: OpenRouter client not configured.")
+            # Still mark as completed even if we can't generate a title
+            recording.status = 'COMPLETED'
+            recording.completed_at = datetime.utcnow()
+            db.session.commit()
+            return
+            
+        if not recording.transcription or len(recording.transcription.strip()) < 10:
+            app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping title generation.")
+            # Still mark as completed even if we can't generate a title
+            recording.status = 'COMPLETED'
+            recording.completed_at = datetime.utcnow()
+            db.session.commit()
+            return
+        
+        # Get configurable transcript length limit and format transcription for LLM
+        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        if transcript_limit == -1:
+            raw_transcription = recording.transcription
+        else:
+            raw_transcription = recording.transcription[:transcript_limit]
+            
+        # Convert ASR JSON to clean text format
+        transcript_text = format_transcription_for_llm(raw_transcription)
+        
+        
+        # Get user language preference
+        user_output_language = None
+        if recording.owner:
+            user_output_language = recording.owner.output_language
+            
+        language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
+        
+        prompt_text = f"""Create a short title for this conversation:
+
+{transcript_text}
+
+Requirements:
+- Maximum 8 words
+- No phrases like "Discussion about" or "Meeting on"  
+- Just the main topic
+
+{language_directive}
+
+Title:"""
+
+        system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
+        if user_output_language:
+            system_message_content += f" Ensure your response is in {user_output_language}."
+        
+            
+        try:
+            completion = client.chat.completions.create(
+                model=TEXT_MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": system_message_content},
+                    {"role": "user", "content": prompt_text}
+                ],
+                temperature=0.7,
+                max_tokens=5000
+            )
+            
+            
+            raw_response = completion.choices[0].message.content
+            reasoning = getattr(completion.choices[0].message, 'reasoning', None)
+            
+            # Use reasoning content if main content is empty (fallback for reasoning models)
+            if not raw_response and reasoning:
+                app.logger.info(f"Title generation for recording {recording_id}: Using reasoning field as fallback")
+                # Try to extract a title from the reasoning field
+                lines = reasoning.strip().split('\n')
+                # Look for the last line that might be the title
+                for line in reversed(lines):
+                    line = line.strip()
+                    if line and not line.startswith('I') and len(line.split()) <= 8:
+                        raw_response = line
+                        break
+            
+            title = raw_response.strip() if raw_response else ""
+            
+            if title:
+                recording.title = title
+                app.logger.info(f"Title generated for recording {recording_id}: {title}")
+            else:
+                app.logger.warning(f"Empty title generated for recording {recording_id}")
+                
+        except Exception as e:
+            app.logger.error(f"Error generating title for recording {recording_id}: {str(e)}")
+            app.logger.error(f"Exception details:", exc_info=True)
+        
+        # Always set status to COMPLETED after title generation (successful or not)
+        # This ensures transcription processing is marked as complete
+        recording.status = 'COMPLETED'
+        recording.completed_at = datetime.utcnow()
+        db.session.commit()
+
+def generate_summary_only_task(app_context, recording_id):
+    """Generates only a summary for a recording (no title, no JSON response).
+    
+    Args:
+        app_context: Flask app context
+        recording_id: ID of the recording
+    """
     with app_context:
         recording = db.session.get(Recording, recording_id)
         if not recording:
             app.logger.error(f"Error: Recording {recording_id} not found for summary generation.")
             return
-
+            
         if client is None:
-            app.logger.warning(f"Skipping summary for {recording_id}: OpenRouter client not configured.")
+            app.logger.warning(f"Skipping summary generation for {recording_id}: OpenRouter client not configured.")
             recording.summary = "[Summary skipped: OpenRouter client not configured]"
-            recording.status = 'COMPLETED'
             db.session.commit()
             return
-
+            
         recording.status = 'SUMMARIZING'
         db.session.commit()
-        app.logger.info(f"Requesting title and summary from OpenRouter for recording {recording_id} using model {TEXT_MODEL_NAME}...")
-
+        
+        app.logger.info(f"Requesting summary from OpenRouter for recording {recording_id} using model {TEXT_MODEL_NAME}...")
+        
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping summarization.")
-            recording.status = 'COMPLETED'
             recording.summary = "[Summary skipped due to short transcription]"
+            recording.status = 'COMPLETED'
             db.session.commit()
             return
-
+        
+        # Get user preferences and tag custom prompts
         user_summary_prompt = None
         user_output_language = None
+        tag_custom_prompt = None
+        
+        # Collect all custom prompts from tags in the order they were added to this recording
+        tag_custom_prompts = []
+        if recording.tags:
+            # Tags are now automatically ordered by the order they were added to this recording
+            for tag in recording.tags:
+                if tag.custom_prompt and tag.custom_prompt.strip():
+                    tag_custom_prompts.append({
+                        'name': tag.name,
+                        'prompt': tag.custom_prompt.strip()
+                    })
+                    app.logger.info(f"Found custom prompt from tag '{tag.name}' for recording {recording_id}")
+        
+        # Create merged prompt if we have multiple tag prompts
+        if tag_custom_prompts:
+            if len(tag_custom_prompts) == 1:
+                tag_custom_prompt = tag_custom_prompts[0]['prompt']
+                app.logger.info(f"Using single custom prompt from tag '{tag_custom_prompts[0]['name']}' for recording {recording_id}")
+            else:
+                # Merge multiple prompts with clear separation, preserving the order tags were added
+                merged_parts = []
+                for i, tag_prompt in enumerate(tag_custom_prompts, 1):
+                    ordinal = {1: '1st', 2: '2nd', 3: '3rd'}.get(i, f'{i}th')
+                    merged_parts.append(f"{i}. From tag '{tag_prompt['name']}' (added {ordinal}):\n{tag_prompt['prompt']}")
+                tag_custom_prompt = "\n\n".join(merged_parts)
+                tag_names = [tp['name'] for tp in tag_custom_prompts]
+                app.logger.info(f"Merged custom prompts from {len(tag_custom_prompts)} tags in order added ({', '.join(tag_names)}) for recording {recording_id}")
+        else:
+            tag_custom_prompt = None
+        
         if recording.owner:
             user_summary_prompt = recording.owner.summary_prompt
             user_output_language = recording.owner.output_language
-
-        default_summary_prompt = """Analyze the following audio transcription and generate a concise title and a detailed, well-structured summary in Markdown format.
-
-Transcription:
-\"\"\"
-{transcription}
-\"\"\"
-
-Respond STRICTLY with a JSON object containing two keys: "title" and "summary".
-
-1.  **title**: A short, descriptive title (max 6-8 words). Avoid introductory phrases like "Discussion on" or "Meeting about".
-2.  **summary**: A detailed summary in Markdown format. It should include the following sections:
-    *   **Key Issues Discussed**: A bulleted list of the main topics.
-    *   **Key Decisions Made**: A bulleted list of any decisions reached.
-    *   **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned.
-
-{language_directive}
-
-Example Format:
-{{
-  "title": "Q3 Strategy and Project Phoenix",
-  "summary": "### Key Issues Discussed\\n- Review of Q2 performance and its impact on Q3 planning.\\n- Feasibility and timeline for Project Phoenix.\\n- Budget constraints and resource allocation for new initiatives.\\n\\n### Key Decisions Made\\n- Project Phoenix is approved to proceed with a revised timeline.\\n- The marketing budget will be reallocated to support the new launch.\\n\\n### Action Items\\n- **Alice**: Finalize the Project Phoenix roadmap by next Friday.\\n- **Bob**: Present the revised budget to the finance committee."
-}}
-
-JSON Response:"""
-
-        language_directive = f"Please provide the title and summary in {user_output_language}." if user_output_language else ""
         
         # Get configurable transcript length limit
         transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
         if transcript_limit == -1:
-            # No limit
             transcript_text = recording.transcription
         else:
             transcript_text = recording.transcription[:transcript_limit]
         
-        if user_summary_prompt:
-            prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
-            
+        language_directive = f"Please provide the summary in {user_output_language}." if user_output_language else ""
+        
+        # Priority order: tag custom prompt > user summary prompt > default prompt
+        if tag_custom_prompt:
+            app.logger.info(f"Using tag custom prompt for recording {recording_id}")
+            prompt_text = f"""Analyze the following audio transcription and generate a summary according to the following instructions.
+
+Instructions: {tag_custom_prompt}
+
 Transcription:
 \"\"\"
-{transcript_text} 
+{transcript_text}
 \"\"\"
-
-Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
-
-For the "title": create a short, descriptive title (max 6 words, no introductory phrases like "brief", "discussion on", "Meeting about").
-For the "summary": {user_summary_prompt}. 
 
 {language_directive}
 
-JSON Response:"""
-        else:
-            prompt_text = default_summary_prompt.format(transcription=transcript_text, language_directive=language_directive)
-        
-        system_message_content = "You are an AI assistant that generates titles and summaries for meeting transcripts. Respond only with the requested JSON object."
-        if user_output_language:
-            system_message_content += f" Ensure your response (both title and summary) is in {user_output_language}."
+Respond with only the summary in Markdown format. Do NOT wrap your response in markdown code blocks (```markdown). Provide the markdown content directly without any code block formatting."""
+            
+        elif user_summary_prompt:
+            app.logger.info(f"Using user custom prompt for recording {recording_id}")
+            prompt_text = f"""Analyze the following audio transcription and generate a summary according to the following instructions.
 
+Instructions: {user_summary_prompt}
+
+Transcription:
+\"\"\"
+{transcript_text}
+\"\"\"
+
+{language_directive}
+
+Respond with only the summary in Markdown format. Do NOT wrap your response in markdown code blocks (```markdown). Provide the markdown content directly without any code block formatting."""
+            
+        else:
+            # Default summary prompt
+            prompt_text = f"""Analyze the following audio transcription and generate a detailed, well-structured summary in Markdown format.
+
+Transcription:
+\"\"\"
+{transcript_text}
+\"\"\"
+
+Generate a comprehensive summary that includes the following sections:
+- **Key Issues Discussed**: A bulleted list of the main topics
+- **Key Decisions Made**: A bulleted list of any decisions reached
+- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned
+
+{language_directive}
+
+Respond with only the summary in Markdown format. Do NOT wrap your response in markdown code blocks (```markdown). Provide the markdown content directly without any code block formatting."""
+
+        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
+        if user_output_language:
+            system_message_content += f" Ensure your response is in {user_output_language}."
+            
         try:
             completion = client.chat.completions.create(
                 model=TEXT_MODEL_NAME,
@@ -1006,41 +1377,35 @@ JSON Response:"""
                     {"role": "user", "content": prompt_text}
                 ],
                 temperature=0.5,
-                max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),
-                response_format={"type": "json_object"}
+                max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000"))
             )
             
-            response_content = completion.choices[0].message.content
-            json_match = re.search(r'```(?:json)?(.*?)```|(.+)', response_content, re.DOTALL)
-            sanitized_response = json_match.group(1) if json_match.group(1) else json_match.group(2)
-            sanitized_response = sanitized_response.strip()
-            summary_data = safe_json_loads(sanitized_response, {})
+            raw_response = completion.choices[0].message.content
+            app.logger.info(f"Raw LLM response for recording {recording_id}: '{raw_response}'")
             
-            raw_title = summary_data.get("title")
-            raw_summary = summary_data.get("summary")
+            summary = raw_response.strip() if raw_response else ""
+            app.logger.info(f"Processed summary length for recording {recording_id}: {len(summary)} characters")
+            
+            if summary:
+                recording.summary = summary
+                recording.status = 'COMPLETED'
+                recording.completed_at = datetime.utcnow()
+                db.session.commit()
+                app.logger.info(f"Summary generated successfully for recording {recording_id}")
+            else:
+                app.logger.warning(f"Empty summary generated for recording {recording_id}")
+                recording.summary = "[Summary not generated]"
+                recording.status = 'COMPLETED'
+                db.session.commit()
+                
+        except Exception as e:
+            error_msg = handle_openai_api_error(e, "summary")
+            app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
+            recording.summary = error_msg
+            recording.status = 'FAILED'
+            db.session.commit()
 
-            recording.title = raw_title.strip() if isinstance(raw_title, str) else "[Title not generated]"
-            recording.summary = raw_summary.strip() if isinstance(raw_summary, str) else "[Summary not generated]"
-            recording.status = 'COMPLETED'
-            recording.completed_at = datetime.utcnow()
-            # This is now calculated at the end of the transcription task
-            # recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
-            app.logger.info(f"Title and summary processed successfully for recording {recording_id}.")
-
-        except Exception as summary_e:
-            app.logger.error(f"Error calling OpenRouter API for summary ({recording_id}): {str(summary_e)}")
-            recording.summary = format_api_error_message(str(summary_e))
-            recording.status = 'COMPLETED'
-            recording.completed_at = datetime.utcnow()
-            # This is now calculated at the end of the transcription task
-            # recording.processing_time_seconds = (recording.completed_at - recording.created_at).total_seconds()
-
-        end_time = datetime.utcnow()
-        recording.processing_time_seconds = (end_time - start_time).total_seconds()
-        app.logger.info(f"Recording {recording_id} processing time: {recording.processing_time_seconds} seconds.")
-        db.session.commit()
-
-def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None):
+def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -1075,7 +1440,11 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 files = {'audio_file': (original_filename, audio_file, content_type)}
                 
                 with httpx.Client() as client:
-                    response = client.post(url, params=params, files=files, timeout=None)
+                    # Set reasonable timeout to prevent hanging (30 minutes max)
+                    timeout = httpx.Timeout(None, connect=30.0, read=1800.0, write=30.0, pool=30.0)
+                    app.logger.info(f"Sending ASR request to {url} with params: {params}")
+                    response = client.post(url, params=params, files=files, timeout=timeout)
+                    app.logger.info(f"ASR request completed with status: {response.status_code}")
                     response.raise_for_status()
                     
                     # Parse the JSON response from ASR
@@ -1153,8 +1522,24 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     # Store the simplified JSON as a string
                     recording.transcription = json.dumps(simplified_segments)
             
+            # Commit the transcription data
+            db.session.commit()
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
-            generate_summary_task(app_context, recording_id, start_time)
+            
+            # Generate title immediately
+            generate_title_task(app_context, recording_id)
+            
+            # Only auto-generate summary if recording has a tag with custom prompt
+            should_auto_summarize = False
+            if recording.tags:
+                for tag in recording.tags:
+                    if tag.custom_prompt:
+                        should_auto_summarize = True
+                        app.logger.info(f"Auto-generating summary for recording {recording_id} due to tag '{tag.name}' with custom prompt")
+                        break
+            
+            if should_auto_summarize:
+                generate_summary_only_task(app_context, recording_id)
 
         except Exception as e:
             db.session.rollback()
@@ -1165,8 +1550,20 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 recording.transcription = f"ASR processing failed: {str(e)}"
                 db.session.commit()
 
-def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time):
-    """Runs the transcription and summarization in a background thread."""
+def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None, tag_id=None):
+    """Runs the transcription and summarization in a background thread.
+    
+    Args:
+        app_context: Flask app context
+        recording_id: ID of the recording to process
+        filepath: Path to the audio file
+        filename_for_asr: Filename to use for ASR
+        start_time: Processing start time
+        language: Optional language code override (from upload form)
+        min_speakers: Optional minimum speakers override (from upload form)
+        max_speakers: Optional maximum speakers override (from upload form)
+        tag_id: Optional tag ID to apply custom prompt from
+    """
     if USE_ASR_ENDPOINT:
         with app_context:
             recording = db.session.get(Recording, recording_id)
@@ -1175,8 +1572,24 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
                 diarize_setting = ASR_DIARIZE
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
-            user_transcription_language = recording.owner.transcription_language if recording.owner else None
-        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, start_time, mime_type=recording.mime_type, language=user_transcription_language, diarize=diarize_setting)
+            
+            # Use language from upload form if provided, otherwise use user's default
+            if language:
+                user_transcription_language = language
+            else:
+                user_transcription_language = recording.owner.transcription_language if recording.owner else None
+        # Use min/max speakers from upload form (already processed with precedence hierarchy)
+        # If None, ASR will auto-detect the number of speakers
+        final_min_speakers = min_speakers
+        final_max_speakers = max_speakers
+        
+        transcribe_audio_asr(app_context, recording_id, filepath, filename_for_asr, start_time, 
+                           mime_type=recording.mime_type, 
+                           language=user_transcription_language, 
+                           diarize=diarize_setting,
+                           min_speakers=final_min_speakers,
+                           max_speakers=final_max_speakers,
+                           tag_id=tag_id)
         
         # After ASR task completes, calculate processing time
         with app_context:
@@ -1212,7 +1625,21 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             
             recording.transcription = transcription_text
             app.logger.info(f"Transcription completed for recording {recording_id}. Text length: {len(recording.transcription)}")
-            generate_summary_task(app_context, recording_id, start_time)
+            
+            # Generate title immediately
+            generate_title_task(app_context, recording_id)
+            
+            # Only auto-generate summary if recording has a tag with custom prompt
+            should_auto_summarize = False
+            if recording.tags:
+                for tag in recording.tags:
+                    if tag.custom_prompt:
+                        should_auto_summarize = True
+                        app.logger.info(f"Auto-generating summary for recording {recording_id} due to tag '{tag.name}' with custom prompt")
+                        break
+            
+            if should_auto_summarize:
+                generate_summary_only_task(app_context, recording_id)
 
         except Exception as e:
             db.session.rollback() # Rollback if any step failed critically
@@ -1548,6 +1975,276 @@ def delete_all_speakers():
         app.logger.error(f"Error deleting all speakers: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/recording/<int:recording_id>/download/summary')
+@login_required
+def download_summary_word(recording_id):
+    """Download recording summary as a Word document."""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+        import re
+        from io import BytesIO
+        
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+            
+        if not recording.summary:
+            return jsonify({'error': 'No summary available for this recording'}), 400
+        
+        # Create Word document
+        doc = Document()
+        
+        # Add title
+        title = doc.add_heading(f'Summary: {recording.title or "Untitled Recording"}', 0)
+        
+        # Add metadata
+        doc.add_paragraph(f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        if recording.meeting_date:
+            doc.add_paragraph(f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+        if recording.participants:
+            doc.add_paragraph(f'Participants: {recording.participants}')
+        if recording.tags:
+            tags_str = ', '.join([tag.name for tag in recording.tags])
+            doc.add_paragraph(f'Tags: {tags_str}')
+        doc.add_paragraph('')  # Empty line
+        
+        # Convert markdown-like formatting to Word formatting
+        def add_formatted_content(paragraph, text):
+            # Handle bold text (**text**)
+            bold_pattern = r'\*\*(.*?)\*\*'
+            parts = re.split(bold_pattern, text)
+            
+            for i, part in enumerate(parts):
+                if i % 2 == 0:  # Regular text
+                    if part:
+                        paragraph.add_run(part)
+                else:  # Bold text
+                    if part:
+                        paragraph.add_run(part).bold = True
+        
+        # Split summary into paragraphs and process
+        summary_lines = recording.summary.split('\n')
+        current_paragraph = None
+        
+        for line in summary_lines:
+            line = line.strip()
+            if not line:
+                current_paragraph = None
+                continue
+                
+            # Check if line starts with markdown heading
+            if line.startswith('# '):
+                doc.add_heading(line[2:], 1)
+                current_paragraph = None
+            elif line.startswith('## '):
+                doc.add_heading(line[3:], 2)
+                current_paragraph = None
+            elif line.startswith('### '):
+                doc.add_heading(line[4:], 3)
+                current_paragraph = None
+            elif line.startswith('- ') or line.startswith('* '):
+                # Bullet point
+                p = doc.add_paragraph(style='List Bullet')
+                add_formatted_content(p, line[2:])
+                current_paragraph = None
+            elif re.match(r'^\d+\.', line):
+                # Numbered list
+                p = doc.add_paragraph(style='List Number')
+                add_formatted_content(p, re.sub(r'^\d+\.\s*', '', line))
+                current_paragraph = None
+            else:
+                # Regular paragraph
+                if current_paragraph is None:
+                    current_paragraph = doc.add_paragraph()
+                else:
+                    current_paragraph.add_run('\n')
+                add_formatted_content(current_paragraph, line)
+        
+        # Save to BytesIO
+        doc_stream = BytesIO()
+        doc.save(doc_stream)
+        doc_stream.seek(0)
+        
+        # Create safe filename
+        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
+        filename = f'summary-{safe_title}.docx' if safe_title else f'summary-recording-{recording_id}.docx'
+        
+        response = send_file(
+            doc_stream,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error generating summary Word document: {e}")
+        return jsonify({'error': 'Failed to generate Word document'}), 500
+
+@app.route('/recording/<int:recording_id>/download/notes')
+@login_required  
+def download_notes_word(recording_id):
+    """Download recording notes as a Word document."""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+        import re
+        from io import BytesIO
+        
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+            
+        if not recording.notes:
+            return jsonify({'error': 'No notes available for this recording'}), 400
+        
+        # Create Word document
+        doc = Document()
+        
+        # Add title
+        title = doc.add_heading(f'Notes: {recording.title or "Untitled Recording"}', 0)
+        
+        # Add metadata
+        doc.add_paragraph(f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        if recording.meeting_date:
+            doc.add_paragraph(f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+        if recording.participants:
+            doc.add_paragraph(f'Participants: {recording.participants}')
+        if recording.tags:
+            tags_str = ', '.join([tag.name for tag in recording.tags])
+            doc.add_paragraph(f'Tags: {tags_str}')
+        doc.add_paragraph('')  # Empty line
+        
+        # Convert markdown-like formatting to Word formatting
+        def add_formatted_content(paragraph, text):
+            # Handle bold text (**text**)
+            bold_pattern = r'\*\*(.*?)\*\*'
+            parts = re.split(bold_pattern, text)
+            
+            for i, part in enumerate(parts):
+                if i % 2 == 0:  # Regular text
+                    if part:
+                        paragraph.add_run(part)
+                else:  # Bold text
+                    if part:
+                        paragraph.add_run(part).bold = True
+        
+        # Split notes into paragraphs and process
+        notes_lines = recording.notes.split('\n')
+        current_paragraph = None
+        
+        for line in notes_lines:
+            line = line.strip()
+            if not line:
+                current_paragraph = None
+                continue
+                
+            # Check if line starts with markdown heading
+            if line.startswith('# '):
+                doc.add_heading(line[2:], 1)
+                current_paragraph = None
+            elif line.startswith('## '):
+                doc.add_heading(line[3:], 2)
+                current_paragraph = None
+            elif line.startswith('### '):
+                doc.add_heading(line[4:], 3)
+                current_paragraph = None
+            elif line.startswith('- ') or line.startswith('* '):
+                # Bullet point
+                p = doc.add_paragraph(style='List Bullet')
+                add_formatted_content(p, line[2:])
+                current_paragraph = None
+            elif re.match(r'^\d+\.', line):
+                # Numbered list
+                p = doc.add_paragraph(style='List Number')
+                add_formatted_content(p, re.sub(r'^\d+\.\s*', '', line))
+                current_paragraph = None
+            else:
+                # Regular paragraph
+                if current_paragraph is None:
+                    current_paragraph = doc.add_paragraph()
+                else:
+                    current_paragraph.add_run('\n')
+                add_formatted_content(current_paragraph, line)
+        
+        # Save to BytesIO
+        doc_stream = BytesIO()
+        doc.save(doc_stream)
+        doc_stream.seek(0)
+        
+        # Create safe filename
+        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
+        filename = f'notes-{safe_title}.docx' if safe_title else f'notes-recording-{recording_id}.docx'
+        
+        response = send_file(
+            doc_stream,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error generating notes Word document: {e}")
+        return jsonify({'error': 'Failed to generate Word document'}), 500
+
+@app.route('/recording/<int:recording_id>/generate_summary', methods=['POST'])
+@login_required
+def generate_summary_endpoint(recording_id):
+    """Generate summary for a recording that doesn't have one."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to generate summary for this recording'}), 403
+            
+        # Check if transcription exists
+        if not recording.transcription or len(recording.transcription.strip()) < 10:
+            return jsonify({'error': 'No valid transcription available for summary generation'}), 400
+            
+        # Check if already processing
+        if recording.status in ['PROCESSING', 'SUMMARIZING']:
+            return jsonify({'error': 'Recording is already being processed'}), 400
+            
+        # Check if OpenRouter client is available
+        if client is None:
+            return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
+            
+        app.logger.info(f"Starting summary generation for recording {recording_id}")
+        
+        # Generate summary in background thread
+        thread = threading.Thread(
+            target=generate_summary_only_task,
+            args=(app.app_context(), recording_id)
+        )
+        thread.start()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Summary generation started'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error starting summary generation for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 def update_speaker_usage(speaker_names):
     """Helper function to update speaker usage statistics."""
     if not speaker_names or not current_user.is_authenticated:
@@ -1663,10 +2360,9 @@ def update_speakers(recording_id):
 
         if regenerate_summary:
             app.logger.info(f"Regenerating summary for recording {recording_id} after speaker update.")
-            start_time = datetime.utcnow()
             thread = threading.Thread(
-                target=generate_summary_task,
-                args=(app.app_context(), recording.id, start_time)
+                target=generate_summary_only_task,
+                args=(app.app_context(), recording.id)
             )
             thread.start()
         
@@ -2053,8 +2749,45 @@ def reprocess_transcription(recording_id):
             
             data = request.json or {}
             language = data.get('language') or (recording.owner.transcription_language if recording.owner else None)
-            min_speakers = data.get('min_speakers')
-            max_speakers = data.get('max_speakers')
+            min_speakers = data.get('min_speakers') or None
+            max_speakers = data.get('max_speakers') or None
+            
+            # Convert to int if provided
+            if min_speakers:
+                try:
+                    min_speakers = int(min_speakers)
+                except (ValueError, TypeError):
+                    min_speakers = None
+            if max_speakers:
+                try:
+                    max_speakers = int(max_speakers)
+                except (ValueError, TypeError):
+                    max_speakers = None
+            
+            # Apply tag defaults if no user input provided (get merged defaults from all tags on this recording)
+            if (min_speakers is None or max_speakers is None) and recording.tags:
+                # Get tag defaults (use first non-None value from ordered tags)
+                for tag_association in sorted(recording.recording_associations, key=lambda x: x.order):
+                    tag = tag_association.tag
+                    if min_speakers is None and tag.default_min_speakers:
+                        min_speakers = tag.default_min_speakers
+                    if max_speakers is None and tag.default_max_speakers:
+                        max_speakers = tag.default_max_speakers
+                    # Stop once we have both values
+                    if min_speakers is not None and max_speakers is not None:
+                        break
+            
+            # Apply environment variable defaults if still no values (reprocess hierarchy: user input > tag defaults > env vars > auto-detect)
+            if min_speakers is None and ASR_MIN_SPEAKERS:
+                try:
+                    min_speakers = int(ASR_MIN_SPEAKERS)
+                except (ValueError, TypeError):
+                    min_speakers = None
+            if max_speakers is None and ASR_MAX_SPEAKERS:
+                try:
+                    max_speakers = int(ASR_MAX_SPEAKERS)
+                except (ValueError, TypeError):
+                    max_speakers = None
             if 'ASR_DIARIZE' in os.environ:
                 diarize_setting = ASR_DIARIZE
             else:
@@ -2185,7 +2918,7 @@ Transcription:
 {transcript_text} 
 \"\"\"
 
-Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown, not JSON. 
+Generate a response STRICTLY as a JSON object with two keys: "title" and "summary". The summary should be markdown content (do NOT wrap in ```markdown code blocks), not JSON. 
 
 For the "title": create a short, descriptive title (max 6 words, no introductory phrases like "brief", "discussion on", "Meeting about").
 For the "summary": {user_summary_prompt}. 
@@ -2453,7 +3186,40 @@ def account():
         flash('Account details updated successfully!', 'success')
         return redirect(url_for('account'))
         
-    default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, key next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered."""
+    default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, any next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered.
+
+CRITICAL FORMATTING REQUIREMENTS:
+- Each **Bold Key:** value pair MUST be on its own separate line
+- Add a blank line after bold headers when followed by bullet point lists  
+- Never put multiple **Bold:** items on the same line
+- Use proper markdown with consistent line breaks
+
+Example Format:
+
+### Minutes
+
+**Case:** Wisconsin Central v. United States
+
+**Court:** U.S. Supreme Court  
+
+**Date:** Not specified
+
+**Counsel:** John Dupree (Petitioner), Cynthia Covner (Respondent)
+
+**Meeting Participants:**
+
+- Bob  
+- Alice  
+
+---
+
+**1. Introduction and Overview:**
+
+- Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
+....
+### Key Issues Discussed
+....
+//and so on and so forth. Make sure not to miss any nuance or details."""
     
     asr_diarize_locked = 'ASR_DIARIZE' in os.environ
     
@@ -3032,7 +3798,7 @@ def upload_file():
         needs_chunking_for_processing = (chunking_service and 
                                        ENABLE_CHUNKING and 
                                        not USE_ASR_ENDPOINT and
-                                       original_file_size > (25 * 1024 * 1024))  # 25MB threshold
+                                       original_file_size > (CHUNK_SIZE_MB * 1024 * 1024))  # Use configured chunk size threshold
         
         # Define supported formats based on whether chunking is needed
         if needs_chunking_for_processing:
@@ -3044,9 +3810,19 @@ def upload_file():
             supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
             convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma')
         
-        # Only convert if file is not in supported formats AND chunking is needed
-        if not filename_lower.endswith(supported_formats) and needs_chunking_for_processing:
-            if filename_lower.endswith(convertible_formats):
+        # Special handling for problematic AAC files when using ASR endpoint
+        is_problematic_aac = (USE_ASR_ENDPOINT and 
+                             (filename_lower.endswith('.aac') or 
+                              'aac' in filename_lower.lower()))
+        
+        # Convert if file is not in supported formats OR is problematic AAC for ASR
+        should_convert = ((not filename_lower.endswith(supported_formats) and needs_chunking_for_processing) or 
+                         is_problematic_aac)
+        
+        if should_convert:
+            if is_problematic_aac:
+                app.logger.info(f"Converting AAC-encoded file {filename_lower} to 32kbps MP3 for ASR endpoint compatibility.")
+            elif filename_lower.endswith(convertible_formats):
                 app.logger.info(f"Converting {filename_lower} format to 32kbps MP3 for chunking processing.")
             else:
                 app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to 32kbps MP3 for chunking.")
@@ -3090,6 +3866,70 @@ def upload_file():
 
         # Get notes from the form
         notes = request.form.get('notes')
+        
+        # Get selected tags if provided (multiple tags support)
+        selected_tags = []
+        tag_index = 0
+        while True:
+            tag_id_key = f'tag_ids[{tag_index}]'
+            tag_id = request.form.get(tag_id_key)
+            if not tag_id:
+                break
+            
+            tag = Tag.query.filter_by(id=tag_id, user_id=current_user.id).first()
+            if tag:
+                selected_tags.append(tag)
+            tag_index += 1
+        
+        # For backward compatibility with single tag uploads
+        if not selected_tags:
+            single_tag_id = request.form.get('tag_id')
+            if single_tag_id:
+                tag = Tag.query.filter_by(id=single_tag_id, user_id=current_user.id).first()
+                if tag:
+                    selected_tags.append(tag)
+        
+        # Get ASR advanced options if provided
+        language = request.form.get('language', '')
+        min_speakers = request.form.get('min_speakers') or None
+        max_speakers = request.form.get('max_speakers') or None
+        
+        # Convert to int if provided
+        if min_speakers:
+            try:
+                min_speakers = int(min_speakers)
+            except (ValueError, TypeError):
+                min_speakers = None
+        if max_speakers:
+            try:
+                max_speakers = int(max_speakers)
+            except (ValueError, TypeError):
+                max_speakers = None
+        
+        # Apply precedence hierarchy: user input > tag defaults > environment variables > auto-detect
+        
+        # Apply tag defaults if tags are selected and values are not explicitly provided by user
+        # Use first tag's defaults (highest priority)
+        if selected_tags:
+            first_tag = selected_tags[0]
+            if not language and first_tag.default_language:
+                language = first_tag.default_language
+            if min_speakers is None and first_tag.default_min_speakers:
+                min_speakers = first_tag.default_min_speakers
+            if max_speakers is None and first_tag.default_max_speakers:
+                max_speakers = first_tag.default_max_speakers
+        
+        # Apply environment variable defaults if still no values are set
+        if min_speakers is None and ASR_MIN_SPEAKERS:
+            try:
+                min_speakers = int(ASR_MIN_SPEAKERS)
+            except (ValueError, TypeError):
+                min_speakers = None
+        if max_speakers is None and ASR_MAX_SPEAKERS:
+            try:
+                max_speakers = int(ASR_MAX_SPEAKERS)
+            except (ValueError, TypeError):
+                max_speakers = None
 
         # Create initial database entry
         recording = Recording(
@@ -3106,14 +3946,43 @@ def upload_file():
         )
         db.session.add(recording)
         db.session.commit()
+        
+        # Add tags to recording if selected (preserve order)
+        for order, tag in enumerate(selected_tags, 1):
+            new_association = RecordingTag(
+                recording_id=recording.id,
+                tag_id=tag.id,
+                order=order,
+                added_at=datetime.utcnow()
+            )
+            db.session.add(new_association)
+        
+        if selected_tags:
+            db.session.commit()
+            tag_names = [tag.name for tag in selected_tags]
+            app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: {', '.join(tag_names)}")
+        
         app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
         # --- Start transcription & summarization in background thread ---
         start_time = datetime.utcnow()
-        thread = threading.Thread(
-            target=transcribe_audio_task,
-            args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time)
-        )
+        
+        # Pass ASR parameters and first tag to the transcription task (for compatibility with existing functions)
+        first_tag = selected_tags[0] if selected_tags else None
+        if USE_ASR_ENDPOINT:
+            app.logger.info(f"Starting ASR transcription thread for recording {recording.id} with params: language={language}, min_speakers={min_speakers}, max_speakers={max_speakers}, tag_id={first_tag.id if first_tag else None}")
+            thread = threading.Thread(
+                target=transcribe_audio_task,
+                args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
+                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers, 'tag_id': first_tag.id if first_tag else None}
+            )
+        else:
+            app.logger.info(f"Starting Whisper transcription thread for recording {recording.id} with tag_id={first_tag.id if first_tag else None}")
+            thread = threading.Thread(
+                target=transcribe_audio_task,
+                args=(app.app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
+                kwargs={'tag_id': first_tag.id if first_tag else None}
+            )
         thread.start()
         app.logger.info(f"Background processing thread started for recording ID: {recording.id}")
 

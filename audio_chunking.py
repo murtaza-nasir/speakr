@@ -50,8 +50,10 @@ class AudioChunkingService:
             
         try:
             file_size = os.path.getsize(file_path)
-            # Use 25MB limit for OpenAI Whisper API
-            return file_size > (25 * 1024 * 1024)
+            # Use configured chunk size limit from environment
+            chunk_size_mb = float(os.environ.get('CHUNK_SIZE_MB', '20'))  # Default 20MB
+            chunk_size_bytes = chunk_size_mb * 1024 * 1024
+            return file_size > chunk_size_bytes
         except OSError:
             logger.error(f"Could not get file size for {file_path}")
             return False
@@ -143,18 +145,25 @@ class AudioChunkingService:
             # Calculate actual bitrate from the WAV file
             bitrate_bytes_per_sec = wav_size / wav_duration
             
-            # Use a more aggressive target to create larger chunks
-            # Target 22MB chunks (88% of 25MB limit) for better efficiency
-            safety_factor = 0.88  # Use 88% of max size for optimal efficiency
-            target_chunk_size = 25 * 1024 * 1024 * safety_factor  # Target 22MB chunks
+            # Use configured chunk size with improved safety factor
+            chunk_size_mb = float(os.environ.get('CHUNK_SIZE_MB', '20'))  # Default 20MB
+            safety_factor = 0.95  # Use 95% of max size for better target accuracy
+            target_chunk_size = chunk_size_mb * 1024 * 1024 * safety_factor
             
+            # Calculate duration based on target size, accounting for overlap
             chunk_duration = (target_chunk_size / bitrate_bytes_per_sec) - self.overlap_seconds
             
-            # Ensure reasonable chunk size (minimum 5 minutes, maximum 45 minutes)
-            # Larger minimum for better efficiency, larger maximum for fewer chunks
-            chunk_duration = max(300, min(2700, chunk_duration))
+            # More flexible duration limits to allow reaching target chunk size
+            # Minimum 5 minutes, but allow longer chunks if needed to reach target size
+            min_duration = 300  # 5 minutes minimum
+            max_duration = max(3600, chunk_duration * 1.1)  # At least 1 hour, or 110% of calculated duration
             
-            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s (target: {target_chunk_size/1024/1024:.1f}MB) based on bitrate {bitrate_bytes_per_sec:.0f} bytes/sec")
+            chunk_duration = max(min_duration, min(max_duration, chunk_duration))
+            
+            # Calculate what the actual chunk size will be with this duration
+            actual_chunk_size_mb = (bitrate_bytes_per_sec * (chunk_duration + self.overlap_seconds)) / (1024 * 1024)
+            
+            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s (target: {target_chunk_size/1024/1024:.1f}MB, estimated actual: {actual_chunk_size_mb:.1f}MB) based on bitrate {bitrate_bytes_per_sec:.0f} bytes/sec")
             return chunk_duration
             
         except Exception as e:

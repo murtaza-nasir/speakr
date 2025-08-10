@@ -142,7 +142,7 @@
                             <div class="relative">
                                 <input v-model="searchQuery" 
                                        type="text" 
-                                       placeholder="Search recordings... (try: date:today, date:2025-01)" 
+                                       placeholder="Search recordings... (try: date:today, tag:meeting)" 
                                        class="w-full px-3 py-2 pl-9 pr-8 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
                                 <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] text-sm"></i>
                                 <button v-if="searchQuery" 
@@ -172,6 +172,8 @@
                                     <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">date:today</code> - Today's recordings</div>
                                     <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">date:2025-01</code> - January 2025</div>
                                     <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">date:thisweek</code> - This week</div>
+                                    <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">tag:meeting</code> - Search by tag name</div>
+                                    <div>• Click any tag to filter recordings</div>
                                 </div>
                             </div>
                         </div>
@@ -204,19 +206,12 @@
                                                  ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]' 
                                                  : 'bg-[var(--bg-tertiary)] border-transparent hover:bg-[var(--bg-accent-hover)]'
                                          ]">
-                                        <div class="flex items-start justify-between">
-                                            <div class="flex-1 min-w-0">
-                                                <h4 class="font-medium text-sm truncate" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
-                                                    ${recording.title || 'Untitled Recording'}
-                                                </h4>
-                                                <p class="text-xs text-[var(--text-muted)] mt-1">
-                                                    ${formatDisplayDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
-                                                </p>
-                                                <div v-if="recording.participants" class="text-xs text-[var(--text-muted)] mt-1 truncate">
-                                                    ${recording.participants}
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center gap-1 ml-2">
+                                        <!-- Title and Status Row -->
+                                        <div class="flex items-center justify-between mb-1">
+                                            <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                                                ${recording.title || 'Untitled Recording'}
+                                            </h4>
+                                            <div class="flex items-center gap-1 flex-shrink-0">
                                                 <!-- Show Failed status for failed recordings -->
                                                 <span v-if="recording.status === 'FAILED'" 
                                                       class="status-badge status-failed">
@@ -248,6 +243,36 @@
                                                 </template>
                                             </div>
                                         </div>
+
+                                        <!-- Date -->
+                                        <p class="text-xs text-[var(--text-muted)] mt-1 flex items-center">
+                                            <i class="fas fa-calendar-alt mr-1.5 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                                            ${formatDisplayDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
+                                        </p>
+
+                                        <!-- Participants -->
+                                        <div v-if="recording.participants" class="text-xs text-[var(--text-muted)] mt-1 flex items-start">
+                                            <i class="fas fa-users mr-1.5 text-[var(--text-muted)] flex-shrink-0" style="font-size: 10px; margin-top: 2px;"></i>
+                                            <span class="truncate">
+                                                ${recording.participants}
+                                            </span>
+                                        </div>
+
+                                        <!-- Tags -->
+                                        <div v-if="getRecordingTags(recording).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                            <button v-for="tag in getRecordingTags(recording).slice(0, 2)" :key="tag.id"
+                                                    @click.stop="filterByTag(tag)"
+                                                    class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium text-white hover:opacity-80 transition-opacity cursor-pointer"
+                                                    :style="{ backgroundColor: tag.color }"
+                                                    :title="'Filter by ' + tag.name">
+                                                <span v-text="tag.name"></span>
+                                            </button>
+                                            <span v-if="getRecordingTags(recording).length > 2" 
+                                                  class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"
+                                                  :title="getRecordingTags(recording).slice(2).map(t => t.name).join(', ')">
+                                                +${getRecordingTags(recording).length - 2} more
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -258,24 +283,12 @@
 
             <!-- Main Content -->
             <main class="main-content" 
-                  :class="{ 'sidebar-open': !isSidebarCollapsed }"
-                  @dragover.prevent="handleDragOver"
-                  @dragleave="handleDragLeave"
-                  @drop.prevent="handleDrop">
-                
-                <!-- Drag Overlay -->
-                <div v-if="dragover" class="absolute inset-0 bg-[var(--bg-accent)] bg-opacity-90 flex items-center justify-center z-50 pointer-events-none">
-                    <div class="text-center p-8 bg-[var(--bg-secondary)] rounded-xl shadow-2xl border-2 border-dashed border-[var(--border-accent)]">
-                        <i class="fas fa-cloud-upload-alt text-6xl text-[var(--text-accent)] mb-4"></i>
-                        <h3 class="text-2xl font-bold text-[var(--text-primary)] mb-2">Drop Audio Files Here</h3>
-                        <p class="text-[var(--text-muted)]">Release to upload your audio files</p>
-                    </div>
-                </div>
+                  :class="{ 'sidebar-open': !isSidebarCollapsed }">
 
                 <div class="flex-1 flex flex-col overflow-hidden">
                 <!-- Upload View -->
-                <div v-if="currentView === 'upload'" class="flex-1 flex items-center justify-center p-4 md:p-8">
-                    <div class="max-w-lg w-full">
+                <div v-if="currentView === 'upload'" class="flex-1 flex items-center justify-center p-4 md:p-8 overflow-y-auto">
+                    <div class="max-w-lg w-full my-auto">
                         <div class="text-center mb-8">
                             <i class="fas fa-microphone text-5xl md:text-6xl text-[var(--text-accent)] mb-4"></i>
                             <h2 class="text-2xl md:text-3xl font-bold mb-2">Upload or Record Audio</h2>
@@ -351,6 +364,120 @@
                                             Help
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+
+                            <!-- Tag Selection -->
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                    <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
+                                    Tags (Optional)
+                                </label>
+                                
+                                <!-- Selected Tags Display -->
+                                <div v-if="selectedTags.length > 0" class="mb-2 p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                    <div class="flex flex-wrap gap-1">
+                                        <span v-for="(tag, index) in selectedTags" :key="tag.id" 
+                                              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                                              :style="{ backgroundColor: tag.color }">
+                                            <span class="mr-1">${index + 1}.</span>
+                                            <span>${tag.name}</span>
+                                            <button @click="removeTagFromSelection(tag.id)" 
+                                                    class="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full w-4 h-4 flex items-center justify-center">
+                                                <i class="fas fa-times text-xs"></i>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Tags are ordered by priority - first tag's settings take precedence
+                                    </p>
+                                </div>
+                                
+                                <!-- Tag Selection Dropdown -->
+                                <select @change="(e) => { if(e.target.value) { addTagToSelection(parseInt(e.target.value)); e.target.value = ''; } }"
+                                        class="w-full px-3 py-2 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                    <option value="">Select tag to add...</option>
+                                    <option v-for="tag in availableTags.filter(tag => !selectedTagIds.includes(tag.id))" 
+                                            :key="tag.id" :value="tag.id" v-text="tag.name">
+                                    </option>
+                                </select>
+                                
+                                <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+                                    <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                                    Selected tags include custom summary prompts
+                                </p>
+                                <p v-if="selectedTags.length > 0 && useAsrEndpoint && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)" 
+                                   class="text-xs text-[var(--text-muted)] mt-1">
+                                    <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+                                    First tag's ASR settings will be applied: ${selectedTags[0].name}
+                                </p>
+                            </div>
+
+                            <!-- Advanced Options for ASR (collapsible) -->
+                            <div v-if="useAsrEndpoint" class="mt-4">
+                                <button @click="showAdvancedOptions = !showAdvancedOptions" 
+                                        class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                                    <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                                        <i class="fas fa-cog text-[var(--text-muted)]"></i>
+                                        <span>Advanced ASR Options</span>
+                                    </span>
+                                    <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                </button>
+                                
+                                <div v-show="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3 border border-[var(--border-secondary)]">
+                                    <!-- Language Selection -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                            Transcription Language
+                                        </label>
+                                        <select v-model="uploadLanguage" 
+                                                class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                            <option value="">Auto-detect</option>
+                                            <option value="en">English</option>
+                                            <option value="es">Spanish</option>
+                                            <option value="fr">French</option>
+                                            <option value="de">German</option>
+                                            <option value="it">Italian</option>
+                                            <option value="pt">Portuguese</option>
+                                            <option value="nl">Dutch</option>
+                                            <option value="ru">Russian</option>
+                                            <option value="zh">Chinese</option>
+                                            <option value="ja">Japanese</option>
+                                            <option value="ko">Korean</option>
+                                            <option value="ar">Arabic</option>
+                                            <option value="hi">Hindi</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Speaker Settings -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Min Speakers
+                                            </label>
+                                            <input v-model.number="uploadMinSpeakers" 
+                                                   type="number" 
+                                                   min="1" 
+                                                   max="20"
+                                                   class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Max Speakers
+                                            </label>
+                                            <input v-model.number="uploadMaxSpeakers" 
+                                                   type="number" 
+                                                   min="1" 
+                                                   max="20"
+                                                   class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                        </div>
+                                    </div>
+                                    
+                                    <p class="text-xs text-[var(--text-muted)] pt-1">
+                                        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                                        Settings apply to all files in this session
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -433,17 +560,118 @@
                                     <i class="fas fa-stop mr-2"></i>Stop Recording
                                 </button>
                             </div>
-                            <div v-if="!isRecording && audioBlobURL" class="flex flex-col sm:flex-row gap-3 justify-center">
-                                <button @click="uploadRecordedAudio"
+                            <div v-if="!isRecording && audioBlobURL" class="flex flex-col gap-4">
+                                <!-- Tag Selection -->
+                                <div>
+                                    <label for="recordingTagSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                        <i class="fas fa-tags mr-1"></i>
+                                        Select Tags (optional, in priority order)
+                                    </label>
+                                    
+                                    <!-- Selected Tags Display -->
+                                    <div v-if="selectedTags.length > 0" class="mb-2 p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                        <div class="flex flex-wrap gap-1">
+                                            <span v-for="(tag, index) in selectedTags" :key="tag.id" 
+                                                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                                                  :style="{ backgroundColor: tag.color }">
+                                                <span class="mr-1">${index + 1}.</span>
+                                                <span>${tag.name}</span>
+                                                <button @click="removeTagFromSelection(tag.id)" 
+                                                        class="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full w-4 h-4 flex items-center justify-center">
+                                                    <i class="fas fa-times text-xs"></i>
+                                                </button>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Tag Dropdown -->
+                                    <select @change="(e) => { if(e.target.value) { addTagToSelection(parseInt(e.target.value)); e.target.value = ''; } }"
+                                            class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm">
+                                        <option value="">Select tag to add...</option>
+                                        <option v-for="tag in availableTags.filter(tag => !selectedTagIds.includes(tag.id))" 
+                                                :key="tag.id" :value="tag.id" v-text="tag.name">
+                                        </option>
+                                    </select>
+                                    
+                                    <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+                                        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                                        Selected tags include custom summary prompts
+                                    </p>
+                                    <p v-if="selectedTags.length > 0 && useAsrEndpoint && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)" 
+                                       class="text-xs text-[var(--text-muted)] mt-1">
+                                        <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+                                        First tag's ASR settings will be applied: ${selectedTags[0].name}
+                                    </p>
+                                </div>
+
+                                <!-- Advanced Options for ASR (collapsible) -->
+                                <div v-if="useAsrEndpoint">
+                                    <button @click="showAdvancedOptions = !showAdvancedOptions" 
+                                            class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                                        <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                                            <i class="fas fa-cog text-[var(--text-muted)]"></i>
+                                            <span>Advanced ASR Options</span>
+                                        </span>
+                                        <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                    </button>
+                                    
+                                    <div v-if="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] space-y-3">
+                                        <div>
+                                            <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Language
+                                            </label>
+                                            <select id="recordingAsrLanguage" v-model="asrLanguage"
+                                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                                <option value="">Auto-detect</option>
+                                                <option value="en">English</option>
+                                                <option value="es">Spanish</option>
+                                                <option value="fr">French</option>
+                                                <option value="de">German</option>
+                                                <option value="it">Italian</option>
+                                                <option value="pt">Portuguese</option>
+                                                <option value="nl">Dutch</option>
+                                                <option value="ru">Russian</option>
+                                                <option value="zh">Chinese</option>
+                                                <option value="ja">Japanese</option>
+                                                <option value="ko">Korean</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                    Min Speakers
+                                                </label>
+                                                <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
+                                                       min="1" max="20" placeholder="Auto"
+                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            </div>
+                                            
+                                            <div>
+                                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                    Max Speakers
+                                                </label>
+                                                <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
+                                                       min="1" max="20" placeholder="Auto"
+                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Upload/Discard Buttons -->
+                                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                                    <button @click="uploadRecordedAudio"
                                         class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
                                     <i class="fas fa-upload"></i>
                                     <span>Upload Recording & Notes</span>
                                 </button>
-                                <button @click="discardRecording"
-                                        class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
-                                    <i class="fas fa-trash"></i>
-                                    <span>Discard</span>
-                                </button>
+                                    <button @click="discardRecording"
+                                            class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Discard</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -464,6 +692,16 @@
                                         <p class="text-sm text-[var(--text-muted)] truncate">
                                             ${selectedRecording.participants || 'No participants'}
                                         </p>
+                                        <div v-if="getRecordingTags(selectedRecording).length > 0" class="flex flex-wrap gap-1 mt-2">
+                                            <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id" 
+                                                    @click="filterByTag(tag)"
+                                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white hover:opacity-80 transition-opacity cursor-pointer"
+                                                    :style="{ backgroundColor: tag.color }"
+                                                    :title="'Filter by ' + tag.name">
+                                                <i class="fas fa-tag mr-1"></i>
+                                                <span v-text="tag.name"></span>
+                                            </button>
+                                        </div>
                                     </div>
                                     <i :class="['fas', 'fa-chevron-down', 'transition-transform', { 'rotate-180': isMetadataExpanded }]"></i>
                                 </div>
@@ -491,7 +729,8 @@
                                 <div class="flex items-center gap-2 overflow-x-auto pb-2">
                                     <button @click="toggleInbox(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :class="selectedRecording.is_inbox ? 'text-blue-500' : ''" :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'"><i class="fas fa-inbox"></i></button>
                                     <button @click="toggleHighlight(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''" :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'"><i class="fas fa-star"></i></button>
-                                    <button @click="editRecording(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"><i class="fas fa-edit"></i></button>
+                                    <button @click="editRecording(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Edit Recording"><i class="fas fa-edit"></i></button>
+                                    <button @click="editRecordingTags(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Edit Tags"><i class="fas fa-tags"></i></button>
                                     <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'"><i class="fas fa-redo-alt"></i></button>
                                         <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Reprocess summary"><i class="fas fa-sync-alt"></i></button>
                                         <button @click="confirmReset(selectedRecording)" v-if="['PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500" title="Reset stuck processing"><i class="fas fa-undo"></i></button>
@@ -592,7 +831,11 @@
                                         </div>
                                         <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                                             <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                            <p class="text-[var(--text-muted)]">No summary available</p>
+                                            <p class="text-[var(--text-muted)] mb-4">No summary available</p>
+                                            <button @click="generateSummary" 
+                                                    class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                                                <i class="fas fa-magic mr-2"></i>Generate Summary
+                                            </button>
                                         </div>
                                         <div v-else class="summary-box h-full" v-html="selectedRecording.summary_html || selectedRecording.summary"></div>
                                     </div>
@@ -678,6 +921,11 @@
                                         <button @click="editRecording(selectedRecording)" 
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
                                             <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button @click="editRecordingTags(selectedRecording)" 
+                                                class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                                                title="Edit Tags">
+                                            <i class="fas fa-tags"></i>
                                         </button>
                                         <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
@@ -941,15 +1189,31 @@
                                             
                                             <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                                                 <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                                <p class="text-[var(--text-muted)]">No summary available</p>
+                                                <p class="text-[var(--text-muted)] mb-4">No summary available</p>
+                                                <button @click="generateSummary" 
+                                                        class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                                                    <i class="fas fa-magic mr-2"></i>Generate Summary
+                                                </button>
                                             </div>
                                             
-                                            <div v-else class="content-box">
-                                                <button v-if="!editingSummary" 
-                                                        @click="toggleEditSummary" 
-                                                        class="hover-edit-btn">
-                                                    <i class="fas fa-edit mr-1"></i>Edit
-                                                </button>
+                                            <div v-else class="content-box relative">
+                                                <div v-if="!editingSummary" class="absolute top-2 right-2 flex gap-1 z-10">
+                                                    <button @click="copySummary" 
+                                                            title="Copy Summary"
+                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                        <i class="fas fa-copy text-sm"></i>
+                                                    </button>
+                                                    <button @click="downloadSummary" 
+                                                            title="Download Summary as Word Document"
+                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                        <i class="fas fa-download text-sm"></i>
+                                                    </button>
+                                                    <button @click="toggleEditSummary" 
+                                                            title="Edit Summary"
+                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                        <i class="fas fa-edit text-sm"></i>
+                                                    </button>
+                                                </div>
                                                 
                                                 <div v-if="!editingSummary" 
                                                      class="summary-box" 
@@ -979,12 +1243,24 @@
 
                                         <!-- Notes Tab -->
                                         <div v-if="selectedTab === 'notes'" class="h-full p-4 overflow-y-auto">
-                                            <div class="content-box h-full">
-                                                <button v-if="!editingNotes" 
-                                                        @click="toggleEditNotes" 
-                                                        class="hover-edit-btn">
-                                                    <i class="fas fa-edit mr-1"></i>Edit
-                                                </button>
+                                            <div class="content-box h-full relative">
+                                                <div v-if="!editingNotes" class="absolute top-2 right-2 flex gap-1 z-10">
+                                                    <button @click="copyNotes" 
+                                                            title="Copy Notes"
+                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                        <i class="fas fa-copy text-sm"></i>
+                                                    </button>
+                                                    <button @click="downloadNotes" 
+                                                            title="Download Notes as Word Document"
+                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                        <i class="fas fa-download text-sm"></i>
+                                                    </button>
+                                                    <button @click="toggleEditNotes" 
+                                                            title="Edit Notes"
+                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                        <i class="fas fa-edit text-sm"></i>
+                                                    </button>
+                                                </div>
                                                 
                                                 <div v-if="!editingNotes" 
                                                      class="notes-box h-full">
@@ -1127,6 +1403,11 @@
                         <span class="text-sm text-[var(--text-muted)]">(${completedInQueue}/${totalInQueue})</span>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button v-if="completedInQueue > 0" @click="clearCompletedUploads()" 
+                                class="px-2 py-1 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] rounded transition-colors text-[var(--text-secondary)]"
+                                title="Clear completed uploads">
+                            <i class="fas fa-broom mr-1"></i>Clear
+                        </button>
                         <button @click="progressPopupMinimized = !progressPopupMinimized" 
                                 class="p-1 rounded hover:bg-[var(--bg-accent)] transition-colors">
                             <i :class="progressPopupMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
@@ -1243,6 +1524,58 @@
                             Delete
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Recording Tags Modal -->
+        <div v-if="showEditTagsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg">
+                <div class="p-6 border-b border-[var(--border-primary)]">
+                    <h3 class="text-lg font-medium text-[var(--text-primary)]">Edit Recording Tags</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                            Current Tags
+                        </label>
+                        <div v-if="getRecordingTags(editingRecording).length > 0" class="flex flex-wrap gap-2 mb-3">
+                            <span v-for="tag in getRecordingTags(editingRecording)" :key="tag.id"
+                                  class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
+                                  :style="{ backgroundColor: tag.color }">
+                                <i class="fas fa-tag mr-1"></i>
+                                <span v-text="tag.name"></span>
+                                <button @click="removeTagFromRecording(tag.id)" 
+                                        class="ml-2 text-white/80 hover:text-white focus:outline-none">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <p v-else class="text-sm text-[var(--text-muted)]">No tags assigned</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                            Add Tag
+                        </label>
+                        <select v-model="selectedNewTagId" 
+                                class="w-full px-3 py-2 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                            <option value="">Select a tag to add...</option>
+                            <option v-for="tag in getAvailableTagsForRecording(editingRecording)" :key="tag.id" :value="tag.id" v-text="tag.name">
+                            </option>
+                        </select>
+                        <button @click="addTagToRecording" 
+                                :disabled="!selectedNewTagId"
+                                class="mt-2 w-full px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-plus mr-2"></i>
+                            Add Tag
+                        </button>
+                    </div>
+                </div>
+                <div class="px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex justify-end gap-3 rounded-b-lg">
+                    <button @click="closeEditTagsModal" class="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                        Close
+                    </button>
                 </div>
             </div>
         </div>

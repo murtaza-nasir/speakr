@@ -705,27 +705,22 @@ div[v-if="!editingNotes"] {
  }
  
  .user-message {
-     background-color: #dbeafe;
+     background-color: var(--accent-primary);
+     color: var(--text-accent-contrast);
      border-radius: 1.25rem 1.25rem 0.25rem 1.25rem;
      padding: 0.875rem 1rem;
      margin-left: auto;
+     border: 1px solid var(--border-accent);
  }
  
  .ai-message {
-     background-color: #f3f4f6;
+     background-color: var(--bg-tertiary);
+     color: var(--text-primary);
      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
      padding: 0.875rem 1rem;
+     border: 1px solid var(--border-secondary);
  }
 
- .dark .ai-message {
-     background-color: #374151;
-     color: #f3f4f6;
- }
-
- .dark .user-message {
-     background-color: #1e40af;
-     color: #ffffff;
- }
  
  .copyable {
      position: relative;
@@ -765,18 +760,25 @@ div[v-if="!editingNotes"] {
  }
  
  .ai-message code, .summary-box code, .notes-box code {
-     background-color: #f1f1f1; /* Consider using var(--bg-tertiary) or similar for theme consistency */
-     padding: 0.1rem 0.3rem;
+     background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+     padding: 0.125rem 0.25rem;
      border-radius: 0.25rem;
-     font-family: monospace;
-     font-size: 0.9em;
+     font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+     font-size: 0.875rem;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
  }
  
  .ai-message pre, .summary-box pre, .notes-box pre {
-     background-color: #f1f1f1; /* Consider using var(--bg-tertiary) or similar */
+     background-color: var(--bg-tertiary);
+     color: var(--text-primary);
      padding: 0.75rem;
-     border-radius: 0.25rem;
+     border-radius: 0.5rem;
      overflow-x: auto;
+     white-space: pre-wrap;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
      margin-bottom: 0.75rem;
  }
  
@@ -784,6 +786,10 @@ div[v-if="!editingNotes"] {
      background-color: transparent;
      padding: 0;
      border-radius: 0;
+     color: inherit;
+     white-space: pre-wrap;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
  }
  
  .ai-message table, .summary-box table, .notes-box table {
@@ -2328,6 +2334,14 @@ body {
 .preview-dark-teal-primary { background-color: #134e4a; }
 .preview-dark-teal-secondary { background-color: #115e59; }
 .preview-dark-teal-tertiary { background-color: #5eead4; }
+
+/* Line clamp utility for text truncation */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
 
 /* Responsive adjustments for color scheme modal */
 @media (max-width: 768px) {

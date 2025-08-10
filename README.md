@@ -22,23 +22,31 @@
 
 ## What's New?
 
-### Latest Release (Version 0.4.2)
-* **Large File Chunking Support:** Automatically splits large audio files to work with transcription services that have file size limits (e.g., OpenAI's 25MB limit). Review release notes for instructions or keep reading below.
-* **Optimized File Processing:** Improved efficiency by minimizing file conversions and using compressed formats.
-* **Enhanced Security:** Strengthened CSRF protection and fixed session timeout issues.
-* **Improved Recording Reliability:** Addressed several bugs related to in-browser recording.
+###  Latest Release (Version 0.5.0)
+* **Advanced Tagging System:** Organize recordings with multiple tags, each with custom summarization prompts and ASR defaults
+* **Enhanced ASR Integration:** Configure language and speaker detection directly from the UI with automatic participant extraction
+* **Word Document Export:** Download summaries and notes as beautifully formatted .docx files
+* **Tag-based Search:** Filter recordings instantly using tags (e.g., `tag:meeting date:2025`)
+* **Improved UI:** Better theme consistency, reorganized layouts with icons, and compact responsive design
+* **Configurable Processing:** Respect chunk size settings and improved audio format handling
 
 <details>
 <summary><strong>Previous Version History</strong></summary>
 
+### Version 0.4.2
+* **Large File Chunking Support:** Automatically splits large audio files to work with transcription services that have file size limits (e.g., OpenAI's 25MB limit)
+* **Optimized File Processing:** Improved efficiency by minimizing file conversions and using compressed formats
+* **Enhanced Security:** Strengthened CSRF protection and fixed session timeout issues
+* **Improved Recording Reliability:** Addressed several bugs related to in-browser recording
+
 ### Version 0.4.1 
-* **Secure Sharing System:** Share transcriptions via public links with customizable permissions.
-* **Enhanced Recording & Note-Taking:** Redesigned recording interface with a real-time notepad.
-* **Advanced Speaker Diarization:** AI-powered speaker detection and saved speaker profiles.
-* **"Black hole" Directory:** Feature for automatic, hands-free audio file processing.
-* **Transcript Editing:** Manually edit and correct transcriptions.
-* **Clickable Timestamps:** Navigate audio by clicking timestamps in the transcript.
-* **Streaming Chat Responses:** More interactive and responsive AI chat.
+* **Secure Sharing System:** Share transcriptions via public links with customizable permissions
+* **Enhanced Recording & Note-Taking:** Redesigned recording interface with a real-time notepad
+* **Advanced Speaker Diarization:** AI-powered speaker detection and saved speaker profiles
+* **"Black hole" Directory:** Feature for automatic, hands-free audio file processing
+* **Transcript Editing:** Manually edit and correct transcriptions
+* **Clickable Timestamps:** Navigate audio by clicking timestamps in the transcript
+* **Streaming Chat Responses:** More interactive and responsive AI chat
 
 </details>
 
@@ -64,7 +72,13 @@
   <br>
   <em>Integrated Chat</em>
 </p>
-
+</details>
+<details><summary><strong>Tag based custom summarization prompts (tags)</strong></summary>
+<p align="center">
+  <img src="static/img/tags.png" alt="Transcription and Chat" width="400"/>
+  <br>
+  <em>Create tags for different use-cases (meetings, gamenight, patient interview, etc.) for quick customized summaries</em>
+</p></details>
 <details><summary><strong>Light & dark</strong></summary>
 <table align="center" style="width:100%;" border="0" cellpadding="10" cellspacing="0">
   <tr>
@@ -78,7 +92,6 @@
     </td>
   </tr>
 </table>
-</details>
 </details>
 
 <details><summary><strong>Transcription views</strong></summary>
@@ -234,9 +247,10 @@ You only need Docker installed for this method; you do not need to clone the rep
         # --- Transcription Service (uses /asr endpoint) ---
         USE_ASR_ENDPOINT=true
         ASR_BASE_URL=http://your_asr_host:9000  # URL of your running ASR webservice
-        ASR_DIARIZE=true
-        ASR_MIN_SPEAKERS=1
-        ASR_MAX_SPEAKERS=5
+        # Speaker diarization is automatically enabled with ASR
+        # Optional overrides (defaults shown):
+        # ASR_MIN_SPEAKERS=1
+        # ASR_MAX_SPEAKERS=5
 
         # --- Application Settings ---
         ALLOW_REGISTRATION=false
@@ -300,6 +314,157 @@ Follow these steps if you want to modify the code or build the Docker image your
 5.  **Identify Speakers (Diarization):**
     * If you used the ASR method with diarization enabled, click the **Identify Speakers** button.
     * In the modal, assign names to the detected speakers (e.g., `SPEAKER 00`, `SPEAKER 01`). You can use the **Auto Identify** feature to let the AI suggest names based on the conversation.
+---
+<details>
+<summary><strong>Advanced Tagging System</strong></summary>
+Speakr's tagging system allows you to organize recordings and customize their processing with tag-specific prompts and settings. Tags can be assigned to recordings to categorize them (e.g., "Meeting", "Interview", "Legal", "Medical") and each tag can have its own custom summarization prompt and ASR defaults.
+
+### Key Features
+
+#### Custom Summarization Prompts
+Each tag can have its own custom prompt that gets applied automatically when generating summaries. This is incredibly powerful for different use cases:
+- **Legal depositions** need case synopsis and key issues
+- **Medical consultations** need symptoms, diagnosis, and treatment plans  
+- **Team meetings** need action items and decisions
+- **Interviews** need candidate assessment and key qualifications
+
+#### Combining Multiple Tags
+You can assign multiple tags to a recording, and their custom prompts will be combined in priority order. For example:
+- Tag 1: "Legal" - Adds legal formatting requirements
+- Tag 2: "Deposition" - Adds deposition-specific sections
+- Tag 3: "Urgent" - Adds priority flagging
+
+The prompts are merged based on tag selection order, allowing you to build complex summarization workflows from modular tag components.
+
+#### ASR Configuration per Tag
+Tags can also define default settings for the ASR service:
+- **Language**: Set a specific language for transcription (e.g., "Spanish" for all "Cliente" tagged recordings)
+- **Speaker Count**: Define min/max speakers (e.g., exactly 2 speakers for "Interview" tags)
+
+### Configuration Precedence
+
+Settings are applied in this order (highest to lowest precedence):
+1. **Upload Screen Advanced Options** - User's manual selections in the UI
+2. **Tag Defaults** - Settings configured in the tag
+3. **Environment Variables** - System-wide defaults from `.env` file
+4. **Auto-detection** - ASR service's automatic detection
+
+This hierarchy ensures flexibility while maintaining sensible defaults.
+
+### Writing Effective Summarization Prompts
+
+#### Best Practices
+1. **Be Specific and Detailed**: Don't just ask for a "summary" - specify exactly what you want
+2. **Provide Structure**: Define clear sections and formatting
+3. **Include Examples**: Show the AI exactly how you want the output formatted
+4. **Request Completeness**: Ask for "all important nuances" to avoid missing details
+
+#### Example Prompts
+
+**Legal Deposition Prompt:**
+```
+Summarize this transcript in extreme detail. Identify the key issues discussed. 
+First, give me the case synopsis. Then give me the minutes. Then, give me the 
+key issues discussed. Then, any key takeaways. Then, any next steps. Then, 
+all important things that I didn't ask for but that need to be recorded. 
+Make sure every important nuance is covered.
+
+Example Format:
+## Case: ABC vs XYZ
+The case is about [brief description]. The synopsis is [detailed overview].
+
+**Participants:**  
+- [Name 1] - [Role]
+- [Name 2] - [Role]
+
+---
+### Minutes
+
+**1. Introduction and Overview:**
+- [Participant] expressed [key point with full context]
+- Discussion regarding [topic with specific details]
+
+### Key Issues Discussed
+1. **[Issue Title]:** [Comprehensive description with all nuances]
+2. **[Issue Title]:** [Full details including participant positions]
+
+### Key Takeaways
+- [Specific, actionable takeaway with context]
+
+### Next Steps
+- [Concrete action item with responsible party and timeline]
+
+### Additional Important Information
+- [Any critical details not covered above]
+```
+
+**Meeting Minutes Prompt:**
+```
+Summarize this transcript in extreme detail. First, give me minutes. Then, 
+give me the key issues discussed. Then, any key takeaways. Then, any next 
+steps. Then, all important things that I didn't ask for but that need to be 
+recorded. Make sure every important nuance is covered.
+
+Example Format:
+### Minutes
+
+**Meeting Participants:**  
+- [Name] - [Department/Role]
+- [Name] - [Department/Role]
+
+**Date:** [Meeting Date]
+**Duration:** [Length]
+
+---
+
+**1. Introduction and Overview:**
+- [Participant] opened the meeting by [specific details]
+- Key objectives outlined: [list each]
+
+**2. [Topic Name]:**
+- [Participant] presented [detailed summary of presentation]
+- Discussion points raised:
+  • [Specific point with who raised it]
+  • [Counter-arguments or agreements]
+- Decision reached: [Exact decision with rationale]
+
+### Key Issues Discussed
+1. **[Issue]:** [Complete description with all perspectives presented]
+2. **[Issue]:** [Full context including constraints and opportunities]
+
+### Key Takeaways
+- [Specific conclusion with supporting details]
+- [Important realization or learning]
+
+### Next Steps
+- [Action item] - Owner: [Name] - Due: [Date]
+- [Action item] - Owner: [Name] - Due: [Date]
+
+### Additional Notes
+- [Any off-topic but important mentions]
+- [Future considerations discussed]
+```
+
+#### Tips for Custom Prompts
+- **Use consistent formatting** with markdown headers and bold text
+- **Request specific information** relevant to your use case
+- **Include participant identification** when speaker diarization is enabled
+- **Ask for "all important nuances"** to ensure nothing is missed
+- **Provide clear examples** of the desired output format
+- **Structure sections logically** for easy scanning
+- **Include catch-all sections** like "Additional Important Information"
+
+### Setting Up Tags
+
+1. **Create a Tag**: Go to Account Settings → Tag Management and create a new tag
+2. **Configure Custom Prompt** (optional): Add your detailed summarization prompt
+3. **Set ASR Defaults** (optional): Configure language and speaker settings
+4. **Apply to Recordings**: Select tags when uploading or recording
+5. **Combine Tags**: Select multiple tags to merge their prompts
+
+Tags make Speakr very flexible, allowing you to maintain consistent formatting across similar recordings while adapting to different use cases with just a click.
+</details>
+
 ---
 <details>
 <summary><strong>Advanced Configuration & Technical Details</strong></summary>
