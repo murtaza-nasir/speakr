@@ -1963,8 +1963,8 @@
                         <!-- Audio Player Section -->
                         <div class="mb-4 flex-shrink-0">
                             <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
-                            <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
-                                <audio controls class="w-full h-10 speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
+                            <div class="audio-player-container">
+                                <audio controls class="w-full speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>
