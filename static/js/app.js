@@ -70,6 +70,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const systemAudioError = ref('');
             const recordingNotes = ref('');
             const showSystemAudioHelp = ref(false);
+            // ASR options for recording view
+            const asrLanguage = ref('');  // Empty string for auto-detect
+            const asrMinSpeakers = ref('');  // Empty string for auto-detect
+            const asrMaxSpeakers = ref('');  // Empty string for auto-detect
             const audioContext = ref(null);
             const analyser = ref(null);
             const micAnalyser = ref(null);
@@ -1799,6 +1803,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const file of files) {
                     const fileObject = file.file ? file.file : file;
                     const notes = file.notes || null;
+                    const tags = file.tags || selectedTags.value || [];
+                    const asrOptions = file.asrOptions || {
+                        language: asrLanguage.value,
+                        min_speakers: asrMinSpeakers.value,
+                        max_speakers: asrMaxSpeakers.value
+                    };
 
                     // Check if it's an audio file or has AMR extension
                     const isAudioFile = fileObject && (
@@ -1819,6 +1829,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         uploadQueue.value.push({
                             file: fileObject, 
                             notes: notes,
+                            tags: tags,
+                            asrOptions: asrOptions,
                             status: 'queued', 
                             recordingId: null, 
                             clientId: clientId, 
@@ -1884,21 +1896,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         // Add tags if selected (multiple tags)
-                        selectedTagIds.value.forEach((tagId, index) => {
+                        // Use tags from the queue item if available, otherwise use global selectedTagIds
+                        const tagsToUse = nextFileItem.tags || selectedTags.value || [];
+                        tagsToUse.forEach((tag, index) => {
+                            const tagId = tag.id || tag; // Handle both tag objects and tag IDs
                             formData.append(`tag_ids[${index}]`, tagId);
                         });
                         
                         // Add ASR advanced options if ASR endpoint is enabled
                         if (useAsrEndpoint.value) {
-                            if (uploadLanguage.value) {
-                                formData.append('language', uploadLanguage.value);
+                            // Use ASR options from the queue item if available, otherwise use global values
+                            const asrOpts = nextFileItem.asrOptions || {};
+                            const language = asrOpts.language || uploadLanguage.value;
+                            const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
+                            const maxSpeakers = asrOpts.max_speakers || uploadMaxSpeakers.value;
+                            
+                            if (language) {
+                                formData.append('language', language);
                             }
                             // Only send speaker limits if they're actually set
-                            if (uploadMinSpeakers.value && uploadMinSpeakers.value !== '') {
-                                formData.append('min_speakers', uploadMinSpeakers.value.toString());
+                            if (minSpeakers && minSpeakers !== '') {
+                                formData.append('min_speakers', minSpeakers.toString());
                             }
-                            if (uploadMaxSpeakers.value && uploadMaxSpeakers.value !== '') {
-                                formData.append('max_speakers', uploadMaxSpeakers.value.toString());
+                            if (maxSpeakers && maxSpeakers !== '') {
+                                formData.append('max_speakers', maxSpeakers.toString());
                             }
                         }
 
@@ -2274,11 +2295,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 recordingMode.value = mode;
                 
                 try {
+                    // Load tags if not already loaded
+                    if (availableTags.value.length === 0) {
+                        await loadTags();
+                    }
+                    
                     // Reset state
                     audioChunks.value = [];
                     audioBlobURL.value = null;
                     recordingNotes.value = '';
                     activeStreams.value = [];
+                    // Clear previous tag selection and ASR options for fresh recording
+                    selectedTags.value = [];
+                    asrLanguage.value = '';
+                    asrMinSpeakers.value = '';
+                    asrMaxSpeakers.value = '';
 
                     let combinedStream = null;
                     let micStream = null;
@@ -2579,8 +2610,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                 const recordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
 
-                // Pass notes along with the file
-                addFilesToQueue([{ file: recordedFile, notes: recordingNotes.value }]);
+                // Pass notes, tags, and ASR options along with the file
+                addFilesToQueue([{ 
+                    file: recordedFile, 
+                    notes: recordingNotes.value,
+                    tags: selectedTags.value,
+                    asrOptions: {
+                        language: asrLanguage.value,
+                        min_speakers: asrMinSpeakers.value,
+                        max_speakers: asrMaxSpeakers.value
+                    }
+                }]);
                 discardRecording();
                 
                 // Switch back to upload view
@@ -2597,6 +2637,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 recordingTime.value = 0;
                 if (recordingInterval.value) clearInterval(recordingInterval.value);
                 recordingNotes.value = '';
+                // Clear tags and ASR options for fresh start
+                selectedTags.value = [];
+                asrLanguage.value = '';
+                asrMinSpeakers.value = '';
+                asrMaxSpeakers.value = '';
             };
 
             const drawSingleVisualizer = (analyserNode, canvasElement) => {
@@ -3872,6 +3917,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+                asrLanguage, asrMinSpeakers, asrMaxSpeakers,
                 availableTags, selectedTagIds, selectedTags, onTagSelected, addTagToSelection, removeTagFromSelection,
                 showSystemAudioHelp,
                 

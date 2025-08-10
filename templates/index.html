@@ -560,17 +560,118 @@
                                     <i class="fas fa-stop mr-2"></i>Stop Recording
                                 </button>
                             </div>
-                            <div v-if="!isRecording && audioBlobURL" class="flex flex-col sm:flex-row gap-3 justify-center">
-                                <button @click="uploadRecordedAudio"
+                            <div v-if="!isRecording && audioBlobURL" class="flex flex-col gap-4">
+                                <!-- Tag Selection -->
+                                <div>
+                                    <label for="recordingTagSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                        <i class="fas fa-tags mr-1"></i>
+                                        Select Tags (optional, in priority order)
+                                    </label>
+                                    
+                                    <!-- Selected Tags Display -->
+                                    <div v-if="selectedTags.length > 0" class="mb-2 p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                        <div class="flex flex-wrap gap-1">
+                                            <span v-for="(tag, index) in selectedTags" :key="tag.id" 
+                                                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
+                                                  :style="{ backgroundColor: tag.color }">
+                                                <span class="mr-1">${index + 1}.</span>
+                                                <span>${tag.name}</span>
+                                                <button @click="removeTagFromSelection(tag.id)" 
+                                                        class="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full w-4 h-4 flex items-center justify-center">
+                                                    <i class="fas fa-times text-xs"></i>
+                                                </button>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Tag Dropdown -->
+                                    <select @change="(e) => { if(e.target.value) { addTagToSelection(parseInt(e.target.value)); e.target.value = ''; } }"
+                                            class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm">
+                                        <option value="">Select tag to add...</option>
+                                        <option v-for="tag in availableTags.filter(tag => !selectedTagIds.includes(tag.id))" 
+                                                :key="tag.id" :value="tag.id" v-text="tag.name">
+                                        </option>
+                                    </select>
+                                    
+                                    <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+                                        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                                        Selected tags include custom summary prompts
+                                    </p>
+                                    <p v-if="selectedTags.length > 0 && useAsrEndpoint && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)" 
+                                       class="text-xs text-[var(--text-muted)] mt-1">
+                                        <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+                                        First tag's ASR settings will be applied: ${selectedTags[0].name}
+                                    </p>
+                                </div>
+
+                                <!-- Advanced Options for ASR (collapsible) -->
+                                <div v-if="useAsrEndpoint">
+                                    <button @click="showAdvancedOptions = !showAdvancedOptions" 
+                                            class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                                        <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                                            <i class="fas fa-cog text-[var(--text-muted)]"></i>
+                                            <span>Advanced ASR Options</span>
+                                        </span>
+                                        <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                    </button>
+                                    
+                                    <div v-if="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] space-y-3">
+                                        <div>
+                                            <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                Language
+                                            </label>
+                                            <select id="recordingAsrLanguage" v-model="asrLanguage"
+                                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                                <option value="">Auto-detect</option>
+                                                <option value="en">English</option>
+                                                <option value="es">Spanish</option>
+                                                <option value="fr">French</option>
+                                                <option value="de">German</option>
+                                                <option value="it">Italian</option>
+                                                <option value="pt">Portuguese</option>
+                                                <option value="nl">Dutch</option>
+                                                <option value="ru">Russian</option>
+                                                <option value="zh">Chinese</option>
+                                                <option value="ja">Japanese</option>
+                                                <option value="ko">Korean</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                    Min Speakers
+                                                </label>
+                                                <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
+                                                       min="1" max="20" placeholder="Auto"
+                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            </div>
+                                            
+                                            <div>
+                                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                                    Max Speakers
+                                                </label>
+                                                <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
+                                                       min="1" max="20" placeholder="Auto"
+                                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Upload/Discard Buttons -->
+                                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                                    <button @click="uploadRecordedAudio"
                                         class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
                                     <i class="fas fa-upload"></i>
                                     <span>Upload Recording & Notes</span>
                                 </button>
-                                <button @click="discardRecording"
-                                        class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
-                                    <i class="fas fa-trash"></i>
-                                    <span>Discard</span>
-                                </button>
+                                    <button @click="discardRecording"
+                                            class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Discard</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
