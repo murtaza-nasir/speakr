@@ -1674,7 +1674,25 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     
                     # Store the simplified JSON as a string
                     recording.transcription = json.dumps(simplified_segments)
+                    
+                    # Extract and save participants from the speakers found in the transcription
+                    if all_speakers:
+                        # Convert set to sorted list for consistent ordering
+                        participants_list = sorted(list(all_speakers))
+                        # Filter out placeholder speakers
+                        participants_list = [speaker for speaker in participants_list if speaker and speaker not in ['UNKNOWN_SPEAKER', 'Unknown Speaker']]
+                        
+                        if participants_list:
+                            # Join speakers with comma and space
+                            recording.participants = ', '.join(participants_list)
+                            app.logger.info(f"Saved participants to recording: {recording.participants}")
+                        else:
+                            app.logger.info("No valid speakers found to save as participants")
+                    else:
+                        app.logger.info("No speakers found in ASR response")
             
+            # Commit the transcription and participants data
+            db.session.commit()
             app.logger.info(f"ASR transcription completed for recording {recording_id}.")
             
             # Generate title immediately
@@ -2124,6 +2142,232 @@ def delete_all_speakers():
         db.session.rollback()
         app.logger.error(f"Error deleting all speakers: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/recording/<int:recording_id>/download/summary')
+@login_required
+def download_summary_word(recording_id):
+    """Download recording summary as a Word document."""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+        import re
+        from io import BytesIO
+        
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+            
+        if not recording.summary:
+            return jsonify({'error': 'No summary available for this recording'}), 400
+        
+        # Create Word document
+        doc = Document()
+        
+        # Add title
+        title = doc.add_heading(f'Summary: {recording.title or "Untitled Recording"}', 0)
+        
+        # Add metadata
+        doc.add_paragraph(f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        if recording.meeting_date:
+            doc.add_paragraph(f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+        if recording.participants:
+            doc.add_paragraph(f'Participants: {recording.participants}')
+        if recording.tags:
+            tags_str = ', '.join([tag.name for tag in recording.tags])
+            doc.add_paragraph(f'Tags: {tags_str}')
+        doc.add_paragraph('')  # Empty line
+        
+        # Convert markdown-like formatting to Word formatting
+        def add_formatted_content(paragraph, text):
+            # Handle bold text (**text**)
+            bold_pattern = r'\*\*(.*?)\*\*'
+            parts = re.split(bold_pattern, text)
+            
+            for i, part in enumerate(parts):
+                if i % 2 == 0:  # Regular text
+                    if part:
+                        paragraph.add_run(part)
+                else:  # Bold text
+                    if part:
+                        paragraph.add_run(part).bold = True
+        
+        # Split summary into paragraphs and process
+        summary_lines = recording.summary.split('\n')
+        current_paragraph = None
+        
+        for line in summary_lines:
+            line = line.strip()
+            if not line:
+                current_paragraph = None
+                continue
+                
+            # Check if line starts with markdown heading
+            if line.startswith('# '):
+                doc.add_heading(line[2:], 1)
+                current_paragraph = None
+            elif line.startswith('## '):
+                doc.add_heading(line[3:], 2)
+                current_paragraph = None
+            elif line.startswith('### '):
+                doc.add_heading(line[4:], 3)
+                current_paragraph = None
+            elif line.startswith('- ') or line.startswith('* '):
+                # Bullet point
+                p = doc.add_paragraph(style='List Bullet')
+                add_formatted_content(p, line[2:])
+                current_paragraph = None
+            elif re.match(r'^\d+\.', line):
+                # Numbered list
+                p = doc.add_paragraph(style='List Number')
+                add_formatted_content(p, re.sub(r'^\d+\.\s*', '', line))
+                current_paragraph = None
+            else:
+                # Regular paragraph
+                if current_paragraph is None:
+                    current_paragraph = doc.add_paragraph()
+                else:
+                    current_paragraph.add_run('\n')
+                add_formatted_content(current_paragraph, line)
+        
+        # Save to BytesIO
+        doc_stream = BytesIO()
+        doc.save(doc_stream)
+        doc_stream.seek(0)
+        
+        # Create safe filename
+        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
+        filename = f'summary-{safe_title}.docx' if safe_title else f'summary-recording-{recording_id}.docx'
+        
+        response = send_file(
+            doc_stream,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error generating summary Word document: {e}")
+        return jsonify({'error': 'Failed to generate Word document'}), 500
+
+@app.route('/recording/<int:recording_id>/download/notes')
+@login_required  
+def download_notes_word(recording_id):
+    """Download recording notes as a Word document."""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+        import re
+        from io import BytesIO
+        
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+            
+        if not recording.notes:
+            return jsonify({'error': 'No notes available for this recording'}), 400
+        
+        # Create Word document
+        doc = Document()
+        
+        # Add title
+        title = doc.add_heading(f'Notes: {recording.title or "Untitled Recording"}', 0)
+        
+        # Add metadata
+        doc.add_paragraph(f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        if recording.meeting_date:
+            doc.add_paragraph(f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+        if recording.participants:
+            doc.add_paragraph(f'Participants: {recording.participants}')
+        if recording.tags:
+            tags_str = ', '.join([tag.name for tag in recording.tags])
+            doc.add_paragraph(f'Tags: {tags_str}')
+        doc.add_paragraph('')  # Empty line
+        
+        # Convert markdown-like formatting to Word formatting
+        def add_formatted_content(paragraph, text):
+            # Handle bold text (**text**)
+            bold_pattern = r'\*\*(.*?)\*\*'
+            parts = re.split(bold_pattern, text)
+            
+            for i, part in enumerate(parts):
+                if i % 2 == 0:  # Regular text
+                    if part:
+                        paragraph.add_run(part)
+                else:  # Bold text
+                    if part:
+                        paragraph.add_run(part).bold = True
+        
+        # Split notes into paragraphs and process
+        notes_lines = recording.notes.split('\n')
+        current_paragraph = None
+        
+        for line in notes_lines:
+            line = line.strip()
+            if not line:
+                current_paragraph = None
+                continue
+                
+            # Check if line starts with markdown heading
+            if line.startswith('# '):
+                doc.add_heading(line[2:], 1)
+                current_paragraph = None
+            elif line.startswith('## '):
+                doc.add_heading(line[3:], 2)
+                current_paragraph = None
+            elif line.startswith('### '):
+                doc.add_heading(line[4:], 3)
+                current_paragraph = None
+            elif line.startswith('- ') or line.startswith('* '):
+                # Bullet point
+                p = doc.add_paragraph(style='List Bullet')
+                add_formatted_content(p, line[2:])
+                current_paragraph = None
+            elif re.match(r'^\d+\.', line):
+                # Numbered list
+                p = doc.add_paragraph(style='List Number')
+                add_formatted_content(p, re.sub(r'^\d+\.\s*', '', line))
+                current_paragraph = None
+            else:
+                # Regular paragraph
+                if current_paragraph is None:
+                    current_paragraph = doc.add_paragraph()
+                else:
+                    current_paragraph.add_run('\n')
+                add_formatted_content(current_paragraph, line)
+        
+        # Save to BytesIO
+        doc_stream = BytesIO()
+        doc.save(doc_stream)
+        doc_stream.seek(0)
+        
+        # Create safe filename
+        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
+        filename = f'notes-{safe_title}.docx' if safe_title else f'notes-recording-{recording_id}.docx'
+        
+        response = send_file(
+            doc_stream,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error generating notes Word document: {e}")
+        return jsonify({'error': 'Failed to generate Word document'}), 500
 
 @app.route('/recording/<int:recording_id>/generate_summary', methods=['POST'])
 @login_required

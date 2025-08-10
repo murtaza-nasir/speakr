@@ -886,6 +886,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 const recording = recordings.value.find(r => r.id === recordingId) || selectedRecording.value;
                 confirmReprocess('summary', recording);
             };
+            
+            const generateSummary = async () => {
+                if (!selectedRecording.value) return;
+                
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/generate_summary`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || 'Failed to generate summary');
+                    }
+                    
+                    // Update the recording status to show it's being processed
+                    selectedRecording.value.status = 'SUMMARIZING';
+                    
+                    // Also update in recordings list if it exists
+                    const recordingInList = recordings.value.find(r => r.id === selectedRecording.value.id);
+                    if (recordingInList) {
+                        recordingInList.status = 'SUMMARIZING';
+                    }
+                    
+                    showToast('Summary generation started', 'success');
+                    
+                } catch (error) {
+                    console.error('Error generating summary:', error);
+                    setGlobalError(`Failed to generate summary: ${error.message}`);
+                }
+            };
 
             const resetRecordingStatus = async (recordingId) => {
                 const recording = recordings.value.find(r => r.id === recordingId);
@@ -3272,6 +3309,95 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
+            const downloadSummary = async () => {
+                if (!selectedRecording.value || !selectedRecording.value.summary) {
+                    showToast('No summary available to download.', 'fa-exclamation-circle');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/download/summary`);
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to download summary', 'fa-exclamation-circle');
+                        return;
+                    }
+                    
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    
+                    // Get filename from response headers or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'summary.docx';
+                    if (contentDisposition) {
+                        const matches = /filename="(.+)"/.exec(contentDisposition);
+                        if (matches) {
+                            filename = matches[1];
+                        }
+                    }
+                    a.download = filename;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showToast('Summary downloaded successfully!');
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    showToast('Failed to download summary', 'fa-exclamation-circle');
+                }
+            };
+
+            const downloadNotes = async () => {
+                if (!selectedRecording.value || !selectedRecording.value.notes) {
+                    showToast('No notes available to download.', 'fa-exclamation-circle');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/download/notes`);
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to download notes', 'fa-exclamation-circle');
+                        return;
+                    }
+                    
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    
+                    // Get filename from response headers or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'notes.docx';
+                    if (contentDisposition) {
+                        const matches = /filename="(.+)"/.exec(contentDisposition);
+                        if (matches) {
+                            filename = matches[1];
+                        }
+                    }
+                    a.download = filename;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showToast('Notes downloaded successfully!');
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    showToast('Failed to download notes', 'fa-exclamation-circle');
+                }
+            };
+
+
             const openShareModal = (recording) => {
                 recordingToShare.value = recording;
                 shareOptions.share_summary = true;
@@ -3753,10 +3879,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelEditNotes, saveEditNotes, initializeMarkdownEditor, saveInlineEdit,
                 sendChatMessage, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
+                downloadSummary, downloadNotes,
                 toggleInbox, toggleHighlight,
                 toggleTranscriptionViewMode,
                 reprocessTranscription,
                 reprocessSummary,
+                generateSummary,
                 resetRecordingStatus,
                 confirmReset,
                 cancelReset,
