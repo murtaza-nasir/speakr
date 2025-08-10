@@ -3791,7 +3791,7 @@ def upload_file():
         needs_chunking_for_processing = (chunking_service and 
                                        ENABLE_CHUNKING and 
                                        not USE_ASR_ENDPOINT and
-                                       original_file_size > (25 * 1024 * 1024))  # 25MB threshold
+                                       original_file_size > (CHUNK_SIZE_MB * 1024 * 1024))  # Use configured chunk size threshold
         
         # Define supported formats based on whether chunking is needed
         if needs_chunking_for_processing:

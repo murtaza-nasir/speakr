@@ -50,8 +50,10 @@ class AudioChunkingService:
             
         try:
             file_size = os.path.getsize(file_path)
-            # Use 25MB limit for OpenAI Whisper API
-            return file_size > (25 * 1024 * 1024)
+            # Use configured chunk size limit from environment
+            chunk_size_mb = float(os.environ.get('CHUNK_SIZE_MB', '20'))  # Default 20MB
+            chunk_size_bytes = chunk_size_mb * 1024 * 1024
+            return file_size > chunk_size_bytes
         except OSError:
             logger.error(f"Could not get file size for {file_path}")
             return False
@@ -144,9 +146,10 @@ class AudioChunkingService:
             bitrate_bytes_per_sec = wav_size / wav_duration
             
             # Use a more aggressive target to create larger chunks
-            # Target 22MB chunks (88% of 25MB limit) for better efficiency
+            # Use configured chunk size with safety factor for better efficiency
+            chunk_size_mb = float(os.environ.get('CHUNK_SIZE_MB', '20'))  # Default 20MB
             safety_factor = 0.88  # Use 88% of max size for optimal efficiency
-            target_chunk_size = 25 * 1024 * 1024 * safety_factor  # Target 22MB chunks
+            target_chunk_size = chunk_size_mb * 1024 * 1024 * safety_factor
             
             chunk_duration = (target_chunk_size / bitrate_bytes_per_sec) - self.overlap_seconds
             

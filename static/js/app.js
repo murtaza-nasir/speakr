@@ -2028,7 +2028,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         } else if (data.status === 'PROCESSING') {
                             // Check if this is a large file that might be using chunking
-                            const isLargeFile = fileItem.file.size > 25 * 1024 * 1024; // 25MB
+                            // Note: This is just for UI feedback, actual chunking threshold is handled server-side
+                            const chunkThreshold = 25 * 1024 * 1024; // Default UI threshold
+                            const isLargeFile = fileItem.file.size > chunkThreshold;
                             if (isLargeFile) {
                                 processingMessage.value = 'Processing large file (chunking may be used)...';
                                 processingProgress.value = Math.round(Math.min(70, processingProgress.value + Math.random() * 3));
