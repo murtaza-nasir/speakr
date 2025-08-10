@@ -23,6 +23,14 @@ import subprocess
 import mimetypes
 import markdown
 import bleach
+
+# Add common audio MIME type mappings that might be missing
+mimetypes.add_type('audio/mp4', '.m4a')
+mimetypes.add_type('audio/aac', '.aac')
+mimetypes.add_type('audio/x-m4a', '.m4a')
+mimetypes.add_type('audio/webm', '.webm')
+mimetypes.add_type('audio/flac', '.flac')
+mimetypes.add_type('audio/ogg', '.ogg')
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from flask_wtf import FlaskForm
@@ -3803,9 +3811,19 @@ def upload_file():
             supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
             convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma')
         
-        # Only convert if file is not in supported formats AND chunking is needed
-        if not filename_lower.endswith(supported_formats) and needs_chunking_for_processing:
-            if filename_lower.endswith(convertible_formats):
+        # Special handling for problematic AAC files when using ASR endpoint
+        is_problematic_aac = (USE_ASR_ENDPOINT and 
+                             (filename_lower.endswith('.aac') or 
+                              'aac' in filename_lower.lower()))
+        
+        # Convert if file is not in supported formats OR is problematic AAC for ASR
+        should_convert = ((not filename_lower.endswith(supported_formats) and needs_chunking_for_processing) or 
+                         is_problematic_aac)
+        
+        if should_convert:
+            if is_problematic_aac:
+                app.logger.info(f"Converting AAC-encoded file {filename_lower} to 32kbps MP3 for ASR endpoint compatibility.")
+            elif filename_lower.endswith(convertible_formats):
                 app.logger.info(f"Converting {filename_lower} format to 32kbps MP3 for chunking processing.")
             else:
                 app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to 32kbps MP3 for chunking.")
