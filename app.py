@@ -1052,19 +1052,18 @@ TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo") # De
 
 http_client_no_proxy = httpx.Client(verify=True) # verify=True is default, but good to be explicit
 
-if not TEXT_MODEL_API_KEY:
-    app.logger.warning("TEXT_MODEL_API_KEY not found. Title/Summary generation DISABLED.")
-else:
-    try:
-        # ---> Pass the custom httpx_client <---
-        client = OpenAI(
-            api_key=TEXT_MODEL_API_KEY,
-            base_url=TEXT_MODEL_BASE_URL,
-            http_client=http_client_no_proxy # Pass the proxy-disabled client
-        )
-        app.logger.info(f"OpenRouter client initialized. Using model: {TEXT_MODEL_NAME}")
-    except Exception as client_init_e:
-         app.logger.error(f"Failed to initialize OpenRouter client: {client_init_e}", exc_info=True)
+try:
+    # Always attempt to create client - use API key if provided, otherwise use placeholder
+    api_key = TEXT_MODEL_API_KEY or "not-needed"
+    client = OpenAI(
+        api_key=api_key,
+        base_url=TEXT_MODEL_BASE_URL,
+        http_client=http_client_no_proxy
+    )
+    app.logger.info(f"LLM client initialized for endpoint: {TEXT_MODEL_BASE_URL}. Using model: {TEXT_MODEL_NAME}")
+except Exception as client_init_e:
+    app.logger.error(f"Failed to initialize LLM client: {client_init_e}", exc_info=True)
+    client = None
 
 # Store details for the transcription client (potentially different)
 transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
