@@ -1380,7 +1380,12 @@ Respond with only the summary in Markdown format. Do NOT wrap your response in m
                 max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000"))
             )
             
-            summary = completion.choices[0].message.content.strip()
+            raw_response = completion.choices[0].message.content
+            app.logger.info(f"Raw LLM response for recording {recording_id}: '{raw_response}'")
+            
+            summary = raw_response.strip() if raw_response else ""
+            app.logger.info(f"Processed summary length for recording {recording_id}: {len(summary)} characters")
+            
             if summary:
                 recording.summary = summary
                 recording.status = 'COMPLETED'
