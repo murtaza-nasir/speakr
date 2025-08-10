@@ -3612,6 +3612,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     editingMeetingDate.value = false;
                     editingSummary.value = false;
                     editingNotes.value = false;
+                    
+                    // Fix WebM duration issue by forcing metadata load
+                    if (newVal?.id) {
+                        nextTick(() => {
+                            const audioElements = document.querySelectorAll('audio');
+                            audioElements.forEach(audio => {
+                                if (audio.src && audio.src.includes(`/audio/${newVal.id}`)) {
+                                    // For WebM files, we need to seek to end to get duration
+                                    const fixDuration = () => {
+                                        if (!isFinite(audio.duration) || audio.duration === 0) {
+                                            audio.currentTime = 1e101; // Seek to "infinity" to load duration
+                                            audio.addEventListener('timeupdate', function resetTime() {
+                                                audio.currentTime = 0;
+                                                audio.removeEventListener('timeupdate', resetTime);
+                                            }, { once: true });
+                                        }
+                                    };
+                                    
+                                    // Try to fix duration when metadata loads
+                                    audio.addEventListener('loadedmetadata', fixDuration, { once: true });
+                                    
+                                    // Also try immediately in case metadata is already loaded
+                                    if (audio.readyState >= 1) {
+                                        fixDuration();
+                                    }
+                                }
+                            });
+                        });
+                    }
                 }
             });
 

@@ -766,7 +766,7 @@
                         <div class="flex-1 overflow-y-auto p-4">
                             <!-- Transcript Panel -->
                             <div v-if="mobileTab === 'transcript'" class="h-full flex flex-col space-y-4">
-                                <div class="flex items-center justify-end gap-2 flex-shrink-0">
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
                                     <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']"><i class="fas fa-list"></i></button>
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']"><i class="fas fa-comments"></i></button>
@@ -810,7 +810,7 @@
                             </div>
                             <!-- Summary Panel -->
                             <div v-if="mobileTab === 'summary'" class="h-full flex flex-col space-y-4">
-                                <div class="flex items-center justify-end gap-2 flex-shrink-0">
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
                                     <button @click="copySummary" class="copy-btn" title="Copy Summary"><i class="fas fa-copy"></i></button>
                                     <button @click="downloadSummary" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
                                     <button @click="toggleEditSummary" class="copy-btn" title="Edit Summary"><i class="fas fa-edit"></i></button>
@@ -844,7 +844,7 @@
                             </div>
                             <!-- Notes Panel -->
                             <div v-if="mobileTab === 'notes'" class="h-full flex flex-col space-y-4">
-                                <div class="flex items-center justify-end gap-2 flex-shrink-0">
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
                                     <button @click="copyNotes" class="copy-btn" title="Copy Notes"><i class="fas fa-copy"></i></button>
                                     <button @click="downloadNotes" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
                                     <button @click="toggleEditNotes" class="copy-btn" title="Edit Notes"><i class="fas fa-edit"></i></button>
@@ -1199,20 +1199,20 @@
                                             </div>
                                             
                                             <div v-else class="content-box relative">
-                                                <div v-if="!editingSummary" class="absolute top-2 right-2 flex gap-1 z-10">
+                                                <div v-if="!editingSummary" class="absolute top-2 right-4 flex gap-1 z-10">
                                                     <button @click="copySummary" 
                                                             title="Copy Summary"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-copy text-sm"></i>
                                                     </button>
                                                     <button @click="downloadSummary" 
                                                             title="Download Summary as Word Document"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-download text-sm"></i>
                                                     </button>
                                                     <button @click="toggleEditSummary" 
                                                             title="Edit Summary"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-edit text-sm"></i>
                                                     </button>
                                                 </div>
@@ -1246,20 +1246,20 @@
                                         <!-- Notes Tab -->
                                         <div v-if="selectedTab === 'notes'" class="h-full p-4 overflow-y-auto">
                                             <div class="content-box h-full relative">
-                                                <div v-if="!editingNotes" class="absolute top-2 right-2 flex gap-1 z-10">
+                                                <div v-if="!editingNotes" class="absolute top-2 right-4 flex gap-1 z-10">
                                                     <button @click="copyNotes" 
                                                             title="Copy Notes"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-copy text-sm"></i>
                                                     </button>
                                                     <button @click="downloadNotes" 
                                                             title="Download Notes as Word Document"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-download text-sm"></i>
                                                     </button>
                                                     <button @click="toggleEditNotes" 
                                                             title="Edit Notes"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-edit text-sm"></i>
                                                     </button>
                                                 </div>
