@@ -69,12 +69,17 @@ except ImportError as e:
 # Load environment variables from .env file
 load_dotenv()
 
+# Early check for Inquire Mode configuration (needed for startup message)
+ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
+
 # Log embedding status on startup
-if EMBEDDINGS_AVAILABLE:
+if ENABLE_INQUIRE_MODE and EMBEDDINGS_AVAILABLE:
     print("✅ Inquire Mode: Full semantic search enabled (embeddings available)")
-else:
+elif ENABLE_INQUIRE_MODE and not EMBEDDINGS_AVAILABLE:
     print("⚠️  Inquire Mode: Basic text search only (embedding dependencies not available)")
     print("   To enable semantic search, install: pip install sentence-transformers==2.7.0 huggingface-hub>=0.19.0")
+elif not ENABLE_INQUIRE_MODE:
+    print("ℹ️  Inquire Mode: Disabled (set ENABLE_INQUIRE_MODE=true to enable)")
 
 # Configure logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
@@ -1436,7 +1441,6 @@ with app.app_context():
         
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
-        ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
         if ENABLE_INQUIRE_MODE:
             # Use a file lock to prevent multiple workers from running this simultaneously
             import fcntl
@@ -1865,6 +1869,51 @@ Respond with only the summary in Markdown format. Do NOT wrap your response in m
             recording.status = 'FAILED'
             db.session.commit()
 
+def extract_audio_from_video(video_filepath, output_format='wav', cleanup_original=True):
+    """Extract audio from video containers using FFmpeg."""
+    try:
+        # Generate output filename with audio extension
+        base_filepath, file_ext = os.path.splitext(video_filepath)
+        temp_audio_filepath = f"{base_filepath}_audio_temp.{output_format}"
+        final_audio_filepath = f"{base_filepath}_audio.{output_format}"
+        
+        app.logger.info(f"Extracting audio from video: {video_filepath} -> {temp_audio_filepath}")
+        
+        # Extract audio using FFmpeg - optimized for transcription
+        subprocess.run([
+            'ffmpeg', '-i', video_filepath, '-y',
+            '-vn',  # No video
+            '-acodec', 'pcm_s16le',  # Uncompressed audio for best quality
+            '-ar', '16000',  # 16kHz sample rate (good for speech)
+            '-ac', '1',  # Mono
+            temp_audio_filepath
+        ], check=True, capture_output=True, text=True)
+        
+        app.logger.info(f"Successfully extracted audio to {temp_audio_filepath}")
+        
+        # Rename temp file to final filename
+        os.rename(temp_audio_filepath, final_audio_filepath)
+        
+        # Clean up original video file if requested
+        if cleanup_original:
+            try:
+                os.remove(video_filepath)
+                app.logger.info(f"Cleaned up original video file: {video_filepath}")
+            except Exception as e:
+                app.logger.warning(f"Failed to clean up original video file {video_filepath}: {str(e)}")
+        
+        return final_audio_filepath, f'audio/{output_format}'
+        
+    except subprocess.CalledProcessError as e:
+        app.logger.error(f"FFmpeg audio extraction failed for {video_filepath}: {e.stderr}")
+        raise Exception(f"Audio extraction failed: {e.stderr}")
+    except FileNotFoundError:
+        app.logger.error("FFmpeg command not found. Please ensure FFmpeg is installed and in the system's PATH.")
+        raise Exception("Audio conversion tool (FFmpeg) not found on server.")
+    except Exception as e:
+        app.logger.error(f"Error extracting audio from {video_filepath}: {str(e)}")
+        raise
+
 def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
@@ -1878,7 +1927,49 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             recording.status = 'PROCESSING'
             db.session.commit()
 
-            with open(filepath, 'rb') as audio_file:
+            # Check if we need to extract audio from video container
+            actual_filepath = filepath
+            actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+            actual_filename = original_filename
+
+            # List of video MIME types that need audio extraction
+            video_mime_types = [
+                'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+                'video/avi', 'video/x-ms-wmv', 'video/3gpp'
+            ]
+            
+            # Check if file is a video container by MIME type or extension
+            is_video = (
+                actual_content_type.startswith('video/') or 
+                actual_content_type in video_mime_types or
+                original_filename.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.3gp'))
+            )
+            
+            if is_video:
+                app.logger.info(f"Video container detected ({actual_content_type}), extracting audio...")
+                try:
+                    # Extract audio from video
+                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath, 'wav')
+                    
+                    # Update paths and MIME type for ASR processing
+                    actual_filepath = audio_filepath
+                    actual_content_type = audio_mime_type
+                    actual_filename = os.path.basename(audio_filepath)
+                    
+                    # Update recording with extracted audio path and new MIME type
+                    recording.audio_path = audio_filepath
+                    recording.mime_type = audio_mime_type
+                    db.session.commit()
+                    
+                    app.logger.info(f"Audio extracted successfully: {audio_filepath}")
+                except Exception as e:
+                    app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                    recording.status = 'FAILED'
+                    recording.error_msg = f"Audio extraction failed: {str(e)}"
+                    db.session.commit()
+                    return
+
+            with open(actual_filepath, 'rb') as audio_file:
                 url = f"{ASR_BASE_URL}/asr"
                 params = {
                     'encode': True,
@@ -1894,10 +1985,9 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 if max_speakers:
                     params['max_speakers'] = max_speakers
 
-                # Use the stored mime_type, or guess it, with a fallback.
-                content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+                content_type = actual_content_type
                 app.logger.info(f"Using MIME type {content_type} for ASR upload.")
-                files = {'audio_file': (original_filename, audio_file, content_type)}
+                files = {'audio_file': (actual_filename, audio_file, content_type)}
                 
                 with httpx.Client() as client:
                     # Set reasonable timeout to prevent hanging (30 minutes max)
@@ -2125,7 +2215,42 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
 
 def transcribe_single_file(filepath, recording):
     """Transcribe a single audio file using OpenAI Whisper API."""
-    with open(filepath, 'rb') as audio_file:
+    
+    # Check if we need to extract audio from video container
+    actual_filepath = filepath
+    mime_type = recording.mime_type if recording else None
+    
+    # Detect video containers
+    is_video = False
+    if mime_type:
+        is_video = mime_type.startswith('video/')
+    else:
+        # Fallback to extension-based detection
+        is_video = filepath.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.3gp'))
+    
+    if is_video:
+        app.logger.info(f"Video container detected for Whisper transcription, extracting audio...")
+        try:
+            # Extract audio from video
+            audio_filepath, audio_mime_type = extract_audio_from_video(filepath, 'wav')
+            actual_filepath = audio_filepath
+            
+            # Update recording with extracted audio path and new MIME type if recording exists
+            if recording:
+                recording.audio_path = audio_filepath
+                recording.mime_type = audio_mime_type
+                db.session.commit()
+            
+            app.logger.info(f"Audio extracted successfully for Whisper: {audio_filepath}")
+        except Exception as e:
+            app.logger.error(f"Failed to extract audio from video for Whisper: {str(e)}")
+            if recording:
+                recording.status = 'FAILED'
+                recording.error_msg = f"Audio extraction failed: {str(e)}"
+                db.session.commit()
+            raise Exception(f"Audio extraction failed: {str(e)}")
+    
+    with open(actual_filepath, 'rb') as audio_file:
         transcription_client = OpenAI(
             api_key=transcription_api_key,
             base_url=transcription_base_url,

@@ -1810,12 +1810,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         max_speakers: asrMaxSpeakers.value
                     };
 
-                    // Check if it's an audio file or has AMR extension
+                    // Check if it's an audio file or video container with audio
                     const isAudioFile = fileObject && (
                         fileObject.type.startsWith('audio/') || 
+                        fileObject.type === 'video/mp4' ||
+                        fileObject.type === 'video/quicktime' ||
+                        fileObject.type === 'video/x-msvideo' ||
+                        fileObject.type === 'video/webm' ||
                         fileObject.name.toLowerCase().endsWith('.amr') ||
                         fileObject.name.toLowerCase().endsWith('.3gp') ||
-                        fileObject.name.toLowerCase().endsWith('.3gpp')
+                        fileObject.name.toLowerCase().endsWith('.3gpp') ||
+                        fileObject.name.toLowerCase().endsWith('.mp4') ||
+                        fileObject.name.toLowerCase().endsWith('.mov') ||
+                        fileObject.name.toLowerCase().endsWith('.avi') ||
+                        fileObject.name.toLowerCase().endsWith('.mkv') ||
+                        fileObject.name.toLowerCase().endsWith('.webm')
                     );
                     
                     if (isAudioFile) {
@@ -1838,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         filesAdded++;
                     } else if (fileObject) {
-                        setGlobalError(`Invalid file type "${fileObject.name}". Only audio files (including AMR) are accepted. File skipped.`);
+                        setGlobalError(`Invalid file type "${fileObject.name}". Only audio files and video containers with audio (MP3, WAV, MP4, MOV, AVI, etc.) are accepted. File skipped.`);
                     }
                 }
                 if(filesAdded > 0) {
