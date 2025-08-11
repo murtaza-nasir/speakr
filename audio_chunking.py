@@ -11,6 +11,8 @@ import json
 import subprocess
 import tempfile
 import logging
+import math
+import re
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 import mimetypes
@@ -21,17 +23,19 @@ logger = logging.getLogger(__name__)
 class AudioChunkingService:
     """Service for chunking large audio files and processing them with OpenAI Whisper API."""
     
-    def __init__(self, max_chunk_size_mb: int = 20, overlap_seconds: int = 3):
+    def __init__(self, max_chunk_size_mb: int = 20, overlap_seconds: int = 3, max_chunk_duration_seconds: int = None):
         """
         Initialize the chunking service.
         
         Args:
             max_chunk_size_mb: Maximum size for each chunk in MB (default 20MB for safety margin)
             overlap_seconds: Overlap between chunks in seconds for context continuity
+            max_chunk_duration_seconds: Maximum duration for each chunk in seconds (optional)
         """
         self.max_chunk_size_mb = max_chunk_size_mb
         self.overlap_seconds = overlap_seconds
         self.max_chunk_size_bytes = max_chunk_size_mb * 1024 * 1024
+        self.max_chunk_duration_seconds = max_chunk_duration_seconds
         self.chunk_stats = []  # Track processing statistics
         
     def needs_chunking(self, file_path: str, use_asr_endpoint: bool = False) -> bool:
@@ -50,10 +54,16 @@ class AudioChunkingService:
             
         try:
             file_size = os.path.getsize(file_path)
-            # Use configured chunk size limit from environment
-            chunk_size_mb = float(os.environ.get('CHUNK_SIZE_MB', '20'))  # Default 20MB
-            chunk_size_bytes = chunk_size_mb * 1024 * 1024
-            return file_size > chunk_size_bytes
+            # Parse chunk limit to get size threshold
+            mode, limit_value = self.parse_chunk_limit()
+            
+            if mode == 'size':
+                chunk_size_bytes = limit_value * 1024 * 1024
+                return file_size > chunk_size_bytes
+            else:
+                # For duration-based limits, we can't determine without converting
+                # Use a conservative file size threshold (25MB) to trigger chunking check
+                return file_size > (25 * 1024 * 1024)
         except OSError:
             logger.error(f"Could not get file size for {file_path}")
             return False
@@ -130,45 +140,103 @@ class AudioChunkingService:
             logger.error(f"Error converting file to WAV: {e}")
             raise
 
-    def calculate_chunk_duration_from_wav(self, wav_size: float, wav_duration: float) -> float:
+    def parse_chunk_limit(self) -> Tuple[str, float]:
         """
-        Calculate optimal chunk duration based on actual WAV file size.
+        Parse the CHUNK_LIMIT environment variable to determine chunking mode and value.
+        
+        Supports formats:
+        - Size-based: "20MB", "10MB" 
+        - Duration-based: "1200s", "20m"
+        - Legacy: CHUNK_SIZE_MB environment variable (for backwards compatibility)
+        
+        Returns:
+            Tuple of (mode, value) where mode is 'size' or 'duration'
+        """
+        chunk_limit = os.environ.get('CHUNK_LIMIT', '').strip().upper()
+        
+        # Check for new CHUNK_LIMIT format
+        if chunk_limit:
+            # Size-based: ends with MB
+            if chunk_limit.endswith('MB'):
+                try:
+                    size_mb = float(re.sub(r'[^0-9.]', '', chunk_limit))
+                    return 'size', size_mb
+                except ValueError:
+                    logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+            
+            # Duration-based: ends with s or m
+            elif chunk_limit.endswith('S'):
+                try:
+                    seconds = float(re.sub(r'[^0-9.]', '', chunk_limit))
+                    return 'duration', seconds
+                except ValueError:
+                    logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+            
+            elif chunk_limit.endswith('M'):
+                try:
+                    minutes = float(re.sub(r'[^0-9.]', '', chunk_limit))
+                    return 'duration', minutes * 60
+                except ValueError:
+                    logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+        
+        # Fallback to legacy CHUNK_SIZE_MB for backwards compatibility
+        legacy_size = os.environ.get('CHUNK_SIZE_MB', '20')
+        try:
+            size_mb = float(legacy_size)
+            logger.info(f"Using legacy CHUNK_SIZE_MB: {size_mb}MB")
+            return 'size', size_mb
+        except ValueError:
+            logger.warning(f"Invalid CHUNK_SIZE_MB format: {legacy_size}")
+            return 'size', 20.0  # Ultimate fallback
+    
+    def calculate_optimal_chunking(self, converted_size: float, total_duration: float) -> Tuple[int, float]:
+        """
+        Calculate optimal number of chunks and chunk duration based on the configured limit.
         
         Args:
-            wav_size: Size of the WAV file in bytes
-            wav_duration: Duration of the WAV file in seconds
+            converted_size: Size of the converted audio file in bytes
+            total_duration: Total duration of the audio file in seconds
             
         Returns:
-            Chunk duration in seconds
+            Tuple of (num_chunks, chunk_duration_seconds)
         """
         try:
-            # Calculate actual bitrate from the WAV file
-            bitrate_bytes_per_sec = wav_size / wav_duration
+            mode, limit_value = self.parse_chunk_limit()
             
-            # Use configured chunk size with improved safety factor
-            chunk_size_mb = float(os.environ.get('CHUNK_SIZE_MB', '20'))  # Default 20MB
-            safety_factor = 0.95  # Use 95% of max size for better target accuracy
-            target_chunk_size = chunk_size_mb * 1024 * 1024 * safety_factor
+            if mode == 'size':
+                # Size-based chunking
+                max_size_bytes = limit_value * 1024 * 1024 * 0.95  # 95% safety factor
+                num_chunks = max(1, math.ceil(converted_size / max_size_bytes))
+                
+                logger.info(f"Size-based chunking: {limit_value}MB limit")
+                logger.info(f"File size {converted_size/1024/1024:.1f}MB requires {num_chunks} chunks")
+                
+            else:  # duration-based
+                # Duration-based chunking with API safety limit
+                effective_limit = min(limit_value, 1400)  # Cap at OpenAI safe limit
+                num_chunks = max(1, math.ceil(total_duration / effective_limit))
+                
+                logger.info(f"Duration-based chunking: {limit_value}s limit (effective: {effective_limit}s)")
+                logger.info(f"File duration {total_duration:.1f}s requires {num_chunks} chunks")
             
-            # Calculate duration based on target size, accounting for overlap
-            chunk_duration = (target_chunk_size / bitrate_bytes_per_sec) - self.overlap_seconds
+            # Calculate chunk duration
+            chunk_duration = total_duration / num_chunks
             
-            # More flexible duration limits to allow reaching target chunk size
-            # Minimum 5 minutes, but allow longer chunks if needed to reach target size
-            min_duration = 300  # 5 minutes minimum
-            max_duration = max(3600, chunk_duration * 1.1)  # At least 1 hour, or 110% of calculated duration
+            # Apply minimum duration (5 minutes) but don't exceed file duration
+            chunk_duration = min(max(300, chunk_duration), total_duration)
             
-            chunk_duration = max(min_duration, min(max_duration, chunk_duration))
+            # Log final chunking plan
+            expected_chunk_size_mb = (converted_size / num_chunks) / (1024 * 1024)
+            logger.info(f"Chunking plan: {num_chunks} chunks of ~{chunk_duration:.1f}s each (~{expected_chunk_size_mb:.1f}MB each)")
             
-            # Calculate what the actual chunk size will be with this duration
-            actual_chunk_size_mb = (bitrate_bytes_per_sec * (chunk_duration + self.overlap_seconds)) / (1024 * 1024)
-            
-            logger.info(f"Calculated chunk duration: {chunk_duration:.1f}s (target: {target_chunk_size/1024/1024:.1f}MB, estimated actual: {actual_chunk_size_mb:.1f}MB) based on bitrate {bitrate_bytes_per_sec:.0f} bytes/sec")
-            return chunk_duration
+            return num_chunks, chunk_duration
             
         except Exception as e:
-            logger.error(f"Error calculating chunk duration from WAV: {e}")
-            return 600  # Default 10 minutes (increased from 5)
+            logger.error(f"Error calculating optimal chunking: {e}")
+            # Conservative fallback
+            fallback_chunks = max(2, math.ceil(total_duration / 600))  # 10-minute chunks
+            fallback_duration = total_duration / fallback_chunks
+            return fallback_chunks, fallback_duration
     
     def create_chunks(self, file_path: str, temp_dir: str) -> List[Dict[str, Any]]:
         """
@@ -191,14 +259,14 @@ class AudioChunkingService:
             # Step 1: Convert to WAV and get accurate size/duration info
             wav_path, wav_duration, wav_size = self.convert_to_wav_and_get_info(file_path, temp_dir)
             
-            # Step 2: Calculate optimal chunk duration based on actual WAV file
-            chunk_duration = self.calculate_chunk_duration_from_wav(wav_size, wav_duration)
+            # Step 2: Calculate optimal chunking strategy
+            num_chunks, chunk_duration = self.calculate_optimal_chunking(wav_size, wav_duration)
             
             step_duration = chunk_duration - self.overlap_seconds
             current_start = 0
             chunk_index = 0
             
-            logger.info(f"Splitting {file_path} into chunks of {chunk_duration}s with {self.overlap_seconds}s overlap")
+            logger.info(f"Splitting {file_path} into {num_chunks} chunks of ~{chunk_duration:.1f}s with {self.overlap_seconds}s overlap")
             
             while current_start < wav_duration:
                 # Calculate end time for this chunk
