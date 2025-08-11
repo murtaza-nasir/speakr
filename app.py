@@ -1436,7 +1436,7 @@ with app.app_context():
         
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
-        ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'true').lower() == 'true'
+        ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
         if ENABLE_INQUIRE_MODE:
             # Use a file lock to prevent multiple workers from running this simultaneously
             import fcntl
@@ -3878,6 +3878,12 @@ def admin_delete_user(user_id):
         return jsonify({'error': 'User not found'}), 404
     
     # Delete user's recordings and audio files
+    total_chunks = 0
+    if ENABLE_INQUIRE_MODE:
+        total_chunks = TranscriptChunk.query.filter_by(user_id=user_id).count()
+        if total_chunks > 0:
+            app.logger.info(f"Deleting {total_chunks} transcript chunks with embeddings for user {user_id}")
+    
     for recording in user.recordings:
         try:
             if recording.audio_path and os.path.exists(recording.audio_path):
@@ -3885,9 +3891,12 @@ def admin_delete_user(user_id):
         except Exception as e:
             app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
     
-    # Delete user
+    # Delete user (cascade will handle all related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
+    
+    if ENABLE_INQUIRE_MODE and total_chunks > 0:
+        app.logger.info(f"Successfully deleted {total_chunks} embeddings and chunks for user {user_id}")
     
     return jsonify({'success': True})
 
@@ -4558,10 +4567,19 @@ def delete_recording(recording_id):
         except Exception as e:
             app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
 
-        # Delete the database record
+        # Log embeddings cleanup for Inquire Mode if enabled
+        if ENABLE_INQUIRE_MODE:
+            chunk_count = TranscriptChunk.query.filter_by(recording_id=recording_id).count()
+            if chunk_count > 0:
+                app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
+
+        # Delete the database record (cascade will handle chunks/embeddings)
         db.session.delete(recording)
         db.session.commit()
         app.logger.info(f"Deleted recording record ID: {recording_id}")
+        
+        if ENABLE_INQUIRE_MODE and chunk_count > 0:
+            app.logger.info(f"Successfully deleted embeddings and chunks for recording {recording_id}")
 
         return jsonify({'success': True})
     except Exception as e:
