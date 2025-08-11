@@ -42,28 +42,42 @@ class AudioChunkingService:
         """
         Check if a file needs to be chunked based on size and endpoint being used.
         
+        NOTE: For duration-based limits, this may return True even if chunking isn't needed,
+        because we need to convert the file first to check duration. The actual chunking
+        decision is made after conversion in calculate_optimal_chunking().
+        
         Args:
             file_path: Path to the audio file
             use_asr_endpoint: Whether ASR endpoint is being used (no chunking needed)
             
         Returns:
-            True if file needs chunking, False otherwise
+            True if file might need chunking, False otherwise
         """
         if use_asr_endpoint:
             return False
             
         try:
             file_size = os.path.getsize(file_path)
-            # Parse chunk limit to get size threshold
             mode, limit_value = self.parse_chunk_limit()
             
             if mode == 'size':
+                # For size-based limits, we can determine immediately
                 chunk_size_bytes = limit_value * 1024 * 1024
-                return file_size > chunk_size_bytes
+                needs_it = file_size > chunk_size_bytes
+                logger.info(f"Size check: {file_size/1024/1024:.1f}MB vs limit {limit_value}MB - needs chunking: {needs_it}")
+                return needs_it
             else:
-                # For duration-based limits, we can't determine without converting
-                # Use a conservative file size threshold (25MB) to trigger chunking check
-                return file_size > (25 * 1024 * 1024)
+                # For duration-based limits, we need to check the actual duration
+                # Try to get duration without conversion first (fast check)
+                duration = self.get_audio_duration(file_path)
+                if duration:
+                    needs_it = duration > limit_value
+                    logger.info(f"Duration check: {duration:.1f}s vs limit {limit_value}s - needs chunking: {needs_it}")
+                    return needs_it
+                else:
+                    # Can't determine duration without conversion, assume might need chunking
+                    logger.info(f"Duration-based limit set ({limit_value}s) but can't check duration yet - will check after conversion")
+                    return True  # Proceed to conversion and check
         except OSError:
             logger.error(f"Could not get file size for {file_path}")
             return False
@@ -262,19 +276,58 @@ class AudioChunkingService:
             # Step 2: Calculate optimal chunking strategy
             num_chunks, chunk_duration = self.calculate_optimal_chunking(wav_size, wav_duration)
             
-            step_duration = chunk_duration - self.overlap_seconds
+            # If only 1 chunk needed, no actual chunking required
+            if num_chunks == 1:
+                logger.info(f"File duration {wav_duration:.1f}s is within limit - no chunking needed")
+                # Return the single "chunk" as the whole file
+                base_name = os.path.splitext(os.path.basename(file_path))[0]
+                chunk_filename = f"{base_name}_chunk_000.wav"
+                chunk_path = os.path.join(temp_dir, chunk_filename)
+                
+                # Copy the converted file as the single chunk
+                import shutil
+                shutil.copy2(wav_path, chunk_path)
+                
+                chunk_info = {
+                    'index': 0,
+                    'path': chunk_path,
+                    'filename': chunk_filename,
+                    'start_time': 0,
+                    'end_time': wav_duration,
+                    'duration': wav_duration,
+                    'size_bytes': wav_size,
+                    'size_mb': wav_size / (1024 * 1024)
+                }
+                chunks.append(chunk_info)
+                logger.info(f"Created single chunk for entire file: {wav_duration:.1f}s")
+                return chunks
+            
+            # Calculate step size to create exactly num_chunks with overlap
+            # Total coverage needed: wav_duration + (overlap * (num_chunks - 1))
+            # Each chunk covers: chunk_duration
+            # Step between chunks to get exactly num_chunks
+            if num_chunks > 1:
+                step_duration = (wav_duration - chunk_duration) / (num_chunks - 1)
+            else:
+                step_duration = wav_duration
+            
             current_start = 0
             chunk_index = 0
             
             logger.info(f"Splitting {file_path} into {num_chunks} chunks of ~{chunk_duration:.1f}s with {self.overlap_seconds}s overlap")
             
-            while current_start < wav_duration:
+            for chunk_index in range(num_chunks):
+                # Calculate start position for this chunk
+                if chunk_index > 0:
+                    current_start = chunk_index * step_duration
+                
                 # Calculate end time for this chunk
                 chunk_end = min(current_start + chunk_duration, wav_duration)
                 actual_duration = chunk_end - current_start
                 
-                # Skip very short chunks at the end
+                # Skip very short chunks at the end (shouldn't happen with proper calculation)
                 if actual_duration < 10:  # Less than 10 seconds
+                    logger.warning(f"Skipping short chunk {chunk_index}: {actual_duration:.1f}s")
                     break
                 
                 # Generate chunk filename
@@ -320,10 +373,6 @@ class AudioChunkingService:
                     logger.info(f"Created chunk {chunk_index}: {current_start:.1f}s-{chunk_end:.1f}s ({chunk_size/1024/1024:.1f}MB)")
                 else:
                     logger.error(f"Chunk file not created: {chunk_path}")
-                
-                # Move to next chunk
-                current_start += step_duration
-                chunk_index += 1
             
             logger.info(f"Created {len(chunks)} chunks for {file_path}")
             return chunks

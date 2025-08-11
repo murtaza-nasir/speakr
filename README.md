@@ -222,7 +222,8 @@ You only need Docker installed for this method; you do not need to clone the rep
         
         # --- Large File Chunking (for endpoints with file size limits) ---
         ENABLE_CHUNKING=true
-        CHUNK_SIZE_MB=20
+        CHUNK_LIMIT=20MB           # Size-based chunking (legacy CHUNK_SIZE_MB also works)
+        # CHUNK_LIMIT=1200s        # Alternative: Duration-based chunking (20 minutes)
 
         # --- Application Settings ---
         ALLOW_REGISTRATION=false

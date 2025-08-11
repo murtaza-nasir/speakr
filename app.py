@@ -1436,6 +1436,7 @@ with app.app_context():
         
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
+        ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'true').lower() == 'true'
         if ENABLE_INQUIRE_MODE:
             # Use a file lock to prevent multiple workers from running this simultaneously
             import fcntl
@@ -1520,8 +1521,6 @@ except Exception as client_init_e:
 transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
 transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openrouter.ai/api/v1")
 
-# Inquire Mode configuration (define early since it's used in app context block)
-ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'true').lower() == 'true'
 
 # ASR endpoint configuration
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
@@ -4260,7 +4259,12 @@ def upload_file():
         should_enforce_size_limit = True
         if ENABLE_CHUNKING and chunking_service and not USE_ASR_ENDPOINT:
             should_enforce_size_limit = False
-            app.logger.info(f"Chunking enabled for OpenAI Whisper API - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+            # Get chunking mode for better logging
+            mode, limit_value = chunking_service.parse_chunk_limit()
+            if mode == 'size':
+                app.logger.info(f"Size-based chunking enabled ({limit_value}MB limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+            else:
+                app.logger.info(f"Duration-based chunking enabled ({limit_value}s limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
         
         if should_enforce_size_limit and max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
@@ -4275,7 +4279,7 @@ def upload_file():
         needs_chunking_for_processing = (chunking_service and 
                                        ENABLE_CHUNKING and 
                                        not USE_ASR_ENDPOINT and
-                                       original_file_size > (CHUNK_SIZE_MB * 1024 * 1024))  # Use configured chunk size threshold
+                                       chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT))
         
         # Define supported formats based on whether chunking is needed
         if needs_chunking_for_processing:
