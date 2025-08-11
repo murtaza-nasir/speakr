@@ -2031,6 +2031,9 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             # Environment variable ASR_DIARIZE overrides user setting
             if 'ASR_DIARIZE' in os.environ:
                 diarize_setting = ASR_DIARIZE
+            elif USE_ASR_ENDPOINT:
+                # When using ASR endpoint, use the configured ASR_DIARIZE value
+                diarize_setting = ASR_DIARIZE
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
             
@@ -3250,6 +3253,9 @@ def reprocess_transcription(recording_id):
                 except (ValueError, TypeError):
                     max_speakers = None
             if 'ASR_DIARIZE' in os.environ:
+                diarize_setting = ASR_DIARIZE
+            elif USE_ASR_ENDPOINT:
+                # When using ASR endpoint, use the configured ASR_DIARIZE value
                 diarize_setting = ASR_DIARIZE
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
