@@ -46,7 +46,7 @@
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
                 <a href="{{ url_for('index') }}" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
+                    <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
                     Speakr
                 </a>
             </h1>
@@ -92,6 +92,9 @@
                         </a>
                         <a href="#" id="tab-tags" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
                             Tag Management
+                        </a>
+                        <a href="#" id="tab-about" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
+                            About
                         </a>
                     </nav>
                 </div>
@@ -292,11 +295,232 @@
                         </div>
                     </div>
                 </div>
+
+                <div id="content-about" class="hidden">
+                    <div class="space-y-8">
+                        <!-- Header Section -->
+                        <div class="text-center">
+                            <div class="flex items-center justify-center mb-4">
+                                <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-16 w-16 mr-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-[var(--text-primary)]">Speakr</h2>
+                                    <p class="text-[var(--text-secondary)]">AI-Powered Audio Transcription & Note-Taking</p>
+                                </div>
+                            </div>
+                            <div class="inline-flex items-center px-3 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-full text-sm font-medium">
+                                <i class="fas fa-tag mr-2"></i>
+                                Version <span id="system-version" class="ml-1 font-mono">Loading...</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- System Information -->
+                            <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex items-center mb-4">
+                                    <div class="p-2 bg-[var(--bg-accent)] rounded-lg mr-3">
+                                        <i class="fas fa-cogs text-[var(--text-accent)] text-lg"></i>
+                                    </div>
+                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">System Configuration</h3>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div class="border-l-4 border-[var(--border-accent)] pl-4">
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-2">Large Language Model</h4>
+                                        <div class="space-y-1 text-sm">
+                                            <p class="text-[var(--text-secondary)]">
+                                                <span class="font-medium">Model:</span> 
+                                                <span id="llm-model" class="font-mono text-[var(--text-primary)] bg-[var(--bg-tertiary)] px-2 py-1 rounded ml-1">Loading...</span>
+                                            </p>
+                                            <p class="text-[var(--text-secondary)]">
+                                                <span class="font-medium">Endpoint:</span> 
+                                                <span id="llm-endpoint" class="font-mono text-xs text-[var(--text-muted)] break-all ml-1">Loading...</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="border-l-4 border-green-500 pl-4">
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-2">Speech Recognition</h4>
+                                        <div class="space-y-1 text-sm">
+                                            <p class="text-[var(--text-secondary)]">
+                                                <span class="font-medium">Whisper API:</span> 
+                                                <span id="whisper-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">Loading...</span>
+                                            </p>
+                                            <p class="text-[var(--text-secondary)]">
+                                                <span class="font-medium">ASR Enabled:</span> 
+                                                <span id="asr-status" class="ml-1">Loading...</span>
+                                            </p>
+                                            <div id="asr-endpoint-row" style="display: none;">
+                                                <p class="text-[var(--text-secondary)]">
+                                                    <span class="font-medium">ASR Endpoint:</span> 
+                                                    <span id="asr-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">-</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Project Information -->
+                            <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex items-center mb-4">
+                                    <div class="p-2 bg-gray-800 rounded-lg mr-3">
+                                        <i class="fab fa-github text-white text-lg"></i>
+                                    </div>
+                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Project Links</h3>
+                                </div>
+                                
+                                <div class="space-y-3">
+                                    <a href="https://github.com/murtaza-nasir/speakr" target="_blank" rel="noopener noreferrer" 
+                                       class="flex items-center p-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
+                                        <i class="fab fa-github text-xl mr-3"></i>
+                                        <div class="flex-1">
+                                            <div class="font-medium">GitHub Repository</div>
+                                            <div class="text-sm text-gray-300">Source code, issues, and releases</div>
+                                        </div>
+                                        <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
+                                    </a>
+                                    
+                                    <a href="https://hub.docker.com/r/learnedmachine/speakr" target="_blank" rel="noopener noreferrer"
+                                       class="flex items-center p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
+                                        <i class="fab fa-docker text-xl mr-3"></i>
+                                        <div class="flex-1">
+                                            <div class="font-medium">Docker Hub</div>
+                                            <div class="text-sm text-blue-100">Official Docker images</div>
+                                        </div>
+                                        <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
+                                    </a>
+                                    
+                                    <a href="https://github.com/murtaza-nasir/speakr/wiki" target="_blank" rel="noopener noreferrer"
+                                       class="flex items-center p-3 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
+                                        <i class="fas fa-book text-xl mr-3"></i>
+                                        <div class="flex-1">
+                                            <div class="font-medium">Documentation</div>
+                                            <div class="text-sm text-green-100">Setup guides and user manual</div>
+                                        </div>
+                                        <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
+                                    </a>
+                                </div>
+                                
+                                <div class="mt-6 p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)]">
+                                    <p class="text-sm text-[var(--text-secondary)] leading-relaxed">
+                                        <i class="fas fa-info-circle text-[var(--text-accent)] mr-2"></i>
+                                        Transform your audio recordings into organized, searchable notes with AI-powered transcription, summarization, and interactive chat features.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Key Features -->
+                        <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center mb-6">
+                                <div class="p-2 bg-purple-600 rounded-lg mr-3">
+                                    <i class="fas fa-star text-white text-lg"></i>
+                                </div>
+                                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Key Features</h3>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
+                                    <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3 mt-1">
+                                        <i class="fas fa-microphone text-blue-600 dark:text-blue-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Audio Transcription</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]">Whisper API and custom ASR support with high accuracy</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
+                                    <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mr-3 mt-1">
+                                        <i class="fas fa-robot text-purple-600 dark:text-purple-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">AI Summarization</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]">OpenRouter and Ollama integration with custom prompts</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
+                                    <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3 mt-1">
+                                        <i class="fas fa-users text-green-600 dark:text-green-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Speaker Diarization</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]">Identify and label different speakers automatically</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
+                                    <div class="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg mr-3 mt-1">
+                                        <i class="fas fa-comments text-orange-600 dark:text-orange-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Interactive Chat</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]">Chat with your transcriptions using AI</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
+                                    <div class="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg mr-3 mt-1">
+                                        <i class="fas fa-search text-indigo-600 dark:text-indigo-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Inquire Mode</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]">Semantic search across all your recordings</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
+                                    <div class="p-2 bg-teal-100 dark:bg-teal-900 rounded-lg mr-3 mt-1">
+                                        <i class="fas fa-share-alt text-teal-600 dark:text-teal-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Sharing & Export</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]">Share recordings and export to various formats</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Technology Stack -->
+                        <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center mb-4">
+                                <div class="p-2 bg-red-500 rounded-lg mr-3">
+                                    <i class="fas fa-code text-white text-lg"></i>
+                                </div>
+                                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Technology Stack</h3>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                                    <i class="fab fa-python text-3xl text-blue-500 mb-2"></i>
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">Python Flask</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Backend</p>
+                                </div>
+                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                                    <i class="fab fa-vuejs text-3xl text-green-500 mb-2"></i>
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">Vue.js</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Frontend</p>
+                                </div>
+                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                                    <i class="fas fa-database text-3xl text-purple-500 mb-2"></i>
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">SQLite</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Database</p>
+                                </div>
+                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                                    <i class="fab fa-docker text-3xl text-blue-600 mb-2"></i>
+                                    <p class="text-sm font-medium text-[var(--text-primary)]">Docker</p>
+                                    <p class="text-xs text-[var(--text-muted)]">Deployment</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
         <footer class="text-center py-4 mt-8 text-xs text-[var(--text-light)] border-t border-[var(--border-primary)]">
-            Speakr &copy; {{ now.year }}
+            <span id="footer-text">Speakr &copy; {{ now.year }}</span>
         </footer>
     </div>
 
@@ -472,15 +696,19 @@
         </div>
     </div>
 
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const tabAccount = document.getElementById('tab-account');
             const tabShares = document.getElementById('tab-shares');
             const tabTags = document.getElementById('tab-tags');
+            const tabAbout = document.getElementById('tab-about');
             const contentAccount = document.getElementById('content-account');
             const contentShares = document.getElementById('content-shares');
             const contentTags = document.getElementById('content-tags');
+            const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
+            
 
             function showAccountTab() {
                 tabAccount.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
@@ -489,9 +717,12 @@
                 tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 contentAccount.classList.remove('hidden');
                 contentShares.classList.add('hidden');
                 contentTags.classList.add('hidden');
+                contentAbout.classList.add('hidden');
             }
 
             function showSharesTab() {
@@ -501,9 +732,12 @@
                 tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 contentShares.classList.remove('hidden');
                 contentAccount.classList.add('hidden');
                 contentTags.classList.add('hidden');
+                contentAbout.classList.add('hidden');
                 loadShares();
             }
 
@@ -514,10 +748,29 @@
                 tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                 tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                 contentTags.classList.remove('hidden');
                 contentAccount.classList.add('hidden');
                 contentShares.classList.add('hidden');
+                contentAbout.classList.add('hidden');
                 loadTags();
+            }
+
+            function showAboutTab() {
+                tabAbout.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabAbout.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                contentAbout.classList.remove('hidden');
+                contentAccount.classList.add('hidden');
+                contentShares.classList.add('hidden');
+                contentTags.classList.add('hidden');
+                loadSystemInfo();
             }
 
             tabAccount.addEventListener('click', (e) => {
@@ -534,6 +787,44 @@
                 e.preventDefault();
                 showTagsTab();
             });
+
+            tabAbout.addEventListener('click', (e) => {
+                e.preventDefault();
+                showAboutTab();
+            });
+
+            async function loadSystemInfo() {
+                try {
+                    const response = await fetch('/api/system/info');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Update version in multiple places
+                    document.getElementById('system-version').textContent = data.version;
+                    
+                    // Update LLM info
+                    document.getElementById('llm-endpoint').textContent = data.llm_endpoint;
+                    document.getElementById('llm-model').textContent = data.llm_model;
+                    
+                    // Update Whisper/ASR info
+                    document.getElementById('whisper-endpoint').textContent = data.whisper_endpoint;
+                    document.getElementById('asr-status').textContent = data.asr_enabled ? 'Yes' : 'No';
+                    
+                    if (data.asr_enabled && data.asr_endpoint) {
+                        document.getElementById('asr-endpoint').textContent = data.asr_endpoint;
+                        document.getElementById('asr-endpoint-row').style.display = 'block';
+                    }
+                } catch (error) {
+                    document.getElementById('system-version').textContent = 'Failed to load';
+                    document.getElementById('llm-endpoint').textContent = 'Failed to load';
+                    document.getElementById('llm-model').textContent = 'Failed to load';
+                    document.getElementById('whisper-endpoint').textContent = 'Failed to load';
+                    document.getElementById('asr-status').textContent = 'Failed to load';
+                }
+            }
 
             async function loadShares() {
                 sharesContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
@@ -643,6 +934,25 @@
                 div.textContent = text;
                 return div.innerHTML;
             }
+            
+            // Update footer with version
+            async function updateFooter() {
+                try {
+                    const response = await fetch('/api/system/info');
+                    if (response.ok) {
+                        const data = await response.json();
+                        const footerText = document.getElementById('footer-text');
+                        if (footerText && data.version) {
+                            footerText.textContent = `Speakr ${data.version} © {{ now.year }}`;
+                        }
+                    }
+                } catch (error) {
+                    console.log('Could not fetch version for footer');
+                }
+            }
+            
+            // Update footer on page load
+            updateFooter();
         });
 
         // Dark mode toggle functionality
@@ -1304,7 +1614,7 @@
                 showToast(`Failed to save tag: ${error.message}`, 'error');
             }
         });
-
+        
     </script>
 </body>
 </html>

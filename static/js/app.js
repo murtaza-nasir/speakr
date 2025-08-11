@@ -1810,12 +1810,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         max_speakers: asrMaxSpeakers.value
                     };
 
-                    // Check if it's an audio file or has AMR extension
+                    // Check if it's an audio file or video container with audio
                     const isAudioFile = fileObject && (
                         fileObject.type.startsWith('audio/') || 
+                        fileObject.type === 'video/mp4' ||
+                        fileObject.type === 'video/quicktime' ||
+                        fileObject.type === 'video/x-msvideo' ||
+                        fileObject.type === 'video/webm' ||
                         fileObject.name.toLowerCase().endsWith('.amr') ||
                         fileObject.name.toLowerCase().endsWith('.3gp') ||
-                        fileObject.name.toLowerCase().endsWith('.3gpp')
+                        fileObject.name.toLowerCase().endsWith('.3gpp') ||
+                        fileObject.name.toLowerCase().endsWith('.mp4') ||
+                        fileObject.name.toLowerCase().endsWith('.mov') ||
+                        fileObject.name.toLowerCase().endsWith('.avi') ||
+                        fileObject.name.toLowerCase().endsWith('.mkv') ||
+                        fileObject.name.toLowerCase().endsWith('.webm')
                     );
                     
                     if (isAudioFile) {
@@ -1838,7 +1847,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                         filesAdded++;
                     } else if (fileObject) {
-                        setGlobalError(`Invalid file type "${fileObject.name}". Only audio files (including AMR) are accepted. File skipped.`);
+                        setGlobalError(`Invalid file type "${fileObject.name}". Only audio files and video containers with audio (MP3, WAV, MP4, MOV, AVI, etc.) are accepted. File skipped.`);
                     }
                 }
                 if(filesAdded > 0) {
@@ -3612,6 +3621,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     editingMeetingDate.value = false;
                     editingSummary.value = false;
                     editingNotes.value = false;
+                    
+                    // Fix WebM duration issue by forcing metadata load
+                    if (newVal?.id) {
+                        nextTick(() => {
+                            const audioElements = document.querySelectorAll('audio');
+                            audioElements.forEach(audio => {
+                                if (audio.src && audio.src.includes(`/audio/${newVal.id}`)) {
+                                    // For WebM files, we need to seek to end to get duration
+                                    const fixDuration = () => {
+                                        if (!isFinite(audio.duration) || audio.duration === 0) {
+                                            audio.currentTime = 1e101; // Seek to "infinity" to load duration
+                                            audio.addEventListener('timeupdate', function resetTime() {
+                                                audio.currentTime = 0;
+                                                audio.removeEventListener('timeupdate', resetTime);
+                                            }, { once: true });
+                                        }
+                                    };
+                                    
+                                    // Try to fix duration when metadata loads
+                                    audio.addEventListener('loadedmetadata', fixDuration, { once: true });
+                                    
+                                    // Also try immediately in case metadata is already loaded
+                                    if (audio.readyState >= 1) {
+                                        fixDuration();
+                                    }
+                                }
+                            });
+                        });
+                    }
                 }
             });
 

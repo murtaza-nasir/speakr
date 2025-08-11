@@ -66,9 +66,18 @@
 
             <!-- Right side: User menu and controls -->
             <div class="flex items-center gap-3">
+                <!-- Inquire Mode Button -->
+                {% if inquire_mode_enabled %}
+                <a href="/inquire" 
+                   class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm flex items-center gap-2 min-w-[120px] justify-center">
+                    <i class="fas fa-search"></i>
+                    <span class="hidden sm:inline">Inquire</span>
+                </a>
+                {% endif %}
+
                 <!-- New Recording Button -->
                 <button @click="switchToUploadView" 
-                        class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-2">
+                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-2 min-w-[120px] justify-center">
                     <i class="fas fa-plus"></i>
                     <span class="hidden sm:inline">New Recording</span>
                 </button>
@@ -130,10 +139,18 @@
                     <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-lg font-semibold">Recordings</h2>
-                            <button @click="switchToUploadView" 
-                                    class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
-                                <i class="fas fa-plus mr-1"></i>New
-                            </button>
+                            <div class="flex gap-2">
+                                {% if inquire_mode_enabled %}
+                                <a href="/inquire" 
+                                   class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm">
+                                    <i class="fas fa-search"></i>
+                                </a>
+                                {% endif %}
+                                <button @click="switchToUploadView" 
+                                        class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
+                                    <i class="fas fa-plus mr-1"></i>New
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Search and Sort Controls -->
@@ -301,9 +318,9 @@
                                  :class="['border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300', dragover ? 'border-[var(--border-accent)] bg-[var(--bg-accent)]' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]']">
                                 <i class="fas fa-cloud-upload-alt text-3xl text-[var(--text-muted)] mb-3"></i>
                                 <p class="text-[var(--text-secondary)] mb-2">Click to upload or drag and drop</p>
-                                <p class="text-xs text-[var(--text-muted)]">Supports MP3, WAV, M4A, AMR, and more</p>
+                                <p class="text-xs text-[var(--text-muted)]">Supports MP3, WAV, M4A, MP4, MOV, AVI, AMR, and more</p>
                             </div>
-                            <input ref="fileInput" type="file" @change="handleFileSelect" accept="audio/*" multiple class="hidden">
+                            <input ref="fileInput" type="file" @change="handleFileSelect" accept="audio/*,video/mp4,video/quicktime,video/x-msvideo,video/webm,.mp4,.mov,.avi,.mkv,.webm" multiple class="hidden">
 
                             <!-- Divider -->
                             <div class="my-6 flex items-center">
@@ -766,7 +783,7 @@
                         <div class="flex-1 overflow-y-auto p-4">
                             <!-- Transcript Panel -->
                             <div v-if="mobileTab === 'transcript'" class="h-full flex flex-col space-y-4">
-                                <div class="flex items-center justify-end gap-2 flex-shrink-0">
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
                                     <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']"><i class="fas fa-list"></i></button>
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']"><i class="fas fa-comments"></i></button>
@@ -810,9 +827,10 @@
                             </div>
                             <!-- Summary Panel -->
                             <div v-if="mobileTab === 'summary'" class="h-full flex flex-col space-y-4">
-                                <div class="flex items-center justify-end gap-2 flex-shrink-0">
-                                    <button @click="copySummary" class="copy-btn"><i class="fas fa-copy"></i></button>
-                                    <button @click="toggleEditSummary" class="copy-btn"><i class="fas fa-edit"></i></button>
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
+                                    <button @click="copySummary" class="copy-btn" title="Copy Summary"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadSummary" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
+                                    <button @click="toggleEditSummary" class="copy-btn" title="Edit Summary"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="editingSummary" class="h-full flex flex-col">
@@ -843,9 +861,10 @@
                             </div>
                             <!-- Notes Panel -->
                             <div v-if="mobileTab === 'notes'" class="h-full flex flex-col space-y-4">
-                                <div class="flex items-center justify-end gap-2 flex-shrink-0">
-                                    <button @click="copyNotes" class="copy-btn"><i class="fas fa-copy"></i></button>
-                                    <button @click="toggleEditNotes" class="copy-btn"><i class="fas fa-edit"></i></button>
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
+                                    <button @click="copyNotes" class="copy-btn" title="Copy Notes"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadNotes" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
+                                    <button @click="toggleEditNotes" class="copy-btn" title="Edit Notes"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="editingNotes" class="h-full flex flex-col">
@@ -1197,20 +1216,20 @@
                                             </div>
                                             
                                             <div v-else class="content-box relative">
-                                                <div v-if="!editingSummary" class="absolute top-2 right-2 flex gap-1 z-10">
+                                                <div v-if="!editingSummary" class="absolute top-2 right-4 flex gap-1 z-10">
                                                     <button @click="copySummary" 
                                                             title="Copy Summary"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-copy text-sm"></i>
                                                     </button>
                                                     <button @click="downloadSummary" 
                                                             title="Download Summary as Word Document"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-download text-sm"></i>
                                                     </button>
                                                     <button @click="toggleEditSummary" 
                                                             title="Edit Summary"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-edit text-sm"></i>
                                                     </button>
                                                 </div>
@@ -1244,20 +1263,20 @@
                                         <!-- Notes Tab -->
                                         <div v-if="selectedTab === 'notes'" class="h-full p-4 overflow-y-auto">
                                             <div class="content-box h-full relative">
-                                                <div v-if="!editingNotes" class="absolute top-2 right-2 flex gap-1 z-10">
+                                                <div v-if="!editingNotes" class="absolute top-2 right-4 flex gap-1 z-10">
                                                     <button @click="copyNotes" 
                                                             title="Copy Notes"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-copy text-sm"></i>
                                                     </button>
                                                     <button @click="downloadNotes" 
                                                             title="Download Notes as Word Document"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-download text-sm"></i>
                                                     </button>
                                                     <button @click="toggleEditNotes" 
                                                             title="Edit Notes"
-                                                            class="w-8 h-8 flex items-center justify-center bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-md border border-[var(--border-secondary)] transition-all duration-200">
+                                                            class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-edit text-sm"></i>
                                                     </button>
                                                 </div>
@@ -1391,61 +1410,73 @@
         <!-- Upload Progress Popup -->
         <div v-if="uploadQueue.length > 0 && !progressPopupClosed" 
              :class="[
-                 'progress-popup',
+                 'fixed bottom-4 left-4 z-[100] w-96 transition-all duration-300',
                  progressPopupMinimized ? 'minimized' : ''
              ]">
-            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-[var(--bg-secondary)] border-2 border-[var(--bg-accent)] rounded-lg shadow-2xl overflow-hidden backdrop-blur-sm bg-opacity-95 
+                        ring-4 ring-[var(--bg-accent)] ring-opacity-20"
+                 style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px var(--bg-accent), 0 0 20px rgba(var(--bg-accent-rgb), 0.3)">
                 <!-- Progress Header -->
-                <div class="bg-[var(--bg-tertiary)] px-4 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-upload text-[var(--text-accent)]"></i>
-                        <span class="font-medium">Upload Progress</span>
-                        <span class="text-sm text-[var(--text-muted)]">(${completedInQueue}/${totalInQueue})</span>
+                <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2">
+                    <!-- Top row: Title and buttons -->
+                    <div class="flex items-center justify-between mb-1">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <i class="fas fa-upload text-[var(--text-accent)] animate-pulse text-sm"></i>
+                            <span class="font-semibold text-[var(--text-accent)] text-sm truncate">Upload Progress</span>
+                        </div>
+                        <div class="flex items-center gap-1 flex-shrink-0">
+                            <button v-if="completedInQueue > 0" @click="clearCompletedUploads()" 
+                                    class="px-1.5 py-0.5 text-xs bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition-colors text-[var(--text-accent)] border border-white border-opacity-30"
+                                    title="Clear completed uploads">
+                                <i class="fas fa-broom"></i>
+                            </button>
+                            <button @click="progressPopupMinimized = !progressPopupMinimized" 
+                                    class="p-0.5 rounded hover:bg-white hover:bg-opacity-20 transition-colors text-[var(--text-accent)]">
+                                <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
+                            </button>
+                            <button @click="progressPopupClosed = true" 
+                                    class="p-0.5 rounded hover:bg-red-500 hover:bg-opacity-20 text-red-200 hover:text-red-100 transition-colors">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button v-if="completedInQueue > 0" @click="clearCompletedUploads()" 
-                                class="px-2 py-1 text-xs bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] rounded transition-colors text-[var(--text-secondary)]"
-                                title="Clear completed uploads">
-                            <i class="fas fa-broom mr-1"></i>Clear
-                        </button>
-                        <button @click="progressPopupMinimized = !progressPopupMinimized" 
-                                class="p-1 rounded hover:bg-[var(--bg-accent)] transition-colors">
-                            <i :class="progressPopupMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
-                        </button>
-                        <button @click="progressPopupClosed = true" 
-                                class="p-1 rounded hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
-                            <i class="fas fa-times"></i>
-                        </button>
+                    <!-- Bottom row: Progress count -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-[var(--text-accent)] opacity-80 font-medium">${completedInQueue} of ${totalInQueue} completed</span>
+                        <div class="w-24 bg-white bg-opacity-20 rounded-full h-1.5">
+                            <div class="bg-white h-1.5 rounded-full transition-all duration-300" 
+                                 :style="{width: (completedInQueue / Math.max(totalInQueue, 1) * 100) + '%'}"></div>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Progress Content -->
-                <div v-if="!progressPopupMinimized" class="p-4 max-h-64 overflow-y-auto">
-                    <div v-if="currentlyProcessingFile" class="mb-4 p-3 bg-[var(--bg-accent)] rounded-lg">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="font-medium truncate min-w-0">${currentlyProcessingFile.file.name}</span>
-                            <span class="text-sm flex-shrink-0 ml-2">${processingProgress}%</span>
+                <div v-if="!progressPopupMinimized" class="p-3 max-h-64 overflow-y-auto">
+                    <div v-if="currentlyProcessingFile" class="mb-3 p-2.5 bg-[var(--bg-accent)] rounded-lg">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="font-medium truncate min-w-0 text-sm">${currentlyProcessingFile.file.name}</span>
+                            <span class="text-xs flex-shrink-0 ml-2 font-semibold">${processingProgress}%</span>
                         </div>
-                        <div class="w-full bg-[var(--bg-secondary)] rounded-full h-2">
-                            <div class="bg-[var(--bg-button)] h-2 rounded-full transition-all duration-300" 
+                        <div class="w-full bg-[var(--bg-secondary)] rounded-full h-1.5 mb-1.5">
+                            <div class="bg-[var(--bg-button)] h-1.5 rounded-full transition-all duration-300" 
                                  :style="{width: processingProgress + '%'}"></div>
                         </div>
-                        <p class="text-sm text-[var(--text-muted)] mt-1">${processingMessage}</p>
+                        <p class="text-xs text-[var(--text-muted)]">${processingMessage}</p>
                     </div>
 
-                    <div v-if="finishedFilesInQueue.length > 0" class="space-y-2">
-                        <h4 class="text-sm font-medium text-[var(--text-secondary)]">Completed</h4>
+                    <div v-if="finishedFilesInQueue.length > 0" class="space-y-1.5">
+                        <h4 class="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Completed</h4>
                         <div v-for="item in finishedFilesInQueue" 
                              :key="item.clientId" 
-                             class="progress-list-item p-2 bg-[var(--bg-tertiary)] rounded">
+                             class="progress-list-item p-1.5 bg-[var(--bg-tertiary)] rounded flex items-center gap-2">
                             <i :class="[
-                                'fas',
+                                'fas text-xs',
                                 item.status === 'completed' ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'
                             ]"></i>
-                            <span class="truncate">${item.file.name}</span>
+                            <span class="truncate text-sm flex-1">${item.file.name}</span>
                             <span :class="[
-                                'text-xs',
-                                item.status === 'completed' ? 'text-green-600' : 'text-red-600'
+                                'text-xs px-1.5 py-0.5 rounded font-medium',
+                                item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                             ]">
                                 ${item.status === 'completed' ? 'Done' : 'Failed'}
                             </span>
@@ -1961,8 +1992,8 @@
                         <!-- Audio Player Section -->
                         <div class="mb-4 flex-shrink-0">
                             <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
-                            <div class="bg-[var(--bg-audio-player)] p-3 rounded-lg shadow border border-[var(--border-primary)]">
-                                <audio controls class="w-full h-10 speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
+                            <div class="audio-player-container">
+                                <audio controls class="w-full speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>

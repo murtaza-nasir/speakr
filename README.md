@@ -22,7 +22,8 @@
 
 ## What's New?
 
-###  Latest Release (Version 0.5.0)
+###  Latest Release (Version 0.5.1)
+* **Inquire Mode (Experimental):** Revolutionary AI-powered search across all your recordings! Ask questions like "What decisions were made about the marketing budget?" and get intelligent answers with context from relevant conversations. Perfect for finding insights across multiple meetings, interviews, or sessions.
 * **Advanced Tagging System:** Organize recordings with multiple tags, each with custom summarization prompts and ASR defaults
 * **Enhanced ASR Integration:** Configure language and speaker detection directly from the UI with automatic participant extraction
 * **Word Document Export:** Download summaries and notes as beautifully formatted .docx files
@@ -152,6 +153,7 @@
 ## Core Features
 
 * **Self-Hosted and Private:** Keep full control over your data by hosting Speakr on your own server.
+* **Inquire Mode (Experimental):** Search and chat across all your recordings using AI-powered semantic search. Ask questions about any topic and get intelligent answers with relevant context from your entire audio library.
 * **Advanced Transcription & Diarization:** Get accurate transcripts with optional AI-powered speaker identification (diarization) to know who said what.
 * **AI-Powered Insights:** Automatically generate titles and summaries for your recordings. Use the integrated chat to ask questions and pull insights directly from the transcript.
 * **Install as a PWA App:** Install on your phone for quick and easy recordings and note capture. 
@@ -222,13 +224,17 @@ You only need Docker installed for this method; you do not need to clone the rep
         
         # --- Large File Chunking (for endpoints with file size limits) ---
         ENABLE_CHUNKING=true
-        CHUNK_SIZE_MB=20
+        CHUNK_LIMIT=20MB           # Size-based chunking (legacy CHUNK_SIZE_MB also works)
+        # CHUNK_LIMIT=1200s        # Alternative: Duration-based chunking (20 minutes)
 
         # --- Application Settings ---
         ALLOW_REGISTRATION=false
         ADMIN_USERNAME=admin
         ADMIN_EMAIL=admin@example.com
         ADMIN_PASSWORD=changeme
+        
+        # --- Inquire Mode (Experimental - AI search across all recordings) ---
+        # ENABLE_INQUIRE_MODE=true
         
         # --- Docker Settings ---
         SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
@@ -257,6 +263,9 @@ You only need Docker installed for this method; you do not need to clone the rep
         ADMIN_USERNAME=admin
         ADMIN_EMAIL=admin@example.com
         ADMIN_PASSWORD=changeme
+        
+        # --- Inquire Mode (Experimental - AI search across all recordings) ---
+        # ENABLE_INQUIRE_MODE=true
         
         # --- Docker Settings ---
         SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
@@ -314,6 +323,13 @@ Follow these steps if you want to modify the code or build the Docker image your
 5.  **Identify Speakers (Diarization):**
     * If you used the ASR method with diarization enabled, click the **Identify Speakers** button.
     * In the modal, assign names to the detected speakers (e.g., `SPEAKER 00`, `SPEAKER 01`). You can use the **Auto Identify** feature to let the AI suggest names based on the conversation.
+6.  **Use Inquire Mode (Experimental - optional):**
+    * **Enable it first:** Uncomment `ENABLE_INQUIRE_MODE=true` in your `.env` file and restart the application
+    * Click the **Inquire** button in the header to enter semantic search mode
+    * Ask questions like "What were the main action items discussed?" or "Who mentioned the budget concerns?"
+    * The AI will search across all your recordings and provide answers with relevant context
+    * Use filters to search specific recordings, speakers, or date ranges
+    * Perfect for finding insights across multiple meetings or discovering patterns in your conversations
 ---
 <details>
 <summary><strong>Advanced Tagging System</strong></summary>

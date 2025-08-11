@@ -47,7 +47,7 @@
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
                 <a href="{{ url_for('index') }}" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
+                    <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
                     Speakr
                 </a>
             </h1>
@@ -110,6 +110,12 @@
                                 :class="activeTab === 'settings' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
                                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                             <i class="fas fa-cogs mr-2"></i> System Settings
+                        </button>
+                        <button @click="activeTab = 'vectorstore'" 
+                                :class="activeTab === 'vectorstore' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                                v-if="inquireModeEnabled">
+                            <i class="fas fa-database mr-2"></i> Vector Store
                         </button>
                     </nav>
                 </div>
@@ -348,6 +354,166 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Vector Store Tab -->
+                <div v-show="activeTab === 'vectorstore'" v-if="inquireModeEnabled">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">Vector Store Management</h3>
+                        <button @click="loadInquireStatus" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                            <i class="fas fa-sync-alt mr-2"></i> Refresh Status
+                        </button>
+                    </div>
+                    
+                    <!-- Vector Store Info -->
+                    <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)] mb-6">
+                        <h4 class="text-md font-semibold text-[var(--text-primary)] mb-4">
+                            <i class="fas fa-info-circle mr-2"></i>About Inquire Mode
+                        </h4>
+                        <p class="text-sm text-[var(--text-secondary)] mb-3">
+                            Inquire Mode allows users to search across multiple transcriptions using natural language questions. 
+                            It works by breaking transcriptions into chunks and creating searchable embeddings using AI models.
+                        </p>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-[var(--text-muted)]">Chunk Size:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">500 characters</span>
+                            </div>
+                            <div>
+                                <span class="text-[var(--text-muted)]">Overlap:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">50 characters</span>
+                            </div>
+                            <div>
+                                <span class="text-[var(--text-muted)]">Embedding Model:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">all-MiniLM-L6-v2</span>
+                            </div>
+                            <div>
+                                <span class="text-[var(--text-muted)]">Vector Dimensions:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">384</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Total Recordings</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ inquireStatus.total_completed_recordings || 0 }</p>
+                                </div>
+                                <i class="fas fa-file-audio text-3xl text-[var(--text-accent)] opacity-50"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Processed for Inquire</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-success-strong)]">${ inquireStatus.processed_for_inquire || 0 }</p>
+                                </div>
+                                <i class="fas fa-check-circle text-3xl text-[var(--text-success-strong)] opacity-50"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Need Processing</p>
+                                    <p class="text-2xl font-semibold" :class="inquireStatus.need_processing > 0 ? 'text-[var(--text-warning-strong)]' : 'text-[var(--text-primary)]'">
+                                        ${ inquireStatus.need_processing || 0 }
+                                    </p>
+                                </div>
+                                <i class="fas fa-clock text-3xl opacity-50" :class="inquireStatus.need_processing > 0 ? 'text-[var(--text-warning-strong)]' : 'text-[var(--text-muted)]'"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Total Chunks</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ inquireStatus.total_chunks || 0 }</p>
+                                </div>
+                                <i class="fas fa-th text-3xl text-[var(--text-accent)] opacity-50"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Embeddings Status</p>
+                                    <p class="text-lg font-semibold" :class="inquireStatus.embeddings_available ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-warning-strong)]'">
+                                        <i :class="inquireStatus.embeddings_available ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'" class="mr-2"></i>
+                                        ${ inquireStatus.embeddings_available ? 'Available' : 'Text Search Only' }
+                                    </p>
+                                </div>
+                                <i class="fas fa-brain text-3xl opacity-50" :class="inquireStatus.embeddings_available ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-warning-strong)]'"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Processing Progress</p>
+                                    <div class="mt-2">
+                                        <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2.5">
+                                            <div class="bg-[var(--text-accent)] h-2.5 rounded-full" :style="{width: getProcessingProgress() + '%'}"></div>
+                                        </div>
+                                        <p class="text-xs text-[var(--text-muted)] mt-1">${ getProcessingProgress() }% complete</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-tasks text-3xl text-[var(--text-accent)] opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Processing Actions -->
+                    <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                        <h4 class="text-md font-semibold text-[var(--text-primary)] mb-4">
+                            <i class="fas fa-cog mr-2"></i>Processing Actions
+                        </h4>
+                        
+                        <div v-if="inquireStatus.need_processing > 0" class="mb-4">
+                            <p class="text-sm text-[var(--text-secondary)] mb-4">
+                                There are <span class="font-semibold text-[var(--text-warning-strong)]">${ inquireStatus.need_processing }</span> recordings that need to be processed for Inquire Mode.
+                            </p>
+                            
+                            <div class="flex flex-wrap gap-3">
+                                <button @click="processAllRecordings" 
+                                        :disabled="isProcessingRecordings"
+                                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-play'" class="mr-2"></i>
+                                    ${ isProcessingRecordings ? 'Processing...' : 'Process All Recordings' }
+                                </button>
+                                
+                                <button @click="processBatchRecordings(10)" 
+                                        :disabled="isProcessingRecordings"
+                                        class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-forward mr-2"></i>
+                                    Process Next 10
+                                </button>
+                            </div>
+                            
+                            <div v-if="processingResult" class="mt-4 p-4 rounded-lg" 
+                                 :class="processingResult.success ? 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]' : 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]'">
+                                <p class="font-medium">${ processingResult.message }</p>
+                                <div v-if="processingResult.failed && processingResult.failed.length > 0" class="mt-2">
+                                    <p class="text-sm font-medium">Failed recordings:</p>
+                                    <ul class="text-xs mt-1 space-y-1">
+                                        <li v-for="fail in processingResult.failed" :key="fail.id">
+                                            ID ${ fail.id }: ${ fail.title } - ${ fail.reason }
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div v-else class="text-center py-4">
+                            <i class="fas fa-check-circle text-4xl text-[var(--text-success-strong)] mb-3"></i>
+                            <p class="text-[var(--text-success-strong)] font-medium">All recordings are processed!</p>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">The vector store is up to date.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -478,6 +644,19 @@
                 });
                 const editingUser = ref(null);
                 const userToDelete = ref(null);
+                
+                // Inquire Mode state
+                const inquireModeEnabled = ref({{ 'true' if inquire_mode_enabled else 'false' }});
+                const inquireStatus = ref({
+                    total_completed_recordings: 0,
+                    recordings_with_transcriptions: 0,
+                    processed_for_inquire: 0,
+                    need_processing: 0,
+                    total_chunks: 0,
+                    embeddings_available: false
+                });
+                const isProcessingRecordings = ref(false);
+                const processingResult = ref(null);
                 
                 // Computed properties
                 const filteredUsers = computed(() => {
@@ -798,11 +977,101 @@
                     }
                 };
                 
+                // Inquire Mode methods
+                const loadInquireStatus = async () => {
+                    try {
+                        const response = await fetch('/admin/inquire/status');
+                        if (!response.ok) throw new Error('Failed to load inquire status');
+                        
+                        const data = await response.json();
+                        inquireStatus.value = data;
+                    } catch (error) {
+                        console.error('Error loading inquire status:', error);
+                    }
+                };
+                
+                const processAllRecordings = async () => {
+                    if (isProcessingRecordings.value) return;
+                    
+                    isProcessingRecordings.value = true;
+                    processingResult.value = null;
+                    
+                    try {
+                        const response = await fetch('/admin/inquire/process-recordings', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({})
+                        });
+                        
+                        if (!response.ok) throw new Error('Failed to process recordings');
+                        
+                        const data = await response.json();
+                        processingResult.value = data;
+                        
+                        // Reload status after processing
+                        await loadInquireStatus();
+                    } catch (error) {
+                        console.error('Error processing recordings:', error);
+                        processingResult.value = {
+                            success: false,
+                            message: 'Failed to process recordings. Please try again.'
+                        };
+                    } finally {
+                        isProcessingRecordings.value = false;
+                    }
+                };
+                
+                const processBatchRecordings = async (batchSize) => {
+                    if (isProcessingRecordings.value) return;
+                    
+                    isProcessingRecordings.value = true;
+                    processingResult.value = null;
+                    
+                    try {
+                        const response = await fetch('/admin/inquire/process-recordings', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({ max_recordings: batchSize })
+                        });
+                        
+                        if (!response.ok) throw new Error('Failed to process recordings');
+                        
+                        const data = await response.json();
+                        processingResult.value = data;
+                        
+                        // Reload status after processing
+                        await loadInquireStatus();
+                    } catch (error) {
+                        console.error('Error processing recordings:', error);
+                        processingResult.value = {
+                            success: false,
+                            message: 'Failed to process recordings. Please try again.'
+                        };
+                    } finally {
+                        isProcessingRecordings.value = false;
+                    }
+                };
+                
+                const getProcessingProgress = () => {
+                    const total = (inquireStatus.value.processed_for_inquire || 0) + (inquireStatus.value.need_processing || 0);
+                    if (total === 0) return 100;
+                    return Math.round((inquireStatus.value.processed_for_inquire / total) * 100);
+                };
+                
                 // Lifecycle hooks
                 onMounted(() => {
                     loadUsers();
                     loadStats();
                     initializeDarkMode();
+                    if (inquireModeEnabled.value) {
+                        loadInquireStatus();
+                    }
                 });
                 
                 // Watch for tab changes to reload data
@@ -836,8 +1105,15 @@
                     editingUser,
                     userToDelete,
                     
+                    // Inquire Mode state
+                    inquireModeEnabled,
+                    inquireStatus,
+                    isProcessingRecordings,
+                    processingResult,
+                    
                     // Computed
                     filteredUsers,
+                    getProcessingProgress,
                     
                     // Methods
                     loadUsers,
@@ -853,7 +1129,12 @@
                     deleteUser,
                     toggleAdminStatus,
                     formatFileSize,
-                    toggleDarkMode
+                    toggleDarkMode,
+                    
+                    // Inquire Mode methods
+                    loadInquireStatus,
+                    processAllRecordings,
+                    processBatchRecordings
                 };
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2

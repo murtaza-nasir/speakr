@@ -163,7 +163,7 @@ CHAT_MAX_TOKENS=5000
 
 # --- Large File Chunking (for endpoints with file size limits) ---
 ENABLE_CHUNKING=true
-CHUNK_SIZE_MB=20
+CHUNK_LIMIT=20MB           # Size-based chunking (legacy CHUNK_SIZE_MB also works)
 CHUNK_OVERLAP_SECONDS=3
 
 # --- Admin User (created on first run) ---
@@ -418,7 +418,7 @@ ASR_BASE_URL=http://localhost:9000  # or remote IP
 
 ## Large File Chunking Configuration
 
-Speakr automatically handles large files that exceed transcription API limits through intelligent chunking. This is particularly useful for endpoints like OpenAI's Whisper API which has a 25MB file size limit.
+Speakr automatically handles large files that exceed transcription API limits through intelligent chunking. This feature only applies to the Standard Whisper API method (`USE_ASR_ENDPOINT=false`). **Note: Chunking is NOT used with ASR webservice endpoints.**
 
 ### Environment Variables
 
@@ -426,8 +426,15 @@ Speakr automatically handles large files that exceed transcription API limits th
 # Enable automatic chunking for large files (default: true)
 ENABLE_CHUNKING=true
 
-# Maximum chunk size in MB (default: 20MB for safety margin with 25MB limits)
-# Adjust based on your transcription endpoint's file size limit
+# Chunking limit - choose ONE format:
+# Size-based (for APIs with file size limits like OpenAI's 25MB)
+CHUNK_LIMIT=20MB
+
+# Duration-based (for APIs with processing time limits)
+# CHUNK_LIMIT=1200s     # 20 minutes in seconds
+# CHUNK_LIMIT=20m       # 20 minutes
+
+# Legacy format (still supported, but CHUNK_LIMIT takes precedence)
 CHUNK_SIZE_MB=20
 
 # Overlap between chunks in seconds to ensure no speech is lost at boundaries
@@ -445,18 +452,18 @@ CHUNK_OVERLAP_SECONDS=3
 
 ### Configuration Guidelines
 
-**For OpenAI Whisper API (25MB limit):**
+**If your provider has file size limits (e.g., OpenAI, OpenRouter):**
 ```env
 ENABLE_CHUNKING=true
-CHUNK_SIZE_MB=20          # 20MB provides 5MB safety margin
-CHUNK_OVERLAP_SECONDS=3   # 3 seconds overlap for speech continuity
+CHUNK_LIMIT=20MB          # Use size-based chunking
+CHUNK_OVERLAP_SECONDS=3
 ```
 
-**For APIs with different limits:**
+**If your provider has processing time limits:**
 ```env
 ENABLE_CHUNKING=true
-CHUNK_SIZE_MB=45          # For 50MB limit APIs
-CHUNK_OVERLAP_SECONDS=5   # Longer overlap for better accuracy
+CHUNK_LIMIT=1200s         # Use duration-based chunking (20 minutes)
+CHUNK_OVERLAP_SECONDS=3
 ```
 
 **To disable chunking (for unlimited APIs):**
@@ -474,7 +481,7 @@ ENABLE_CHUNKING=false
 ### Troubleshooting Chunking
 
 **Files still failing with size errors:**
-- Reduce `CHUNK_SIZE_MB` (try 15MB for OpenAI)
+- Reduce chunk limit: `CHUNK_LIMIT=15MB` (or legacy `CHUNK_SIZE_MB=15`)
 - Check that `ENABLE_CHUNKING=true`
 - Verify your API endpoint's actual file size limit
 

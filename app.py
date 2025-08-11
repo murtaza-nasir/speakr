@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 import threading
 from dotenv import load_dotenv # Import load_dotenv
 import httpx 
@@ -47,8 +48,38 @@ import secrets
 import time
 from audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 
+# Optional imports for embedding functionality
+try:
+    import numpy as np
+    from sentence_transformers import SentenceTransformer
+    from sklearn.metrics.pairwise import cosine_similarity
+    EMBEDDINGS_AVAILABLE = True
+except ImportError as e:
+    EMBEDDINGS_AVAILABLE = False
+    # Create dummy classes to prevent import errors
+    class SentenceTransformer:
+        def __init__(self, *args, **kwargs):
+            pass
+        def encode(self, *args, **kwargs):
+            return []
+    
+    np = None
+    cosine_similarity = None
+
 # Load environment variables from .env file
 load_dotenv()
+
+# Early check for Inquire Mode configuration (needed for startup message)
+ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
+
+# Log embedding status on startup
+if ENABLE_INQUIRE_MODE and EMBEDDINGS_AVAILABLE:
+    print("✅ Inquire Mode: Full semantic search enabled (embeddings available)")
+elif ENABLE_INQUIRE_MODE and not EMBEDDINGS_AVAILABLE:
+    print("⚠️  Inquire Mode: Basic text search only (embedding dependencies not available)")
+    print("   To enable semantic search, install: pip install sentence-transformers==2.7.0 huggingface-hub>=0.19.0")
+elif not ENABLE_INQUIRE_MODE:
+    print("ℹ️  Inquire Mode: Disabled (set ENABLE_INQUIRE_MODE=true to enable)")
 
 # Configure logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
@@ -67,7 +98,7 @@ app_logger = logging.getLogger('werkzeug')
 app_logger.setLevel(log_level)
 app_logger.addHandler(handler)
 
-# --- Rate Limiting Setup ---
+# --- Rate Limiting Setup (will be configured after app creation) ---
 limiter = Limiter(
     get_remote_address,
     app=None,  # Defer initialization
@@ -419,7 +450,8 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message_category = 'info'
 bcrypt.init_app(app)
-limiter.init_app(app)  # Initialize the limiter
+limiter.init_app(app)  # Initialize the limiter (uses in-memory storage by default)
+
 csrf = CSRFProtect(app)
 
 # Add context processor to make 'now' available to all templates
@@ -465,6 +497,311 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+# --- Embedding and Chunking Utilities ---
+
+# Initialize embedding model (lazy loading)
+_embedding_model = None
+
+def get_embedding_model():
+    """Get or initialize the sentence transformer model."""
+    global _embedding_model
+    
+    if not EMBEDDINGS_AVAILABLE:
+        return None
+        
+    if _embedding_model is None:
+        try:
+            _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+            app.logger.info("Embedding model loaded successfully")
+        except Exception as e:
+            app.logger.error(f"Failed to load embedding model: {e}")
+            return None
+    return _embedding_model
+
+def chunk_transcription(transcription, max_chunk_length=500, overlap=50):
+    """
+    Split transcription into overlapping chunks for better context retrieval.
+    
+    Args:
+        transcription (str): The full transcription text
+        max_chunk_length (int): Maximum characters per chunk
+        overlap (int): Character overlap between chunks
+    
+    Returns:
+        list: List of text chunks
+    """
+    if not transcription or len(transcription) <= max_chunk_length:
+        return [transcription] if transcription else []
+    
+    chunks = []
+    start = 0
+    
+    while start < len(transcription):
+        end = start + max_chunk_length
+        
+        # Try to break at sentence boundaries
+        if end < len(transcription):
+            # Look for sentence endings within the last 100 characters
+            sentence_end = -1
+            for i in range(max(0, end - 100), end):
+                if transcription[i] in '.!?':
+                    # Check if it's not an abbreviation
+                    if i + 1 < len(transcription) and transcription[i + 1].isspace():
+                        sentence_end = i + 1
+            
+            if sentence_end > start:
+                end = sentence_end
+        
+        chunk = transcription[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        
+        # Move start position with overlap
+        start = max(start + 1, end - overlap)
+        
+        # Prevent infinite loop
+        if start >= len(transcription):
+            break
+    
+    return chunks
+
+def generate_embeddings(texts):
+    """
+    Generate embeddings for a list of texts.
+    
+    Args:
+        texts (list): List of text strings
+    
+    Returns:
+        list: List of embedding vectors as numpy arrays, or empty list if embeddings unavailable
+    """
+    if not EMBEDDINGS_AVAILABLE:
+        app.logger.warning("Embeddings not available - skipping embedding generation")
+        return []
+        
+    model = get_embedding_model()
+    if not model or not texts:
+        return []
+    
+    try:
+        embeddings = model.encode(texts)
+        return [embedding.astype(np.float32) for embedding in embeddings]
+    except Exception as e:
+        app.logger.error(f"Error generating embeddings: {e}")
+        return []
+
+def serialize_embedding(embedding):
+    """Convert numpy array to binary for database storage."""
+    if embedding is None or not EMBEDDINGS_AVAILABLE:
+        return None
+    return embedding.tobytes()
+
+def deserialize_embedding(binary_data):
+    """Convert binary data back to numpy array."""
+    if binary_data is None or not EMBEDDINGS_AVAILABLE:
+        return None
+    return np.frombuffer(binary_data, dtype=np.float32)
+
+def process_recording_chunks(recording_id):
+    """
+    Process a recording by creating chunks and generating embeddings.
+    This should be called after a recording is transcribed.
+    """
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording or not recording.transcription:
+            return False
+        
+        # Delete existing chunks for this recording
+        TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
+        
+        # Create chunks
+        chunks = chunk_transcription(recording.transcription)
+        
+        if not chunks:
+            return True
+        
+        # Generate embeddings
+        embeddings = generate_embeddings(chunks)
+        
+        # Store chunks in database
+        for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+            chunk = TranscriptChunk(
+                recording_id=recording_id,
+                user_id=recording.user_id,
+                chunk_index=i,
+                content=chunk_text,
+                embedding=serialize_embedding(embedding) if embedding is not None else None
+            )
+            db.session.add(chunk)
+        
+        db.session.commit()
+        app.logger.info(f"Created {len(chunks)} chunks for recording {recording_id}")
+        return True
+        
+    except Exception as e:
+        app.logger.error(f"Error processing chunks for recording {recording_id}: {e}")
+        db.session.rollback()
+        return False
+
+def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
+    """
+    Basic text search fallback when embeddings are not available.
+    Uses simple text matching instead of semantic search.
+    """
+    try:
+        # Build base query for chunks
+        chunks_query = TranscriptChunk.query.filter_by(user_id=user_id)
+        
+        # Apply filters if provided
+        if filters:
+            if filters.get('tag_ids'):
+                chunks_query = chunks_query.join(Recording).join(
+                    RecordingTag, Recording.id == RecordingTag.recording_id
+                ).filter(RecordingTag.tag_id.in_(filters['tag_ids']))
+            
+            if filters.get('speaker_names'):
+                # Filter by participants field in recordings instead of chunk speaker_name
+                if not any(hasattr(desc, 'name') and desc.name == 'recording' for desc in chunks_query.column_descriptions):
+                    chunks_query = chunks_query.join(Recording)
+                
+                # Build OR conditions for each speaker name in participants
+                speaker_conditions = []
+                for speaker_name in filters['speaker_names']:
+                    speaker_conditions.append(
+                        Recording.participants.ilike(f'%{speaker_name}%')
+                    )
+                
+                chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
+                app.logger.info(f"Applied speaker filter for: {filters['speaker_names']}")
+            
+            if filters.get('recording_ids'):
+                chunks_query = chunks_query.filter(
+                    TranscriptChunk.recording_id.in_(filters['recording_ids'])
+                )
+            
+            if filters.get('date_from') or filters.get('date_to'):
+                chunks_query = chunks_query.join(Recording)
+                if filters.get('date_from'):
+                    chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
+                if filters.get('date_to'):
+                    chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
+        
+        # Simple text search - split query into words and search for them
+        query_words = query.lower().split()
+        if query_words:
+            # Create a filter that matches any of the query words in the content
+            text_conditions = []
+            for word in query_words:
+                text_conditions.append(TranscriptChunk.content.ilike(f'%{word}%'))
+            
+            # Combine conditions with OR
+            from sqlalchemy import or_
+            chunks_query = chunks_query.filter(or_(*text_conditions))
+        
+        # Get chunks and return with dummy similarity scores
+        chunks = chunks_query.limit(top_k).all()
+        
+        # Return chunks with dummy similarity scores (1.0 for found chunks)
+        return [(chunk, 1.0) for chunk in chunks]
+        
+    except Exception as e:
+        app.logger.error(f"Error in basic text search: {e}")
+        return []
+
+def semantic_search_chunks(user_id, query, filters=None, top_k=5):
+    """
+    Perform semantic search on transcript chunks with filtering.
+    
+    Args:
+        user_id (int): User ID for permission filtering
+        query (str): Search query
+        filters (dict): Optional filters for tags, speakers, dates, recording_ids
+        top_k (int): Number of top chunks to return
+    
+    Returns:
+        list: List of relevant chunks with similarity scores
+    """
+    try:
+        # If embeddings are not available, fall back to basic text search
+        if not EMBEDDINGS_AVAILABLE:
+            app.logger.info("Embeddings not available - using basic text search as fallback")
+            return basic_text_search_chunks(user_id, query, filters, top_k)
+        
+        # Generate embedding for the query
+        model = get_embedding_model()
+        if not model:
+            return basic_text_search_chunks(user_id, query, filters, top_k)
+        
+        query_embedding = model.encode([query])[0]
+        
+        # Build base query for chunks with eager loading of recording relationship
+        chunks_query = TranscriptChunk.query.options(joinedload(TranscriptChunk.recording)).filter_by(user_id=user_id)
+        
+        # Apply filters if provided
+        if filters:
+            if filters.get('tag_ids'):
+                # Join with recordings that have specified tags
+                chunks_query = chunks_query.join(Recording).join(
+                    RecordingTag, Recording.id == RecordingTag.recording_id
+                ).filter(RecordingTag.tag_id.in_(filters['tag_ids']))
+            
+            if filters.get('speaker_names'):
+                # Filter by participants field in recordings instead of chunk speaker_name
+                if not any(hasattr(desc, 'name') and desc.name == 'recording' for desc in chunks_query.column_descriptions):
+                    chunks_query = chunks_query.join(Recording)
+                
+                # Build OR conditions for each speaker name in participants
+                speaker_conditions = []
+                for speaker_name in filters['speaker_names']:
+                    speaker_conditions.append(
+                        Recording.participants.ilike(f'%{speaker_name}%')
+                    )
+                
+                chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
+                app.logger.info(f"Applied speaker filter for: {filters['speaker_names']}")
+            
+            if filters.get('recording_ids'):
+                chunks_query = chunks_query.filter(
+                    TranscriptChunk.recording_id.in_(filters['recording_ids'])
+                )
+            
+            if filters.get('date_from') or filters.get('date_to'):
+                chunks_query = chunks_query.join(Recording)
+                if filters.get('date_from'):
+                    chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
+                if filters.get('date_to'):
+                    chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
+        
+        # Get chunks that have embeddings
+        chunks = chunks_query.filter(TranscriptChunk.embedding.isnot(None)).all()
+        
+        if not chunks:
+            return []
+        
+        # Calculate similarities
+        chunk_similarities = []
+        for chunk in chunks:
+            try:
+                chunk_embedding = deserialize_embedding(chunk.embedding)
+                if chunk_embedding is not None:
+                    similarity = cosine_similarity(
+                        query_embedding.reshape(1, -1),
+                        chunk_embedding.reshape(1, -1)
+                    )[0][0]
+                    chunk_similarities.append((chunk, float(similarity)))
+            except Exception as e:
+                app.logger.warning(f"Error calculating similarity for chunk {chunk.id}: {e}")
+                continue
+        
+        # Sort by similarity and return top k
+        chunk_similarities.sort(key=lambda x: x[1], reverse=True)
+        return chunk_similarities[:top_k]
+        
+    except Exception as e:
+        app.logger.error(f"Error in semantic search: {e}")
+        return []
 
 # --- Database Models ---
 class User(db.Model, UserMixin):
@@ -695,6 +1032,67 @@ class Recording(db.Model):
             'tags': [tag.to_dict() for tag in self.tags] if self.tags else []
         }
 
+class TranscriptChunk(db.Model):
+    """Stores chunked transcription segments for efficient retrieval and embedding."""
+    id = db.Column(db.Integer, primary_key=True)
+    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    chunk_index = db.Column(db.Integer, nullable=False)  # Order within the recording
+    content = db.Column(db.Text, nullable=False)  # The actual text chunk
+    start_time = db.Column(db.Float, nullable=True)  # Start time in seconds (if available)
+    end_time = db.Column(db.Float, nullable=True)  # End time in seconds (if available)
+    speaker_name = db.Column(db.String(100), nullable=True)  # Speaker for this chunk
+    embedding = db.Column(db.LargeBinary, nullable=True)  # Stored as binary vector
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    recording = db.relationship('Recording', backref=db.backref('chunks', lazy=True, cascade='all, delete-orphan'))
+    user = db.relationship('User', backref=db.backref('transcript_chunks', lazy=True, cascade='all, delete-orphan'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'recording_id': self.recording_id,
+            'chunk_index': self.chunk_index,
+            'content': self.content,
+            'start_time': self.start_time,
+            'end_time': self.end_time,
+            'speaker_name': self.speaker_name,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class InquireSession(db.Model):
+    """Tracks inquire mode sessions and their filtering criteria."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    session_name = db.Column(db.String(200), nullable=True)  # Optional user-defined name
+    
+    # Filter criteria (JSON stored as text)
+    filter_tags = db.Column(db.Text, nullable=True)  # JSON array of tag IDs
+    filter_speakers = db.Column(db.Text, nullable=True)  # JSON array of speaker names
+    filter_date_from = db.Column(db.Date, nullable=True)
+    filter_date_to = db.Column(db.Date, nullable=True)
+    filter_recording_ids = db.Column(db.Text, nullable=True)  # JSON array of specific recording IDs
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('inquire_sessions', lazy=True, cascade='all, delete-orphan'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'session_name': self.session_name,
+            'filter_tags': json.loads(self.filter_tags) if self.filter_tags else [],
+            'filter_speakers': json.loads(self.filter_speakers) if self.filter_speakers else [],
+            'filter_date_from': self.filter_date_from.isoformat() if self.filter_date_from else None,
+            'filter_date_to': self.filter_date_to.isoformat() if self.filter_date_to else None,
+            'filter_recording_ids': json.loads(self.filter_recording_ids) if self.filter_recording_ids else [],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_used': self.last_used.isoformat() if self.last_used else None
+        }
+
 # --- Forms for Authentication ---
 # --- Custom Password Validator ---
 def password_check(form, field):
@@ -785,6 +1183,26 @@ def delete_share(share_id):
     db.session.delete(share)
     db.session.commit()
     return jsonify({'success': True})
+
+# --- System Info API Endpoint ---
+@app.route('/api/system/info', methods=['GET'])
+def get_system_info():
+    """Get system information including version and model details."""
+    try:
+        # Use the same version detection logic as startup
+        version = get_version()
+        
+        return jsonify({
+            'version': version,
+            'llm_endpoint': TEXT_MODEL_BASE_URL,
+            'llm_model': TEXT_MODEL_NAME,
+            'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
+            'asr_enabled': USE_ASR_ENDPOINT,
+            'asr_endpoint': ASR_BASE_URL if USE_ASR_ENDPOINT else None
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting system info: {e}")
+        return jsonify({'error': 'Unable to retrieve system information'}), 500
 
 # --- Tag API Endpoints ---
 @app.route('/api/tags', methods=['GET'])
@@ -1040,6 +1458,64 @@ with app.app_context():
                 setting_type='integer'
             )
             app.logger.info("Initialized default max_file_size_mb setting")
+        
+        # Process existing recordings for inquire mode (chunk and embed them)
+        # Only run if inquire mode is enabled
+        if ENABLE_INQUIRE_MODE:
+            # Use a file lock to prevent multiple workers from running this simultaneously
+            import fcntl
+            import tempfile
+            lock_file_path = os.path.join(tempfile.gettempdir(), 'inquire_migration.lock')
+            
+            try:
+                with open(lock_file_path, 'w') as lock_file:
+                    # Try to acquire exclusive lock (non-blocking)
+                    try:
+                        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        app.logger.info("Acquired migration lock, checking for existing recordings that need chunking for inquire mode...")
+                        
+                        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
+                        recordings_needing_processing = []
+                        
+                        for recording in completed_recordings:
+                            if recording.transcription:  # Has transcription
+                                chunk_count = TranscriptChunk.query.filter_by(recording_id=recording.id).count()
+                                if chunk_count == 0:  # No chunks yet
+                                    recordings_needing_processing.append(recording)
+                        
+                        if recordings_needing_processing:
+                            app.logger.info(f"Found {len(recordings_needing_processing)} recordings that need chunking for inquire mode")
+                            app.logger.info("Processing first 10 recordings automatically. Use admin API or migration script for remaining recordings.")
+                            
+                            # Process first 10 recordings automatically to avoid long startup times
+                            batch_size = min(10, len(recordings_needing_processing))
+                            processed = 0
+                            
+                            for i in range(batch_size):
+                                recording = recordings_needing_processing[i]
+                                try:
+                                    success = process_recording_chunks(recording.id)
+                                    if success:
+                                        processed += 1
+                                        app.logger.info(f"Processed chunks for recording: {recording.title} ({recording.id})")
+                                except Exception as e:
+                                    app.logger.warning(f"Failed to process chunks for recording {recording.id}: {e}")
+                            
+                            remaining = len(recordings_needing_processing) - processed
+                            if remaining > 0:
+                                app.logger.info(f"Successfully processed {processed} recordings. {remaining} recordings remaining.")
+                                app.logger.info("Use the admin migration API or run 'python migrate_existing_recordings.py' to process remaining recordings.")
+                            else:
+                                app.logger.info(f"Successfully processed all {processed} recordings for inquire mode.")
+                        else:
+                            app.logger.info("All existing recordings are already processed for inquire mode.")
+                        
+                    except BlockingIOError:
+                        app.logger.info("Migration already running in another worker, skipping...")
+                    
+            except Exception as e:
+                app.logger.warning(f"Error during existing recordings migration: {e}")
+                app.logger.info("Existing recordings can be migrated later using the admin API or migration script.")
             
     except Exception as e:
         app.logger.error(f"Error during database migration: {e}")
@@ -1068,6 +1544,7 @@ except Exception as client_init_e:
 # Store details for the transcription client (potentially different)
 transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
 transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openrouter.ai/api/v1")
+
 
 # ASR endpoint configuration
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
@@ -1098,7 +1575,30 @@ chunking_service = AudioChunkingService(
     overlap_seconds=CHUNK_OVERLAP_SECONDS
 ) if ENABLE_CHUNKING else None
 
-app.logger.info(f"Using OpenRouter model for summaries: {TEXT_MODEL_NAME}")
+# Get and log version information at startup
+def get_version():
+    # Try reading VERSION file first (works in Docker)
+    try:
+        with open('VERSION', 'r') as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        pass
+    
+    # Fall back to git tags (works in development)
+    try:
+        import subprocess
+        return subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], 
+                                     stderr=subprocess.DEVNULL).decode().strip()
+    except:
+        pass
+    
+    # Final fallback
+    return "unknown"
+
+version = get_version()
+
+app.logger.info(f"=== Speakr {version} Starting Up ===")
+app.logger.info(f"Using LLM endpoint: {TEXT_MODEL_BASE_URL} with model: {TEXT_MODEL_NAME}")
 app.logger.info(f"Using Whisper API at: {transcription_base_url}")
 if USE_ASR_ENDPOINT:
     app.logger.info(f"ASR endpoint is enabled at: {ASR_BASE_URL}")
@@ -1237,6 +1737,13 @@ Title:"""
         recording.status = 'COMPLETED'
         recording.completed_at = datetime.utcnow()
         db.session.commit()
+        
+        # Process chunks for semantic search after completion (if inquire mode is enabled)
+        if ENABLE_INQUIRE_MODE:
+            try:
+                process_recording_chunks(recording_id)
+            except Exception as e:
+                app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
 
 def generate_summary_only_task(app_context, recording_id):
     """Generates only a summary for a recording (no title, no JSON response).
@@ -1307,12 +1814,15 @@ def generate_summary_only_task(app_context, recording_id):
             user_summary_prompt = recording.owner.summary_prompt
             user_output_language = recording.owner.output_language
         
+        # Format transcription for LLM (convert JSON to clean text format like clipboard copy)
+        formatted_transcription = format_transcription_for_llm(recording.transcription)
+        
         # Get configurable transcript length limit
         transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
         if transcript_limit == -1:
-            transcript_text = recording.transcription
+            transcript_text = formatted_transcription
         else:
-            transcript_text = recording.transcription[:transcript_limit]
+            transcript_text = formatted_transcription[:transcript_limit]
         
         language_directive = f"Please provide the summary in {user_output_language}." if user_output_language else ""
         
@@ -1369,6 +1879,13 @@ Respond with only the summary in Markdown format. Do NOT wrap your response in m
         if user_output_language:
             system_message_content += f" Ensure your response is in {user_output_language}."
             
+        # Debug logging: Log the complete prompt being sent to the LLM
+        app.logger.info(f"Sending summarization prompt to LLM (length: {len(prompt_text)} chars). Set LOG_LEVEL=DEBUG to see full prompt details.")
+        app.logger.debug(f"=== SUMMARIZATION DEBUG for recording {recording_id} ===")
+        app.logger.debug(f"System message: {system_message_content}")
+        app.logger.debug(f"User prompt (length: {len(prompt_text)} chars):\n{prompt_text}")
+        app.logger.debug(f"=== END SUMMARIZATION DEBUG for recording {recording_id} ===")
+            
         try:
             completion = client.chat.completions.create(
                 model=TEXT_MODEL_NAME,
@@ -1405,6 +1922,51 @@ Respond with only the summary in Markdown format. Do NOT wrap your response in m
             recording.status = 'FAILED'
             db.session.commit()
 
+def extract_audio_from_video(video_filepath, output_format='wav', cleanup_original=True):
+    """Extract audio from video containers using FFmpeg."""
+    try:
+        # Generate output filename with audio extension
+        base_filepath, file_ext = os.path.splitext(video_filepath)
+        temp_audio_filepath = f"{base_filepath}_audio_temp.{output_format}"
+        final_audio_filepath = f"{base_filepath}_audio.{output_format}"
+        
+        app.logger.info(f"Extracting audio from video: {video_filepath} -> {temp_audio_filepath}")
+        
+        # Extract audio using FFmpeg - optimized for transcription
+        subprocess.run([
+            'ffmpeg', '-i', video_filepath, '-y',
+            '-vn',  # No video
+            '-acodec', 'pcm_s16le',  # Uncompressed audio for best quality
+            '-ar', '16000',  # 16kHz sample rate (good for speech)
+            '-ac', '1',  # Mono
+            temp_audio_filepath
+        ], check=True, capture_output=True, text=True)
+        
+        app.logger.info(f"Successfully extracted audio to {temp_audio_filepath}")
+        
+        # Rename temp file to final filename
+        os.rename(temp_audio_filepath, final_audio_filepath)
+        
+        # Clean up original video file if requested
+        if cleanup_original:
+            try:
+                os.remove(video_filepath)
+                app.logger.info(f"Cleaned up original video file: {video_filepath}")
+            except Exception as e:
+                app.logger.warning(f"Failed to clean up original video file {video_filepath}: {str(e)}")
+        
+        return final_audio_filepath, f'audio/{output_format}'
+        
+    except subprocess.CalledProcessError as e:
+        app.logger.error(f"FFmpeg audio extraction failed for {video_filepath}: {e.stderr}")
+        raise Exception(f"Audio extraction failed: {e.stderr}")
+    except FileNotFoundError:
+        app.logger.error("FFmpeg command not found. Please ensure FFmpeg is installed and in the system's PATH.")
+        raise Exception("Audio conversion tool (FFmpeg) not found on server.")
+    except Exception as e:
+        app.logger.error(f"Error extracting audio from {video_filepath}: {str(e)}")
+        raise
+
 def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
@@ -1418,7 +1980,49 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             recording.status = 'PROCESSING'
             db.session.commit()
 
-            with open(filepath, 'rb') as audio_file:
+            # Check if we need to extract audio from video container
+            actual_filepath = filepath
+            actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+            actual_filename = original_filename
+
+            # List of video MIME types that need audio extraction
+            video_mime_types = [
+                'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+                'video/avi', 'video/x-ms-wmv', 'video/3gpp'
+            ]
+            
+            # Check if file is a video container by MIME type or extension
+            is_video = (
+                actual_content_type.startswith('video/') or 
+                actual_content_type in video_mime_types or
+                original_filename.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.3gp'))
+            )
+            
+            if is_video:
+                app.logger.info(f"Video container detected ({actual_content_type}), extracting audio...")
+                try:
+                    # Extract audio from video
+                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath, 'wav')
+                    
+                    # Update paths and MIME type for ASR processing
+                    actual_filepath = audio_filepath
+                    actual_content_type = audio_mime_type
+                    actual_filename = os.path.basename(audio_filepath)
+                    
+                    # Update recording with extracted audio path and new MIME type
+                    recording.audio_path = audio_filepath
+                    recording.mime_type = audio_mime_type
+                    db.session.commit()
+                    
+                    app.logger.info(f"Audio extracted successfully: {audio_filepath}")
+                except Exception as e:
+                    app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                    recording.status = 'FAILED'
+                    recording.error_msg = f"Audio extraction failed: {str(e)}"
+                    db.session.commit()
+                    return
+
+            with open(actual_filepath, 'rb') as audio_file:
                 url = f"{ASR_BASE_URL}/asr"
                 params = {
                     'encode': True,
@@ -1434,10 +2038,9 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 if max_speakers:
                     params['max_speakers'] = max_speakers
 
-                # Use the stored mime_type, or guess it, with a fallback.
-                content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+                content_type = actual_content_type
                 app.logger.info(f"Using MIME type {content_type} for ASR upload.")
-                files = {'audio_file': (original_filename, audio_file, content_type)}
+                files = {'audio_file': (actual_filename, audio_file, content_type)}
                 
                 with httpx.Client() as client:
                     # Set reasonable timeout to prevent hanging (30 minutes max)
@@ -1570,6 +2173,9 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             # Environment variable ASR_DIARIZE overrides user setting
             if 'ASR_DIARIZE' in os.environ:
                 diarize_setting = ASR_DIARIZE
+            elif USE_ASR_ENDPOINT:
+                # When using ASR endpoint, use the configured ASR_DIARIZE value
+                diarize_setting = ASR_DIARIZE
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
             
@@ -1662,7 +2268,42 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
 
 def transcribe_single_file(filepath, recording):
     """Transcribe a single audio file using OpenAI Whisper API."""
-    with open(filepath, 'rb') as audio_file:
+    
+    # Check if we need to extract audio from video container
+    actual_filepath = filepath
+    mime_type = recording.mime_type if recording else None
+    
+    # Detect video containers
+    is_video = False
+    if mime_type:
+        is_video = mime_type.startswith('video/')
+    else:
+        # Fallback to extension-based detection
+        is_video = filepath.lower().endswith(('.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.3gp'))
+    
+    if is_video:
+        app.logger.info(f"Video container detected for Whisper transcription, extracting audio...")
+        try:
+            # Extract audio from video
+            audio_filepath, audio_mime_type = extract_audio_from_video(filepath, 'wav')
+            actual_filepath = audio_filepath
+            
+            # Update recording with extracted audio path and new MIME type if recording exists
+            if recording:
+                recording.audio_path = audio_filepath
+                recording.mime_type = audio_mime_type
+                db.session.commit()
+            
+            app.logger.info(f"Audio extracted successfully for Whisper: {audio_filepath}")
+        except Exception as e:
+            app.logger.error(f"Failed to extract audio from video for Whisper: {str(e)}")
+            if recording:
+                recording.status = 'FAILED'
+                recording.error_msg = f"Audio extraction failed: {str(e)}"
+                db.session.commit()
+            raise Exception(f"Audio extraction failed: {str(e)}")
+    
+    with open(actual_filepath, 'rb') as audio_file:
         transcription_client = OpenAI(
             api_key=transcription_api_key,
             base_url=transcription_base_url,
@@ -2790,6 +3431,9 @@ def reprocess_transcription(recording_id):
                     max_speakers = None
             if 'ASR_DIARIZE' in os.environ:
                 diarize_setting = ASR_DIARIZE
+            elif USE_ASR_ENDPOINT:
+                # When using ASR endpoint, use the configured ASR_DIARIZE value
+                diarize_setting = ASR_DIARIZE
             else:
                 diarize_setting = recording.owner.diarize if recording.owner else False
 
@@ -2902,13 +3546,16 @@ JSON Response:"""
                     
                     language_directive = f"Please provide the title and summary in {user_output_language}." if user_output_language else ""
                     
+                    # Format transcription for LLM (convert JSON to clean text format like clipboard copy)
+                    formatted_transcription = format_transcription_for_llm(recording.transcription)
+                    
                     # Get configurable transcript length limit for reprocessing
                     transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
                     if transcript_limit == -1:
                         # No limit
-                        transcript_text = recording.transcription
+                        transcript_text = formatted_transcription
                     else:
-                        transcript_text = recording.transcription[:transcript_limit]
+                        transcript_text = formatted_transcription[:transcript_limit]
                     
                     if user_summary_prompt:
                         prompt_text = f"""Analyze the following audio transcription and generate a concise title and a summary according to the following instructions.
@@ -2933,11 +3580,14 @@ JSON Response:"""
                     if user_output_language:
                         system_message_content += f" Ensure your response (both title and summary) is in {user_output_language}."
                     
-                    # Log the request details for debugging
+                    # Debug logging: Log the complete prompt being sent to the LLM
                     app.logger.info(f"Making OpenRouter API request for summary reprocessing {recording_id}")
+                    app.logger.info(f"Sending reprocess summary prompt to LLM (length: {len(prompt_text)} chars). Set LOG_LEVEL=DEBUG to see full prompt details.")
+                    app.logger.debug(f"=== REPROCESS SUMMARY DEBUG for recording {recording_id} ===")
                     app.logger.debug(f"Model: {TEXT_MODEL_NAME}")
-                    app.logger.debug(f"System message length: {len(system_message_content)}")
-                    app.logger.debug(f"User prompt length: {len(prompt_text)}")
+                    app.logger.debug(f"System message: {system_message_content}")
+                    app.logger.debug(f"User prompt (length: {len(prompt_text)} chars):\n{prompt_text}")
+                    app.logger.debug(f"=== END REPROCESS SUMMARY DEBUG for recording {recording_id} ===")
                     
                     # Call OpenRouter API
                     completion = client.chat.completions.create(
@@ -3274,7 +3924,7 @@ def admin():
     if not current_user.is_admin:
         flash('You do not have permission to access the admin page.', 'danger')
         return redirect(url_for('index'))
-    return render_template('admin.html', title='Admin Dashboard')
+    return render_template('admin.html', title='Admin Dashboard', inquire_mode_enabled=ENABLE_INQUIRE_MODE)
 
 @app.route('/admin/users', methods=['GET'])
 @login_required
@@ -3412,6 +4062,12 @@ def admin_delete_user(user_id):
         return jsonify({'error': 'User not found'}), 404
     
     # Delete user's recordings and audio files
+    total_chunks = 0
+    if ENABLE_INQUIRE_MODE:
+        total_chunks = TranscriptChunk.query.filter_by(user_id=user_id).count()
+        if total_chunks > 0:
+            app.logger.info(f"Deleting {total_chunks} transcript chunks with embeddings for user {user_id}")
+    
     for recording in user.recordings:
         try:
             if recording.audio_path and os.path.exists(recording.audio_path):
@@ -3419,9 +4075,12 @@ def admin_delete_user(user_id):
         except Exception as e:
             app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
     
-    # Delete user
+    # Delete user (cascade will handle all related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
+    
+    if ENABLE_INQUIRE_MODE and total_chunks > 0:
+        app.logger.info(f"Successfully deleted {total_chunks} embeddings and chunks for user {user_id}")
     
     return jsonify({'success': True})
 
@@ -3594,8 +4253,18 @@ def get_csrf_token():
 @app.route('/')
 @login_required
 def index():
-    # Pass the ASR config to the template
-    return render_template('index.html', use_asr_endpoint=USE_ASR_ENDPOINT)
+    # Pass the ASR config and inquire mode config to the template
+    return render_template('index.html', use_asr_endpoint=USE_ASR_ENDPOINT, inquire_mode_enabled=ENABLE_INQUIRE_MODE)
+
+@app.route('/inquire')
+@login_required  
+def inquire():
+    # Check if inquire mode is enabled
+    if not ENABLE_INQUIRE_MODE:
+        flash('Inquire mode is not enabled on this server.', 'warning')
+        return redirect(url_for('index'))
+    # Render the inquire page with user context for theming
+    return render_template('inquire.html', use_asr_endpoint=USE_ASR_ENDPOINT, current_user=current_user)
 
 @app.route('/recordings', methods=['GET'])
 def get_recordings():
@@ -3783,7 +4452,12 @@ def upload_file():
         should_enforce_size_limit = True
         if ENABLE_CHUNKING and chunking_service and not USE_ASR_ENDPOINT:
             should_enforce_size_limit = False
-            app.logger.info(f"Chunking enabled for OpenAI Whisper API - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+            # Get chunking mode for better logging
+            mode, limit_value = chunking_service.parse_chunk_limit()
+            if mode == 'size':
+                app.logger.info(f"Size-based chunking enabled ({limit_value}MB limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+            else:
+                app.logger.info(f"Duration-based chunking enabled ({limit_value}s limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
         
         if should_enforce_size_limit and max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
@@ -3798,7 +4472,7 @@ def upload_file():
         needs_chunking_for_processing = (chunking_service and 
                                        ENABLE_CHUNKING and 
                                        not USE_ASR_ENDPOINT and
-                                       original_file_size > (CHUNK_SIZE_MB * 1024 * 1024))  # Use configured chunk size threshold
+                                       chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT))
         
         # Define supported formats based on whether chunking is needed
         if needs_chunking_for_processing:
@@ -4077,16 +4751,781 @@ def delete_recording(recording_id):
         except Exception as e:
             app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
 
-        # Delete the database record
+        # Log embeddings cleanup for Inquire Mode if enabled
+        if ENABLE_INQUIRE_MODE:
+            chunk_count = TranscriptChunk.query.filter_by(recording_id=recording_id).count()
+            if chunk_count > 0:
+                app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
+
+        # Delete the database record (cascade will handle chunks/embeddings)
         db.session.delete(recording)
         db.session.commit()
         app.logger.info(f"Deleted recording record ID: {recording_id}")
+        
+        if ENABLE_INQUIRE_MODE and chunk_count > 0:
+            app.logger.info(f"Successfully deleted embeddings and chunks for recording {recording_id}")
 
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error deleting recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred while deleting.'}), 500
+
+
+# --- Inquire Mode API Endpoints ---
+
+@app.route('/api/inquire/sessions', methods=['GET'])
+@login_required
+def get_inquire_sessions():
+    """Get all inquire sessions for the current user."""
+    if not ENABLE_INQUIRE_MODE:
+        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+    try:
+        sessions = InquireSession.query.filter_by(user_id=current_user.id).order_by(InquireSession.last_used.desc()).all()
+        return jsonify([session.to_dict() for session in sessions])
+    except Exception as e:
+        app.logger.error(f"Error getting inquire sessions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inquire/sessions', methods=['POST'])
+@login_required
+def create_inquire_session():
+    """Create a new inquire session with filters."""
+    if not ENABLE_INQUIRE_MODE:
+        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        session = InquireSession(
+            user_id=current_user.id,
+            session_name=data.get('session_name'),
+            filter_tags=json.dumps(data.get('filter_tags', [])),
+            filter_speakers=json.dumps(data.get('filter_speakers', [])),
+            filter_date_from=datetime.fromisoformat(data['filter_date_from']).date() if data.get('filter_date_from') else None,
+            filter_date_to=datetime.fromisoformat(data['filter_date_to']).date() if data.get('filter_date_to') else None,
+            filter_recording_ids=json.dumps(data.get('filter_recording_ids', []))
+        )
+        
+        db.session.add(session)
+        db.session.commit()
+        
+        return jsonify(session.to_dict()), 201
+        
+    except Exception as e:
+        app.logger.error(f"Error creating inquire session: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inquire/search', methods=['POST'])
+@login_required
+def inquire_search():
+    """Perform semantic search within filtered transcriptions."""
+    if not ENABLE_INQUIRE_MODE:
+        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        query = data.get('query')
+        if not query:
+            return jsonify({'error': 'No query provided'}), 400
+        
+        # Build filters from request
+        filters = {}
+        if data.get('filter_tags'):
+            filters['tag_ids'] = data['filter_tags']
+        if data.get('filter_speakers'):
+            filters['speaker_names'] = data['filter_speakers']
+        if data.get('filter_recording_ids'):
+            filters['recording_ids'] = data['filter_recording_ids']
+        if data.get('filter_date_from'):
+            filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
+        if data.get('filter_date_to'):
+            filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
+        
+        # Perform semantic search
+        top_k = data.get('top_k', 5)
+        chunk_results = semantic_search_chunks(current_user.id, query, filters, top_k)
+        
+        # Format results
+        results = []
+        for chunk, similarity in chunk_results:
+            result = chunk.to_dict()
+            result['similarity'] = similarity
+            result['recording_title'] = chunk.recording.title
+            result['recording_meeting_date'] = chunk.recording.meeting_date.isoformat() if chunk.recording.meeting_date else None
+            results.append(result)
+        
+        return jsonify({'results': results})
+        
+    except Exception as e:
+        app.logger.error(f"Error in inquire search: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inquire/chat', methods=['POST'])
+@login_required
+def inquire_chat():
+    """Chat with filtered transcriptions using RAG."""
+    if not ENABLE_INQUIRE_MODE:
+        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        user_message = data.get('message')
+        message_history = data.get('message_history', [])
+        
+        if not user_message:
+            return jsonify({'error': 'No message provided'}), 400
+        
+        # Check if OpenRouter client is available
+        if client is None:
+            return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
+        
+        # Build filters from request
+        filters = {}
+        if data.get('filter_tags'):
+            filters['tag_ids'] = data['filter_tags']
+        if data.get('filter_speakers'):
+            filters['speaker_names'] = data['filter_speakers']
+        if data.get('filter_recording_ids'):
+            filters['recording_ids'] = data['filter_recording_ids']
+        if data.get('filter_date_from'):
+            filters['date_from'] = datetime.fromisoformat(data['filter_date_from']).date()
+        if data.get('filter_date_to'):
+            filters['date_to'] = datetime.fromisoformat(data['filter_date_to']).date()
+        
+        # Debug logging
+        app.logger.info(f"Inquire chat - User: {current_user.username}, Query: '{user_message}', Filters: {filters}")
+        
+        # Capture user context before generator to avoid current_user being None
+        user_id = current_user.id
+        user_name = current_user.name if current_user.name else "the user"
+        user_title = current_user.job_title if current_user.job_title else "professional"
+        user_company = current_user.company if current_user.company else "their organization"
+        user_output_language = current_user.output_language if current_user.output_language else None
+        
+        # Enhanced query processing with enrichment and debugging
+        def create_status_response(status, message):
+            """Helper to create SSE status updates"""
+            return f"data: {json.dumps({'status': status, 'message': message})}\n\n"
+        
+        def generate_enhanced_chat():
+            # Explicitly reference outer scope variables
+            nonlocal user_id, user_name, user_title, user_company, user_output_language, data, filters
+            
+            try:
+                # Send initial status
+                yield create_status_response('processing', 'Analyzing your query...')
+                
+                # Step 1: Router - Determine if RAG lookup is needed
+                router_prompt = f"""Analyze this user query to determine if it requires searching through transcription content or if it's a simple formatting/clarification request.
+
+User query: "{user_message}"
+
+Respond with ONLY "RAG" if the query requires searching transcriptions (asking about content, conversations, specific information from recordings).
+Respond with ONLY "DIRECT" if it's a formatting request, clarification about previous responses, or doesn't require searching transcriptions.
+
+Examples:
+- "What did Beth say about the budget?" → RAG
+- "Can you format this in separate headings?" → DIRECT  
+- "Who mentioned the timeline?" → RAG
+- "Make this more structured" → DIRECT"""
+
+                try:
+                    router_response = client.chat.completions.create(
+                        model=TEXT_MODEL_NAME,
+                        messages=[
+                            {"role": "system", "content": "You are a query router. Respond with only 'RAG' or 'DIRECT'."},
+                            {"role": "user", "content": router_prompt}
+                        ],
+                        temperature=0.1,
+                        max_tokens=10
+                    )
+                    
+                    route_decision = router_response.choices[0].message.content.strip().upper()
+                    app.logger.info(f"Router decision: {route_decision}")
+                    
+                    if route_decision == "DIRECT":
+                        # Direct response without RAG lookup
+                        yield create_status_response('responding', 'Generating direct response...')
+                        
+                        direct_prompt = f"""You are assisting {user_name}. Respond to their request directly using proper markdown formatting.
+
+User request: "{user_message}"
+
+Previous conversation context (if relevant):
+{json.dumps(message_history[-2:] if message_history else [])}
+
+Use proper markdown formatting including headings (##), bold (**text**), bullet points (-), etc."""
+
+                        stream = client.chat.completions.create(
+                            model=TEXT_MODEL_NAME,
+                            messages=[
+                                {"role": "system", "content": direct_prompt},
+                                {"role": "user", "content": user_message}
+                            ],
+                            temperature=0.7,
+                            max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
+                            stream=True
+                        )
+                        
+                        for chunk in stream:
+                            content = chunk.choices[0].delta.content
+                            if content:
+                                yield f"data: {json.dumps({'delta': content})}\n\n"
+                        
+                        yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                        return
+                        
+                except Exception as e:
+                    app.logger.warning(f"Router failed, defaulting to RAG: {e}")
+                
+                # Step 2: Query enrichment - generate better search terms based on user intent
+                yield create_status_response('enriching', 'Enriching search query...')
+                
+                # Use captured user context for personalized search terms
+                
+                enrichment_prompt = f"""You are a query enhancement assistant. Given a user's question about transcribed meetings/recordings, generate 3-5 alternative search terms or phrases that would help find relevant content in a semantic search system.
+
+User context:
+- Name: {user_name}
+- Title: {user_title}  
+- Company: {user_company}
+
+User question: "{user_message}"
+Available context: Transcribed meetings and recordings with speakers: {', '.join(data.get('filter_speakers', []))}.
+
+Generate search terms that would find relevant content. Focus on:
+1. Key concepts and topics using the user's actual name instead of generic terms like "me"
+2. Specific terminology that might be used in their professional context
+3. Alternative phrasings of the question with proper names
+4. Related terms that might appear in transcripts from their meetings
+
+Examples:
+- Instead of "what Beth told me" use "what Beth told {user_name}"
+- Instead of "my last conversation" use "{user_name}'s conversation"
+- Use their job title and company context when relevant
+
+Respond with only a JSON array of strings: ["term1", "term2", "term3", ...]"""
+                
+                try:
+                    enrichment_response = client.chat.completions.create(
+                        model=TEXT_MODEL_NAME,
+                        messages=[
+                            {"role": "system", "content": "You are a query enhancement assistant. Respond only with valid JSON arrays of search terms."},
+                            {"role": "user", "content": enrichment_prompt}
+                        ],
+                        temperature=0.3,
+                        max_tokens=200
+                    )
+                    
+                    enriched_terms = json.loads(enrichment_response.choices[0].message.content.strip())
+                    app.logger.info(f"Enriched search terms: {enriched_terms}")
+                    
+                    # Combine original query with enriched terms for search
+                    search_queries = [user_message] + enriched_terms[:3]  # Use original + top 3 enriched terms
+                    
+                except Exception as e:
+                    app.logger.warning(f"Query enrichment failed, using original query: {e}")
+                    search_queries = [user_message]
+                
+                # Step 2: Semantic search with multiple queries
+                yield create_status_response('searching', 'Searching transcriptions...')
+                
+                all_chunks = []
+                seen_chunk_ids = set()
+                
+                for query in search_queries:
+                    with app.app_context():
+                        chunk_results = semantic_search_chunks(user_id, query, filters, 8)
+                        app.logger.info(f"Search query '{query}' returned {len(chunk_results)} chunks")
+                    
+                    for chunk, similarity in chunk_results:
+                        if chunk and chunk.id not in seen_chunk_ids:
+                            all_chunks.append((chunk, similarity))
+                            seen_chunk_ids.add(chunk.id)
+                
+                # Sort by similarity and take top results
+                all_chunks.sort(key=lambda x: x[1], reverse=True)
+                chunk_results = all_chunks[:data.get('context_chunks', 8)]
+                
+                app.logger.info(f"Final chunk results: {len(chunk_results)} chunks with similarities: {[f'{s:.3f}' for _, s in chunk_results]}")
+                
+                # Step 2.5: Auto-detect mentioned speakers and apply filters if needed
+                with app.app_context():
+                    # Get available speakers
+                    recordings_with_participants = Recording.query.filter_by(user_id=user_id).filter(
+                        Recording.participants.isnot(None),
+                        Recording.participants != ''
+                    ).all()
+                    
+                    available_speakers = set()
+                    for recording in recordings_with_participants:
+                        if recording.participants:
+                            participants = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                            available_speakers.update(participants)
+                    
+                    # Check if any speakers are mentioned in the user query but missing from results
+                    mentioned_speakers = []
+                    for speaker in available_speakers:
+                        if speaker.lower() in user_message.lower():
+                            # Check if this speaker appears in current chunk results
+                            speaker_in_results = False
+                            for chunk, _ in chunk_results:
+                                if chunk and (
+                                    (chunk.speaker_name and speaker.lower() in chunk.speaker_name.lower()) or
+                                    (chunk.recording and chunk.recording.participants and speaker.lower() in chunk.recording.participants.lower())
+                                ):
+                                    speaker_in_results = True
+                                    break
+                            
+                            if not speaker_in_results:
+                                mentioned_speakers.append(speaker)
+                    
+                    # If we found mentioned speakers not in results, automatically apply speaker filter
+                    if mentioned_speakers and not data.get('filter_speakers'):  # Only if no speaker filter already applied
+                        app.logger.info(f"Auto-detected mentioned speakers not in results: {mentioned_speakers}")
+                        yield create_status_response('filtering', f'Detected mention of {", ".join(mentioned_speakers)}, applying speaker filter...')
+                        
+                        # Apply automatic speaker filter
+                        auto_filters = filters.copy()
+                        auto_filters['speaker_names'] = mentioned_speakers
+                        
+                        # Re-run semantic search with speaker filter
+                        auto_filtered_chunks = []
+                        auto_filtered_seen_ids = set()
+                        
+                        for query in search_queries:
+                            with app.app_context():
+                                auto_filtered_results = semantic_search_chunks(user_id, query, auto_filters, data.get('context_chunks', 8))
+                                app.logger.info(f"Auto-filtered search for '{query}' with speakers {mentioned_speakers} returned {len(auto_filtered_results)} chunks")
+                            
+                            for chunk, similarity in auto_filtered_results:
+                                if chunk and chunk.id not in auto_filtered_seen_ids:
+                                    auto_filtered_chunks.append((chunk, similarity))
+                                    auto_filtered_seen_ids.add(chunk.id)
+                        
+                        # If auto-filter found better results, use them
+                        if len(auto_filtered_chunks) > 0:
+                            auto_filtered_chunks.sort(key=lambda x: x[1], reverse=True)
+                            chunk_results = auto_filtered_chunks[:data.get('context_chunks', 8)]
+                            app.logger.info(f"Auto speaker filter found {len(chunk_results)} relevant chunks, using filtered results")
+                            filters = auto_filters  # Update filters for context building
+                
+                # Step 3: Evaluate results and re-query if needed
+                if len(chunk_results) < 2:  # If we got very few results, try a broader search
+                    yield create_status_response('requerying', 'Expanding search scope...')
+                    
+                    # Try without speaker filter if it was applied
+                    broader_filters = filters.copy()
+                    if 'speaker_names' in broader_filters:
+                        del broader_filters['speaker_names']
+                        app.logger.info("Retrying search without speaker filter...")
+                        
+                        for query in search_queries:
+                            with app.app_context():
+                                chunk_results_broader = semantic_search_chunks(user_id, query, broader_filters, 6)
+                            for chunk, similarity in chunk_results_broader:
+                                if chunk and chunk.id not in seen_chunk_ids:
+                                    all_chunks.append((chunk, similarity))
+                                    seen_chunk_ids.add(chunk.id)
+                        
+                        # Re-sort and limit
+                        all_chunks.sort(key=lambda x: x[1], reverse=True)
+                        chunk_results = all_chunks[:data.get('context_chunks', 8)]
+                        app.logger.info(f"Broader search returned {len(chunk_results)} total chunks")
+                
+                # Build context from retrieved chunks
+                yield create_status_response('contextualizing', 'Building context...')
+                
+                # Group chunks by recording and organize properly
+                recording_chunks = {}
+                recording_ids_in_context = set()
+                
+                for chunk, similarity in chunk_results:
+                    if not chunk or not chunk.recording:
+                        continue
+                    recording_id = chunk.recording.id
+                    recording_ids_in_context.add(recording_id)
+                    
+                    if recording_id not in recording_chunks:
+                        recording_chunks[recording_id] = {
+                            'recording': chunk.recording,
+                            'chunks': []
+                        }
+                    
+                    recording_chunks[recording_id]['chunks'].append({
+                        'chunk': chunk,
+                        'similarity': similarity
+                    })
+                
+                # Build organized context pieces
+                context_pieces = []
+                
+                for recording_id, data in recording_chunks.items():
+                    recording = data['recording']
+                    chunks = data['chunks']
+                    
+                    # Sort chunks by their index to maintain chronological order
+                    chunks.sort(key=lambda x: x['chunk'].chunk_index)
+                    
+                    # Build recording header with complete metadata
+                    header = f"=== {recording.title} [Recording ID: {recording_id}] ==="
+                    if recording.meeting_date:
+                        header += f" ({recording.meeting_date})"
+                    
+                    # Add participants information
+                    if recording.participants:
+                        participants_list = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                        header += f"\\nParticipants: {', '.join(participants_list)}"
+                    
+                    context_piece = header + "\\n\\n"
+                    
+                    # Process chunks and detect non-continuity
+                    prev_chunk_index = None
+                    for chunk_data in chunks:
+                        chunk = chunk_data['chunk']
+                        similarity = chunk_data['similarity']
+                        
+                        # Check for non-continuity
+                        if prev_chunk_index is not None and chunk.chunk_index != prev_chunk_index + 1:
+                            context_piece += "\\n[... gap in transcript - non-consecutive chunks ...]\\n\\n"
+                        
+                        # Add speaker information if available
+                        speaker_info = ""
+                        if chunk.speaker_name:
+                            speaker_info = f"{chunk.speaker_name}: "
+                        elif chunk.start_time is not None:
+                            speaker_info = f"[{chunk.start_time:.1f}s]: "
+                        
+                        # Add timing info if available
+                        timing_info = ""
+                        if chunk.start_time is not None and chunk.end_time is not None:
+                            timing_info = f" [{chunk.start_time:.1f}s-{chunk.end_time:.1f}s]"
+                        
+                        context_piece += f"{speaker_info}{chunk.content}{timing_info} (similarity: {similarity:.3f})\\n\\n"
+                        prev_chunk_index = chunk.chunk_index
+                    
+                    context_pieces.append(context_piece)
+                
+                app.logger.info(f"Built context from {len(chunk_results)} chunks across {len(recording_chunks)} recordings")
+                
+                # Generate response
+                yield create_status_response('responding', 'Generating response...')
+                
+                # Prepare system prompt
+                language_instruction = f"Please provide all your responses in {user_output_language}." if user_output_language else ""
+                
+                # Build filter description for context
+                filter_description = []
+                with app.app_context():
+                    if data.get('filter_tags'):
+                        tag_names = [tag.name for tag in Tag.query.filter(Tag.id.in_(data['filter_tags'])).all()]
+                        filter_description.append(f"tags: {', '.join(tag_names)}")
+                if data.get('filter_speakers'):
+                    filter_description.append(f"speakers: {', '.join(data['filter_speakers'])}")
+                if data.get('filter_date_from') or data.get('filter_date_to'):
+                    date_range = []
+                    if data.get('filter_date_from'):
+                        date_range.append(f"from {data['filter_date_from']}")
+                    if data.get('filter_date_to'):
+                        date_range.append(f"to {data['filter_date_to']}")
+                    filter_description.append(f"dates: {' '.join(date_range)}")
+                
+                filter_text = f" (filtered by {'; '.join(filter_description)})" if filter_description else ""
+                
+                context_text = "\n\n".join(context_pieces) if context_pieces else "No relevant context found."
+                
+                # Get transcript length limit setting and available speakers
+                with app.app_context():
+                    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+                    
+                    # Get all available speakers for this user
+                    recordings_with_participants = Recording.query.filter_by(user_id=user_id).filter(
+                        Recording.participants.isnot(None),
+                        Recording.participants != ''
+                    ).all()
+                    
+                    available_speakers = set()
+                    for recording in recordings_with_participants:
+                        if recording.participants:
+                            participants = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                            available_speakers.update(participants)
+                    
+                    available_speakers = sorted(list(available_speakers))
+                
+                system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction}
+
+You are analyzing transcriptions from multiple recordings{filter_text}. The following context has been retrieved based on semantic similarity to the user's question:
+
+<<start context>>
+{context_text}
+<<end context>>
+
+The system has automatically analyzed your query and retrieved the most relevant context from your transcriptions. The search returned {len(chunk_results)} chunks from {len(recording_ids_in_context)} recording(s).
+
+**Available speakers in your recordings**: {', '.join(available_speakers) if available_speakers else 'None available'}
+
+**Recording IDs in context**: {list(recording_ids_in_context)}
+
+IMPORTANT FORMATTING INSTRUCTIONS:
+You MUST use proper markdown formatting in your responses. Structure your response as follows:
+
+1. **Always use markdown syntax** - Use `#`, `##`, `###` for headings, `**bold**`, `*italic*`, `-` for lists, etc.
+2. Start with a brief summary or preamble if helpful
+3. Organize information by source transcript using clear markdown headings
+4. Use the format: `## [Recording Title] - [Date if available]` 
+5. Under each heading, provide the relevant information from that specific recording using bullet points and formatting
+6. Include speaker names when referring to specific statements using **bold** formatting
+7. Use bullet points (`-`) and sub-bullets for organizing information clearly
+
+**Required Example Structure:**
+Brief summary with **key points** highlighted...
+
+## Meeting Discussion on Project Implementation - 2024-06-18
+- **Speaker A** mentioned that "there's significant support needed for implementation"
+- **Speaker B** confirmed the upcoming meeting with the technical team
+- Key topics discussed:
+  - Budget planning considerations
+  - Timeline coordination needs
+
+## Budget Planning Meeting - 2024-05-30  
+- **Speaker A** reviewed the budget document
+- **Speaker C** will approve the final version for submission
+- Important details:
+  - Budget represents approximately 1/3 of the project total
+  - Coordination needed for upcoming milestones
+
+Order your response with notes from the most recent meetings first. Always use proper markdown formatting and structure by source recording for maximum clarity and readability."""
+        
+                # Prepare messages array
+                messages = [{"role": "system", "content": system_prompt}]
+                if message_history:
+                    messages.extend(message_history)
+                messages.append({"role": "user", "content": user_message})
+
+                # Enable streaming
+                stream = client.chat.completions.create(
+                    model=TEXT_MODEL_NAME,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
+                    stream=True
+                )
+                
+                # Buffer content to detect full transcript requests
+                response_buffer = ""
+                
+                for chunk in stream:
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        response_buffer += content
+                        
+                        # Check if this is a full transcript request
+                        if response_buffer.strip().startswith("REQUEST_FULL_TRANSCRIPT:"):
+                            lines = response_buffer.split('\n')
+                            request_line = lines[0].strip()
+                            
+                            if ':' in request_line:
+                                try:
+                                    recording_id = int(request_line.split(':')[1])
+                                    app.logger.info(f"Agent requested full transcript for recording {recording_id}")
+                                    
+                                    # Fetch full transcript
+                                    yield create_status_response('fetching', f'Retrieving full transcript for recording {recording_id}...')
+                                    
+                                    with app.app_context():
+                                        recording = db.session.get(Recording, recording_id)
+                                        if recording and recording.user_id == user_id and recording.transcription:
+                                            # Apply transcript length limit
+                                            if transcript_limit == -1:
+                                                full_transcript = recording.transcription
+                                            else:
+                                                full_transcript = recording.transcription[:transcript_limit]
+                                            
+                                            # Add full transcript to context
+                                            full_context = f"{context_text}\n\n<<FULL TRANSCRIPT - {recording.title}>>\n{full_transcript}\n<<END FULL TRANSCRIPT>>"
+                                            
+                                            # Update system prompt with full transcript
+                                            updated_system_prompt = system_prompt.replace(
+                                                f"<<start context>>\n{context_text}\n<<end context>>",
+                                                f"<<start context>>\n{full_context}\n<<end context>>"
+                                            )
+                                            
+                                            # Create new messages with updated context
+                                            updated_messages = [{"role": "system", "content": updated_system_prompt}]
+                                            if message_history:
+                                                updated_messages.extend(message_history)
+                                            updated_messages.append({"role": "user", "content": user_message})
+                                            
+                                            # Generate new response with full context
+                                            yield create_status_response('responding', 'Analyzing full transcript...')
+                                            
+                                            new_stream = client.chat.completions.create(
+                                                model=TEXT_MODEL_NAME,
+                                                messages=updated_messages,
+                                                temperature=0.7,
+                                                max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
+                                                stream=True
+                                            )
+                                            
+                                            for new_chunk in new_stream:
+                                                new_content = new_chunk.choices[0].delta.content
+                                                if new_content:
+                                                    yield f"data: {json.dumps({'delta': new_content})}\n\n"
+                                            
+                                            yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                                            return
+                                        else:
+                                            # Recording not found or no permission
+                                            error_msg = f"\n\nError: Unable to access full transcript for recording {recording_id}. Recording may not exist or you may not have permission."
+                                            yield f"data: {json.dumps({'delta': error_msg})}\n\n"
+                                            yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                                            return
+                                            
+                                except (ValueError, IndexError):
+                                    app.logger.warning(f"Invalid transcript request format: {request_line}")
+                                    # Continue with normal streaming
+                                    pass
+                        
+                        # Normal streaming - yield content as it comes
+                        yield f"data: {json.dumps({'delta': content})}\n\n"
+                
+                yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                
+            except Exception as e:
+                app.logger.error(f"Error in enhanced chat generation: {e}")
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+        
+        return Response(generate_enhanced_chat(), mimetype='text/event-stream')
+        
+    except Exception as e:
+        app.logger.error(f"Error in inquire chat endpoint: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recording/<int:recording_id>/process_chunks', methods=['POST'])
+@login_required
+def process_recording_chunks_endpoint(recording_id):
+    """Process chunks for a specific recording."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+        
+        if recording.user_id != current_user.id:
+            return jsonify({'error': 'Permission denied'}), 403
+        
+        success = process_recording_chunks(recording_id)
+        if success:
+            return jsonify({'message': 'Chunks processed successfully'})
+        else:
+            return jsonify({'error': 'Failed to process chunks'}), 500
+            
+    except Exception as e:
+        app.logger.error(f"Error in process chunks endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/inquire/available_filters', methods=['GET'])
+@login_required
+def get_available_filters():
+    """Get available filter options for the user."""
+    if not ENABLE_INQUIRE_MODE:
+        return jsonify({'error': 'Inquire mode is not enabled'}), 403
+    try:
+        # Get user's tags
+        tags = Tag.query.filter_by(user_id=current_user.id).all()
+        
+        # Get unique speakers from user's recordings participants field
+        recordings_with_participants = Recording.query.filter_by(user_id=current_user.id).filter(
+            Recording.participants.isnot(None),
+            Recording.participants != ''
+        ).all()
+        
+        speaker_names = set()
+        for recording in recordings_with_participants:
+            if recording.participants:
+                # Split participants by comma and clean up
+                participants = [p.strip() for p in recording.participants.split(',') if p.strip()]
+                speaker_names.update(participants)
+        
+        speaker_names = sorted(list(speaker_names))
+        
+        # Get user's recordings for recording-specific filtering
+        recordings = Recording.query.filter_by(user_id=current_user.id).filter(
+            Recording.status == 'COMPLETED'
+        ).order_by(Recording.created_at.desc()).all()
+        
+        return jsonify({
+            'tags': [tag.to_dict() for tag in tags],
+            'speakers': speaker_names,
+            'recordings': [{'id': r.id, 'title': r.title, 'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None} for r in recordings]
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting available filters: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/migrate_recordings', methods=['POST'])
+@login_required
+def migrate_existing_recordings_api():
+    """API endpoint to migrate existing recordings for inquire mode (admin only)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized. Admin access required.'}), 403
+    
+    try:
+        # Count recordings that need processing
+        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
+        recordings_needing_processing = []
+        
+        for recording in completed_recordings:
+            if recording.transcription:  # Has transcription
+                chunk_count = TranscriptChunk.query.filter_by(recording_id=recording.id).count()
+                if chunk_count == 0:  # No chunks yet
+                    recordings_needing_processing.append(recording)
+        
+        if len(recordings_needing_processing) == 0:
+            return jsonify({
+                'success': True,
+                'message': 'All recordings are already processed for inquire mode',
+                'processed': 0,
+                'total': len(completed_recordings)
+            })
+        
+        # Process in small batches to avoid timeout
+        batch_size = min(5, len(recordings_needing_processing))  # Process max 5 at a time
+        processed = 0
+        errors = 0
+        
+        for i in range(min(batch_size, len(recordings_needing_processing))):
+            recording = recordings_needing_processing[i]
+            try:
+                success = process_recording_chunks(recording.id)
+                if success:
+                    processed += 1
+                else:
+                    errors += 1
+            except Exception as e:
+                app.logger.error(f"Error processing recording {recording.id} for migration: {e}")
+                errors += 1
+        
+        remaining = max(0, len(recordings_needing_processing) - batch_size)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Processed {processed} recordings. {remaining} remaining.',
+            'processed': processed,
+            'errors': errors,
+            'remaining': remaining,
+            'total': len(recordings_needing_processing)
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error in migration API: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 # --- Auto-Processing File Monitor Integration ---
@@ -4200,6 +5639,126 @@ def admin_update_auto_process_config():
         
     except Exception as e:
         app.logger.error(f"Error updating auto-process config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/inquire/process-recordings', methods=['POST'])
+@login_required
+def admin_process_recordings_for_inquire():
+    """Process all remaining recordings for inquire mode (chunk and embed them)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get optional parameters from request
+        data = request.json or {}
+        batch_size = data.get('batch_size', 10)
+        max_recordings = data.get('max_recordings', None)
+        
+        # Find recordings that need processing
+        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
+        recordings_needing_processing = []
+        
+        for recording in completed_recordings:
+            if recording.transcription:  # Has transcription
+                chunk_count = TranscriptChunk.query.filter_by(recording_id=recording.id).count()
+                if chunk_count == 0:  # No chunks yet
+                    recordings_needing_processing.append(recording)
+                    if max_recordings and len(recordings_needing_processing) >= max_recordings:
+                        break
+        
+        total_to_process = len(recordings_needing_processing)
+        
+        if total_to_process == 0:
+            return jsonify({
+                'success': True,
+                'message': 'All recordings are already processed for inquire mode.',
+                'processed': 0,
+                'total': 0
+            })
+        
+        # Process recordings in batches
+        processed = 0
+        failed = []
+        
+        for recording in recordings_needing_processing:
+            try:
+                success = process_recording_chunks(recording.id)
+                if success:
+                    processed += 1
+                    app.logger.info(f"Admin API: Processed chunks for recording: {recording.title} ({recording.id})")
+                else:
+                    failed.append({'id': recording.id, 'title': recording.title, 'reason': 'Processing returned false'})
+            except Exception as e:
+                app.logger.error(f"Admin API: Failed to process recording {recording.id}: {e}")
+                failed.append({'id': recording.id, 'title': recording.title, 'reason': str(e)})
+            
+            # Commit after each batch
+            if processed % batch_size == 0:
+                db.session.commit()
+        
+        # Final commit
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Processed {processed} out of {total_to_process} recordings.',
+            'processed': processed,
+            'total': total_to_process,
+            'failed': failed
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error in admin process recordings endpoint: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/inquire/status', methods=['GET'])
+@login_required  
+def admin_inquire_status():
+    """Get the status of recordings for inquire mode."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        # Count total completed recordings
+        total_completed = Recording.query.filter_by(status='COMPLETED').count()
+        
+        # Count recordings with transcriptions
+        recordings_with_transcriptions = Recording.query.filter(
+            Recording.status == 'COMPLETED',
+            Recording.transcription.isnot(None),
+            Recording.transcription != ''
+        ).count()
+        
+        # Count recordings that have been processed for inquire mode
+        processed_recordings = db.session.query(Recording.id).join(
+            TranscriptChunk, Recording.id == TranscriptChunk.recording_id
+        ).distinct().count()
+        
+        # Count recordings that still need processing
+        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
+        need_processing = 0
+        
+        for recording in completed_recordings:
+            if recording.transcription:  # Has transcription
+                chunk_count = TranscriptChunk.query.filter_by(recording_id=recording.id).count()
+                if chunk_count == 0:  # No chunks yet
+                    need_processing += 1
+        
+        # Get total chunks and embeddings count
+        total_chunks = TranscriptChunk.query.count()
+        
+        return jsonify({
+            'total_completed_recordings': total_completed,
+            'recordings_with_transcriptions': recordings_with_transcriptions,
+            'processed_for_inquire': processed_recordings,
+            'need_processing': need_processing,
+            'total_chunks': total_chunks,
+            'embeddings_available': EMBEDDINGS_AVAILABLE
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error getting inquire status: {e}")
         return jsonify({'error': str(e)}), 500
 
 with app.app_context():
