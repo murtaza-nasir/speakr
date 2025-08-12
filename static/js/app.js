@@ -29,6 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const searchQuery = ref('');
             const isLoadingRecordings = ref(true);
             const globalError = ref(null);
+            
+            // --- Pagination State ---
+            const currentPage = ref(1);
+            const perPage = ref(25);
+            const totalRecordings = ref(0);
+            const totalPages = ref(0);
+            const hasNextPage = ref(false);
+            const hasPrevPage = ref(false);
+            const isLoadingMore = ref(false);
+            const searchDebounceTimer = ref(null);
 
             // --- Enhanced Search & Organization State ---
             const sortBy = ref('created_at'); // 'created_at' or 'meeting_date'
@@ -56,6 +66,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const progressPopupMinimized = ref(false);
             const progressPopupClosed = ref(false);
             const maxFileSizeMB = ref(250); // Default value, will be updated from API
+            const chunkingEnabled = ref(true); // Default value, will be updated from API
+            const chunkingMode = ref('size'); // 'size' or 'duration', will be updated from API
+            const chunkingLimit = ref(20); // Value in MB or seconds, will be updated from API
+            const chunkingLimitDisplay = ref('20MB'); // Human readable display, will be updated from API
 
             // --- Audio Recording State ---
             const isRecording = ref(false);
@@ -191,83 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const filteredRecordings = computed(() => {
-                if (!searchQuery.value.trim()) {
-                    return recordings.value;
-                }
-                
-                const query = searchQuery.value.toLowerCase().trim();
-                
-                // Parse different search parts
-                const dateMatches = [...query.matchAll(/date:(\S+)/g)];
-                const tagMatches = [...query.matchAll(/tag:(\S+)/g)];
-                
-                // Remove special syntax from query to get regular text search
-                let textQuery = query.replace(/date:\S+/g, '').replace(/tag:\S+/g, '').trim();
-                
-                return recordings.value.filter(recording => {
-                    let matches = true;
-                    
-                    // Check date filters (ALL must match if multiple)
-                    if (dateMatches.length > 0) {
-                        const dateMatched = dateMatches.every(match => {
-                            const dateQuery = match[1];
-                            const recordingDate = getDateForSorting(recording);
-                            if (!recordingDate) return false;
-                            
-                            if (dateQuery === 'today') {
-                                return isToday(recordingDate);
-                            } else if (dateQuery === 'yesterday') {
-                                return isYesterday(recordingDate);
-                            } else if (dateQuery === 'thisweek') {
-                                return isThisWeek(recordingDate);
-                            } else if (dateQuery === 'lastweek') {
-                                return isLastWeek(recordingDate);
-                            } else if (dateQuery === 'thismonth') {
-                                return isThisMonth(recordingDate);
-                            } else if (dateQuery === 'lastmonth') {
-                                return isLastMonth(recordingDate);
-                            } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
-                                const searchDate = new Date(dateQuery + 'T00:00:00');
-                                return isSameDay(recordingDate, searchDate);
-                            } else if (/^\d{4}-\d{2}$/.test(dateQuery)) {
-                                const [year, month] = dateQuery.split('-');
-                                return recordingDate.getFullYear() === parseInt(year) && 
-                                       recordingDate.getMonth() === parseInt(month) - 1;
-                            } else if (/^\d{4}$/.test(dateQuery)) {
-                                return recordingDate.getFullYear() === parseInt(dateQuery);
-                            }
-                            return false;
-                        });
-                        matches = matches && dateMatched;
-                    }
-                    
-                    // Check tag filters (ALL must match if multiple)
-                    if (tagMatches.length > 0) {
-                        const tagMatched = tagMatches.every(match => {
-                            const tagQuery = match[1].toLowerCase();
-                            if (!recording.tags || recording.tags.length === 0) return false;
-                            return recording.tags.some(tag => 
-                                tag.name.toLowerCase().includes(tagQuery)
-                            );
-                        });
-                        matches = matches && tagMatched;
-                    }
-                    
-                    // Check text search if there's remaining text
-                    if (textQuery) {
-                        const textMatched = (
-                            (recording.title && recording.title.toLowerCase().includes(textQuery)) ||
-                            (recording.participants && recording.participants.toLowerCase().includes(textQuery)) ||
-                            (recording.transcription && recording.transcription.toLowerCase().includes(textQuery)) ||
-                            (recording.notes && recording.notes.toLowerCase().includes(textQuery)) ||
-                            (recording.tags && recording.tags.length > 0 &&
-                             recording.tags.some(tag => tag.name.toLowerCase().includes(textQuery)))
-                        );
-                        matches = matches && textMatched;
-                    }
-                    
-                    return matches;
-                });
+                return recordings.value;
             });
             
             const highlightedTranscript = computed(() => {
@@ -1835,6 +1773,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         
                         const clientId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+                        
+                        // Auto-summarization will always occur for all uploads
+                        const willAutoSummarize = true;
+                        
                         uploadQueue.value.push({
                             file: fileObject, 
                             notes: notes,
@@ -1843,7 +1785,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             status: 'queued', 
                             recordingId: null, 
                             clientId: clientId, 
-                            error: null
+                            error: null,
+                            willAutoSummarize: willAutoSummarize
                         });
                         filesAdded++;
                     } else if (fileObject) {
@@ -1952,6 +1895,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             processingProgress.value = 30;
 
                             recordings.value.unshift(data);
+                            totalRecordings.value++; // Update total count
                             pollProcessingStatus(nextFileItem);
 
                         } else {
@@ -1999,7 +1943,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 processingProgress.value = 40;
 
                 pollInterval.value = setInterval(async () => {
-                    if (!currentlyProcessingFile.value || currentlyProcessingFile.value.clientId !== fileItem.clientId || ['completed', 'failed'].includes(fileItem.status)) {
+                    // Check if we should stop polling
+                    const shouldStopPolling = !currentlyProcessingFile.value || 
+                                             currentlyProcessingFile.value.clientId !== fileItem.clientId || 
+                                             fileItem.status === 'failed' ||
+                                             (fileItem.status === 'completed' && (!fileItem.willAutoSummarize || fileItem.summaryCompleted));
+                    
+                    if (shouldStopPolling) {
                         console.log(`Polling stopped for ${fileItem.clientId} as it's no longer active or finished.`);
                         clearInterval(pollInterval.value);
                         pollInterval.value = null;
@@ -2027,19 +1977,110 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                         }
 
+                        const previousStatus = fileItem.status;
                         fileItem.status = data.status;
                         fileItem.file.name = data.title || data.original_filename;
 
                         if (data.status === 'COMPLETED') {
                             console.log(`Processing COMPLETED for ${fileItem.file.name} (ID: ${recordingId})`);
-                            processingMessage.value = 'Processing complete!';
-                            processingProgress.value = 100;
-                            fileItem.status = 'completed';
+                            
+                            // If this was previously summarizing, it's now fully complete
+                            if (previousStatus === 'summarizing') {
+                                console.log(`Auto-summary completed for ${fileItem.file.name}`);
+                                processingMessage.value = 'Processing complete!';
+                                processingProgress.value = 100;
+                                fileItem.status = 'completed';
+                                fileItem.summaryCompleted = true;
+                                
+                                // This is final completion - clean up immediately and synchronously
+                                clearInterval(pollInterval.value);
+                                pollInterval.value = null;
+                                resetCurrentFileProcessingState();
+                                isProcessingActive.value = false;
+                                
+                                // Keep completed items visible in the modal - don't remove them
+                                console.log(`Completed item ${fileItem.clientId} will remain visible in queue`);
+                                
+                                // Use immediate startProcessingQueue instead of nextTick to avoid duplication
+                                startProcessingQueue();
+                                return; // Exit early to prevent further processing
+                            }
+                            // If auto-summarization will occur and hasn't started yet, wait for it
+                            else if (fileItem.willAutoSummarize && !fileItem.hasCheckedForAutoSummary) {
+                                processingMessage.value = 'Transcription complete!';
+                                processingProgress.value = 85;
+                                fileItem.status = 'awaiting_summary'; // Use intermediate status to keep it in upload queue
+                                // Don't mark as summaryCompleted yet, continue polling
+                            }
+                            // No auto-summarization expected, complete normally
+                            else {
+                                processingMessage.value = 'Processing complete!';
+                                processingProgress.value = 100;
+                                fileItem.status = 'completed';
+                                fileItem.summaryCompleted = true; // No summary expected, so consider it complete
+                                
+                                // Complete immediately for files without auto-summarization
+                                clearInterval(pollInterval.value);
+                                pollInterval.value = null;
+                                resetCurrentFileProcessingState();
+                                isProcessingActive.value = false;
+                                
+                                // Keep completed items visible in the modal - don't remove them
+                                console.log(`Completed item ${fileItem.clientId} will remain visible in queue`);
+                                
+                                startProcessingQueue();
+                                return; // Exit early to prevent further processing
+                            }
+                            
+                            // For files with auto-summarization, mark that they've been checked and continue polling
+                            if (fileItem.willAutoSummarize && !fileItem.hasCheckedForAutoSummary) {
+                                fileItem.hasCheckedForAutoSummary = true;
+                                fileItem.autoSummaryStartTime = Date.now();
+                                console.log(`Auto-summary expected for ${fileItem.file.name}, continuing to poll...`);
+                                // Don't complete yet, continue polling
+                                return;
+                            }
+                            
+                            // If we have auto-summarization and we've been waiting, check if we should timeout
+                            if (fileItem.willAutoSummarize && fileItem.hasCheckedForAutoSummary) {
+                                const waitTime = Date.now() - fileItem.autoSummaryStartTime;
+                                const maxWaitTime = 60000; // 60 seconds
+                                
+                                if (waitTime > maxWaitTime) {
+                                    // Timeout - complete the process
+                                    console.log(`Auto-summary timeout for ${fileItem.file.name}, completing...`);
+                                    processingMessage.value = 'Processing complete!';
+                                    processingProgress.value = 100;
+                                    fileItem.status = 'completed';
+                                    fileItem.summaryCompleted = true; // Mark as complete due to timeout
+                                    clearInterval(pollInterval.value);
+                                    pollInterval.value = null;
+                                    resetCurrentFileProcessingState();
+                                    isProcessingActive.value = false;
+                                    
+                                    // Keep completed items visible in the modal - don't remove them
+                                    console.log(`Timed-out item ${fileItem.clientId} will remain visible in queue`);
+                                    
+                                    startProcessingQueue();
+                                } else {
+                                    // Still waiting for auto-summary, continue polling
+                                    return;
+                                }
+                            }
+                            
+                            // Normal completion path (no auto-summary check needed)
                             clearInterval(pollInterval.value);
                             pollInterval.value = null;
                             resetCurrentFileProcessingState();
                             isProcessingActive.value = false;
-                            await nextTick();
+                            
+                            // Remove this item from uploadQueue immediately to prevent duplication
+                            const queueIndex = uploadQueue.value.findIndex(item => item.clientId === fileItem.clientId);
+                            if (queueIndex !== -1) {
+                                uploadQueue.value.splice(queueIndex, 1);
+                                console.log(`Removed completed item ${fileItem.clientId} from queue immediately`);
+                            }
+                            
                             startProcessingQueue();
 
                         } else if (data.status === 'FAILED') {
@@ -2057,20 +2098,48 @@ document.addEventListener('DOMContentLoaded', () => {
                             startProcessingQueue();
 
                         } else if (data.status === 'PROCESSING') {
-                            // Check if this is a large file that might be using chunking
-                            // Note: This is just for UI feedback, actual chunking threshold is handled server-side
-                            const chunkThreshold = 25 * 1024 * 1024; // Default UI threshold
-                            const isLargeFile = fileItem.file.size > chunkThreshold;
-                            if (isLargeFile) {
-                                processingMessage.value = 'Processing large file (chunking may be used)...';
-                                processingProgress.value = Math.round(Math.min(70, processingProgress.value + Math.random() * 3));
+                            // Check if this file will actually use chunking based on all conditions:
+                            // 1. Chunking must be enabled in config
+                            // 2. Must NOT be using ASR endpoint (ASR handles large files natively) 
+                            // 3. For size-based: File size must exceed the limit (can determine immediately)
+                            // 4. For time-based: Can't determine client-side, but backend logs show it gets duration
+                            
+                            const couldUseChunking = chunkingEnabled.value && !useAsrEndpoint.value;
+                            
+                            if (couldUseChunking) {
+                                if (chunkingMode.value === 'size') {
+                                    // Size-based chunking: we can determine definitively
+                                    const chunkThresholdBytes = chunkingLimit.value * 1024 * 1024;
+                                    const willUseChunking = fileItem.file.size > chunkThresholdBytes;
+                                    
+                                    if (willUseChunking) {
+                                        processingMessage.value = 'Processing large file (chunking in progress)...';
+                                        // If auto-summarization will occur, cap at 70%, otherwise 80%
+                                        const maxProgress = fileItem.willAutoSummarize ? 70 : 80;
+                                        processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 3));
+                                    } else {
+                                        processingMessage.value = 'Transcription in progress...';
+                                        // If auto-summarization will occur, cap at 65%, otherwise 75%
+                                        const maxProgress = fileItem.willAutoSummarize ? 65 : 75;
+                                        processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 5));
+                                    }
+                                } else {
+                                    // Duration-based chunking: Backend determines this after getting duration
+                                    // Show a neutral processing message since we can't know client-side
+                                    processingMessage.value = 'Processing file (chunking determined server-side)...';
+                                    const maxProgress = fileItem.willAutoSummarize ? 70 : 80;
+                                    processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 3));
+                                }
                             } else {
                                 processingMessage.value = 'Transcription in progress...';
-                                processingProgress.value = Math.round(Math.min(65, processingProgress.value + Math.random() * 5));
+                                const maxProgress = fileItem.willAutoSummarize ? 65 : 75;
+                                processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 5));
                             }
                         } else if (data.status === 'SUMMARIZING') {
-                            processingMessage.value = 'Generating title & summary...';
-                            processingProgress.value = Math.round(Math.min(95, processingProgress.value + Math.random() * 5));
+                            console.log(`Auto-summary started for ${fileItem.file.name}`);
+                            processingMessage.value = 'Generating summary...';
+                            processingProgress.value = 90;
+                            fileItem.status = 'summarizing';
                         } else {
                             processingMessage.value = 'Waiting in queue...';
                             processingProgress.value = 45;
@@ -2094,24 +2163,55 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             // --- Data Loading ---
-            const loadRecordings = async () => {
+            const loadRecordings = async (page = 1, append = false, searchQuery = '') => {
                 globalError.value = null;
-                isLoadingRecordings.value = true;
+                if (!append) {
+                    isLoadingRecordings.value = true;
+                } else {
+                    isLoadingMore.value = true;
+                }
+                
                 try {
-                    const response = await fetch('/recordings');
+                    const params = new URLSearchParams({
+                        page: page.toString(),
+                        per_page: perPage.value.toString()
+                    });
+                    
+                    if (searchQuery.trim()) {
+                        params.set('q', searchQuery.trim());
+                    }
+                    
+                    const response = await fetch(`/api/recordings?${params}`);
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'Failed to load recordings');
-                    recordings.value = data;
-
-                    const lastRecordingId = localStorage.getItem('lastSelectedRecordingId');
-                    if (lastRecordingId) {
-                        const recordingToSelect = recordings.value.find(r => r.id == lastRecordingId);
-                        if (recordingToSelect) {
-                            selectRecording(recordingToSelect);
+                    
+                    // Update pagination state
+                    currentPage.value = data.pagination.page;
+                    totalRecordings.value = data.pagination.total;
+                    totalPages.value = data.pagination.total_pages;
+                    hasNextPage.value = data.pagination.has_next;
+                    hasPrevPage.value = data.pagination.has_prev;
+                    
+                    // Update recordings data
+                    if (append) {
+                        // Append to existing recordings (infinite scroll)
+                        recordings.value = [...recordings.value, ...data.recordings];
+                    } else {
+                        // Replace recordings (fresh load or search)
+                        recordings.value = data.recordings;
+                        
+                        // Try to restore last selected recording
+                        const lastRecordingId = localStorage.getItem('lastSelectedRecordingId');
+                        if (lastRecordingId && data.recordings.length > 0) {
+                            const recordingToSelect = data.recordings.find(r => r.id == lastRecordingId);
+                            if (recordingToSelect) {
+                                selectRecording(recordingToSelect);
+                            }
                         }
                     }
 
-                    const incompleteRecordings = recordings.value.filter(r => ['PENDING', 'PROCESSING', 'SUMMARIZING'].includes(r.status));
+                    // Handle incomplete recordings for processing queue
+                    const incompleteRecordings = data.recordings.filter(r => ['PENDING', 'PROCESSING', 'SUMMARIZING'].includes(r.status));
                     if (incompleteRecordings.length > 0 && !isProcessingActive.value) {
                         console.warn(`Found ${incompleteRecordings.length} incomplete recording(s) on load.`);
                         for (const recording of incompleteRecordings) {
@@ -2135,10 +2235,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     console.error('Load Recordings Error:', error);
                     setGlobalError(`Failed to load recordings: ${error.message}`);
-                    recordings.value = [];
+                    if (!append) {
+                        recordings.value = [];
+                    }
                 } finally {
                     isLoadingRecordings.value = false;
+                    isLoadingMore.value = false;
                 }
+            };
+            
+            // Load more recordings (infinite scroll)
+            const loadMoreRecordings = async () => {
+                if (!hasNextPage.value || isLoadingMore.value) return;
+                await loadRecordings(currentPage.value + 1, true, searchQuery.value);
+            };
+            
+            // Search with debouncing
+            const performSearch = async (query = '') => {
+                currentPage.value = 1;
+                await loadRecordings(1, false, query);
+            };
+            
+            // Debounced search function
+            const debouncedSearch = (query) => {
+                if (searchDebounceTimer.value) {
+                    clearTimeout(searchDebounceTimer.value);
+                }
+                searchDebounceTimer.value = setTimeout(() => {
+                    performSearch(query);
+                }, 300); // 300ms debounce
             };
 
             const loadTags = async () => {
@@ -2790,6 +2915,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!response.ok) throw new Error(data.error || 'Failed to delete recording');
 
                     recordings.value = recordings.value.filter(r => r.id !== idToDelete);
+                    totalRecordings.value--; // Update total count
 
                     const queueIndex = uploadQueue.value.findIndex(item => item.recordingId === idToDelete);
                     if (queueIndex !== -1) {
@@ -3586,12 +3712,12 @@ document.addEventListener('DOMContentLoaded', () => {
             watch(uploadQueue, (newQueue, oldQueue) => {
                 if (newQueue.length === 0 && oldQueue.length > 0 && !isProcessingActive.value) {
                     console.log("Upload queue processing finished.");
-                    setTimeout(() => progressPopupMinimized.value = true, 1000);
+                    setTimeout(() => progressPopupMinimized.value = true, 500);
                     setTimeout(() => {
                         if (completedInQueue.value === totalInQueue.value && !isProcessingActive.value) {
                             progressPopupClosed.value = true;
                         }
-                    }, 5000);
+                    }, 2000);
                 }
             }, { deep: true });
 
@@ -3676,6 +3802,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             });
+            
+            // Watch for search query changes
+            watch(searchQuery, (newQuery) => {
+                debouncedSearch(newQuery);
+            });
 
             // --- Configuration Loading ---
             const loadConfiguration = async () => {
@@ -3684,7 +3815,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (response.ok) {
                         const config = await response.json();
                         maxFileSizeMB.value = config.max_file_size_mb || 250;
-                        console.log(`Loaded max file size: ${maxFileSizeMB.value} MB`);
+                        chunkingEnabled.value = config.chunking_enabled !== undefined ? config.chunking_enabled : true;
+                        chunkingMode.value = config.chunking_mode || 'size';
+                        chunkingLimit.value = config.chunking_limit || 20;
+                        chunkingLimitDisplay.value = config.chunking_limit_display || '20MB';
+                        console.log(`Loaded configuration: max size ${maxFileSizeMB.value}MB, chunking ${chunkingEnabled.value ? 'enabled' : 'disabled'} (${chunkingLimitDisplay.value})`);
                     } else {
                         console.warn('Failed to load configuration, using default values');
                     }
@@ -3735,39 +3870,62 @@ document.addEventListener('DOMContentLoaded', () => {
                             const existingRecording = recordings.value.find(r => r.id === recording.id);
                             if (!existingRecording) {
                                 recordings.value.unshift(recording);
+                                totalRecordings.value++; // Update total count
                             }
 
-                            // Check if this recording is already in the upload queue
+                            // Check if this recording is already in the upload queue or currently being processed
                             const existingItem = uploadQueue.value.find(item => item.recordingId === recording.id);
-                            if (!existingItem) {
-                                console.log(`Found new inbox recording: ${recording.original_filename}`);
-                                // Add it to the queue to be displayed in the progress modal
-                                const inboxItem = {
-                                    file: { 
-                                        name: recording.original_filename || `Recording ${recording.id}`,
-                                        size: recording.file_size || 0
-                                    },
-                                    status: 'pending', // It's already being processed on backend
-                                    recordingId: recording.id,
-                                    clientId: `inbox-${recording.id}-${Date.now()}`,
-                                    error: null,
-                                    isReprocessing: true, // Use reprocessing logic to poll for status
-                                    reprocessType: 'transcription'
-                                };
-                                uploadQueue.value.unshift(inboxItem);
-
-                                // If nothing is currently being processed, make this the active item for the main progress bar
-                                if (!isProcessingActive.value && !currentlyProcessingFile.value) {
-                                    currentlyProcessingFile.value = inboxItem;
+                            const isCurrentlyProcessing = currentlyProcessingFile.value && currentlyProcessingFile.value.recordingId === recording.id;
+                            
+                            // Don't add if it's already in queue or being processed
+                            if (existingItem || isCurrentlyProcessing) {
+                                // Update status if the existing item status has changed
+                                if (existingItem && existingItem.status !== recording.status) {
+                                    console.log(`Updating status for existing recording ${recording.original_filename}: ${existingItem.status} -> ${recording.status}`);
                                 }
-                                
-                                // Show progress modal if it's hidden
-                                progressPopupMinimized.value = false;
-                                progressPopupClosed.value = false;
-
-                                // Start polling its status
-                                startReprocessingPoll(recording.id);
+                                return;
                             }
+                            
+                            // Only add recordings that are still processing (not completed)
+                            if (recording.status === 'COMPLETED') {
+                                console.log(`Skipping completed inbox recording: ${recording.original_filename}`);
+                                return;
+                            }
+                            
+                            console.log(`Found new inbox recording: ${recording.original_filename} (status: ${recording.status})`);
+                            
+                            // Don't add recordings that are already being handled by main processing  
+                            if (recording.status === 'SUMMARIZING' && isProcessingActive.value) {
+                                console.log(`Skipping ${recording.original_filename} - already in summarization phase of main processing`);
+                                return;
+                            }
+                            
+                            // Add it to the queue to be displayed in the progress modal
+                            const inboxItem = {
+                                file: { 
+                                    name: recording.original_filename || `Recording ${recording.id}`,
+                                    size: recording.file_size || 0
+                                },
+                                status: 'pending', // It's already being processed on backend
+                                recordingId: recording.id,
+                                clientId: `inbox-${recording.id}-${Date.now()}`,
+                                error: null,
+                                isReprocessing: true, // Use reprocessing logic to poll for status
+                                reprocessType: 'transcription'
+                            };
+                            uploadQueue.value.unshift(inboxItem);
+
+                            // If nothing is currently being processed, make this the active item for the main progress bar
+                            if (!isProcessingActive.value && !currentlyProcessingFile.value) {
+                                currentlyProcessingFile.value = inboxItem;
+                            }
+                            
+                            // Show progress modal if it's hidden
+                            progressPopupMinimized.value = false;
+                            progressPopupClosed.value = false;
+
+                            // Start polling its status
+                            startReprocessingPoll(recording.id);
                         });
                     }
                 } catch (error) {
@@ -3939,7 +4097,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 // Core State
                 currentView, dragover, recordings, selectedRecording, selectedTab, searchQuery,
-                isLoadingRecordings, globalError, maxFileSizeMB, sortBy,
+                isLoadingRecordings, globalError, maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay, sortBy,
+                
+                // Pagination State
+                currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage, isLoadingMore,
                 
                 // UI State
                 browser,
@@ -3999,7 +4160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleSidebar, switchToUploadView, selectRecording,
                 handleDragOver, handleDragLeave, handleDrop, handleFileSelect, addFilesToQueue,
                 startRecording, stopRecording, uploadRecordedAudio, discardRecording,
-                loadRecordings, saveMetadata, editRecording, cancelEdit, saveEdit,
+                loadRecordings, loadMoreRecordings, performSearch, debouncedSearch, saveMetadata, editRecording, cancelEdit, saveEdit,
                 confirmDelete, cancelDelete, deleteRecording,
                 toggleEditParticipants, toggleEditMeetingDate, toggleEditSummary, cancelEditSummary, saveEditSummary, toggleEditNotes, 
                 cancelEditNotes, saveEditNotes, initializeMarkdownEditor, saveInlineEdit,

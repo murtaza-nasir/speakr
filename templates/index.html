@@ -48,19 +48,19 @@
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">
         
         <!-- Header -->
-        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
+        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
             <!-- Left side: Menu toggle and logo -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
                 <!-- Menu Toggle Button -->
                 <button @click="toggleSidebar" 
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200">
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200 flex-shrink-0 flex items-center justify-center">
                     <i class="fas fa-bars text-lg"></i>
                 </button>
                 
                 <!-- Logo and Title -->
-                <div class="flex items-center gap-3">
-                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-8 h-8">
-                    <h1 class="text-xl font-bold text-[var(--text-primary)]">Speakr</h1>
+                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
+                    <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
                 </div>
             </div>
 
@@ -69,7 +69,7 @@
                 <!-- Inquire Mode Button -->
                 {% if inquire_mode_enabled %}
                 <a href="/inquire" 
-                   class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm flex items-center gap-2 min-w-[120px] justify-center">
+                   class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
                     <i class="fas fa-search"></i>
                     <span class="hidden sm:inline">Inquire</span>
                 </a>
@@ -77,19 +77,20 @@
 
                 <!-- New Recording Button -->
                 <button @click="switchToUploadView" 
-                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-2 min-w-[120px] justify-center">
-                    <i class="fas fa-plus"></i>
-                    <span class="hidden sm:inline">New Recording</span>
+                        class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
+                    <i class="fas fa-plus mr-1"></i>New
+                    <span class="hidden sm:inline">Recording</span>
                 </button>
 
                 <!-- User menu -->
                 {% if current_user.is_authenticated %}
                 <div class="relative">
                     <button @click="isUserMenuOpen = !isUserMenuOpen" 
-                            class="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200">
+                            class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
+                            title="User Menu">
                         <i class="fas fa-user-circle text-lg"></i>
-                        <span class="hidden sm:inline">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
-                        <i class="fas fa-chevron-down text-xs"></i>
+                        <span class="hidden lg:inline text-sm">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
+                        <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
                     </button>
                     
                     <!-- User dropdown -->
@@ -98,14 +99,17 @@
                         <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
                             <i class="fas fa-cog mr-2 w-4 text-center"></i>Account Settings
                         </a>
+                        <a href="/account#tags" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                            <i class="fas fa-tags mr-2 w-4 text-center"></i>Tag Management
+                        </a>
+                        <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                            <i class="fas fa-share-alt mr-2 w-4 text-center"></i>Shared Transcripts
+                        </button>
                         {% if current_user.is_admin %}
                         <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
                             <i class="fas fa-user-shield mr-2 w-4 text-center"></i>Admin
                         </a>
                         {% endif %}
-                        <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
-                            <i class="fas fa-share-alt mr-2 w-4 text-center"></i>Shared Transcripts
-                        </button>
                         <div class="border-t border-[var(--border-primary)] my-1"></div>
                         <button @click="toggleDarkMode" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
                             <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2 w-4 text-center"></i>
@@ -197,18 +201,28 @@
                     </div>
 
                     <!-- Recordings List -->
-                    <div class="flex-1 overflow-y-auto p-4">
-                        <div v-if="isLoadingRecordings" class="text-center py-8">
+                    <div class="flex-1 overflow-y-auto p-4" 
+                         @scroll="(e) => {
+                            const element = e.target;
+                            const threshold = 100; // Load more when 100px from bottom
+                            if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                                loadMoreRecordings();
+                            }
+                         }">
+                        <div v-if="isLoadingRecordings && recordings.length === 0" class="text-center py-8">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
                             <p class="mt-2 text-[var(--text-muted)]">Loading recordings...</p>
                         </div>
                         
-                        <div v-else-if="filteredRecordings.length === 0" class="text-center py-8">
+                        <div v-else-if="recordings.length === 0 && !isLoadingRecordings" class="text-center py-8">
                             <i class="fas fa-microphone-slash text-3xl text-[var(--text-muted)] mb-3"></i>
                             <p class="text-[var(--text-muted)]">No recordings found</p>
+                            <p v-if="searchQuery.trim()" class="text-sm text-[var(--text-muted)] mt-1">
+                                Try adjusting your search or <button @click="searchQuery = ''" class="text-[var(--text-accent)] hover:underline">clear filters</button>
+                            </p>
                         </div>
                         
-                        <div v-else class="space-y-2">
+                        <div v-if="recordings.length > 0" class="space-y-2">
                             <div v-for="group in groupedRecordings" :key="group.title" class="mb-6">
                                 <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
                                     ${group.title}
@@ -292,6 +306,18 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <!-- Load More Indicator -->
+                            <div v-if="isLoadingMore" class="text-center py-4">
+                                <i class="fas fa-spinner fa-spin text-lg text-[var(--text-muted)]"></i>
+                                <p class="text-sm text-[var(--text-muted)] mt-1">Loading more recordings...</p>
+                            </div>
+                            
+                            <!-- End of Results Indicator -->
+                            <div v-else-if="!hasNextPage && totalRecordings > 0" class="text-center py-4 text-xs text-[var(--text-muted)]">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                All recordings loaded
                             </div>
                         </div>
                     </div>

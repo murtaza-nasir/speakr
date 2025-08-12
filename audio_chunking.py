@@ -104,54 +104,67 @@ class AudioChunkingService:
             logger.error(f"Error getting audio duration for {file_path}: {e}")
             return None
     
-    def convert_to_wav_and_get_info(self, file_path: str, temp_dir: str) -> Tuple[str, float, float]:
+    def convert_to_mp3_and_get_info(self, file_path: str, temp_dir: str) -> Tuple[str, float, float]:
         """
-        Convert the input file to WAV format and get its size and duration info.
+        Convert the input file to MP3 format for consistency and get its size and duration info.
         
         Args:
             file_path: Path to the source audio file
-            temp_dir: Directory to store the temporary WAV file
+            temp_dir: Directory to store the temporary MP3 file
             
         Returns:
-            Tuple of (wav_file_path, duration_seconds, size_bytes)
+            Tuple of (mp3_file_path, duration_seconds, size_bytes)
         """
         try:
-            # Generate WAV filename
+            # Generate MP3 filename
             base_name = os.path.splitext(os.path.basename(file_path))[0]
-            wav_filename = f"{base_name}_converted.wav"
-            wav_path = os.path.join(temp_dir, wav_filename)
+            mp3_filename = f"{base_name}_converted.mp3"
+            mp3_path = os.path.join(temp_dir, mp3_filename)
             
-            # Convert to 32kbps MP3 using the same settings we use for chunks
+            # Convert to 64kbps MP3 using better quality settings
             cmd = [
                 'ffmpeg', '-i', file_path,
-                '-acodec', 'mp3',
-                '-ab', '32k',
-                '-ar', '16000',
-                '-ac', '1',
+                '-codec:a', 'libmp3lame',  # Use LAME MP3 encoder explicitly
+                '-b:a', '64k',  # 64kbps bitrate for better quality
+                '-ar', '22050',  # 22.05kHz sample rate (better than 16kHz)
+                '-ac', '1',  # Mono (sufficient for speech)
+                '-compression_level', '2',  # Better compression
                 '-y',  # Overwrite output file
-                wav_path
+                mp3_path
             ]
             
-            logger.info(f"Converting {file_path} to 32kbps MP3 format for accurate chunking...")
+            logger.info(f"Converting {file_path} to 64kbps MP3 format for accurate chunking...")
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 raise ValueError(f"ffmpeg conversion failed: {result.stderr}")
             
-            if not os.path.exists(wav_path):
-                raise ValueError("WAV file was not created")
+            if not os.path.exists(mp3_path):
+                raise ValueError("MP3 file was not created")
             
-            # Get the size and duration of the converted WAV file
-            wav_size = os.path.getsize(wav_path)
-            wav_duration = self.get_audio_duration(wav_path)
+            # Get the size and duration of the converted MP3 file
+            mp3_size = os.path.getsize(mp3_path)
+            mp3_duration = self.get_audio_duration(mp3_path)
             
-            if not wav_duration:
-                raise ValueError("Could not determine WAV file duration")
+            if not mp3_duration:
+                raise ValueError("Could not determine MP3 file duration")
             
-            logger.info(f"Converted WAV: {wav_size/1024/1024:.1f}MB, {wav_duration:.1f}s")
-            return wav_path, wav_duration, wav_size
+            logger.info(f"Converted MP3: {mp3_size/1024/1024:.1f}MB, {mp3_duration:.1f}s")
+            
+            # Optionally preserve converted file for debugging (set PRESERVE_CHUNK_DEBUG=true in env)
+            if os.getenv('PRESERVE_CHUNK_DEBUG', 'false').lower() == 'true':
+                import shutil
+                # Save debug files in /data/uploads/debug/ directory
+                debug_dir = '/data/uploads/debug'
+                os.makedirs(debug_dir, exist_ok=True)
+                debug_filename = os.path.basename(mp3_path).replace('_converted', '_converted_debug')
+                debug_path = os.path.join(debug_dir, debug_filename)
+                shutil.copy2(mp3_path, debug_path)
+                logger.info(f"Debug: Preserved converted file as {debug_path}")
+            
+            return mp3_path, mp3_duration, mp3_size
             
         except Exception as e:
-            logger.error(f"Error converting file to WAV: {e}")
+            logger.error(f"Error converting file to MP3: {e}")
             raise
 
     def parse_chunk_limit(self) -> Tuple[str, float]:
@@ -256,8 +269,8 @@ class AudioChunkingService:
         """
         Split audio file into overlapping chunks.
         
-        First converts the file to WAV format to get accurate size information,
-        then calculates optimal chunk duration based on the actual WAV file size.
+        First converts the file to MP3 format to get accurate size information,
+        then calculates optimal chunk duration based on the actual MP3 file size.
         
         Args:
             file_path: Path to the source audio file
@@ -270,46 +283,46 @@ class AudioChunkingService:
         wav_path = None
         
         try:
-            # Step 1: Convert to WAV and get accurate size/duration info
-            wav_path, wav_duration, wav_size = self.convert_to_wav_and_get_info(file_path, temp_dir)
+            # Step 1: Convert to MP3 and get accurate size/duration info
+            mp3_path, mp3_duration, mp3_size = self.convert_to_mp3_and_get_info(file_path, temp_dir)
             
             # Step 2: Calculate optimal chunking strategy
-            num_chunks, chunk_duration = self.calculate_optimal_chunking(wav_size, wav_duration)
+            num_chunks, chunk_duration = self.calculate_optimal_chunking(mp3_size, mp3_duration)
             
             # If only 1 chunk needed, no actual chunking required
             if num_chunks == 1:
-                logger.info(f"File duration {wav_duration:.1f}s is within limit - no chunking needed")
+                logger.info(f"File duration {mp3_duration:.1f}s is within limit - no chunking needed")
                 # Return the single "chunk" as the whole file
                 base_name = os.path.splitext(os.path.basename(file_path))[0]
-                chunk_filename = f"{base_name}_chunk_000.wav"
+                chunk_filename = f"{base_name}_chunk_000.mp3"
                 chunk_path = os.path.join(temp_dir, chunk_filename)
                 
                 # Copy the converted file as the single chunk
                 import shutil
-                shutil.copy2(wav_path, chunk_path)
+                shutil.copy2(mp3_path, chunk_path)
                 
                 chunk_info = {
                     'index': 0,
                     'path': chunk_path,
                     'filename': chunk_filename,
                     'start_time': 0,
-                    'end_time': wav_duration,
-                    'duration': wav_duration,
-                    'size_bytes': wav_size,
-                    'size_mb': wav_size / (1024 * 1024)
+                    'end_time': mp3_duration,
+                    'duration': mp3_duration,
+                    'size_bytes': mp3_size,
+                    'size_mb': mp3_size / (1024 * 1024)
                 }
                 chunks.append(chunk_info)
-                logger.info(f"Created single chunk for entire file: {wav_duration:.1f}s")
+                logger.info(f"Created single chunk for entire file: {mp3_duration:.1f}s")
                 return chunks
             
             # Calculate step size to create exactly num_chunks with overlap
-            # Total coverage needed: wav_duration + (overlap * (num_chunks - 1))
+            # Total coverage needed: mp3_duration + (overlap * (num_chunks - 1))
             # Each chunk covers: chunk_duration
             # Step between chunks to get exactly num_chunks
             if num_chunks > 1:
-                step_duration = (wav_duration - chunk_duration) / (num_chunks - 1)
+                step_duration = (mp3_duration - chunk_duration) / (num_chunks - 1)
             else:
-                step_duration = wav_duration
+                step_duration = mp3_duration
             
             current_start = 0
             chunk_index = 0
@@ -322,7 +335,7 @@ class AudioChunkingService:
                     current_start = chunk_index * step_duration
                 
                 # Calculate end time for this chunk
-                chunk_end = min(current_start + chunk_duration, wav_duration)
+                chunk_end = min(current_start + chunk_duration, mp3_duration)
                 actual_duration = chunk_end - current_start
                 
                 # Skip very short chunks at the end (shouldn't happen with proper calculation)
@@ -332,12 +345,12 @@ class AudioChunkingService:
                 
                 # Generate chunk filename
                 base_name = os.path.splitext(os.path.basename(file_path))[0]
-                chunk_filename = f"{base_name}_chunk_{chunk_index:03d}.wav"
+                chunk_filename = f"{base_name}_chunk_{chunk_index:03d}.mp3"
                 chunk_path = os.path.join(temp_dir, chunk_filename)
                 
-                # Extract chunk from the converted WAV file (more efficient than re-converting)
+                # Extract chunk from the converted MP3 file (more efficient than re-converting)
                 cmd = [
-                    'ffmpeg', '-i', wav_path,
+                    'ffmpeg', '-i', mp3_path,
                     '-ss', str(current_start),
                     '-t', str(actual_duration),
                     '-acodec', 'copy',  # Copy codec since it's already in the right format
@@ -371,6 +384,17 @@ class AudioChunkingService:
                     
                     chunks.append(chunk_info)
                     logger.info(f"Created chunk {chunk_index}: {current_start:.1f}s-{chunk_end:.1f}s ({chunk_size/1024/1024:.1f}MB)")
+                    
+                    # Optionally preserve chunks for debugging (set PRESERVE_CHUNK_DEBUG=true in env)
+                    if os.getenv('PRESERVE_CHUNK_DEBUG', 'false').lower() == 'true':
+                        import shutil
+                        # Save debug chunks in /data/uploads/debug/ directory
+                        debug_dir = '/data/uploads/debug'
+                        os.makedirs(debug_dir, exist_ok=True)
+                        debug_filename = os.path.basename(chunk_path).replace('.mp3', '_debug.mp3')
+                        debug_path = os.path.join(debug_dir, debug_filename)
+                        shutil.copy2(chunk_path, debug_path)
+                        logger.info(f"Debug: Preserved chunk as {debug_path}")
                 else:
                     logger.error(f"Chunk file not created: {chunk_path}")
             
@@ -679,13 +703,13 @@ class AudioChunkingService:
         
         return recommendations
     
-    def cleanup_chunks(self, chunks: List[Dict[str, Any]], temp_wav_path: str = None) -> None:
+    def cleanup_chunks(self, chunks: List[Dict[str, Any]], temp_mp3_path: str = None) -> None:
         """
-        Clean up temporary chunk files and WAV file.
+        Clean up temporary chunk files and MP3 file.
         
         Args:
             chunks: List of chunk information dictionaries
-            temp_wav_path: Optional path to temporary WAV file to clean up
+            temp_mp3_path: Optional path to temporary MP3 file to clean up
         """
         for chunk in chunks:
             try:
@@ -696,13 +720,13 @@ class AudioChunkingService:
             except Exception as e:
                 logger.warning(f"Error cleaning up chunk {chunk.get('filename', 'unknown')}: {e}")
         
-        # Clean up temporary WAV file if provided
-        if temp_wav_path and os.path.exists(temp_wav_path):
+        # Clean up temporary MP3 file if provided
+        if temp_mp3_path and os.path.exists(temp_mp3_path):
             try:
-                os.remove(temp_wav_path)
-                logger.debug(f"Cleaned up temporary WAV file: {temp_wav_path}")
+                os.remove(temp_mp3_path)
+                logger.debug(f"Cleaned up temporary MP3 file: {temp_mp3_path}")
             except Exception as e:
-                logger.warning(f"Error cleaning up temporary WAV file: {e}")
+                logger.warning(f"Error cleaning up temporary MP3 file: {e}")
 
 class ChunkProcessingError(Exception):
     """Exception raised when chunk processing fails."""

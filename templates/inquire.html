@@ -121,19 +121,21 @@
          data-current-user-name="{{ current_user.name if current_user.is_authenticated else '' }}">
         
         <!-- Header -->
-        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
-            <!-- Left side: Back button and logo -->
-            <div class="flex items-center gap-4">
-                <a href="/" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200">
-                    <i class="fas fa-arrow-left text-lg"></i>
-                </a>
+        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
+            <!-- Left side: Menu and logo -->
+            <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
+                <!-- Mobile Sidebar Toggle -->
+                <button @click="isMobileSidebarOpen = !isMobileSidebarOpen" 
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200 lg:hidden flex-shrink-0 flex items-center justify-center">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
                 
-                <!-- Logo and Title -->
-                <div class="flex items-center gap-3">
-                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-8 h-8">
-                    <h1 class="text-xl font-bold text-[var(--text-primary)]">Speakr</h1>
-                    <span class="text-sm text-[var(--text-muted)] ml-2">• Inquire Mode</span>
-                </div>
+                <!-- Logo and Title (clickable to go back) -->
+                <a href="/" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
+                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+                    <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
+                    <span class="text-xs sm:text-sm text-[var(--text-muted)] hidden sm:inline">• Inquire Mode</span>
+                </a>
             </div>
 
             <!-- Right side: User menu -->
@@ -177,13 +179,32 @@
         </header>
 
         <!-- Main Content -->
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-1 flex overflow-hidden relative">
+            <!-- Mobile Sidebar Overlay -->
+            <div v-if="isMobileSidebarOpen" 
+                 @click="isMobileSidebarOpen = false"
+                 class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"></div>
+            
             <!-- Left Panel: Filters -->
-            <div class="w-80 bg-[var(--bg-secondary)] border-r border-[var(--border-primary)] flex flex-col flex-shrink-0">
-                <div class="p-4 space-y-4 flex-shrink-0">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-lg font-bold">Filters</h2>
-                        <button @click="clearInquireFilters" class="text-xs px-3 py-1 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors flex items-center gap-1">
+            <div class="w-80 bg-[var(--bg-secondary)] border-r border-[var(--border-primary)] flex flex-col flex-shrink-0 transition-transform duration-300 ease-in-out z-50"
+                 :class="[
+                     'lg:relative lg:translate-x-0', 
+                     isMobileSidebarOpen ? 'fixed inset-y-0 left-0 translate-x-0' : 'fixed inset-y-0 left-0 -translate-x-full lg:translate-x-0'
+                 ]">
+                <!-- Mobile close button -->
+                <div class="lg:hidden flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
+                    <h2 class="text-lg font-bold">Filters</h2>
+                    <button @click="isMobileSidebarOpen = false" 
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <i class="fas fa-times text-lg"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div class="p-4 space-y-4">
+                    <div class="flex items-center justify-between lg:block">
+                        <h2 class="text-lg font-bold hidden lg:block">Filters</h2>
+                        <button @click="clearInquireFilters" class="text-xs px-3 py-1 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors flex items-center gap-1 w-full lg:w-auto justify-center">
                             <i class="fas fa-times"></i> Clear All
                         </button>
                     </div>
@@ -252,8 +273,6 @@
                             </div>
                         </div>
                     </div>
-                    
-                </div>
                 
                 <!-- Recording Filters - Commented Out -->
                 <!--
@@ -274,8 +293,7 @@
                     </div>
                 -->
                 
-                <!-- Active Filters Summary -->
-                <div class="p-4">
+                    <!-- Active Filters Summary -->
                     <div v-if="hasActiveFilters" class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
                         <h4 class="text-sm font-medium mb-2 text-[var(--text-muted)] flex items-center">
                             <i class="fas fa-filter mr-2"></i>Active Filters:
@@ -292,16 +310,22 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
+                    </div><!-- End of p-4 space-y-4 div -->
+                </div><!-- End of flex-1 overflow-y-auto div -->
+            </div><!-- End of w-80 sidebar div -->
             
             <!-- Right Panel: Chat -->
-            <div class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex-1 flex flex-col overflow-hidden"
+                 :class="isMobileSidebarOpen ? 'hidden lg:flex' : 'flex'">
                 <!-- Chat Messages Area -->
                 <div ref="inquireMessagesRef" @scroll="handleScroll" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                     <!-- Welcome Message -->
                     <div v-if="inquireChatMessages.length === 0" class="text-center py-16">
-                        <i class="fas fa-search text-6xl text-[var(--text-accent)] mb-6"></i>
+                        <div class="mb-6 text-[var(--text-accent)]">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
                         <h2 class="text-2xl font-bold mb-4">Ask Questions About Your Transcriptions</h2>
                         <p class="text-[var(--text-muted)] max-w-lg mx-auto mb-6">
                             Select filters on the left to narrow down your transcriptions, then ask questions to get insights from your recordings.
@@ -406,6 +430,7 @@
                     const speakerSearchQuery = ref('');
                     
                     const isUserMenuOpen = ref(false);
+                    const isMobileSidebarOpen = ref(false);
                     
                     const availableFilters = reactive({
                         tags: [],
@@ -665,6 +690,7 @@
                         inquireMessagesRef,
                         globalError,
                         isUserMenuOpen,
+                        isMobileSidebarOpen,
                         chatProcessingStatus,
                         showProcessingStatus,
                         tagSearchQuery,

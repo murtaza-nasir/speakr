@@ -953,8 +953,7 @@
             
             // Update footer on page load
             updateFooter();
-        });
-
+        
         // Dark mode toggle functionality
         const darkModeToggle = document.getElementById('darkModeToggle');
         const darkModeIcon = document.getElementById('darkModeIcon');
@@ -1615,6 +1614,19 @@
             }
         });
         
+        // Check for URL hash and show appropriate tab
+        const urlHash = window.location.hash.substring(1); // Remove the '#' symbol
+        if (urlHash === 'tags') {
+            showTagsTab();
+        } else if (urlHash === 'shares') {
+            showSharesTab();
+        } else if (urlHash === 'about') {
+            showAboutTab();
+        } else {
+            // Default to account tab
+            showAccountTab();
+        }
+    });
     </script>
 </body>
 </html>
