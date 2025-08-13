@@ -80,7 +80,7 @@
         </header>
 
         <main class="flex-grow">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-xl shadow-lg border border-[var(--border-primary)]">
+            <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
                 <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Admin Dashboard</h2>
                 
                 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -94,28 +94,28 @@
                 {% endwith %}
                 
                 <!-- Tabs -->
-                <div class="border-b border-[var(--border-primary)] mb-6">
-                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <div class="border-b border-[var(--border-primary)] mb-6 sm:border-b">
+                    <nav class="tab-nav -mb-px flex flex-col sm:flex-row sm:space-x-8" aria-label="Tabs">
                         <button @click="activeTab = 'users'" 
-                                :class="activeTab === 'users' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            <i class="fas fa-users mr-2"></i> User Management
+                                :class="activeTab === 'users' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
+                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
+                            <i class="fas fa-users mr-2"></i><span>User Management</span>
                         </button>
                         <button @click="activeTab = 'stats'" 
-                                :class="activeTab === 'stats' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            <i class="fas fa-chart-bar mr-2"></i> System Statistics
+                                :class="activeTab === 'stats' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
+                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
+                            <i class="fas fa-chart-bar mr-2"></i><span>System Statistics</span>
                         </button>
                         <button @click="activeTab = 'settings'" 
-                                :class="activeTab === 'settings' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                            <i class="fas fa-cogs mr-2"></i> System Settings
+                                :class="activeTab === 'settings' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
+                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
+                            <i class="fas fa-cogs mr-2"></i><span>System Settings</span>
                         </button>
                         <button @click="activeTab = 'vectorstore'" 
-                                :class="activeTab === 'vectorstore' ? 'border-[var(--border-focus)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                                :class="activeTab === 'vectorstore' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
+                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm"
                                 v-if="inquireModeEnabled">
-                            <i class="fas fa-database mr-2"></i> Vector Store
+                            <i class="fas fa-database mr-2"></i><span>Vector Store</span>
                         </button>
                     </nav>
                 </div>

@@ -1,7 +1,7 @@
 {
   "id": "com.speakr.app",
   "name": "Speakr",
-  "short_name": "WhisperT",
+  "short_name": "Speakr",
   "description": "Speakr - Audio transcription and summarization",
   "start_url": "/",
   "scope": "/",

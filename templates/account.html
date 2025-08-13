@@ -81,20 +81,20 @@
         </header>
 
         <main class="flex-grow">
-            <div class="bg-[var(--bg-secondary)] p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
-                <div class="mb-6 border-b border-[var(--border-primary)]">
-                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <a href="#" id="tab-account" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-[var(--border-accent)] text-[var(--text-accent)]">
-                            Account Information
+            <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
+                <div class="mb-6 border-b border-[var(--border-primary)] sm:border-b">
+                    <nav class="tab-nav -mb-px flex flex-col sm:flex-row sm:space-x-8" aria-label="Tabs">
+                        <a href="#" id="tab-account" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b-2 sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-[var(--border-accent)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent">
+                            <i class="fas fa-user-circle mr-2"></i><span>Account Information</span>
                         </a>
-                        <a href="#" id="tab-shares" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
-                            Shared Transcripts
+                        <a href="#" id="tab-shares" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
+                            <i class="fas fa-share-alt mr-2"></i><span>Shared Transcripts</span>
                         </a>
-                        <a href="#" id="tab-tags" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
-                            Tag Management
+                        <a href="#" id="tab-tags" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
+                            <i class="fas fa-tags mr-2"></i><span>Tag Management</span>
                         </a>
-                        <a href="#" id="tab-about" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]">
-                            About
+                        <a href="#" id="tab-about" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
+                            <i class="fas fa-info-circle mr-2"></i><span>About</span>
                         </a>
                     </nav>
                 </div>
@@ -152,27 +152,6 @@
                                         <textarea name="summary_prompt" id="summary_prompt" rows="6" placeholder="Describe how you want your summaries structured. Leave blank to use the default prompt." class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or default_summary_prompt_text }}</textarea>
                                         <p class="text-xs text-[var(--text-light)] mt-1">This prompt will be used to generate the summary for your transcriptions. You can use placeholders like {{transcription}} and {{language_directive}} if needed, though the system will try to intelligently place the transcription content.</p>
                                     </div>
-                                    {% if use_asr_endpoint %}
-                                    <div>
-                                        <label for="diarize" class="flex items-center text-sm font-medium text-[var(--text-muted)]">
-                                            <input type="checkbox" name="diarize" id="diarize" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
-                                                   {% if asr_diarize_locked %}
-                                                       disabled
-                                                       {% if asr_diarize_env_value %}checked{% endif %}
-                                                   {% else %}
-                                                       {% if current_user.diarize %}checked{% endif %}
-                                                   {% endif %}>
-                                            <span class="ml-2">Enable Diarization</span>
-                                        </label>
-                                        <p class="text-xs text-[var(--text-light)] mt-1">
-                                            When using the ASR endpoint, this will enable speaker diarization.
-                                            {% if asr_diarize_locked %}
-                                                <br>
-                                                <strong class="text-[var(--text-warn-strong)]">This setting is currently locked by the environment variable <code>ASR_DIARIZE</code>.</strong>
-                                            {% endif %}
-                                        </p>
-                                    </div>
-                                    {% endif %}
                                 </div>
                             </div>
                             
@@ -711,14 +690,14 @@
             
 
             function showAccountTab() {
-                tabAccount.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabAccount.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabAccount.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabAccount.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
                 contentAccount.classList.remove('hidden');
                 contentShares.classList.add('hidden');
                 contentTags.classList.add('hidden');
@@ -726,14 +705,14 @@
             }
 
             function showSharesTab() {
-                tabShares.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabShares.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabShares.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabShares.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
                 contentShares.classList.remove('hidden');
                 contentAccount.classList.add('hidden');
                 contentTags.classList.add('hidden');
@@ -742,14 +721,14 @@
             }
 
             function showTagsTab() {
-                tabTags.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabTags.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabTags.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabTags.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
                 contentTags.classList.remove('hidden');
                 contentAccount.classList.add('hidden');
                 contentShares.classList.add('hidden');
@@ -758,14 +737,14 @@
             }
 
             function showAboutTab() {
-                tabAbout.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabAbout.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
-                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                tabAbout.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabAbout.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
                 contentAbout.classList.remove('hidden');
                 contentAccount.classList.add('hidden');
                 contentShares.classList.add('hidden');

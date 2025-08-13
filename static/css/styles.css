@@ -3245,3 +3245,44 @@ textarea[ref="recordingNotesEditor"]:focus {
         font-size: 0.875rem !important;
     }
 }
+
+/* --- Tab Navigation Responsive Styles --- */
+@media (max-width: 640px) {
+    /* Mobile tab navigation */
+    nav.tab-nav {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        border-bottom: none !important;
+        margin-bottom: 0 !important;
+        space: 0 !important;
+    }
+    
+    nav.tab-nav a,
+    nav.tab-nav button {
+        width: 100% !important;
+        text-align: left !important;
+        border-bottom: 1px solid var(--border-primary) !important;
+        border-left: 3px solid transparent !important;
+        border-right: none !important;
+        border-top: none !important;
+        padding: 0.75rem 1rem !important;
+        margin-bottom: 0 !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        white-space: nowrap !important;
+    }
+    
+    nav.tab-nav a.border-\\[var\\(--border-accent\\)\\],
+    nav.tab-nav button:has(.border-\\[var\\(--border-focus\\)\\]) {
+        border-left: 3px solid var(--border-accent) !important;
+        background-color: var(--bg-tertiary) !important;
+    }
+    
+    /* Fix spacing between elements */
+    .tab-nav > * + * {
+        margin-left: 0 !important;
+    }
+}
