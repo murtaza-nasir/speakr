@@ -182,6 +182,8 @@ This method uses the `/asr` endpoint and enables speaker identification and diar
 
 #### Option 2.1: Single Docker Compose File
 
+> **⚠️ IMPORTANT NETWORKING NOTE:** When running both containers in the same `docker-compose.yml`, containers communicate using **service names** as hostnames, NOT external IPs or localhost. Use `http://whisper-asr:9000` (the service name and internal port), NOT `http://localhost:6002` or `http://192.168.x.x:6002`.
+
 **docker-compose.yml:**
 ```yaml
 services:
@@ -190,7 +192,7 @@ services:
     image: onerahmet/openai-whisper-asr-webservice:latest-gpu
     container_name: whisper-asr-webservice
     ports:
-      - "9000:9000"
+      - "9000:9000"  # Maps host port 9000 to container port 9000
     environment:
       - ASR_MODEL=distil-large-v3
       - ASR_COMPUTE_TYPE=int8
@@ -238,6 +240,9 @@ TEXT_MODEL_NAME=openai/gpt-4o-mini
 
 # --- Transcription Service (ASR Endpoint) ---
 USE_ASR_ENDPOINT=true
+# IMPORTANT: Use container service name, not IP or localhost!
+# Correct: http://whisper-asr:9000 (service name from docker-compose.yml)
+# Wrong: http://localhost:9000, http://127.0.0.1:9000, http://192.168.x.x:9000
 ASR_BASE_URL=http://whisper-asr:9000
 # Speaker diarization is automatically enabled with ASR
 # Optional overrides (defaults shown):

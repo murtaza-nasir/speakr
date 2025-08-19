@@ -422,6 +422,135 @@ def format_transcription_for_llm(transcription_text):
         pass
     return transcription_text
 
+def clean_llm_response(text):
+    """
+    Clean LLM responses by removing thinking tags and excessive whitespace.
+    This handles responses from reasoning models that include <think> tags.
+    """
+    if not text:
+        return ""
+    
+    # Remove thinking tags and their content
+    # Handle both <think> and <thinking> tags with various closing formats
+    cleaned = re.sub(r'<think(?:ing)?>.*?</think(?:ing)?>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Also handle unclosed thinking tags (in case the model doesn't close them)
+    cleaned = re.sub(r'<think(?:ing)?>.*$', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Remove any remaining XML-like tags that might be related to thinking
+    # but preserve markdown formatting
+    cleaned = re.sub(r'<(?!/?(?:code|pre|blockquote|p|br|hr|ul|ol|li|h[1-6]|em|strong|b|i|a|img)(?:\s|>|/))[^>]+>', '', cleaned)
+    
+    # Clean up excessive whitespace while preserving intentional formatting
+    # Remove leading/trailing whitespace from each line
+    lines = cleaned.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        # Preserve lines that are part of code blocks or lists
+        if line.strip() or (len(cleaned_lines) > 0 and cleaned_lines[-1].strip().startswith(('```', '-', '*', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.'))):
+            cleaned_lines.append(line.rstrip())
+    
+    # Join lines and remove multiple consecutive blank lines
+    cleaned = '\n'.join(cleaned_lines)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    
+    # Final strip to remove leading/trailing whitespace
+    return cleaned.strip()
+
+def extract_thinking_content(text):
+    """
+    Extract thinking content from LLM responses.
+    Returns a tuple of (thinking_content, main_content).
+    """
+    if not text:
+        return ("", "")
+    
+    # Find all thinking tags and their content
+    thinking_pattern = r'<think(?:ing)?>.*?</think(?:ing)?>'
+    thinking_matches = re.findall(thinking_pattern, text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Extract the content from within the tags
+    thinking_content = ""
+    for match in thinking_matches:
+        # Remove the opening and closing tags
+        content = re.sub(r'^<think(?:ing)?>', '', match, flags=re.IGNORECASE)
+        content = re.sub(r'</think(?:ing)?>$', '', content, flags=re.IGNORECASE)
+        if thinking_content:
+            thinking_content += "\n\n"
+        thinking_content += content.strip()
+    
+    # Get the main content by removing thinking tags
+    main_content = clean_llm_response(text)
+    
+    return (thinking_content, main_content)
+
+def process_streaming_with_thinking(stream):
+    """
+    Generator that processes a streaming response and separates thinking content.
+    Yields SSE-formatted data with 'delta' for regular content and 'thinking' for thinking content.
+    """
+    content_buffer = ""
+    in_thinking = False
+    thinking_buffer = ""
+    
+    for chunk in stream:
+        content = chunk.choices[0].delta.content
+        if content:
+            content_buffer += content
+            
+            # Process the buffer to detect and handle thinking tags
+            while True:
+                if not in_thinking:
+                    # Look for opening thinking tag
+                    think_start = re.search(r'<think(?:ing)?>', content_buffer, re.IGNORECASE)
+                    if think_start:
+                        # Send any content before the thinking tag
+                        before_thinking = content_buffer[:think_start.start()]
+                        if before_thinking:
+                            yield f"data: {json.dumps({'delta': before_thinking})}\n\n"
+                        
+                        # Start capturing thinking content
+                        in_thinking = True
+                        content_buffer = content_buffer[think_start.end():]
+                        thinking_buffer = ""
+                    else:
+                        # No thinking tag found, send accumulated content
+                        if content_buffer:
+                            yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
+                        content_buffer = ""
+                        break
+                else:
+                    # We're inside a thinking tag, look for closing tag
+                    think_end = re.search(r'</think(?:ing)?>', content_buffer, re.IGNORECASE)
+                    if think_end:
+                        # Capture thinking content up to the closing tag
+                        thinking_buffer += content_buffer[:think_end.start()]
+                        
+                        # Send the thinking content as a special type
+                        if thinking_buffer.strip():
+                            yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
+                        
+                        # Continue processing after the closing tag
+                        in_thinking = False
+                        content_buffer = content_buffer[think_end.end():]
+                        thinking_buffer = ""
+                    else:
+                        # Still inside thinking tag, accumulate content
+                        thinking_buffer += content_buffer
+                        content_buffer = ""
+                        break
+    
+    # Handle any remaining content
+    if in_thinking and thinking_buffer:
+        # Unclosed thinking tag - send as thinking content
+        yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
+    elif content_buffer:
+        # Regular content
+        yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
+    
+    # Signal the end of the stream
+    yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+
 app = Flask(__name__)
 # Use environment variables or default paths for Docker compatibility
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
@@ -1459,6 +1588,28 @@ with app.app_context():
             )
             app.logger.info("Initialized default max_file_size_mb setting")
         
+        if not SystemSetting.query.filter_by(key='asr_timeout_seconds').first():
+            SystemSetting.set_setting(
+                key='asr_timeout_seconds',
+                value='1800',
+                description='Maximum time in seconds to wait for ASR transcription to complete. Default is 1800 seconds (30 minutes).',
+                setting_type='integer'
+            )
+            app.logger.info("Initialized default asr_timeout_seconds setting")
+        
+        if not SystemSetting.query.filter_by(key='admin_default_summary_prompt').first():
+            default_prompt = """Generate a comprehensive summary that includes the following sections:
+- **Key Issues Discussed**: A bulleted list of the main topics
+- **Key Decisions Made**: A bulleted list of any decisions reached
+- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+            SystemSetting.set_setting(
+                key='admin_default_summary_prompt',
+                value=default_prompt,
+                description='Default summarization prompt used when users have not set their own prompt. This serves as the base prompt for all users.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized admin_default_summary_prompt setting")
+        
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
         if ENABLE_INQUIRE_MODE:
@@ -1771,7 +1922,7 @@ Title:"""
                         raw_response = line
                         break
             
-            title = raw_response.strip() if raw_response else ""
+            title = clean_llm_response(raw_response) if raw_response else ""
             
             if title:
                 recording.title = title
@@ -1882,7 +2033,7 @@ def generate_summary_only_task(app_context, recording_id):
             system_message_content += f" Ensure your response is in {user_output_language}."
         
         # Add summarization instructions to system message
-        # Priority order: tag custom prompt > user summary prompt > default prompt
+        # Priority order: tag custom prompt > user summary prompt > admin default prompt > hardcoded fallback
         if tag_custom_prompt:
             app.logger.info(f"Using tag custom prompt for recording {recording_id}")
             system_message_content += f"\n\nSummarization Instructions:\n{tag_custom_prompt}"
@@ -1890,12 +2041,19 @@ def generate_summary_only_task(app_context, recording_id):
             app.logger.info(f"Using user custom prompt for recording {recording_id}")
             system_message_content += f"\n\nSummarization Instructions:\n{user_summary_prompt}"
         else:
-            # Default summary instructions
-            default_instructions = """Generate a comprehensive summary that includes the following sections:
+            # Get admin default prompt from system settings
+            admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)
+            if admin_default_prompt:
+                app.logger.info(f"Using admin default prompt for recording {recording_id}")
+                system_message_content += f"\n\nSummarization Instructions:\n{admin_default_prompt}"
+            else:
+                # Fallback to hardcoded default if admin hasn't set one
+                default_instructions = """Generate a comprehensive summary that includes the following sections:
 - **Key Issues Discussed**: A bulleted list of the main topics
 - **Key Decisions Made**: A bulleted list of any decisions reached
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
-            system_message_content += f"\n\nSummarization Instructions:\n{default_instructions}"
+                app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
+                system_message_content += f"\n\nSummarization Instructions:\n{default_instructions}"
         
         # Build user prompt with context information
         current_date = datetime.now().strftime("%B %d, %Y")
@@ -1954,7 +2112,7 @@ Please analyze the above transcription and generate a summary following the prov
             raw_response = completion.choices[0].message.content
             app.logger.info(f"Raw LLM response for recording {recording_id}: '{raw_response}'")
             
-            summary = raw_response.strip() if raw_response else ""
+            summary = clean_llm_response(raw_response) if raw_response else ""
             app.logger.info(f"Processed summary length for recording {recording_id}: {len(summary)} characters")
             
             if summary:
@@ -2088,108 +2246,168 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     db.session.commit()
                     return
 
-            with open(actual_filepath, 'rb') as audio_file:
-                url = f"{ASR_BASE_URL}/asr"
-                params = {
-                    'encode': True,
-                    'task': 'transcribe',
-                    'output': 'json'
-                }
-                if language:
-                    params['language'] = language
-                if diarize:
-                    params['diarize'] = diarize
-                if min_speakers:
-                    params['min_speakers'] = min_speakers
-                if max_speakers:
-                    params['max_speakers'] = max_speakers
+            # Keep track of whether we've already tried WAV conversion
+            wav_conversion_attempted = False
+            wav_converted_filepath = None
+            
+            # Retry loop for handling 500 errors with WAV conversion
+            max_attempts = 2
+            for attempt in range(max_attempts):
+                try:
+                    # Use converted WAV if available from previous attempt
+                    current_filepath = wav_converted_filepath if wav_converted_filepath else actual_filepath
+                    current_content_type = 'audio/x-wav' if wav_converted_filepath else actual_content_type
+                    current_filename = os.path.basename(current_filepath)
+                    
+                    with open(current_filepath, 'rb') as audio_file:
+                        url = f"{ASR_BASE_URL}/asr"
+                        params = {
+                            'encode': True,
+                            'task': 'transcribe',
+                            'output': 'json'
+                        }
+                        if language:
+                            params['language'] = language
+                        if diarize:
+                            params['diarize'] = diarize
+                        if min_speakers:
+                            params['min_speakers'] = min_speakers
+                        if max_speakers:
+                            params['max_speakers'] = max_speakers
 
-                content_type = actual_content_type
-                app.logger.info(f"Using MIME type {content_type} for ASR upload.")
-                files = {'audio_file': (actual_filename, audio_file, content_type)}
-                
-                with httpx.Client() as client:
-                    # Set reasonable timeout to prevent hanging (30 minutes max)
-                    timeout = httpx.Timeout(None, connect=30.0, read=1800.0, write=30.0, pool=30.0)
-                    app.logger.info(f"Sending ASR request to {url} with params: {params}")
-                    response = client.post(url, params=params, files=files, timeout=timeout)
-                    app.logger.info(f"ASR request completed with status: {response.status_code}")
-                    response.raise_for_status()
+                        content_type = current_content_type
+                        app.logger.info(f"Using MIME type {content_type} for ASR upload.")
+                        files = {'audio_file': (current_filename, audio_file, content_type)}
+                        
+                        with httpx.Client() as client:
+                            # Get configurable ASR timeout from database (default 30 minutes)
+                            asr_timeout_seconds = SystemSetting.get_setting('asr_timeout_seconds', 1800)
+                            timeout = httpx.Timeout(None, connect=30.0, read=float(asr_timeout_seconds), write=30.0, pool=30.0)
+                            app.logger.info(f"Sending ASR request to {url} with params: {params} (timeout: {asr_timeout_seconds}s)")
+                            response = client.post(url, params=params, files=files, timeout=timeout)
+                            app.logger.info(f"ASR request completed with status: {response.status_code}")
+                            response.raise_for_status()
+                            
+                            # Parse the JSON response from ASR (moved here so it's accessible)
+                            asr_response_data = response.json()
                     
-                    # Parse the JSON response from ASR
-                    asr_response_data = response.json()
+                    # If we reach here, the request was successful
+                    break
                     
-                    # Debug logging for ASR response
-                    app.logger.info(f"ASR response keys: {list(asr_response_data.keys())}")
-                    
-                    # Log the complete raw JSON response (truncated for readability)
-                    import json as json_module
-                    raw_json_str = json_module.dumps(asr_response_data, indent=2)
-                    if len(raw_json_str) > 5000:
-                        app.logger.info(f"Raw ASR response (first 5000 chars): {raw_json_str[:5000]}...")
+                except httpx.HTTPStatusError as e:
+                    # Check if it's a 500 error and we haven't tried WAV conversion yet
+                    if e.response.status_code == 500 and attempt == 0 and not wav_conversion_attempted:
+                        app.logger.warning(f"ASR returned 500 error for recording {recording_id}, attempting WAV conversion and retry...")
+                        
+                        # Convert to WAV using same parameters as reprocessing
+                        filename_lower = actual_filename.lower()
+                        if not filename_lower.endswith('.wav'):
+                            try:
+                                base_filepath, file_ext = os.path.splitext(actual_filepath)
+                                temp_wav_filepath = f"{base_filepath}_temp.wav"
+                                
+                                app.logger.info(f"Converting {actual_filename} to WAV format for retry...")
+                                subprocess.run(
+                                    ['ffmpeg', '-i', actual_filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', temp_wav_filepath],
+                                    check=True, capture_output=True, text=True
+                                )
+                                app.logger.info(f"Successfully converted {actual_filepath} to {temp_wav_filepath}")
+                                
+                                wav_converted_filepath = temp_wav_filepath
+                                wav_conversion_attempted = True
+                                # Continue to next iteration to retry with WAV
+                                continue
+                            except subprocess.CalledProcessError as conv_error:
+                                app.logger.error(f"Failed to convert to WAV: {conv_error}")
+                                # Re-raise the original HTTP error if conversion fails
+                                raise e
+                        else:
+                            # Already a WAV file, can't convert further
+                            app.logger.error(f"File is already WAV but still getting 500 error")
+                            raise e
                     else:
-                        app.logger.info(f"Raw ASR response: {raw_json_str}")
+                        # Not a 500 error or already tried conversion, propagate the error
+                        raise e
+            
+            # Clean up temporary WAV file if created
+            try:
+                if wav_converted_filepath and os.path.exists(wav_converted_filepath):
+                    os.remove(wav_converted_filepath)
+                    app.logger.info(f"Cleaned up temporary WAV file: {wav_converted_filepath}")
+            except Exception as cleanup_error:
+                app.logger.warning(f"Failed to clean up temporary WAV file: {cleanup_error}")
+            
+            # Debug logging for ASR response
+            app.logger.info(f"ASR response keys: {list(asr_response_data.keys())}")
+            
+            # Log the complete raw JSON response (truncated for readability)
+            import json as json_module
+            raw_json_str = json_module.dumps(asr_response_data, indent=2)
+            if len(raw_json_str) > 5000:
+                app.logger.info(f"Raw ASR response (first 5000 chars): {raw_json_str[:5000]}...")
+            else:
+                app.logger.info(f"Raw ASR response: {raw_json_str}")
+            
+            if 'segments' in asr_response_data:
+                app.logger.info(f"Number of segments: {len(asr_response_data['segments'])}")
+                
+                # Collect all unique speakers from the response
+                all_speakers = set()
+                segments_with_speakers = 0
+                segments_without_speakers = 0
+                
+                for segment in asr_response_data['segments']:
+                    if 'speaker' in segment and segment['speaker'] is not None:
+                        all_speakers.add(segment['speaker'])
+                        segments_with_speakers += 1
+                    else:
+                        segments_without_speakers += 1
+                
+                app.logger.info(f"Unique speakers found in raw response: {sorted(list(all_speakers))}")
+                app.logger.info(f"Segments with speakers: {segments_with_speakers}, without speakers: {segments_without_speakers}")
+                
+                # Log first few segments for debugging
+                for i, segment in enumerate(asr_response_data['segments'][:5]):
+                    segment_keys = list(segment.keys())
+                    app.logger.info(f"Segment {i} keys: {segment_keys}")
+                    app.logger.info(f"Segment {i}: speaker='{segment.get('speaker')}', text='{segment.get('text', '')[:50]}...'")
+            
+            # Simplify the JSON data
+            simplified_segments = []
+            if 'segments' in asr_response_data and isinstance(asr_response_data['segments'], list):
+                last_known_speaker = None
+                
+                for i, segment in enumerate(asr_response_data['segments']):
+                    speaker = segment.get('speaker')
+                    text = segment.get('text', '').strip()
                     
-                    if 'segments' in asr_response_data:
-                        app.logger.info(f"Number of segments: {len(asr_response_data['segments'])}")
-                        
-                        # Collect all unique speakers from the response
-                        all_speakers = set()
-                        segments_with_speakers = 0
-                        segments_without_speakers = 0
-                        
-                        for segment in asr_response_data['segments']:
-                            if 'speaker' in segment and segment['speaker'] is not None:
-                                all_speakers.add(segment['speaker'])
-                                segments_with_speakers += 1
-                            else:
-                                segments_without_speakers += 1
-                        
-                        app.logger.info(f"Unique speakers found in raw response: {sorted(list(all_speakers))}")
-                        app.logger.info(f"Segments with speakers: {segments_with_speakers}, without speakers: {segments_without_speakers}")
-                        
-                        # Log first few segments for debugging
-                        for i, segment in enumerate(asr_response_data['segments'][:5]):
-                            segment_keys = list(segment.keys())
-                            app.logger.info(f"Segment {i} keys: {segment_keys}")
-                            app.logger.info(f"Segment {i}: speaker='{segment.get('speaker')}', text='{segment.get('text', '')[:50]}...'")
+                    # If segment doesn't have a speaker, use the previous segment's speaker
+                    if speaker is None:
+                        if last_known_speaker is not None:
+                            speaker = last_known_speaker
+                            app.logger.info(f"Assigned speaker '{speaker}' to segment {i} from previous segment")
+                        else:
+                            speaker = 'UNKNOWN_SPEAKER'
+                            app.logger.warning(f"No previous speaker available for segment {i}, using UNKNOWN_SPEAKER")
+                    else:
+                        # Update the last known speaker when we have a valid one
+                        last_known_speaker = speaker
                     
-                    # Simplify the JSON data
-                    simplified_segments = []
-                    if 'segments' in asr_response_data and isinstance(asr_response_data['segments'], list):
-                        last_known_speaker = None
-                        
-                        for i, segment in enumerate(asr_response_data['segments']):
-                            speaker = segment.get('speaker')
-                            text = segment.get('text', '').strip()
-                            
-                            # If segment doesn't have a speaker, use the previous segment's speaker
-                            if speaker is None:
-                                if last_known_speaker is not None:
-                                    speaker = last_known_speaker
-                                    app.logger.info(f"Assigned speaker '{speaker}' to segment {i} from previous segment")
-                                else:
-                                    speaker = 'UNKNOWN_SPEAKER'
-                                    app.logger.warning(f"No previous speaker available for segment {i}, using UNKNOWN_SPEAKER")
-                            else:
-                                # Update the last known speaker when we have a valid one
-                                last_known_speaker = speaker
-                            
-                            simplified_segments.append({
-                                'speaker': speaker,
-                                'sentence': text,
-                                'start_time': segment.get('start'),
-                                'end_time': segment.get('end')
-                            })
-                    
-                    # Log final simplified segments count
-                    app.logger.info(f"Created {len(simplified_segments)} simplified segments")
-                    null_speaker_count = sum(1 for seg in simplified_segments if seg['speaker'] is None)
-                    if null_speaker_count > 0:
-                        app.logger.warning(f"Found {null_speaker_count} segments with null speakers in final output")
-                    
-                    # Store the simplified JSON as a string
-                    recording.transcription = json.dumps(simplified_segments)
+                    simplified_segments.append({
+                        'speaker': speaker,
+                        'sentence': text,
+                        'start_time': segment.get('start'),
+                        'end_time': segment.get('end')
+                    })
+            
+            # Log final simplified segments count
+            app.logger.info(f"Created {len(simplified_segments)} simplified segments")
+            null_speaker_count = sum(1 for seg in simplified_segments if seg['speaker'] is None)
+            if null_speaker_count > 0:
+                app.logger.warning(f"Found {null_speaker_count} segments with null speakers in final output")
+            
+            # Store the simplified JSON as a string
+            recording.transcription = json.dumps(simplified_segments)
             
             # Commit the transcription data
             db.session.commit()
@@ -2204,11 +2422,22 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
 
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"ASR processing FAILED for recording {recording_id}: {str(e)}", exc_info=True)
+            
+            # Handle timeout errors specifically
+            error_msg = str(e)
+            if "timed out" in error_msg.lower() or "timeout" in error_msg.lower():
+                asr_timeout = SystemSetting.get_setting('asr_timeout_seconds', 1800)
+                app.logger.error(f"ASR processing TIMED OUT for recording {recording_id} after {asr_timeout} seconds. Consider increasing 'asr_timeout_seconds' in Admin Dashboard > System Settings.")
+                user_error_msg = f"ASR processing timed out after {asr_timeout} seconds. The file may be too long for the current timeout setting."
+            else:
+                # For non-timeout errors, include more detail
+                app.logger.error(f"ASR processing FAILED for recording {recording_id}: {error_msg}")
+                user_error_msg = f"ASR processing failed: {error_msg}"
+            
             recording = db.session.get(Recording, recording_id)
             if recording:
                 recording.status = 'FAILED'
-                recording.transcription = f"ASR processing failed: {str(e)}"
+                recording.transcription = user_error_msg
                 db.session.commit()
 
 def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None, tag_id=None):
@@ -2779,6 +3008,160 @@ def download_summary_word(recording_id):
         app.logger.error(f"Error generating summary Word document: {e}")
         return jsonify({'error': 'Failed to generate Word document'}), 500
 
+@app.route('/recording/<int:recording_id>/download/chat', methods=['POST'])
+@login_required
+def download_chat_word(recording_id):
+    """Download chat conversation as a Word document."""
+    try:
+        from docx import Document
+        from docx.shared import Inches
+        import re
+        from io import BytesIO
+        
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+            
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+        
+        # Get chat messages from request
+        data = request.json
+        if not data or 'messages' not in data:
+            return jsonify({'error': 'No messages provided'}), 400
+        
+        messages = data['messages']
+        if not messages:
+            return jsonify({'error': 'No messages to download'}), 400
+        
+        # Create Word document
+        doc = Document()
+        
+        # Add title
+        title = doc.add_heading(f'Chat Conversation: {recording.title or "Untitled Recording"}', 0)
+        
+        # Add metadata
+        doc.add_paragraph(f'Recording Date: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        doc.add_paragraph(f'Chat Export Date: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}')
+        doc.add_paragraph('')  # Empty line
+        
+        # Add chat messages
+        for message in messages:
+            role = message.get('role', 'unknown')
+            content = message.get('content', '')
+            thinking = message.get('thinking', '')
+            
+            # Add role header
+            if role == 'user':
+                p = doc.add_paragraph()
+                p.add_run('You: ').bold = True
+            elif role == 'assistant':
+                p = doc.add_paragraph()
+                p.add_run('Assistant: ').bold = True
+            else:
+                p = doc.add_paragraph()
+                p.add_run(f'{role.title()}: ').bold = True
+            
+            # Add thinking content if present
+            if thinking and role == 'assistant':
+                p = doc.add_paragraph()
+                p.add_run('[Model Reasoning]\n').italic = True
+                p.add_run(thinking).italic = True
+                doc.add_paragraph('')  # Empty line
+            
+            # Add message content
+            # Convert markdown-like formatting
+            lines = content.split('\n')
+            current_paragraph = None
+            
+            for line in lines:
+                if line.startswith('# '):
+                    # Heading
+                    doc.add_heading(line[2:], level=1)
+                    current_paragraph = None
+                elif line.startswith('## '):
+                    # Subheading
+                    doc.add_heading(line[3:], level=2)
+                    current_paragraph = None
+                elif line.startswith('### '):
+                    # Sub-subheading
+                    doc.add_heading(line[4:], level=3)
+                    current_paragraph = None
+                elif line.startswith('- ') or line.startswith('* '):
+                    # Bullet point
+                    p = doc.add_paragraph(style='List Bullet')
+                    # Handle bold text
+                    text = line[2:]
+                    bold_pattern = r'\*\*(.*?)\*\*'
+                    parts = re.split(bold_pattern, text)
+                    for i, part in enumerate(parts):
+                        if i % 2 == 0:  # Regular text
+                            if part:
+                                p.add_run(part)
+                        else:  # Bold text
+                            if part:
+                                p.add_run(part).bold = True
+                    current_paragraph = None
+                elif re.match(r'^\d+\.', line):
+                    # Numbered list
+                    p = doc.add_paragraph(style='List Number')
+                    text = re.sub(r'^\d+\.\s*', '', line)
+                    # Handle bold text
+                    bold_pattern = r'\*\*(.*?)\*\*'
+                    parts = re.split(bold_pattern, text)
+                    for i, part in enumerate(parts):
+                        if i % 2 == 0:  # Regular text
+                            if part:
+                                p.add_run(part)
+                        else:  # Bold text
+                            if part:
+                                p.add_run(part).bold = True
+                    current_paragraph = None
+                else:
+                    # Regular paragraph
+                    if current_paragraph is None:
+                        current_paragraph = doc.add_paragraph()
+                    else:
+                        current_paragraph.add_run('\n')
+                    
+                    # Handle bold text
+                    bold_pattern = r'\*\*(.*?)\*\*'
+                    parts = re.split(bold_pattern, line)
+                    for i, part in enumerate(parts):
+                        if i % 2 == 0:  # Regular text
+                            if part:
+                                current_paragraph.add_run(part)
+                        else:  # Bold text
+                            if part:
+                                current_paragraph.add_run(part).bold = True
+            
+            doc.add_paragraph('')  # Empty line between messages
+        
+        # Save to BytesIO
+        doc_stream = BytesIO()
+        doc.save(doc_stream)
+        doc_stream.seek(0)
+        
+        # Create safe filename
+        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
+        filename = f'chat-{safe_title}.docx' if safe_title else f'chat-recording-{recording_id}.docx'
+        
+        response = send_file(
+            doc_stream,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error generating chat Word document: {e}")
+        return jsonify({'error': 'Failed to generate Word document'}), 500
+
 @app.route('/recording/<int:recording_id>/download/notes')
 @login_required  
 def download_notes_word(recording_id):
@@ -3341,14 +3724,9 @@ Additional context and notes about the meeting:
                     stream=True
                 )
                 
-                for chunk in stream:
-                    content = chunk.choices[0].delta.content
-                    if content:
-                        # Yield the content in SSE format
-                        yield f"data: {json.dumps({'delta': content})}\n\n"
-                
-                # Signal the end of the stream
-                yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                # Use helper function to process streaming with thinking tag support
+                for response in process_streaming_with_thinking(stream):
+                    yield response
 
             except Exception as e:
                 app.logger.error(f"Error during chat stream generation: {str(e)}")
@@ -3675,40 +4053,16 @@ def account():
         flash('Account details updated successfully!', 'success')
         return redirect(url_for('account'))
         
-    default_summary_prompt_text = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, any next steps. Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered.
-
-CRITICAL FORMATTING REQUIREMENTS:
-- Each **Bold Key:** value pair MUST be on its own separate line
-- Add a blank line after bold headers when followed by bullet point lists  
-- Never put multiple **Bold:** items on the same line
-- Use proper markdown with consistent line breaks
-
-Example Format:
-
-### Minutes
-
-**Case:** Wisconsin Central v. United States
-
-**Court:** U.S. Supreme Court  
-
-**Date:** Not specified
-
-**Counsel:** John Dupree (Petitioner), Cynthia Covner (Respondent)
-
-**Meeting Participants:**
-
-- Bob  
-- Alice  
-
----
-
-**1. Introduction and Overview:**
-
-- Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
-....
-### Key Issues Discussed
-....
-//and so on and so forth. Make sure not to miss any nuance or details."""
+    # Get admin default prompt from system settings
+    admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)
+    if admin_default_prompt:
+        default_summary_prompt_text = admin_default_prompt
+    else:
+        # Fallback to hardcoded default if admin hasn't set one
+        default_summary_prompt_text = """Generate a comprehensive summary that includes the following sections:
+- **Key Issues Discussed**: A bulleted list of the main topics
+- **Key Decisions Made**: A bulleted list of any decisions reached
+- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
     
     asr_diarize_locked = 'ASR_DIARIZE' in os.environ
     
@@ -5041,12 +5395,9 @@ Use proper markdown formatting including headings (##), bold (**text**), bullet 
                             stream=True
                         )
                         
-                        for chunk in stream:
-                            content = chunk.choices[0].delta.content
-                            if content:
-                                yield f"data: {json.dumps({'delta': content})}\n\n"
-                        
-                        yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                        # Use helper function to process streaming with thinking tag support
+                        for response in process_streaming_with_thinking(stream):
+                            yield response
                         return
                         
                 except Exception as e:
@@ -5386,10 +5737,17 @@ Order your response with notes from the most recent meetings first. Always use p
                 # Buffer content to detect full transcript requests
                 response_buffer = ""
                 
+                # Buffer content to detect full transcript requests
+                response_buffer = ""
+                content_buffer = ""
+                in_thinking = False
+                thinking_buffer = ""
+                
                 for chunk in stream:
                     content = chunk.choices[0].delta.content
                     if content:
                         response_buffer += content
+                        content_buffer += content
                         
                         # Check if this is a full transcript request
                         if response_buffer.strip().startswith("REQUEST_FULL_TRANSCRIPT:"):
@@ -5438,12 +5796,9 @@ Order your response with notes from the most recent meetings first. Always use p
                                                 stream=True
                                             )
                                             
-                                            for new_chunk in new_stream:
-                                                new_content = new_chunk.choices[0].delta.content
-                                                if new_content:
-                                                    yield f"data: {json.dumps({'delta': new_content})}\n\n"
-                                            
-                                            yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
+                                            # Use helper function to process streaming with thinking tag support
+                                            for response in process_streaming_with_thinking(new_stream):
+                                                yield response
                                             return
                                         else:
                                             # Recording not found or no permission
@@ -5457,8 +5812,55 @@ Order your response with notes from the most recent meetings first. Always use p
                                     # Continue with normal streaming
                                     pass
                         
-                        # Normal streaming - yield content as it comes
-                        yield f"data: {json.dumps({'delta': content})}\n\n"
+                        # Process the buffer to detect and handle thinking tags
+                        while True:
+                            if not in_thinking:
+                                # Look for opening thinking tag
+                                think_start = re.search(r'<think(?:ing)?>', content_buffer, re.IGNORECASE)
+                                if think_start:
+                                    # Send any content before the thinking tag
+                                    before_thinking = content_buffer[:think_start.start()]
+                                    if before_thinking:
+                                        yield f"data: {json.dumps({'delta': before_thinking})}\n\n"
+                                    
+                                    # Start capturing thinking content
+                                    in_thinking = True
+                                    content_buffer = content_buffer[think_start.end():]
+                                    thinking_buffer = ""
+                                else:
+                                    # No thinking tag found, send accumulated content
+                                    if content_buffer:
+                                        yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
+                                    content_buffer = ""
+                                    break
+                            else:
+                                # We're inside a thinking tag, look for closing tag
+                                think_end = re.search(r'</think(?:ing)?>', content_buffer, re.IGNORECASE)
+                                if think_end:
+                                    # Capture thinking content up to the closing tag
+                                    thinking_buffer += content_buffer[:think_end.start()]
+                                    
+                                    # Send the thinking content as a special type
+                                    if thinking_buffer.strip():
+                                        yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
+                                    
+                                    # Continue processing after the closing tag
+                                    in_thinking = False
+                                    content_buffer = content_buffer[think_end.end():]
+                                    thinking_buffer = ""
+                                else:
+                                    # Still inside thinking tag, accumulate content
+                                    thinking_buffer += content_buffer
+                                    content_buffer = ""
+                                    break
+                
+                # Handle any remaining content
+                if in_thinking and thinking_buffer:
+                    # Unclosed thinking tag - send as thinking content
+                    yield f"data: {json.dumps({'thinking': thinking_buffer.strip()})}\n\n"
+                elif content_buffer:
+                    # Regular content
+                    yield f"data: {json.dumps({'delta': content_buffer})}\n\n"
                 
                 yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
                 

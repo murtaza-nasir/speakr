@@ -3145,6 +3145,27 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             // --- Chat Functionality ---
+            // Helper function to check if chat is scrolled to bottom (within bottom 5%)
+            const isChatScrolledToBottom = () => {
+                if (!chatMessagesRef.value) return true;
+                const { scrollTop, scrollHeight, clientHeight } = chatMessagesRef.value;
+                const scrollableHeight = scrollHeight - clientHeight;
+                if (scrollableHeight <= 0) return true; // No scrolling possible
+                const scrollPercentage = scrollTop / scrollableHeight;
+                return scrollPercentage >= 0.95; // Within bottom 5%
+            };
+
+            // Helper function to scroll chat to bottom with smooth behavior
+            const scrollChatToBottom = () => {
+                if (chatMessagesRef.value) {
+                    requestAnimationFrame(() => {
+                        if (chatMessagesRef.value) {
+                            chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+                        }
+                    });
+                }
+            };
+
             const sendChatMessage = async () => {
                 if (!chatInput.value.trim() || isChatLoading.value || !selectedRecording.value || selectedRecording.value.status !== 'COMPLETED') {
                     return;
@@ -3161,9 +3182,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 isChatLoading.value = true;
 
                 await nextTick();
-                if (chatMessagesRef.value) {
-                    chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
-                }
+                // Always scroll to bottom when user sends a new message
+                scrollChatToBottom();
 
                 let assistantMessage = null;
 
@@ -3207,19 +3227,60 @@ document.addEventListener('DOMContentLoaded', () => {
                                     if (jsonStr) {
                                         try {
                                             const data = JSON.parse(jsonStr);
-                                            if (data.delta) {
+                                            if (data.thinking) {
+                                                // Check scroll position BEFORE updating content
+                                                const shouldScroll = isChatScrolledToBottom();
+                                                
                                                 if (isFirstChunk) {
                                                     isChatLoading.value = false;
-                                                    assistantMessage = reactive({ role: 'assistant', content: '', html: '' });
+                                                    assistantMessage = reactive({ 
+                                                        role: 'assistant', 
+                                                        content: '', 
+                                                        html: '',
+                                                        thinking: data.thinking,
+                                                        thinkingExpanded: false
+                                                    });
+                                                    chatMessages.value.push(assistantMessage);
+                                                    isFirstChunk = false;
+                                                } else if (assistantMessage) {
+                                                    // Append to existing thinking content
+                                                    if (assistantMessage.thinking) {
+                                                        assistantMessage.thinking += '\n\n' + data.thinking;
+                                                    } else {
+                                                        assistantMessage.thinking = data.thinking;
+                                                    }
+                                                }
+                                                
+                                                // Scroll if we were at bottom before the update
+                                                if (shouldScroll) {
+                                                    await nextTick();
+                                                    scrollChatToBottom();
+                                                }
+                                            }
+                                            if (data.delta) {
+                                                // Check scroll position BEFORE updating content
+                                                const shouldScroll = isChatScrolledToBottom();
+                                                
+                                                if (isFirstChunk) {
+                                                    isChatLoading.value = false;
+                                                    assistantMessage = reactive({ 
+                                                        role: 'assistant', 
+                                                        content: '', 
+                                                        html: '',
+                                                        thinking: '',
+                                                        thinkingExpanded: false
+                                                    });
                                                     chatMessages.value.push(assistantMessage);
                                                     isFirstChunk = false;
                                                 }
+                                                
                                                 assistantMessage.content += data.delta;
                                                 assistantMessage.html = marked.parse(assistantMessage.content);
                                                 
-                                                await nextTick();
-                                                if (chatMessagesRef.value) {
-                                                    chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+                                                // Scroll if we were at bottom before the update
+                                                if (shouldScroll) {
+                                                    await nextTick();
+                                                    scrollChatToBottom();
                                                 }
                                             }
                                             if (data.end_of_stream) {
@@ -3250,8 +3311,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } finally {
                     isChatLoading.value = false;
                     await nextTick();
-                    if (chatMessagesRef.value) {
-                        chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+                    // Final scroll only if user is at bottom
+                    if (isChatScrolledToBottom()) {
+                        scrollChatToBottom();
                     }
                 }
             };
@@ -3599,6 +3661,60 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Get filename from response headers or use default
                     const contentDisposition = response.headers.get('Content-Disposition');
                     let filename = 'notes.docx';
+                    if (contentDisposition) {
+                        const matches = /filename="(.+)"/.exec(contentDisposition);
+                        if (matches) {
+                            filename = matches[1];
+                        }
+                    }
+                    a.download = filename;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showToast('Notes downloaded successfully!', 'fa-check-circle');
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    showToast('Failed to download notes', 'fa-exclamation-circle');
+                }
+            };
+
+            const downloadChat = async () => {
+                if (!selectedRecording.value || chatMessages.value.length === 0) {
+                    showToast('No chat messages to download.', 'fa-exclamation-circle');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/download/chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken.value
+                        },
+                        body: JSON.stringify({
+                            messages: chatMessages.value
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to download chat', 'fa-exclamation-circle');
+                        return;
+                    }
+                    
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    
+                    // Get filename from response headers or use default
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'chat.docx';
                     if (contentDisposition) {
                         const matches = /filename="(.+)"/.exec(contentDisposition);
                         if (matches) {
@@ -4164,9 +4280,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmDelete, cancelDelete, deleteRecording,
                 toggleEditParticipants, toggleEditMeetingDate, toggleEditSummary, cancelEditSummary, saveEditSummary, toggleEditNotes, 
                 cancelEditNotes, saveEditNotes, initializeMarkdownEditor, saveInlineEdit,
-                sendChatMessage, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
+                sendChatMessage, isChatScrolledToBottom, scrollChatToBottom, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
-                downloadSummary, downloadNotes,
+                downloadSummary, downloadNotes, downloadChat,
                 toggleInbox, toggleHighlight,
                 toggleTranscriptionViewMode,
                 reprocessTranscription,

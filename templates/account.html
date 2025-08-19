@@ -87,6 +87,9 @@
                         <a href="#" id="tab-account" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b-2 sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-[var(--border-accent)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent">
                             <i class="fas fa-user-circle mr-2"></i><span>Account Information</span>
                         </a>
+                        <a href="#" id="tab-prompts" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
+                            <i class="fas fa-file-alt mr-2"></i><span>Custom Prompts</span>
+                        </a>
                         <a href="#" id="tab-shares" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
                             <i class="fas fa-share-alt mr-2"></i><span>Shared Transcripts</span>
                         </a>
@@ -135,7 +138,7 @@
                             </div>
 
                             <div class="mb-6">
-                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Language & Prompt Preferences</h3>
+                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Language Preferences</h3>
                                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
                                     <div>
                                         <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]">Transcription Language</label>
@@ -146,11 +149,6 @@
                                         <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]">Preferred Output Language</label>
                                         <input type="text" name="output_language" id="output_language" value="{{ current_user.output_language or '' }}" placeholder="e.g., English, Spanish, Chinese" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                         <p class="text-xs text-[var(--text-light)] mt-1">Language for titles, summaries, and chat. Leave blank for default (default behavior of your chosen model).</p>
-                                    </div>
-                                    <div>
-                                        <label for="summary_prompt" class="block text-sm font-medium text-[var(--text-muted)]">Custom Summary Prompt</label>
-                                        <textarea name="summary_prompt" id="summary_prompt" rows="6" placeholder="Describe how you want your summaries structured. Leave blank to use the default prompt." class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or default_summary_prompt_text }}</textarea>
-                                        <p class="text-xs text-[var(--text-light)] mt-1">This prompt will be used to generate the summary for your transcriptions. You can use placeholders like {{transcription}} and {{language_directive}} if needed, though the system will try to intelligently place the transcription content.</p>
                                     </div>
                                 </div>
                             </div>
@@ -229,6 +227,64 @@
                         </div>
                     </div>
                 </div>
+                </div>
+
+                <div id="content-prompts" class="hidden">
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Custom Prompts</h2>
+                    
+                    <form method="POST" action="{{ url_for('account') }}" class="space-y-6">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        
+                        <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">Summary Generation Prompt</h3>
+                            
+                            <div class="mb-4">
+                                <label for="summary_prompt_custom" class="block text-sm font-medium text-[var(--text-muted)] mb-2">
+                                    Your Custom Summary Prompt
+                                </label>
+                                <textarea name="summary_prompt" id="summary_prompt_custom" rows="8" 
+                                    placeholder="Describe how you want your summaries structured. Leave blank to use the admin's default prompt." 
+                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or '' }}</textarea>
+                                <p class="text-xs text-[var(--text-light)] mt-2">
+                                    This prompt will be used to generate summaries for your transcriptions. It overrides the admin's default prompt.
+                                </p>
+                            </div>
+                            
+                            <div class="mt-6 p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
+                                <h4 class="text-sm font-semibold text-[var(--text-accent)] mb-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Current Default Prompt (Used if you leave the above blank)
+                                </h4>
+                                <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
+                                    <pre class="text-xs text-[var(--text-muted)] whitespace-pre-wrap">{{ default_summary_prompt_text }}</pre>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <details class="cursor-pointer">
+                                    <summary class="text-sm text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]">
+                                        <i class="fas fa-question-circle mr-1"></i>
+                                        Tips for Writing Effective Prompts
+                                    </summary>
+                                    <div class="mt-3 p-3 bg-[var(--bg-info-light)] text-[var(--text-info-strong)] rounded-lg text-sm">
+                                        <ul class="list-disc list-inside space-y-1">
+                                            <li>Be specific about the sections you want in your summary</li>
+                                            <li>Use clear formatting instructions (e.g., "Use bullet points", "Create numbered lists")</li>
+                                            <li>Specify if you want certain information prioritized</li>
+                                            <li>The system will automatically provide the transcript content to the AI</li>
+                                            <li>Your output language preference (if set) will be applied automatically</li>
+                                        </ul>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <i class="fas fa-save mr-2"></i> Save Custom Prompt
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
                 <div id="content-shares" class="hidden">
@@ -679,82 +735,80 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const tabAccount = document.getElementById('tab-account');
+            const tabPrompts = document.getElementById('tab-prompts');
             const tabShares = document.getElementById('tab-shares');
             const tabTags = document.getElementById('tab-tags');
             const tabAbout = document.getElementById('tab-about');
             const contentAccount = document.getElementById('content-account');
+            const contentPrompts = document.getElementById('content-prompts');
             const contentShares = document.getElementById('content-shares');
             const contentTags = document.getElementById('content-tags');
             const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
             
 
+            // Simplified tab switching
+            const tabs = [
+                { tab: tabAccount, content: contentAccount, name: 'account' },
+                { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
+                { tab: tabShares, content: contentShares, name: 'shares' },
+                { tab: tabTags, content: contentTags, name: 'tags' },
+                { tab: tabAbout, content: contentAbout, name: 'about' }
+            ];
+
+            function switchToTab(targetName) {
+                tabs.forEach(({ tab, content, name }) => {
+                    if (name === targetName) {
+                        // Active tab
+                        tab.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                        tab.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                        content.classList.remove('hidden');
+                    } else {
+                        // Inactive tab
+                        tab.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                        tab.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                        content.classList.add('hidden');
+                    }
+                });
+                
+                // Load content when switching tabs
+                if (targetName === 'shares') {
+                    loadShares();
+                } else if (targetName === 'tags') {
+                    loadTags();
+                } else if (targetName === 'about') {
+                    loadSystemInfo();
+                }
+            }
+
             function showAccountTab() {
-                tabAccount.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabAccount.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                contentAccount.classList.remove('hidden');
-                contentShares.classList.add('hidden');
-                contentTags.classList.add('hidden');
-                contentAbout.classList.add('hidden');
+                switchToTab('account');
+            }
+
+            function showPromptsTab() {
+                switchToTab('prompts');
             }
 
             function showSharesTab() {
-                tabShares.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabShares.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                contentShares.classList.remove('hidden');
-                contentAccount.classList.add('hidden');
-                contentTags.classList.add('hidden');
-                contentAbout.classList.add('hidden');
-                loadShares();
+                switchToTab('shares');
             }
 
             function showTagsTab() {
-                tabTags.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabTags.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabAbout.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAbout.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                contentTags.classList.remove('hidden');
-                contentAccount.classList.add('hidden');
-                contentShares.classList.add('hidden');
-                contentAbout.classList.add('hidden');
-                loadTags();
+                switchToTab('tags');
             }
 
             function showAboutTab() {
-                tabAbout.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabAbout.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAccount.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabAccount.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabShares.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabShares.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                tabTags.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                tabTags.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                contentAbout.classList.remove('hidden');
-                contentAccount.classList.add('hidden');
-                contentShares.classList.add('hidden');
-                contentTags.classList.add('hidden');
-                loadSystemInfo();
+                switchToTab('about');
             }
 
             tabAccount.addEventListener('click', (e) => {
                 e.preventDefault();
                 showAccountTab();
+            });
+
+            tabPrompts.addEventListener('click', (e) => {
+                e.preventDefault();
+                showPromptsTab();
             });
 
             tabShares.addEventListener('click', (e) => {

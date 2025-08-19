@@ -111,6 +111,11 @@
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
                             <i class="fas fa-cogs mr-2"></i><span>System Settings</span>
                         </button>
+                        <button @click="activeTab = 'prompts'" 
+                                :class="activeTab === 'prompts' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
+                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
+                            <i class="fas fa-file-alt mr-2"></i><span>Default Prompts</span>
+                        </button>
                         <button @click="activeTab = 'vectorstore'" 
                                 :class="activeTab === 'vectorstore' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm"
@@ -334,6 +339,9 @@
                             <span v-else-if="setting.key === 'max_file_size_mb'" class="text-[var(--text-primary)]">
                                 ${ Number(setting.value).toLocaleString() } MB
                             </span>
+                            <span v-else-if="setting.key === 'asr_timeout_seconds'" class="text-[var(--text-primary)]">
+                                ${ Number(setting.value).toLocaleString() } seconds
+                            </span>
                                             <span v-else>${ setting.value || 'Not set' }</span>
                                         </div>
                                     </div>
@@ -350,6 +358,136 @@
                             </div>
                             <div v-else class="text-[var(--text-muted)]">
                                 No system settings found.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Default Prompts Tab -->
+                <div v-show="activeTab === 'prompts'">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">Default Prompts</h3>
+                        <div class="bg-[var(--bg-info-light)] text-[var(--text-info-strong)] p-4 rounded-lg mb-4">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            This default prompt will be used for all users who haven't set their own custom prompt in their account settings.
+                        </div>
+                    </div>
+                    
+                    <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                                Default Summarization Prompt
+                            </label>
+                            <p class="text-sm text-[var(--text-muted)] mb-3">
+                                This prompt will be used to generate summaries for all recordings when users haven't set their own prompt.
+                            </p>
+                            <textarea 
+                                v-model="defaultSummaryPrompt"
+                                rows="8"
+                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                placeholder="Enter the default summarization prompt...">
+                            </textarea>
+                        </div>
+                        
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <button @click="resetDefaultPrompt" 
+                                        class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
+                                    <i class="fas fa-undo mr-2"></i> Reset to Default
+                                </button>
+                            </div>
+                            <div>
+                                <button @click="saveDefaultPrompt" 
+                                        :disabled="isSavingPrompt"
+                                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i v-if="isSavingPrompt" class="fas fa-spinner fa-spin mr-2"></i>
+                                    <i v-else class="fas fa-save mr-2"></i>
+                                    ${ isSavingPrompt ? 'Saving...' : 'Save Changes' }
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div v-if="promptSaveMessage" class="mt-4">
+                            <div :class="promptSaveError ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'" 
+                                 class="p-3 rounded-md text-sm">
+                                ${ promptSaveMessage }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">Prompt Hierarchy</h4>
+                        <p class="text-sm text-[var(--text-muted)] mb-3">
+                            The system uses the following priority order when selecting which prompt to use:
+                        </p>
+                        <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
+                            <li><strong>Tag Custom Prompt:</strong> If a recording has tags with custom prompts</li>
+                            <li><strong>User Custom Prompt:</strong> If the user has set their own prompt in account settings</li>
+                            <li><strong>Admin Default Prompt:</strong> The prompt configured above (shown on this page)</li>
+                            <li><strong>System Fallback:</strong> A hardcoded default if none of the above are set</li>
+                        </ol>
+                    </div>
+                    
+                    <!-- Full LLM Prompt Structure Expander -->
+                    <div class="mt-6 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)]">
+                        <button @click="showFullPromptStructure = !showFullPromptStructure" 
+                                class="w-full p-6 flex justify-between items-center hover:bg-[var(--bg-quaternary)] transition-colors duration-200">
+                            <h4 class="text-md font-medium text-[var(--text-secondary)]">
+                                <i class="fas fa-code mr-2"></i>
+                                View Full LLM Prompt Structure
+                            </h4>
+                            <i :class="showFullPromptStructure ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" 
+                               class="text-[var(--text-muted)]"></i>
+                        </button>
+                        
+                        <div v-show="showFullPromptStructure" class="border-t border-[var(--border-primary)]">
+                            <div class="p-6 space-y-6">
+                                <div>
+                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">System Prompt:</h5>
+                                    <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
+                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.<span v-if="defaultSummaryPrompt || originalDefaultPrompt">
+
+Summarization Instructions:
+${ defaultSummaryPrompt || originalDefaultPrompt }</span></pre>
+                                    </div>
+                                    <p class="text-xs text-[var(--text-muted)] mt-2">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Note: If the user has set an output language preference, " Ensure your response is in {language}." will be added.
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">User Message Template:</h5>
+                                    <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
+                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">Context:
+- Current date: {current_date}
+- Tags applied to this transcript by the user: {tag_names} <span class="text-[var(--text-muted)]">(if tags exist)</span>
+- Information about the user: Name: {name}, Job title: {job_title}, Company: {company} <span class="text-[var(--text-muted)]">(if provided)</span>
+
+Transcription:
+"""
+{transcript_text}
+"""
+
+Please analyze the above transcription and generate a summary following the provided instructions.</pre>
+                                    </div>
+                                    <p class="text-xs text-[var(--text-muted)] mt-2">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Placeholders are replaced with actual values when processing a recording.
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">Additional Context:</h5>
+                                    <div class="bg-[var(--bg-info-light)] p-4 rounded-md">
+                                        <ul class="text-xs text-[var(--text-info-strong)] space-y-2">
+                                            <li><i class="fas fa-check-circle mr-1"></i> Transcripts are limited to a configurable character count (default: 30,000)</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> JSON transcripts are converted to clean text format before sending</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> If multiple tag prompts exist, they are merged in the order tags were added</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> The model used is configured via TEXT_MODEL_NAME environment variable</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -603,6 +741,144 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Edit System Setting Modal -->
+        <div v-if="showEditSettingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Edit System Setting</h3>
+                    <button @click="showEditSettingModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-2xl leading-none">&times;</button>
+                </div>
+                
+                <div v-if="editingSetting" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Setting Key</label>
+                        <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md font-mono text-sm">
+                            ${ editingSetting.key }
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+                        <div class="px-3 py-2 text-[var(--text-muted)] text-sm">
+                            ${ editingSetting.description || 'No description available' }
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Type</label>
+                        <span class="inline-block px-2 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded text-xs">
+                            ${ editingSetting.setting_type }
+                        </span>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Current Value</label>
+                        <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md">
+                            <span v-if="editingSetting.key === 'transcript_length_limit' && editingSetting.value === '-1'">
+                                No Limit
+                            </span>
+                            <span v-else-if="editingSetting.key === 'transcript_length_limit'">
+                                ${ Number(editingSetting.value).toLocaleString() } characters
+                            </span>
+                            <span v-else-if="editingSetting.key === 'max_file_size_mb'">
+                                ${ Number(editingSetting.value).toLocaleString() } MB
+                            </span>
+                            <span v-else-if="editingSetting.key === 'asr_timeout_seconds'">
+                                ${ Number(editingSetting.value).toLocaleString() } seconds (${ Math.round(Number(editingSetting.value) / 60) } minutes)
+                            </span>
+                            <span v-else>${ editingSetting.value || 'Not set' }</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">New Value</label>
+                        
+                        <!-- Boolean type -->
+                        <div v-if="editingSetting.setting_type === 'boolean'" class="flex items-center space-x-4">
+                            <label class="flex items-center cursor-pointer">
+                                <input v-model="settingNewValue" type="radio" value="true" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
+                                <span class="text-[var(--text-primary)]">Enabled</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input v-model="settingNewValue" type="radio" value="false" class="mr-2 text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
+                                <span class="text-[var(--text-primary)]">Disabled</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Integer/Float type with special handling for specific keys -->
+                        <div v-else-if="editingSetting.setting_type === 'integer' || editingSetting.setting_type === 'float'" class="space-y-2">
+                            <!-- Special input for transcript_length_limit -->
+                            <div v-if="editingSetting.key === 'transcript_length_limit'" class="space-y-2">
+                                <div class="flex items-center space-x-2">
+                                    <input v-model="settingUseNoLimit" type="checkbox" id="noLimit" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
+                                    <label for="noLimit" class="text-sm text-[var(--text-secondary)]">No limit (use entire transcript)</label>
+                                </div>
+                                <input v-if="!settingUseNoLimit" v-model.number="settingNewValue" type="number" min="1000" step="1000" 
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                       placeholder="Enter character limit (e.g., 30000)">
+                                <small v-if="!settingUseNoLimit" class="text-[var(--text-muted)]">Recommended: 30000-50000 characters for most LLMs</small>
+                            </div>
+                            
+                            <!-- Special input for max_file_size_mb -->
+                            <div v-else-if="editingSetting.key === 'max_file_size_mb'" class="space-y-2">
+                                <input v-model.number="settingNewValue" type="number" min="1" max="10000" step="50"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                       placeholder="Enter size in MB">
+                                <small class="text-[var(--text-muted)]">Maximum file size in megabytes (1-10000 MB)</small>
+                            </div>
+                            
+                            <!-- Special input for asr_timeout_seconds -->
+                            <div v-else-if="editingSetting.key === 'asr_timeout_seconds'" class="space-y-2">
+                                <div class="flex space-x-2">
+                                    <div class="flex-1">
+                                        <input v-model.number="settingTimeoutMinutes" type="number" min="1" max="600" step="1"
+                                               class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                               placeholder="Minutes">
+                                        <small class="text-[var(--text-muted)]">Minutes</small>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input v-model.number="settingTimeoutSeconds" type="number" min="0" max="59" step="1"
+                                               class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                               placeholder="Seconds">
+                                        <small class="text-[var(--text-muted)]">Seconds</small>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-[var(--text-muted)]">
+                                    Total: <span class="font-medium text-[var(--text-primary)]">${ (settingTimeoutMinutes * 60 + settingTimeoutSeconds).toLocaleString() } seconds</span>
+                                </div>
+                                <small class="text-[var(--text-muted)]">Recommended: 30-120 minutes for long audio files</small>
+                            </div>
+                            
+                            <!-- Default number input -->
+                            <input v-else v-model.number="settingNewValue" :type="editingSetting.setting_type === 'integer' ? 'number' : 'text'" 
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                   :placeholder="`Enter ${editingSetting.setting_type} value`">
+                        </div>
+                        
+                        <!-- String type -->
+                        <textarea v-else v-model="settingNewValue" rows="3"
+                                  class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                  :placeholder="'Enter value'"></textarea>
+                    </div>
+                    
+                    <div v-if="settingError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
+                        ${ settingError }
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button @click="showEditSettingModal = false" 
+                            class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
+                        Cancel
+                    </button>
+                    <button @click="saveSettingValue" 
+                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -657,6 +933,17 @@
                 });
                 const isProcessingRecordings = ref(false);
                 const processingResult = ref(null);
+                
+                // Default Prompts state
+                const defaultSummaryPrompt = ref('');
+                const isSavingPrompt = ref(false);
+                const promptSaveMessage = ref('');
+                const promptSaveError = ref(false);
+                const showFullPromptStructure = ref(false);
+                const originalDefaultPrompt = `Generate a comprehensive summary that includes the following sections:
+- **Key Issues Discussed**: A bulleted list of the main topics
+- **Key Decisions Made**: A bulleted list of any decisions reached
+- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned`;
                 
                 // Computed properties
                 const filteredUsers = computed(() => {
@@ -715,16 +1002,102 @@
                     }
                 };
                 
+                const showEditSettingModal = ref(false);
+                const editingSetting = ref(null);
+                const settingNewValue = ref('');
+                const settingUseNoLimit = ref(false);
+                const settingTimeoutMinutes = ref(30);
+                const settingTimeoutSeconds = ref(0);
+                const settingError = ref('');
+                
                 const editSetting = (setting) => {
-                    // Create a prompt for editing the setting
-                    let newValue = prompt(
-                        `Edit setting: ${setting.key}\n\nDescription: ${setting.description || 'No description'}\nType: ${setting.setting_type}\nCurrent value: ${setting.value || 'Not set'}\n\nEnter new value:`,
-                        setting.value || ''
+                    editingSetting.value = { ...setting };
+                    settingError.value = '';
+                    
+                    // Initialize form values based on setting type and key
+                    if (setting.key === 'transcript_length_limit') {
+                        if (setting.value === '-1') {
+                            settingUseNoLimit.value = true;
+                            settingNewValue.value = 30000; // Default if unchecked
+                        } else {
+                            settingUseNoLimit.value = false;
+                            settingNewValue.value = parseInt(setting.value) || 30000;
+                        }
+                    } else if (setting.key === 'asr_timeout_seconds') {
+                        const totalSeconds = parseInt(setting.value) || 1800;
+                        settingTimeoutMinutes.value = Math.floor(totalSeconds / 60);
+                        settingTimeoutSeconds.value = totalSeconds % 60;
+                    } else if (setting.setting_type === 'boolean') {
+                        settingNewValue.value = setting.value || 'false';
+                    } else {
+                        settingNewValue.value = setting.value || '';
+                    }
+                    
+                    showEditSettingModal.value = true;
+                };
+                
+                const saveSettingValue = async () => {
+                    settingError.value = '';
+                    
+                    let finalValue;
+                    
+                    // Validate and prepare the value based on setting type
+                    if (editingSetting.value.key === 'transcript_length_limit') {
+                        if (settingUseNoLimit.value) {
+                            finalValue = '-1';
+                        } else {
+                            const num = parseInt(settingNewValue.value);
+                            if (isNaN(num) || num < 1000) {
+                                settingError.value = 'Please enter a valid number of at least 1000 characters';
+                                return;
+                            }
+                            finalValue = num.toString();
+                        }
+                    } else if (editingSetting.value.key === 'max_file_size_mb') {
+                        const num = parseInt(settingNewValue.value);
+                        if (isNaN(num) || num < 1 || num > 10000) {
+                            settingError.value = 'Please enter a valid size between 1 and 10000 MB';
+                            return;
+                        }
+                        finalValue = num.toString();
+                    } else if (editingSetting.value.key === 'asr_timeout_seconds') {
+                        const totalSeconds = (settingTimeoutMinutes.value * 60) + settingTimeoutSeconds.value;
+                        if (totalSeconds < 60) {
+                            settingError.value = 'Timeout must be at least 60 seconds';
+                            return;
+                        }
+                        if (totalSeconds > 36000) {
+                            settingError.value = 'Timeout cannot exceed 10 hours (36000 seconds)';
+                            return;
+                        }
+                        finalValue = totalSeconds.toString();
+                    } else if (editingSetting.value.setting_type === 'integer') {
+                        const num = parseInt(settingNewValue.value);
+                        if (isNaN(num)) {
+                            settingError.value = 'Please enter a valid integer';
+                            return;
+                        }
+                        finalValue = num.toString();
+                    } else if (editingSetting.value.setting_type === 'float') {
+                        const num = parseFloat(settingNewValue.value);
+                        if (isNaN(num)) {
+                            settingError.value = 'Please enter a valid number';
+                            return;
+                        }
+                        finalValue = num.toString();
+                    } else {
+                        finalValue = settingNewValue.value;
+                    }
+                    
+                    // Save the setting
+                    await updateSetting(
+                        editingSetting.value.key,
+                        finalValue,
+                        editingSetting.value.description,
+                        editingSetting.value.setting_type
                     );
                     
-                    if (newValue !== null) {
-                        updateSetting(setting.key, newValue, setting.description, setting.setting_type);
-                    }
+                    showEditSettingModal.value = false;
                 };
                 
                 const updateSetting = async (key, value, description, settingType) => {
@@ -978,6 +1351,69 @@
                 };
                 
                 // Inquire Mode methods
+                // Default Prompts methods
+                const loadDefaultPrompt = async () => {
+                    try {
+                        // Load the admin_default_summary_prompt from settings
+                        const response = await fetch('/admin/settings');
+                        if (!response.ok) throw new Error('Failed to load settings');
+                        
+                        const settings = await response.json();
+                        const promptSetting = settings.find(s => s.key === 'admin_default_summary_prompt');
+                        if (promptSetting) {
+                            defaultSummaryPrompt.value = promptSetting.value || '';
+                        }
+                    } catch (error) {
+                        console.error('Error loading default prompt:', error);
+                        promptSaveMessage.value = 'Failed to load default prompt';
+                        promptSaveError.value = true;
+                    }
+                };
+                
+                const saveDefaultPrompt = async () => {
+                    isSavingPrompt.value = true;
+                    promptSaveMessage.value = '';
+                    promptSaveError.value = false;
+                    
+                    try {
+                        const response = await fetch('/admin/settings', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                key: 'admin_default_summary_prompt',
+                                value: defaultSummaryPrompt.value,
+                                description: 'Default summarization prompt used when users have not set their own prompt. This serves as the base prompt for all users.',
+                                setting_type: 'string'
+                            })
+                        });
+                        
+                        if (!response.ok) throw new Error('Failed to save prompt');
+                        
+                        promptSaveMessage.value = 'Default prompt saved successfully!';
+                        promptSaveError.value = false;
+                        
+                        // Clear message after 3 seconds
+                        setTimeout(() => {
+                            promptSaveMessage.value = '';
+                        }, 3000);
+                    } catch (error) {
+                        console.error('Error saving default prompt:', error);
+                        promptSaveMessage.value = 'Failed to save default prompt. Please try again.';
+                        promptSaveError.value = true;
+                    } finally {
+                        isSavingPrompt.value = false;
+                    }
+                };
+                
+                const resetDefaultPrompt = () => {
+                    defaultSummaryPrompt.value = originalDefaultPrompt;
+                    promptSaveMessage.value = 'Prompt reset to system default. Click "Save Changes" to apply.';
+                    promptSaveError.value = false;
+                };
+                
                 const loadInquireStatus = async () => {
                     try {
                         const response = await fetch('/admin/inquire/status');
@@ -1069,6 +1505,7 @@
                     loadUsers();
                     loadStats();
                     initializeDarkMode();
+                    loadDefaultPrompt();
                     if (inquireModeEnabled.value) {
                         loadInquireStatus();
                     }
@@ -1082,6 +1519,10 @@
                         loadStats();
                     } else if (newTab === 'settings') {
                         loadSettings();
+                    } else if (newTab === 'prompts') {
+                        loadDefaultPrompt();
+                    } else if (newTab === 'vectorstore' && inquireModeEnabled.value) {
+                        loadInquireStatus();
                     }
                 });
                 
@@ -1105,11 +1546,28 @@
                     editingUser,
                     userToDelete,
                     
+                    // Settings modal state
+                    showEditSettingModal,
+                    editingSetting,
+                    settingNewValue,
+                    settingUseNoLimit,
+                    settingTimeoutMinutes,
+                    settingTimeoutSeconds,
+                    settingError,
+                    
                     // Inquire Mode state
                     inquireModeEnabled,
                     inquireStatus,
                     isProcessingRecordings,
                     processingResult,
+                    
+                    // Default Prompts state
+                    defaultSummaryPrompt,
+                    isSavingPrompt,
+                    promptSaveMessage,
+                    promptSaveError,
+                    showFullPromptStructure,
+                    originalDefaultPrompt,
                     
                     // Computed
                     filteredUsers,
@@ -1120,6 +1578,7 @@
                     loadStats,
                     loadSettings,
                     editSetting,
+                    saveSettingValue,
                     updateSetting,
                     formatDate,
                     addUser,
@@ -1134,7 +1593,12 @@
                     // Inquire Mode methods
                     loadInquireStatus,
                     processAllRecordings,
-                    processBatchRecordings
+                    processBatchRecordings,
+                    
+                    // Default Prompts methods
+                    loadDefaultPrompt,
+                    saveDefaultPrompt,
+                    resetDefaultPrompt
                 };
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2

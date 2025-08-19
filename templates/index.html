@@ -918,7 +918,30 @@
                                         <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
                                         <p class="text-[var(--text-muted)]">Ask questions about this transcription</p>
                                     </div>
-                                    <div v-for="(message, index) in chatMessages" :key="index" :class="['message', message.role === 'user' ? 'user-message ml-auto' : 'ai-message']">
+                                    <div v-for="(message, index) in chatMessages" :key="index" 
+                                         :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message', 
+                                                  message.role === 'assistant' ? 'pr-10' : '']">
+                                        <!-- Copy button for assistant messages -->
+                                        <button v-if="message.role === 'assistant'" 
+                                                @click="copyMessage(message.content, $event)" 
+                                                class="absolute top-2 right-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-all duration-200"
+                                                title="Copy message">
+                                            <i class="fas fa-copy text-sm"></i>
+                                        </button>
+                                        <!-- Show thinking content if available -->
+                                        <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
+                                            <button @click="message.thinkingExpanded = !message.thinkingExpanded" 
+                                                    class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
+                                                <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                                                <span>Model Reasoning</span>
+                                                <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
+                                            </button>
+                                            <div v-if="message.thinkingExpanded" 
+                                                 class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
+                                                <pre class="whitespace-pre-wrap font-mono">${message.thinking}</pre>
+                                            </div>
+                                        </div>
+                                        <!-- Main message content -->
                                         <div v-if="message.html" v-html="message.html"></div>
                                         <div v-else class="whitespace-pre-wrap">${message.content}</div>
                                     </div>
@@ -1348,14 +1371,27 @@
                                 <!-- Chat Section -->
                                 <div class="border-t border-[var(--border-primary)] flex flex-col">
                                     <!-- Chat Toggle -->
-                                    <button @click="showChat = !showChat" 
-                                            class="bg-[var(--bg-tertiary)] px-4 py-3 text-left hover:bg-[var(--bg-accent-hover)] transition-colors flex items-center justify-between">
-                                        <span class="font-medium flex items-center">
-                                            <i class="fas fa-comments mr-2"></i>
-                                            Chat with Transcription
-                                        </span>
-                                        <i :class="['fas transition-transform duration-200', showChat ? 'fa-chevron-down' : 'fa-chevron-up']"></i>
-                                    </button>
+                                    <div class="bg-[var(--bg-tertiary)] px-4 py-3 hover:bg-[var(--bg-accent-hover)] transition-colors flex items-center">
+                                        <button @click="showChat = !showChat" 
+                                                class="flex-1 text-left flex items-center">
+                                            <span class="font-medium flex items-center">
+                                                <i class="fas fa-comments mr-2"></i>
+                                                Chat with Transcription
+                                            </span>
+                                        </button>
+                                        <div class="flex items-center gap-2">
+                                            <button v-if="chatMessages.length > 0" 
+                                                    @click="downloadChat"
+                                                    class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                                    title="Download chat as Word document">
+                                                <i class="fas fa-download text-sm"></i>
+                                            </button>
+                                            <button @click="showChat = !showChat" 
+                                                    class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                                <i :class="['fas transition-transform duration-200', showChat ? 'fa-chevron-down' : 'fa-chevron-up']"></i>
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     <!-- Chat Content -->
                                     <div v-if="showChat" class="flex-1 flex flex-col min-h-0 max-h-96">
@@ -1370,17 +1406,32 @@
                                             <div v-for="(message, index) in chatMessages" 
                                                  :key="index" 
                                                  :class="[
-                                                     'message',
-                                                     message.role === 'user' ? 'user-message ml-auto' : 'ai-message'
+                                                     'message relative group',
+                                                     message.role === 'user' ? 'user-message ml-auto' : 'ai-message',
+                                                     message.role === 'assistant' ? 'pr-10' : ''
                                                  ]">
-                                                <div class="copyable" v-if="message.role === 'assistant'">
-                                                    <button @click="copyMessage(message.content, $event)" 
-                                                            class="copy-btn absolute top-2 right-2 opacity-0 group-hover:opacity-100">
-                                                        <i class="fas fa-copy"></i>
+                                                <!-- Copy button for assistant messages -->
+                                                <button v-if="message.role === 'assistant'" 
+                                                        @click="copyMessage(message.content, $event)" 
+                                                        class="absolute top-2 right-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-all duration-200"
+                                                        title="Copy message">
+                                                    <i class="fas fa-copy text-sm"></i>
+                                                </button>
+                                                <!-- Show thinking content if available -->
+                                                <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
+                                                    <button @click="message.thinkingExpanded = !message.thinkingExpanded" 
+                                                            class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
+                                                        <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                                                        <span>Model Reasoning</span>
+                                                        <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
                                                     </button>
-                                                    <div v-if="message.html" v-html="message.html"></div>
-                                                    <div v-else class="whitespace-pre-wrap">${message.content}</div>
+                                                    <div v-if="message.thinkingExpanded" 
+                                                         class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
+                                                        <pre class="whitespace-pre-wrap font-mono">${message.thinking}</pre>
+                                                    </div>
                                                 </div>
+                                                <!-- Main message content -->
+                                                <div v-if="message.html" v-html="message.html"></div>
                                                 <div v-else class="whitespace-pre-wrap">${message.content}</div>
                                             </div>
                                             
@@ -1419,7 +1470,7 @@
                 </div>
 
                 <!-- Empty State -->
-                <div v-else class="flex-1 flex items-center justify-center">
+                <div v-else-if="currentView === 'detail' && !selectedRecording" class="flex-1 flex items-center justify-center">
                     <div class="text-center">
                         <i class="fas fa-microphone text-6xl text-[var(--text-muted)] mb-4"></i>
                         <h2 class="text-2xl font-bold mb-2">Select a Recording</h2>
