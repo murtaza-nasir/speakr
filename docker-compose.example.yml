@@ -14,10 +14,10 @@ services:
     # 2. Copy the corresponding example file to .env:
     #
     #    For standard Whisper API:
-    #    cp env.whisper.example .env
+    #    cp config/env.whisper.example .env
     #
     #    For a custom ASR endpoint:
-    #    cp env.asr.example .env
+    #    cp config/env.asr.example .env
     #
     # 3. Edit the .env file to add your API keys and settings.
     env_file:

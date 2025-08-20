@@ -5,7 +5,7 @@ import os
 import sys
 import shutil
 # Add project root to path if necessary for 'app' import
-# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Load environment variables in case DB path relies on them (optional here)
 # from dotenv import load_dotenv

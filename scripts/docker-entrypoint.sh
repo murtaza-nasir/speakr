@@ -18,7 +18,7 @@ fi
 # Check if we need to create an admin user (regardless of whether the database exists)
 if [ -n "$ADMIN_USERNAME" ] && [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
     echo "Creating admin user using environment variables..."
-    python docker_create_admin.py
+    cd /app && python scripts/docker_create_admin.py
 fi
 
 # Start the application

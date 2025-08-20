@@ -5,6 +5,9 @@ import sys
 import getpass
 from email_validator import validate_email, EmailNotValidError
 
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 # Try to import from app context
 try:
     from flask import current_app

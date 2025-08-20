@@ -292,10 +292,10 @@ Follow these steps if you want to modify the code or build the Docker image your
     cd speakr
     ```
 2.  **Create Configuration Files:**
-    Copy the example files. Use `env.whisper.example` for the standard API method or `env.asr.example` for the ASR webservice method.
+    Copy the example files. Use `config/env.whisper.example` for the standard API method or `config/env.asr.example` for the ASR webservice method.
     ```bash
     cp docker-compose.example.yml docker-compose.yml
-    cp env.whisper.example .env # Or cp env.asr.example .env
+    cp config/env.whisper.example .env # Or cp config/env.asr.example .env
     ```
     Edit the `.env` file with your custom settings and API keys.
 

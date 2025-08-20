@@ -10,8 +10,8 @@ sudo chown $USER:$USER /opt/transcription-app
 cp app.py /opt/transcription-app/
 cp -r templates /opt/transcription-app/
 cp requirements.txt /opt/transcription-app/
-cp reset_db.py /opt/transcription-app/
-cp create_admin.py /opt/transcription-app/
+cp scripts/reset_db.py /opt/transcription-app/
+cp scripts/create_admin.py /opt/transcription-app/
 cp .env /opt/transcription-app/  # Copy the .env file with API keys
 
 # Add SECRET_KEY to .env file if it doesn't exist

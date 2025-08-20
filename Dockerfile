@@ -25,7 +25,7 @@ ENV SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
 ENV UPLOAD_FOLDER=/data/uploads
 
 # Add entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
+COPY scripts/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose the port
