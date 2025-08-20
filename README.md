@@ -485,7 +485,7 @@ Tags make Speakr very flexible, allowing you to maintain consistent formatting a
 <details>
 <summary><strong>Advanced Configuration & Technical Details</strong></summary>
 
-**For detailed deployment instructions and information about the various API's used, see the [Deployment Guide](DEPLOYMENT_GUIDE.md#configuration-options)**
+**For detailed deployment instructions and information about the various API's used, see the [Deployment Guide](docs/DEPLOYMENT_GUIDE.md#configuration-options)**
 
 The recommended method is to use the pre-built Docker image, which is fast and simple. This is explained above. 
 
@@ -501,7 +501,7 @@ Speakr includes a powerful "black hole" directory monitoring feature that automa
 4. **Automatic Processing:** Files are moved to the uploads directory and processed using your configured transcription settings
 5. **Database Integration:** Processed recordings appear in your gallery with the title "Auto-processed - [filename]"
 
-**For detailed instructions on setting this up, see the [Deployment Guide](DEPLOYMENT_GUIDE.md#automated-file-processing-black-hole-directory)**
+**For detailed instructions on setting this up, see the [Deployment Guide](docs/DEPLOYMENT_GUIDE.md#automated-file-processing-black-hole-directory)**
 
 </details>
 

@@ -2,8 +2,8 @@ import json
 import sys
 import os
 
-# Add the current directory to the path to import app
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the parent directory to the path to import app
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import auto_close_json, safe_json_loads
 

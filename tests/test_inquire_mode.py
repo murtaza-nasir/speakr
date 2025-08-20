@@ -4,6 +4,10 @@ Test script for Inquire Mode functionality
 """
 import os
 import sys
+
+# Add the parent directory to the path to import app
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app import app, db, User, Recording, TranscriptChunk, InquireSession, Tag
 
 def test_database_models():
