@@ -4030,20 +4030,29 @@ def logout():
 @login_required
 def account():
     if request.method == 'POST':
-        # Handle language preference updates
-        transcription_lang = request.form.get('transcription_language')
-        output_lang = request.form.get('output_language')
-        summary_prompt_text = request.form.get('summary_prompt')
-        user_name = request.form.get('user_name')
-        user_job_title = request.form.get('user_job_title')
-        user_company = request.form.get('user_company')
-
-        current_user.transcription_language = transcription_lang if transcription_lang else None
-        current_user.output_language = output_lang if output_lang else None
-        current_user.summary_prompt = summary_prompt_text if summary_prompt_text else None
-        current_user.name = user_name if user_name else None
-        current_user.job_title = user_job_title if user_job_title else None
-        current_user.company = user_company if user_company else None
+        # Only update fields that are present in the form submission
+        # This prevents clearing data when switching between tabs
+        
+        # Check if this is the account information form (has user_name field)
+        if 'user_name' in request.form:
+            # Handle personal information updates
+            user_name = request.form.get('user_name')
+            user_job_title = request.form.get('user_job_title')
+            user_company = request.form.get('user_company')
+            transcription_lang = request.form.get('transcription_language')
+            output_lang = request.form.get('output_language')
+            
+            current_user.name = user_name if user_name else None
+            current_user.job_title = user_job_title if user_job_title else None
+            current_user.company = user_company if user_company else None
+            current_user.transcription_language = transcription_lang if transcription_lang else None
+            current_user.output_language = output_lang if output_lang else None
+        
+        # Check if this is the custom prompts form (has summary_prompt field)
+        elif 'summary_prompt' in request.form:
+            # Handle custom prompt updates
+            summary_prompt_text = request.form.get('summary_prompt')
+            current_user.summary_prompt = summary_prompt_text if summary_prompt_text else None
         
         # Only update diarize if it's not locked by env var
         if 'ASR_DIARIZE' not in os.environ:
@@ -4051,7 +4060,12 @@ def account():
         
         db.session.commit()
         flash('Account details updated successfully!', 'success')
-        return redirect(url_for('account'))
+        
+        # Preserve the active tab when redirecting
+        if 'summary_prompt' in request.form:
+            return redirect(url_for('account') + '#prompts')
+        else:
+            return redirect(url_for('account'))
         
     # Get admin default prompt from system settings
     admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)

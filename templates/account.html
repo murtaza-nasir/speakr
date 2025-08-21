@@ -1649,7 +1649,9 @@
         
         // Check for URL hash and show appropriate tab
         const urlHash = window.location.hash.substring(1); // Remove the '#' symbol
-        if (urlHash === 'tags') {
+        if (urlHash === 'prompts') {
+            showPromptsTab();
+        } else if (urlHash === 'tags') {
             showTagsTab();
         } else if (urlHash === 'shares') {
             showSharesTab();
