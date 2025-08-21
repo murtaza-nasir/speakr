@@ -4059,6 +4059,12 @@ def account():
             current_user.diarize = 'diarize' in request.form
         
         db.session.commit()
+        
+        # Return JSON response for AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json':
+            return jsonify({'success': True, 'message': 'Account details updated successfully!'})
+        
+        # Regular form submission with redirect
         flash('Account details updated successfully!', 'success')
         
         # Preserve the active tab when redirecting

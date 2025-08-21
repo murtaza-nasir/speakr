@@ -117,7 +117,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <!-- Left Column: Form -->
                     <div>
-                        <form method="POST" action="{{ url_for('account') }}" class="space-y-6">
+                        <form id="accountInfoForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
                             <div class="mb-6">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Personal Information</h3>
@@ -232,7 +232,7 @@
                 <div id="content-prompts" class="hidden">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Custom Prompts</h2>
                     
-                    <form method="POST" action="{{ url_for('account') }}" class="space-y-6">
+                    <form id="customPromptsForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
@@ -1646,6 +1646,58 @@
                 showToast(`Failed to save tag: ${error.message}`, 'error');
             }
         });
+        
+        // AJAX form submission for Account Information
+        const accountInfoForm = document.getElementById('accountInfoForm');
+        if (accountInfoForm) {
+            accountInfoForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData(accountInfoForm);
+                
+                try {
+                    const response = await fetch('/account', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        showToast('Account information updated successfully', 'success');
+                    } else {
+                        const text = await response.text();
+                        showToast('Failed to update account information', 'error');
+                    }
+                } catch (error) {
+                    showToast('Network error: ' + error.message, 'error');
+                }
+            });
+        }
+        
+        // AJAX form submission for Custom Prompts
+        const customPromptsForm = document.getElementById('customPromptsForm');
+        if (customPromptsForm) {
+            customPromptsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData(customPromptsForm);
+                
+                try {
+                    const response = await fetch('/account', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        showToast('Custom prompt saved successfully', 'success');
+                    } else {
+                        const text = await response.text();
+                        showToast('Failed to save custom prompt', 'error');
+                    }
+                } catch (error) {
+                    showToast('Network error: ' + error.message, 'error');
+                }
+            });
+        }
         
         // Check for URL hash and show appropriate tab
         const urlHash = window.location.hash.substring(1); // Remove the '#' symbol
