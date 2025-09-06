@@ -8,11 +8,11 @@ chmod 755 /data/uploads /data/instance
 # Initialize the database if it doesn't exist
 if [ ! -f /data/instance/transcriptions.db ]; then
     echo "Database doesn't exist. Creating new database..."
-    python -c "from app import app, db; app.app_context().push(); db.create_all()"
+    python -c "from src.app import app, db; app.app_context().push(); db.create_all()"
     echo "Database created successfully."
 else
     echo "Database exists. Checking for schema updates..."
-    python -c "from app import app; app.app_context().push()"
+    python -c "from src.app import app; app.app_context().push()"
 fi
 
 # Check if we need to create an admin user (regardless of whether the database exists)

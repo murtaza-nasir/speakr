@@ -22,7 +22,7 @@ class MockApp:
 app = MockApp()
 
 # Import the functions we want to test
-from app import safe_json_loads, preprocess_json_escapes, extract_json_object
+from src.app import safe_json_loads, preprocess_json_escapes, extract_json_object
 
 class TestJSONPreprocessing(unittest.TestCase):
     """Test cases for JSON preprocessing functionality."""

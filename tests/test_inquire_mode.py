@@ -8,7 +8,7 @@ import sys
 # Add the parent directory to the path to import app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import app, db, User, Recording, TranscriptChunk, InquireSession, Tag
+from src.app import app, db, User, Recording, TranscriptChunk, InquireSession, Tag
 
 def test_database_models():
     """Test that the new database models work correctly."""
@@ -91,7 +91,7 @@ def test_chunking_functions():
         print("🔧 Testing Chunking Functions...")
         
         try:
-            from app import chunk_transcription, generate_embeddings, serialize_embedding, deserialize_embedding
+            from src.app import chunk_transcription, generate_embeddings, serialize_embedding, deserialize_embedding
             
             # Test chunking
             test_text = "This is a test sentence. This is another sentence for testing. And here's a third sentence to make sure chunking works properly with longer text that should be split into multiple chunks."
@@ -133,7 +133,7 @@ def test_api_imports():
     print("🔌 Testing API Endpoint Imports...")
     
     try:
-        from app import (
+        from src.app import (
             get_inquire_sessions, create_inquire_session, inquire_search, 
             inquire_chat, get_available_filters, process_recording_chunks_endpoint
         )

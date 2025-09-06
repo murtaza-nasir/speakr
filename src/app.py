@@ -46,7 +46,7 @@ import ast
 import logging
 import secrets
 import time
-from audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
+from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 
 # Optional imports for embedding functionality
 try:
@@ -552,7 +552,9 @@ def process_streaming_with_thinking(stream):
     # Signal the end of the stream
     yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='../templates',
+            static_folder='../static')
 # Use environment variables or default paths for Docker compatibility
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
@@ -6206,7 +6208,7 @@ def initialize_file_monitor():
     """Initialize file monitor after app is fully loaded to avoid circular imports."""
     try:
         # Import here to avoid circular imports
-        import file_monitor
+        import src.file_monitor as file_monitor
         file_monitor.start_file_monitor()
         app.logger.info("File monitor initialization completed")
     except Exception as e:
@@ -6215,7 +6217,7 @@ def initialize_file_monitor():
 def get_file_monitor_functions():
     """Get file monitor functions, handling import errors gracefully."""
     try:
-        import file_monitor
+        import src.file_monitor as file_monitor
         return file_monitor.start_file_monitor, file_monitor.stop_file_monitor, file_monitor.get_file_monitor_status
     except ImportError as e:
         app.logger.warning(f"File monitor not available: {e}")

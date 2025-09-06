@@ -5,7 +5,7 @@ This script will chunk and vectorize all existing recordings that haven't been p
 """
 import os
 import sys
-from app import app, db, Recording, TranscriptChunk, process_recording_chunks
+from src.app import app, db, Recording, TranscriptChunk, process_recording_chunks
 
 def count_recordings_needing_processing():
     """Count how many recordings need chunk processing."""

@@ -18,7 +18,7 @@ try:
 except (RuntimeError, AttributeError, KeyError):
     # If not in app context, import directly
     try:
-        from app import app, db, User, bcrypt
+        from src.app import app, db, User, bcrypt
     except ImportError as e:
         print(f"Error: Could not import required modules: {e}")
         print("Make sure docker_create_admin.py is runnable and PYTHONPATH is set.")

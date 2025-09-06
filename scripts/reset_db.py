@@ -24,7 +24,7 @@ except (RuntimeError, AttributeError, KeyError):
      # If not in app context, import directly
     try:
         # Ensure this import reflects the updated app.py with the new model
-        from app import app, db
+        from src.app import app, db
     except ImportError as e:
         print(f"Error: Could not import 'app' and 'db': {e}")
         print("Make sure reset_db.py is runnable and PYTHONPATH is set.")

@@ -5,7 +5,7 @@ import os
 # Add the parent directory to the path to import app
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import auto_close_json, safe_json_loads
+from src.app import auto_close_json, safe_json_loads
 
 def run_tests():
     """Runs a series of tests for the JSON fixing functions."""

@@ -81,7 +81,7 @@ class FileMonitor:
             return
         
         # Import Flask components inside function to avoid circular imports
-        from app import app, db, User
+        from src.app import app, db, User
             
         with app.app_context():
             try:
@@ -275,7 +275,7 @@ class FileMonitor:
             user_id (int): ID of the user to assign the recording to
         """
         # Import Flask components inside function to avoid circular imports
-        from app import app, db, Recording, User, transcribe_audio_task
+        from src.app import app, db, Recording, User, transcribe_audio_task
         
         with app.app_context():
             try:
@@ -419,7 +419,7 @@ def start_file_monitor():
         return
     
     # Import Flask app inside function to avoid circular imports
-    from app import app
+    from src.app import app
         
     # Get configuration from environment
     watch_dir = os.environ.get('AUTO_PROCESS_WATCH_DIR', '/data/auto-process')
