@@ -4,6 +4,8 @@ site_url: https://speakr.yourdomain.com
 repo_url: https://github.com/murtaza-nasir/speakr
 repo_name: speakr
 edit_uri: edit/main/docs/
+docs_dir: .
+site_dir: ../_site
 
 theme:
   name: material
