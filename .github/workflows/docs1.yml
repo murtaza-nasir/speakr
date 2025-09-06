@@ -1,0 +1,62 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install MkDocs and dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r docs/requirements-docs.txt
+          
+      - name: Build documentation
+        env:
+          CI: true  # This enables git-revision-date plugin in CI
+        run: |
+          cd docs
+          # Update site_url for GitHub Pages if needed
+          if [ "${{ github.repository }}" != "murtaza-nasir/speakr" ]; then
+            sed -i "s|site_url:.*|site_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}|" mkdocs.yml
+          fi
+          mkdocs build --strict --site-dir _site
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs/_site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
