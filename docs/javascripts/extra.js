@@ -1,49 +1,6 @@
 // Custom JavaScript for Speakr documentation
 
-// Add copy button to code blocks
 document.addEventListener('DOMContentLoaded', function() {
-  // Initialize copy to clipboard for code blocks
-  const codeBlocks = document.querySelectorAll('pre > code');
-  
-  codeBlocks.forEach(function(codeBlock) {
-    // Skip if already has a copy button
-    if (codeBlock.parentElement.querySelector('.copy-button')) return;
-    
-    const button = document.createElement('button');
-    button.className = 'copy-button';
-    button.textContent = 'Copy';
-    button.style.position = 'absolute';
-    button.style.top = '0.5em';
-    button.style.right = '0.5em';
-    button.style.padding = '0.25em 0.5em';
-    button.style.fontSize = '0.875em';
-    button.style.background = 'var(--md-code-bg-color)';
-    button.style.color = 'var(--md-code-fg-color)';
-    button.style.border = '1px solid var(--md-default-fg-color--lightest)';
-    button.style.borderRadius = '0.25em';
-    button.style.cursor = 'pointer';
-    
-    const pre = codeBlock.parentElement;
-    pre.style.position = 'relative';
-    pre.appendChild(button);
-    
-    button.addEventListener('click', async function() {
-      try {
-        await navigator.clipboard.writeText(codeBlock.textContent);
-        button.textContent = 'Copied!';
-        setTimeout(() => {
-          button.textContent = 'Copy';
-        }, 2000);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-        button.textContent = 'Failed';
-        setTimeout(() => {
-          button.textContent = 'Copy';
-        }, 2000);
-      }
-    });
-  });
-  
   // Add smooth scrolling for anchor links
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {

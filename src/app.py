@@ -2725,33 +2725,94 @@ def transcribe_single_file(filepath, recording):
                 db.session.commit()
             raise Exception(f"Audio extraction failed: {str(e)}")
     
-    with open(actual_filepath, 'rb') as audio_file:
-        transcription_client = OpenAI(
-            api_key=transcription_api_key,
-            base_url=transcription_base_url,
-            http_client=http_client_no_proxy
-        )
-        whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
-        
-        user_transcription_language = None
-        if recording and recording.owner:
-            user_transcription_language = recording.owner.transcription_language
-        
-        transcription_language = user_transcription_language
+    # List of formats supported by Whisper API
+    WHISPER_SUPPORTED_FORMATS = ['flac', 'm4a', 'mp3', 'mp4', 'mpeg', 'mpga', 'oga', 'ogg', 'wav', 'webm']
+    
+    # Check if the file format needs conversion
+    file_ext = os.path.splitext(actual_filepath)[1].lower().lstrip('.')
+    converted_filepath = None
+    
+    try:
+        with open(actual_filepath, 'rb') as audio_file:
+            transcription_client = OpenAI(
+                api_key=transcription_api_key,
+                base_url=transcription_base_url,
+                http_client=http_client_no_proxy
+            )
+            whisper_model = os.environ.get("WHISPER_MODEL", "Systran/faster-distil-whisper-large-v3")
+            
+            user_transcription_language = None
+            if recording and recording.owner:
+                user_transcription_language = recording.owner.transcription_language
+            
+            transcription_language = user_transcription_language
 
-        transcription_params = {
-            "model": whisper_model,
-            "file": audio_file
-        }
+            transcription_params = {
+                "model": whisper_model,
+                "file": audio_file
+            }
 
-        if transcription_language:
-            transcription_params["language"] = transcription_language
-            app.logger.info(f"Using transcription language: {transcription_language}")
+            if transcription_language:
+                transcription_params["language"] = transcription_language
+                app.logger.info(f"Using transcription language: {transcription_language}")
+            else:
+                app.logger.info("Transcription language not set, using auto-detection or service default.")
+
+            transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+            return transcript.text
+            
+    except Exception as e:
+        # Check if it's a format error
+        error_message = str(e)
+        if "Invalid file format" in error_message or "Supported formats" in error_message:
+            app.logger.warning(f"Unsupported audio format '{file_ext}' detected, converting to MP3...")
+            
+            # Convert to MP3
+            import tempfile
+            temp_mp3_filepath = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_mp3:
+                    temp_mp3_filepath = temp_mp3.name
+                
+                # Use ffmpeg to convert to MP3 with consistent settings
+                subprocess.run(
+                    ['ffmpeg', '-i', actual_filepath, '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', temp_mp3_filepath],
+                    check=True,
+                    capture_output=True
+                )
+                app.logger.info(f"Successfully converted {actual_filepath} to MP3 format")
+                converted_filepath = temp_mp3_filepath
+                
+                # Retry transcription with converted file
+                with open(converted_filepath, 'rb') as audio_file:
+                    transcription_client = OpenAI(
+                        api_key=transcription_api_key,
+                        base_url=transcription_base_url,
+                        http_client=http_client_no_proxy
+                    )
+                    
+                    transcription_params = {
+                        "model": whisper_model,
+                        "file": audio_file
+                    }
+
+                    if transcription_language:
+                        transcription_params["language"] = transcription_language
+
+                    transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                    return transcript.text
+                    
+            finally:
+                # Clean up temporary converted file
+                if converted_filepath and os.path.exists(converted_filepath):
+                    try:
+                        os.unlink(converted_filepath)
+                        app.logger.info(f"Cleaned up temporary converted file: {converted_filepath}")
+                    except Exception as cleanup_error:
+                        app.logger.warning(f"Failed to clean up temporary file {converted_filepath}: {cleanup_error}")
         else:
-            app.logger.info("Transcription language not set, using auto-detection or service default.")
-
-        transcript = transcription_client.audio.transcriptions.create(**transcription_params)
-        return transcript.text
+            # Re-raise if it's not a format error
+            raise
 
 def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_asr):
     """Transcribe a large audio file using chunking."""
@@ -2847,7 +2908,31 @@ def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_a
                             app.logger.info(f"Chunk {i+1}: Using timeout config - connect: 30s, read: 300s, write: 60s")
                             app.logger.info(f"Chunk {i+1}: Max retries: 2, API timeout: 300s")
                             
-                            transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                            try:
+                                transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                            except Exception as chunk_error:
+                                # Check if it's a format error (unlikely for chunks since they're MP3, but handle it)
+                                error_msg = str(chunk_error)
+                                if "Invalid file format" in error_msg or "Supported formats" in error_msg:
+                                    app.logger.warning(f"Chunk {i+1} format issue, attempting conversion...")
+                                    # Convert chunk to MP3 if needed
+                                    import tempfile
+                                    with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_mp3:
+                                        temp_mp3_path = temp_mp3.name
+                                    try:
+                                        subprocess.run(
+                                            ['ffmpeg', '-i', chunk['path'], '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', temp_mp3_path],
+                                            check=True,
+                                            capture_output=True
+                                        )
+                                        with open(temp_mp3_path, 'rb') as converted_chunk:
+                                            transcription_params['file'] = converted_chunk
+                                            transcript = transcription_client.audio.transcriptions.create(**transcription_params)
+                                    finally:
+                                        if os.path.exists(temp_mp3_path):
+                                            os.unlink(temp_mp3_path)
+                                else:
+                                    raise
                             
                             api_time = time.time() - api_start
                             app.logger.info(f"Chunk {i+1}: API call completed in {api_time:.2f}s")

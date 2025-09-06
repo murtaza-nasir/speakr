@@ -476,31 +476,34 @@
                                 <div>
                                     <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.systemPrompt')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
-                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.<span v-if="defaultSummaryPrompt || originalDefaultPrompt">
+                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.
 
-${t('adminDashboard.summarizationInstructions')}:
-${ defaultSummaryPrompt || originalDefaultPrompt }</span></pre>
+Context:
+- Current date: {current_date}
+- Tags applied to this transcript by the user: {tag_names} <span class="text-[var(--text-muted)]">(if tags exist)</span>
+- Information about the user: Name: {name}, Job title: {job_title}, Company: {company} <span class="text-[var(--text-muted)]">(if provided)</span>
+
+<span class="text-[var(--text-muted)]">Language Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory. (if language preference is set)</span></pre>
                                     </div>
-                                    <p class="text-xs text-[var(--text-muted)] mt-2">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        ${t('adminDashboard.languagePreferenceNote')}
-                                    </p>
                                 </div>
                                 
                                 <div>
                                     <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.userMessageTemplate')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
-                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">Context:
-- Current date: {current_date}
-- Tags applied to this transcript by the user: {tag_names} <span class="text-[var(--text-muted)]">(if tags exist)</span>
-- Information about the user: Name: {name}, Job title: {job_title}, Company: {company} <span class="text-[var(--text-muted)]">(if provided)</span>
-
-Transcription:
+                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">Transcription:
 """
 {transcript_text}
 """
 
-Please analyze the above transcription and generate a summary following the provided instructions.</pre>
+Summarization Instructions:
+<span class="text-[var(--text-muted)]">/* This section is dynamically replaced with one of the following (in order of priority):
+   1. Combined tag prompts (if tags with custom prompts are selected)
+   2. User's personal summarization prompt (if set in account settings)
+   3. Admin default prompt (shown below)
+   4. System fallback prompt */</span>
+<span v-if="defaultSummaryPrompt || originalDefaultPrompt">${ defaultSummaryPrompt || originalDefaultPrompt }</span>
+
+<span class="text-[var(--text-muted)]">{language_directive} (e.g., "Ensure your response is in {language}." if language is set)</span></pre>
                                     </div>
                                     <p class="text-xs text-[var(--text-muted)] mt-2">
                                         <i class="fas fa-info-circle mr-1"></i>
