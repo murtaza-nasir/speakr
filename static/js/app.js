@@ -26,7 +26,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    createApp({
+    // Create a safe t function that's always available
+    const safeT = (key, params = {}) => {
+        if (!window.i18n || !window.i18n.t) {
+            return key; // Return key as fallback without warning during initial render
+        }
+        return window.i18n.t(key, params);
+    };
+    
+    const app = createApp({
         setup() {
             // --- Core State ---
             const currentView = ref('upload'); // 'upload' or 'recording'
@@ -3896,14 +3904,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             // --- i18n Helper Functions ---
-            const t = (key, params = {}) => {
-                // Defensive check - return key if i18n not ready
-                if (!window.i18n || !window.i18n.t) {
-                    console.warn('i18n not initialized, returning key:', key);
-                    return key;
-                }
-                return window.i18n.t(key, params);
-            };
+            // Use the same safeT function that's globally available
+            const t = safeT;
             
             const tc = (key, count, params = {}) => {
                 return window.i18n ? window.i18n.tc(key, count, params) : key;
@@ -5157,5 +5159,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         },
         delimiters: ['${', '}']
-    }).mount('#app');
+    });
+    
+    // Add t function as a global property so it's available in templates immediately
+    app.config.globalProperties.t = safeT;
+    
+    // Also add tc for pluralization
+    app.config.globalProperties.tc = (key, count, params = {}) => {
+        if (!window.i18n || !window.i18n.tc) {
+            return key;
+        }
+        return window.i18n.tc(key, count, params);
+    };
+    
+    // Mount the app
+    app.mount('#app');
 });
