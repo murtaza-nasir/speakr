@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Inquire Mode - Speakr</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
     <script>
@@ -144,33 +149,52 @@
                 <a href="/" 
                    class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-2">
                     <i class="fas fa-plus"></i>
-                    <span class="hidden sm:inline">New Recording</span>
+                    <span class="hidden sm:inline">${t('nav.newRecording')}</span>
                 </a>
 
                 <!-- User menu -->
                 {% if current_user.is_authenticated %}
                 <div class="relative">
                     <button @click="isUserMenuOpen = !isUserMenuOpen" 
-                            class="flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200">
+                            class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
+                            :title="t('admin.userMenu')">
                         <i class="fas fa-user-circle text-lg"></i>
-                        <span class="hidden sm:inline">{{ current_user.name if current_user.name else current_user.username }}</span>
-                        <i class="fas fa-chevron-down text-xs"></i>
+                        <span class="hidden lg:inline text-sm">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
+                        <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
                     </button>
                     
                     <!-- User dropdown -->
                     <div v-if="isUserMenuOpen"
                          class="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
-                        <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-cog mr-2 w-4 text-center"></i>Account Settings
+                        <a href="/" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                            <i class="fas fa-home mr-2 w-4 text-center"></i><span v-text="t('nav.home')"></span>
                         </a>
+                        <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                            <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
+                        </a>
+                        <a href="/account#tags" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                            <i class="fas fa-tags mr-2 w-4 text-center"></i><span v-text="t('help.tagManagement')"></span>
+                        </a>
+                        <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                            <i class="fas fa-share-alt mr-2 w-4 text-center"></i><span v-text="t('modal.sharedTranscripts')"></span>
+                        </button>
                         {% if current_user.is_admin %}
                         <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-shield-alt mr-2 w-4 text-center"></i>Admin Dashboard
+                            <i class="fas fa-user-shield mr-2 w-4 text-center"></i><span v-text="t('admin.title')"></span>
                         </a>
                         {% endif %}
-                        <div class="border-t border-[var(--border-primary)] my-2"></div>
-                        <a href="/logout" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] text-red-500 transition-colors">
-                            <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i>Sign Out
+                        <div class="border-t border-[var(--border-primary)] my-1"></div>
+                        <button @click="toggleDarkMode" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                            <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2 w-4 text-center"></i>
+                            <span v-text="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')"></span>
+                        </button>
+                        <button @click="openColorSchemeModal" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                            <i class="fas fa-palette mr-2 w-4 text-center"></i>
+                            <span v-text="t('modal.colorScheme')"></span>
+                        </button>
+                        <div class="border-t border-[var(--border-primary)] my-1"></div>
+                        <a href="/logout" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                            <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
                         </a>
                     </div>
                 </div>
@@ -193,7 +217,7 @@
                  ]">
                 <!-- Mobile close button -->
                 <div class="lg:hidden flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
-                    <h2 class="text-lg font-bold">Filters</h2>
+                    <h2 class="text-lg font-bold">${t('inquire.filters')}</h2>
                     <button @click="isMobileSidebarOpen = false" 
                             class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
                         <i class="fas fa-times text-lg"></i>
@@ -203,20 +227,20 @@
                 <div class="flex-1 overflow-y-auto custom-scrollbar">
                     <div class="p-4 space-y-4">
                     <div class="flex items-center justify-between lg:block">
-                        <h2 class="text-lg font-bold hidden lg:block">Filters</h2>
+                        <h2 class="text-lg font-bold hidden lg:block">${t('inquire.filters')}</h2>
                         <button @click="clearInquireFilters" class="text-xs px-3 py-1 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors flex items-center gap-1 w-full lg:w-auto justify-center">
-                            <i class="fas fa-times"></i> Clear All
+                            <i class="fas fa-times"></i> ${t('inquire.clearAll')}
                         </button>
                     </div>
                     
                     <!-- Tag Filters -->
                     <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
                         <h3 class="font-medium mb-2 flex items-center text-[var(--text-primary)]">
-                            <i class="fas fa-tags mr-2 text-[var(--text-accent)]"></i>Tags
+                            <i class="fas fa-tags mr-2 text-[var(--text-accent)]"></i>${t('inquire.tags')}
                         </h3>
                         <!-- Tag search input -->
                         <div class="mb-3">
-                            <input type="text" v-model="tagSearchQuery" placeholder="Search tags..." 
+                            <input type="text" v-model="tagSearchQuery" :placeholder="t('form.searchTags')" 
                                    class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
                         </div>
                         <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
@@ -232,12 +256,12 @@
                     <!-- Speaker Filters -->
                     <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
                         <h3 class="font-medium mb-2 flex items-center text-[var(--text-primary)]">
-                            <i class="fas fa-users mr-2 text-[var(--text-accent)]"></i>Speakers
+                            <i class="fas fa-users mr-2 text-[var(--text-accent)]"></i>${t('inquire.speakers')}
                         </h3>
                         <div v-if="availableFilters.speakers.length > 0">
                             <!-- Speaker search input -->
                             <div class="mb-3">
-                                <input type="text" v-model="speakerSearchQuery" placeholder="Search speakers..." 
+                                <input type="text" v-model="speakerSearchQuery" :placeholder="t('form.searchSpeakers')" 
                                        class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
                             </div>
                             <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
@@ -252,23 +276,23 @@
                         <!-- No Speakers Message -->
                         <div v-if="availableFilters.speakers.length === 0" class="text-center py-3">
                             <i class="fas fa-users text-xl text-[var(--text-muted)] mb-2"></i>
-                            <p class="text-sm text-[var(--text-muted)]">No speaker data available</p>
-                            <p class="text-xs text-[var(--text-muted)] mt-1">Speaker identification requires recordings with multiple speakers</p>
+                            <p class="text-sm text-[var(--text-muted)]">${t('inquire.noSpeakerData')}</p>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">${t('inquire.speakerRequirement')}</p>
                         </div>
                     </div>
                     
                     <!-- Date Range Filters -->
                     <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
                         <h3 class="font-medium mb-2 flex items-center text-[var(--text-primary)]">
-                            <i class="fas fa-calendar mr-2 text-[var(--text-accent)]"></i>Date Range
+                            <i class="fas fa-calendar mr-2 text-[var(--text-accent)]"></i>${t('inquire.dateRange')}
                         </h3>
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-xs text-[var(--text-muted)] mb-1 font-medium">From</label>
+                                <label class="block text-xs text-[var(--text-muted)] mb-1 font-medium">${t('inquire.from')}</label>
                                 <input type="date" v-model="inquireFilters.dateFrom" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
                             </div>
                             <div>
-                                <label class="block text-xs text-[var(--text-muted)] mb-1 font-medium">To</label>
+                                <label class="block text-xs text-[var(--text-muted)] mb-1 font-medium">${t('inquire.to')}</label>
                                 <input type="date" v-model="inquireFilters.dateTo" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
                             </div>
                         </div>
@@ -296,17 +320,17 @@
                     <!-- Active Filters Summary -->
                     <div v-if="hasActiveFilters" class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
                         <h4 class="text-sm font-medium mb-2 text-[var(--text-muted)] flex items-center">
-                            <i class="fas fa-filter mr-2"></i>Active Filters:
+                            <i class="fas fa-filter mr-2"></i>${t('inquire.activeFilters')}
                         </h4>
                         <div class="space-y-1 text-xs">
                             <div v-if="inquireFilters.selectedTags.length" class="flex items-center px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-                                <span><i class="fas fa-tags mr-1"></i>${inquireFilters.selectedTags.length} tags</span>
+                                <span><i class="fas fa-tags mr-1"></i>${inquireFilters.selectedTags.length} ${t('inquire.tagsCount')}</span>
                             </div>
                             <div v-if="inquireFilters.selectedSpeakers.length" class="flex items-center px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-                                <span><i class="fas fa-users mr-1"></i>${inquireFilters.selectedSpeakers.length} speakers</span>
+                                <span><i class="fas fa-users mr-1"></i>${inquireFilters.selectedSpeakers.length} ${t('inquire.speakersCount')}</span>
                             </div>
                             <div v-if="inquireFilters.dateFrom || inquireFilters.dateTo" class="flex items-center px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-                                <span><i class="fas fa-calendar mr-1"></i>Date range active</span>
+                                <span><i class="fas fa-calendar mr-1"></i>${t('inquire.dateRangeActive')}</span>
                             </div>
                         </div>
                     </div>
@@ -326,17 +350,17 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
-                        <h2 class="text-2xl font-bold mb-4">Ask Questions About Your Transcriptions</h2>
+                        <h2 class="text-2xl font-bold mb-4">${t('inquire.askQuestions')}</h2>
                         <p class="text-[var(--text-muted)] max-w-lg mx-auto mb-6">
-                            Select filters on the left to narrow down your transcriptions, then ask questions to get insights from your recordings.
+                            ${t('inquire.selectFilters')}
                         </p>
                         <div class="bg-[var(--bg-tertiary)] rounded-xl p-4 max-w-md mx-auto">
-                            <h4 class="font-medium mb-2">Example Questions:</h4>
+                            <h4 class="font-medium mb-2">${t('inquire.exampleQuestions')}</h4>
                             <ul class="text-sm text-[var(--text-secondary)] space-y-1 text-left">
-                                <li>"What action items were discussed?"</li>
-                                <li>"When did we decide to change the timeline?"</li>
-                                <li>"What concerns were raised about the budget?"</li>
-                                <li>"Who was responsible for the marketing tasks?"</li>
+                                <li>${t('inquire.exampleQuestion1')}</li>
+                                <li>${t('inquire.exampleQuestion2')}</li>
+                                <li>${t('inquire.exampleQuestion3')}</li>
+                                <li>${t('inquire.exampleQuestion4')}</li>
                             </ul>
                         </div>
                     </div>
@@ -381,7 +405,7 @@
                     <div class="flex gap-4">
                         <textarea v-model="inquireChatInput" 
                                   @keydown="handleInquireChatKeydown"
-                                  placeholder="Ask questions about your filtered transcriptions..."
+                                  :placeholder="t('inquire.placeholder')"
                                   class="flex-1 px-4 py-3 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:border-transparent text-[var(--text-primary)]"
                                   rows="3"></textarea>
                         <button @click="sendInquireChatMessage" 
@@ -391,9 +415,9 @@
                         </button>
                     </div>
                     <div class="text-xs text-[var(--text-muted)] mt-3 flex items-center justify-between">
-                        <span>Press Enter to send • Ctrl+Enter for new line</span>
+                        <span>${t('inquire.sendHint')}</span>
                         <span v-if="hasActiveFilters" class="text-[var(--text-accent)]">
-                            <i class="fas fa-filter mr-1"></i>Filters active
+                            <i class="fas fa-filter mr-1"></i>${t('inquire.filtersActive')}
                         </span>
                     </div>
                 </div>
@@ -402,17 +426,122 @@
 
         <!-- Toast Container -->
         <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+        <!-- Color Scheme Modal -->
+        <div v-if="showColorSchemeModal" class="color-scheme-modal" @click.self="closeColorSchemeModal">
+            <div class="color-scheme-modal-content">
+                <div class="color-scheme-header">
+                    <h2 class="color-scheme-title">
+                        <i class="fas fa-palette"></i>
+                        Choose Color Scheme
+                    </h2>
+                    <p class="color-scheme-subtitle" v-text="t('colorScheme.subtitle')"></p>
+                </div>
+                
+                <div class="color-scheme-body">
+                    <div class="color-scheme-section">
+                        <h3 class="color-scheme-section-title">
+                            <i :class="isDarkMode ? 'fas fa-moon' : 'fas fa-sun'"></i>
+                            ${isDarkMode ? 'Dark' : 'Light'} Themes
+                        </h3>
+                        <div class="color-scheme-grid">
+                            <div v-for="scheme in colorSchemes[isDarkMode ? 'dark' : 'light']" 
+                                 :key="scheme.id"
+                                 @click="selectColorScheme(scheme.id)"
+                                 :class="['color-scheme-option', currentColorScheme === scheme.id ? 'active' : '']">
+                                <div class="color-scheme-preview">
+                                    <div :class="`preview-${isDarkMode ? 'dark-' : ''}${scheme.id}-primary color-scheme-preview-segment`"></div>
+                                    <div :class="`preview-${isDarkMode ? 'dark-' : ''}${scheme.id}-secondary color-scheme-preview-segment`"></div>
+                                    <div :class="`preview-${isDarkMode ? 'dark-' : ''}${scheme.id}-tertiary color-scheme-preview-segment`"></div>
+                                </div>
+                                <div class="color-scheme-name">${scheme.name}</div>
+                                <div class="color-scheme-description">${scheme.description}</div>
+                                <div v-if="currentColorScheme === scheme.id" class="color-scheme-check">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="color-scheme-footer">
+                    <button @click="resetColorScheme" class="color-scheme-reset-btn">
+                        <i class="fas fa-undo mr-2"></i>Reset to Default
+                    </button>
+                    <button @click="closeColorSchemeModal" class="color-scheme-close-btn">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shares List Modal -->
+        <div v-if="showSharesListModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+                <div class="p-6 border-b border-[var(--border-primary)] flex justify-between items-center">
+                    <h3 class="text-lg font-semibold" v-text="t('modal.sharedTranscripts')"></h3>
+                    <button @click="closeSharesList" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4 overflow-y-auto">
+                    <div v-if="isLoadingShares" class="text-center">
+                        <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                    </div>
+                    <div v-else-if="userShares.length === 0" class="text-center text-[var(--text-muted)]">
+                        <span v-text="t('sharedTranscripts.noSharedTranscripts')"></span>
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div v-for="share in userShares" :key="share.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-semibold">${share.recording_title}</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${ t('help.sharedOn') }: ${share.created_at}</p>
+                                </div>
+                                <button @click="deleteShare(share.id)" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="mt-4">
+                                <input :value="'{{ request.url_root }}share/' + share.public_id" readonly class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm">
+                                <button @click="copyShareLink(share.public_id)" class="mt-2 px-3 py-1 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg text-sm hover:bg-[var(--bg-button-hover)]">
+                                    <i class="fas fa-copy mr-2"></i>Copy Link
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- CSRF Token Management -->
     <script src="{{ url_for('static', filename='js/csrf-refresh.js') }}"></script>
     
+    <!-- Shared Components -->
+    <script src="{{ url_for('static', filename='js/shared-components.js') }}"></script>
+    
     <!-- Inquire Mode Vue App -->
     <script>
         const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick } = Vue;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // Initialize i18n
+        let t = (key) => key; // Default fallback
+        
+        async function initializeI18n() {
+            const userLanguage = "{{ user_language }}";
+            
+            // Initialize the global i18n instance
+            if (window.i18n) {
+                await window.i18n.init(userLanguage);
+                
+                // Create a shorthand translation function
+                t = (key, params) => window.i18n.t(key, params);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeI18n();
+            
             const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+            const i18nInstance = window.i18n;
 
             createApp({
                 setup() {
@@ -429,7 +558,29 @@
                     const tagSearchQuery = ref('');
                     const speakerSearchQuery = ref('');
                     
-                    const isUserMenuOpen = ref(false);
+                    // Use shared components
+                    const { isDarkMode, toggleDarkMode, initializeDarkMode } = window.SharedComponents.useDarkMode();
+                    const { 
+                        showColorSchemeModal, 
+                        currentColorScheme, 
+                        colorSchemes,
+                        openColorSchemeModal, 
+                        closeColorSchemeModal, 
+                        selectColorScheme,
+                        resetColorScheme,
+                        applyColorScheme,
+                        initializeColorScheme
+                    } = window.SharedComponents.useColorScheme();
+                    const {
+                        showSharesListModal,
+                        userShares,
+                        isLoadingShares,
+                        openSharesList,
+                        closeSharesList,
+                        copyShareLink,
+                        deleteShare
+                    } = window.SharedComponents.useSharesModal();
+                    const { isUserMenuOpen, toggleUserMenu, closeUserMenu } = window.SharedComponents.useUserMenu();
                     const isMobileSidebarOpen = ref(false);
                     
                     const availableFilters = reactive({
@@ -630,12 +781,6 @@
                         }
                     };
                     
-                    // Close user menu when clicking outside
-                    const handleClickOutside = (event) => {
-                        if (isUserMenuOpen.value && !event.target.closest('.relative')) {
-                            isUserMenuOpen.value = false;
-                        }
-                    };
 
                     // --- Theme Management (from main app.js) ---
                     const applyThemeFromStorage = () => {
@@ -660,11 +805,19 @@
                     
                     // --- Lifecycle ---
                     onMounted(async () => {
+                        // Initialize dark mode and color scheme
+                        initializeDarkMode();
+                        initializeColorScheme(isDarkMode.value);
+                        
+                        // Watch dark mode changes to update color scheme
+                        Vue.watch(isDarkMode, (newValue) => {
+                            initializeColorScheme(newValue);
+                        });
+                        
                         // Apply theme from localStorage on page load
                         applyThemeFromStorage();
                         
                         loadAvailableFilters();
-                        document.addEventListener('click', handleClickOutside);
                         
                         // Add scroll listener for smart auto-scroll after DOM is ready
                         await nextTick();
@@ -674,13 +827,15 @@
                     });
                     
                     onUnmounted(() => {
-                        document.removeEventListener('click', handleClickOutside);
                         if (inquireMessagesRef.value) {
                             inquireMessagesRef.value.removeEventListener('scroll', handleScroll);
                         }
                     });
 
                     return {
+                        // i18n - bind to i18n instance to maintain context
+                        t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                        
                         // State
                         inquireFilters,
                         availableFilters,
@@ -695,6 +850,28 @@
                         showProcessingStatus,
                         tagSearchQuery,
                         speakerSearchQuery,
+                        
+                        // Dark Mode
+                        isDarkMode,
+                        toggleDarkMode,
+                        
+                        // Color Scheme
+                        showColorSchemeModal,
+                        currentColorScheme,
+                        colorSchemes,
+                        openColorSchemeModal,
+                        closeColorSchemeModal,
+                        selectColorScheme,
+                        resetColorScheme,
+                        
+                        // Shares Modal
+                        showSharesListModal,
+                        userShares,
+                        isLoadingShares,
+                        openSharesList,
+                        closeSharesList,
+                        copyShareLink,
+                        deleteShare,
                         
                         // Computed
                         hasActiveFilters,

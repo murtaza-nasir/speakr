@@ -6,11 +6,42 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Admin Dashboard - Speakr</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <script>
+        // Initialize i18n
+        let t = (key) => key; // Default fallback
+        
+        async function initializeI18n() {
+            const userLanguage = "{{ user_language }}";
+            
+            // Initialize the global i18n instance
+            if (window.i18n) {
+                await window.i18n.init(userLanguage);
+                
+                // Create a shorthand translation function
+                t = (key, params) => window.i18n.t(key, params);
+                
+                // Update all elements with data-i18n attribute
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    el.textContent = t(key);
+                });
+                
+                // Update all elements with data-i18n-placeholder attribute
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    el.placeholder = t(key);
+                });
+            }
+        }
+        
         // Function to apply the theme based on localStorage
         function applyTheme() {
             // Apply dark mode
@@ -63,16 +94,16 @@
                     </button>
                     <div v-if="isUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
                         <a href="{{ url_for('index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-home mr-2"></i> Home
+                            <i class="fas fa-home mr-2"></i> ${t('nav.home')}
                         </a>
                         <a href="{{ url_for('account') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-user mr-2"></i> Account
+                            <i class="fas fa-user mr-2"></i> ${t('nav.account')}
                         </a>
                         <a href="{{ url_for('admin') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
-                            <i class="fas fa-user-shield mr-2"></i> Admin
+                            <i class="fas fa-user-shield mr-2"></i> ${t('nav.admin')}
                         </a>
                         <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
-                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            <i class="fas fa-sign-out-alt mr-2"></i> ${t('nav.signOut')}
                         </a>
                     </div>
                 </div>
@@ -99,28 +130,28 @@
                         <button @click="activeTab = 'users'" 
                                 :class="activeTab === 'users' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-users mr-2"></i><span>User Management</span>
+                            <i class="fas fa-users mr-2"></i><span>${t('adminDashboard.userManagement')}</span>
                         </button>
                         <button @click="activeTab = 'stats'" 
                                 :class="activeTab === 'stats' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-chart-bar mr-2"></i><span>System Statistics</span>
+                            <i class="fas fa-chart-bar mr-2"></i><span>${t('adminDashboard.systemStatistics')}</span>
                         </button>
                         <button @click="activeTab = 'settings'" 
                                 :class="activeTab === 'settings' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-cogs mr-2"></i><span>System Settings</span>
+                            <i class="fas fa-cogs mr-2"></i><span>${t('adminDashboard.systemSettings')}</span>
                         </button>
                         <button @click="activeTab = 'prompts'" 
                                 :class="activeTab === 'prompts' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-file-alt mr-2"></i><span>Default Prompts</span>
+                            <i class="fas fa-file-alt mr-2"></i><span>${t('adminDashboard.defaultPrompts')}</span>
                         </button>
                         <button @click="activeTab = 'vectorstore'" 
                                 :class="activeTab === 'vectorstore' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
                                 class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm"
                                 v-if="inquireModeEnabled">
-                            <i class="fas fa-database mr-2"></i><span>Vector Store</span>
+                            <i class="fas fa-database mr-2"></i><span>${t('adminDashboard.vectorStore')}</span>
                         </button>
                     </nav>
                 </div>
@@ -128,16 +159,16 @@
                 <!-- User Management Tab -->
                 <div v-show="activeTab === 'users'">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">User Management</h3>
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.userManagement')}</h3>
                         <button @click="showAddUserModal = true" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
-                            <i class="fas fa-user-plus mr-2"></i> Add User
+                            <i class="fas fa-user-plus mr-2"></i> ${t('adminDashboard.addUser')}
                         </button>
                     </div>
                     
                     <!-- Search and Filter -->
                     <div class="mb-4 flex">
                         <div class="relative flex-grow">
-                            <input type="text" v-model="userSearchQuery" placeholder="Search users..." class="w-full px-4 py-2 border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <input type="text" v-model="userSearchQuery" :placeholder="t('adminDashboard.searchUsers')" class="w-full px-4 py-2 border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                             <button v-if="userSearchQuery" @click="userSearchQuery = ''" class="absolute right-3 top-2.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -149,13 +180,13 @@
                         <table class="min-w-full divide-y divide-[var(--border-primary)]">
                             <thead class="bg-[var(--bg-tertiary)]">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Username</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Email</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Admin</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Recordings</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Storage Used</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Actions</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.id')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.username')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.email')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.admin')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.recordings')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.storageUsed')}</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
@@ -171,13 +202,13 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">${ formatFileSize(user.storage_used) }</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                         <div class="flex space-x-2">
-                                            <button @click="editUser(user)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" title="Edit User">
+                                            <button @click="editUser(user)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" :title="t('buttons.editUser')">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             <button @click="toggleAdminStatus(user)" :class="user.is_admin ? 'text-[var(--text-warn-strong)]' : 'text-[var(--text-info-strong)]'" :title="user.is_admin ? 'Remove Admin' : 'Make Admin'">
                                                 <i class="fas" :class="user.is_admin ? 'fa-user-minus' : 'fa-user-shield'"></i>
                                             </button>
-                                            <button @click="confirmDeleteUser(user)" class="text-[var(--text-danger)] hover:text-[var(--text-danger-hover)]" title="Delete User">
+                                            <button @click="confirmDeleteUser(user)" class="text-[var(--text-danger)] hover:text-[var(--text-danger-hover)]" :title="t('buttons.deleteUser')">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -200,7 +231,7 @@
                 
                 <!-- System Statistics Tab -->
                 <div v-show="activeTab === 'stats'">
-                    <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">System Statistics</h3>
+                    <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">${t('adminDashboard.systemStatistics')}</h3>
                     
                     <!-- Summary Cards -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -210,7 +241,7 @@
                                     <i class="fas fa-users text-xl"></i>
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">Total Users</p>
+                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalUsers')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ stats.total_users }</p>
                                 </div>
                             </div>
@@ -222,7 +253,7 @@
                                     <i class="fas fa-file-audio text-xl"></i>
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">Total Recordings</p>
+                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalRecordings')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ stats.total_recordings }</p>
                                 </div>
                             </div>
@@ -234,7 +265,7 @@
                                     <i class="fas fa-database text-xl"></i>
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">Total Storage Used</p>
+                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalStorage')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ formatFileSize(stats.total_storage) }</p>
                                 </div>
                             </div>
@@ -246,7 +277,7 @@
                                     <i class="fas fa-comments text-xl"></i>
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-[var(--text-muted)]">Total Queries</p>
+                                    <p class="text-sm font-medium text-[var(--text-muted)]">${t('adminDashboard.totalQueries')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ stats.total_queries }</p>
                                 </div>
                             </div>
@@ -256,29 +287,29 @@
                     <!-- Status Distribution -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">Recording Status Distribution</h4>
+                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.recordingStatusDistribution')}</h4>
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
                                     <span class="block text-2xl font-bold text-[var(--text-success-strong)]">${ stats.completed_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Completed</span>
+                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.completedRecordings')}</span>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
                                     <span class="block text-2xl font-bold text-[var(--text-warn-strong)]">${ stats.processing_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Processing</span>
+                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.processingRecordings')}</span>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
                                     <span class="block text-2xl font-bold text-[var(--text-pending-strong)]">${ stats.pending_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Pending</span>
+                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.pendingRecordings')}</span>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
                                     <span class="block text-2xl font-bold text-[var(--text-danger-strong)]">${ stats.failed_recordings }</span>
-                                    <span class="block text-sm text-[var(--text-muted)]">Failed</span>
+                                    <span class="block text-sm text-[var(--text-muted)]">${t('adminDashboard.failedRecordings')}</span>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">Top Users by Storage</h4>
+                            <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.topUsersByStorage')}</h4>
                             <div class="space-y-3">
                                 <div v-for="user in stats.top_users" :key="user.id" class="flex justify-between items-center p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
                                     <div class="flex items-center">
@@ -301,9 +332,9 @@
                 <!-- System Settings Tab -->
                 <div v-show="activeTab === 'settings'">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">System Settings</h3>
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.systemSettings')}</h3>
                         <button @click="loadSettings" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh
+                            <i class="fas fa-sync-alt mr-2"></i> ${t('buttons.refresh')}
                         </button>
                     </div>
                     
@@ -313,10 +344,10 @@
                             <div class="flex justify-between items-start">
                                 <div class="flex-grow">
                                     <h4 class="text-md font-medium text-[var(--text-primary)] mb-1">${ setting.key }</h4>
-                                    <p class="text-sm text-[var(--text-muted)] mb-2">${ setting.description || 'No description available' }</p>
+                                    <p class="text-sm text-[var(--text-muted)] mb-2">${ getSettingDescription(setting) }</p>
                                     <div class="flex items-center space-x-2">
                                         <span class="text-xs px-2 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded">${ setting.setting_type }</span>
-                                        <span class="text-xs text-[var(--text-muted)]">Last updated: ${ formatDate(setting.updated_at) }</span>
+                                        <span class="text-xs text-[var(--text-muted)]">${t('adminDashboard.lastUpdated')}: ${ formatDate(setting.updated_at) }</span>
                                     </div>
                                 </div>
                                 <div class="ml-4 flex items-center space-x-2">
@@ -331,21 +362,21 @@
                                                 </span>
                                             </span>
                                             <span v-else-if="setting.key === 'transcript_length_limit' && setting.value === '-1'" class="text-[var(--text-info-strong)]">
-                                                <i class="fas fa-infinity mr-1"></i> No Limit
+                                                <i class="fas fa-infinity mr-1"></i> ${t('adminDashboard.noLimit')}
                                             </span>
                             <span v-else-if="setting.key === 'transcript_length_limit'" class="text-[var(--text-primary)]">
-                                ${ Number(setting.value).toLocaleString() } characters
+                                ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.characters')}
                             </span>
                             <span v-else-if="setting.key === 'max_file_size_mb'" class="text-[var(--text-primary)]">
-                                ${ Number(setting.value).toLocaleString() } MB
+                                ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.megabytes')}
                             </span>
                             <span v-else-if="setting.key === 'asr_timeout_seconds'" class="text-[var(--text-primary)]">
-                                ${ Number(setting.value).toLocaleString() } seconds
+                                ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.seconds')}
                             </span>
-                                            <span v-else>${ setting.value || 'Not set' }</span>
+                                            <span v-else>${ setting.value || t('adminDashboard.notSet') }</span>
                                         </div>
                                     </div>
-                                    <button @click="editSetting(setting)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)] p-1" title="Edit Setting">
+                                    <button @click="editSetting(setting)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)] p-1" :title="t('buttons.editSetting')">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                 </div>
@@ -366,26 +397,26 @@
                 <!-- Default Prompts Tab -->
                 <div v-show="activeTab === 'prompts'">
                     <div class="mb-6">
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">Default Prompts</h3>
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">${t('adminDashboard.defaultPrompts')}</h3>
                         <div class="bg-[var(--bg-info-light)] text-[var(--text-info-strong)] p-4 rounded-lg mb-4">
                             <i class="fas fa-info-circle mr-2"></i>
-                            This default prompt will be used for all users who haven't set their own custom prompt in their account settings.
+                            ${t('adminDashboard.defaultPromptInfo')}
                         </div>
                     </div>
                     
                     <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                                Default Summarization Prompt
+                                ${t('adminDashboard.defaultSummarizationPrompt')}
                             </label>
                             <p class="text-sm text-[var(--text-muted)] mb-3">
-                                This prompt will be used to generate summaries for all recordings when users haven't set their own prompt.
+                                ${t('adminDashboard.promptDescription')}
                             </p>
                             <textarea 
                                 v-model="defaultSummaryPrompt"
                                 rows="8"
                                 class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                placeholder="Enter the default summarization prompt...">
+                                :placeholder="t('form.summaryPromptPlaceholder')">
                             </textarea>
                         </div>
                         
@@ -393,7 +424,7 @@
                             <div>
                                 <button @click="resetDefaultPrompt" 
                                         class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-undo mr-2"></i> Reset to Default
+                                    <i class="fas fa-undo mr-2"></i> ${t('adminDashboard.resetToDefault')}
                                 </button>
                             </div>
                             <div>
@@ -402,7 +433,7 @@
                                         class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
                                     <i v-if="isSavingPrompt" class="fas fa-spinner fa-spin mr-2"></i>
                                     <i v-else class="fas fa-save mr-2"></i>
-                                    ${ isSavingPrompt ? 'Saving...' : 'Save Changes' }
+                                    ${ isSavingPrompt ? t('adminDashboard.saving') : t('buttons.saveChanges') }
                                 </button>
                             </div>
                         </div>
@@ -416,15 +447,15 @@
                     </div>
                     
                     <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
-                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">Prompt Hierarchy</h4>
+                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.promptHierarchy')}</h4>
                         <p class="text-sm text-[var(--text-muted)] mb-3">
-                            The system uses the following priority order when selecting which prompt to use:
+                            ${t('adminDashboard.promptPriorityDescription')}
                         </p>
                         <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
-                            <li><strong>Tag Custom Prompt:</strong> If a recording has tags with custom prompts</li>
-                            <li><strong>User Custom Prompt:</strong> If the user has set their own prompt in account settings</li>
-                            <li><strong>Admin Default Prompt:</strong> The prompt configured above (shown on this page)</li>
-                            <li><strong>System Fallback:</strong> A hardcoded default if none of the above are set</li>
+                            <li><strong>${t('adminDashboard.tagCustomPrompt')}:</strong> ${t('adminDashboard.tagCustomPromptDesc')}</li>
+                            <li><strong>${t('adminDashboard.userCustomPrompt')}:</strong> ${t('adminDashboard.userCustomPromptDesc')}</li>
+                            <li><strong>${t('adminDashboard.adminDefaultPrompt')}:</strong> ${t('adminDashboard.adminDefaultPromptDesc')}</li>
+                            <li><strong>${t('adminDashboard.systemFallback')}:</strong> ${t('adminDashboard.systemFallbackDesc')}</li>
                         </ol>
                     </div>
                     
@@ -434,7 +465,7 @@
                                 class="w-full p-6 flex justify-between items-center hover:bg-[var(--bg-quaternary)] transition-colors duration-200">
                             <h4 class="text-md font-medium text-[var(--text-secondary)]">
                                 <i class="fas fa-code mr-2"></i>
-                                View Full LLM Prompt Structure
+                                ${t('adminDashboard.viewFullPromptStructure')}
                             </h4>
                             <i :class="showFullPromptStructure ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" 
                                class="text-[var(--text-muted)]"></i>
@@ -443,21 +474,21 @@
                         <div v-show="showFullPromptStructure" class="border-t border-[var(--border-primary)]">
                             <div class="p-6 space-y-6">
                                 <div>
-                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">System Prompt:</h5>
+                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.systemPrompt')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
                                         <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.<span v-if="defaultSummaryPrompt || originalDefaultPrompt">
 
-Summarization Instructions:
+${t('adminDashboard.summarizationInstructions')}:
 ${ defaultSummaryPrompt || originalDefaultPrompt }</span></pre>
                                     </div>
                                     <p class="text-xs text-[var(--text-muted)] mt-2">
                                         <i class="fas fa-info-circle mr-1"></i>
-                                        Note: If the user has set an output language preference, " Ensure your response is in {language}." will be added.
+                                        ${t('adminDashboard.languagePreferenceNote')}
                                     </p>
                                 </div>
                                 
                                 <div>
-                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">User Message Template:</h5>
+                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.userMessageTemplate')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
                                         <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">Context:
 - Current date: {current_date}
@@ -473,18 +504,18 @@ Please analyze the above transcription and generate a summary following the prov
                                     </div>
                                     <p class="text-xs text-[var(--text-muted)] mt-2">
                                         <i class="fas fa-info-circle mr-1"></i>
-                                        Placeholders are replaced with actual values when processing a recording.
+                                        ${t('adminDashboard.placeholdersNote')}
                                     </p>
                                 </div>
                                 
                                 <div>
-                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">Additional Context:</h5>
+                                    <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.additionalContext')}:</h5>
                                     <div class="bg-[var(--bg-info-light)] p-4 rounded-md">
                                         <ul class="text-xs text-[var(--text-info-strong)] space-y-2">
-                                            <li><i class="fas fa-check-circle mr-1"></i> Transcripts are limited to a configurable character count (default: 30,000)</li>
-                                            <li><i class="fas fa-check-circle mr-1"></i> JSON transcripts are converted to clean text format before sending</li>
-                                            <li><i class="fas fa-check-circle mr-1"></i> If multiple tag prompts exist, they are merged in the order tags were added</li>
-                                            <li><i class="fas fa-check-circle mr-1"></i> The model used is configured via TEXT_MODEL_NAME environment variable</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> ${t('adminDashboard.contextNotes.transcriptLimit')}</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> ${t('adminDashboard.contextNotes.jsonConversion')}</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> ${t('adminDashboard.contextNotes.tagPrompts')}</li>
+                                            <li><i class="fas fa-check-circle mr-1"></i> ${t('adminDashboard.contextNotes.modelConfig')}</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -496,36 +527,35 @@ Please analyze the above transcription and generate a summary following the prov
                 <!-- Vector Store Tab -->
                 <div v-show="activeTab === 'vectorstore'" v-if="inquireModeEnabled">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">Vector Store Management</h3>
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.vectorStoreManagement')}</h3>
                         <button @click="loadInquireStatus" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh Status
+                            <i class="fas fa-sync-alt mr-2"></i> ${t('adminDashboard.refreshStatus')}
                         </button>
                     </div>
                     
                     <!-- Vector Store Info -->
                     <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)] mb-6">
                         <h4 class="text-md font-semibold text-[var(--text-primary)] mb-4">
-                            <i class="fas fa-info-circle mr-2"></i>About Inquire Mode
+                            <i class="fas fa-info-circle mr-2"></i>${t('adminDashboard.aboutInquireMode')}
                         </h4>
                         <p class="text-sm text-[var(--text-secondary)] mb-3">
-                            Inquire Mode allows users to search across multiple transcriptions using natural language questions. 
-                            It works by breaking transcriptions into chunks and creating searchable embeddings using AI models.
+                            ${t('adminDashboard.inquireModeDescription')}
                         </p>
                         <div class="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                                <span class="text-[var(--text-muted)]">Chunk Size:</span>
-                                <span class="ml-2 text-[var(--text-primary)]">500 characters</span>
+                                <span class="text-[var(--text-muted)]">${t('adminDashboard.chunkSize')}:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">500 ${t('adminDashboard.characters')}</span>
                             </div>
                             <div>
-                                <span class="text-[var(--text-muted)]">Overlap:</span>
-                                <span class="ml-2 text-[var(--text-primary)]">50 characters</span>
+                                <span class="text-[var(--text-muted)]">${t('adminDashboard.overlap')}:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">50 ${t('adminDashboard.characters')}</span>
                             </div>
                             <div>
-                                <span class="text-[var(--text-muted)]">Embedding Model:</span>
+                                <span class="text-[var(--text-muted)]">${t('adminDashboard.embeddingModel')}:</span>
                                 <span class="ml-2 text-[var(--text-primary)]">all-MiniLM-L6-v2</span>
                             </div>
                             <div>
-                                <span class="text-[var(--text-muted)]">Vector Dimensions:</span>
+                                <span class="text-[var(--text-muted)]">${t('adminDashboard.vectorDimensions')}:</span>
                                 <span class="ml-2 text-[var(--text-primary)]">384</span>
                             </div>
                         </div>
@@ -536,7 +566,7 @@ Please analyze the above transcription and generate a summary following the prov
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Total Recordings</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('adminDashboard.totalRecordings')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ inquireStatus.total_completed_recordings || 0 }</p>
                                 </div>
                                 <i class="fas fa-file-audio text-3xl text-[var(--text-accent)] opacity-50"></i>
@@ -546,7 +576,7 @@ Please analyze the above transcription and generate a summary following the prov
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Processed for Inquire</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('adminDashboard.processedForInquire')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-success-strong)]">${ inquireStatus.processed_for_inquire || 0 }</p>
                                 </div>
                                 <i class="fas fa-check-circle text-3xl text-[var(--text-success-strong)] opacity-50"></i>
@@ -556,7 +586,7 @@ Please analyze the above transcription and generate a summary following the prov
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Need Processing</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('adminDashboard.needProcessing')}</p>
                                     <p class="text-2xl font-semibold" :class="inquireStatus.need_processing > 0 ? 'text-[var(--text-warning-strong)]' : 'text-[var(--text-primary)]'">
                                         ${ inquireStatus.need_processing || 0 }
                                     </p>
@@ -568,7 +598,7 @@ Please analyze the above transcription and generate a summary following the prov
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Total Chunks</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('adminDashboard.totalChunks')}</p>
                                     <p class="text-2xl font-semibold text-[var(--text-primary)]">${ inquireStatus.total_chunks || 0 }</p>
                                 </div>
                                 <i class="fas fa-th text-3xl text-[var(--text-accent)] opacity-50"></i>
@@ -578,10 +608,10 @@ Please analyze the above transcription and generate a summary following the prov
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Embeddings Status</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('adminDashboard.embeddingsStatus')}</p>
                                     <p class="text-lg font-semibold" :class="inquireStatus.embeddings_available ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-warning-strong)]'">
                                         <i :class="inquireStatus.embeddings_available ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'" class="mr-2"></i>
-                                        ${ inquireStatus.embeddings_available ? 'Available' : 'Text Search Only' }
+                                        ${ inquireStatus.embeddings_available ? t('adminDashboard.available') : t('adminDashboard.textSearchOnly') }
                                     </p>
                                 </div>
                                 <i class="fas fa-brain text-3xl opacity-50" :class="inquireStatus.embeddings_available ? 'text-[var(--text-success-strong)]' : 'text-[var(--text-warning-strong)]'"></i>
@@ -591,12 +621,12 @@ Please analyze the above transcription and generate a summary following the prov
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <p class="text-sm text-[var(--text-muted)]">Processing Progress</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('adminDashboard.processingProgress')}</p>
                                     <div class="mt-2">
                                         <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2.5">
                                             <div class="bg-[var(--text-accent)] h-2.5 rounded-full" :style="{width: getProcessingProgress() + '%'}"></div>
                                         </div>
-                                        <p class="text-xs text-[var(--text-muted)] mt-1">${ getProcessingProgress() }% complete</p>
+                                        <p class="text-xs text-[var(--text-muted)] mt-1">${ getProcessingProgress() }% ${t('adminDashboard.complete')}</p>
                                     </div>
                                 </div>
                                 <i class="fas fa-tasks text-3xl text-[var(--text-accent)] opacity-50"></i>
@@ -607,12 +637,12 @@ Please analyze the above transcription and generate a summary following the prov
                     <!-- Processing Actions -->
                     <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                         <h4 class="text-md font-semibold text-[var(--text-primary)] mb-4">
-                            <i class="fas fa-cog mr-2"></i>Processing Actions
+                            <i class="fas fa-cog mr-2"></i>${t('adminDashboard.processingActions')}
                         </h4>
                         
                         <div v-if="inquireStatus.need_processing > 0" class="mb-4">
                             <p class="text-sm text-[var(--text-secondary)] mb-4">
-                                There are <span class="font-semibold text-[var(--text-warning-strong)]">${ inquireStatus.need_processing }</span> recordings that need to be processed for Inquire Mode.
+                                ${t('adminDashboard.recordingsNeedProcessing').replace('{{count}}', inquireStatus.need_processing)}
                             </p>
                             
                             <div class="flex flex-wrap gap-3">
@@ -620,14 +650,14 @@ Please analyze the above transcription and generate a summary following the prov
                                         :disabled="isProcessingRecordings"
                                         class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
                                     <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-play'" class="mr-2"></i>
-                                    ${ isProcessingRecordings ? 'Processing...' : 'Process All Recordings' }
+                                    ${ isProcessingRecordings ? t('adminDashboard.processing') : t('adminDashboard.processAllRecordings') }
                                 </button>
                                 
                                 <button @click="processBatchRecordings(10)" 
                                         :disabled="isProcessingRecordings"
                                         class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
                                     <i class="fas fa-forward mr-2"></i>
-                                    Process Next 10
+                                    ${t('adminDashboard.processNext10')}
                                 </button>
                             </div>
                             
@@ -647,8 +677,8 @@ Please analyze the above transcription and generate a summary following the prov
                         
                         <div v-else class="text-center py-4">
                             <i class="fas fa-check-circle text-4xl text-[var(--text-success-strong)] mb-3"></i>
-                            <p class="text-[var(--text-success-strong)] font-medium">All recordings are processed!</p>
-                            <p class="text-sm text-[var(--text-muted)] mt-1">The vector store is up to date.</p>
+                            <p class="text-[var(--text-success-strong)] font-medium">${t('adminDashboard.allRecordingsProcessed')}</p>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">${t('adminDashboard.vectorStoreUpToDate')}</p>
                         </div>
                     </div>
                 </div>
@@ -660,75 +690,81 @@ Please analyze the above transcription and generate a summary following the prov
         </footer>
         
         <!-- Add User Modal -->
-        <div v-if="showAddUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showAddUserModal" @click.self="showAddUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Add New User</h3>
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${t('adminDashboard.addNewUser')}</h3>
                     <button @click="showAddUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
                 </div>
                 <form @submit.prevent="addUser">
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Username</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.usernameLabel')}</label>
                         <input v-model="newUser.username" type="text" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Email</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.emailLabel')}</label>
                         <input v-model="newUser.email" type="email" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Password</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.passwordLabel')}</label>
                         <input v-model="newUser.password" type="password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Confirm Password</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.confirmPasswordLabel')}</label>
                         <input v-model="newUser.confirmPassword" type="password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
-                    <div class="mb-4 flex items-center">
-                        <input v-model="newUser.isAdmin" type="checkbox" id="isAdmin" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                        <label for="isAdmin" class="ml-2 text-sm text-[var(--text-secondary)]">Admin User</label>
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input v-model="newUser.isAdmin" type="checkbox" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--text-accent)]"></div>
+                            <span class="ml-3 text-sm text-[var(--text-secondary)]">${t('adminDashboard.adminUser')}</span>
+                        </label>
                     </div>
                     <div class="flex justify-end space-x-3">
-                        <button type="button" @click="showAddUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">Add User</button>
+                        <button type="button" @click="showAddUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">${t('buttons.cancel')}</button>
+                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.addUser')}</button>
                     </div>
                 </form>
             </div>
         </div>
         
         <!-- Edit User Modal -->
-        <div v-if="showEditUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showEditUserModal" @click.self="showEditUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Edit User</h3>
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${t('adminDashboard.editUser')}</h3>
                     <button @click="showEditUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
                 </div>
                 <form @submit.prevent="updateUser">
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Username</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.usernameLabel')}</label>
                         <input v-model="editingUser.username" type="text" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Email</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.emailLabel')}</label>
                         <input v-model="editingUser.email" type="email" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">New Password (leave blank to keep current)</label>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.newPasswordLabel')}</label>
                         <input v-model="editingUser.password" type="password" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     </div>
-                    <div class="mb-4 flex items-center">
-                        <input v-model="editingUser.is_admin" type="checkbox" id="editIsAdmin" class="rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
-                        <label for="editIsAdmin" class="ml-2 text-sm text-[var(--text-secondary)]">Admin User</label>
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input v-model="editingUser.is_admin" type="checkbox" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--text-accent)]"></div>
+                            <span class="ml-3 text-sm text-[var(--text-secondary)]">${t('adminDashboard.adminUser')}</span>
+                        </label>
                     </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" @click="showEditUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">Update User</button>
+                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.updateUser')}</button>
                     </div>
                 </form>
             </div>
         </div>
         
         <!-- Delete User Confirmation Modal -->
-        <div v-if="showDeleteUserModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showDeleteUserModal" @click.self="showDeleteUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Confirm Delete</h3>
@@ -776,18 +812,18 @@ Please analyze the above transcription and generate a summary following the prov
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Current Value</label>
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md">
                             <span v-if="editingSetting.key === 'transcript_length_limit' && editingSetting.value === '-1'">
-                                No Limit
+                                ${t('adminDashboard.noLimit')}
                             </span>
                             <span v-else-if="editingSetting.key === 'transcript_length_limit'">
-                                ${ Number(editingSetting.value).toLocaleString() } characters
+                                ${ Number(editingSetting.value).toLocaleString() } ${t('adminDashboard.characters')}
                             </span>
                             <span v-else-if="editingSetting.key === 'max_file_size_mb'">
-                                ${ Number(editingSetting.value).toLocaleString() } MB
+                                ${ Number(editingSetting.value).toLocaleString() } ${t('adminDashboard.megabytes')}
                             </span>
                             <span v-else-if="editingSetting.key === 'asr_timeout_seconds'">
-                                ${ Number(editingSetting.value).toLocaleString() } seconds (${ Math.round(Number(editingSetting.value) / 60) } minutes)
+                                ${ Number(editingSetting.value).toLocaleString() } ${t('adminDashboard.seconds')} (${ Math.round(Number(editingSetting.value) / 60) } ${t('adminDashboard.minutes')})
                             </span>
-                            <span v-else>${ editingSetting.value || 'Not set' }</span>
+                            <span v-else>${ editingSetting.value || t('adminDashboard.notSet') }</span>
                         </div>
                     </div>
                     
@@ -816,7 +852,7 @@ Please analyze the above transcription and generate a summary following the prov
                                 </div>
                                 <input v-if="!settingUseNoLimit" v-model.number="settingNewValue" type="number" min="1000" step="1000" 
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                       placeholder="Enter character limit (e.g., 30000)">
+                                       :placeholder="t('form.placeholderCharacterLimit')">
                                 <small v-if="!settingUseNoLimit" class="text-[var(--text-muted)]">Recommended: 30000-50000 characters for most LLMs</small>
                             </div>
                             
@@ -824,8 +860,8 @@ Please analyze the above transcription and generate a summary following the prov
                             <div v-else-if="editingSetting.key === 'max_file_size_mb'" class="space-y-2">
                                 <input v-model.number="settingNewValue" type="number" min="1" max="10000" step="50"
                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                       placeholder="Enter size in MB">
-                                <small class="text-[var(--text-muted)]">Maximum file size in megabytes (1-10000 MB)</small>
+                                       :placeholder="t('form.placeholderSizeMB')">
+                                <small class="text-[var(--text-muted)]">${t('adminDashboard.maxFileSizeHelp')}</small>
                             </div>
                             
                             <!-- Special input for asr_timeout_seconds -->
@@ -834,20 +870,20 @@ Please analyze the above transcription and generate a summary following the prov
                                     <div class="flex-1">
                                         <input v-model.number="settingTimeoutMinutes" type="number" min="1" max="600" step="1"
                                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                               placeholder="Minutes">
-                                        <small class="text-[var(--text-muted)]">Minutes</small>
+                                               :placeholder="t('form.placeholderMinutes')">
+                                        <small class="text-[var(--text-muted)]">${t('adminDashboard.minutes')}</small>
                                     </div>
                                     <div class="flex-1">
                                         <input v-model.number="settingTimeoutSeconds" type="number" min="0" max="59" step="1"
                                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                               placeholder="Seconds">
-                                        <small class="text-[var(--text-muted)]">Seconds</small>
+                                               :placeholder="t('form.placeholderSeconds')">
+                                        <small class="text-[var(--text-muted)]">${t('adminDashboard.seconds')}</small>
                                     </div>
                                 </div>
                                 <div class="text-sm text-[var(--text-muted)]">
-                                    Total: <span class="font-medium text-[var(--text-primary)]">${ (settingTimeoutMinutes * 60 + settingTimeoutSeconds).toLocaleString() } seconds</span>
+                                    ${t('adminDashboard.total')}: <span class="font-medium text-[var(--text-primary)]">${ (settingTimeoutMinutes * 60 + settingTimeoutSeconds).toLocaleString() } ${t('adminDashboard.seconds')}</span>
                                 </div>
-                                <small class="text-[var(--text-muted)]">Recommended: 30-120 minutes for long audio files</small>
+                                <small class="text-[var(--text-muted)]">${t('adminDashboard.timeoutRecommendation')}</small>
                             </div>
                             
                             <!-- Default number input -->
@@ -874,7 +910,7 @@ Please analyze the above transcription and generate a summary following the prov
                     </button>
                     <button @click="saveSettingValue" 
                             class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
-                        Save Changes
+                        ${t('buttons.saveChanges')}
                     </button>
                 </div>
             </div>
@@ -884,8 +920,14 @@ Please analyze the above transcription and generate a summary following the prov
     <script>
         const { createApp, ref, computed, onMounted, watch } = Vue
         
-        createApp({
+        // Initialize i18n before Vue app creation
+        initializeI18n().then(() => {
+            // Get the i18n instance to properly bind the t function
+            const i18nInstance = window.i18n;
+            
+            createApp({
             setup() {
+                
                 // State
                 const activeTab = ref('users');
                 const users = ref([]);
@@ -990,6 +1032,9 @@ Please analyze the above transcription and generate a summary following the prov
                     isLoadingSettings.value = true;
                     try {
                         const response = await fetch('/admin/settings');
+                        if (response.status === 429) {
+                            throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+                        }
                         if (!response.ok) throw new Error('Failed to load settings');
                         
                         const data = await response.json();
@@ -1139,9 +1184,23 @@ Please analyze the above transcription and generate a summary following the prov
                 };
                 
                 const formatDate = (dateString) => {
-                    if (!dateString) return 'Never';
+                    if (!dateString) return t('adminDashboard.never');
                     const date = new Date(dateString);
                     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                };
+                
+                const getSettingDescription = (setting) => {
+                    // Map setting keys to translation keys
+                    const descriptionKeys = {
+                        'transcript_length_limit': 'adminDashboard.settings.transcriptLengthLimitDesc',
+                        'max_file_size_mb': 'adminDashboard.settings.maxFileSizeDesc',
+                        'asr_timeout_seconds': 'adminDashboard.settings.asrTimeoutDesc',
+                        'admin_default_summary_prompt': 'adminDashboard.settings.defaultSummaryPromptDesc',
+                        'recording_disclaimer': 'adminDashboard.settings.recordingDisclaimerDesc'
+                    };
+                    
+                    const key = descriptionKeys[setting.key];
+                    return key ? t(key) : setting.description || t('adminDashboard.noDescriptionAvailable');
                 };
                 
                 const addUser = async () => {
@@ -1354,18 +1413,26 @@ Please analyze the above transcription and generate a summary following the prov
                 // Default Prompts methods
                 const loadDefaultPrompt = async () => {
                     try {
-                        // Load the admin_default_summary_prompt from settings
-                        const response = await fetch('/admin/settings');
-                        if (!response.ok) throw new Error('Failed to load settings');
+                        // Use already loaded settings if available, otherwise load them
+                        let settingsData = settings.value;
                         
-                        const settings = await response.json();
-                        const promptSetting = settings.find(s => s.key === 'admin_default_summary_prompt');
+                        if (!settingsData || settingsData.length === 0) {
+                            const response = await fetch('/admin/settings');
+                            if (response.status === 429) {
+                                throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+                            }
+                            if (!response.ok) throw new Error('Failed to load settings');
+                            settingsData = await response.json();
+                            settings.value = settingsData;
+                        }
+                        
+                        const promptSetting = settingsData.find(s => s.key === 'admin_default_summary_prompt');
                         if (promptSetting) {
                             defaultSummaryPrompt.value = promptSetting.value || '';
                         }
                     } catch (error) {
                         console.error('Error loading default prompt:', error);
-                        promptSaveMessage.value = 'Failed to load default prompt';
+                        promptSaveMessage.value = t('adminDashboard.errors.failedToLoadPrompt');
                         promptSaveError.value = true;
                     }
                 };
@@ -1392,7 +1459,7 @@ Please analyze the above transcription and generate a summary following the prov
                         
                         if (!response.ok) throw new Error('Failed to save prompt');
                         
-                        promptSaveMessage.value = 'Default prompt saved successfully!';
+                        promptSaveMessage.value = t('adminDashboard.promptSavedSuccessfully');
                         promptSaveError.value = false;
                         
                         // Clear message after 3 seconds
@@ -1401,7 +1468,7 @@ Please analyze the above transcription and generate a summary following the prov
                         }, 3000);
                     } catch (error) {
                         console.error('Error saving default prompt:', error);
-                        promptSaveMessage.value = 'Failed to save default prompt. Please try again.';
+                        promptSaveMessage.value = t('adminDashboard.errors.failedToSavePrompt');
                         promptSaveError.value = true;
                     } finally {
                         isSavingPrompt.value = false;
@@ -1410,7 +1477,7 @@ Please analyze the above transcription and generate a summary following the prov
                 
                 const resetDefaultPrompt = () => {
                     defaultSummaryPrompt.value = originalDefaultPrompt;
-                    promptSaveMessage.value = 'Prompt reset to system default. Click "Save Changes" to apply.';
+                    promptSaveMessage.value = t('adminDashboard.promptResetMessage');
                     promptSaveError.value = false;
                 };
                 
@@ -1500,26 +1567,36 @@ Please analyze the above transcription and generate a summary following the prov
                     return Math.round((inquireStatus.value.processed_for_inquire / total) * 100);
                 };
                 
-                // Lifecycle hooks
-                onMounted(() => {
+                // Lifecycle hooks - MUST be registered before any await statements
+                onMounted(async () => {
                     loadUsers();
                     loadStats();
                     initializeDarkMode();
+                    
+                    // Load settings first, then default prompt can use that data
+                    if (activeTab.value === 'settings' || activeTab.value === 'prompts') {
+                        await loadSettings();
+                    }
                     loadDefaultPrompt();
+                    
                     if (inquireModeEnabled.value) {
                         loadInquireStatus();
                     }
                 });
                 
                 // Watch for tab changes to reload data
-                watch(activeTab, (newTab) => {
+                watch(activeTab, async (newTab) => {
                     if (newTab === 'users') {
                         loadUsers();
                     } else if (newTab === 'stats') {
                         loadStats();
                     } else if (newTab === 'settings') {
-                        loadSettings();
+                        await loadSettings();
                     } else if (newTab === 'prompts') {
+                        // If settings aren't loaded, load them first
+                        if (!settings.value || settings.value.length === 0) {
+                            await loadSettings();
+                        }
                         loadDefaultPrompt();
                     } else if (newTab === 'vectorstore' && inquireModeEnabled.value) {
                         loadInquireStatus();
@@ -1527,6 +1604,9 @@ Please analyze the above transcription and generate a summary following the prov
                 });
                 
                 return {
+                    // i18n - bind to i18n instance to maintain context
+                    t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+                    
                     // State
                     activeTab,
                     users,
@@ -1581,6 +1661,7 @@ Please analyze the above transcription and generate a summary following the prov
                     saveSettingValue,
                     updateSetting,
                     formatDate,
+                    getSettingDescription,
                     addUser,
                     editUser,
                     updateUser,
@@ -1603,6 +1684,7 @@ Please analyze the above transcription and generate a summary following the prov
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2
         }).mount('#app');
+        }); // End of initializeI18n().then()
     </script>
 </body>
 </html>

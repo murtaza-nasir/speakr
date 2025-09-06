@@ -121,19 +121,19 @@ class AudioChunkingService:
             mp3_filename = f"{base_name}_converted.mp3"
             mp3_path = os.path.join(temp_dir, mp3_filename)
             
-            # Convert to 64kbps MP3 using better quality settings
+            # Convert to high-quality MP3 for better transcription accuracy
             cmd = [
                 'ffmpeg', '-i', file_path,
                 '-codec:a', 'libmp3lame',  # Use LAME MP3 encoder explicitly
-                '-b:a', '64k',  # 64kbps bitrate for better quality
-                '-ar', '22050',  # 22.05kHz sample rate (better than 16kHz)
+                '-b:a', '128k',  # 128kbps bitrate for high quality
+                '-ar', '44100',  # 44.1kHz sample rate for better quality
                 '-ac', '1',  # Mono (sufficient for speech)
                 '-compression_level', '2',  # Better compression
                 '-y',  # Overwrite output file
                 mp3_path
             ]
             
-            logger.info(f"Converting {file_path} to 64kbps MP3 format for accurate chunking...")
+            logger.info(f"Converting {file_path} to 128kbps MP3 format for accurate chunking...")
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 raise ValueError(f"ffmpeg conversion failed: {result.stderr}")

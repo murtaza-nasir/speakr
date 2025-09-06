@@ -1,0 +1,31 @@
+# Jekyll build output
+_site/
+.sass-cache/
+.jekyll-cache/
+.jekyll-metadata
+
+# Bundle directory
+.bundle/
+vendor/
+
+# Local development files
+_config_local.yml
+local-serve.sh
+docker-serve.sh
+simple-serve.sh
+serve-local.sh
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Ruby version files
+.ruby-version
+.ruby-gemset
+
+# Documentation verification (internal use)
+DOCUMENTATION_VERIFICATION_CHECKLIST.md

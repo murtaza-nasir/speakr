@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en-US' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    {% seo %}
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+    <link rel="icon" type="image/png" href="{{ '/assets/images/logo.png' | relative_url }}">
+    
+    <!-- Custom fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            font-size: 15px;
+        }
+        
+        .docs-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: #f9fafb;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+            z-index: 100;
+        }
+        
+        .sidebar-header {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .sidebar-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .sidebar-content {
+            padding: 1rem 0;
+        }
+        
+        .sidebar-section {
+            margin-bottom: 1.5rem;
+        }
+        
+        .sidebar-section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            padding: 0 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .sidebar-list {
+            list-style: none;
+        }
+        
+        .sidebar-item {
+            margin: 0;
+        }
+        
+        .sidebar-link {
+            display: block;
+            padding: 0.5rem 1.5rem;
+            color: #4b5563;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+        
+        .sidebar-link:hover {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+        
+        .sidebar-link.active {
+            background: #6366f1;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .sidebar-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            margin-top: auto;
+        }
+        
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        
+        .github-link:hover {
+            color: #1f2937;
+        }
+        
+        .github-icon {
+            flex-shrink: 0;
+        }
+        
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            min-width: 0;
+        }
+        
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 3rem;
+        }
+        
+        /* Content Typography */
+        .content-wrapper h1 {
+            color: #1f2937;
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #6366f1;
+        }
+        
+        .content-wrapper h2 {
+            color: #1f2937;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .content-wrapper h3 {
+            color: #374151;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .content-wrapper h4 {
+            color: #4b5563;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .content-wrapper p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+        
+        .content-wrapper img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin: 2rem 0;
+        }
+        
+        .content-wrapper code {
+            background: #f3f4f6;
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            color: #dc2626;
+            font-size: 0.85em;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-weight: 500;
+        }
+        
+        .content-wrapper pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid #4a5568;
+        }
+        
+        .content-wrapper pre code {
+            background: none;
+            color: #e2e8f0;
+            padding: 0;
+            font-weight: normal;
+        }
+        
+        /* Override syntax highlighting for better contrast */
+        .content-wrapper .highlight pre {
+            background: #1f2937;
+        }
+        
+        .content-wrapper .highlight code {
+            color: #f3f4f6;
+        }
+        
+        .content-wrapper ul, .content-wrapper ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        
+        .content-wrapper li {
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        
+        .content-wrapper blockquote {
+            border-left: 4px solid #6366f1;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+            color: #6b7280;
+        }
+        
+        .content-wrapper table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        .content-wrapper th, .content-wrapper td {
+            padding: 0.75rem;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .content-wrapper th {
+            background: #f9fafb;
+            font-weight: 600;
+        }
+        
+        .content-wrapper a {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .content-wrapper a:hover {
+            text-decoration: underline;
+            color: #4338ca;
+        }
+        
+        /* Ensure inline code in links is visible */
+        .content-wrapper a code {
+            color: inherit;
+        }
+        
+        /* Override Jekyll/Rouge syntax highlighting for better contrast */
+        .highlighter-rouge .highlight {
+            background: #2d3748 !important;
+        }
+        
+        .highlight {
+            background: #2d3748 !important;
+            color: #e2e8f0 !important;
+        }
+        
+        .highlight pre {
+            background: #2d3748 !important;
+            color: #e2e8f0 !important;
+        }
+        
+        /* Make all text light by default */
+        .highlight * {
+            color: #e2e8f0 !important;
+        }
+        
+        /* Then override specific elements */
+        .highlight .c { color: #718096 !important; } /* Comment */
+        .highlight .s, .highlight .s1, .highlight .s2 { color: #68d391 !important; } /* String */
+        .highlight .k { color: #b794f4 !important; } /* Keyword */
+        .highlight .o { color: #f6ad55 !important; } /* Operator */
+        .highlight .m { color: #f6ad55 !important; } /* Number */
+        .highlight .nb { color: #63b3ed !important; } /* Builtin */
+        .highlight .nv { color: #fc8181 !important; } /* Variable */
+        
+        /* Ensure operators like -O are visible */
+        .highlight .p { color: #cbd5e0 !important; } /* Punctuation */
+        .highlight .nt { color: #63b3ed !important; } /* Tag */
+        .highlight .na { color: #f6ad55 !important; } /* Attribute */
+        
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .content-wrapper {
+                padding: 1.5rem;
+            }
+        }
+        
+        /* Home page special styles */
+        .home-header {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            margin: -2rem -3rem 2rem -3rem;
+            border-radius: 12px;
+        }
+        
+        .project-logo {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1rem;
+            display: block;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="docs-wrapper">
+        {% include sidebar.html %}
+        
+        <main class="main-content">
+            <div class="content-wrapper">
+                {{ content }}
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Mobile sidebar toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.createElement('button');
+            toggleBtn.innerHTML = '☰';
+            toggleBtn.style.cssText = 'position:fixed;top:1rem;left:1rem;z-index:200;padding:0.5rem 0.75rem;background:white;border:1px solid #e5e7eb;border-radius:8px;cursor:pointer;display:none;';
+            
+            if (window.innerWidth <= 768) {
+                toggleBtn.style.display = 'block';
+            }
+            
+            toggleBtn.onclick = function() {
+                sidebar.classList.toggle('active');
+            };
+            
+            document.body.appendChild(toggleBtn);
+            
+            window.addEventListener('resize', function() {
+                if (window.innerWidth <= 768) {
+                    toggleBtn.style.display = 'block';
+                } else {
+                    toggleBtn.style.display = 'none';
+                    sidebar.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

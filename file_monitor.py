@@ -317,13 +317,14 @@ class FileMonitor:
                 mime_type, _ = mimetypes.guess_type(str(final_path))
                 
                 # Create database record
+                now = datetime.utcnow()
                 recording = Recording(
                     audio_path=str(final_path),
                     original_filename=original_filename,
                     title=f"Auto-processed - {original_filename}",
                     file_size=file_size,
                     status='PENDING',
-                    meeting_date=datetime.utcnow().date(),
+                    meeting_date=now.date(),
                     user_id=user_id,
                     mime_type=mime_type,
                     is_inbox=True,  # Auto-processed files go to inbox
@@ -376,22 +377,22 @@ class FileMonitor:
         if not filename_lower.endswith(convertible_formats):
             self.logger.warning(f"Unknown file format {filename_lower}, attempting conversion anyway")
             
-        # Need to convert to 32kbps MP3 for optimal size
-        self.logger.info(f"Converting {filename_lower} format to 32kbps MP3")
+        # Need to convert to high-quality MP3 for better transcription accuracy
+        self.logger.info(f"Converting {filename_lower} format to high-quality MP3")
         
         base_path = file_path.with_suffix('')
         temp_mp3_path = base_path.with_suffix('.temp.mp3')
         final_mp3_path = base_path.with_suffix('.mp3')
         
         try:
-            # Convert to 32kbps MP3 for optimal size/quality balance
+            # Convert to high-quality MP3 (128kbps, 44.1kHz) for better transcription accuracy
             subprocess.run([
                 'ffmpeg', '-i', str(file_path), '-y', 
-                '-acodec', 'mp3', '-ab', '32k', '-ar', '16000', '-ac', '1', 
+                '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', '-ac', '1', 
                 str(temp_mp3_path)
             ], check=True, capture_output=True, text=True)
             
-            self.logger.info(f"Successfully converted {file_path} to {temp_mp3_path} (32kbps MP3)")
+            self.logger.info(f"Successfully converted {file_path} to {temp_mp3_path} (128kbps MP3)")
             
             # Remove original and rename temp file
             file_path.unlink()

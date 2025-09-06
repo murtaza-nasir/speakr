@@ -6,10 +6,149 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ title }} - Speakr</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <script>
+        // Initialize i18n
+        let t = (key) => key; // Default fallback
+        
+        async function initializeI18n(language) {
+            const userLanguage = language || "{{ user_language }}";
+            
+            // Initialize the global i18n instance
+            if (window.i18n) {
+                await window.i18n.init(userLanguage);
+                
+                // Create a shorthand translation function
+                t = (key, params) => window.i18n.t(key, params);
+                
+                // Update all elements with data-i18n attribute
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    el.textContent = t(key);
+                });
+                
+                // Update all elements with data-i18n-placeholder attribute
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    el.placeholder = t(key);
+                });
+            }
+        }
+
+        // Function to update all UI elements after language change
+        function updateAllUIElements() {
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                el.textContent = t(key);
+            });
+            
+            // Update all elements with data-i18n-placeholder attribute
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                el.placeholder = t(key);
+            });
+            
+            // Update language options in dropdown to show native names
+            const langSelect = document.getElementById('ui_language');
+            if (langSelect) {
+                const langOptions = {
+                    'en': 'English',
+                    'es': 'Español (Spanish)',
+                    'fr': 'Français (French)',
+                    'zh': '中文 (Chinese)',
+                    'de': 'Deutsch (German)'
+                };
+                
+                Array.from(langSelect.options).forEach(option => {
+                    if (langOptions[option.value]) {
+                        option.textContent = langOptions[option.value];
+                    }
+                });
+            }
+            
+            // Force update any Vue or dynamic content by dispatching a custom event
+            window.dispatchEvent(new CustomEvent('language-changed', { detail: { language: window.i18n.currentLanguage } }));
+        }
+
+        // Function to change language immediately
+        async function changeLanguageImmediately(newLanguage) {
+            try {
+                // Show loading indicator
+                const uiLanguageSelect = document.getElementById('ui_language');
+                uiLanguageSelect.disabled = true;
+                
+                // Add a loading message
+                const originalText = uiLanguageSelect.parentElement.querySelector('p').textContent;
+                const loadingMsg = uiLanguageSelect.parentElement.querySelector('p');
+                if (loadingMsg) {
+                    loadingMsg.textContent = 'Applying language change...';
+                }
+                
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                // Create form data with just the language change
+                const formData = new FormData();
+                formData.append('csrf_token', csrfToken);
+                formData.append('user_name', document.getElementById('user_name').value || '');
+                formData.append('user_job_title', document.getElementById('user_job_title').value || '');
+                formData.append('user_company', document.getElementById('user_company').value || '');
+                formData.append('ui_language', newLanguage);
+                formData.append('transcription_language', document.getElementById('transcription_language').value || '');
+                formData.append('output_language', document.getElementById('output_language').value || '');
+                
+                // Send AJAX request to update language preference
+                const response = await fetch('{{ url_for("account") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Store the new language in localStorage for other pages
+                localStorage.setItem('preferredLanguage', newLanguage);
+                localStorage.setItem('ui_language_changed', 'true');
+                
+                // Store current tab to restore after reload
+                const activeTab = document.querySelector('.tab-link.border-\\[var\\(--border-accent\\)\\]');
+                if (activeTab) {
+                    const tabName = activeTab.getAttribute('onclick')?.match(/show(\w+)Tab/)?.[1]?.toLowerCase();
+                    if (tabName) {
+                        localStorage.setItem('activeAccountTab', tabName);
+                    }
+                }
+                
+                // Reload the page to apply the new language completely
+                // This ensures all server-side rendered content is also updated
+                window.location.reload();
+                
+            } catch (error) {
+                console.error('Error updating language:', error);
+                alert('Failed to update language. Please try again.');
+                // Revert the dropdown to previous value if update failed
+                document.getElementById('ui_language').value = currentUILanguage;
+                document.getElementById('ui_language').disabled = false;
+                
+                // Restore original text if loading message was shown
+                const loadingMsg = document.getElementById('ui_language').parentElement.querySelector('p');
+                if (loadingMsg) {
+                    loadingMsg.textContent = originalText;
+                }
+            }
+        }
+        
         // Function to apply the theme based on localStorage
         function applyTheme() {
             // Apply dark mode
@@ -40,6 +179,57 @@
         }
         applyTheme();
     </script>
+    <style>
+        /* Custom scrollbar styling for Speakers Management */
+        #content-speakers .overflow-y-auto::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #content-speakers .overflow-y-auto::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 4px;
+        }
+        
+        #content-speakers .overflow-y-auto::-webkit-scrollbar-thumb {
+            background-color: var(--border-secondary);
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        #content-speakers .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+            background-color: var(--border-accent);
+        }
+        
+        /* Ensure the content fits properly */
+        #content-speakers {
+            container-type: inline-size;
+        }
+        
+        /* Responsive grid adjustments */
+        @container (max-width: 640px) {
+            #speakersTabGrid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @container (min-width: 641px) and (max-width: 768px) {
+            #speakersTabGrid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @container (min-width: 769px) and (max-width: 1024px) {
+            #speakersTabGrid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @container (min-width: 1025px) {
+            #speakersTabGrid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
@@ -62,18 +252,18 @@
                     </button>
                     <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
                         <a href="{{ url_for('index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-home mr-2"></i> Home
+                            <i class="fas fa-home mr-2"></i> <span data-i18n="nav.home">Home</span>
                         </a>
                         <a href="{{ url_for('account') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
-                            <i class="fas fa-user-circle mr-2"></i> Account
+                            <i class="fas fa-user-circle mr-2"></i> <span data-i18n="nav.account">Account</span>
                         </a>
                         {% if current_user.is_admin %}
                         <a href="{{ url_for('admin') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-user-shield mr-2"></i> Admin
+                            <i class="fas fa-user-shield mr-2"></i> <span data-i18n="nav.admin">Admin</span>
                         </a>
                         {% endif %}
                         <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
-                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            <i class="fas fa-sign-out-alt mr-2"></i> <span data-i18n="nav.signOut">Logout</span>
                         </a>
                     </div>
                 </div>
@@ -85,25 +275,28 @@
                 <div class="mb-6 border-b border-[var(--border-primary)] sm:border-b">
                     <nav class="tab-nav -mb-px flex flex-col sm:flex-row sm:space-x-8" aria-label="Tabs">
                         <a href="#" id="tab-account" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b-2 sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-[var(--border-accent)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent">
-                            <i class="fas fa-user-circle mr-2"></i><span>Account Information</span>
+                            <i class="fas fa-user-circle mr-2"></i><span data-i18n="account.title">Account Information</span>
                         </a>
                         <a href="#" id="tab-prompts" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-file-alt mr-2"></i><span>Custom Prompts</span>
+                            <i class="fas fa-file-alt mr-2"></i><span data-i18n="accountTabs.customPrompts">Custom Prompts</span>
                         </a>
                         <a href="#" id="tab-shares" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-share-alt mr-2"></i><span>Shared Transcripts</span>
+                            <i class="fas fa-share-alt mr-2"></i><span data-i18n="accountTabs.sharedTranscripts">Shared Transcripts</span>
+                        </a>
+                        <a href="#" id="tab-speakers" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
+                            <i class="fas fa-users mr-2"></i><span data-i18n="accountTabs.speakersManagement">Speakers Management</span>
                         </a>
                         <a href="#" id="tab-tags" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-tags mr-2"></i><span>Tag Management</span>
+                            <i class="fas fa-tags mr-2"></i><span data-i18n="accountTabs.tagManagement">Tag Management</span>
                         </a>
                         <a href="#" id="tab-about" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-info-circle mr-2"></i><span>About</span>
+                            <i class="fas fa-info-circle mr-2"></i><span data-i18n="accountTabs.about">About</span>
                         </a>
                     </nav>
                 </div>
 
                 <div id="content-account">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Account Information</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="account.title">Account Information</h2>
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
@@ -120,41 +313,52 @@
                         <form id="accountInfoForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
                             <div class="mb-6">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Personal Information</h3>
+                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.personalInfo">Personal Information</h3>
                                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
                                     <div>
-                                        <label for="user_name" class="block text-sm font-medium text-[var(--text-muted)]">Full Name</label>
-                                        <input type="text" name="user_name" id="user_name" value="{{ current_user.name or '' }}" placeholder="Your full name" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <label for="user_name" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.fullName">Full Name</label>
+                                        <input type="text" name="user_name" id="user_name" value="{{ current_user.name or '' }}" data-i18n-placeholder="form.yourFullName" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                     <div>
-                                        <label for="user_job_title" class="block text-sm font-medium text-[var(--text-muted)]">Job Title</label>
+                                        <label for="user_job_title" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.jobTitle">Job Title</label>
                                         <input type="text" name="user_job_title" id="user_job_title" value="{{ current_user.job_title or '' }}" placeholder="e.g., Software Engineer" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                     <div>
-                                        <label for="user_company" class="block text-sm font-medium text-[var(--text-muted)]">Company / Organization</label>
+                                        <label for="user_company" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.companyOrganization">Company / Organization</label>
                                         <input type="text" name="user_company" id="user_company" value="{{ current_user.company or '' }}" placeholder="e.g., Acme Corp" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                                     </div>
                                 </div>
                             </div>
 
                             <div class="mb-6">
-                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Language Preferences</h3>
+                                <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.languagePreferences">Language Preferences</h3>
                                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
                                     <div>
-                                        <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]">Transcription Language</label>
-                                        <input type="text" name="transcription_language" id="transcription_language" value="{{ current_user.transcription_language or '' }}" placeholder="e.g., en, es, zh (ISO 639-1 code)" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <p class="text-xs text-[var(--text-light)] mt-1">Leave blank for auto-detection by transcription service.</p>
+                                        <label for="ui_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.interfaceLanguage">Interface Language</label>
+                                        <select name="ui_language" id="ui_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="en" {% if current_user.ui_language == 'en' or not current_user.ui_language %}selected{% endif %}>English</option>
+                                            <option value="zh" {% if current_user.ui_language == 'zh' %}selected{% endif %}>中文 (Chinese)</option>
+                                            <option value="de" {% if current_user.ui_language == 'de' %}selected{% endif %}>Deutsch (German)</option>
+                                            <option value="es" {% if current_user.ui_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
+                                            <option value="fr" {% if current_user.ui_language == 'fr' %}selected{% endif %}>Français (French)</option>
+                                        </select>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
                                     </div>
                                     <div>
-                                        <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]">Preferred Output Language</label>
+                                        <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription Language</label>
+                                        <input type="text" name="transcription_language" id="transcription_language" value="{{ current_user.transcription_language or '' }}" placeholder="e.g., en, es, zh (ISO 639-1 code)" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Leave blank for auto-detection by transcription service.</p>
+                                    </div>
+                                    <div>
+                                        <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.preferredOutputLanguage">Preferred Output Language</label>
                                         <input type="text" name="output_language" id="output_language" value="{{ current_user.output_language or '' }}" placeholder="e.g., English, Spanish, Chinese" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <p class="text-xs text-[var(--text-light)] mt-1">Language for titles, summaries, and chat. Leave blank for default (default behavior of your chosen model).</p>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave blank for default (default behavior of your chosen model).</p>
                                     </div>
                                 </div>
                             </div>
                             
                             <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-save mr-2"></i> Save All Preferences
+                                <i class="fas fa-save mr-2"></i> <span data-i18n="account.saveAllPreferences">Save All Preferences</span>
                             </button>
                         </form>
                     </div>
@@ -162,12 +366,12 @@
                     <!-- Right Column: Stats, User Details, Account Actions -->
                     <div class="space-y-6">
                         <div>
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Account Statistics</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.statistics">Account Statistics</h3>
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
                                         <span class="block text-3xl font-bold text-[var(--text-accent)]">{{ current_user.recordings|length }}</span>
-                                        <span class="block text-sm text-[var(--text-muted)]">Total Recordings</span>
+                                        <span class="block text-sm text-[var(--text-muted)]" data-i18n="account.totalRecordings">Total Recordings</span>
                                     </div>
                                     
                                     <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
@@ -175,7 +379,7 @@
                                             {% set completed_count = current_user.recordings|selectattr('status', 'equalto', 'COMPLETED')|list|length %}
                                             {{ completed_count }}
                                         </span>
-                                        <span class="block text-sm text-[var(--text-muted)]">Completed</span>
+                                        <span class="block text-sm text-[var(--text-muted)]" data-i18n="account.completedRecordings">Completed</span>
                                     </div>
                                     
                                     <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
@@ -183,7 +387,7 @@
                                             {% set processing_count = current_user.recordings|selectattr('status', 'in', ['PENDING', 'PROCESSING', 'SUMMARIZING'])|list|length %}
                                             {{ processing_count }}
                                         </span>
-                                        <span class="block text-sm text-[var(--text-muted)]">Processing</span>
+                                        <span class="block text-sm text-[var(--text-muted)]" data-i18n="account.processingRecordings">Processing</span>
                                     </div>
                                     
                                     <div class="text-center p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] shadow-sm">
@@ -191,17 +395,17 @@
                                             {% set failed_count = current_user.recordings|selectattr('status', 'equalto', 'FAILED')|list|length %}
                                             {{ failed_count }}
                                         </span>
-                                        <span class="block text-sm text-[var(--text-muted)]">Failed</span>
+                                        <span class="block text-sm text-[var(--text-muted)]" data-i18n="account.failedRecordings">Failed</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mt-6"> <!-- Added mt-6 for spacing, was mb-6 on User Details -->
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">User Details</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.userDetails">User Details</h3>
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
                                 <div class="mb-3">
-                                    <span class="block text-sm font-medium text-[var(--text-muted)]">Username</span>
+                                    <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.username">Username</span>
                                     <span class="block text-[var(--text-primary)]">{{ current_user.username }}</span>
                                 </div>
                                 <div class="mb-3">
@@ -212,16 +416,13 @@
                         </div>
                         
                         <div class="mt-6"> <!-- Added mt-6 for spacing, was mt-8 on Account Actions -->
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Account Actions</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.accountActions">Account Actions</h3>
                             <div class="flex flex-col space-y-3">
                                 <a href="{{ url_for('index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-microphone mr-2"></i> Go to Recordings
+                                    <i class="fas fa-microphone mr-2"></i> <span data-i18n="account.goToRecordings">Go to Recordings</span>
                                 </a>
                                 <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-key mr-2"></i> Change Password
-                                </button>
-                                <button id="manageSpeakersBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-users mr-2"></i> Manage Speakers
+                                    <i class="fas fa-key mr-2"></i> <span data-i18n="account.changePassword">Change Password</span>
                                 </button>
                             </div>
                         </div>
@@ -230,30 +431,31 @@
                 </div>
 
                 <div id="content-prompts" class="hidden">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Custom Prompts</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.customPrompts">Custom Prompts</h2>
                     
                     <form id="customPromptsForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">Summary Generation Prompt</h3>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4" data-i18n="customPrompts.summaryGeneration">Summary Generation Prompt</h3>
                             
                             <div class="mb-4">
                                 <label for="summary_prompt_custom" class="block text-sm font-medium text-[var(--text-muted)] mb-2">
-                                    Your Custom Summary Prompt
+                                    <span data-i18n="customPrompts.yourCustomPrompt">Your Custom Summary Prompt</span>
                                 </label>
                                 <textarea name="summary_prompt" id="summary_prompt_custom" rows="8" 
-                                    placeholder="Describe how you want your summaries structured. Leave blank to use the admin's default prompt." 
+                                    placeholder="Describe how you want your summaries structured. Leave blank to use the admin's default prompt."
+                                    data-i18n-placeholder="customPrompts.promptPlaceholder" 
                                     class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or '' }}</textarea>
                                 <p class="text-xs text-[var(--text-light)] mt-2">
-                                    This prompt will be used to generate summaries for your transcriptions. It overrides the admin's default prompt.
+                                    <span data-i18n="customPrompts.promptDescription">This prompt will be used to generate summaries for your transcriptions. It overrides the admin's default prompt.</span>
                                 </p>
                             </div>
                             
                             <div class="mt-6 p-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
                                 <h4 class="text-sm font-semibold text-[var(--text-accent)] mb-2">
                                     <i class="fas fa-info-circle mr-1"></i>
-                                    Current Default Prompt (Used if you leave the above blank)
+                                    <span data-i18n="customPrompts.currentDefaultPrompt">Current Default Prompt (Used if you leave the above blank)</span>
                                 </h4>
                                 <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
                                     <pre class="text-xs text-[var(--text-muted)] whitespace-pre-wrap">{{ default_summary_prompt_text }}</pre>
@@ -264,15 +466,15 @@
                                 <details class="cursor-pointer">
                                     <summary class="text-sm text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]">
                                         <i class="fas fa-question-circle mr-1"></i>
-                                        Tips for Writing Effective Prompts
+                                        <span data-i18n="customPrompts.tipsTitle">Tips for Writing Effective Prompts</span>
                                     </summary>
                                     <div class="mt-3 p-3 bg-[var(--bg-info-light)] text-[var(--text-info-strong)] rounded-lg text-sm">
                                         <ul class="list-disc list-inside space-y-1">
-                                            <li>Be specific about the sections you want in your summary</li>
-                                            <li>Use clear formatting instructions (e.g., "Use bullet points", "Create numbered lists")</li>
-                                            <li>Specify if you want certain information prioritized</li>
-                                            <li>The system will automatically provide the transcript content to the AI</li>
-                                            <li>Your output language preference (if set) will be applied automatically</li>
+                                            <li data-i18n="customPrompts.tip1">Be specific about the sections you want in your summary</li>
+                                            <li data-i18n="customPrompts.tip2">Use clear formatting instructions (e.g., "Use bullet points", "Create numbered lists")</li>
+                                            <li data-i18n="customPrompts.tip3">Specify if you want certain information prioritized</li>
+                                            <li data-i18n="customPrompts.tip4">The system will automatically provide the transcript content to the AI</li>
+                                            <li data-i18n="customPrompts.tip5">Your output language preference (if set) will be applied automatically</li>
                                         </ul>
                                     </div>
                                 </details>
@@ -281,27 +483,72 @@
                         
                         <div class="flex justify-end">
                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-save mr-2"></i> Save Custom Prompt
+                                <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveCustomPrompt">Save Custom Prompt</span>
                             </button>
                         </div>
                     </form>
                 </div>
 
                 <div id="content-shares" class="hidden">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">My Shared Transcripts</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">My Shared Transcripts</h2>
                     <div id="shares-container" class="space-y-4">
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
                 </div>
 
+                <div id="content-speakers" class="hidden flex flex-col h-full" style="max-height: calc(100vh - 280px);">
+                    <div class="flex-shrink-0">
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
+                        <p class="text-[var(--text-secondary)] mb-4" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto min-h-0 pr-2" style="scrollbar-width: thin; scrollbar-color: var(--border-secondary) transparent;">
+                        <!-- Loading state -->
+                        <div id="speakersTabLoading" class="text-center py-8 hidden">
+                            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                            <p class="text-[var(--text-muted)] mt-2" data-i18n="speakersManagement.loadingSpeakers">Loading speakers...</p>
+                        </div>
+                        
+                        <!-- Error state -->
+                        <div id="speakersTabError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <span id="speakersTabErrorMessage" data-i18n="speakersManagement.failedToLoad">Failed to load speakers</span>
+                        </div>
+                        
+                        <!-- Empty state -->
+                        <div id="speakersTabEmpty" class="text-center py-12 hidden">
+                            <i class="fas fa-users text-4xl text-[var(--text-light)] mb-4"></i>
+                            <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="speakersManagement.noSpeakersYet">No speakers saved yet</p>
+                            <p class="text-sm text-[var(--text-light)]" data-i18n="speakersManagement.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</p>
+                        </div>
+                        
+                        <!-- Speakers grid with scrollable container -->
+                        <div id="speakersTabGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+                            <!-- Speakers will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Fixed footer with count and actions -->
+                    <div class="flex-shrink-0 flex justify-between items-center mt-4 pt-4 border-t border-[var(--border-primary)]">
+                        <div class="text-sm text-[var(--text-muted)]">
+                            <span id="speakersTabCount">0</span> <span data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="deleteAllSpeakersTabBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-trash mr-2"></i> <span data-i18n="buttons.deleteAll">Delete All</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="content-tags" class="hidden">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Tag Management</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
                     
                     <div class="mb-6">
                         <div class="flex justify-between items-center mb-4">
-                            <p class="text-[var(--text-secondary)]">Organize your recordings with custom tags. Each tag can have its own summary prompt and default ASR settings.</p>
+                            <p class="text-[var(--text-secondary)]" data-i18n="tagManagement.description">Organize your recordings with custom tags. Each tag can have its own summary prompt and default ASR settings.</p>
                             <button id="createTagBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-plus mr-2"></i> Create Tag
+                                <i class="fas fa-plus mr-2"></i> <span data-i18n="tagManagement.createTag">Create Tag</span>
                             </button>
                         </div>
                         
@@ -339,7 +586,7 @@
                                 <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-16 w-16 mr-4">
                                 <div>
                                     <h2 class="text-3xl font-bold text-[var(--text-primary)]">Speakr</h2>
-                                    <p class="text-[var(--text-secondary)]">AI-Powered Audio Transcription & Note-Taking</p>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="aboutPage.tagline">AI-Powered Audio Transcription & Note-Taking</p>
                                 </div>
                             </div>
                             <div class="inline-flex items-center px-3 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-full text-sm font-medium">
@@ -355,38 +602,38 @@
                                     <div class="p-2 bg-[var(--bg-accent)] rounded-lg mr-3">
                                         <i class="fas fa-cogs text-[var(--text-accent)] text-lg"></i>
                                     </div>
-                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">System Configuration</h3>
+                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.systemConfiguration">System Configuration</h3>
                                 </div>
                                 
                                 <div class="space-y-4">
                                     <div class="border-l-4 border-[var(--border-accent)] pl-4">
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-2">Large Language Model</h4>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.largeLanguageModel">Large Language Model</h4>
                                         <div class="space-y-1 text-sm">
                                             <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium">Model:</span> 
+                                                <span class="font-medium" data-i18n="aboutPage.model">Model:</span> 
                                                 <span id="llm-model" class="font-mono text-[var(--text-primary)] bg-[var(--bg-tertiary)] px-2 py-1 rounded ml-1">Loading...</span>
                                             </p>
                                             <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium">Endpoint:</span> 
+                                                <span class="font-medium" data-i18n="aboutPage.endpoint">Endpoint:</span> 
                                                 <span id="llm-endpoint" class="font-mono text-xs text-[var(--text-muted)] break-all ml-1">Loading...</span>
                                             </p>
                                         </div>
                                     </div>
                                     
                                     <div class="border-l-4 border-green-500 pl-4">
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-2">Speech Recognition</h4>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.speechRecognition">Speech Recognition</h4>
                                         <div class="space-y-1 text-sm">
                                             <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium">Whisper API:</span> 
+                                                <span class="font-medium" data-i18n="aboutPage.whisperApi">Whisper API:</span> 
                                                 <span id="whisper-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">Loading...</span>
                                             </p>
                                             <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium">ASR Enabled:</span> 
+                                                <span class="font-medium" data-i18n="aboutPage.asrEnabled">ASR Enabled:</span> 
                                                 <span id="asr-status" class="ml-1">Loading...</span>
                                             </p>
                                             <div id="asr-endpoint-row" style="display: none;">
                                                 <p class="text-[var(--text-secondary)]">
-                                                    <span class="font-medium">ASR Endpoint:</span> 
+                                                    <span class="font-medium" data-i18n="aboutPage.asrEndpoint">ASR Endpoint:</span> 
                                                     <span id="asr-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">-</span>
                                                 </p>
                                             </div>
@@ -401,7 +648,7 @@
                                     <div class="p-2 bg-gray-800 rounded-lg mr-3">
                                         <i class="fab fa-github text-white text-lg"></i>
                                     </div>
-                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Project Links</h3>
+                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.projectLinks">Project Links</h3>
                                 </div>
                                 
                                 <div class="space-y-3">
@@ -409,8 +656,8 @@
                                        class="flex items-center p-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
                                         <i class="fab fa-github text-xl mr-3"></i>
                                         <div class="flex-1">
-                                            <div class="font-medium">GitHub Repository</div>
-                                            <div class="text-sm text-gray-300">Source code, issues, and releases</div>
+                                            <div class="font-medium" data-i18n="aboutPage.githubRepository">GitHub Repository</div>
+                                            <div class="text-sm text-gray-300" data-i18n="aboutPage.githubDescription">Source code, issues, and releases</div>
                                         </div>
                                         <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
                                     </a>
@@ -419,8 +666,8 @@
                                        class="flex items-center p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
                                         <i class="fab fa-docker text-xl mr-3"></i>
                                         <div class="flex-1">
-                                            <div class="font-medium">Docker Hub</div>
-                                            <div class="text-sm text-blue-100">Official Docker images</div>
+                                            <div class="font-medium" data-i18n="aboutPage.dockerHub">Docker Hub</div>
+                                            <div class="text-sm text-blue-100" data-i18n="aboutPage.dockerDescription">Official Docker images</div>
                                         </div>
                                         <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
                                     </a>
@@ -429,8 +676,8 @@
                                        class="flex items-center p-3 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
                                         <i class="fas fa-book text-xl mr-3"></i>
                                         <div class="flex-1">
-                                            <div class="font-medium">Documentation</div>
-                                            <div class="text-sm text-green-100">Setup guides and user manual</div>
+                                            <div class="font-medium" data-i18n="aboutPage.documentation">Documentation</div>
+                                            <div class="text-sm text-green-100" data-i18n="aboutPage.documentationDescription">Setup guides and user manual</div>
                                         </div>
                                         <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
                                     </a>
@@ -439,7 +686,7 @@
                                 <div class="mt-6 p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)]">
                                     <p class="text-sm text-[var(--text-secondary)] leading-relaxed">
                                         <i class="fas fa-info-circle text-[var(--text-accent)] mr-2"></i>
-                                        Transform your audio recordings into organized, searchable notes with AI-powered transcription, summarization, and interactive chat features.
+                                        <span data-i18n="aboutPage.projectDescription">Transform your audio recordings into organized, searchable notes with AI-powered transcription, summarization, and interactive chat features.</span>
                                     </p>
                                 </div>
                             </div>
@@ -451,7 +698,7 @@
                                 <div class="p-2 bg-purple-600 rounded-lg mr-3">
                                     <i class="fas fa-star text-white text-lg"></i>
                                 </div>
-                                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Key Features</h3>
+                                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.keyFeatures">Key Features</h3>
                             </div>
                             
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -460,8 +707,8 @@
                                         <i class="fas fa-microphone text-blue-600 dark:text-blue-400"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Audio Transcription</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]">Whisper API and custom ASR support with high accuracy</p>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.audioTranscription">Audio Transcription</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.audioTranscriptionDesc">Whisper API and custom ASR support with high accuracy</p>
                                     </div>
                                 </div>
                                 
@@ -470,8 +717,8 @@
                                         <i class="fas fa-robot text-purple-600 dark:text-purple-400"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">AI Summarization</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]">OpenRouter and Ollama integration with custom prompts</p>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.aiSummarization">AI Summarization</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.aiSummarizationDesc">OpenRouter and Ollama integration with custom prompts</p>
                                     </div>
                                 </div>
                                 
@@ -480,8 +727,8 @@
                                         <i class="fas fa-users text-green-600 dark:text-green-400"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Speaker Diarization</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]">Identify and label different speakers automatically</p>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.speakerDiarization">Speaker Diarization</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.speakerDiarizationDesc">Identify and label different speakers automatically</p>
                                     </div>
                                 </div>
                                 
@@ -490,8 +737,8 @@
                                         <i class="fas fa-comments text-orange-600 dark:text-orange-400"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Interactive Chat</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]">Chat with your transcriptions using AI</p>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.interactiveChat">Interactive Chat</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.interactiveChatDesc">Chat with your transcriptions using AI</p>
                                     </div>
                                 </div>
                                 
@@ -500,8 +747,8 @@
                                         <i class="fas fa-search text-indigo-600 dark:text-indigo-400"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Inquire Mode</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]">Semantic search across all your recordings</p>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.inquireMode">Inquire Mode</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.inquireModeDesc">Semantic search across all your recordings</p>
                                     </div>
                                 </div>
                                 
@@ -510,8 +757,8 @@
                                         <i class="fas fa-share-alt text-teal-600 dark:text-teal-400"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1">Sharing & Export</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]">Share recordings and export to various formats</p>
+                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.sharingExport">Sharing & Export</h4>
+                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.sharingExportDesc">Share recordings and export to various formats</p>
                                     </div>
                                 </div>
                             </div>
@@ -523,29 +770,29 @@
                                 <div class="p-2 bg-red-500 rounded-lg mr-3">
                                     <i class="fas fa-code text-white text-lg"></i>
                                 </div>
-                                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Technology Stack</h3>
+                                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.technologyStack">Technology Stack</h3>
                             </div>
                             
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
                                     <i class="fab fa-python text-3xl text-blue-500 mb-2"></i>
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Python Flask</p>
-                                    <p class="text-xs text-[var(--text-muted)]">Backend</p>
+                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.backend">Backend</p>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
                                     <i class="fab fa-vuejs text-3xl text-green-500 mb-2"></i>
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Vue.js</p>
-                                    <p class="text-xs text-[var(--text-muted)]">Frontend</p>
+                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.frontend">Frontend</p>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
                                     <i class="fas fa-database text-3xl text-purple-500 mb-2"></i>
                                     <p class="text-sm font-medium text-[var(--text-primary)]">SQLite</p>
-                                    <p class="text-xs text-[var(--text-muted)]">Database</p>
+                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.database">Database</p>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
                                     <i class="fab fa-docker text-3xl text-blue-600 mb-2"></i>
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Docker</p>
-                                    <p class="text-xs text-[var(--text-muted)]">Deployment</p>
+                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.deployment">Deployment</p>
                                 </div>
                             </div>
                         </div>
@@ -563,27 +810,27 @@
     <div id="changePasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Change Password</h3>
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.changePassword">Change Password</h3>
                 <button id="closeModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
             </div>
             <form id="changePasswordForm" method="POST" action="{{ url_for('change_password') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-4">
-                    <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Current Password</label>
+                    <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current Password</label>
                     <input type="password" id="current_password" name="current_password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                 </div>
                 <div class="mb-4">
-                    <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">New Password</label>
+                    <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New Password</label>
                     <input type="password" id="new_password" name="new_password" required minlength="8" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                    <p class="text-xs text-[var(--text-muted)] mt-1">Password must be at least 8 characters long</p>
+                    <p class="text-xs text-[var(--text-muted)] mt-1" data-i18n="changePasswordModal.passwordRequirement">Password must be at least 8 characters long</p>
                 </div>
                 <div class="mb-6">
-                    <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Confirm New Password</label>
+                    <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.confirmPassword">Confirm New Password</label>
                     <input type="password" id="confirm_password" name="confirm_password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button type="button" id="cancelBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">Change Password</button>
+                    <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]" data-i18n="account.changePassword">Change Password</button>
                 </div>
             </form>
         </div>
@@ -593,32 +840,32 @@
     <div id="manageSpeakersModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Speakers</h3>
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.manageSpeakers">Manage Speakers</h3>
                 <button id="closeSpeakersModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
             </div>
             
             <div class="mb-4">
                 <p class="text-sm text-[var(--text-muted)] mb-4">
-                    Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.
+                    <span data-i18n="manageSpeakersModal.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</span>
                 </p>
                 
                 <!-- Loading state -->
                 <div id="speakersLoading" class="text-center py-8 hidden">
                     <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                    <p class="text-[var(--text-muted)] mt-2">Loading speakers...</p>
+                    <p class="text-[var(--text-muted)] mt-2" data-i18n="manageSpeakersModal.loadingSpeakers">Loading speakers...</p>
                 </div>
                 
                 <!-- Error state -->
                 <div id="speakersError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                     <i class="fas fa-exclamation-triangle mr-2"></i>
-                    <span id="speakersErrorMessage">Failed to load speakers</span>
+                    <span id="speakersErrorMessage" data-i18n="manageSpeakersModal.failedToLoad">Failed to load speakers</span>
                 </div>
                 
                 <!-- Empty state -->
                 <div id="speakersEmpty" class="text-center py-8 hidden">
                     <i class="fas fa-users text-4xl text-[var(--text-light)] mb-4"></i>
-                    <p class="text-[var(--text-muted)]">No speakers saved yet</p>
-                    <p class="text-sm text-[var(--text-light)]">Speakers will appear here when you use speaker names in your recordings</p>
+                    <p class="text-[var(--text-muted)]" data-i18n="manageSpeakersModal.noSpeakersYet">No speakers saved yet</p>
+                    <p class="text-sm text-[var(--text-light)]" data-i18n="manageSpeakersModal.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</p>
                 </div>
                 
                 <!-- Speakers list -->
@@ -629,14 +876,14 @@
             
             <div class="flex justify-between items-center pt-4 border-t border-[var(--border-primary)]">
                 <div class="text-sm text-[var(--text-muted)]">
-                    <span id="speakersCount">0</span> speakers saved
+                    <span><span id="speakersCount">0</span> <span data-i18n="manageSpeakersModal.speakersSaved">speakers saved</span></span>
                 </div>
                 <div class="flex space-x-3">
                     <button id="deleteAllSpeakersBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        <i class="fas fa-trash mr-2"></i> Delete All
+                        <i class="fas fa-trash mr-2"></i> <span data-i18n="buttons.deleteAll">Delete All</span>
                     </button>
                     <button id="closeSpeakersBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">
-                        Close
+                        <span data-i18n="buttons.close">Close</span>
                     </button>
                 </div>
             </div>
@@ -648,14 +895,14 @@
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
             <div class="flex items-center mb-4">
                 <i class="fas fa-exclamation-triangle text-[var(--text-danger)] text-2xl mr-3"></i>
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]">Delete All Speakers</h3>
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="buttons.deleteAll">Delete All Speakers</h3>
             </div>
             <p class="text-[var(--text-secondary)] mb-6">
-                Are you sure you want to delete all saved speakers? This action cannot be undone.
+                <span data-i18n="deleteAllSpeakersModal.confirmMessage">Are you sure you want to delete all saved speakers? This action cannot be undone.</span>
             </p>
             <div class="flex justify-end space-x-3">
                 <button id="cancelDeleteAllBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">
-                    Cancel
+                    <span data-i18n="buttons.cancel">Cancel</span>
                 </button>
                 <button id="confirmDeleteAllBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">
                     <i class="fas fa-trash mr-2"></i> Delete All
@@ -668,7 +915,7 @@
     <div id="tagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
-                <h3 id="tagModalTitle" class="text-xl font-semibold text-[var(--text-primary)]">Create Tag</h3>
+                <h3 id="tagModalTitle" class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="editTagModal.createTitle">Create Tag</h3>
                 <button id="closeTagModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
             </div>
             
@@ -677,43 +924,43 @@
                 <input type="hidden" id="tagId" name="tag_id">
                 
                 <div>
-                    <label for="tagName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Tag Name *</label>
+                    <label for="tagName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.tagName">Tag Name *</label>
                     <input type="text" id="tagName" name="name" required maxlength="50" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Meetings, Interviews">
                 </div>
                 
                 <div>
-                    <label for="tagColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                    <label for="tagColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.color">Color</label>
                     <div class="flex items-center space-x-3">
                         <input type="color" id="tagColor" name="color" value="#3B82F6" class="w-12 h-10 rounded border border-[var(--border-secondary)]">
-                        <span class="text-sm text-[var(--text-muted)]">Choose a color for easy identification</span>
+                        <span class="text-sm text-[var(--text-muted)]" data-i18n="editTagModal.colorDescription">Choose a color for easy identification</span>
                     </div>
                 </div>
                 
                 <div>
-                    <label for="tagCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Custom Summary Prompt</label>
-                    <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag"></textarea>
-                    <p class="text-xs text-[var(--text-light)] mt-1">Leave blank to use your default summary prompt</p>
+                    <label for="tagCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.customPrompt">Custom Summary Prompt</label>
+                    <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag" data-i18n-placeholder="editTagModal.customPromptPlaceholder"></textarea>
+                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.leaveBlankPrompt">Leave blank to use your default summary prompt</p>
                 </div>
                 
                 {% if use_asr_endpoint %}
                 <div class="border-t border-[var(--border-primary)] pt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">ASR Default Settings</h4>
-                    <p class="text-xs text-[var(--text-light)] mb-3">These settings will be applied by default when using this tag with ASR transcription</p>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="editTagModal.asrDefaultSettings">ASR Default Settings</h4>
+                    <p class="text-xs text-[var(--text-light)] mb-3" data-i18n="editTagModal.asrSettingsDescription">These settings will be applied by default when using this tag with ASR transcription</p>
                     
                     <div class="space-y-3">
                         <div>
-                            <label for="tagLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Default Language</label>
+                            <label for="tagLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.defaultLanguage">Default Language</label>
                             <input type="text" id="tagLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
                         </div>
                         
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <label for="tagMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Min Speakers</label>
+                                <label for="tagMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.minSpeakers">Min Speakers</label>
                                 <input type="number" id="tagMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
                             </div>
                             
                             <div>
-                                <label for="tagMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Max Speakers</label>
+                                <label for="tagMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.maxSpeakers">Max Speakers</label>
                                 <input type="number" id="tagMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                             </div>
                         </div>
@@ -722,9 +969,9 @@
                 {% endif %}
                 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
-                    <button type="button" id="cancelTagBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
+                    <button type="button" id="cancelTagBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]" data-i18n="buttons.cancel">Cancel</button>
                     <button type="submit" id="saveTagBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
-                        <i class="fas fa-save mr-2"></i> Save Tag
+                        <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.createTag">Save Tag</span>
                     </button>
                 </div>
             </form>
@@ -733,7 +980,9 @@
 
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize i18n
+            await initializeI18n();
             const tabAccount = document.getElementById('tab-account');
             const tabPrompts = document.getElementById('tab-prompts');
             const tabShares = document.getElementById('tab-shares');
@@ -742,16 +991,20 @@
             const contentAccount = document.getElementById('content-account');
             const contentPrompts = document.getElementById('content-prompts');
             const contentShares = document.getElementById('content-shares');
+            const contentSpeakers = document.getElementById('content-speakers');
             const contentTags = document.getElementById('content-tags');
             const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
             
 
             // Simplified tab switching
+            const tabSpeakers = document.getElementById('tab-speakers');
+            
             const tabs = [
                 { tab: tabAccount, content: contentAccount, name: 'account' },
                 { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
+                { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
                 { tab: tabTags, content: contentTags, name: 'tags' },
                 { tab: tabAbout, content: contentAbout, name: 'about' }
             ];
@@ -772,7 +1025,9 @@
                 });
                 
                 // Load content when switching tabs
-                if (targetName === 'shares') {
+                if (targetName === 'speakers') {
+                    loadSpeakersTab();
+                } else if (targetName === 'shares') {
                     loadShares();
                 } else if (targetName === 'tags') {
                     loadTags();
@@ -791,6 +1046,10 @@
 
             function showSharesTab() {
                 switchToTab('shares');
+            }
+
+            function showSpeakersTab() {
+                switchToTab('speakers');
             }
 
             function showTagsTab() {
@@ -816,6 +1075,11 @@
                 showSharesTab();
             });
 
+            tabSpeakers.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSpeakersTab();
+            });
+
             tabTags.addEventListener('click', (e) => {
                 e.preventDefault();
                 showTagsTab();
@@ -826,6 +1090,204 @@
                 showAboutTab();
             });
 
+            // Load speakers for the Speakers Management tab
+            let speakersTabData = [];
+            let speakersTabLoaded = false;
+            
+            async function loadSpeakersTab() {
+                // Don't reload if already loaded
+                if (speakersTabLoaded) return;
+                
+                const speakersTabLoading = document.getElementById('speakersTabLoading');
+                const speakersTabError = document.getElementById('speakersTabError');
+                const speakersTabErrorMessage = document.getElementById('speakersTabErrorMessage');
+                const speakersTabEmpty = document.getElementById('speakersTabEmpty');
+                const speakersTabGrid = document.getElementById('speakersTabGrid');
+                const speakersTabCount = document.getElementById('speakersTabCount');
+                const deleteAllSpeakersTabBtn = document.getElementById('deleteAllSpeakersTabBtn');
+                
+                // Show loading state
+                speakersTabLoading.classList.remove('hidden');
+                speakersTabError.classList.add('hidden');
+                speakersTabEmpty.classList.add('hidden');
+                speakersTabGrid.classList.add('hidden');
+                
+                try {
+                    const response = await fetch('/speakers');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    speakersTabData = await response.json();
+                    speakersTabLoaded = true;
+                    
+                    // Hide loading state
+                    speakersTabLoading.classList.add('hidden');
+                    
+                    if (speakersTabData.length === 0) {
+                        speakersTabEmpty.classList.remove('hidden');
+                        speakersTabGrid.classList.add('hidden');
+                        deleteAllSpeakersTabBtn.disabled = true;
+                    } else {
+                        speakersTabEmpty.classList.add('hidden');
+                        speakersTabGrid.classList.remove('hidden');
+                        deleteAllSpeakersTabBtn.disabled = false;
+                        renderSpeakersTabGrid();
+                    }
+                    
+                    // Update count
+                    speakersTabCount.textContent = speakersTabData.length;
+                    
+                } catch (error) {
+                    console.error('Error loading speakers:', error);
+                    speakersTabLoading.classList.add('hidden');
+                    speakersTabError.classList.remove('hidden');
+                    speakersTabEmpty.classList.add('hidden');
+                    speakersTabGrid.classList.add('hidden');
+                    speakersTabErrorMessage.textContent = error.message;
+                    speakersTabCount.textContent = '0';
+                }
+            }
+            
+            function renderSpeakersTabGrid() {
+                const speakersTabGrid = document.getElementById('speakersTabGrid');
+                speakersTabGrid.innerHTML = '';
+                
+                speakersTabData.forEach(speaker => {
+                    const createdDate = new Date(speaker.created_at).toLocaleDateString();
+                    const lastUsedDate = new Date(speaker.last_used).toLocaleDateString();
+                    
+                    const speakerCard = document.createElement('div');
+                    speakerCard.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] p-4 hover:border-[var(--border-accent)] transition-colors duration-200';
+                    
+                    speakerCard.innerHTML = `
+                        <div class="flex flex-col h-full">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center flex-1 min-w-0">
+                                    <i class="fas fa-user text-[var(--text-accent)] mr-2 flex-shrink-0"></i>
+                                    <h3 class="font-medium text-base text-[var(--text-primary)] truncate">${escapeHtml(speaker.name)}</h3>
+                                </div>
+                                <button class="delete-speaker-tab-btn ml-2 p-1.5 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded-md transition-colors duration-200 flex-shrink-0" 
+                                        data-speaker-id="${speaker.id}" 
+                                        data-speaker-name="${escapeHtml(speaker.name)}"
+                                        data-i18n-title="buttons.deleteSpeaker">
+                                    <i class="fas fa-trash text-sm"></i>
+                                </button>
+                            </div>
+                            <div class="space-y-1 text-xs text-[var(--text-muted)]">
+                                <p class="flex items-center">
+                                    <i class="fas fa-chart-line mr-1.5 text-xs opacity-60"></i>
+                                    <span>Used ${speaker.use_count} time${speaker.use_count !== 1 ? 's' : ''}</span>
+                                </p>
+                                <p class="flex items-center">
+                                    <i class="fas fa-clock mr-1.5 text-xs opacity-60"></i>
+                                    <span>Last: ${lastUsedDate}</span>
+                                </p>
+                                <p class="flex items-center">
+                                    <i class="fas fa-calendar-plus mr-1.5 text-xs opacity-60"></i>
+                                    <span>Added: ${createdDate}</span>
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Add delete functionality
+                    const deleteBtn = speakerCard.querySelector('.delete-speaker-tab-btn');
+                    deleteBtn.addEventListener('click', () => deleteSpeakerFromTab(speaker.id, speaker.name));
+                    
+                    speakersTabGrid.appendChild(speakerCard);
+                });
+            }
+            
+            async function deleteSpeakerFromTab(speakerId, speakerName) {
+                if (!confirm(`Are you sure you want to delete "${speakerName}"?`)) {
+                    return;
+                }
+                
+                try {
+                    // Get CSRF token
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                    
+                    const headers = {};
+                    if (csrfToken) {
+                        headers['X-CSRFToken'] = csrfToken;
+                    }
+                    
+                    const response = await fetch(`/speakers/${speakerId}`, { 
+                        method: 'DELETE',
+                        headers: headers
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    // Remove from local array and re-render
+                    speakersTabData = speakersTabData.filter(s => s.id !== speakerId);
+                    
+                    if (speakersTabData.length === 0) {
+                        document.getElementById('speakersTabEmpty').classList.remove('hidden');
+                        document.getElementById('speakersTabGrid').classList.add('hidden');
+                        document.getElementById('deleteAllSpeakersTabBtn').disabled = true;
+                    } else {
+                        renderSpeakersTabGrid();
+                    }
+                    
+                    document.getElementById('speakersTabCount').textContent = speakersTabData.length;
+                    showToast(`Speaker "${speakerName}" deleted successfully`);
+                } catch (error) {
+                    console.error('Error deleting speaker:', error);
+                    showToast(`Failed to delete speaker: ${error.message}`, 'error');
+                }
+            }
+            
+            // Delete all speakers from tab
+            document.getElementById('deleteAllSpeakersTabBtn')?.addEventListener('click', async () => {
+                if (!confirm('Are you sure you want to delete all speakers? This action cannot be undone.')) {
+                    return;
+                }
+                
+                try {
+                    // Get CSRF token
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                    
+                    const headers = {};
+                    if (csrfToken) {
+                        headers['X-CSRFToken'] = csrfToken;
+                    }
+                    
+                    // Delete all speakers one by one
+                    const deletePromises = speakersTabData.map(speaker => 
+                        fetch(`/speakers/${speaker.id}`, { 
+                            method: 'DELETE',
+                            headers: headers
+                        })
+                    );
+                    
+                    const results = await Promise.allSettled(deletePromises);
+                    
+                    // Check for any failures
+                    const failures = results.filter(result => result.status === 'rejected');
+                    if (failures.length > 0) {
+                        console.error('Some speakers failed to delete:', failures);
+                        showToast(`${failures.length} speaker(s) failed to delete`, 'error');
+                    }
+                    
+                    // Reset the tab state
+                    speakersTabLoaded = false;
+                    await loadSpeakersTab();
+                    
+                    const successCount = results.length - failures.length;
+                    if (successCount > 0) {
+                        showToast(`${successCount} speaker(s) deleted successfully`);
+                    }
+                } catch (error) {
+                    console.error('Error deleting all speakers:', error);
+                    showToast(`Failed to delete speakers: ${error.message}`, 'error');
+                }
+            });
+            
             async function loadSystemInfo() {
                 try {
                     const response = await fetch('/api/system/info');
@@ -867,7 +1329,7 @@
                     if (!response.ok) throw new Error(shares.error || 'Failed to load');
                     
                     if (shares.length === 0) {
-                        sharesContainer.innerHTML = '<p class="text-center text-[var(--text-muted)]">You have not shared any transcripts yet.</p>';
+                        sharesContainer.innerHTML = `<p class="text-center text-[var(--text-muted)]">${t('sharedTranscriptsPage.noSharedTranscripts')}</p>`;
                         return;
                     }
 
@@ -908,7 +1370,7 @@
                     });
 
                 } catch (error) {
-                    sharesContainer.innerHTML = `<p class="text-center text-red-500">Error loading shares: ${error.message}</p>`;
+                    sharesContainer.innerHTML = `<p class="text-center text-red-500">${t('errors.loadingShares')}: ${error.message}</p>`;
                 }
             }
 
@@ -1078,7 +1540,7 @@
             }
         });
 
-        // Manage Speakers Modal functionality
+        // Keep the modal functionality for backward compatibility if button still exists
         const manageSpeakersBtn = document.getElementById('manageSpeakersBtn');
         const manageSpeakersModal = document.getElementById('manageSpeakersModal');
         const closeSpeakersModalBtn = document.getElementById('closeSpeakersModalBtn');
@@ -1097,11 +1559,13 @@
 
         let speakers = [];
 
-        // Open speakers modal
-        manageSpeakersBtn.addEventListener('click', () => {
-            manageSpeakersModal.classList.remove('hidden');
-            loadSpeakers();
-        });
+        // Open speakers modal only if button exists
+        if (manageSpeakersBtn) {
+            manageSpeakersBtn.addEventListener('click', () => {
+                manageSpeakersModal.classList.remove('hidden');
+                loadSpeakers();
+            });
+        }
 
         // Close speakers modal functions
         function closeSpeakersModal() {
@@ -1205,7 +1669,7 @@
                 </div>
                 <button class="delete-speaker-btn ml-3 p-2 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded-md transition-colors duration-200" 
                         data-speaker-id="${speaker.id}" 
-                        title="Delete speaker">
+                        data-i18n-title="buttons.deleteSpeaker">
                     <i class="fas fa-trash text-sm"></i>
                 </button>
             `;
@@ -1445,11 +1909,11 @@
                     </div>
                     <div class="flex space-x-1">
                         <button class="edit-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] rounded" 
-                                data-tag-id="${tag.id}" title="Edit tag">
+                                data-tag-id="${tag.id}" data-i18n-title="buttons.editTag">
                             <i class="fas fa-edit text-sm"></i>
                         </button>
                         <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] rounded" 
-                                data-tag-id="${tag.id}" title="Delete tag">
+                                data-tag-id="${tag.id}" data-i18n-title="buttons.deleteTag">
                             <i class="fas fa-trash text-sm"></i>
                         </button>
                     </div>
@@ -1458,14 +1922,14 @@
                 <div class="space-y-2 text-sm text-[var(--text-muted)]">
                     ${tag.custom_prompt ? `
                         <div>
-                            <span class="font-medium">Custom Prompt:</span>
+                            <span class="font-medium" data-i18n="tagManagement.customPrompt">Custom Prompt:</span>
                             <span class="text-xs">${escapeHtml(tag.custom_prompt.substring(0, 60))}${tag.custom_prompt.length > 60 ? '...' : ''}</span>
                         </div>
                     ` : ''}
                     
                     ${tag.default_language || tag.default_min_speakers || tag.default_max_speakers ? `
                         <div class="pt-2 border-t border-[var(--border-secondary)]">
-                            <span class="font-medium text-xs">ASR Defaults:</span>
+                            <span class="font-medium text-xs" data-i18n="tagManagement.asrDefaults">ASR Defaults:</span>
                             <div class="flex flex-wrap gap-2 mt-1">
                                 ${tag.default_language ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Lang: ${escapeHtml(tag.default_language)}</span>` : ''}
                                 ${tag.default_min_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Min: ${tag.default_min_speakers}</span>` : ''}
@@ -1699,6 +2163,12 @@
             });
         }
         
+        // Check for stored tab preference (from language change reload)
+        const storedTab = localStorage.getItem('activeAccountTab');
+        if (storedTab) {
+            localStorage.removeItem('activeAccountTab'); // Clean up after use
+        }
+        
         // Check for URL hash and show appropriate tab
         const urlHash = window.location.hash.substring(1); // Remove the '#' symbol
         if (urlHash === 'prompts') {
@@ -1709,10 +2179,50 @@
             showSharesTab();
         } else if (urlHash === 'about') {
             showAboutTab();
+        } else if (storedTab) {
+            // Restore previously active tab after language change
+            if (storedTab === 'prompts') {
+                showPromptsTab();
+            } else if (storedTab === 'tags') {
+                showTagsTab();
+            } else if (storedTab === 'shares') {
+                showSharesTab();
+            } else if (storedTab === 'about') {
+                showAboutTab();
+            } else {
+                showAccountTab();
+            }
         } else {
             // Default to account tab
             showAccountTab();
         }
+        
+        // Track original UI language to detect changes
+        let currentUILanguage = document.getElementById('ui_language').value;
+        const originalUILanguage = currentUILanguage;
+        
+        // Add immediate language change listener to the UI language dropdown
+        const uiLanguageSelect = document.getElementById('ui_language');
+        if (uiLanguageSelect) {
+            uiLanguageSelect.addEventListener('change', async function(e) {
+                const newLanguage = e.target.value;
+                if (newLanguage !== currentUILanguage) {
+                    await changeLanguageImmediately(newLanguage);
+                    // Update the current language tracker
+                    currentUILanguage = newLanguage;
+                }
+            });
+        }
+        
+        // Add event listener to the account info form
+        document.getElementById('accountInfoForm').addEventListener('submit', function(e) {
+            const newUILanguage = document.getElementById('ui_language').value;
+            if (newUILanguage !== originalUILanguage) {
+                // Language has changed, store flag to reload main app
+                localStorage.setItem('ui_language_changed', 'true');
+                localStorage.setItem('preferredLanguage', newUILanguage);
+            }
+        });
     });
     </script>
 </body>

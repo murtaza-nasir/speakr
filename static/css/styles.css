@@ -9,22 +9,22 @@ body.unloaded {
 
 /* Color Scheme CSS Variables */
 :root {
-    /* Default Light Theme (Blue) */
-    --bg-primary: #f3f4f6; /* gray-100 */
-    --bg-secondary: #ffffff; /* white */
-    --bg-tertiary: #f9fafb; /* gray-50 */
-    --bg-accent: #dbeafe; /* blue-100 */
-    --bg-accent-hover: #bfdbfe; /* blue-200 */
+    /* Default Light Theme (Blue) - More muted with better contrast */
+    --bg-primary: #e8eaed; /* muted gray */
+    --bg-secondary: #f8f9fa; /* off-white */
+    --bg-tertiary: #f0f2f4; /* light gray */
+    --bg-accent: #c3d9f7; /* muted blue */
+    --bg-accent-hover: #aec9f2; /* deeper muted blue */
     --bg-button: #2563eb; /* blue-600 */
     --bg-button-hover: #1d4ed8; /* blue-700 */
     --bg-danger: #dc2626; /* red-600 */
     --bg-danger-hover: #b91c1c; /* red-700 */
-    --bg-danger-light: #fee2e2; /* red-100 */
-    --bg-info-light: #dbeafe; /* blue-100 */
-    --bg-warn-light: #e0f2fe; /* cyan-50 - soft, friendly light blue */
-    --bg-success-light: #d1fae5; /* green-100 */
-    --bg-pending-light: #f5f5f4; /* stone-100 */
-    --bg-input: #ffffff; /* white */
+    --bg-danger-light: #fce4e4; /* muted red */
+    --bg-info-light: #c3d9f7; /* muted blue */
+    --bg-warn-light: #d4e8f5; /* soft blue */
+    --bg-success-light: #c6f0dc; /* muted green */
+    --bg-pending-light: #eeeeec; /* stone */
+    --bg-input: #fafbfc; /* slightly gray white */
     --bg-audio-player: var(--bg-tertiary);
 
     --text-primary: #1f2937; /* gray-800 */
@@ -58,92 +58,92 @@ body.unloaded {
 
 /* Light Theme Variants */
 .theme-light-emerald {
-    --bg-primary: #f6fdf8; /* soft green-tinted background */
-    --bg-secondary: #f9fefb; /* very light green */
-    --bg-tertiary: #f1fcf3; /* noticeable but soft green tint */
-    --bg-accent: #ecfaf0; /* light green accent */
-    --bg-accent-hover: #e6f7ea; /* slightly deeper green */
+    --bg-primary: #e6f0e9; /* muted green-gray */
+    --bg-secondary: #f4f9f5; /* soft off-white green */
+    --bg-tertiary: #ebf4ed; /* light muted green */
+    --bg-accent: #d0e8d7; /* muted pastel green */
+    --bg-accent-hover: #c1e0ca; /* deeper muted green */
     --bg-button: #059669; /* keep button visible */
     --bg-button-hover: #047857; /* keep button visible */
-    --bg-input: #ffffff; /* white input background */
+    --bg-input: #f9fcfa; /* slightly green white */
     --text-accent: #047857; /* keep accent text visible */
-    --border-primary: #e8f5eb; /* light green border */
-    --border-secondary: #d1f2d8; /* soft green border */
-    --border-accent: #b8e6c1; /* medium green border */
+    --border-primary: #d4e5d8; /* muted green border */
+    --border-secondary: #c2dcc9; /* soft green border */
+    --border-accent: #a8d0b3; /* medium green border */
     --border-focus: #10b981; /* keep focus visible */
-    --ring-focus: #e6f7ea; /* soft green ring */
+    --ring-focus: #d0e8d7; /* muted green ring */
     --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-purple {
-    --bg-primary: #faf8ff; /* soft purple-tinted background */
-    --bg-secondary: #fcfaff; /* very light purple */
-    --bg-tertiary: #f5f2ff; /* noticeable but soft purple tint */
-    --bg-accent: #f0ebff; /* light purple accent */
-    --bg-accent-hover: #ebe4ff; /* slightly deeper purple */
+    --bg-primary: #ebe9f0; /* muted purple-gray */
+    --bg-secondary: #f7f6f9; /* soft off-white purple */
+    --bg-tertiary: #f0eef4; /* light muted purple */
+    --bg-accent: #dcd7e8; /* muted pastel purple */
+    --bg-accent-hover: #d0c9df; /* deeper muted purple */
     --bg-button: #7c3aed; /* keep button visible */
     --bg-button-hover: #6d28d9; /* keep button visible */
-    --bg-input: #ffffff; /* white input background */
+    --bg-input: #faf9fc; /* slightly purple white */
     --text-accent: #6d28d9; /* keep accent text visible */
-    --border-primary: #ede9fe; /* light purple border */
-    --border-secondary: #ddd6fe; /* soft purple border */
-    --border-accent: #c4b5fd; /* medium purple border */
+    --border-primary: #dbd6e6; /* muted purple border */
+    --border-secondary: #cfc8dd; /* soft purple border */
+    --border-accent: #bab0d2; /* medium purple border */
     --border-focus: #8b5cf6; /* keep focus visible */
-    --ring-focus: #ebe4ff; /* soft purple ring */
+    --ring-focus: #dcd7e8; /* muted purple ring */
     --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-rose {
-    --bg-primary: #fdf8fb; /* soft rose-tinted background */
-    --bg-secondary: #fefafc; /* very light rose */
-    --bg-tertiary: #fcf2f6; /* noticeable but soft rose tint */
-    --bg-accent: #faebf1; /* light rose accent */
-    --bg-accent-hover: #f7e4ec; /* slightly deeper rose */
+    --bg-primary: #f0e9ed; /* muted rose-gray */
+    --bg-secondary: #f9f6f7; /* soft off-white rose */
+    --bg-tertiary: #f4eef1; /* light muted rose */
+    --bg-accent: #e6d7df; /* muted pastel rose */
+    --bg-accent-hover: #dfc9d4; /* deeper muted rose */
     --bg-button: #e11d48; /* keep button visible */
     --bg-button-hover: #be185d; /* keep button visible */
-    --bg-input: #ffffff; /* white input background */
+    --bg-input: #fcf9fa; /* slightly rose white */
     --text-accent: #be185d; /* keep accent text visible */
-    --border-primary: #fce7f3; /* light rose border */
-    --border-secondary: #f9d2e4; /* soft rose border */
-    --border-accent: #f3a8c7; /* medium rose border */
+    --border-primary: #e5d6de; /* muted rose border */
+    --border-secondary: #dbc8d2; /* soft rose border */
+    --border-accent: #d0b0bf; /* medium rose border */
     --border-focus: #ec4899; /* keep focus visible */
-    --ring-focus: #f7e4ec; /* soft rose ring */
+    --ring-focus: #e6d7df; /* muted rose ring */
     --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-amber {
-    --bg-primary: #fdfaf6; /* soft amber-tinted background */
-    --bg-secondary: #fefcf9; /* very light amber */
-    --bg-tertiary: #fcf6f1; /* noticeable but soft amber tint */
-    --bg-accent: #faf0e6; /* light amber accent */
-    --bg-accent-hover: #f7e9db; /* slightly deeper amber */
+    --bg-primary: #efebe6; /* muted amber-gray */
+    --bg-secondary: #f9f7f4; /* soft off-white amber */
+    --bg-tertiary: #f3efe9; /* light muted amber */
+    --bg-accent: #e5ddd1; /* muted pastel amber */
+    --bg-accent-hover: #ddd2c2; /* deeper muted amber */
     --bg-button: #d97706; /* keep button visible */
     --bg-button-hover: #b45309; /* keep button visible */
-    --bg-input: #ffffff; /* white input background */
+    --bg-input: #fbfaf8; /* slightly amber white */
     --text-accent: #b45309; /* keep accent text visible */
-    --border-primary: #fef3c7; /* light amber border */
-    --border-secondary: #fde68a; /* soft amber border */
-    --border-accent: #fcd34d; /* medium amber border */
+    --border-primary: #e2dace; /* muted amber border */
+    --border-secondary: #d9cdb9; /* soft amber border */
+    --border-accent: #cdbca1; /* medium amber border */
     --border-focus: #f59e0b; /* keep focus visible */
-    --ring-focus: #f7e9db; /* soft amber ring */
+    --ring-focus: #e5ddd1; /* muted amber ring */
     --bg-audio-player: var(--bg-tertiary);
 }
 
 .theme-light-teal {
-    --bg-primary: #f6fdfc; /* soft teal-tinted background */
-    --bg-secondary: #f9fefe; /* very light teal */
-    --bg-tertiary: #f1fcfa; /* noticeable but soft teal tint */
-    --bg-accent: #ecfbf8; /* light teal accent */
-    --bg-accent-hover: #e6f9f5; /* slightly deeper teal */
+    --bg-primary: #e7f0ef; /* muted teal-gray */
+    --bg-secondary: #f5f9f8; /* soft off-white teal */
+    --bg-tertiary: #ecf4f3; /* light muted teal */
+    --bg-accent: #d2e5e2; /* muted pastel teal */
+    --bg-accent-hover: #c3ddd9; /* deeper muted teal */
     --bg-button: #0d9488; /* keep button visible */
     --bg-button-hover: #0f766e; /* keep button visible */
-    --bg-input: #ffffff; /* white input background */
+    --bg-input: #f9fcfb; /* slightly teal white */
     --text-accent: #0f766e; /* keep accent text visible */
-    --border-primary: #ccfbf1; /* light teal border */
-    --border-secondary: #99f6e4; /* soft teal border */
-    --border-accent: #5eead4; /* medium teal border */
+    --border-primary: #c8dfdc; /* muted teal border */
+    --border-secondary: #b5d3ce; /* soft teal border */
+    --border-accent: #9cc5be; /* medium teal border */
     --border-focus: #14b8a6; /* keep focus visible */
-    --ring-focus: #e6f9f5; /* soft teal ring */
+    --ring-focus: #d2e5e2; /* muted teal ring */
     --bg-audio-player: var(--bg-tertiary);
 }
 
@@ -168,8 +168,8 @@ body.unloaded {
 
     --text-primary: #f3f4f6; /* gray-100 */
     --text-secondary: #d1d5db; /* gray-300 */
-    --text-muted: #9ca3af; /* gray-400 */
-    --text-light: #6b7280; /* gray-500 */
+    --text-muted: #cbd5e1; /* slate-300 - improved contrast */
+    --text-light: #94a3b8; /* slate-400 - better visibility */
     --text-accent: #60a5fa; /* blue-400 */
     --text-button: #ffffff; /* white */
     --text-danger: #f87171; /* red-400 */
@@ -179,8 +179,8 @@ body.unloaded {
     --text-success-strong: #6ee7b7; /* green-300 */
     --text-pending-strong: #d6d3d1; /* stone-300 */
 
-    --border-primary: #374151; /* gray-700 */
-    --border-secondary: #4b5563; /* gray-600 */
+    --border-primary: #475569; /* slate-600 - more visible */
+    --border-secondary: #64748b; /* slate-500 - better contrast */
     --border-accent: #1d4ed8; /* blue-700 */
     --border-danger: #ef4444; /* red-500 */
     --border-focus: #3b82f6; /* blue-500 */
@@ -2922,6 +2922,24 @@ body.fullscreen-mode {
     color: var(--text-primary);
 }
 
+/* Fix cursor/caret color in dark mode for ALL CodeMirror instances */
+.dark .CodeMirror-cursor {
+    border-left: 2px solid var(--text-primary) !important;
+}
+
+/* Also fix the caret in the actual textarea (when CodeMirror is not active) */
+.dark textarea,
+.dark input[type="text"],
+.dark input[type="search"] {
+    caret-color: var(--text-primary);
+}
+
+/* Ensure cursor is visible in all markdown editors */
+.markdown-editor-container .CodeMirror-cursor,
+.recording-notes-editor .CodeMirror-cursor {
+    border-left: 2px solid var(--text-primary) !important;
+}
+
 .dark .markdown-editor-container .EasyMDEContainer .editor-toolbar {
     background: var(--bg-tertiary);
     border-bottom-color: var(--border-secondary);
@@ -3285,4 +3303,153 @@ textarea[ref="recordingNotesEditor"]:focus {
     .tab-nav > * + * {
         margin-left: 0 !important;
     }
+}
+
+/* Custom Checkbox Styling for Speaker Modal */
+input[type="checkbox"].speaker-checkbox {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 2px solid var(--border-secondary);
+    border-radius: 0.25rem;
+    background-color: var(--bg-input);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+input[type="checkbox"].speaker-checkbox:hover {
+    border-color: var(--text-accent);
+    background-color: var(--bg-secondary);
+}
+
+input[type="checkbox"].speaker-checkbox:focus {
+    outline: none;
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+input[type="checkbox"].speaker-checkbox:checked {
+    background-color: var(--text-accent);
+    border-color: var(--text-accent);
+}
+
+input[type="checkbox"].speaker-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.25rem;
+    height: 0.5rem;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -60%) rotate(45deg);
+}
+
+input[type="checkbox"].speaker-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Dark mode adjustments */
+:root[data-theme="dark"] input[type="checkbox"].speaker-checkbox {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="dark"] input[type="checkbox"].speaker-checkbox:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+:root[data-theme="dark"] input[type="checkbox"].speaker-checkbox:checked {
+    background-color: var(--text-accent);
+    border-color: var(--text-accent);
+}
+
+/* Custom Select Dropdown Styling */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%236b7280' d='M4.5 5.5L8 9l3.5-3.5L10.75 4.75 8 7.5 5.25 4.75z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+/* Dark mode select styling */
+.dark select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23cbd5e1' d='M4.5 5.5L8 9l3.5-3.5L10.75 4.75 8 7.5 5.25 4.75z'/%3E%3C/svg%3E");
+    background-color: var(--bg-input);
+    border-color: var(--border-secondary);
+}
+
+/* Hover and focus states for select */
+select:hover {
+    border-color: var(--border-accent);
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.dark select:focus {
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+/* Disabled select styling */
+select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--bg-tertiary);
+}
+
+/* Input and textarea improvements for dark mode */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="date"],
+.dark input[type="number"],
+.dark textarea {
+    background-color: var(--bg-input);
+    border-color: var(--border-secondary);
+    color: var(--text-primary);
+}
+
+.dark input[type="text"]:focus,
+.dark input[type="email"]:focus,
+.dark input[type="password"]:focus,
+.dark input[type="date"]:focus,
+.dark input[type="number"]:focus,
+.dark textarea:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+}
+
+/* Placeholder text improvements */
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: var(--text-light);
+    opacity: 0.7;
+}
+
+/* Description text improvements */
+.dark .text-xs.text-gray-500,
+.dark .text-xs.text-gray-400,
+.dark .text-sm.text-gray-500,
+.dark .text-sm.text-gray-400 {
+    color: var(--text-muted) !important;
+}
+
+/* Label text improvements */
+.dark label {
+    color: var(--text-secondary);
 }

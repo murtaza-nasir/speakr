@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Speakr - Audio Transcription & Summarization</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- EasyMDE Markdown Editor -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- All dependencies bundled locally for offline support -->
+    <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/easymde.min.css') }}">
+    <script src="{{ url_for('static', filename='vendor/js/easymde.min.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
@@ -40,11 +40,12 @@
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="loader" class="fixed inset-0 bg-gray-800 flex items-center justify-center z-50">
-        <div class="text-white text-lg">Loading...</div>
+        <div class="text-white text-lg" v-text="t('common.loading')"></div>
     </div>
     <div id="app" v-cloak
          data-use-asr-endpoint="{{ use_asr_endpoint }}" 
          data-current-user-name="{{ current_user.name if current_user.is_authenticated else '' }}"
+         data-user-language="{{ user_language }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">
         
         <!-- Header -->
@@ -71,15 +72,14 @@
                 <a href="/inquire" 
                    class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
                     <i class="fas fa-search"></i>
-                    <span class="hidden sm:inline">Inquire</span>
+                    <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
                 </a>
                 {% endif %}
 
                 <!-- New Recording Button -->
                 <button @click="switchToUploadView" 
                         class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
-                    <i class="fas fa-plus mr-1"></i>New
-                    <span class="hidden sm:inline">Recording</span>
+                    <i class="fas fa-plus mr-1"></i><span v-text="t('nav.newRecording')"></span>
                 </button>
 
                 <!-- User menu -->
@@ -87,7 +87,7 @@
                 <div class="relative">
                     <button @click="isUserMenuOpen = !isUserMenuOpen" 
                             class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
-                            title="User Menu">
+                            :title="t('admin.userMenu')">
                         <i class="fas fa-user-circle text-lg"></i>
                         <span class="hidden lg:inline text-sm">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
                         <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
@@ -97,31 +97,31 @@
                     <div v-if="isUserMenuOpen"
                          class="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
                         <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-cog mr-2 w-4 text-center"></i>Account Settings
+                            <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
                         </a>
                         <a href="/account#tags" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-tags mr-2 w-4 text-center"></i>Tag Management
+                            <i class="fas fa-tags mr-2 w-4 text-center"></i><span v-text="t('help.tagManagement')"></span>
                         </a>
                         <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
-                            <i class="fas fa-share-alt mr-2 w-4 text-center"></i>Shared Transcripts
+                            <i class="fas fa-share-alt mr-2 w-4 text-center"></i><span v-text="t('modal.sharedTranscripts')"></span>
                         </button>
                         {% if current_user.is_admin %}
                         <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-user-shield mr-2 w-4 text-center"></i>Admin
+                            <i class="fas fa-user-shield mr-2 w-4 text-center"></i><span v-text="t('admin.title')"></span>
                         </a>
                         {% endif %}
                         <div class="border-t border-[var(--border-primary)] my-1"></div>
                         <button @click="toggleDarkMode" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
                             <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2 w-4 text-center"></i>
-                            <span>${ isDarkMode ? 'Light Mode' : 'Dark Mode' }</span>
+                            <span v-text="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')"></span>
                         </button>
                         <button @click="openColorSchemeModal" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
                             <i class="fas fa-palette mr-2 w-4 text-center"></i>
-                            <span>Color Scheme</span>
+                            <span v-text="t('modal.colorScheme')"></span>
                         </button>
                         <div class="border-t border-[var(--border-primary)] my-1"></div>
                         <a href="/logout" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i>Logout
+                            <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
                         </a>
                     </div>
                 </div>
@@ -142,7 +142,7 @@
                     <!-- Sidebar Header -->
                     <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
                         <div class="flex items-center justify-between mb-4">
-                            <h2 class="text-lg font-semibold">Recordings</h2>
+                            <h2 class="text-lg font-semibold" v-text="t('nav.recording')"></h2>
                             <div class="flex gap-2">
                                 {% if inquire_mode_enabled %}
                                 <a href="/inquire" 
@@ -152,25 +152,110 @@
                                 {% endif %}
                                 <button @click="switchToUploadView" 
                                         class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
-                                    <i class="fas fa-plus mr-1"></i>New
+                                    <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
                                 </button>
                             </div>
                         </div>
                         
                         <!-- Search and Sort Controls -->
                         <div class="space-y-3">
-                            <!-- Search Input -->
-                            <div class="relative">
-                                <input v-model="searchQuery" 
-                                       type="text" 
-                                       placeholder="Search recordings... (try: date:today, tag:meeting)" 
-                                       class="w-full px-3 py-2 pl-9 pr-8 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] text-sm"></i>
-                                <button v-if="searchQuery" 
-                                        @click="searchQuery = ''"
-                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-sm">
-                                    <i class="fas fa-times"></i>
+                            <!-- Filter Toggle Button -->
+                            <div class="flex items-center space-x-2">
+                                <button @click="showAdvancedFilters = !showAdvancedFilters" 
+                                        class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
+                                    <span class="flex items-center">
+                                        <i class="fas fa-filter mr-2 text-[var(--text-muted)]"></i>
+                                        <span v-if="!searchQuery && filterTags.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery"
+                                              v-text="t('sidebar.searchRecordings')">
+                                        </span>
+                                        <span v-else class="text-[var(--text-accent)]">
+                                            Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) })
+                                        </span>
+                                    </span>
+                                    <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)]', showAdvancedFilters ? 'rotate-180' : '']"></i>
                                 </button>
+                                <button v-if="searchQuery || filterTags.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery"
+                                        @click="clearAllFilters"
+                                        class="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                                        :title="t('buttons.clearAllFilters')">
+                                    <i class="fas fa-times text-[var(--text-muted)]"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Advanced Filters Panel -->
+                            <div v-show="showAdvancedFilters" class="p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg space-y-3">
+                                <!-- Text Search -->
+                                <div>
+                                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.filters')"></label>
+                                    <div class="relative">
+                                        <input v-model="filterTextQuery" 
+                                               type="text" 
+                                               :placeholder="t('sidebar.searchRecordings')" 
+                                               class="w-full px-3 py-1.5 pl-8 pr-8 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                        <i class="fas fa-search absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] text-xs"></i>
+                                        <button v-if="filterTextQuery" 
+                                                @click="filterTextQuery = ''"
+                                                class="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                                                :title="t('buttons.clearSearchText')">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tag Filter -->
+                                <div>
+                                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('tags.filterByTag')"></label>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <button v-for="tag in availableTags" 
+                                                :key="tag.id"
+                                                @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                                                :class="[
+                                                    'px-2 py-1 rounded-full text-xs font-medium transition-all',
+                                                    filterTags.includes(tag.id) 
+                                                        ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]' 
+                                                        : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
+                                                ]">
+                                            <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                            ${ tag.name }
+                                        </button>
+                                    </div>
+                                    <p v-if="availableTags.length === 0" class="text-xs text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
+                                </div>
+                                
+                                <!-- Date Filter -->
+                                <div>
+                                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.dateRange')"></label>
+                                    <div class="grid grid-cols-3 gap-1.5 mb-2">
+                                        <button v-for="preset in datePresetOptions"
+                                                :key="preset.value"
+                                                @click="filterDatePreset = filterDatePreset === preset.value ? '' : preset.value; filterDateRange = { start: '', end: '' }"
+                                                :class="[
+                                                    'px-2 py-1 rounded-md text-xs transition-all',
+                                                    filterDatePreset === preset.value 
+                                                        ? 'bg-[var(--bg-accent)] text-[var(--text-accent)]' 
+                                                        : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
+                                                ]"
+                                                :title="preset.label">
+                                            ${ preset.label }
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <input v-model="filterDateRange.start" 
+                                                   @change="filterDatePreset = ''"
+                                                   type="date" 
+                                                   class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
+                                                   :placeholder="t('form.dateFrom')">
+                                        </div>
+                                        <div>
+                                            <input v-model="filterDateRange.end" 
+                                                   @change="filterDatePreset = ''"
+                                                   type="date" 
+                                                   class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
+                                                   :placeholder="t('form.dateTo')">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             
                             <!-- Sort Toggle -->
@@ -178,25 +263,10 @@
                                     class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
                                 <span class="flex items-center">
                                     <i :class="['fas mr-2 text-[var(--text-muted)]', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
-                                    Sort by: ${sortBy === 'meeting_date' ? 'Meeting Date' : 'Upload Date'}
+                                    <span v-text="t('sidebar.sortBy')"></span>: <span v-text="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')"></span>
                                 </span>
                                 <i class="fas fa-exchange-alt text-[var(--text-muted)]"></i>
                             </button>
-                            
-                            <!-- Search Help -->
-                            <div class="text-xs text-[var(--text-muted)] space-y-1">
-                                <button @click="searchTipsExpanded = !searchTipsExpanded" class="flex items-center justify-between w-full text-left">
-                                    <span>Search tips:</span>
-                                    <i :class="['fas', 'fa-chevron-down', 'transition-transform', { 'rotate-180': searchTipsExpanded }]"></i>
-                                </button>
-                                <div v-if="searchTipsExpanded" class="pl-2 space-y-0.5 pt-1">
-                                    <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">date:today</code> - Today's recordings</div>
-                                    <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">date:2025-01</code> - January 2025</div>
-                                    <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">date:thisweek</code> - This week</div>
-                                    <div>• <code class="bg-[var(--bg-tertiary)] px-1 rounded">tag:meeting</code> - Search by tag name</div>
-                                    <div>• Click any tag to filter recordings</div>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -211,14 +281,14 @@
                          }">
                         <div v-if="isLoadingRecordings && recordings.length === 0" class="text-center py-8">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="mt-2 text-[var(--text-muted)]">Loading recordings...</p>
+                            <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.loadingRecordings')"></p>
                         </div>
                         
                         <div v-else-if="recordings.length === 0 && !isLoadingRecordings" class="text-center py-8">
                             <i class="fas fa-microphone-slash text-3xl text-[var(--text-muted)] mb-3"></i>
-                            <p class="text-[var(--text-muted)]">No recordings found</p>
+                            <p class="text-[var(--text-muted)]" v-text="t('sidebar.noRecordings')"></p>
                             <p v-if="searchQuery.trim()" class="text-sm text-[var(--text-muted)] mt-1">
-                                Try adjusting your search or <button @click="searchQuery = ''" class="text-[var(--text-accent)] hover:underline">clear filters</button>
+                                <span v-text="t('help.tryAdjustingSearch')"></span> <button @click="clearAllFilters()" class="text-[var(--text-accent)] hover:underline" v-text="t('help.clearFilters')"></button>
                             </p>
                         </div>
                         
@@ -240,14 +310,14 @@
                                         <!-- Title and Status Row -->
                                         <div class="flex items-center justify-between mb-1">
                                             <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
-                                                ${recording.title || 'Untitled Recording'}
+                                                ${ recording.title || t('common.untitled') }
                                             </h4>
                                             <div class="flex items-center gap-1 flex-shrink-0">
                                                 <!-- Show Failed status for failed recordings -->
                                                 <span v-if="recording.status === 'FAILED'" 
                                                       class="status-badge status-failed">
                                                     <i class="fas fa-exclamation-circle mr-1"></i>
-                                                    Failed
+                                                    ${ t('common.failed') }
                                                 </span>
                                                 
                                                 <!-- Show Processing status for non-completed recordings -->
@@ -262,13 +332,13 @@
                                                     <span v-if="recording.is_highlighted" 
                                                           @click.stop="toggleHighlight(recording)"
                                                           class="status-badge status-highlighted clickable-badge"
-                                                          title="Remove from starred">
+                                                          :title="t('sidebar.removeFromHighlighted')">
                                                         <i class="fas fa-star"></i>
                                                     </span>
                                                     <span v-if="recording.is_inbox" 
                                                           @click.stop="toggleInbox(recording)"
                                                           class="status-badge status-inbox clickable-badge"
-                                                          title="Mark as read">
+                                                          :title="t('sidebar.markAsRead')">
                                                         <i class="fas fa-inbox"></i>
                                                     </span>
                                                 </template>
@@ -311,13 +381,13 @@
                             <!-- Load More Indicator -->
                             <div v-if="isLoadingMore" class="text-center py-4">
                                 <i class="fas fa-spinner fa-spin text-lg text-[var(--text-muted)]"></i>
-                                <p class="text-sm text-[var(--text-muted)] mt-1">Loading more recordings...</p>
+                                <p class="text-sm text-[var(--text-muted)] mt-1" v-text="t('help.loadingMore')"></p>
                             </div>
                             
                             <!-- End of Results Indicator -->
                             <div v-else-if="!hasNextPage && totalRecordings > 0" class="text-center py-4 text-xs text-[var(--text-muted)]">
                                 <i class="fas fa-check-circle mr-1"></i>
-                                All recordings loaded
+                                <span v-text="t('help.allRecordingsLoaded')"></span>
                             </div>
                         </div>
                     </div>
@@ -334,8 +404,8 @@
                     <div class="max-w-lg w-full my-auto">
                         <div class="text-center mb-8">
                             <i class="fas fa-microphone text-5xl md:text-6xl text-[var(--text-accent)] mb-4"></i>
-                            <h2 class="text-2xl md:text-3xl font-bold mb-2">Upload or Record Audio</h2>
-                            <p class="text-[var(--text-muted)]">Drag and drop an audio file, click to browse, or start a new recording.</p>
+                            <h2 class="text-2xl md:text-3xl font-bold mb-2" v-text="t('upload.title')"></h2>
+                            <p class="text-[var(--text-muted)]" v-text="t('upload.dropzone')"></p>
                         </div>
                         
                         <div class="bg-[var(--bg-secondary)] p-6 rounded-xl border border-[var(--border-primary)]">
@@ -343,27 +413,27 @@
                             <div @drop="handleDrop" @dragover="handleDragOver" @dragleave="handleDragLeave" @click="$refs.fileInput.click()"
                                  :class="['border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300', dragover ? 'border-[var(--border-accent)] bg-[var(--bg-accent)]' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]']">
                                 <i class="fas fa-cloud-upload-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                <p class="text-[var(--text-secondary)] mb-2">Click to upload or drag and drop</p>
-                                <p class="text-xs text-[var(--text-muted)]">Supports MP3, WAV, M4A, MP4, MOV, AVI, AMR, and more</p>
+                                <p class="text-[var(--text-secondary)] mb-2" v-text="t('upload.dropzone')"></p>
+                                <p class="text-xs text-[var(--text-muted)]" v-text="t('upload.supportedFormats')"></p>
                             </div>
                             <input ref="fileInput" type="file" @change="handleFileSelect" accept="audio/*,video/mp4,video/quicktime,video/x-msvideo,video/webm,.mp4,.mov,.avi,.mkv,.webm" multiple class="hidden">
 
                             <!-- Divider -->
                             <div class="my-6 flex items-center">
                                 <div class="flex-grow border-t border-[var(--border-secondary)]"></div>
-                                <span class="flex-shrink mx-4 text-xs text-[var(--text-muted)] uppercase">Or</span>
+                                <span class="flex-shrink mx-4 text-xs text-[var(--text-muted)] uppercase" v-text="t('common.or')"></span>
                                 <div class="flex-grow border-t border-[var(--border-secondary)]"></div>
                             </div>
 
                             <!-- Audio Recording Options -->
                             <div class="space-y-3">
-                                <h3 class="text-sm font-medium text-[var(--text-secondary)] text-center">Recording Options</h3>
+                                <h3 class="text-sm font-medium text-[var(--text-secondary)] text-center" v-text="t('recording.title')"></h3>
                                 
                                 <!-- Microphone Recording -->
                                 <button @click="startRecording('microphone')"
                                         class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
                                     <i class="fas fa-microphone"></i>
-                                    <span>Record Microphone</span>
+                                    <span v-text="t('recording.microphone')"></span>
                                 </button>
                                 
                                 <!-- System Audio Recording -->
@@ -371,7 +441,7 @@
                                         v-if="canRecordSystemAudio"
                                         class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                                     <i class="fas fa-desktop"></i>
-                                    <span>Record System Audio</span>
+                                    <span v-text="t('recording.systemAudio')"></span>
                                 </button>
                                 
                                 <!-- Both Audio Sources -->
@@ -380,21 +450,21 @@
                                         class="w-full px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2">
                                     <i class="fas fa-microphone"></i>
                                     <i class="fas fa-desktop ml-1"></i>
-                                    <span>Record Both</span>
+                                    <span v-text="t('recording.microphoneAndSystem')"></span>
                                 </button>
                                 
                                 <!-- Help Text -->
                                 <div class="text-xs text-[var(--text-muted)] space-y-1 mt-3">
                                     <div class="flex items-center justify-between">
-                                        <span><strong>Microphone:</strong> Records your voice only</span>
+                                        <span><strong v-text="t('recording.microphone') + ':'"></strong> <span v-text="t('help.microphoneDesc')"></span></span>
                                         <i class="fas fa-microphone text-red-500 flex-shrink-0"></i>
                                     </div>
                                     <div v-if="canRecordSystemAudio" class="flex items-center justify-between">
-                                        <span><strong>System Audio:</strong> Records meeting participants and system sounds</span>
+                                        <span><strong v-text="t('recording.systemAudio') + ':'"></strong> <span v-text="t('help.systemAudioDesc')"></span></span>
                                         <i class="fas fa-desktop text-blue-500 flex-shrink-0"></i>
                                     </div>
                                     <div v-if="canRecordSystemAudio" class="flex items-center justify-between">
-                                        <span><strong>Both:</strong> Records your voice + meeting participants (recommended for online meetings)</span>
+                                        <span><strong v-text="t('recording.microphoneAndSystem') + ':'"></strong> <span v-text="t('help.bothAudioDesc')"></span></span>
                                         <div class="flex items-center gap-1 flex-shrink-0">
                                             <i class="fas fa-microphone text-purple-500"></i>
                                             <i class="fas fa-desktop text-purple-500"></i>
@@ -402,9 +472,9 @@
                                     </div>
                                     <div v-if="!canRecordSystemAudio" class="text-amber-600 dark:text-amber-400">
                                         <i class="fas fa-exclamation-triangle mr-1"></i>
-                                        System audio recording not supported in this browser
+                                        ${ t('recording.systemAudioNotSupported') }
                                         <button @click="showSystemAudioHelp = true" class="ml-2 text-blue-500 hover:text-blue-600 underline text-sm">
-                                            Help
+                                            <span v-text="t('buttons.help')"></span>
                                         </button>
                                     </div>
                                 </div>
@@ -414,37 +484,89 @@
                             <div class="mt-4">
                                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                                     <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
-                                    Tags (Optional)
+                                    ${ t('tags.title') }
                                 </label>
                                 
-                                <!-- Selected Tags Display -->
-                                <div v-if="selectedTags.length > 0" class="mb-2 p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
-                                    <div class="flex flex-wrap gap-1">
-                                        <span v-for="(tag, index) in selectedTags" :key="tag.id" 
-                                              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-                                              :style="{ backgroundColor: tag.color }">
-                                            <span class="mr-1">${index + 1}.</span>
-                                            <span>${tag.name}</span>
-                                            <button @click="removeTagFromSelection(tag.id)" 
-                                                    class="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full w-4 h-4 flex items-center justify-center">
-                                                <i class="fas fa-times text-xs"></i>
-                                            </button>
-                                        </span>
+                                <!-- Selected Tags Display - Compact -->
+                                <div v-if="selectedTags.length > 0" class="mb-2">
+                                    <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto">
+                                        <div class="flex flex-wrap gap-1">
+                                            <span v-for="(tag, index) in selectedTags" :key="tag.id" 
+                                                  class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium text-white"
+                                                  :style="{ backgroundColor: tag.color }">
+                                                <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
+                                                <span>${tag.name}</span>
+                                                <button @click="removeTagFromSelection(tag.id)" 
+                                                        class="ml-1 hover:opacity-100 opacity-70">
+                                                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                                                </button>
+                                            </span>
+                                        </div>
                                     </div>
-                                    <p class="text-xs text-[var(--text-muted)] mt-1">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        Tags are ordered by priority - first tag's settings take precedence
+                                    <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                        <i class="fas fa-info-circle mr-0.5" style="font-size: 9px;"></i>
+                                        Tags ordered by priority
                                     </p>
                                 </div>
                                 
-                                <!-- Tag Selection Dropdown -->
-                                <select @change="(e) => { if(e.target.value) { addTagToSelection(parseInt(e.target.value)); e.target.value = ''; } }"
-                                        class="w-full px-3 py-2 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                                    <option value="">Select tag to add...</option>
-                                    <option v-for="tag in availableTags.filter(tag => !selectedTagIds.includes(tag.id))" 
-                                            :key="tag.id" :value="tag.id" v-text="tag.name">
-                                    </option>
-                                </select>
+                                <!-- Tag Selection Container - Compact -->
+                                <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0" 
+                                     class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
+                                    <!-- Search Filter (always visible if tags available) -->
+                                    <div class="mb-1.5">
+                                        <div class="relative">
+                                            <input v-model="uploadTagSearchFilter" 
+                                                   type="text" 
+                                                   :placeholder="t('tagsModal.searchTags')"
+                                                   class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                            <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                                            <button v-if="uploadTagSearchFilter" 
+                                                    @click="uploadTagSearchFilter = ''"
+                                                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                                <i class="fas fa-times" style="font-size: 9px;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Available Tags Grid - Fixed Height -->
+                                    <div v-if="filteredAvailableTagsForUpload.length > 0" 
+                                         class="overflow-y-auto" 
+                                         style="max-height: 100px;">
+                                        <div class="grid grid-cols-2 gap-1">
+                                            <button v-for="tag in filteredAvailableTagsForUpload" 
+                                                    :key="tag.id"
+                                                    @click="addTagToSelection(tag.id)"
+                                                    class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
+                                                <div class="flex items-center gap-1 min-w-0">
+                                                    <span class="w-2 h-2 rounded-full flex-shrink-0" 
+                                                          :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                                    <span class="text-[11px] text-[var(--text-primary)] truncate" v-text="tag.name"></span>
+                                                </div>
+                                                <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div v-else class="py-2 text-center">
+                                        <p class="text-[11px] text-[var(--text-muted)]">
+                                            <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
+                                            No matching tags
+                                        </p>
+                                    </div>
+                                </div>
+                                <!-- Empty States -->
+                                <div v-else-if="availableTags.length === 0" 
+                                     class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                    <p class="text-xs text-[var(--text-muted)] text-center">
+                                        <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
+                                        <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
+                                    </p>
+                                </div>
+                                <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                    <p class="text-xs text-[var(--text-muted)] text-center">
+                                        <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
+                                        All tags selected
+                                    </p>
+                                </div>
                                 
                                 <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
                                     <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
@@ -463,7 +585,7 @@
                                         class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
                                     <span class="flex items-center gap-2 text-[var(--text-secondary)]">
                                         <i class="fas fa-cog text-[var(--text-muted)]"></i>
-                                        <span>Advanced ASR Options</span>
+                                        <span v-text="t('help.advancedAsrOptions')"></span>
                                     </span>
                                     <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                                 </button>
@@ -476,28 +598,14 @@
                                         </label>
                                         <select v-model="uploadLanguage" 
                                                 class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                                            <option value="">Auto-detect</option>
-                                            <option value="en">English</option>
-                                            <option value="es">Spanish</option>
-                                            <option value="fr">French</option>
-                                            <option value="de">German</option>
-                                            <option value="it">Italian</option>
-                                            <option value="pt">Portuguese</option>
-                                            <option value="nl">Dutch</option>
-                                            <option value="ru">Russian</option>
-                                            <option value="zh">Chinese</option>
-                                            <option value="ja">Japanese</option>
-                                            <option value="ko">Korean</option>
-                                            <option value="ar">Arabic</option>
-                                            <option value="hi">Hindi</option>
+                                            <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
                                         </select>
                                     </div>
                                     
                                     <!-- Speaker Settings -->
                                     <div class="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                Min Speakers
+                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
                                             </label>
                                             <input v-model.number="uploadMinSpeakers" 
                                                    type="number" 
@@ -506,8 +614,7 @@
                                                    class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
                                         </div>
                                         <div>
-                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                Max Speakers
+                                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
                                             </label>
                                             <input v-model.number="uploadMaxSpeakers" 
                                                    type="number" 
@@ -535,29 +642,33 @@
                             <div v-if="isRecording" class="w-full mx-auto mb-4">
                                 <!-- Dual visualizer for 'both' mode -->
                                 <div v-if="recordingMode === 'both'" class="max-w-4xl mx-auto flex gap-4">
-                                    <div class="w-1/2 h-32 md:h-40 flex flex-col bg-[var(--bg-primary)] rounded-lg p-2">
-                                        <div class="flex-1 w-full overflow-hidden rounded-md">
+                                    <div class="w-1/2 min-h-[12rem] h-48 md:h-40 flex flex-col bg-[var(--bg-primary)] rounded-lg p-2">
+                                        <div class="flex-1 w-full overflow-hidden rounded-md" style="min-height: 10rem;">
                                             <canvas ref="micVisualizer" class="w-full h-full"></canvas>
                                         </div>
-                                        <p class="text-xs text-[var(--text-muted)] pt-1">Microphone</p>
+                                        <p class="text-xs text-[var(--text-muted)] pt-1" v-text="t('recording.microphone')"></p>
                                     </div>
-                                    <div class="w-1/2 h-32 md:h-40 flex flex-col bg-[var(--bg-primary)] rounded-lg p-2">
-                                        <div class="flex-1 w-full overflow-hidden rounded-md">
+                                    <div class="w-1/2 min-h-[12rem] h-48 md:h-40 flex flex-col bg-[var(--bg-primary)] rounded-lg p-2">
+                                        <div class="flex-1 w-full overflow-hidden rounded-md" style="min-height: 10rem;">
                                             <canvas ref="systemVisualizer" class="w-full h-full"></canvas>
                                         </div>
-                                        <p class="text-xs text-[var(--text-muted)] pt-1">System Audio</p>
+                                        <p class="text-xs text-[var(--text-muted)] pt-1" v-text="t('recording.systemAudio')"></p>
                                     </div>
                                 </div>
                                 <!-- Single visualizer for other modes -->
-                                <div v-else class="h-32 md:h-40 max-w-2xl mx-auto bg-[var(--bg-primary)] rounded-lg p-2 flex flex-col">
-                                    <div class="flex-1 w-full overflow-hidden rounded-md">
+                                <div v-else class="min-h-[12rem] h-48 md:h-40 max-w-2xl mx-auto bg-[var(--bg-primary)] rounded-lg p-2 flex flex-col">
+                                    <div class="flex-1 w-full overflow-hidden rounded-md" style="min-height: 10rem;">
                                         <canvas ref="visualizer" class="w-full h-full"></canvas>
                                     </div>
                                     <p class="text-xs text-[var(--text-muted)] pt-1 capitalize">${recordingMode}</p>
                                 </div>
                             </div>
-                            <div v-if="!isRecording && audioBlobURL" class="h-24 md:h-32 w-full flex items-center justify-center mb-4">
-                                <audio :src="audioBlobURL" controls class="w-full max-w-md"></audio>
+                            <div v-if="!isRecording && audioBlobURL" class="w-full mb-4">
+                                <div class="audio-player-container">
+                                    <audio :src="audioBlobURL" controls class="w-full">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
                             </div>
                             <div>
                                 <div class="text-2xl font-mono text-[var(--text-accent)]">${formatTime(recordingTime)}</div>
@@ -574,7 +685,7 @@
                                     <div v-if="estimatedFileSize > (maxRecordingMB * 1024 * 1024 * 0.8)" class="mt-1">
                                         <div class="flex items-center text-xs text-amber-600 dark:text-amber-400">
                                             <i class="fas fa-exclamation-triangle mr-1"></i>
-                                            <span>Approaching ${maxRecordingMB}MB limit</span>
+                                            <span v-text="t('help.approachingLimit', { limit: maxRecordingMB })"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -590,7 +701,7 @@
                             <div class="flex-1 min-h-0 recording-notes-editor">
                                 <textarea ref="recordingNotesEditor" v-model="recordingNotes"
                                           class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"
-                                          placeholder="Type your notes in Markdown format..."
+                                          :placeholder="t('form.notesPlaceholder')"  
                                           rows="10"></textarea>
                             </div>
                         </div>
@@ -611,30 +722,81 @@
                                         Select Tags (optional, in priority order)
                                     </label>
                                     
-                                    <!-- Selected Tags Display -->
-                                    <div v-if="selectedTags.length > 0" class="mb-2 p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
-                                        <div class="flex flex-wrap gap-1">
-                                            <span v-for="(tag, index) in selectedTags" :key="tag.id" 
-                                                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-white"
-                                                  :style="{ backgroundColor: tag.color }">
-                                                <span class="mr-1">${index + 1}.</span>
-                                                <span>${tag.name}</span>
-                                                <button @click="removeTagFromSelection(tag.id)" 
-                                                        class="ml-1 hover:bg-black hover:bg-opacity-20 rounded-full w-4 h-4 flex items-center justify-center">
-                                                    <i class="fas fa-times text-xs"></i>
-                                                </button>
-                                            </span>
+                                    <!-- Selected Tags Display - Compact -->
+                                    <div v-if="selectedTags.length > 0" class="mb-2">
+                                        <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto">
+                                            <div class="flex flex-wrap gap-1">
+                                                <span v-for="(tag, index) in selectedTags" :key="tag.id" 
+                                                      class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium text-white"
+                                                      :style="{ backgroundColor: tag.color }">
+                                                    <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
+                                                    <span>${tag.name}</span>
+                                                    <button @click="removeTagFromSelection(tag.id)" 
+                                                            class="ml-1 hover:opacity-100 opacity-70">
+                                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                                    </button>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                     
-                                    <!-- Tag Dropdown -->
-                                    <select @change="(e) => { if(e.target.value) { addTagToSelection(parseInt(e.target.value)); e.target.value = ''; } }"
-                                            class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm">
-                                        <option value="">Select tag to add...</option>
-                                        <option v-for="tag in availableTags.filter(tag => !selectedTagIds.includes(tag.id))" 
-                                                :key="tag.id" :value="tag.id" v-text="tag.name">
-                                        </option>
-                                    </select>
+                                    <!-- Tag Selection Container - Compact -->
+                                    <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0" 
+                                         class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
+                                        <!-- Search Filter -->
+                                        <div class="mb-1.5">
+                                            <div class="relative">
+                                                <input v-model="uploadTagSearchFilter" 
+                                                       type="text" 
+                                                       :placeholder="t('tagsModal.searchTags')"
+                                                       class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                                                <button v-if="uploadTagSearchFilter" 
+                                                        @click="uploadTagSearchFilter = ''"
+                                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <!-- Available Tags Grid -->
+                                        <div v-if="filteredAvailableTagsForUpload.length > 0" 
+                                             class="overflow-y-auto" 
+                                             style="max-height: 100px;">
+                                            <div class="grid grid-cols-2 gap-1">
+                                                <button v-for="tag in filteredAvailableTagsForUpload" 
+                                                        :key="tag.id"
+                                                        @click="addTagToSelection(tag.id)"
+                                                        class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
+                                                    <div class="flex items-center gap-1 min-w-0">
+                                                        <span class="w-2 h-2 rounded-full flex-shrink-0" 
+                                                              :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                                        <span class="text-[11px] text-[var(--text-primary)] truncate" v-text="tag.name"></span>
+                                                    </div>
+                                                    <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div v-else class="py-2 text-center">
+                                            <p class="text-[11px] text-[var(--text-muted)]">
+                                                <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
+                                                No matching tags
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <!-- Empty States -->
+                                    <div v-else-if="availableTags.length === 0" 
+                                         class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                        <p class="text-xs text-[var(--text-muted)] text-center">
+                                            <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
+                                            <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
+                                        </p>
+                                    </div>
+                                    <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                        <p class="text-xs text-[var(--text-muted)] text-center">
+                                            <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
+                                            All tags selected
+                                        </p>
+                                    </div>
                                     
                                     <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
                                         <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
@@ -653,7 +815,7 @@
                                             class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
                                         <span class="flex items-center gap-2 text-[var(--text-secondary)]">
                                             <i class="fas fa-cog text-[var(--text-muted)]"></i>
-                                            <span>Advanced ASR Options</span>
+                                            <span v-text="t('help.advancedAsrOptions')"></span>
                                         </span>
                                         <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                                     </button>
@@ -665,37 +827,26 @@
                                             </label>
                                             <select id="recordingAsrLanguage" v-model="asrLanguage"
                                                     class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                                <option value="">Auto-detect</option>
-                                                <option value="en">English</option>
-                                                <option value="es">Spanish</option>
-                                                <option value="fr">French</option>
-                                                <option value="de">German</option>
-                                                <option value="it">Italian</option>
-                                                <option value="pt">Portuguese</option>
-                                                <option value="nl">Dutch</option>
-                                                <option value="ru">Russian</option>
-                                                <option value="zh">Chinese</option>
-                                                <option value="ja">Japanese</option>
-                                                <option value="ko">Korean</option>
+                                                <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
                                             </select>
                                         </div>
                                         
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                    Min Speakers
+                                                    {% raw %}{{ t('form.minSpeakers') }}{% endraw %}
                                                 </label>
                                                 <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
-                                                       min="1" max="20" placeholder="Auto"
+                                                       min="1" max="20" :placeholder="t('form.auto')"
                                                        class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
                                             </div>
                                             
                                             <div>
                                                 <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                    Max Speakers
+                                                    {% raw %}{{ t('form.maxSpeakers') }}{% endraw %}
                                                 </label>
                                                 <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
-                                                       min="1" max="20" placeholder="Auto"
+                                                       min="1" max="20" :placeholder="t('form.auto')"
                                                        class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
                                             </div>
                                         </div>
@@ -707,12 +858,12 @@
                                     <button @click="uploadRecordedAudio"
                                         class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
                                     <i class="fas fa-upload"></i>
-                                    <span>Upload Recording & Notes</span>
+                                    <span v-text="t('help.uploadRecordingNotes')"></span>
                                 </button>
                                     <button @click="discardRecording"
                                             class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
                                         <i class="fas fa-trash"></i>
-                                        <span>Discard</span>
+                                        <span v-text="t('help.discard')"></span>
                                     </button>
                                 </div>
                             </div>
@@ -733,7 +884,7 @@
                                             ${selectedRecording.title || 'Untitled Recording'}
                                         </h1>
                                         <p class="text-sm text-[var(--text-muted)] truncate">
-                                            ${selectedRecording.participants || 'No participants'}
+                                            ${selectedRecording.participants || t('help.noParticipants')}
                                         </p>
                                         <div v-if="getRecordingTags(selectedRecording).length > 0" class="flex flex-wrap gap-1 mt-2">
                                             <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id" 
@@ -757,10 +908,24 @@
                                         <span>${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}</span>
                                     </div>
                                     <div v-if="activeRecordingMetadata" class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                                        <span v-for="(item, index) in activeRecordingMetadata" :key="index" class="flex items-center gap-1.5">
-                                            <i :class="item.icon"></i>
-                                            <span :title="item.fullText || item.text">${item.text}</span>
-                                        </span>
+                                        <template v-for="(item, index) in activeRecordingMetadata" :key="index">
+                                            <!-- Special rendering for tags -->
+                                            <div v-if="item.isTagItem" class="flex items-center gap-1.5">
+                                                <i :class="item.icon" class="text-[var(--text-muted)]"></i>
+                                                <div class="flex flex-wrap items-center gap-1">
+                                                    <span v-for="tag in item.tags" :key="tag.id"
+                                                          class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full text-white"
+                                                          :style="{ backgroundColor: tag.color || '#6B7280' }">
+                                                        ${tag.name}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <!-- Regular metadata items -->
+                                            <span v-else class="flex items-center gap-1.5">
+                                                <i :class="item.icon"></i>
+                                                <span :title="item.fullText || item.text">${item.text}</span>
+                                            </span>
+                                        </template>
                                     </div>
                                     <div v-if="selectedRecording.status !== 'COMPLETED'" class="flex items-center gap-2">
                                         <span :class="getStatusClass(selectedRecording.status)" class="status-badge">
@@ -770,15 +935,15 @@
                                 </div>
                                 <!-- Action Buttons -->
                                 <div class="flex items-center gap-2 overflow-x-auto pb-2">
-                                    <button @click="toggleInbox(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :class="selectedRecording.is_inbox ? 'text-blue-500' : ''" :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'"><i class="fas fa-inbox"></i></button>
-                                    <button @click="toggleHighlight(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''" :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'"><i class="fas fa-star"></i></button>
-                                    <button @click="editRecording(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Edit Recording"><i class="fas fa-edit"></i></button>
-                                    <button @click="editRecordingTags(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Edit Tags"><i class="fas fa-tags"></i></button>
+                                    <button @click="toggleInbox(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :class="selectedRecording.is_inbox ? 'text-blue-500' : ''" :title="selectedRecording.is_inbox ? t('sidebar.markAsRead') : t('sidebar.moveToInbox')"><i class="fas fa-inbox"></i></button>
+                                    <button @click="toggleHighlight(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''" :title="selectedRecording.is_highlighted ? t('sidebar.removeFromHighlighted') : t('sidebar.highlighted')"><i class="fas fa-star"></i></button>
+                                    <button @click="editRecording(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="t('common.edit')"><i class="fas fa-edit"></i></button>
+                                    <button @click="editRecordingTags(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="t('tags.title')"><i class="fas fa-tags"></i></button>
                                     <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'"><i class="fas fa-redo-alt"></i></button>
-                                        <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Reprocess summary"><i class="fas fa-sync-alt"></i></button>
-                                        <button @click="confirmReset(selectedRecording)" v-if="['PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500" title="Reset stuck processing"><i class="fas fa-undo"></i></button>
-                                    <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Identify Speakers"><i class="fas fa-user-tag"></i></button>
-                                    <button @click="openShareModal(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" title="Share Recording"><i class="fas fa-share-alt"></i></button>
+                                        <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="t('buttons.reprocessSummary')"><i class="fas fa-sync-alt"></i></button>
+                                        <button @click="confirmReset(selectedRecording)" v-if="['PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500" :title="t('buttons.resetStuckProcessing')"><i class="fas fa-undo"></i></button>
+                                    <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="t('buttons.identifySpeakers')"><i class="fas fa-user-tag"></i></button>
+                                    <button @click="openShareModal(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors" :title="t('buttons.shareRecording')"><i class="fas fa-share-alt"></i></button>
                                     <button @click="confirmDelete(selectedRecording)" class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
@@ -799,10 +964,10 @@
 
                         <!-- Mobile Tab Navigation -->
                         <div class="flex-shrink-0 bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex overflow-x-auto">
-                            <button @click="mobileTab = 'transcript'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'transcript' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']">Transcript</button>
-                            <button @click="mobileTab = 'summary'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'summary' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']">Summary</button>
-                            <button @click="mobileTab = 'notes'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'notes' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']">Notes</button>
-                            <button @click="mobileTab = 'chat'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'chat' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']">Chat</button>
+                            <button @click="mobileTab = 'transcript'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'transcript' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('transcription.title')"></button>
+                            <button @click="mobileTab = 'summary'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'summary' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('summary.title')"></button>
+                            <button @click="mobileTab = 'notes'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'notes' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('notes.title')"></button>
+                            <button @click="mobileTab = 'chat'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'chat' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('chat.title')"></button>
                         </div>
 
                         <!-- Mobile Tab Content -->
@@ -820,11 +985,11 @@
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="selectedRecording.status === 'PROCESSING'" class="text-center py-8">
                                         <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                                        <p class="mt-2 text-[var(--text-muted)]">Processing transcription...</p>
+                                        <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.processingTranscription')"></p>
                                     </div>
                                     <div v-else-if="!selectedRecording.transcription" class="text-center py-8">
                                         <i class="fas fa-file-text text-3xl text-[var(--text-muted)] mb-3"></i>
-                                        <p class="text-[var(--text-muted)]">No transcription available</p>
+                                        <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
                                     </div>
                                     <div v-else>
                                         <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
@@ -854,9 +1019,9 @@
                             <!-- Summary Panel -->
                             <div v-if="mobileTab === 'summary'" class="h-full flex flex-col space-y-4">
                                 <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
-                                    <button @click="copySummary" class="copy-btn" title="Copy Summary"><i class="fas fa-copy"></i></button>
-                                    <button @click="downloadSummary" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
-                                    <button @click="toggleEditSummary" class="copy-btn" title="Edit Summary"><i class="fas fa-edit"></i></button>
+                                    <button @click="copySummary" class="copy-btn" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadSummary" class="copy-btn" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+                                    <button @click="toggleEditSummary" class="copy-btn" :title="t('buttons.editSummary')"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="editingSummary" class="h-full flex flex-col">
@@ -864,18 +1029,18 @@
                                             <textarea ref="summaryMarkdownEditor" v-model="selectedRecording.summary"></textarea>
                                         </div>
                                         <div class="flex justify-end gap-2 mt-2">
-                                            <button @click="cancelEditSummary" class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                                            <button @click="saveEditSummary" class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]">Save</button>
+                                            <button @click="cancelEditSummary" class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
+                                            <button @click="saveEditSummary" class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]" v-text="t('common.save')"></button>
                                         </div>
                                     </div>
                                     <div v-else>
                                         <div v-if="selectedRecording.status === 'SUMMARIZING'" class="text-center py-8">
                                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                                            <p class="mt-2 text-[var(--text-muted)]">Generating summary...</p>
+                                            <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.generatingSummary')"></p>
                                         </div>
                                         <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                                             <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                            <p class="text-[var(--text-muted)] mb-4">No summary available</p>
+                                            <p class="text-[var(--text-muted)] mb-4" v-text="t('summary.noSummary')"></p>
                                             <button @click="generateSummary" 
                                                     class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
                                                 <i class="fas fa-magic mr-2"></i>Generate Summary
@@ -888,9 +1053,9 @@
                             <!-- Notes Panel -->
                             <div v-if="mobileTab === 'notes'" class="h-full flex flex-col space-y-4">
                                 <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
-                                    <button @click="copyNotes" class="copy-btn" title="Copy Notes"><i class="fas fa-copy"></i></button>
-                                    <button @click="downloadNotes" class="copy-btn" title="Download as Word"><i class="fas fa-download"></i></button>
-                                    <button @click="toggleEditNotes" class="copy-btn" title="Edit Notes"><i class="fas fa-edit"></i></button>
+                                    <button @click="copyNotes" class="copy-btn" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadNotes" class="copy-btn" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+                                    <button @click="toggleEditNotes" class="copy-btn" :title="t('buttons.editNotes')"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="editingNotes" class="h-full flex flex-col">
@@ -898,14 +1063,14 @@
                                             <textarea ref="notesMarkdownEditor" v-model="selectedRecording.notes"></textarea>
                                         </div>
                                         <div class="flex justify-end gap-2 mt-2">
-                                            <button @click="cancelEditNotes" class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                                            <button @click="saveEditNotes" class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]">Save</button>
+                                            <button @click="cancelEditNotes" class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
+                                            <button @click="saveEditNotes" class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]" v-text="t('common.save')"></button>
                                         </div>
                                     </div>
-                                    <div v-else>
-                                        <div v-if="!selectedRecording.notes" class="text-center py-8">
+                                    <div v-else @click="clickToEditNotes">
+                                        <div v-if="!selectedRecording.notes" class="text-center py-8 cursor-pointer hover:text-[var(--text-secondary)]">
                                             <i class="fas fa-sticky-note text-3xl text-[var(--text-muted)] mb-3"></i>
-                                            <p class="text-[var(--text-muted)]">No notes available</p>
+                                            <p class="text-[var(--text-muted)]" v-text="t('help.clickToAddNotes')"></p>
                                         </div>
                                         <div v-else class="notes-box h-full" v-html="selectedRecording.notes_html || selectedRecording.notes"></div>
                                     </div>
@@ -916,7 +1081,7 @@
                                 <div ref="chatMessagesRef" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-secondary)]">
                                     <div v-if="chatMessages.length === 0" class="text-center py-8">
                                         <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
-                                        <p class="text-[var(--text-muted)]">Ask questions about this transcription</p>
+                                        <p class="text-[var(--text-muted)]" v-text="t('help.askAboutTranscription')"></p>
                                     </div>
                                     <div v-for="(message, index) in chatMessages" :key="index" 
                                          :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message', 
@@ -925,7 +1090,7 @@
                                         <button v-if="message.role === 'assistant'" 
                                                 @click="copyMessage(message.content, $event)" 
                                                 class="absolute top-2 right-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-all duration-200"
-                                                title="Copy message">
+                                                :title="t('buttons.copyMessage')">
                                             <i class="fas fa-copy text-sm"></i>
                                         </button>
                                         <!-- Show thinking content if available -->
@@ -933,7 +1098,7 @@
                                             <button @click="message.thinkingExpanded = !message.thinkingExpanded" 
                                                     class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
                                                 <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-                                                <span>Model Reasoning</span>
+                                                <span v-text="t('help.modelReasoning')"></span>
                                                 <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
                                             </button>
                                             <div v-if="message.thinkingExpanded" 
@@ -951,7 +1116,7 @@
                                 </div>
                                 <div class="border-t border-[var(--border-primary)] p-4 bg-[var(--bg-tertiary)]">
                                     <div class="flex gap-2">
-                                        <textarea v-model="chatInput" @keydown="handleChatKeydown" :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED'" placeholder="Ask about this transcription..." class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" rows="2"></textarea>
+                                        <textarea v-model="chatInput" @keydown="handleChatKeydown" :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED'" :placeholder="t('chat.placeholder')" class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" rows="2"></textarea>
                                         <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED'" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                             <i class="fas fa-paper-plane"></i>
                                         </button>
@@ -992,7 +1157,7 @@
                                         </button>
                                         <button @click="editRecordingTags(selectedRecording)" 
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                                                title="Edit Tags">
+                                                :title="t('buttons.editTags')">
                                             <i class="fas fa-tags"></i>
                                         </button>
                                         <button @click="reprocessTranscription(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
@@ -1002,22 +1167,22 @@
                                         </button>
                                         <button @click="reprocessSummary(selectedRecording.id)" v-if="selectedRecording && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                                                title="Reprocess summary">
+                                                :title="t('buttons.reprocessSummary')">
                                             <i class="fas fa-sync-alt"></i>
                                         </button>
                                         <button @click="confirmReset(selectedRecording)" v-if="['PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500"
-                                                title="Reset stuck processing">
+                                                :title="t('buttons.resetStuckProcessing')">
                                             <i class="fas fa-undo"></i>
                                         </button>
                                         <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint"
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                                                title="Identify Speakers">
+                                                :title="t('buttons.identifySpeakers')">
                                             <i class="fas fa-user-tag"></i>
                                         </button>
                                         <button @click="openShareModal(selectedRecording)"
                                                 class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                                                title="Share Recording">
+                                                :title="t('buttons.shareRecording')">
                                             <i class="fas fa-share-alt"></i>
                                         </button>
                                         <button @click="confirmDelete(selectedRecording)" 
@@ -1035,7 +1200,7 @@
                                         <span v-if="!editingParticipants" 
                                               @click="toggleEditParticipants"
                                               class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
-                                            ${selectedRecording.participants || 'No participants'}
+                                            ${selectedRecording.participants || t('help.noParticipants')}
                                         </span>
                                         <input v-else 
                                                v-model="selectedRecording.participants" 
@@ -1062,10 +1227,24 @@
                                     
                                     <!-- Other Metadata -->
                                     <div v-if="activeRecordingMetadata" class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                                        <span v-for="(item, index) in activeRecordingMetadata" :key="index" class="flex items-center gap-1.5">
-                                            <i :class="item.icon"></i>
-                                            <span :title="item.fullText || item.text">${item.text}</span>
-                                        </span>
+                                        <template v-for="(item, index) in activeRecordingMetadata" :key="index">
+                                            <!-- Special rendering for tags -->
+                                            <div v-if="item.isTagItem" class="flex items-center gap-1.5">
+                                                <i :class="item.icon" class="text-[var(--text-muted)]"></i>
+                                                <div class="flex flex-wrap items-center gap-1">
+                                                    <span v-for="tag in item.tags" :key="tag.id"
+                                                          class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full text-white"
+                                                          :style="{ backgroundColor: tag.color || '#6B7280' }">
+                                                        ${tag.name}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <!-- Regular metadata items -->
+                                            <span v-else class="flex items-center gap-1.5">
+                                                <i :class="item.icon"></i>
+                                                <span :title="item.fullText || item.text">${item.text}</span>
+                                            </span>
+                                        </template>
                                     </div>
                                     
                                     <!-- Status -->
@@ -1086,31 +1265,31 @@
                                 <div class="bg-[var(--bg-tertiary)] px-4 py-3 border-b border-[var(--border-primary)] flex items-center justify-between">
                                     <h3 class="font-semibold flex items-center">
                                         <i class="fas fa-file-text mr-2"></i>
-                                        Transcription
+                                        <span v-text="t('transcription.title')"></span>
                                     </h3>
                                     <div class="flex items-center gap-2">
                                         <!-- View Mode Toggle -->
                                         <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
                                             <button @click="toggleTranscriptionViewMode" 
                                                     :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']">
-                                                <i class="fas fa-list"></i>Simple
+                                                <i class="fas fa-list"></i><span v-text="t('transcription.simple')"></span>
                                             </button>
                                             <button @click="toggleTranscriptionViewMode" 
                                                     :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']">
-                                                <i class="fas fa-comments"></i>Bubble
+                                                <i class="fas fa-comments"></i><span v-text="t('transcription.bubble')"></span>
                                             </button>
                                         </div>
                                         
                                         <!-- Copy Button -->
                                         <button @click="copyTranscription" 
                                                 class="copy-btn">
-                                            <i class="fas fa-copy mr-1"></i>Copy
+                                            <i class="fas fa-copy mr-1"></i><span v-text="t('transcription.copy')"></span>
                                         </button>
                                         <!-- Edit Transcription Button -->
                                         <button @click="openTranscriptionEditor"
                                                 v-if="selectedRecording && selectedRecording.transcription"
                                                 class="copy-btn">
-                                            <i class="fas fa-edit mr-1"></i>Edit
+                                            <i class="fas fa-edit mr-1"></i><span v-text="t('transcription.edit')"></span>
                                         </button>
                                     </div>
                                 </div>
@@ -1119,12 +1298,12 @@
                                 <div class="flex-1 overflow-y-auto p-4">
                                     <div v-if="selectedRecording.status === 'PROCESSING'" class="text-center py-8">
                                         <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                                        <p class="mt-2 text-[var(--text-muted)]">Processing transcription...</p>
+                                        <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.processingTranscription')"></p>
                                     </div>
                                     
                                     <div v-else-if="!selectedRecording.transcription" class="text-center py-8">
                                         <i class="fas fa-file-text text-3xl text-[var(--text-muted)] mb-3"></i>
-                                        <p class="text-[var(--text-muted)]">No transcription available</p>
+                                        <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
                                     </div>
                                     
                                     <!-- Speaker Legend (for dialogue transcriptions in bubble view only) -->
@@ -1133,7 +1312,7 @@
                                         <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                                             <div class="speaker-legend-title">
                                                 <i class="fas fa-users"></i>
-                                                Speakers
+                                                <span v-text="t('help.speakers')"></span>
                                                 <span class="speaker-count-indicator">(${processedTranscription.speakers.length})</span>
                                             </div>
                                             <i class="fas fa-chevron-down speaker-legend-toggle"></i>
@@ -1233,7 +1412,7 @@
                                                         ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' 
                                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                                 ]">
-                                            Summary
+                                            ${ t('summary.title') }
                                         </button>
                                         <button @click="selectedTab = 'notes'" 
                                                 :class="[
@@ -1242,7 +1421,7 @@
                                                         ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' 
                                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                                 ]">
-                                            Notes
+                                            ${ t('notes.title') }
                                         </button>
                                     </div>
 
@@ -1252,32 +1431,32 @@
                                         <div v-if="selectedTab === 'summary'" class="h-full p-4 overflow-y-auto">
                                             <div v-if="selectedRecording.status === 'SUMMARIZING'" class="text-center py-8">
                                                 <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                                                <p class="mt-2 text-[var(--text-muted)]">Generating summary...</p>
+                                                <p class="mt-2 text-[var(--text-muted)]" v-text="t('summary.summaryInProgress')"></p>
                                             </div>
                                             
                                             <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                                                 <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                                                <p class="text-[var(--text-muted)] mb-4">No summary available</p>
+                                                <p class="text-[var(--text-muted)] mb-4" v-text="t('summary.noSummary')"></p>
                                                 <button @click="generateSummary" 
                                                         class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
-                                                    <i class="fas fa-magic mr-2"></i>Generate Summary
+                                                    <i class="fas fa-magic mr-2"></i>${ t('summary.generateSummary') }
                                                 </button>
                                             </div>
                                             
                                             <div v-else class="content-box relative">
                                                 <div v-if="!editingSummary" class="absolute top-2 right-4 flex gap-1 z-10">
                                                     <button @click="copySummary" 
-                                                            title="Copy Summary"
+                                                            :title="t('buttons.copySummary')"
                                                             class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-copy text-sm"></i>
                                                     </button>
                                                     <button @click="downloadSummary" 
-                                                            title="Download Summary as Word Document"
+                                                            :title="t('buttons.downloadSummary')"
                                                             class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-download text-sm"></i>
                                                     </button>
                                                     <button @click="toggleEditSummary" 
-                                                            title="Edit Summary"
+                                                            :title="t('buttons.editSummary')"
                                                             class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-edit text-sm"></i>
                                                     </button>
@@ -1292,7 +1471,7 @@
                                                         <textarea ref="summaryMarkdownEditor" 
                                                                   v-model="selectedRecording.summary"
                                                                   class="w-full h-full p-4 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]"
-                                                                  placeholder="Enter summary in Markdown format...">
+                                                                  :placeholder="t('form.enterSummaryMarkdown')">
                                                         </textarea>
                                                     </div>
                                                     <div class="flex justify-end gap-2 mt-2">
@@ -1314,24 +1493,25 @@
                                             <div class="content-box h-full relative">
                                                 <div v-if="!editingNotes" class="absolute top-2 right-4 flex gap-1 z-10">
                                                     <button @click="copyNotes" 
-                                                            title="Copy Notes"
+                                                            :title="t('buttons.copyNotes')"
                                                             class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-copy text-sm"></i>
                                                     </button>
                                                     <button @click="downloadNotes" 
-                                                            title="Download Notes as Word Document"
+                                                            :title="t('buttons.downloadNotes')"
                                                             class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-download text-sm"></i>
                                                     </button>
                                                     <button @click="toggleEditNotes" 
-                                                            title="Edit Notes"
+                                                            :title="t('buttons.editNotes')"
                                                             class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
                                                         <i class="fas fa-edit text-sm"></i>
                                                     </button>
                                                 </div>
                                                 
                                                 <div v-if="!editingNotes" 
-                                                     class="notes-box h-full">
+                                                     class="notes-box h-full"
+                                                     @click="clickToEditNotes">
                                                     <div v-if="selectedRecording.notes_html" 
                                                          v-html="selectedRecording.notes_html">
                                                     </div>
@@ -1339,8 +1519,8 @@
                                                          class="whitespace-pre-wrap">
                                                         ${selectedRecording.notes}
                                                     </div>
-                                                    <div v-else class="text-[var(--text-muted)] italic">
-                                                        Click to add notes...
+                                                    <div v-else class="text-[var(--text-muted)] italic cursor-pointer hover:text-[var(--text-secondary)]">
+                                                        ${ t('help.clickToAddNotes') }
                                                     </div>
                                                 </div>
                                                 
@@ -1349,7 +1529,7 @@
                                                         <textarea ref="notesMarkdownEditor" 
                                                                   v-model="selectedRecording.notes"
                                                                   class="w-full h-full p-4 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]"
-                                                                  placeholder="Enter notes in Markdown format...">
+                                                                  :placeholder="t('form.enterNotesMarkdown')">
                                                         </textarea>
                                                     </div>
                                                     <div class="flex justify-end gap-2 mt-2">
@@ -1376,14 +1556,14 @@
                                                 class="flex-1 text-left flex items-center">
                                             <span class="font-medium flex items-center">
                                                 <i class="fas fa-comments mr-2"></i>
-                                                Chat with Transcription
+                                                ${ t('chat.chatWithTranscription') }
                                             </span>
                                         </button>
                                         <div class="flex items-center gap-2">
                                             <button v-if="chatMessages.length > 0" 
                                                     @click="downloadChat"
                                                     class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                                                    title="Download chat as Word document">
+                                                    :title="t('buttons.downloadChat')">
                                                 <i class="fas fa-download text-sm"></i>
                                             </button>
                                             <button @click="showChat = !showChat" 
@@ -1400,7 +1580,7 @@
                                              class="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-secondary)]">
                                             <div v-if="chatMessages.length === 0" class="text-center py-8">
                                                 <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
-                                                <p class="text-[var(--text-muted)]">Ask questions about this transcription</p>
+                                                <p class="text-[var(--text-muted)]" v-text="t('help.askAboutTranscription')"></p>
                                             </div>
                                             
                                             <div v-for="(message, index) in chatMessages" 
@@ -1414,7 +1594,7 @@
                                                 <button v-if="message.role === 'assistant'" 
                                                         @click="copyMessage(message.content, $event)" 
                                                         class="absolute top-2 right-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-all duration-200"
-                                                        title="Copy message">
+                                                        :title="t('buttons.copyMessage')">
                                                     <i class="fas fa-copy text-sm"></i>
                                                 </button>
                                                 <!-- Show thinking content if available -->
@@ -1422,7 +1602,7 @@
                                                     <button @click="message.thinkingExpanded = !message.thinkingExpanded" 
                                                             class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
                                                         <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
-                                                        <span>Model Reasoning</span>
+                                                        <span v-text="t('help.modelReasoning')"></span>
                                                         <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
                                                     </button>
                                                     <div v-if="message.thinkingExpanded" 
@@ -1437,7 +1617,7 @@
                                             
                                             <div v-if="isChatLoading" class="ai-message">
                                                 <i class="fas fa-spinner fa-spin mr-2"></i>
-                                                Thinking...
+                                                ${ t('chat.thinking') }
                                             </div>
                                         </div>
 
@@ -1447,7 +1627,7 @@
                                                 <textarea v-model="chatInput" 
                                                           @keydown="handleChatKeydown"
                                                           :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED'"
-                                                          placeholder="Ask about this transcription... (Enter to send, Ctrl+Enter for new line)"
+                                                          :placeholder="t('chat.placeholderWithHint')"
                                                           class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm"
                                                           rows="2">
                                                 </textarea>
@@ -1459,7 +1639,7 @@
                                             </div>
                                             <p v-if="selectedRecording.status !== 'COMPLETED'" 
                                                class="text-xs text-[var(--text-muted)] mt-2">
-                                                Chat will be available once transcription is complete
+                                                ${ t('chat.availableAfterTranscription') }
                                             </p>
                                         </div>
                                     </div>
@@ -1473,8 +1653,8 @@
                 <div v-else-if="currentView === 'detail' && !selectedRecording" class="flex-1 flex items-center justify-center">
                     <div class="text-center">
                         <i class="fas fa-microphone text-6xl text-[var(--text-muted)] mb-4"></i>
-                        <h2 class="text-2xl font-bold mb-2">Select a Recording</h2>
-                        <p class="text-[var(--text-muted)] mb-6">Choose a recording from the sidebar to view its transcription and summary</p>
+                        <h2 class="text-2xl font-bold mb-2" v-text="t('colorScheme.selectRecording')"></h2>
+                        <p class="text-[var(--text-muted)] mb-6" v-text="t('colorScheme.chooseRecording')"></p>
                         <button @click="switchToUploadView" 
                                 class="px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
                             <i class="fas fa-plus mr-2"></i>Upload New Recording
@@ -1494,68 +1674,75 @@
                         ring-4 ring-[var(--bg-accent)] ring-opacity-20"
                  style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px var(--bg-accent), 0 0 20px rgba(var(--bg-accent-rgb), 0.3)">
                 <!-- Progress Header -->
-                <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2">
+                <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-4 py-3">
                     <!-- Top row: Title and buttons -->
-                    <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2 min-w-0">
-                            <i class="fas fa-upload text-[var(--text-accent)] animate-pulse text-sm"></i>
-                            <span class="font-semibold text-[var(--text-accent)] text-sm truncate">Upload Progress</span>
+                            <i class="fas fa-upload text-gray-800 dark:text-white animate-pulse"></i>
+                            <span class="font-semibold text-gray-800 dark:text-white truncate" v-text="t('uploadProgress.title')"></span>
                         </div>
-                        <div class="flex items-center gap-1 flex-shrink-0">
+                        <div class="flex items-center gap-2 flex-shrink-0">
                             <button v-if="completedInQueue > 0" @click="clearCompletedUploads()" 
-                                    class="px-1.5 py-0.5 text-xs bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition-colors text-[var(--text-accent)] border border-white border-opacity-30"
-                                    title="Clear completed uploads">
-                                <i class="fas fa-broom"></i>
+                                    class="px-2 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all duration-200 text-gray-800 dark:text-white font-medium"
+                                    :title="t('buttons.clearCompleted')">
+                                Clear
                             </button>
                             <button @click="progressPopupMinimized = !progressPopupMinimized" 
-                                    class="p-0.5 rounded hover:bg-white hover:bg-opacity-20 transition-colors text-[var(--text-accent)]">
-                                <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
+                                    class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
+                                <i :class="progressPopupMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
                             </button>
                             <button @click="progressPopupClosed = true" 
-                                    class="p-0.5 rounded hover:bg-red-500 hover:bg-opacity-20 text-red-200 hover:text-red-100 transition-colors">
-                                <i class="fas fa-times text-xs"></i>
+                                    class="p-1 rounded hover:bg-red-600 dark:hover:bg-red-500 hover:bg-opacity-20 dark:hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-white transition-colors">
+                                <i class="fas fa-times"></i>
                             </button>
                         </div>
                     </div>
-                    <!-- Bottom row: Progress count -->
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-[var(--text-accent)] opacity-80 font-medium">${completedInQueue} of ${totalInQueue} completed</span>
-                        <div class="w-24 bg-white bg-opacity-20 rounded-full h-1.5">
-                            <div class="bg-white h-1.5 rounded-full transition-all duration-300" 
-                                 :style="{width: (completedInQueue / Math.max(totalInQueue, 1) * 100) + '%'}"></div>
+                    <!-- Overall Progress Bar -->
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs text-gray-800 dark:text-white">
+                            <span class="font-medium">${completedInQueue} of ${totalInQueue} files</span>
+                            <span class="font-bold">${Math.round((completedInQueue / Math.max(totalInQueue, 1)) * 100)}%</span>
+                        </div>
+                        <div class="w-full bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 rounded-full h-2 overflow-hidden">
+                            <div class="bg-white dark:bg-white bg-opacity-80 dark:bg-opacity-90 h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden" 
+                                 :style="{width: (completedInQueue / Math.max(totalInQueue, 1) * 100) + '%'}">
+                                <div class="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Progress Content -->
                 <div v-if="!progressPopupMinimized" class="p-3 max-h-64 overflow-y-auto">
-                    <div v-if="currentlyProcessingFile" class="mb-3 p-2.5 bg-[var(--bg-accent)] rounded-lg">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <span class="font-medium truncate min-w-0 text-sm">${currentlyProcessingFile.file.name}</span>
-                            <span class="text-xs flex-shrink-0 ml-2 font-semibold">${processingProgress}%</span>
+                    <div v-if="currentlyProcessingFile" class="mb-3 p-3 bg-[var(--bg-accent)] bg-opacity-10 border border-[var(--border-accent)] rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold truncate min-w-0 text-sm text-[var(--text-primary)]">${currentlyProcessingFile.file.name}</span>
+                            <span class="text-sm flex-shrink-0 ml-2 font-bold text-[var(--text-accent)]">${processingProgress}%</span>
                         </div>
-                        <div class="w-full bg-[var(--bg-secondary)] rounded-full h-1.5 mb-1.5">
-                            <div class="bg-[var(--bg-button)] h-1.5 rounded-full transition-all duration-300" 
-                                 :style="{width: processingProgress + '%'}"></div>
+                        <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2 mb-2 overflow-hidden">
+                            <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] h-full rounded-full transition-all duration-300 relative" 
+                                 :style="{width: processingProgress + '%'}">
+                                <div class="absolute inset-0 bg-white opacity-20 animate-pulse"></div>
+                            </div>
                         </div>
-                        <p class="text-xs text-[var(--text-muted)]">${processingMessage}</p>
+                        <p class="text-xs text-[var(--text-secondary)] font-medium">${processingMessage}</p>
                     </div>
 
-                    <div v-if="finishedFilesInQueue.length > 0" class="space-y-1.5">
-                        <h4 class="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Completed</h4>
+                    <div v-if="finishedFilesInQueue.length > 0" class="space-y-2">
+                        <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70" v-text="t('help.completedFiles')"></h4>
                         <div v-for="item in finishedFilesInQueue" 
                              :key="item.clientId" 
-                             class="progress-list-item p-1.5 bg-[var(--bg-tertiary)] rounded flex items-center gap-2">
+                             class="progress-list-item p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
                             <i :class="[
-                                'fas text-xs',
+                                'fas',
                                 item.status === 'completed' ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'
                             ]"></i>
-                            <span class="truncate text-sm flex-1">${item.file.name}</span>
+                            <span class="truncate text-sm flex-1 text-[var(--text-primary)]">${item.file.name}</span>
                             <span :class="[
-                                'text-xs px-1.5 py-0.5 rounded font-medium',
-                                item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                'text-xs px-2 py-1 rounded-full font-semibold',
+                                item.status === 'completed' ? 'bg-green-500 bg-opacity-20 text-green-600 dark:text-green-400' : 'bg-red-500 bg-opacity-20 text-red-600 dark:text-red-400'
                             ]">
-                                ${item.status === 'completed' ? 'Done' : 'Failed'}
+                                ${item.status === 'completed' ? t('tagsModal.done') : t('status.failed')}
                             </span>
                         </div>
                     </div>
@@ -1565,30 +1752,30 @@
 
         <!-- Modals -->
         <!-- Edit Modal -->
-        <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg">
                 <div class="p-6 border-b border-[var(--border-primary)]">
-                    <h3 class="text-lg font-semibold">Edit Recording</h3>
+                    <h3 class="text-lg font-semibold" v-text="t('modal.editRecording')"></h3>
                 </div>
                 <div class="p-6 space-y-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Title</label>
+                        <label class="block text-sm font-medium mb-2" v-text="t('form.title')"></label>
                         <input v-model="editingRecording.title" 
                                class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Participants</label>
+                        <label class="block text-sm font-medium mb-2" v-text="t('form.participants')"></label>
                         <input v-model="editingRecording.participants" 
                                class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Meeting Date</label>
+                        <label class="block text-sm font-medium mb-2" v-text="t('form.meetingDate')"></label>
                         <input v-model="editingRecording.meeting_date" 
                                type="date"
                                class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Notes</label>
+                        <label class="block text-sm font-medium mb-2" v-text="t('form.notes')"></label>
                         <textarea v-model="editingRecording.notes" 
                                   rows="4"
                                   class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
@@ -1609,14 +1796,14 @@
         </div>
 
         <!-- Delete Confirmation Modal -->
-        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-md">
                 <div class="p-6">
                     <div class="flex items-center gap-4 mb-4">
                         <i class="fas fa-exclamation-triangle text-3xl text-[var(--text-danger)]"></i>
                         <div>
-                            <h3 class="text-lg font-semibold">Delete Recording</h3>
-                            <p class="text-[var(--text-muted)]">This action cannot be undone.</p>
+                            <h3 class="text-lg font-semibold" v-text="t('modal.deleteRecording')"></h3>
+                            <p class="text-[var(--text-muted)]" v-text="t('help.thisActionCannotBeUndone')"></p>
                         </div>
                     </div>
                     <p class="text-[var(--text-secondary)] mb-6">
@@ -1637,52 +1824,104 @@
         </div>
 
         <!-- Edit Recording Tags Modal -->
-        <div v-if="showEditTagsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg">
-                <div class="p-6 border-b border-[var(--border-primary)]">
-                    <h3 class="text-lg font-medium text-[var(--text-primary)]">Edit Recording Tags</h3>
-                </div>
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Current Tags
-                        </label>
-                        <div v-if="getRecordingTags(editingRecording).length > 0" class="flex flex-wrap gap-2 mb-3">
-                            <span v-for="tag in getRecordingTags(editingRecording)" :key="tag.id"
-                                  class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                                  :style="{ backgroundColor: tag.color }">
-                                <i class="fas fa-tag mr-1"></i>
-                                <span v-text="tag.name"></span>
-                                <button @click="removeTagFromRecording(tag.id)" 
-                                        class="ml-2 text-white/80 hover:text-white focus:outline-none">
-                                    <i class="fas fa-times text-xs"></i>
-                                </button>
-                            </span>
-                        </div>
-                        <p v-else class="text-sm text-[var(--text-muted)]">No tags assigned</p>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                            Add Tag
-                        </label>
-                        <select v-model="selectedNewTagId" 
-                                class="w-full px-3 py-2 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                            <option value="">Select a tag to add...</option>
-                            <option v-for="tag in getAvailableTagsForRecording(editingRecording)" :key="tag.id" :value="tag.id" v-text="tag.name">
-                            </option>
-                        </select>
-                        <button @click="addTagToRecording" 
-                                :disabled="!selectedNewTagId"
-                                class="mt-2 w-full px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
-                            <i class="fas fa-plus mr-2"></i>
-                            Add Tag
+        <div v-if="showEditTagsModal" @click="closeEditTagsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+                <div class="flex-shrink-0 p-6 border-b border-[var(--border-primary)]">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-medium text-[var(--text-primary)]" v-text="t('modal.editTags')"></h3>
+                        <button @click="closeEditTagsModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                            <i class="fas fa-times"></i>
                         </button>
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex justify-end gap-3 rounded-b-lg">
-                    <button @click="closeEditTagsModal" class="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                        Close
+                <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <!-- Current Tags Section -->
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-3">
+                            <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
+                            <span v-text="t('tagsModal.currentTags')"></span>
+                        </label>
+                        <div v-if="getRecordingTags(editingRecording).length > 0" class="p-2 bg-[var(--bg-primary)] rounded-md border border-[var(--border-secondary)] max-h-20 overflow-y-auto">
+                            <div class="flex flex-wrap gap-1">
+                                <span v-for="tag in getRecordingTags(editingRecording)" :key="tag.id"
+                                      class="group inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium text-white transition-all"
+                                      :style="{ backgroundColor: tag.color }">
+                                    <span v-text="tag.name"></span>
+                                    <button @click="removeTagFromRecording(tag.id)" 
+                                            class="ml-1 opacity-70 hover:opacity-100 transition-opacity">
+                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                        <div v-else class="p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)]">
+                            <p class="text-sm text-[var(--text-muted)] text-center">
+                                <i class="fas fa-inbox mr-1"></i>
+                                <span v-text="t('tagsModal.noTagsAssigned')"></span>
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Add Tags Section -->
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-3">
+                            <i class="fas fa-plus-circle mr-1 text-[var(--text-muted)]"></i>
+                            <span v-text="t('tagsModal.addTags')"></span>
+                        </label>
+                        
+                        <!-- Search Filter (always visible if tags available) -->
+                        <div v-if="getAvailableTagsForRecording(editingRecording).length > 0" class="mb-2">
+                            <div class="relative">
+                                <input v-model="tagSearchFilter" 
+                                       type="text" 
+                                       :placeholder="t('tagsModal.searchTags')"
+                                       class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                                <button v-if="tagSearchFilter" 
+                                        @click="tagSearchFilter = ''"
+                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Available Tags Grid - Fixed Height -->
+                        <div v-if="filteredAvailableTagsForModal.length > 0" 
+                             class="border border-[var(--border-secondary)] rounded-md p-1.5 bg-[var(--bg-primary)]" 
+                             style="max-height: 150px; overflow-y: auto;">
+                            <div class="grid grid-cols-2 gap-1">
+                                <button v-for="tag in filteredAvailableTagsForModal" 
+                                        :key="tag.id"
+                                        @click="addTagToRecording(tag.id)"
+                                        class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] transition-all">
+                                    <div class="flex items-center gap-1 min-w-0">
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0" 
+                                              :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                        <span class="text-[11px] text-[var(--text-primary)] truncate" v-text="tag.name"></span>
+                                    </div>
+                                    <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div v-else-if="getAvailableTagsForRecording(editingRecording).length > 0" 
+                             class="p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)]">
+                            <p class="text-sm text-[var(--text-muted)] text-center">
+                                <i class="fas fa-search mr-1"></i>
+                                No tags match your filter
+                            </p>
+                        </div>
+                        <div v-else class="p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)]">
+                            <p class="text-sm text-[var(--text-muted)] text-center">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                All available tags have been added
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 px-6 py-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex justify-end gap-3 rounded-b-lg">
+                    <button @click="closeEditTagsModal" 
+                            class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors">
+                        <span v-text="t('tagsModal.done')"></span>
                     </button>
                 </div>
             </div>
@@ -1696,7 +1935,7 @@
                         <i class="fas fa-palette"></i>
                         Choose Color Scheme
                     </h2>
-                    <p class="color-scheme-subtitle">Customize your interface with beautiful color themes</p>
+                    <p class="color-scheme-subtitle" v-text="t('colorScheme.subtitle')"></p>
                 </div>
                 
                 <div class="color-scheme-body">
@@ -1746,7 +1985,7 @@
                             <i class="fas fa-sync-alt text-white text-lg"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Confirm Reprocessing</h3>
+                            <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1" v-text="t('help.confirmReprocessingTitle')"></h3>
                             <p class="text-sm text-[var(--text-muted)] capitalize">${ reprocessType } reprocessing</p>
                         </div>
                     </div>
@@ -1776,33 +2015,33 @@
                                 <i class="fas fa-exclamation-triangle text-amber-600 text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-[var(--text-secondary)] font-medium mb-1">What will happen?</p>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.whatWillHappen')"></p>
                                 <p class="text-sm text-[var(--text-muted)]" v-if="reprocessType === 'transcription' && !useAsrEndpoint">
-                                    The audio will be re-transcribed from scratch. This will also regenerate the title and summary based on the new transcription.
+                                    <span v-text="t('reprocessModal.audioReTranscribedFromScratch')"></span>
                                 </p>
                                 <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'transcription' && useAsrEndpoint">
-                                    The audio will be re-transcribed using the ASR endpoint. This includes diarization and will regenerate the title and summary.
+                                    <span v-text="t('reprocessModal.audioReTranscribedWithAsr')"></span>
                                 </p>
                                 <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'summary'">
-                                    A new title and summary will be generated based on the existing transcription.
+                                    <span v-text="t('reprocessModal.newTitleAndSummary')"></span>
                                 </p>
                             </div>
                         </div>
                         
                         <!-- ASR Options -->
                         <div v-if="reprocessType === 'transcription' && useAsrEndpoint" class="space-y-4 pt-4 border-t border-[var(--border-primary)]">
-                            <h4 class="text-md font-semibold text-[var(--text-secondary)]">ASR Options</h4>
+                            <h4 class="text-md font-semibold text-[var(--text-secondary)]" v-text="t('help.advancedAsrOptions')"></h4>
                             <div>
-                                <label for="asr-language-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Language</label>
+                                <label for="asr-language-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.language')"></label>
                                 <input type="text" id="asr-language-reprocess" v-model="asrReprocessOptions.language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh (optional)">
                             </div>
                             <div>
-                                <label for="asr-min-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Min Speakers</label>
-                                <input type="number" id="asr-min-speakers-reprocess" v-model.number="asrReprocessOptions.min_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
+                                <label for="asr-min-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.minSpeakers')"></label>
+                                <input type="number" id="asr-min-speakers-reprocess" v-model.number="asrReprocessOptions.min_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('form.optional')">
                             </div>
                             <div>
-                                <label for="asr-max-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Max Speakers</label>
-                                <input type="number" id="asr-max-speakers-reprocess" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional">
+                                <label for="asr-max-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.maxSpeakers')"></label>
+                                <input type="number" id="asr-max-speakers-reprocess" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('form.optional')">
                             </div>
                         </div>
                         
@@ -1811,9 +2050,9 @@
                                 <i class="fas fa-clock text-blue-600 text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-[var(--text-secondary)] font-medium mb-1">Processing time</p>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.processingTime')"></p>
                                 <p class="text-sm text-[var(--text-muted)]">
-                                    This may take a few minutes to complete. You can continue using the app while processing.
+                                    <span v-text="t('help.processingTimeDescription')"></span>
                                 </p>
                             </div>
                         </div>
@@ -1823,9 +2062,9 @@
                                 <i class="fas fa-info-circle text-red-600 text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-[var(--text-secondary)] font-medium mb-1">Important note</p>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.importantNote')"></p>
                                 <p class="text-sm text-[var(--text-muted)]">
-                                    Any manual edits to the transcription, title, or summary will be overwritten.
+                                    <span v-text="t('reprocessModal.manualEditsOverwritten')"></span>
                                 </p>
                             </div>
                         </div>
@@ -1835,9 +2074,9 @@
                                 <i class="fas fa-info-circle text-red-600 text-xs"></i>
                             </div>
                             <div>
-                                <p class="text-[var(--text-secondary)] font-medium mb-1">Important note</p>
+                                <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.importantNote')"></p>
                                 <p class="text-sm text-[var(--text-muted)]">
-                                    Any manual edits to the title or summary will be overwritten.
+                                    <span v-text="t('reprocessModal.manualEditsOverwrittenSummary')"></span>
                                 </p>
                             </div>
                         </div>
@@ -1868,7 +2107,7 @@
                     <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-800 mb-4">
                         <i class="fas fa-exclamation-triangle text-2xl text-orange-500 dark:text-orange-300"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Reset Recording Status?</h3>
+                    <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2" v-text="t('modal.resetStatus')"></h3>
                     <p class="text-sm text-[var(--text-muted)] mb-6">
                         This will mark the recording as 'Failed'. This is useful if processing is stuck. You will be able to reprocess it afterwards.
                     </p>
@@ -1884,14 +2123,14 @@
             </div>
         </div>
         <!-- Simple Transcription Editor Modal -->
-        <div v-if="showTextEditorModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showTextEditorModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div class="p-6 border-b border-[var(--border-primary)]">
-                    <h3 class="text-lg font-semibold">Edit Transcription</h3>
+                    <h3 class="text-lg font-semibold" v-text="t('modal.editTranscription')"></h3>
                 </div>
                 <div class="p-6 space-y-4 overflow-y-auto flex-1">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Transcription Content</label>
+                        <label class="block text-sm font-medium mb-2" v-text="t('transcription.title')"></label>
                         <textarea v-model="editingTranscriptionContent"
                                   rows="15"
                                   class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm">
@@ -1915,7 +2154,7 @@
         <div v-if="showAsrEditorModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-6xl flex flex-col max-h-[90vh]">
                 <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-[var(--text-primary)]">Edit ASR Transcription</h3>
+                    <h3 class="text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.editAsrTranscription')"></h3>
                     <button @click="closeAsrEditorModal" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
                         <i class="fas fa-times"></i>
                     </button>
@@ -1924,11 +2163,11 @@
                     <table class="min-w-full asr-editor-table">
                         <thead>
                             <tr>
-                                <th class="w-1/4">Speaker</th>
-                                <th class="w-24">Start</th>
-                                <th class="w-24">End</th>
-                                <th>Sentence</th>
-                                <th class="w-12"><span class="sr-only">Actions</span></th>
+                                <th class="w-1/4" v-text="t('help.speakerCount')"></th>
+                                <th class="w-24" v-text="t('help.startTime')"></th>
+                                <th class="w-24" v-text="t('help.endTime')"></th>
+                                <th v-text="t('help.sentence')"></th>
+                                <th class="w-12"><span class="sr-only" v-text="t('help.actions')"></span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1980,26 +2219,24 @@
                     </div>
                 </div>
                 <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
-                    <button @click="closeAsrEditorModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="saveAsrTranscription" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Save Changes</button>
+                    <button @click="closeAsrEditorModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
+                    <button @click="saveAsrTranscription" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" v-text="t('buttons.saveChanges')"></button>
                 </div>
             </div>
         </div>
 
         <!-- Speaker Identification Modal -->
         <div v-if="showSpeakerModal" @click="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+            <div @click.stop @click="closeSpeakerSuggestionsOnClick" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-[85vh]">
                 <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0">
-                    <h3 class="text-xl font-bold text-[var(--text-primary)]">Identify Speakers</h3>
+                    <h3 class="text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.identifySpeakers')"></h3>
                     <!-- Warning for too many speakers -->
-                    <div v-if="identifiedSpeakers.length > 8" class="mt-3 p-3 bg-[var(--bg-warn-light)] border border-amber-300 dark:border-amber-800 rounded-lg">
+                    <div v-if="modalSpeakers.length > 8" class="mt-3 p-3 bg-[var(--bg-warn-light)] border border-amber-300 dark:border-amber-800 rounded-lg">
                         <div class="flex items-start">
                             <i class="fas fa-exclamation-triangle text-[var(--text-warn-strong)] mt-0.5 mr-2"></i>
                             <div class="text-sm">
-                                <p class="font-medium text-[var(--text-warn-strong)]">More speakers than available colors</p>
-                                <p class="text-[var(--text-warn-strong)] mt-1">
-                                    You have ${ identifiedSpeakers.length } speakers, but only 8 unique colors are available. 
-                                    Colors will repeat after the 8th speaker.
+                                <p class="font-medium text-[var(--text-warn-strong)]" v-text="t('help.moreSpeakersThanColors')"></p>
+                                <p class="text-[var(--text-warn-strong)] mt-1" v-text="t('help.youHaveXSpeakers', { count: modalSpeakers.length })">
                                 </p>
                             </div>
                         </div>
@@ -2007,19 +2244,23 @@
                 </div>
                 <div class="flex-grow flex overflow-hidden modal-content">
                     <div class="w-1/3 p-6 space-y-4 overflow-y-auto custom-scrollbar border-r border-[var(--border-primary)]">
-                        <div v-for="(speaker, index) in identifiedSpeakers" :key="`${selectedRecording.id}-speaker-${index}-${speaker}`" class="space-y-3">
+                        <div v-for="(speaker, index) in modalSpeakers" :key="`${selectedRecording.id}-speaker-${index}-${speaker}`" class="space-y-3">
                             <!-- Speaker label with color indicator and "This is Me" checkbox on same line -->
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center space-x-2">
                                     <div :class="speakerMap[speaker].color" class="w-4 h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
-                                    <span class="font-mono text-sm text-[var(--text-muted)]">${ speaker }</span>
+                                    <span class="font-mono text-sm text-[var(--text-muted)]">${ speakerDisplayMap[speaker] || speaker }</span>
                                     <span v-if="index >= 8" class="text-xs text-[var(--text-warn-strong)] bg-[var(--bg-warn-light)] px-2 py-0.5 rounded-full" title="Color repeats from speaker ${ ((index % 8) + 1) }">
                                         Repeat
                                     </span>
                                 </div>
-                                <label class="flex items-center text-sm text-[var(--text-muted)]">
-                                    <input type="checkbox" v-model="speakerMap[speaker].isMe" @focus="highlightSpeakerInTranscript(speaker)" @blur="clearSpeakerHighlight" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                    <span class="ml-2">Me</span>
+                                <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                                    <input type="checkbox" 
+                                           v-model="speakerMap[speaker].isMe" 
+                                           @focus="highlightSpeakerInTranscript(speaker)" 
+                                           @blur="clearSpeakerHighlight" 
+                                           class="speaker-checkbox">
+                                    <span class="ml-2 select-none" v-text="t('help.me')"></span>
                                 </label>
                             </div>
                             
@@ -2030,10 +2271,10 @@
                                     v-model="speakerMap[speaker].name" 
                                     @input="searchSpeakers($event.target.value, speaker)"
                                     @focus="focusSpeaker(speaker)" 
-                                    @blur="blurSpeaker(); setTimeout(() => speakerSuggestions[speaker] = [], 200)"
+                                    @blur="blurSpeaker()"
                                     :disabled="speakerMap[speaker].isMe"
                                     class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed" 
-                                    :placeholder="speakerMap[speaker].isMe ? 'Me' : 'Enter name for ' + speaker"
+                                    :placeholder="speakerMap[speaker].isMe ? t('help.me') : t('help.enterNameFor') + ' ' + (speakerDisplayMap[speaker] || speaker)"
                                     autocomplete="off">
                                 
                                 <!-- Loading indicator -->
@@ -2041,13 +2282,14 @@
                                     <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-sm"></i>
                                 </div>
                                 
-                                <!-- Suggestions dropdown -->
-                                <div v-if="speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0 && !speakerMap[speaker].isMe" 
+                                <!-- Suggestions dropdown - Only show when this input is active -->
+                                <div v-if="activeSpeakerInput === speaker && speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0 && !speakerMap[speaker].isMe" 
+                                     @click.stop
                                      class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto">
                                     <div class="py-1">
                                         <div v-for="suggestion in speakerSuggestions[speaker]" 
                                              :key="suggestion.id"
-                                             @mousedown="selectSpeakerSuggestion(speaker, suggestion)"
+                                             @click="selectSpeakerSuggestion(speaker, suggestion)"
                                              class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] flex items-center justify-between">
                                             <div class="flex-grow">
                                                 <div class="text-sm font-medium text-[var(--text-primary)]">${ suggestion.name }</div>
@@ -2068,7 +2310,7 @@
                     <div class="w-2/3 p-6 flex flex-col overflow-hidden">
                         <!-- Audio Player Section -->
                         <div class="mb-4 flex-shrink-0">
-                            <h4 class="font-semibold text-[var(--text-secondary)] mb-2">Audio Player</h4>
+                            <h4 class="font-semibold text-[var(--text-secondary)] mb-2" v-text="t('help.audioPlayer')"></h4>
                             <div class="audio-player-container">
                                 <audio controls class="w-full speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                                     Your browser does not support the audio element.
@@ -2088,19 +2330,47 @@
                             </div>
                             <div v-else v-html="highlightedTranscript"></div>
                         </div>
+                        
+                        <!-- Speaker Navigation Controls (at bottom) - Always visible for consistent height -->
+                        <div class="mt-3 p-3 bg-[var(--bg-tertiary)] rounded-lg flex items-center justify-between flex-shrink-0" :class="{'opacity-50': !highlightedSpeaker || speakerGroups.length <= 1}">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-sm text-[var(--text-muted)]">
+                                    Navigate <span class="font-semibold">${ speakerDisplayMap[highlightedSpeaker] || highlightedSpeaker }</span> groups:
+                                </span>
+                                <span class="text-xs text-[var(--text-muted)]">
+                                    (${ currentSpeakerGroupIndex + 1 } of ${ speakerGroups.length })
+                                </span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button @mousedown.prevent @click="navigateToPrevSpeakerGroup" 
+                                        class="px-3 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded-md border border-[var(--border-secondary)] transition-all flex items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="!highlightedSpeaker || speakerGroups.length <= 1">
+                                    <i class="fas fa-chevron-up mr-1.5"></i>
+                                    Previous
+                                </button>
+                                <button @mousedown.prevent @click="navigateToNextSpeakerGroup" 
+                                        class="px-3 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded-md border border-[var(--border-secondary)] transition-all flex items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        :disabled="!highlightedSpeaker || speakerGroups.length <= 1">
+                                    Next
+                                    <i class="fas fa-chevron-down ml-1.5"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex-shrink-0">
-                    <label class="flex items-center text-sm text-[var(--text-muted)]">
-                        <input type="checkbox" v-model="regenerateSummaryAfterSpeakerUpdate" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span class="ml-2">Regenerate summary after updating names</span>
+                    <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                        <input type="checkbox" 
+                               v-model="regenerateSummaryAfterSpeakerUpdate" 
+                               class="speaker-checkbox">
+                        <span class="ml-2 select-none" v-text="t('help.regenerateSummaryAfterNames')"></span>
                     </label>
                 </div>
                 <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-between items-center border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
                     <div>
                         <button @click="autoIdentifySpeakers" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center" :disabled="isAutoIdentifying">
                             <i class="fas fa-magic mr-2"></i>
-                            <span v-if="!isAutoIdentifying">Auto Identify</span>
+                            <span v-if="!isAutoIdentifying" v-text="t('help.autoIdentify')"></span>
                             <span v-else>
                                 <i class="fas fa-spinner fa-spin mr-2"></i>
                                 Identifying...
@@ -2108,7 +2378,7 @@
                         </button>
                     </div>
                     <div class="flex space-x-3">
-                        <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                        <button @click="closeSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
                         <button 
                             @click="saveSpeakerNames" 
                             :disabled="!hasSpeakerNames"
@@ -2129,7 +2399,7 @@
             <div class="flex items-start gap-3">
                 <i class="fas fa-exclamation-circle text-lg flex-shrink-0 mt-0.5"></i>
                 <div class="flex-1">
-                    <p class="font-medium">Error</p>
+                    <p class="font-medium" v-text="t('common.error')"></p>
                     <p class="text-sm opacity-90">${globalError}</p>
                 </div>
                 <button @click="globalError = null" 
@@ -2140,7 +2410,7 @@
         </div>
 
         <!-- System Audio Help Modal -->
-        <div v-if="showSystemAudioHelp" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div v-if="showSystemAudioHelp" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
             <div class="bg-[var(--bg-secondary)] w-full h-full md:h-auto md:max-h-[90vh] md:w-full md:max-w-2xl md:rounded-lg md:shadow-xl flex flex-col">
                 <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
                     <div class="flex items-center justify-between">
@@ -2155,23 +2425,22 @@
                 </div>
                 <div class="p-6 space-y-6 overflow-y-auto flex-grow">
                     <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
-                        <h4 class="font-medium text-[var(--text-primary)] mb-2">How to Record System Audio</h4>
-                        <p class="text-sm text-[var(--text-muted)]">
-                            To capture audio from meetings or other apps, you must share your screen or a browser tab.
+                        <h4 class="font-medium text-[var(--text-primary)] mb-2" v-text="t('help.howToRecordSystemAudio')"></h4>
+                        <p class="text-sm text-[var(--text-muted)]" v-text="t('help.toCaptureAudioFromMeetings')">
                         </p>
                         <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)] mt-3">
-                            <li>Click "Record System Audio" or "Record Both".</li>
-                            <li>In the popup, choose <strong>"Entire Screen"</strong> or a <strong>specific browser tab</strong>.</li>
-                            <li>Make sure to check the box that says <strong>"Share tab audio"</strong> or <strong>"Share system audio"</strong>.</li>
+                            <li v-text="t('help.recordSystemSteps1')"></li>
+                            <li><span v-text="t('help.recordSystemSteps2')"></span> <strong>"${ t('help.entireScreen') }"</strong> or a <strong v-text="t('help.specificBrowserTab')"></strong>.</li>
+                            <li><span v-text="t('help.recordSystemSteps3')"></span> <strong>"${ t('help.shareTabAudio') }"</strong> or <strong>"${ t('help.shareSystemAudio') }"</strong>.</li>
                         </ol>
-                        <p class="text-xs text-amber-600 dark:text-amber-400 mt-3"><i class="fas fa-exclamation-triangle mr-1"></i>Sharing a "Window" will not capture audio.</p>
+                        <p class="text-xs text-amber-600 dark:text-amber-400 mt-3"><i class="fas fa-exclamation-triangle mr-1"></i><span v-text="t('help.sharingWindowNoAudio')"></span></p>
                     </div>
 
                     <div class="space-y-4">
-                        <h4 class="font-medium text-[var(--text-primary)]">Troubleshooting</h4>
+                        <h4 class="font-medium text-[var(--text-primary)]" v-text="t('help.troubleshooting')"></h4>
                         
                         <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
-                            <h5 class="font-medium text-[var(--text-primary)] mb-2">Why isn't it working?</h5>
+                            <h5 class="font-medium text-[var(--text-primary)] mb-2" v-text="t('help.whyNotWorking')"></h5>
                             <p class="text-sm text-[var(--text-muted)]">
                                 System audio recording requires a secure (HTTPS) connection. If you are developing locally, you may need to enable a browser flag.
                             </p>
@@ -2208,7 +2477,7 @@
 
                         <!-- Other Browsers -->
                         <div v-else class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
-                            <h5 class="font-medium text-[var(--text-primary)] mb-2">Unsupported Browser</h5>
+                            <h5 class="font-medium text-[var(--text-primary)] mb-2" v-text="t('help.unsupportedBrowser')"></h5>
                             <p class="text-sm text-[var(--text-muted)]">
                                 For the best experience with system audio recording, we recommend using Google Chrome.
                             </p>
@@ -2224,33 +2493,79 @@
             </div>
         </div>
 
+        <!-- Recording Disclaimer Modal -->
+        <div v-if="showRecordingDisclaimerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+                <div class="flex-shrink-0 p-6 border-b border-[var(--border-primary)]">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-info-circle text-2xl text-[var(--text-accent)]"></i>
+                        <h3 class="text-xl font-semibold text-[var(--text-primary)]" v-text="t('modal.recordingNotice')"></h3>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6">
+                    <!-- Render markdown content -->
+                    <div class="prose prose-sm max-w-none text-[var(--text-secondary)]" 
+                         style="color: var(--text-secondary); line-height: 1.6;">
+                        <div v-html="recordingDisclaimer"></div>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 p-6 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] rounded-b-lg">
+                    <div class="flex justify-end gap-3">
+                        <button @click="cancelRecordingDisclaimer" 
+                                class="px-6 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors border border-[var(--border-secondary)]">
+                            Cancel
+                        </button>
+                        <button @click="acceptRecordingDisclaimer" 
+                                class="px-6 py-2 bg-[var(--bg-accent)] text-white rounded-lg hover:bg-[var(--bg-accent-hover)] transition-colors">
+                            <i class="fas fa-microphone mr-2"></i>
+                            Start Recording
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Toast Container -->
         <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
         <!-- Share Modal -->
-        <div v-if="showShareModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showShareModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg">
                 <div class="p-6 border-b border-[var(--border-primary)]">
-                    <h3 class="text-lg font-semibold">Share Recording</h3>
+                    <h3 class="text-lg font-semibold" v-text="t('modal.shareRecording')"></h3>
                 </div>
                 <div class="p-6 space-y-4">
-                    <p class="text-sm text-[var(--text-muted)]">Create a public link to share this recording. Sharing is only available on secure (HTTPS) connections.</p>
+                    <p class="text-sm text-[var(--text-muted)]" v-text="t('help.createPublicLink')"></p>
                     <div v-if="!generatedShareLink">
                         <div class="flex items-center mb-2">
                             <input type="checkbox" v-model="shareOptions.share_summary" id="share_summary" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <label for="share_summary" class="ml-2 block text-sm text-[var(--text-secondary)]">Share Summary</label>
+                            <label for="share_summary" class="ml-2 block text-sm text-[var(--text-secondary)]" v-text="t('form.shareSummary')"></label>
                         </div>
                         <div class="flex items-center">
                             <input type="checkbox" v-model="shareOptions.share_notes" id="share_notes" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <label for="share_notes" class="ml-2 block text-sm text-[var(--text-secondary)]">Share Notes</label>
+                            <label for="share_notes" class="ml-2 block text-sm text-[var(--text-secondary)]" v-text="t('form.shareNotes')"></label>
                         </div>
                     </div>
                     <div v-if="generatedShareLink" class="mt-4">
-                        <label class="block text-sm font-medium mb-2">Shareable Link</label>
+                        <div v-if="existingShareDetected" class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
+                                <div class="text-sm text-blue-800 dark:text-blue-300">
+                                    <p class="font-medium">Using existing share link</p>
+                                    <p class="mt-1 text-xs opacity-90">This recording was already shared. The same link has been retrieved.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <label class="block text-sm font-medium mb-2" v-text="t('form.shareableLink')"></label>
                         <div class="flex items-center gap-2">
                             <input :value="generatedShareLink" readonly class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg">
                             <button @click="copyShareLink" class="px-3 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
                                 <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div v-if="existingShareDetected" class="mt-3">
+                            <button @click="createShare(true)" class="text-sm text-[var(--text-accent)] hover:underline">
+                                <i class="fas fa-plus-circle mr-1"></i>Create a new share link instead
                             </button>
                         </div>
                     </div>
@@ -2259,7 +2574,7 @@
                     <button @click="closeShareModal" class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
                         Cancel
                     </button>
-                    <button @click="createShare" v-if="!generatedShareLink" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                    <button @click="createShare()" v-if="!generatedShareLink" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
                         Create Link
                     </button>
                 </div>
@@ -2267,10 +2582,10 @@
         </div>
 
         <!-- Shares List Modal -->
-        <div v-if="showSharesListModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div v-if="showSharesListModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
             <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
                 <div class="p-6 border-b border-[var(--border-primary)] flex justify-between items-center">
-                    <h3 class="text-lg font-semibold">My Shared Transcripts</h3>
+                    <h3 class="text-lg font-semibold" v-text="t('modal.sharedTranscripts')"></h3>
                     <button @click="closeSharesList" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
                         <i class="fas fa-times"></i>
                     </button>
@@ -2280,25 +2595,25 @@
                         <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
                     </div>
                     <div v-else-if="userShares.length === 0" class="text-center text-[var(--text-muted)]">
-                        You haven't shared any transcripts yet.
+                        <span v-text="t('sharedTranscripts.noSharedTranscripts')"></span>
                     </div>
                     <div v-else class="space-y-3">
                         <div v-for="share in userShares" :key="share.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="font-semibold">${share.recording_title}</p>
-                                    <p class="text-sm text-[var(--text-muted)]">Shared on: ${share.created_at}</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${ t('help.sharedOn') }: ${share.created_at}</p>
                                 </div>
-                                <button @click="deleteShare(share.id)" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                                <button @click="confirmDeleteShare(share)" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
                             </div>
                             <div class="mt-4 flex items-center gap-4">
                                 <label class="flex items-center text-sm">
                                     <input type="checkbox" v-model="share.share_summary" @change="updateShare(share)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                    <span class="ml-2">Share Summary</span>
+                                    <span class="ml-2" v-text="t('form.shareSummary')"></span>
                                 </label>
                                 <label class="flex items-center text-sm">
                                     <input type="checkbox" v-model="share.share_notes" @change="updateShare(share)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                    <span class="ml-2">Share Notes</span>
+                                    <span class="ml-2" v-text="t('form.shareNotes')"></span>
                                 </label>
                             </div>
                             <div class="mt-4">
@@ -2309,10 +2624,61 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Share Delete Confirmation Modal -->
+        <div v-if="showShareDeleteModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+                <!-- Header with gradient background -->
+                <div class="bg-gradient-to-r from-red-500 to-red-600 p-5 rounded-t-xl">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mr-4">
+                            <i class="fas fa-trash-alt text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Delete Shared Link</h3>
+                            <p class="text-red-100 text-sm mt-1">This action cannot be undone</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Content -->
+                <div class="p-6">
+                    <p class="text-[var(--text-secondary)] mb-4">
+                        Are you sure you want to delete the shared link for:
+                    </p>
+                    <div v-if="shareToDelete" class="bg-[var(--bg-tertiary)] p-3 rounded-lg border border-[var(--border-primary)]">
+                        <p class="font-medium text-[var(--text-primary)]">${shareToDelete.recording_title}</p>
+                        <p class="text-sm text-[var(--text-muted)] mt-1">Shared on: ${shareToDelete.created_at}</p>
+                    </div>
+                    <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 mt-0.5 mr-2"></i>
+                            <p class="text-sm text-red-800 dark:text-red-300">
+                                The share link will be permanently deleted and anyone with this link will no longer be able to access the recording.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="p-6 pt-0 flex justify-end gap-3">
+                    <button @click="cancelDeleteShare" class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="deleteShare" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-trash"></i>
+                        Delete Share Link
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- CSRF Token Management -->
     <script src="{{ url_for('static', filename='js/csrf-refresh.js') }}"></script>
+    
+    <!-- i18n System -->
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     
     <!-- Vue.js Application Script -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

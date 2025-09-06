@@ -1,0 +1,180 @@
+site_name: Speakr
+site_description: AI-Powered Audio Transcription & Note-Taking Platform
+site_url: https://speakr.yourdomain.com
+repo_url: https://github.com/murtaza-nasir/speakr
+repo_name: speakr
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  logo: assets/images/speakr-logo.png
+  favicon: assets/images/speakr-logo.png
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - search.share
+    - header.autohide
+    - content.action.edit
+    - content.action.view
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+
+plugins:
+  - search:
+      separator: '[\s\-\.\_]+'
+      lang:
+        - en
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: iso_date
+      enabled: !ENV [CI, false]  # Only enable in CI/production
+
+markdown_extensions:
+  # Python Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - meta
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  
+  # Python Markdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/murtaza-nasir/speakr
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/r/learnedmachine/speakr
+  
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: Thanks for your feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: Thanks for your feedback!
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js
+
+exclude_docs: |
+  README.md
+  DEPLOYMENT_GUIDE.md
+  DOCUMENTATION_VERIFICATION_CHECKLIST.md
+  ci-cd-setup.md
+  github-secrets-guide.md
+  .github-deploy.yml
+
+nav:
+  - Home:
+    - index.md
+    - Screenshots: screenshots.md
+    - Features: features.md
+  - Getting Started: getting-started.md
+  - Installation: getting-started/installation.md
+  
+  - User Guide:
+    - user-guide/index.md
+    - First Steps: user-guide/first-steps.md
+    - Recording Audio: user-guide/recording.md
+    - Understanding Transcripts: user-guide/transcripts.md
+    - Inquire Mode: user-guide/inquire-mode.md
+    - Sharing Recordings: user-guide/sharing.md
+    - Account Settings: user-guide/settings.md
+    
+  - Admin Guide:
+    - admin-guide/index.md
+    - User Management: admin-guide/user-management.md
+    - System Statistics: admin-guide/statistics.md
+    - System Settings: admin-guide/system-settings.md
+    - Default Prompts: admin-guide/prompts.md
+    - Vector Store: admin-guide/vector-store.md
+  
+  - Troubleshooting: troubleshooting.md
+  - FAQ: faq.md

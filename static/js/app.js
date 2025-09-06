@@ -1,7 +1,15 @@
 const { createApp, ref, reactive, computed, onMounted, watch, nextTick } = Vue
 
 // Wait for the DOM to be fully loaded before mounting the Vue app
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize i18n before creating Vue app
+    if (window.i18n) {
+        const appElement = document.getElementById('app');
+        const userLang = appElement?.dataset.userLanguage || localStorage.getItem('preferredLanguage') || 'en';
+        await window.i18n.init(userLang);
+        console.log('i18n initialized with language:', userLang);
+    }
+
     // CSRF Token Integration with Vue.js
     const csrfToken = ref(document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
 
@@ -30,6 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const isLoadingRecordings = ref(true);
             const globalError = ref(null);
             
+            // Advanced filter state
+            const showAdvancedFilters = ref(false);
+            const filterTags = ref([]); // Selected tag IDs for filtering
+            const filterDateRange = ref({ start: '', end: '' });
+            const filterDatePreset = ref(''); // 'today', 'yesterday', 'week', 'month', etc.
+            const filterTextQuery = ref('');
+            
             // --- Pagination State ---
             const currentPage = ref(1);
             const perPage = ref(25);
@@ -55,6 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const windowWidth = ref(window.innerWidth);
             const mobileTab = ref('transcript');
             const isMetadataExpanded = ref(false);
+            
+            // --- i18n State ---
+            const currentLanguage = ref('en');
+            const currentLanguageName = ref('English');
+            const availableLanguages = ref([]);
+            const showLanguageMenu = ref(false);
 
             // --- Upload State ---
             const uploadQueue = ref([]);
@@ -70,6 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const chunkingMode = ref('size'); // 'size' or 'duration', will be updated from API
             const chunkingLimit = ref(20); // Value in MB or seconds, will be updated from API
             const chunkingLimitDisplay = ref('20MB'); // Human readable display, will be updated from API
+            const recordingDisclaimer = ref(''); // Recording disclaimer text from admin settings
+            const showRecordingDisclaimerModal = ref(false); // Controls disclaimer modal visibility
+            const pendingRecordingMode = ref(null); // Stores the recording mode while showing disclaimer
 
             // --- Audio Recording State ---
             const isRecording = ref(false);
@@ -116,10 +140,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // Tag Selection
             const availableTags = ref([]);
             const selectedTagIds = ref([]); // Changed to array for multiple selection
+            const uploadTagSearchFilter = ref(''); // For filtering tags in upload view
             const selectedTags = computed(() => {
                 return selectedTagIds.value.map(tagId => 
                     availableTags.value.find(tag => tag.id == tagId)
                 ).filter(Boolean); // Filter out undefined tags
+            });
+            
+            // Computed property for filtered available tags in upload view
+            const filteredAvailableTagsForUpload = computed(() => {
+                const availableForSelection = availableTags.value.filter(tag => !selectedTagIds.value.includes(tag.id));
+                if (!uploadTagSearchFilter.value) return availableForSelection;
+                
+                const filter = uploadTagSearchFilter.value.toLowerCase();
+                return availableForSelection.filter(tag => 
+                    tag.name.toLowerCase().includes(filter)
+                );
             });
 
             // --- Modal State ---
@@ -127,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const showDeleteModal = ref(false);
             const showEditTagsModal = ref(false);
             const selectedNewTagId = ref('');
+            const tagSearchFilter = ref('');  // For filtering tags in the modal
             const showReprocessModal = ref(false);
             const showResetModal = ref(false);
             const showSpeakerModal = ref(false);
@@ -144,8 +181,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 share_notes: true,
             });
             const generatedShareLink = ref('');
+            const existingShareDetected = ref(false);
             const userShares = ref([]);
             const isLoadingShares = ref(false);
+            const shareToDelete = ref(null);
+            const showShareDeleteModal = ref(false);
             const recordingToDelete = ref(null);
             const recordingToReset = ref(null);
             const reprocessType = ref(null); // 'transcription' or 'summary'
@@ -160,12 +200,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const regenerateSummaryAfterSpeakerUpdate = ref(true);
             const speakerSuggestions = ref({});
             const loadingSuggestions = ref({});
+            const activeSpeakerInput = ref(null);
 
             // --- Inline Editing State ---
             const editingParticipants = ref(false);
             const editingMeetingDate = ref(false);
             const editingSummary = ref(false);
             const editingNotes = ref(false);
+            const tempNotesContent = ref('');
+            const tempSummaryContent = ref('');
+            const autoSaveTimer = ref(null);
+            const autoSaveDelay = 2000; // 2 seconds debounce
             
             // --- Markdown Editor State ---
             const notesMarkdownEditor = ref(null);
@@ -204,6 +249,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 return windowWidth.value < 1024;
             });
 
+            const datePresetOptions = computed(() => {
+                return [
+                    { value: 'today', label: t('sidebar.today') }, 
+                    { value: 'yesterday', label: t('sidebar.yesterday') }, 
+                    { value: 'thisweek', label: t('sidebar.thisWeek') },
+                    { value: 'lastweek', label: t('sidebar.lastWeek') },
+                    { value: 'thismonth', label: t('sidebar.thisMonth') },
+                    { value: 'lastmonth', label: t('sidebar.lastMonth') }
+                ];
+            });
+
+            const languageOptions = computed(() => {
+                return [
+                    { value: '', label: t('form.autoDetect') },
+                    { value: 'en', label: t('languages.en') },
+                    { value: 'es', label: t('languages.es') },
+                    { value: 'fr', label: t('languages.fr') },
+                    { value: 'de', label: t('languages.de') },
+                    { value: 'it', label: t('languages.it') },
+                    { value: 'pt', label: t('languages.pt') },
+                    { value: 'nl', label: t('languages.nl') },
+                    { value: 'ru', label: t('languages.ru') },
+                    { value: 'zh', label: t('languages.zh') },
+                    { value: 'ja', label: t('languages.ja') },
+                    { value: 'ko', label: t('languages.ko') }
+                ];
+            });
+
             const filteredRecordings = computed(() => {
                 return recordings.value;
             });
@@ -229,8 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 html = html.replace(/\[([^\]]+)\]/g, (match, speakerId) => {
                     const isHighlighted = speakerId === highlightedSpeaker.value;
                     const colorClass = speakerColors[speakerId] || '';
+                    // Replace speaker ID with name if available
+                    const displayName = speakerMap.value[speakerId]?.name || speakerId;
+                    const displayText = `[${displayName}]`;
                     // Use a more specific and stylish class structure with color
-                    return `<span class="speaker-tag ${colorClass} ${isHighlighted ? 'speaker-highlight' : ''}" data-speaker-id="${speakerId}">${match}</span>`;
+                    return `<span class="speaker-tag ${colorClass} ${isHighlighted ? 'speaker-highlight' : ''}" data-speaker-id="${speakerId}">${displayText}</span>`;
                 });
                 
                 return html;
@@ -272,6 +348,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         icon: 'fas fa-file',
                         text: truncated,
                         fullText: recording.original_filename
+                    });
+                }
+                
+                // Add tags to metadata
+                if (recording.tags && recording.tags.length > 0) {
+                    metadata.push({
+                        icon: 'fas fa-tags',
+                        text: '',  // Empty text since we'll render tags specially
+                        tags: recording.tags,  // Pass the tags array
+                        isTagItem: true  // Flag to identify this as a tag item
                     });
                 }
                 
@@ -327,13 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 return [
-                    { title: 'Today', items: groups.today },
-                    { title: 'Yesterday', items: groups.yesterday },
-                    { title: 'This Week', items: groups.thisWeek },
-                    { title: 'Last Week', items: groups.lastWeek },
-                    { title: 'This Month', items: groups.thisMonth },
-                    { title: 'Last Month', items: groups.lastMonth },
-                    { title: 'Older', items: groups.older }
+                    { title: t('sidebar.today'), items: groups.today },
+                    { title: t('sidebar.yesterday'), items: groups.yesterday },
+                    { title: t('sidebar.thisWeek'), items: groups.thisWeek },
+                    { title: t('sidebar.lastWeek'), items: groups.lastWeek },
+                    { title: t('sidebar.thisMonth'), items: groups.thisMonth },
+                    { title: t('sidebar.lastMonth'), items: groups.lastMonth },
+                    { title: t('sidebar.older'), items: groups.older }
                 ].filter(g => g.items.length > 0);
             });
 
@@ -362,28 +448,37 @@ document.addEventListener('DOMContentLoaded', () => {
     
                 // Updated to handle new simplified JSON format (array of segments)
                 if (transcriptionData && Array.isArray(transcriptionData)) {
-                    // JSON format - extract speakers from segments
-                    const speakers = new Set();
+                    // JSON format - extract speakers in order of appearance
+                    const speakersInOrder = [];
+                    const seenSpeakers = new Set();
                     transcriptionData.forEach(segment => {
-                        if (segment.speaker && String(segment.speaker).trim()) {
-                            speakers.add(segment.speaker);
+                        if (segment.speaker && String(segment.speaker).trim() && !seenSpeakers.has(segment.speaker)) {
+                            seenSpeakers.add(segment.speaker);
+                            speakersInOrder.push(segment.speaker);
                         }
                     });
-                    return Array.from(speakers).sort(); // Sort for consistent color mapping
+                    return speakersInOrder; // Keep order of appearance, don't sort
                 } else if (typeof transcription === 'string') {
-                    // Plain text format - use regex to find speaker patterns
+                    // Plain text format - find speakers in order of appearance
                     const speakerRegex = /\[([^\]]+)\]:/g;
-                    const speakers = new Set();
+                    const speakersInOrder = [];
+                    const seenSpeakers = new Set();
                     let match;
                     while ((match = speakerRegex.exec(transcription)) !== null) {
                         const speaker = match[1].trim();
-                        if (speaker) {
-                            speakers.add(speaker);
+                        if (speaker && !seenSpeakers.has(speaker)) {
+                            seenSpeakers.add(speaker);
+                            speakersInOrder.push(speaker);
                         }
                     }
-                    return Array.from(speakers).sort();
+                    return speakersInOrder; // Keep order of appearance, don't sort
                 }
                 return [];
+            });
+
+            // identifiedSpeakersInOrder is now just an alias since identifiedSpeakers already preserves order
+            const identifiedSpeakersInOrder = computed(() => {
+                return identifiedSpeakers.value;
             });
     
             const hasSpeakerNames = computed(() => {
@@ -435,7 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const simpleSegments = transcriptionData.map(segment => ({
                         speakerId: segment.speaker,
-                        speaker: segment.speaker,
+                        speaker: speakerMap.value[segment.speaker]?.name || segment.speaker,
                         sentence: segment.sentence,
                         startTime: segment.start_time || segment.startTime,
                         endTime: segment.end_time || segment.endTime,
@@ -443,26 +538,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     }));
 
                     const processedSimpleSegments = [];
-                    let lastSpeaker = null;
+                    let lastSpeakerId = null;
                     simpleSegments.forEach(segment => {
                         processedSimpleSegments.push({
                             ...segment,
-                            showSpeaker: segment.speaker !== lastSpeaker
+                            showSpeaker: segment.speakerId !== lastSpeakerId
                         });
-                        lastSpeaker = segment.speaker;
+                        lastSpeakerId = segment.speakerId;
                     });
 
                     const bubbleRows = [];
-                    let lastBubbleSpeaker = null;
+                    let lastBubbleSpeakerId = null;
                     simpleSegments.forEach(segment => {
-                        if (bubbleRows.length === 0 || segment.speaker !== lastBubbleSpeaker) {
+                        if (bubbleRows.length === 0 || segment.speakerId !== lastBubbleSpeakerId) {
                             bubbleRows.push({
                                 speaker: segment.speaker,
                                 color: segment.color,
                                 isMe: segment.speaker && (typeof segment.speaker === 'string') && segment.speaker.toLowerCase().includes('me'),
                                 bubbles: []
                             });
-                            lastBubbleSpeaker = segment.speaker;
+                            lastBubbleSpeakerId = segment.speakerId;
                         }
                         bubbleRows[bubbleRows.length - 1].bubbles.push({
                             sentence: segment.sentence,
@@ -478,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         simpleSegments: processedSimpleSegments,
                         bubbleRows: bubbleRows,
                         speakers: speakers.map(speaker => ({
-                            name: speaker,
+                            name: speakerMap.value[speaker]?.name || speaker,
                             color: speakerColors[speaker]
                         }))
                     };
@@ -514,25 +609,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const segments = [];
                     const lines = transcription.split('\n');
-                    let currentSpeaker = null;
+                    let currentSpeakerId = null;
                     let currentText = '';
 
                     for (const line of lines) {
                         const speakerMatch = line.match(/^\[([^\]]+)\]:\s*(.*)$/);
                         if (speakerMatch) {
-                            if (currentSpeaker && currentText.trim()) {
+                            if (currentSpeakerId && currentText.trim()) {
                                 segments.push({
-                                    speaker: currentSpeaker,
+                                    speakerId: currentSpeakerId,
+                                    speaker: speakerMap.value[currentSpeakerId]?.name || currentSpeakerId,
                                     sentence: currentText.trim(),
-                                    color: speakerColors[currentSpeaker] || 'speaker-color-1'
+                                    color: speakerColors[currentSpeakerId] || 'speaker-color-1'
                                 });
                             }
-                            currentSpeaker = speakerMatch[1];
+                            currentSpeakerId = speakerMatch[1];
                             currentText = speakerMatch[2];
-                        } else if (currentSpeaker && line.trim()) {
+                        } else if (currentSpeakerId && line.trim()) {
                             currentText += ' ' + line.trim();
-                        } else if (!currentSpeaker && line.trim()) {
+                        } else if (!currentSpeakerId && line.trim()) {
                             segments.push({
+                                speakerId: null,
                                 speaker: null,
                                 sentence: line.trim(),
                                 color: 'speaker-color-1'
@@ -540,31 +637,33 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
-                    if (currentSpeaker && currentText.trim()) {
+                    if (currentSpeakerId && currentText.trim()) {
                         segments.push({
-                            speaker: currentSpeaker,
+                            speakerId: currentSpeakerId,
+                            speaker: speakerMap.value[currentSpeakerId]?.name || currentSpeakerId,
                             sentence: currentText.trim(),
-                            color: speakerColors[currentSpeaker] || 'speaker-color-1'
+                            color: speakerColors[currentSpeakerId] || 'speaker-color-1'
                         });
                     }
 
                     const simpleSegments = [];
-                    let lastSpeaker = null;
+                    let lastSpeakerId = null;
                     segments.forEach(segment => {
                         simpleSegments.push({
                             ...segment,
-                            showSpeaker: segment.speaker !== lastSpeaker,
+                            showSpeaker: segment.speakerId !== lastSpeakerId,
                             sentence: segment.sentence || segment.text 
                         });
-                        lastSpeaker = segment.speaker;
+                        lastSpeakerId = segment.speakerId;
                     });
 
                     const bubbleRows = [];
                     let currentRow = null;
                     segments.forEach(segment => {
-                        if (!currentRow || currentRow.speaker !== segment.speaker) {
+                        if (!currentRow || currentRow.speakerId !== segment.speakerId) {
                             if (currentRow) bubbleRows.push(currentRow);
                             currentRow = {
+                                speakerId: segment.speakerId,
                                 speaker: segment.speaker,
                                 color: segment.color,
                                 bubbles: [],
@@ -585,7 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         simpleSegments: simpleSegments,
                         bubbleRows: bubbleRows,
                         speakers: speakerList.map(speaker => ({
-                            name: speaker,
+                            name: speakerMap.value[speaker]?.name || speaker,
                             color: speakerColors[speaker] || 'speaker-color-1'
                         }))
                     };
@@ -661,7 +760,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const formatStatus = (status) => {
                 if (!status || status === 'COMPLETED') return '';
-                return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+                const statusMap = {
+                    'PENDING': t('status.queued'),
+                    'PROCESSING': t('status.processing'),
+                    'TRANSCRIBING': t('status.transcribing'),
+                    'SUMMARIZING': t('status.summarizing'),
+                    'FAILED': t('status.failed'),
+                    'UPLOADING': t('status.uploading')
+                };
+                return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
             };
 
             const getStatusClass = (status) => {
@@ -1381,17 +1488,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
             
+            const closeSpeakerSuggestionsOnClick = (event) => {
+                // Check if the click was on an input field or dropdown
+                const clickedInput = event.target.closest('input[type="text"]');
+                const clickedDropdown = event.target.closest('.absolute.z-10');
+                
+                // If not clicking on input or dropdown, close all suggestions
+                if (!clickedInput && !clickedDropdown) {
+                    Object.keys(speakerSuggestions.value).forEach(speakerId => {
+                        speakerSuggestions.value[speakerId] = [];
+                    });
+                }
+            };
+            
+            // Create a mapping for display-friendly speaker IDs
+            const speakerDisplayMap = ref({});
+            const modalSpeakers = ref([]);
+            
             const openSpeakerModal = () => {
                 // Clear any existing speaker map data first
                 speakerMap.value = {};
+                speakerDisplayMap.value = {};
                 
-                // Initialize speaker map only for speakers in the current recording
-                speakerMap.value = identifiedSpeakers.value.reduce((acc, speaker, index) => {
+                // Get the same speaker order used in processedTranscription
+                const transcription = selectedRecording.value?.transcription;
+                let speakers = [];
+                
+                if (transcription) {
+                    try {
+                        const transcriptionData = JSON.parse(transcription);
+                        if (transcriptionData && Array.isArray(transcriptionData)) {
+                            // Use the exact same logic as processedTranscription to get speakers
+                            speakers = [...new Set(transcriptionData.map(segment => segment.speaker).filter(Boolean))];
+                        }
+                    } catch (e) {
+                        // Fall back to identifiedSpeakers if JSON parsing fails
+                        speakers = identifiedSpeakers.value;
+                    }
+                }
+                
+                // Set modalSpeakers for the template to use
+                modalSpeakers.value = speakers;
+                
+                // Initialize speaker map with the same order and colors as the transcript
+                speakerMap.value = speakers.reduce((acc, speaker, index) => {
                     acc[speaker] = { 
                         name: '', 
                         isMe: false,
-                        color: `speaker-color-${(index % 8) + 1}` // Assign same colors as transcription view
+                        color: `speaker-color-${(index % 8) + 1}` // Same color assignment as processedTranscription
                     };
+                    // Keep the original speaker ID for display
+                    speakerDisplayMap.value[speaker] = speaker;
                     return acc;
                 }, {});
                 
@@ -1409,6 +1556,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 speakerMap.value = {};
                 speakerSuggestions.value = {};
                 loadingSuggestions.value = {};
+                
+                // Clean up click handler if it exists
+                if (window.speakerModalClickHandler) {
+                    const modalContent = document.querySelector('.modal-content');
+                    if (modalContent) {
+                        modalContent.removeEventListener('click', window.speakerModalClickHandler);
+                    }
+                    delete window.speakerModalClickHandler;
+                }
             };
     
             const saveSpeakerNames = async () => {
@@ -1461,31 +1617,140 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
     
-            const highlightSpeakerInTranscript = (speakerId) => {
-                highlightedSpeaker.value = speakerId;
-                // Scroll to the first instance in the transcript when a speaker is focused
-                if (speakerId) {
-                    nextTick(() => {
-                        // Try both the modal transcript and the main transcript
-                        const modalTranscript = document.querySelector('div.speaker-modal-transcript');
-                        const mainTranscript = document.querySelector('.transcription-simple-view, .transcription-with-speakers, .transcription-content');                        
-                        const transcriptContainer = modalTranscript || mainTranscript;
-                        if (transcriptContainer) {
-                            const firstInstance = transcriptContainer.querySelector(`[data-speaker-id="${speakerId}"]`);
-                            if (firstInstance) {
-                                firstInstance.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Speaker group navigation state
+            const currentSpeakerGroupIndex = ref(-1);
+            const speakerGroups = ref([]);
+            
+            const findSpeakerGroups = (speakerId) => {
+                if (!speakerId) return [];
+                
+                const groups = [];
+                const modalTranscript = document.querySelector('div.speaker-modal-transcript');
+                const mainTranscript = document.querySelector('.transcription-simple-view, .transcription-with-speakers, .transcription-content');
+                const transcriptContainer = modalTranscript || mainTranscript;
+                
+                if (!transcriptContainer) return [];
+                
+                // For JSON-based transcripts with segments
+                const allSegments = transcriptContainer.querySelectorAll('.speaker-segment');
+                if (allSegments.length > 0) {
+                    let currentGroup = null;
+                    let lastSpeakerId = null;
+                    
+                    allSegments.forEach(segment => {
+                        const speakerTag = segment.querySelector('[data-speaker-id]');
+                        const segmentSpeakerId = speakerTag?.dataset.speakerId;
+                        
+                        if (segmentSpeakerId === speakerId) {
+                            // If this is a new group (not consecutive with previous)
+                            if (lastSpeakerId !== speakerId) {
+                                currentGroup = {
+                                    startElement: segment,
+                                    elements: [segment]
+                                };
+                                groups.push(currentGroup);
+                            } else if (currentGroup) {
+                                // Add to existing group
+                                currentGroup.elements.push(segment);
+                            }
+                        }
+                        lastSpeakerId = segmentSpeakerId;
+                    });
+                } else {
+                    // For plain text transcripts with speaker tags
+                    const allTags = transcriptContainer.querySelectorAll('[data-speaker-id]');
+                    let currentGroup = null;
+                    
+                    allTags.forEach(tag => {
+                        if (tag.dataset.speakerId === speakerId) {
+                            // Find the parent element that contains this speaker's content
+                            const parentSegment = tag.closest('.speaker-segment') || tag.parentElement;
+                            
+                            if (!currentGroup || !currentGroup.lastElement || 
+                                !parentSegment.previousElementSibling || 
+                                parentSegment.previousElementSibling !== currentGroup.lastElement) {
+                                // Start a new group
+                                currentGroup = {
+                                    startElement: parentSegment,
+                                    elements: [parentSegment],
+                                    lastElement: parentSegment
+                                };
+                                groups.push(currentGroup);
+                            } else {
+                                // Continue the group
+                                currentGroup.elements.push(parentSegment);
+                                currentGroup.lastElement = parentSegment;
                             }
                         }
                     });
+                }
+                
+                return groups;
+            };
+            
+            const highlightSpeakerInTranscript = (speakerId) => {
+                highlightedSpeaker.value = speakerId;
+                
+                if (speakerId) {
+                    // Find all speaker groups for navigation
+                    speakerGroups.value = findSpeakerGroups(speakerId);
+                    currentSpeakerGroupIndex.value = 0;
+                    
+                    // Scroll to the first group
+                    if (speakerGroups.value.length > 0) {
+                        nextTick(() => {
+                            const firstGroup = speakerGroups.value[0];
+                            if (firstGroup && firstGroup.startElement) {
+                                firstGroup.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        });
+                    }
+                } else {
+                    speakerGroups.value = [];
+                    currentSpeakerGroupIndex.value = -1;
+                }
+            };
+            
+            const navigateToNextSpeakerGroup = () => {
+                if (speakerGroups.value.length === 0) return;
+                
+                // Don't reset the speaker groups, just update the index
+                currentSpeakerGroupIndex.value = (currentSpeakerGroupIndex.value + 1) % speakerGroups.value.length;
+                const group = speakerGroups.value[currentSpeakerGroupIndex.value];
+                if (group && group.startElement) {
+                    group.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+            
+            const navigateToPrevSpeakerGroup = () => {
+                if (speakerGroups.value.length === 0) return;
+                
+                // Don't reset the speaker groups, just update the index
+                currentSpeakerGroupIndex.value = currentSpeakerGroupIndex.value <= 0 
+                    ? speakerGroups.value.length - 1 
+                    : currentSpeakerGroupIndex.value - 1;
+                const group = speakerGroups.value[currentSpeakerGroupIndex.value];
+                if (group && group.startElement) {
+                    group.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             };
 
             // Enhanced speaker highlighting with focus/blur events for text inputs
             const focusSpeaker = (speakerId) => {
-                highlightSpeakerInTranscript(speakerId);
+                // Set this as the active speaker input
+                activeSpeakerInput.value = speakerId;
+                // Only highlight if not already highlighted (to preserve navigation state)
+                if (highlightedSpeaker.value !== speakerId) {
+                    highlightSpeakerInTranscript(speakerId);
+                }
             };
 
             const blurSpeaker = () => {
+                // Clear the active speaker input after a delay to allow clicking on suggestions
+                setTimeout(() => {
+                    activeSpeakerInput.value = null;
+                    speakerSuggestions.value = {};
+                }, 200);
                 clearSpeakerHighlight();
             };
     
@@ -2326,10 +2591,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 const recordingTagIds = getRecordingTags(recording).map(tag => tag.id);
                 return availableTags.value.filter(tag => !recordingTagIds.includes(tag.id));
             };
+            
+            // Computed property for filtered available tags in the modal
+            const filteredAvailableTagsForModal = computed(() => {
+                if (!editingRecording.value) return [];
+                const availableTags = getAvailableTagsForRecording(editingRecording.value);
+                if (!tagSearchFilter.value) return availableTags;
+                
+                const filter = tagSearchFilter.value.toLowerCase();
+                return availableTags.filter(tag => 
+                    tag.name.toLowerCase().includes(filter)
+                );
+            });
             const filterByTag = (tag) => {
-                searchQuery.value = `tag:${tag.name}`;
+                // Use advanced filter instead of text-based
+                filterTags.value = [tag.id];
+                applyAdvancedFilters();
             };
             const clearTagFilter = () => {
+                searchQuery.value = '';
+                clearAllFilters();
+            };
+            
+            // Build search query from advanced filters
+            const buildSearchQuery = () => {
+                let query = [];
+                
+                // Add text search
+                if (filterTextQuery.value.trim()) {
+                    query.push(filterTextQuery.value.trim());
+                }
+                
+                // Add tag filters
+                if (filterTags.value.length > 0) {
+                    const tagNames = filterTags.value.map(tagId => {
+                        const tag = availableTags.value.find(t => t.id === tagId);
+                        return tag ? `tag:${tag.name.replace(/\s+/g, '_')}` : '';
+                    }).filter(Boolean);
+                    query.push(...tagNames);
+                }
+                
+                // Add date filter
+                if (filterDatePreset.value) {
+                    query.push(`date:${filterDatePreset.value}`);
+                } else if (filterDateRange.value.start || filterDateRange.value.end) {
+                    // Custom date range - send as separate parameters
+                    // Will be handled differently in the backend
+                    if (filterDateRange.value.start) {
+                        query.push(`date_from:${filterDateRange.value.start}`);
+                    }
+                    if (filterDateRange.value.end) {
+                        query.push(`date_to:${filterDateRange.value.end}`);
+                    }
+                }
+                
+                return query.join(' ');
+            };
+            
+            const applyAdvancedFilters = () => {
+                searchQuery.value = buildSearchQuery();
+            };
+            
+            const clearAllFilters = () => {
+                filterTags.value = [];
+                filterDateRange.value = { start: '', end: '' };
+                filterDatePreset.value = '';
+                filterTextQuery.value = '';
                 searchQuery.value = '';
             };
 
@@ -2343,10 +2670,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 showEditTagsModal.value = false;
                 editingRecording.value = null;
                 selectedNewTagId.value = '';
+                tagSearchFilter.value = '';  // Clear the filter when closing
             };
 
-            const addTagToRecording = async () => {
-                if (!selectedNewTagId.value || !editingRecording.value) return;
+            const addTagToRecording = async (tagId = null) => {
+                // Use provided tagId or fall back to selectedNewTagId
+                const tagToAddId = tagId || selectedNewTagId.value;
+                if (!tagToAddId || !editingRecording.value) return;
                 
                 try {
                     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -2357,7 +2687,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             'Content-Type': 'application/json',
                             'X-CSRFToken': csrfToken
                         },
-                        body: JSON.stringify({ tag_id: selectedNewTagId.value })
+                        body: JSON.stringify({ tag_id: tagToAddId })
                     });
                     
                     if (!response.ok) {
@@ -2366,7 +2696,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     
                     // Update local recording data
-                    const tagToAdd = availableTags.value.find(tag => tag.id == selectedNewTagId.value);
+                    const tagToAdd = availableTags.value.find(tag => tag.id == tagToAddId);
                     if (tagToAdd) {
                         if (!editingRecording.value.tags) {
                             editingRecording.value.tags = [];
@@ -2425,7 +2755,33 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             // --- Audio Recording ---
-            const startRecording = async (mode = 'microphone') => {
+            const startRecordingWithDisclaimer = async (mode = 'microphone') => {
+                // Check if disclaimer needs to be shown
+                if (recordingDisclaimer.value && recordingDisclaimer.value.trim()) {
+                    pendingRecordingMode.value = mode;
+                    showRecordingDisclaimerModal.value = true;
+                } else {
+                    // No disclaimer configured, proceed directly
+                    await startRecordingActual(mode);
+                }
+            };
+            
+            const acceptRecordingDisclaimer = async () => {
+                showRecordingDisclaimerModal.value = false;
+                if (pendingRecordingMode.value) {
+                    await startRecordingActual(pendingRecordingMode.value);
+                    pendingRecordingMode.value = null;
+                }
+            };
+            
+            const cancelRecordingDisclaimer = () => {
+                showRecordingDisclaimerModal.value = false;
+                pendingRecordingMode.value = null;
+            };
+            
+            const startRecording = startRecordingWithDisclaimer; // Maintain backward compatibility
+            
+            const startRecordingActual = async (mode = 'microphone') => {
                 recordingMode.value = mode;
                 
                 try {
@@ -2795,10 +3151,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 let barHeight;
                 let x = 0;
                 
-                const themeColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-accent').trim();
+                // Use theme-specific colors that work with all color schemes
+                const buttonColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-button').trim();
+                const buttonHoverColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-button-hover').trim();
+                
+                // Create gradient that works in both light and dark modes
                 const gradient = canvasCtx.createLinearGradient(0, 0, 0, HEIGHT);
-                gradient.addColorStop(0, themeColor);
-                gradient.addColorStop(1, 'rgba(255, 255, 255, 0.1)');
+                if (isDarkMode.value) {
+                    // Dark mode: use button colors with transparency
+                    gradient.addColorStop(0, buttonColor);
+                    gradient.addColorStop(0.6, buttonHoverColor);
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.2)');
+                } else {
+                    // Light mode: use more saturated colors for visibility
+                    gradient.addColorStop(0, buttonColor);
+                    gradient.addColorStop(0.5, buttonHoverColor);
+                    gradient.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
+                }
 
                 for (let i = 0; i < bufferLength; i++) {
                     barHeight = dataArray[i] / 2.5;
@@ -2961,6 +3330,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const toggleEditSummary = () => {
                 editingSummary.value = !editingSummary.value;
                 if (editingSummary.value) {
+                    // Store current content in temp variable
+                    tempSummaryContent.value = selectedRecording.value.summary || '';
                     nextTick(() => {
                         initializeSummaryMarkdownEditor();
                     });
@@ -2973,6 +3344,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     summaryMarkdownEditorInstance.value = null;
                 }
                 editingSummary.value = false;
+                // Restore original content
+                if (selectedRecording.value) {
+                    selectedRecording.value.summary = tempSummaryContent.value;
+                }
             };
 
             const saveEditSummary = async () => {
@@ -2988,6 +3363,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const toggleEditNotes = () => {
                 editingNotes.value = !editingNotes.value;
                 if (editingNotes.value) {
+                    // Store current content in temp variable
+                    tempNotesContent.value = selectedRecording.value.notes || '';
                     // Initialize markdown editor when entering edit mode
                     nextTick(() => {
                         initializeMarkdownEditor();
@@ -3001,9 +3378,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     markdownEditorInstance.value = null;
                 }
                 editingNotes.value = false;
-                // Reset notes to original value if needed
+                // Restore original content
                 if (selectedRecording.value) {
-                    // You might want to store the original value before editing
+                    selectedRecording.value.notes = tempNotesContent.value;
                 }
             };
 
@@ -3018,6 +3395,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 await saveInlineEdit('notes');
             };
 
+            const clickToEditNotes = () => {
+                // Allow clicking on empty notes area to start editing
+                if (!editingNotes.value && (!selectedRecording.value?.notes || selectedRecording.value.notes.trim() === '')) {
+                    toggleEditNotes();
+                }
+            };
+
+            const clickToEditSummary = () => {
+                // Allow clicking on empty summary area to start editing  
+                if (!editingSummary.value && (!selectedRecording.value?.summary || selectedRecording.value.summary.trim() === '')) {
+                    toggleEditSummary();
+                }
+            };
+
+            const autoSaveNotes = async () => {
+                if (markdownEditorInstance.value && editingNotes.value) {
+                    // Just save the content to the model, don't exit edit mode
+                    selectedRecording.value.notes = markdownEditorInstance.value.value();
+                    // Silently save to backend without changing UI state
+                    try {
+                        const payload = {
+                            id: selectedRecording.value.id,
+                            title: selectedRecording.value.title,
+                            participants: selectedRecording.value.participants,
+                            notes: selectedRecording.value.notes,
+                            summary: selectedRecording.value.summary,
+                            meeting_date: selectedRecording.value.meeting_date
+                        };
+                        const response = await fetch('/save', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.recording) {
+                            // Update the HTML rendered versions if they exist
+                            if (data.recording.notes_html) {
+                                selectedRecording.value.notes_html = data.recording.notes_html;
+                            }
+                        } else {
+                            console.error('Failed to auto-save notes');
+                        }
+                    } catch (error) {
+                        console.error('Error auto-saving notes:', error);
+                    }
+                }
+            };
+
+            const autoSaveSummary = async () => {
+                if (summaryMarkdownEditorInstance.value && editingSummary.value) {
+                    // Just save the content to the model, don't exit edit mode
+                    selectedRecording.value.summary = summaryMarkdownEditorInstance.value.value();
+                    // Silently save to backend without changing UI state
+                    try {
+                        const payload = {
+                            id: selectedRecording.value.id,
+                            title: selectedRecording.value.title,
+                            participants: selectedRecording.value.participants,
+                            notes: selectedRecording.value.notes,
+                            summary: selectedRecording.value.summary,
+                            meeting_date: selectedRecording.value.meeting_date
+                        };
+                        const response = await fetch('/save', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await response.json();
+                        if (response.ok && data.recording) {
+                            // Update the HTML rendered versions if they exist
+                            if (data.recording.summary_html) {
+                                selectedRecording.value.summary_html = data.recording.summary_html;
+                            }
+                        } else {
+                            console.error('Failed to auto-save summary');
+                        }
+                    } catch (error) {
+                        console.error('Error auto-saving summary:', error);
+                    }
+                }
+            };
+
             const initializeMarkdownEditor = () => {
                 if (!notesMarkdownEditor.value) return;
                 
@@ -3027,6 +3490,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         spellChecker: false,
                         autofocus: true,
                         placeholder: "Enter notes in Markdown format...",
+                        initialValue: selectedRecording.value?.notes || '',
                         status: false,
                         toolbar: [
                             "bold", "italic", "heading", "|",
@@ -3037,6 +3501,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         ],
                         previewClass: ["editor-preview", "notes-preview"],
                         theme: isDarkMode.value ? "dark" : "light"
+                    });
+                    
+                    // Add auto-save functionality
+                    markdownEditorInstance.value.codemirror.on('change', () => {
+                        if (autoSaveTimer.value) {
+                            clearTimeout(autoSaveTimer.value);
+                        }
+                        autoSaveTimer.value = setTimeout(() => {
+                            autoSaveNotes();
+                        }, autoSaveDelay);
                     });
                 } catch (error) {
                     console.error('Failed to initialize markdown editor:', error);
@@ -3421,6 +3895,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('playerVolume', newVolume);
             };
 
+            // --- i18n Helper Functions ---
+            const t = (key, params = {}) => {
+                return window.i18n ? window.i18n.t(key, params) : key;
+            };
+            
+            const tc = (key, count, params = {}) => {
+                return window.i18n ? window.i18n.tc(key, count, params) : key;
+            };
+            
+            const changeLanguage = async (langCode) => {
+                if (window.i18n) {
+                    await window.i18n.setLocale(langCode);
+                    currentLanguage.value = langCode;
+                    const lang = availableLanguages.value.find(l => l.code === langCode);
+                    currentLanguageName.value = lang ? lang.nativeName : 'English';
+                    showLanguageMenu.value = false;
+                    isUserMenuOpen.value = false;
+                    
+                    // Save preference to backend
+                    try {
+                        await fetch('/api/user/preferences', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken.value
+                            },
+                            body: JSON.stringify({ language: langCode })
+                        });
+                    } catch (error) {
+                        console.error('Failed to save language preference:', error);
+                    }
+                }
+            };
+            
             // --- Toast Notifications ---
             const showToast = (message, icon = 'fa-check-circle', duration = 2000) => {
                 const toastContainer = document.getElementById('toastContainer');
@@ -3736,31 +4244,60 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
 
-            const openShareModal = (recording) => {
+            const openShareModal = async (recording) => {
                 recordingToShare.value = recording;
                 shareOptions.share_summary = true;
                 shareOptions.share_notes = true;
                 generatedShareLink.value = '';
+                existingShareDetected.value = false;
                 showShareModal.value = true;
+                
+                // Check for existing share
+                try {
+                    const response = await fetch(`/api/recording/${recording.id}/share`, {
+                        method: 'GET'
+                    });
+                    const data = await response.json();
+                    if (response.ok && data.exists) {
+                        generatedShareLink.value = data.share_url;
+                        existingShareDetected.value = true;
+                        shareOptions.share_summary = data.share.share_summary;
+                        shareOptions.share_notes = data.share.share_notes;
+                    }
+                } catch (error) {
+                    console.error('Error checking for existing share:', error);
+                }
             };
 
             const closeShareModal = () => {
                 showShareModal.value = false;
                 recordingToShare.value = null;
+                existingShareDetected.value = false;
             };
 
-            const createShare = async () => {
+            const createShare = async (forceNew = false) => {
                 if (!recordingToShare.value) return;
                 try {
                     const response = await fetch(`/api/recording/${recordingToShare.value.id}/share`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(shareOptions)
+                        body: JSON.stringify({
+                            ...shareOptions,
+                            force_new: forceNew
+                        })
                     });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'Failed to create share link');
+                    
                     generatedShareLink.value = data.share_url;
-                    showToast('Share link created successfully!', 'fa-check-circle');
+                    existingShareDetected.value = data.existing && !forceNew;
+                    
+                    if (data.existing && !forceNew) {
+                        // Show that we're using an existing share
+                        showToast('Using existing share link', 'fa-link');
+                    } else {
+                        showToast('Share link created successfully!', 'fa-check-circle');
+                    }
                 } catch (error) {
                     setGlobalError(`Failed to create share link: ${error.message}`);
                 }
@@ -3811,14 +4348,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            const deleteShare = async (shareId) => {
-                if (!confirm('Are you sure you want to delete this share? This will revoke access to the public link.')) return;
+            const confirmDeleteShare = (share) => {
+                shareToDelete.value = share;
+                showShareDeleteModal.value = true;
+            };
+
+            const cancelDeleteShare = () => {
+                shareToDelete.value = null;
+                showShareDeleteModal.value = false;
+            };
+
+            const deleteShare = async () => {
+                if (!shareToDelete.value) return;
+                const shareId = shareToDelete.value.id;
                 try {
                     const response = await fetch(`/api/share/${shareId}`, { method: 'DELETE' });
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'Failed to delete share');
                     userShares.value = userShares.value.filter(s => s.id !== shareId);
-                    showToast('Share deleted successfully.', 'fa-check-circle');
+                    showToast('Share link deleted successfully.', 'fa-check-circle');
+                    showShareDeleteModal.value = false;
+                    shareToDelete.value = null;
                 } catch (error) {
                     setGlobalError(`Failed to delete share: ${error.message}`);
                 }
@@ -3853,8 +4403,106 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }, { deep: true });
 
+            // Watch for tab changes to save content properly
+            watch(selectedTab, (newTab, oldTab) => {
+                // Save content when switching away from notes tab but keep editor open
+                if (oldTab === 'notes' && editingNotes.value && markdownEditorInstance.value) {
+                    // Save the current content from the editor
+                    const currentContent = markdownEditorInstance.value.value();
+                    selectedRecording.value.notes = currentContent;
+                    // Call auto-save instead of saveInlineEdit to keep editor open
+                    autoSaveNotes();
+                    // Store that we need to recreate the editor when coming back
+                    tempNotesContent.value = currentContent;
+                }
+                // Save content when switching away from summary tab but keep editor open
+                if (oldTab === 'summary' && editingSummary.value && summaryMarkdownEditorInstance.value) {
+                    // Save the current content from the editor
+                    const currentContent = summaryMarkdownEditorInstance.value.value();
+                    selectedRecording.value.summary = currentContent;
+                    // Call auto-save instead of saveInlineEdit to keep editor open
+                    autoSaveSummary();
+                    // Store that we need to recreate the editor when coming back
+                    tempSummaryContent.value = currentContent;
+                }
+                
+                // Re-initialize editors when switching back to tabs
+                if (newTab === 'notes' && editingNotes.value) {
+                    // Destroy old instance if exists
+                    if (markdownEditorInstance.value) {
+                        markdownEditorInstance.value.toTextArea();
+                        markdownEditorInstance.value = null;
+                    }
+                    // Re-initialize the editor in next tick
+                    nextTick(() => {
+                        initializeMarkdownEditor();
+                    });
+                }
+                if (newTab === 'summary' && editingSummary.value) {
+                    // Destroy old instance if exists
+                    if (summaryMarkdownEditorInstance.value) {
+                        summaryMarkdownEditorInstance.value.toTextArea();
+                        summaryMarkdownEditorInstance.value = null;
+                    }
+                    // Re-initialize the editor in next tick
+                    nextTick(() => {
+                        initializeSummaryMarkdownEditor();
+                    });
+                }
+            });
+            
+            // Watch for mobile tab changes similarly
+            watch(mobileTab, (newTab, oldTab) => {
+                // Save content when switching away from notes tab but keep editor open
+                if (oldTab === 'notes' && editingNotes.value && markdownEditorInstance.value) {
+                    const currentContent = markdownEditorInstance.value.value();
+                    selectedRecording.value.notes = currentContent;
+                    autoSaveNotes(); // Use auto-save instead
+                    tempNotesContent.value = currentContent;
+                }
+                // Save content when switching away from summary tab but keep editor open
+                if (oldTab === 'summary' && editingSummary.value && summaryMarkdownEditorInstance.value) {
+                    const currentContent = summaryMarkdownEditorInstance.value.value();
+                    selectedRecording.value.summary = currentContent;
+                    autoSaveSummary(); // Use auto-save instead
+                    tempSummaryContent.value = currentContent;
+                }
+                
+                // Re-initialize editors when switching back to tabs on mobile
+                if (newTab === 'notes' && editingNotes.value) {
+                    if (markdownEditorInstance.value) {
+                        markdownEditorInstance.value.toTextArea();
+                        markdownEditorInstance.value = null;
+                    }
+                    nextTick(() => {
+                        initializeMarkdownEditor();
+                    });
+                }
+                if (newTab === 'summary' && editingSummary.value) {
+                    if (summaryMarkdownEditorInstance.value) {
+                        summaryMarkdownEditorInstance.value.toTextArea();
+                        summaryMarkdownEditorInstance.value = null;
+                    }
+                    nextTick(() => {
+                        initializeSummaryMarkdownEditor();
+                    });
+                }
+            });
+
             watch(selectedRecording, (newVal, oldVal) => {
                 if (newVal?.id !== oldVal?.id) {
+                    // Save any pending edits before switching recordings
+                    if (editingNotes.value && markdownEditorInstance.value && oldVal?.id) {
+                        selectedRecording.value = oldVal; // Temporarily restore old recording
+                        saveEditNotes(); // This will save and cleanup
+                        selectedRecording.value = newVal; // Switch back to new recording
+                    }
+                    if (editingSummary.value && summaryMarkdownEditorInstance.value && oldVal?.id) {
+                        selectedRecording.value = oldVal; // Temporarily restore old recording
+                        saveEditSummary(); // This will save and cleanup
+                        selectedRecording.value = newVal; // Switch back to new recording
+                    }
+                    
                     chatMessages.value = [];
                     showChat.value = false;
                     selectedTab.value = 'summary';
@@ -3900,6 +4548,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Initialize recording markdown editor when switching to recording view
                     nextTick(() => {
                         initializeRecordingMarkdownEditor();
+                        // Fix audio duration for recorded files
+                        if (audioBlobURL.value) {
+                            const recordingAudio = document.querySelector('audio[src*="blob:"]');
+                            if (recordingAudio) {
+                                const fixDuration = () => {
+                                    if (!isFinite(recordingAudio.duration) || recordingAudio.duration === 0) {
+                                        const originalTime = recordingAudio.currentTime;
+                                        recordingAudio.currentTime = 1e101;
+                                        recordingAudio.addEventListener('timeupdate', function resetTime() {
+                                            recordingAudio.currentTime = originalTime;
+                                            recordingAudio.removeEventListener('timeupdate', resetTime);
+                                        }, { once: true });
+                                    }
+                                };
+                                recordingAudio.addEventListener('loadedmetadata', fixDuration, { once: true });
+                                recordingAudio.addEventListener('canplay', fixDuration, { once: true });
+                                if (recordingAudio.readyState >= 1) {
+                                    setTimeout(fixDuration, 100);
+                                }
+                            }
+                        }
                     });
                 } else {
                     // Clean up recording markdown editor when leaving recording view
@@ -3907,6 +4576,36 @@ document.addEventListener('DOMContentLoaded', () => {
                         recordingMarkdownEditorInstance.value.toTextArea();
                         recordingMarkdownEditorInstance.value = null;
                     }
+                }
+            });
+
+            watch(audioBlobURL, (newURL) => {
+                if (newURL) {
+                    nextTick(() => {
+                        const recordingAudio = document.querySelector('audio[src*="blob:"]');
+                        if (recordingAudio) {
+                            const fixDuration = () => {
+                                if (!isFinite(recordingAudio.duration) || recordingAudio.duration === 0) {
+                                    const originalTime = recordingAudio.currentTime;
+                                    recordingAudio.currentTime = 1e101;
+                                    recordingAudio.addEventListener('timeupdate', function resetTime() {
+                                        recordingAudio.currentTime = originalTime;
+                                        recordingAudio.removeEventListener('timeupdate', resetTime);
+                                    }, { once: true });
+                                }
+                            };
+                            
+                            // Multiple events to ensure we catch the duration
+                            recordingAudio.addEventListener('loadedmetadata', fixDuration, { once: true });
+                            recordingAudio.addEventListener('loadeddata', fixDuration, { once: true });
+                            recordingAudio.addEventListener('canplay', fixDuration, { once: true });
+                            
+                            // Also try after a delay
+                            if (recordingAudio.readyState >= 1) {
+                                setTimeout(fixDuration, 100);
+                            }
+                        }
+                    });
                 }
             });
 
@@ -3923,6 +4622,27 @@ document.addEventListener('DOMContentLoaded', () => {
             watch(searchQuery, (newQuery) => {
                 debouncedSearch(newQuery);
             });
+            
+            // Auto-apply filters when they change (except text query which is debounced)
+            watch(filterTags, () => {
+                applyAdvancedFilters();
+            }, { deep: true });
+            
+            watch(filterDatePreset, () => {
+                applyAdvancedFilters();
+            });
+            
+            watch(filterDateRange, () => {
+                applyAdvancedFilters();
+            }, { deep: true });
+            
+            // Debounce text query changes
+            watch(filterTextQuery, (newValue) => {
+                clearTimeout(searchDebounceTimer.value);
+                searchDebounceTimer.value = setTimeout(() => {
+                    applyAdvancedFilters();
+                }, 300);
+            });
 
             // --- Configuration Loading ---
             const loadConfiguration = async () => {
@@ -3935,6 +4655,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         chunkingMode.value = config.chunking_mode || 'size';
                         chunkingLimit.value = config.chunking_limit || 20;
                         chunkingLimitDisplay.value = config.chunking_limit_display || '20MB';
+                        recordingDisclaimer.value = config.recording_disclaimer || '';
                         console.log(`Loaded configuration: max size ${maxFileSizeMB.value}MB, chunking ${chunkingEnabled.value ? 'enabled' : 'disabled'} (${chunkingLimitDisplay.value})`);
                     } else {
                         console.warn('Failed to load configuration, using default values');
@@ -3954,6 +4675,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         spellChecker: false,
                         autofocus: true,
                         placeholder: "Enter summary in Markdown format...",
+                        initialValue: selectedRecording.value?.summary || '',
                         status: false,
                         toolbar: [
                             "bold", "italic", "heading", "|",
@@ -3964,6 +4686,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         ],
                         previewClass: ["editor-preview", "notes-preview"],
                         theme: isDarkMode.value ? "dark" : "light"
+                    });
+                    
+                    // Add auto-save functionality
+                    summaryMarkdownEditorInstance.value.codemirror.on('change', () => {
+                        if (autoSaveTimer.value) {
+                            clearTimeout(autoSaveTimer.value);
+                        }
+                        autoSaveTimer.value = setTimeout(() => {
+                            autoSaveSummary();
+                        }, autoSaveDelay);
                     });
                 } catch (error) {
                     console.error('Failed to initialize summary markdown editor:', error);
@@ -4138,6 +4870,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 detectBrowser();
                 
+                // Check if language was changed in account settings
+                if (localStorage.getItem('ui_language_changed') === 'true') {
+                    localStorage.removeItem('ui_language_changed');
+                    // Force reload to apply new language
+                    window.location.reload();
+                    return;
+                }
+                
+                // i18n is already initialized before Vue app creation
+                if (window.i18n) {
+                    currentLanguage.value = window.i18n.getLocale();
+                    availableLanguages.value = window.i18n.getAvailableLocales();
+                    const lang = availableLanguages.value.find(l => l.code === currentLanguage.value);
+                    currentLanguageName.value = lang ? lang.nativeName : 'English';
+                    
+                    // Listen for locale changes
+                    window.addEventListener('localeChanged', (event) => {
+                        currentLanguage.value = event.detail.locale;
+                        const lang = availableLanguages.value.find(l => l.code === currentLanguage.value);
+                        currentLanguageName.value = lang ? lang.nativeName : 'English';
+                    });
+                }
+                
                 loadRecordings();
                 loadTags();
                 initializeDarkMode();
@@ -4194,16 +4949,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Close user menu if clicking outside
                     if (isUserMenuOpen.value) {
                         // Check if we clicked within the user menu area (button or dropdown)
-                        const userMenuButton = e.target.closest('button[class*="flex items-center gap-2"]');
+                        const userMenuButton = e.target.closest('button[class*="flex items-center gap"]');
                         const userMenuDropdown = e.target.closest('div[class*="absolute right-0"]');
-                        const userMenuContainer = e.target.closest('.relative');
                         
-                        // Check if the click was on the user menu button specifically
+                        // Check if the click was on the user menu button specifically  
                         const isUserMenuButtonClick = userMenuButton && userMenuButton.querySelector('i.fa-user-circle');
                         
                         // If we didn't click on the user menu button or dropdown, close it
-                        if (!isUserMenuButtonClick && !userMenuDropdown && !userMenuContainer) {
+                        if (!isUserMenuButtonClick && !userMenuDropdown) {
                             isUserMenuOpen.value = false;
+                        }
+                    }
+                    
+                    // Close speaker suggestions if clicking outside in the modal
+                    if (showSpeakerModal.value) {
+                        // If not clicking on an input field or suggestion dropdown
+                        const clickedOnInput = e.target.closest('input[type="text"]');
+                        const clickedOnSuggestion = e.target.closest('[class*="absolute z-10"]');
+                        
+                        if (!clickedOnInput && !clickedOnSuggestion) {
+                            // Close all suggestion dropdowns
+                            Object.keys(speakerSuggestions.value).forEach(speakerId => {
+                                speakerSuggestions.value[speakerId] = [];
+                            });
                         }
                     }
                 };
@@ -4214,6 +4982,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Core State
                 currentView, dragover, recordings, selectedRecording, selectedTab, searchQuery,
                 isLoadingRecordings, globalError, maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay, sortBy,
+                showAdvancedFilters, filterTags, filterDateRange, filterDatePreset, filterTextQuery,
                 
                 // Pagination State
                 currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage, isLoadingMore,
@@ -4224,6 +4993,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 showColorSchemeModal, windowWidth, isMobileScreen,
                 mobileTab, isMetadataExpanded,
                 
+                // i18n State
+                currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
+                
                 // Upload State
                 uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
                 isProcessingActive, progressPopupMinimized, progressPopupClosed,
@@ -4231,15 +5003,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Audio Recording
                 isRecording, canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError, audioBlobURL, recordingTime, recordingNotes, visualizer, micVisualizer, systemVisualizer, recordingMode,
+                recordingDisclaimer, showRecordingDisclaimerModal, acceptRecordingDisclaimer, cancelRecordingDisclaimer,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
                 asrLanguage, asrMinSpeakers, asrMaxSpeakers,
-                availableTags, selectedTagIds, selectedTags, onTagSelected, addTagToSelection, removeTagFromSelection,
+                availableTags, selectedTagIds, selectedTags, uploadTagSearchFilter, filteredAvailableTagsForUpload, onTagSelected, addTagToSelection, removeTagFromSelection,
                 showSystemAudioHelp,
                 
                 // Modal State
                 showEditModal, showDeleteModal, showResetModal, editingRecording, recordingToDelete,
-                showEditTagsModal, selectedNewTagId, editRecordingTags, closeEditTagsModal, addTagToRecording, removeTagFromRecording,
+                showEditTagsModal, selectedNewTagId, tagSearchFilter, filteredAvailableTagsForModal, editRecordingTags, closeEditTagsModal, addTagToRecording, removeTagFromRecording,
                 getRecordingTags, getAvailableTagsForRecording, filterByTag, clearTagFilter,
+                applyAdvancedFilters, clearAllFilters,
                 showTextEditorModal, showAsrEditorModal, editingTranscriptionContent, editingSegments, availableSpeakers,
                 
                 // Inline Editing
@@ -4264,13 +5038,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 useAsrEndpoint, currentUserName,
                 
                 // Computed
-                filteredRecordings, groupedRecordings, activeRecordingMetadata,
+                filteredRecordings, groupedRecordings, activeRecordingMetadata, datePresetOptions, languageOptions,
                 
                 // Color Schemes
                 colorSchemes,
                 
                 // Methods
                 setGlobalError, formatFileSize, formatDisplayDate, formatStatus, getStatusClass, formatTime,
+                t, tc, changeLanguage,
                 toggleDarkMode, applyColorScheme, initializeColorScheme, openColorSchemeModal, 
                 closeColorSchemeModal, selectColorScheme, resetColorScheme,
                 toggleSidebar, switchToUploadView, selectRecording,
@@ -4279,7 +5054,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadRecordings, loadMoreRecordings, performSearch, debouncedSearch, saveMetadata, editRecording, cancelEdit, saveEdit,
                 confirmDelete, cancelDelete, deleteRecording,
                 toggleEditParticipants, toggleEditMeetingDate, toggleEditSummary, cancelEditSummary, saveEditSummary, toggleEditNotes, 
-                cancelEditNotes, saveEditNotes, initializeMarkdownEditor, saveInlineEdit,
+                cancelEditNotes, saveEditNotes, initializeMarkdownEditor, saveInlineEdit, clickToEditNotes, clickToEditSummary,
+                autoSaveNotes, autoSaveSummary,
                 sendChatMessage, isChatScrolledToBottom, scrollChatToBottom, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
                 downloadSummary, downloadNotes, downloadChat,
@@ -4317,12 +5093,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 recordingToShare,
                 shareOptions,
                 generatedShareLink,
+                existingShareDetected,
                 userShares,
                 isLoadingShares,
                 showSharesListModal,
+                shareToDelete,
+                showShareDeleteModal,
+                confirmDeleteShare,
+                cancelDeleteShare,
                 speakerMap,
+                speakerDisplayMap,
+                modalSpeakers,
                 regenerateSummaryAfterSpeakerUpdate,
                 identifiedSpeakers,
+                identifiedSpeakersInOrder,
                 hasSpeakerNames,
                 openSpeakerModal,
                 closeSpeakerModal,
@@ -4333,10 +5117,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 focusSpeaker,
                 blurSpeaker,
                 clearSpeakerHighlight,
+                currentSpeakerGroupIndex,
+                speakerGroups,
+                navigateToNextSpeakerGroup,
+                navigateToPrevSpeakerGroup,
                 speakerSuggestions,
                 loadingSuggestions,
+                activeSpeakerInput,
                 searchSpeakers,
                 selectSpeakerSuggestion,
+                closeSpeakerSuggestionsOnClick,
                 autoIdentifySpeakers,
                 isAutoIdentifying,
                 formatDuration,

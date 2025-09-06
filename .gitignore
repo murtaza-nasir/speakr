@@ -1,0 +1,42 @@
+venv/
+__pycache__/
+instance/
+uploads/
+*.db
+*.db-journal
+__pycache__/
+*.pyc
+*.log
+.env
+.migrate/
+project_files.md
+*.md
+notes.md
+docker-compose.yml
+changes.txt
+
+!README.md
+!DEPLOYMENT_GUIDE.md
+!docs/**/*.md
+docker-compose.dev.yml
+.clinerules
+temp/
+.claude/
+plan/
+
+# Offline vendor dependencies (downloaded during Docker build)
+static/vendor/
+
+# Docs build artifacts
+docs/_site/
+docs/.jekyll-cache/
+docs/README.md
+site/
+.cache/
+docs/overrides/.cache/
+
+# Documentation deployment files (examples only)
+docs/.github-deploy.yml
+
+# Documentation conversion scripts (one-time use)
+scripts/convert_to_mkdocs.py

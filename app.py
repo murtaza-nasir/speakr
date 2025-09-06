@@ -99,10 +99,11 @@ app_logger.setLevel(log_level)
 app_logger.addHandler(handler)
 
 # --- Rate Limiting Setup (will be configured after app creation) ---
+# TEMPORARILY INCREASED FOR TESTING - REVERT FOR PRODUCTION!
 limiter = Limiter(
     get_remote_address,
     app=None,  # Defer initialization
-    default_limits=["200 per day", "50 per hour"]
+    default_limits=["5000 per day", "1000 per hour"]  # Increased from 200/day, 50/hour for testing
 )
 
 def auto_close_json(json_string):
@@ -942,6 +943,7 @@ class User(db.Model, UserMixin):
     recordings = db.relationship('Recording', backref='owner', lazy=True)
     transcription_language = db.Column(db.String(10), nullable=True) # For ISO 639-1 codes
     output_language = db.Column(db.String(50), nullable=True) # For full language names like "Spanish"
+    ui_language = db.Column(db.String(10), nullable=True, default='en') # For UI language preference (en, es, fr, zh)
     summary_prompt = db.Column(db.Text, nullable=True)
     name = db.Column(db.String(100), nullable=True)
     job_title = db.Column(db.String(100), nullable=True)
@@ -1151,7 +1153,7 @@ class Recording(db.Model):
             'created_at': local_datetime_filter(self.created_at),
             'completed_at': local_datetime_filter(self.completed_at),
             'processing_time_seconds': self.processing_time_seconds,
-            'meeting_date': self.meeting_date.isoformat() if self.meeting_date else None, # <-- ADDED: Include meeting_date
+            'meeting_date': f"{self.meeting_date.isoformat()}T00:00:00" if self.meeting_date else None, # <-- ADDED: Include meeting_date with time component
             'file_size': self.file_size,
             'original_filename': self.original_filename, # <-- ADDED: Include original filename
             'user_id': self.user_id,
@@ -1252,11 +1254,38 @@ def view_shared_recording(public_id):
         'transcription': recording.transcription,
         'summary': md_to_html(recording.summary) if share.share_summary else None,
         'notes': md_to_html(recording.notes) if share.share_notes else None,
-        'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
+        'meeting_date': f"{recording.meeting_date.isoformat()}T00:00:00" if recording.meeting_date else None,
         'mime_type': recording.mime_type
     }
     
     return render_template('share.html', recording=recording_data)
+
+@app.route('/api/recording/<int:recording_id>/share', methods=['GET'])
+@login_required
+def get_existing_share(recording_id):
+    """Check if a share already exists for this recording."""
+    recording = db.session.get(Recording, recording_id)
+    if not recording or recording.user_id != current_user.id:
+        return jsonify({'error': 'Recording not found or you do not have permission to view it.'}), 404
+    
+    existing_share = Share.query.filter_by(
+        recording_id=recording.id,
+        user_id=current_user.id
+    ).order_by(Share.created_at.desc()).first()
+    
+    if existing_share:
+        share_url = url_for('view_shared_recording', public_id=existing_share.public_id, _external=True)
+        return jsonify({
+            'success': True,
+            'exists': True,
+            'share_url': share_url,
+            'share': existing_share.to_dict()
+        }), 200
+    else:
+        return jsonify({
+            'success': True,
+            'exists': False
+        }), 200
 
 @app.route('/api/recording/<int:recording_id>/share', methods=['POST'])
 @login_required
@@ -1271,7 +1300,33 @@ def create_share(recording_id):
     data = request.json
     share_summary = data.get('share_summary', True)
     share_notes = data.get('share_notes', True)
+    force_new = data.get('force_new', False)
     
+    # Check if ANY share already exists for this recording by this user
+    # Get the most recent one if there are multiple
+    existing_share = Share.query.filter_by(
+        recording_id=recording.id,
+        user_id=current_user.id
+    ).order_by(Share.created_at.desc()).first()
+    
+    if existing_share and not force_new:
+        # Update the share permissions if they've changed
+        if existing_share.share_summary != share_summary or existing_share.share_notes != share_notes:
+            existing_share.share_summary = share_summary
+            existing_share.share_notes = share_notes
+            db.session.commit()
+        
+        # Return existing share info
+        share_url = url_for('view_shared_recording', public_id=existing_share.public_id, _external=True)
+        return jsonify({
+            'success': True, 
+            'share_url': share_url, 
+            'share': existing_share.to_dict(),
+            'existing': True,
+            'message': 'Using existing share link for this recording'
+        }), 200
+    
+    # Create new share (either no existing share or force_new is True)
     share = Share(
         recording_id=recording.id,
         user_id=current_user.id,
@@ -1283,7 +1338,12 @@ def create_share(recording_id):
     
     share_url = url_for('view_shared_recording', public_id=share.public_id, _external=True)
     
-    return jsonify({'success': True, 'share_url': share_url, 'share': share.to_dict()}), 201
+    return jsonify({
+        'success': True, 
+        'share_url': share_url, 
+        'share': share.to_dict(),
+        'existing': False
+    }), 201
 
 @app.route('/api/shares', methods=['GET'])
 @login_required
@@ -1312,6 +1372,24 @@ def delete_share(share_id):
     db.session.delete(share)
     db.session.commit()
     return jsonify({'success': True})
+
+# --- User Preferences API Endpoint ---
+@app.route('/api/user/preferences', methods=['POST'])
+@login_required
+def save_user_preferences():
+    """Save user preferences including UI language"""
+    data = request.json
+    
+    if 'language' in data:
+        current_user.ui_language = data['language']
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Preferences saved successfully',
+        'ui_language': current_user.ui_language
+    })
 
 # --- System Info API Endpoint ---
 @app.route('/api/system/info', methods=['GET'])
@@ -1528,6 +1606,8 @@ with app.app_context():
             app.logger.info("Added company column to user table")
         if add_column_if_not_exists(engine, 'user', 'diarize', 'BOOLEAN'):
             app.logger.info("Added diarize column to user table")
+        if add_column_if_not_exists(engine, 'user', 'ui_language', 'VARCHAR(10) DEFAULT "en"'):
+            app.logger.info("Added ui_language column to user table")
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
@@ -1610,6 +1690,15 @@ with app.app_context():
             )
             app.logger.info("Initialized admin_default_summary_prompt setting")
         
+        if not SystemSetting.query.filter_by(key='recording_disclaimer').first():
+            SystemSetting.set_setting(
+                key='recording_disclaimer',
+                value='',
+                description='Legal disclaimer shown to users before recording starts. Supports Markdown formatting. Leave empty to disable.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized recording_disclaimer setting")
+        
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
         if ENABLE_INQUIRE_MODE:
@@ -1674,7 +1763,10 @@ with app.app_context():
 # --- API client setup for OpenRouter ---
 # Use environment variables from .env
 TEXT_MODEL_API_KEY = os.environ.get("TEXT_MODEL_API_KEY")
+# Strip any inline comments from URLs (users might add "# comment" in .env files)
 TEXT_MODEL_BASE_URL = os.environ.get("TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+if TEXT_MODEL_BASE_URL:
+    TEXT_MODEL_BASE_URL = TEXT_MODEL_BASE_URL.split('#')[0].strip()
 TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo") # Default if not set
 
 # Set up HTTP client with custom headers for OpenRouter app identification
@@ -1745,13 +1837,20 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         raise
 
 # Store details for the transcription client (potentially different)
-transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "cant-be-empty")
-transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "https://openrouter.ai/api/v1")
+transcription_api_key = os.environ.get("TRANSCRIPTION_API_KEY", "")
+# Strip any inline comments from URLs (users might add "# comment" in .env files)
+transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "")
+if transcription_base_url:
+    transcription_base_url = transcription_base_url.split('#')[0].strip()
 
 
 # ASR endpoint configuration
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
+# Strip any inline comments from ASR_BASE_URL (users might add "# comment" in .env files)
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL')
+if ASR_BASE_URL:
+    # Remove everything after '#' if it exists (inline comment)
+    ASR_BASE_URL = ASR_BASE_URL.split('#')[0].strip()
 
 # When using ASR endpoint, automatically enable diarization and set sensible defaults
 # Users can still override these if needed, but they default to the expected ASR behavior
@@ -1802,9 +1901,24 @@ version = get_version()
 
 app.logger.info(f"=== Speakr {version} Starting Up ===")
 app.logger.info(f"Using LLM endpoint: {TEXT_MODEL_BASE_URL} with model: {TEXT_MODEL_NAME}")
-app.logger.info(f"Using Whisper API at: {transcription_base_url}")
+
+# Validate transcription service configuration
 if USE_ASR_ENDPOINT:
-    app.logger.info(f"ASR endpoint is enabled at: {ASR_BASE_URL}")
+    if not ASR_BASE_URL:
+        app.logger.error("ERROR: ASR endpoint is enabled but ASR_BASE_URL is not configured!")
+        app.logger.error("Please set ASR_BASE_URL in your .env file or disable USE_ASR_ENDPOINT")
+        sys.exit(1)
+    app.logger.info(f"Using ASR endpoint for transcription at: {ASR_BASE_URL}")
+else:
+    # Check if Whisper API is configured
+    if not transcription_base_url or not transcription_api_key:
+        app.logger.error("ERROR: No transcription service configured!")
+        app.logger.error("You must configure either:")
+        app.logger.error("  1. ASR endpoint: Set USE_ASR_ENDPOINT=true and ASR_BASE_URL=<your-asr-url>")
+        app.logger.error("  2. Whisper API: Set TRANSCRIPTION_BASE_URL and TRANSCRIPTION_API_KEY")
+        app.logger.error("Please check your .env file configuration.")
+        sys.exit(1)
+    app.logger.info(f"Using Whisper API at: {transcription_base_url}")
 
 # --- Background Transcription & Summarization Task ---
 def format_api_error_message(error_str):
@@ -2025,40 +2139,33 @@ def generate_summary_only_task(app_context, recording_id):
         else:
             transcript_text = formatted_transcription[:transcript_limit]
         
-        language_directive = f"Please provide the summary in {user_output_language}." if user_output_language else ""
+        language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}. The entire response must be in {user_output_language}." if user_output_language else ""
         
-        # Build system message with summarization instructions
-        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
-        if user_output_language:
-            system_message_content += f" Ensure your response is in {user_output_language}."
-        
-        # Add summarization instructions to system message
+        # Determine which summarization instructions to use
         # Priority order: tag custom prompt > user summary prompt > admin default prompt > hardcoded fallback
+        summarization_instructions = ""
         if tag_custom_prompt:
             app.logger.info(f"Using tag custom prompt for recording {recording_id}")
-            system_message_content += f"\n\nSummarization Instructions:\n{tag_custom_prompt}"
+            summarization_instructions = tag_custom_prompt
         elif user_summary_prompt:
             app.logger.info(f"Using user custom prompt for recording {recording_id}")
-            system_message_content += f"\n\nSummarization Instructions:\n{user_summary_prompt}"
+            summarization_instructions = user_summary_prompt
         else:
             # Get admin default prompt from system settings
             admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)
             if admin_default_prompt:
                 app.logger.info(f"Using admin default prompt for recording {recording_id}")
-                system_message_content += f"\n\nSummarization Instructions:\n{admin_default_prompt}"
+                summarization_instructions = admin_default_prompt
             else:
                 # Fallback to hardcoded default if admin hasn't set one
-                default_instructions = """Generate a comprehensive summary that includes the following sections:
+                summarization_instructions = """Generate a comprehensive summary that includes the following sections:
 - **Key Issues Discussed**: A bulleted list of the main topics
 - **Key Decisions Made**: A bulleted list of any decisions reached
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
                 app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
-                system_message_content += f"\n\nSummarization Instructions:\n{default_instructions}"
-        
-        # Build user prompt with context information
-        current_date = datetime.now().strftime("%B %d, %Y")
         
         # Build context information
+        current_date = datetime.now().strftime("%B %d, %Y")
         context_parts = []
         context_parts.append(f"Current date: {current_date}")
         
@@ -2080,17 +2187,24 @@ def generate_summary_only_task(app_context, recording_id):
             if user_context_parts:
                 context_parts.append(f"Information about the user: {', '.join(user_context_parts)}")
         
-        # Combine context and transcript
         context_section = "Context:\n" + "\n".join(f"- {part}" for part in context_parts)
         
-        prompt_text = f"""{context_section}
-
-Transcription:
+        # Build SYSTEM message: Initial instructions + Context + Language
+        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
+        system_message_content += f"\n\n{context_section}"
+        if user_output_language:
+            system_message_content += f"\n\nLanguage Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory."
+        
+        # Build USER message: Transcription + Summarization Instructions + Language Directive
+        prompt_text = f"""Transcription:
 \"\"\"
 {transcript_text}
 \"\"\"
 
-Please analyze the above transcription and generate a summary following the provided instructions."""
+Summarization Instructions:
+{summarization_instructions}
+
+{language_directive}"""
             
         # Debug logging: Log the complete prompt being sent to the LLM
         app.logger.info(f"Sending summarization prompt to LLM (length: {len(prompt_text)} chars). Set LOG_LEVEL=DEBUG to see full prompt details.")
@@ -2148,13 +2262,13 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
         
         app.logger.info(f"Extracting audio from video: {video_filepath} -> {temp_audio_filepath}")
         
-        # Extract audio using FFmpeg - using MP3 for consistency with chunking
+        # Extract audio using FFmpeg - using high-quality MP3 for better transcription
         subprocess.run([
             'ffmpeg', '-i', video_filepath, '-y',
             '-vn',  # No video
             '-codec:a', 'libmp3lame',  # Use LAME MP3 encoder explicitly
-            '-b:a', '64k',  # 64kbps bitrate (better quality than chunking's 32k, still small)
-            '-ar', '22050',  # 22.05kHz sample rate (good for speech, better than 16kHz)
+            '-b:a', '128k',  # 128kbps bitrate for high quality
+            '-ar', '44100',  # 44.1kHz sample rate for better quality
             '-ac', '1',  # Mono (sufficient for speech, reduces file size)
             '-compression_level', '2',  # Better compression
             temp_audio_filepath
@@ -2254,9 +2368,9 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             max_attempts = 2
             for attempt in range(max_attempts):
                 try:
-                    # Use converted WAV if available from previous attempt
+                    # Use converted MP3 if available from previous attempt
                     current_filepath = wav_converted_filepath if wav_converted_filepath else actual_filepath
-                    current_content_type = 'audio/x-wav' if wav_converted_filepath else actual_content_type
+                    current_content_type = 'audio/mpeg' if wav_converted_filepath else actual_content_type
                     current_filename = os.path.basename(current_filepath)
                     
                     with open(current_filepath, 'rb') as audio_file:
@@ -2297,23 +2411,23 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                 except httpx.HTTPStatusError as e:
                     # Check if it's a 500 error and we haven't tried WAV conversion yet
                     if e.response.status_code == 500 and attempt == 0 and not wav_conversion_attempted:
-                        app.logger.warning(f"ASR returned 500 error for recording {recording_id}, attempting WAV conversion and retry...")
+                        app.logger.warning(f"ASR returned 500 error for recording {recording_id}, attempting high-quality MP3 conversion and retry...")
                         
-                        # Convert to WAV using same parameters as reprocessing
+                        # Convert to high-quality MP3 for better compatibility
                         filename_lower = actual_filename.lower()
-                        if not filename_lower.endswith('.wav'):
+                        if not filename_lower.endswith('.mp3'):
                             try:
                                 base_filepath, file_ext = os.path.splitext(actual_filepath)
-                                temp_wav_filepath = f"{base_filepath}_temp.wav"
+                                temp_mp3_filepath = f"{base_filepath}_temp.mp3"
                                 
-                                app.logger.info(f"Converting {actual_filename} to WAV format for retry...")
+                                app.logger.info(f"Converting {actual_filename} to high-quality MP3 format for retry...")
                                 subprocess.run(
-                                    ['ffmpeg', '-i', actual_filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', temp_wav_filepath],
+                                    ['ffmpeg', '-i', actual_filepath, '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', temp_mp3_filepath],
                                     check=True, capture_output=True, text=True
                                 )
-                                app.logger.info(f"Successfully converted {actual_filepath} to {temp_wav_filepath}")
+                                app.logger.info(f"Successfully converted {actual_filepath} to {temp_mp3_filepath}")
                                 
-                                wav_converted_filepath = temp_wav_filepath
+                                wav_converted_filepath = temp_mp3_filepath  # Keep variable name for compatibility
                                 wav_conversion_attempted = True
                                 # Continue to next iteration to retry with WAV
                                 continue
@@ -2329,13 +2443,40 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                         # Not a 500 error or already tried conversion, propagate the error
                         raise e
             
-            # Clean up temporary WAV file if created
+            # DEBUG: Preserve converted file for quality checking
+            if wav_converted_filepath and os.path.exists(wav_converted_filepath):
+                try:
+                    # Get file size and basic info for debugging
+                    converted_size = os.path.getsize(wav_converted_filepath)
+                    converted_size_mb = converted_size / (1024 * 1024)
+                    
+                    # Create a debug copy in a known location
+                    debug_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'debug_converted')
+                    os.makedirs(debug_dir, exist_ok=True)
+                    
+                    # Copy the converted file with a timestamp (MP3 now)
+                    from shutil import copy2
+                    file_ext = os.path.splitext(wav_converted_filepath)[1] or '.mp3'
+                    debug_filename = f"debug_{recording_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}{file_ext}"
+                    debug_filepath = os.path.join(debug_dir, debug_filename)
+                    copy2(wav_converted_filepath, debug_filepath)
+                    
+                    app.logger.info(f"DEBUG: Converted file preserved at: {debug_filepath}")
+                    app.logger.info(f"DEBUG: Converted file size: {converted_size_mb:.2f} MB ({converted_size} bytes)")
+                    app.logger.info(f"DEBUG: Original file: {actual_filename}")
+                    app.logger.info(f"DEBUG: Recording ID: {recording_id}")
+                    app.logger.info(f"DEBUG: You can download this file from the container at: {debug_filepath}")
+                    
+                except Exception as debug_error:
+                    app.logger.warning(f"DEBUG: Failed to preserve converted file: {debug_error}")
+            
+            # Clean up the original temporary converted file (but keep debug copy)
             try:
                 if wav_converted_filepath and os.path.exists(wav_converted_filepath):
                     os.remove(wav_converted_filepath)
-                    app.logger.info(f"Cleaned up temporary WAV file: {wav_converted_filepath}")
+                    app.logger.info(f"Cleaned up original temporary converted file: {wav_converted_filepath}")
             except Exception as cleanup_error:
-                app.logger.warning(f"Failed to clean up temporary WAV file: {cleanup_error}")
+                app.logger.warning(f"Failed to clean up temporary converted file: {cleanup_error}")
             
             # Debug logging for ASR response
             app.logger.info(f"ASR response keys: {list(asr_response_data.keys())}")
@@ -3766,27 +3907,27 @@ def reprocess_transcription(recording_id):
 
         supported_formats = ('.wav', '.mp3', '.flac')
         if not filename_lower.endswith(supported_formats):
-            app.logger.info(f"Reprocessing: Converting {filename_lower} format to WAV.")
+            app.logger.info(f"Reprocessing: Converting {filename_lower} format to high-quality MP3.")
             base_filepath, file_ext = os.path.splitext(filepath)
-            temp_wav_filepath = f"{base_filepath}_temp.wav"
-            final_wav_filepath = f"{base_filepath}.wav"
+            temp_mp3_filepath = f"{base_filepath}_temp.mp3"
+            final_mp3_filepath = f"{base_filepath}.mp3"
 
             try:
-                # Convert to a temporary file first
+                # Convert to high-quality MP3 (128kbps, 44.1kHz)
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'pcm_s16le', '-ar', '16000', '-ac', '1', temp_wav_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', temp_mp3_filepath],
                     check=True, capture_output=True, text=True
                 )
-                app.logger.info(f"Successfully converted {filepath} to {temp_wav_filepath}")
+                app.logger.info(f"Successfully converted {filepath} to {temp_mp3_filepath} (128kbps MP3)")
 
-                # If the original file is not the same as the final wav file, remove it
-                if filepath.lower() != final_wav_filepath.lower():
+                # If the original file is not the same as the final mp3 file, remove it
+                if filepath.lower() != final_mp3_filepath.lower():
                     os.remove(filepath)
                 
                 # Rename the temporary file to the final filename
-                os.rename(temp_wav_filepath, final_wav_filepath)
+                os.rename(temp_mp3_filepath, final_mp3_filepath)
                 
-                filepath = final_wav_filepath
+                filepath = final_mp3_filepath
                 filename_for_asr = os.path.basename(filepath)
                 
                 # Update database with new path and mime type
@@ -4039,12 +4180,14 @@ def account():
             user_name = request.form.get('user_name')
             user_job_title = request.form.get('user_job_title')
             user_company = request.form.get('user_company')
+            ui_lang = request.form.get('ui_language')
             transcription_lang = request.form.get('transcription_language')
             output_lang = request.form.get('output_language')
             
             current_user.name = user_name if user_name else None
             current_user.job_title = user_job_title if user_job_title else None
             current_user.company = user_company if user_company else None
+            current_user.ui_language = ui_lang if ui_lang else 'en'
             current_user.transcription_language = transcription_lang if transcription_lang else None
             current_user.output_language = output_lang if output_lang else None
         
@@ -4461,6 +4604,7 @@ def get_config():
 
         return jsonify({
             'max_file_size_mb': max_file_size_mb,
+            'recording_disclaimer': SystemSetting.get_setting('recording_disclaimer', ''),
             'use_asr_endpoint': USE_ASR_ENDPOINT,
             **chunking_info
         })
@@ -4486,8 +4630,12 @@ def get_csrf_token():
 @app.route('/')
 @login_required
 def index():
-    # Pass the ASR config and inquire mode config to the template
-    return render_template('index.html', use_asr_endpoint=USE_ASR_ENDPOINT, inquire_mode_enabled=ENABLE_INQUIRE_MODE)
+    # Pass the ASR config, inquire mode config, and user language preference to the template
+    user_language = current_user.ui_language if current_user.is_authenticated and current_user.ui_language else 'en'
+    return render_template('index.html', 
+                         use_asr_endpoint=USE_ASR_ENDPOINT, 
+                         inquire_mode_enabled=ENABLE_INQUIRE_MODE,
+                         user_language=user_language)
 
 @app.route('/inquire')
 @login_required  
@@ -4535,10 +4683,14 @@ def get_recordings_paginated():
             
             # Extract date filters
             date_filters = re.findall(r'date:(\S+)', search_query.lower())
+            date_from_filters = re.findall(r'date_from:(\S+)', search_query.lower())
+            date_to_filters = re.findall(r'date_to:(\S+)', search_query.lower())
             tag_filters = re.findall(r'tag:(\S+)', search_query.lower())
             
             # Remove special syntax to get text search
             text_query = re.sub(r'date:\S+', '', search_query, flags=re.IGNORECASE)
+            text_query = re.sub(r'date_from:\S+', '', text_query, flags=re.IGNORECASE)
+            text_query = re.sub(r'date_to:\S+', '', text_query, flags=re.IGNORECASE)
             text_query = re.sub(r'tag:\S+', '', text_query, flags=re.IGNORECASE).strip()
             
             # Apply date filters
@@ -4665,12 +4817,45 @@ def get_recordings_paginated():
                         )
                     )
             
+            # Apply date range filters
+            if date_from_filters and date_from_filters[0]:
+                try:
+                    date_from = datetime.strptime(date_from_filters[0], '%Y-%m-%d').date()
+                    stmt = stmt.where(
+                        db.or_(
+                            Recording.meeting_date >= date_from,
+                            db.and_(
+                                Recording.meeting_date.is_(None),
+                                db.func.date(Recording.created_at) >= date_from
+                            )
+                        )
+                    )
+                except ValueError:
+                    pass  # Invalid date format, ignore
+            
+            if date_to_filters and date_to_filters[0]:
+                try:
+                    date_to = datetime.strptime(date_to_filters[0], '%Y-%m-%d').date()
+                    stmt = stmt.where(
+                        db.or_(
+                            Recording.meeting_date <= date_to,
+                            db.and_(
+                                Recording.meeting_date.is_(None),
+                                db.func.date(Recording.created_at) <= date_to
+                            )
+                        )
+                    )
+                except ValueError:
+                    pass  # Invalid date format, ignore
+            
             # Apply tag filters
             if tag_filters:
                 # Join with tags table and filter by tag names
                 tag_conditions = []
                 for tag_filter in tag_filters:
-                    tag_conditions.append(Tag.name.ilike(f'%{tag_filter}%'))
+                    # Replace underscores back to spaces for matching
+                    tag_name = tag_filter.replace('_', ' ')
+                    tag_conditions.append(Tag.name.ilike(f'%{tag_name}%'))
                 
                 stmt = stmt.join(RecordingTag).join(Tag).where(db.or_(*tag_conditions))
             
@@ -4939,23 +5124,23 @@ def upload_file():
         
         if should_convert:
             if is_problematic_aac:
-                app.logger.info(f"Converting AAC-encoded file {filename_lower} to 32kbps MP3 for ASR endpoint compatibility.")
+                app.logger.info(f"Converting AAC-encoded file {filename_lower} to high-quality MP3 for ASR endpoint compatibility.")
             elif filename_lower.endswith(convertible_formats):
-                app.logger.info(f"Converting {filename_lower} format to 32kbps MP3 for chunking processing.")
+                app.logger.info(f"Converting {filename_lower} format to high-quality MP3 for chunking processing.")
             else:
-                app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to 32kbps MP3 for chunking.")
+                app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to high-quality MP3 for chunking.")
             
             base_filepath, _ = os.path.splitext(filepath)
             temp_mp3_filepath = f"{base_filepath}_temp.mp3"
             mp3_filepath = f"{base_filepath}.mp3"
 
             try:
-                # Convert to 32kbps MP3 for optimal size/quality balance
+                # Convert to high-quality MP3 (128kbps, 44.1kHz) for better transcription accuracy
                 subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'mp3', '-ab', '32k', '-ar', '16000', '-ac', '1', temp_mp3_filepath],
+                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', '-ac', '1', temp_mp3_filepath],
                     check=True, capture_output=True, text=True
                 )
-                app.logger.info(f"Successfully converted {filepath} to {temp_mp3_filepath} (32kbps MP3)")
+                app.logger.info(f"Successfully converted {filepath} to {temp_mp3_filepath} (128kbps MP3)")
                 
                 # If the original file is not the same as the final mp3 file, remove it
                 if filepath.lower() != mp3_filepath.lower():
@@ -5050,13 +5235,14 @@ def upload_file():
                 max_speakers = None
 
         # Create initial database entry
+        now = datetime.utcnow()
         recording = Recording(
             audio_path=filepath,
             original_filename=original_filename,
             title=f"Recording - {original_filename}",
             file_size=final_file_size,
             status='PENDING',
-            meeting_date=datetime.utcnow().date(),
+            meeting_date=now.date(),
             user_id=current_user.id,
             mime_type=mime_type,
             notes=notes,
@@ -5299,7 +5485,7 @@ def inquire_search():
             result = chunk.to_dict()
             result['similarity'] = similarity
             result['recording_title'] = chunk.recording.title
-            result['recording_meeting_date'] = chunk.recording.meeting_date.isoformat() if chunk.recording.meeting_date else None
+            result['recording_meeting_date'] = f"{chunk.recording.meeting_date.isoformat()}T00:00:00" if chunk.recording.meeting_date else None
             results.append(result)
         
         return jsonify({'results': results})
@@ -5949,7 +6135,7 @@ def get_available_filters():
         return jsonify({
             'tags': [tag.to_dict() for tag in tags],
             'speakers': speaker_names,
-            'recordings': [{'id': r.id, 'title': r.title, 'meeting_date': r.meeting_date.isoformat() if r.meeting_date else None} for r in recordings]
+            'recordings': [{'id': r.id, 'title': r.title, 'meeting_date': f"{r.meeting_date.isoformat()}T00:00:00" if r.meeting_date else None} for r in recordings]
         })
         
     except Exception as e:

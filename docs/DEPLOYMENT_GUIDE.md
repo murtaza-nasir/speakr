@@ -32,7 +32,7 @@ Speakr automatically handles large files that exceed API limits (like OpenAI's 2
 - Files are automatically split into optimally-sized chunks (22MB each for OpenAI)
 - Each chunk is processed separately and transcriptions are seamlessly merged
 - No user intervention required - the process is completely transparent
-- Chunking uses 32kbps MP3 conversion for optimal size/quality balance
+- Chunking uses 128kbps MP3 conversion for optimal transcription quality
 - Original file format is preserved when possible (no chunking needed for smaller files)
 
 **ASR Webservice Method:**
@@ -450,7 +450,7 @@ CHUNK_OVERLAP_SECONDS=3
 ### How Chunking Works
 
 1. **Automatic Detection:** Speakr automatically detects when a file exceeds the configured chunk size
-2. **Intelligent Splitting:** Files are split into overlapping chunks using 32kbps MP3 conversion for optimal size/quality
+2. **Intelligent Splitting:** Files are split into overlapping chunks using 128kbps MP3 conversion for optimal transcription quality
 3. **Processing:** Each chunk is processed separately through your transcription API
 4. **Seamless Merging:** Transcriptions are automatically merged back together with overlap handling
 5. **Transparent Process:** Users see a single transcription result with no indication that chunking occurred
@@ -642,7 +642,7 @@ The auto-processor supports the same audio formats as manual uploads:
 
 **File Processing:**
 - **Supported formats** are processed directly without conversion
-- **Unsupported formats** are automatically converted to 32kbps MP3 using ffmpeg
+- **Unsupported formats** are automatically converted to 128kbps MP3 using ffmpeg
 - **No uncompressed WAV files** are created to minimize storage usage
 
 ### Usage Examples

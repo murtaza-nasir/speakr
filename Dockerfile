@@ -12,7 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Create directory structure for vendor files
+RUN mkdir -p /app/static/vendor
+
+# Copy only the scripts needed for downloading dependencies
+COPY scripts/download_offline_deps.py scripts/
+
+# Install requests and download vendor dependencies BEFORE copying all code
+# This allows better Docker layer caching - vendor deps won't re-download on code changes
+RUN pip install --no-cache-dir requests && \
+    python scripts/download_offline_deps.py && \
+    echo "✓ Vendor dependencies downloaded successfully"
+
+# Now copy the rest of the application code
 COPY . .
 
 # Create necessary directories
