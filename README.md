@@ -138,7 +138,6 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 - [Report bugs](https://github.com/murtaza-nasir/speakr/issues)
 - [Request features](https://github.com/murtaza-nasir/speakr/discussions)
-- [Security vulnerabilities](mailto:security@speakr.app)
 
 ## License
 
