@@ -2680,6 +2680,28 @@
     <!-- i18n System -->
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     
+    <!-- Initialize i18n immediately with fallback -->
+    <script>
+        // Ensure i18n is initialized before Vue app
+        (async function() {
+            if (window.i18n && window.i18n.init) {
+                const userLang = localStorage.getItem('preferredLanguage') || '{{ user_language }}' || 'en';
+                try {
+                    await window.i18n.init(userLang);
+                    console.log('i18n pre-initialized with language:', userLang);
+                } catch (error) {
+                    console.error('Failed to initialize i18n:', error);
+                }
+            }
+            
+            // Hide loader after i18n is ready
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.style.display = 'none';
+            }
+        })();
+    </script>
+    
     <!-- Vue.js Application Script -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>

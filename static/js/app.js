@@ -3897,7 +3897,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- i18n Helper Functions ---
             const t = (key, params = {}) => {
-                return window.i18n ? window.i18n.t(key, params) : key;
+                // Defensive check - return key if i18n not ready
+                if (!window.i18n || !window.i18n.t) {
+                    console.warn('i18n not initialized, returning key:', key);
+                    return key;
+                }
+                return window.i18n.t(key, params);
             };
             
             const tc = (key, count, params = {}) => {

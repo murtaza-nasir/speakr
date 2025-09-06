@@ -281,7 +281,16 @@ class I18n {
 // Create global i18n instance
 const i18n = new I18n();
 
-// Export for use in Vue components
+// Create a fallback t function immediately
 if (typeof window !== 'undefined') {
+    // Ensure window.i18n exists with at least a basic t function
     window.i18n = i18n;
+    
+    // Add a fallback t function if the class method isn't ready
+    if (!window.i18n.t) {
+        window.i18n.t = function(key, params) {
+            console.warn('i18n.t called before initialization, returning key:', key);
+            return key;
+        };
+    }
 }
