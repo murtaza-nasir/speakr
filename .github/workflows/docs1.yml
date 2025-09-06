@@ -38,12 +38,11 @@ jobs:
         env:
           CI: true  # This enables git-revision-date plugin in CI
         run: |
-          cd docs
           # Update site_url for GitHub Pages if needed
           if [ "${{ github.repository }}" != "murtaza-nasir/speakr" ]; then
-            sed -i "s|site_url:.*|site_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}|" mkdocs.yml
+            sed -i "s|site_url:.*|site_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}|" docs/mkdocs.yml
           fi
-          mkdocs build --strict --site-dir _site
+          mkdocs build --strict --config-file docs/mkdocs.yml --site-dir docs/_site
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
