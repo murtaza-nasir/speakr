@@ -120,49 +120,19 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 ## Roadmap
 
-### Near-term (Q1 2025)
+### Near-term
 - Bulk operations for recordings (mass delete, export, tagging)
 - Enhanced speaker profile management with voice signatures
 - Improved mobile experience with PWA enhancements
-- Real-time collaboration features
 
-### Mid-term (Q2-Q3 2025)
+### Mid-term
 - Plugin system for custom integrations
-- Advanced analytics dashboard
 - Team workspaces with shared recordings
 - Automated workflow triggers
 
-### Long-term (2025+)
+### Long-term
 - End-to-end encryption option
-- Federated deployment support
-- AI model fine-tuning interface
 - Enterprise SSO integration
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### How to Contribute
-
-1. **Fork the repository** and create your feature branch
-2. **Make your changes** following our coding standards
-3. **Test thoroughly** including edge cases
-4. **Submit a pull request** with clear description
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/murtaza-nasir/speakr.git
-cd speakr
-
-# Set up development environment
-docker-compose -f docker-compose.dev.yml up -d
-
-# Install pre-commit hooks
-pip install pre-commit
-pre-commit install
-```
 
 ### Reporting Issues
 
