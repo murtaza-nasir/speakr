@@ -51,7 +51,7 @@ services:
 Or download the example configuration:
 
 ```bash
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/docker-compose.example.yml -O docker-compose.yml
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/docker-compose.example.yml -O docker-compose.yml
 ```
 
 The restart policy `unless-stopped` ensures Speakr automatically starts after system reboots unless you've explicitly stopped it. The volumes mount local directories for persistent storage of uploads and database files.
@@ -65,7 +65,7 @@ The environment configuration is where you tell Speakr which AI services to use 
 If you're using OpenAI's Whisper API or any compatible service, download the Whisper environment template:
 
 ```bash
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/env.whisper.example -O .env
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
 ```
 
 Now edit the `.env` file to add your API keys and customize the settings. The configuration is organized into logical sections. First, configure the text generation model that powers summaries, titles, and chat features. OpenRouter is recommended here because it provides access to multiple AI models at competitive prices, but you can use any OpenAI-compatible service:
@@ -91,7 +91,7 @@ WHISPER_MODEL=whisper-1
 If you want speaker diarization to identify who's speaking in your recordings, you'll need to use an ASR webservice endpoint. This requires running a separate service, but provides powerful features for meeting transcriptions and multi-speaker recordings:
 
 ```bash
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/env.asr.example -O .env
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
 ```
 
 The ASR configuration enables the custom endpoint and tells Speakr where to find it:

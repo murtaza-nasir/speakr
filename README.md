@@ -26,7 +26,7 @@
 Speakr transforms your audio recordings into organized, searchable, and intelligent notes. Built for privacy-conscious teams and individuals, it runs entirely on your own infrastructure, ensuring your sensitive conversations remain completely private.
 
 <div align="center">
-    <img src="static/img/main.png" alt="Speakr Main Interface" width="750"/>
+    <img src="docs/assets/images/screenshots/Filters.png" alt="Speakr Main Interface" width="750"/>
 </div>
 
 ## Key Features
@@ -49,8 +49,8 @@ Speakr transforms your audio recordings into organized, searchable, and intellig
 mkdir speakr && cd speakr
 
 # Download configuration
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/docker-compose.example.yml -O docker-compose.yml
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/env.whisper.example -O .env
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/docker-compose.example.yml -O docker-compose.yml
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
 
 # Configure your API keys
 nano .env  # Add your OpenAI/OpenRouter API keys

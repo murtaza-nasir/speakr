@@ -145,7 +145,6 @@ extra_javascript:
 
 exclude_docs: |
   README.md
-  DEPLOYMENT_GUIDE.md
   DOCUMENTATION_VERIFICATION_CHECKLIST.md
   ci-cd-setup.md
   github-secrets-guide.md

@@ -16,7 +16,6 @@ docker-compose.yml
 changes.txt
 
 !README.md
-!DEPLOYMENT_GUIDE.md
 !docs/**/*.md
 docker-compose.dev.yml
 .clinerules

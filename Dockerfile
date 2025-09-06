@@ -32,9 +32,10 @@ RUN mkdir -p /data/uploads /data/instance
 RUN chmod 755 /data/uploads /data/instance
 
 # Set environment variables
-ENV FLASK_APP=app.py
+ENV FLASK_APP=src/app.py
 ENV SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
 ENV UPLOAD_FOLDER=/data/uploads
+ENV PYTHONPATH=/app
 
 # Add entrypoint script
 COPY scripts/docker-entrypoint.sh /usr/local/bin/
@@ -45,4 +46,4 @@ EXPOSE 8899
 
 # Set entrypoint and default command
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8899", "--timeout", "600", "app:app"]
+CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8899", "--timeout", "600", "src.app:app"]

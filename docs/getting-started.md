@@ -21,19 +21,19 @@ Download the Docker Compose configuration and choose the appropriate environment
 
 ```bash
 # Download docker compose example
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/docker-compose.example.yml -O docker-compose.yml
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/docker-compose.example.yml -O docker-compose.yml
 ```
 
 Now download the environment configuration template. You have two options depending on which transcription service you want to use.
 
 For standard OpenAI Whisper API (recommended for most users):
 ```bash
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/env.whisper.example -O .env
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
 ```
 
 Or for a custom ASR endpoint with speaker diarization:
 ```bash
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/env.asr.example -O .env
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
 ```
 
 ## Step 3: Configure Your Transcription Service
