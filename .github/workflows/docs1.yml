@@ -42,12 +42,12 @@ jobs:
           if [ "${{ github.repository }}" != "murtaza-nasir/speakr" ]; then
             sed -i "s|site_url:.*|site_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}|" docs/mkdocs.yml
           fi
-          mkdocs build --strict --config-file docs/mkdocs.yml --site-dir docs/_site
+          mkdocs build --strict --config-file docs/mkdocs.yml --site-dir _site
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/_site
+          path: ./_site
 
   deploy:
     environment:
