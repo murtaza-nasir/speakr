@@ -5161,7 +5161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         delimiters: ['${', '}']
     });
     
-    // Add t function as a global property so it's available in templates immediately
+    // Add t function as a global property BEFORE mounting so it's available in templates immediately
     app.config.globalProperties.t = safeT;
     
     // Also add tc for pluralization
@@ -5171,6 +5171,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return window.i18n.tc(key, count, params);
     };
+    
+    // Provide t and tc to the app
+    app.provide('t', safeT);
+    app.provide('tc', (key, count, params = {}) => {
+        if (!window.i18n || !window.i18n.tc) {
+            return key;
+        }
+        return window.i18n.tc(key, count, params);
+    });
     
     // Mount the app
     app.mount('#app');
