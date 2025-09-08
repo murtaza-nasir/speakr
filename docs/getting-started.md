@@ -67,6 +67,7 @@ The text model can use OpenRouter for access to various AI models, or you can po
 ### Option B: Custom ASR Endpoint Configuration
 
 > **Prerequisites:** This option requires running an additional ASR service container (`onerahmet/openai-whisper-asr-webservice`). You can either:
+>
 > - Run both containers in the same Docker Compose stack (recommended) - see [complete setup guide](getting-started/installation.md#running-asr-service-for-speaker-diarization)
 > - Run the ASR service separately on the same or different machine
 > - Use an existing ASR service if you already have one deployed
