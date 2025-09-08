@@ -147,7 +147,6 @@ exclude_docs: |
   README.md
   DOCUMENTATION_VERIFICATION_CHECKLIST.md
   ci-cd-setup.md
-  github-secrets-guide.md
   .github-deploy.yml
 
 nav:

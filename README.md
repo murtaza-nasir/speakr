@@ -48,18 +48,25 @@ Speakr transforms your audio recordings into organized, searchable, and intellig
 # Create project directory
 mkdir speakr && cd speakr
 
-# Download configuration
+# Download configuration (choose one):
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/docker-compose.example.yml -O docker-compose.yml
+
+# For OpenAI or similar Whisper API:
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
 
-# Configure your API keys
-nano .env  # Add your OpenAI/OpenRouter API keys
+# OR for ASR with speaker diarization (requires additional container):
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
+
+# Configure your service endpoints and API keys
+nano .env  # Set API endpoints (Local/OpenAI/OpenRouter/etc) and add your API keys
 
 # Launch Speakr
 docker compose up -d
 
 # Access at http://localhost:8899
 ```
+
+**Note:** ASR option requires running `onerahmet/openai-whisper-asr-webservice` container alongside Speakr. See [installation guide](https://murtaza-nasir.github.io/speakr/getting-started/installation#running-asr-service-for-speaker-diarization) for complete setup.
 
 **[View Full Installation Guide →](https://murtaza-nasir.github.io/speakr/getting-started)**
 

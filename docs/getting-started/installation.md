@@ -6,7 +6,7 @@ This comprehensive guide covers deploying Speakr for production use, including d
 
 Before diving into installation, it's helpful to understand how Speakr works. The application integrates with external APIs for two main purposes: transcription services that convert your audio to text, and text generation services that power features like summaries, titles, and interactive chat. Speakr is designed to be flexible, supporting both cloud-based services like OpenAI and self-hosted solutions running on your own infrastructure.
 
-Speakr uses specific API endpoint formats for these integrations. For transcription, it supports the standard OpenAI Whisper API format using the `/audio/transcriptions` endpoint, which is implemented by OpenAI, OpenRouter, and many self-hosted solutions. Alternatively, for advanced features like speaker diarization, Speakr can connect to ASR webservices that provide an `/asr` endpoint. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
+Speakr uses specific API endpoint formats for these integrations. For transcription, it supports the standard OpenAI Whisper API format using the `/audio/transcriptions` endpoint, which is implemented by OpenAI, OpenRouter, and many self-hosted solutions. Alternatively, for advanced features like speaker diarization, Speakr can connect to ASR webservices that provide an `/asr` endpoint. **Note: Using the ASR endpoint option requires running an additional Docker container** (`onerahmet/openai-whisper-asr-webservice`) alongside Speakr - full setup instructions are provided in the [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) section below. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
 
 ## Prerequisites
 
@@ -88,7 +88,11 @@ WHISPER_MODEL=whisper-1
 
 #### For Custom ASR Endpoint with Speaker Diarization
 
-If you want speaker diarization to identify who's speaking in your recordings, you'll need to use an ASR webservice endpoint. This requires running a separate service, but provides powerful features for meeting transcriptions and multi-speaker recordings:
+If you want speaker diarization to identify who's speaking in your recordings, you'll need to use an ASR webservice endpoint. **This requires running an additional Docker container** (`onerahmet/openai-whisper-asr-webservice`) alongside Speakr, but provides powerful features for meeting transcriptions and multi-speaker recordings.
+
+> **Important:** Before proceeding with this configuration, you'll need to set up the ASR service container. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
+
+Download the ASR configuration template:
 
 ```bash
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
@@ -218,7 +222,7 @@ If transcription fails, check the Docker logs for API authentication errors or c
 
 ### Running ASR Service for Speaker Diarization
 
-If you need speaker diarization to identify different speakers in your recordings, you'll need to run an ASR service alongside Speakr. The recommended approach is using the WhisperX-based ASR webservice in the same Docker Compose stack.
+If you need speaker diarization to identify different speakers in your recordings, you'll need to run an ASR service alongside Speakr. This involves deploying an additional Docker container (`onerahmet/openai-whisper-asr-webservice`) that provides the ASR endpoint. The recommended approach is running both containers in the same Docker Compose stack for simplified networking and management.
 
 First, you'll need a Hugging Face token to access the speaker diarization models. Create an account at Hugging Face, generate an access token, and importantly, visit the model pages for pyannote/segmentation-3.0 and pyannote/speaker-diarization-3.1 to accept their terms. These are gated models that require explicit approval.
 
@@ -269,6 +273,144 @@ networks:
 ```
 
 When running both services in the same Docker Compose file, containers communicate using service names. In your `.env` file, set `ASR_BASE_URL=http://whisper-asr:9000` using the service name, not localhost or an IP address. This is a common source of confusion but is how Docker networking works.
+
+#### Running Services in Separate Docker Compose Files
+
+If you prefer to manage the services independently or are adding the ASR service to an existing Speakr installation, you can run them in separate Docker Compose files. This approach gives you more flexibility and works whether the services are on the same machine or different machines.
+
+##### Option 1: Same Machine with Shared Network
+
+If both services run on the same machine, you can use Docker's internal networking for communication:
+
+First, create a shared Docker network:
+
+```bash
+docker network create speakr-network
+```
+
+Create `docker-compose.asr.yml` for the ASR service:
+
+```yaml
+services:
+  whisper-asr:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    container_name: whisper-asr-webservice
+    ports:
+      - "9000:9000"
+    environment:
+      - ASR_MODEL=distil-large-v3
+      - ASR_COMPUTE_TYPE=int8
+      - ASR_ENGINE=whisperx
+      - HF_TOKEN=your_huggingface_token_here
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0"]
+    restart: unless-stopped
+    networks:
+      - speakr-network
+
+networks:
+  speakr-network:
+    external: true
+```
+
+Update your Speakr `docker-compose.yml` to use the shared network:
+
+```yaml
+services:
+  app:
+    image: learnedmachine/speakr:latest
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+    networks:
+      - speakr-network
+
+networks:
+  speakr-network:
+    external: true
+```
+
+In your `.env` file, use the container name:
+```bash
+ASR_BASE_URL=http://whisper-asr-webservice:9000
+```
+
+##### Option 2: Separate Machines
+
+When running on different machines, you don't need the shared network. Each service runs independently and communicates over the network using IP addresses or hostnames.
+
+On the ASR server, create `docker-compose.asr.yml`:
+
+```yaml
+services:
+  whisper-asr:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
+    container_name: whisper-asr-webservice
+    ports:
+      - "9000:9000"  # Exposed to the network
+    environment:
+      - ASR_MODEL=distil-large-v3
+      - ASR_COMPUTE_TYPE=int8
+      - ASR_ENGINE=whisperx
+      - HF_TOKEN=your_huggingface_token_here
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+              device_ids: ["0"]
+    restart: unless-stopped
+```
+
+On the Speakr server, use the standard `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    image: learnedmachine/speakr:latest
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+```
+
+In your Speakr `.env` file, use the ASR server's IP address or hostname:
+```bash
+# Using IP address
+ASR_BASE_URL=http://192.168.1.100:9000
+
+# Or using hostname
+ASR_BASE_URL=http://asr-server.local:9000
+```
+
+Start both services on their respective machines:
+
+```bash
+# On ASR server
+docker compose -f docker-compose.asr.yml up -d
+
+# On Speakr server
+docker compose up -d
+```
+
+Make sure port 9000 is accessible between the machines (check firewall rules if needed).
 
 ## Production Considerations
 

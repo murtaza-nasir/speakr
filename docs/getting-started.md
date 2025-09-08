@@ -2,6 +2,8 @@
 
 Get Speakr up and running in just a few minutes using the pre-built Docker image! This guide will walk you through the fastest way to deploy Speakr with either OpenAI Whisper API or a [custom ASR endpoint](features.md#speaker-diarization).
 
+> **Note:** If you want to use the ASR endpoint option for speaker diarization features, you'll need to run an additional Docker container (`onerahmet/openai-whisper-asr-webservice`). See [Running ASR Service for Speaker Diarization](getting-started/installation.md#running-asr-service-for-speaker-diarization) for detailed setup instructions.
+
 ## Prerequisites
 
 Before you begin, make sure you have Docker and Docker Compose installed on your system. You'll also need an API key for either OpenAI or OpenRouter (or a compatible service), at least 2GB of available RAM, and about 10GB of available disk space for storing recordings and transcriptions.
@@ -31,10 +33,12 @@ For standard OpenAI Whisper API (recommended for most users):
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
 ```
 
-Or for a custom ASR endpoint with speaker diarization:
+Or for a custom ASR endpoint with speaker diarization (requires additional ASR container - see note below):
 ```bash
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
 ```
+
+> **Important:** The ASR endpoint option requires running an additional Docker container (`onerahmet/openai-whisper-asr-webservice`) alongside Speakr. For complete setup instructions including docker-compose configurations for both containers, see [Running ASR Service for Speaker Diarization](getting-started/installation.md#running-asr-service-for-speaker-diarization).
 
 ## Step 3: Configure Your Transcription Service
 
@@ -61,6 +65,11 @@ WHISPER_MODEL=whisper-1
 The text model can use OpenRouter for access to various AI models, or you can point it directly to OpenAI by using the same base URL and API key as your transcription service. OpenRouter provides access to multiple models including GPT-4, Claude, and others, which can be more cost-effective for text generation tasks.
 
 ### Option B: Custom ASR Endpoint Configuration
+
+> **Prerequisites:** This option requires running an additional ASR service container (`onerahmet/openai-whisper-asr-webservice`). You can either:
+> - Run both containers in the same Docker Compose stack (recommended) - see [complete setup guide](getting-started/installation.md#running-asr-service-for-speaker-diarization)
+> - Run the ASR service separately on the same or different machine
+> - Use an existing ASR service if you already have one deployed
 
 If you're using a custom ASR service like WhisperX or a self-hosted Whisper server, configure these variables:
 
