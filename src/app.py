@@ -5521,41 +5521,87 @@ def create_default_templates():
     if existing_templates > 0:
         return jsonify({'message': 'User already has templates'}), 200
 
-    # Default template 1: Simple with timestamps
+    templates = []
+
+    # Default template 1: Simple conversation
     template1 = TranscriptTemplate(
         user_id=current_user.id,
-        name="Simple with Timestamps",
-        template="[{{start_time}} - {{end_time}}] {{speaker}}: {{text}}",
-        description="Basic format with timestamps and speaker names",
+        name="Simple Conversation",
+        template="{{speaker}}: {{text}}",
+        description="Clean format with just speaker names and text",
         is_default=True
     )
+    templates.append(template1)
 
-    # Default template 2: Screenplay format
+    # Default template 2: Timestamped format
     template2 = TranscriptTemplate(
         user_id=current_user.id,
-        name="Screenplay",
-        template="{{speaker|upper}}\n({{start_time}})\n{{text}}\n",
-        description="Screenplay-style format with speaker in caps",
+        name="Timestamped",
+        template="[{{start_time}} - {{end_time}}] {{speaker}}: {{text}}",
+        description="Format with timestamps and speaker names",
         is_default=False
     )
+    templates.append(template2)
 
-    # Default template 3: Subtitle format
+    # Default template 3: Interview Q&A
     template3 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="Interview Q&A",
+        template="{{speaker|upper}}:\n{{text}}\n",
+        description="Interview format with speaker names in uppercase",
+        is_default=False
+    )
+    templates.append(template3)
+
+    # Default template 4: Meeting Minutes
+    template4 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="Meeting Minutes",
+        template="• [{{start_time}}] {{speaker}}: {{text}}",
+        description="Bulleted format ideal for meeting notes",
+        is_default=False
+    )
+    templates.append(template4)
+
+    # Default template 5: Court Transcript
+    template5 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="Court Transcript",
+        template="{{index}}    {{speaker|upper}}: {{text}}",
+        description="Legal deposition format with line numbers",
+        is_default=False
+    )
+    templates.append(template5)
+
+    # Default template 6: SRT Subtitle
+    template6 = TranscriptTemplate(
         user_id=current_user.id,
         name="SRT Subtitle",
         template="{{index}}\n{{start_time|srt}} --> {{end_time|srt}}\n{{text}}\n",
         description="SRT subtitle format for video editing",
         is_default=False
     )
+    templates.append(template6)
 
-    db.session.add(template1)
-    db.session.add(template2)
-    db.session.add(template3)
+    # Default template 7: Screenplay
+    template7 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="Screenplay",
+        template="                    {{speaker|upper}}\n        {{text}}\n",
+        description="Film script format with centered names",
+        is_default=False
+    )
+    templates.append(template7)
+
+    # Add all templates to database
+    for template in templates:
+        db.session.add(template)
+
     db.session.commit()
 
     return jsonify({
         'success': True,
-        'templates': [template1.to_dict(), template2.to_dict(), template3.to_dict()]
+        'templates': [template.to_dict() for template in templates]
     }), 201
 
 @app.route('/admin/settings', methods=['GET'])

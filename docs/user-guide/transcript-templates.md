@@ -173,10 +173,14 @@ I'm doing great, thanks for asking!
 3. Confirm the deletion
 
 ### Creating Default Templates
-If you have no templates, click **Create Default Templates** to generate starter templates:
-- Simple with Timestamps
-- Screenplay Format
-- Interview Q&A
+If you have no templates, click **Create Default Templates** to generate a comprehensive set of starter templates:
+- Simple Conversation - Clean format with just speaker names
+- Timestamped - Basic format with time ranges
+- Interview Q&A - Professional interview format
+- Meeting Minutes - Bulleted format for meeting notes
+- Court Transcript - Legal deposition style with line numbers
+- SRT Subtitle - Standard subtitle format for videos
+- Screenplay - Film script formatting
 
 ## Advanced Tips
 
