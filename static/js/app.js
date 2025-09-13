@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Chat State ---
             const showChat = ref(false);
+            const isChatMaximized = ref(false);
             const chatMessages = ref([]);
             const chatInput = ref('');
             const isChatLoading = ref(false);
@@ -1204,7 +1205,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'Failed to start transcription reprocessing');
-                    
+
+                    // Ensure the recording status is properly set to PROCESSING
+                    if (data.recording && data.recording.status !== 'PROCESSING') {
+                        console.warn(`Warning: Reprocess transcription returned unexpected status: ${data.recording.status}`);
+                        data.recording.status = 'PROCESSING';
+                    }
+
                     // Update the recording in the UI
                     const index = recordings.value.findIndex(r => r.id === recordingId);
                     if (index !== -1) {
@@ -1244,7 +1251,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error || 'Failed to start summary reprocessing');
-                    
+
+                    // Ensure the recording status is properly set to SUMMARIZING
+                    if (data.recording && data.recording.status !== 'SUMMARIZING') {
+                        console.warn(`Warning: Reprocess summary returned unexpected status: ${data.recording.status}`);
+                        data.recording.status = 'SUMMARIZING';
+                    }
+
                     // Update the recording in the UI
                     const index = recordings.value.findIndex(r => r.id === recordingId);
                     if (index !== -1) {
@@ -3583,6 +3596,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 localStorage.setItem('transcriptionViewMode', transcriptionViewMode.value);
             };
 
+            const toggleChatMaximize = () => {
+                if (isChatMaximized.value) {
+                    // If maximized, restore to normal state
+                    isChatMaximized.value = false;
+                } else {
+                    // If not maximized, maximize and ensure chat is open
+                    isChatMaximized.value = true;
+                    if (!showChat.value) {
+                        showChat.value = true;
+                    }
+                }
+            };
+
             const saveInlineEdit = async (field) => {
                 if (!selectedRecording.value) return;
 
@@ -4397,6 +4423,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            const downloadICS = async () => {
+                if (!selectedRecording.value || !selectedRecording.value.events || selectedRecording.value.events.length === 0) {
+                    showToast('No events to export', 'fa-exclamation-circle');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/recording/${selectedRecording.value.id}/events/ics`);
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to export events', 'fa-exclamation-circle');
+                        return;
+                    }
+
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `events-${selectedRecording.value.title || selectedRecording.value.id}.ics`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showToast(`Exported ${selectedRecording.value.events.length} events`, 'fa-calendar-check');
+                } catch (error) {
+                    console.error('Download all events ICS error:', error);
+                    showToast('Failed to export events', 'fa-exclamation-circle');
+                }
+            };
+
             const formatEventDateTime = (dateTimeStr) => {
                 if (!dateTimeStr) return '';
                 try {
@@ -4480,6 +4539,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            const clearChat = () => {
+                if (chatMessages.value.length > 0) {
+                    chatMessages.value = [];
+                    showToast('Chat cleared', 'fa-broom');
+                }
+            };
 
             const openShareModal = async (recording) => {
                 recordingToShare.value = recording;
@@ -4642,6 +4707,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Watch for tab changes to save content properly
             watch(selectedTab, (newTab, oldTab) => {
+                // Close maximized chat when switching tabs
+                if (isChatMaximized.value) {
+                    isChatMaximized.value = false;
+                }
+
                 // Save content when switching away from notes tab but keep editor open
                 if (oldTab === 'notes' && editingNotes.value && markdownEditorInstance.value) {
                     // Save the current content from the editor
@@ -5263,7 +5333,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 transcriptionViewMode, legendExpanded, highlightedSpeaker, processedTranscription,
                 
                 // Chat
-                showChat, chatMessages, chatInput, isChatLoading, chatMessagesRef,
+                showChat, isChatMaximized, toggleChatMaximize, chatMessages, chatInput, isChatLoading, chatMessagesRef,
                 
                 // Audio Player
                 playerVolume,
@@ -5295,7 +5365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 autoSaveNotes, autoSaveSummary,
                 sendChatMessage, isChatScrolledToBottom, scrollChatToBottom, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
-                downloadSummary, downloadTranscript, downloadNotes, downloadChat, downloadEventICS, formatEventDateTime,
+                downloadSummary, downloadTranscript, downloadNotes, downloadChat, clearChat, downloadEventICS, downloadICS, formatEventDateTime,
                 toggleInbox, toggleHighlight,
                 toggleTranscriptionViewMode,
                 reprocessTranscription,

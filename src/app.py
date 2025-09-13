@@ -936,6 +936,246 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
         app.logger.error(f"Error in semantic search: {e}")
         return []
 
+# --- Helper Functions for Document Processing ---
+
+def process_markdown_to_docx(doc, content):
+    """Convert markdown content to properly formatted Word document elements.
+
+    Supports:
+    - Tables (markdown pipe tables)
+    - Headings (# ## ###)
+    - Bold text (**text**)
+    - Italic text (*text* or _text_)
+    - Bold italic (***text***)
+    - Inline code (`code`)
+    - Code blocks (```code```)
+    - Strikethrough (~~text~~)
+    - Links ([text](url))
+    - Bullet lists (- or *)
+    - Numbered lists (1. 2. 3.)
+    - Horizontal rules (--- or ***)
+    """
+    from docx.shared import RGBColor, Pt
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    import re
+
+    def add_formatted_run(paragraph, text):
+        """Add a run with inline formatting to a paragraph."""
+        if not text:
+            return
+
+        # Pattern for all inline formatting
+        # Order matters: check triple asterisk before double/single
+        patterns = [
+            (r'\*\*\*(.*?)\*\*\*', lambda p, t: setattr(p.add_run(t), 'bold', True) or setattr(p.runs[-1], 'italic', True)),  # Bold italic
+            (r'\*\*(.*?)\*\*', lambda p, t: setattr(p.add_run(t), 'bold', True)),  # Bold
+            (r'(?<!\*)\*(?!\*)(.*?)\*(?!\*)', lambda p, t: setattr(p.add_run(t), 'italic', True)),  # Italic with *
+            (r'\b_(.*?)_\b', lambda p, t: setattr(p.add_run(t), 'italic', True)),  # Italic with _
+            (r'~~(.*?)~~', lambda p, t: setattr(p.add_run(t), 'strike', True)),  # Strikethrough
+            (r'`([^`]+)`', lambda p, t: add_code_run(p, t)),  # Inline code
+            (r'\[([^\]]+)\]\(([^)]+)\)', lambda p, t, u: add_link_run(p, t, u)),  # Links
+        ]
+
+        def add_code_run(para, text):
+            """Add inline code with monospace font and background."""
+            run = para.add_run(text)
+            run.font.name = 'Courier New'
+            run.font.size = Pt(10)
+            run.font.color.rgb = RGBColor(220, 20, 60)  # Crimson color for code
+            return run
+
+        def add_link_run(para, text, url):
+            """Add a hyperlink-styled run (note: actual hyperlinks require more complex handling)."""
+            run = para.add_run(f"{text} ({url})")
+            run.font.color.rgb = RGBColor(0, 0, 255)  # Blue color for links
+            run.font.underline = True
+            return run
+
+        # Process the text with all patterns
+        remaining_text = text
+        while remaining_text:
+            earliest_match = None
+            earliest_pos = len(remaining_text)
+            matched_pattern = None
+
+            # Find the earliest matching pattern
+            for pattern, handler in patterns:
+                match = re.search(pattern, remaining_text)
+                if match and match.start() < earliest_pos:
+                    earliest_match = match
+                    earliest_pos = match.start()
+                    matched_pattern = handler
+
+            if earliest_match:
+                # Add text before the match
+                if earliest_pos > 0:
+                    paragraph.add_run(remaining_text[:earliest_pos])
+
+                # Apply formatting for the matched text
+                if '[' in earliest_match.group(0) and '](' in earliest_match.group(0):
+                    # Special handling for links (two groups)
+                    matched_pattern(paragraph, earliest_match.group(1), earliest_match.group(2))
+                else:
+                    matched_pattern(paragraph, earliest_match.group(1))
+
+                # Continue with remaining text
+                remaining_text = remaining_text[earliest_match.end():]
+            else:
+                # No more patterns, add the rest as plain text
+                paragraph.add_run(remaining_text)
+                break
+
+    def parse_table(lines, start_idx):
+        """Parse a markdown table starting at the given index."""
+        if start_idx >= len(lines):
+            return None, start_idx
+
+        # Check if this looks like a table
+        if '|' not in lines[start_idx]:
+            return None, start_idx
+
+        table_data = []
+        idx = start_idx
+
+        while idx < len(lines) and '|' in lines[idx]:
+            # Skip separator lines
+            if re.match(r'^[\s\|\-:]+$', lines[idx]):
+                idx += 1
+                continue
+
+            # Parse cells
+            cells = [cell.strip() for cell in lines[idx].split('|')]
+            # Remove empty cells at start and end
+            if cells and not cells[0]:
+                cells = cells[1:]
+            if cells and not cells[-1]:
+                cells = cells[:-1]
+
+            if cells:
+                table_data.append(cells)
+            idx += 1
+
+        if table_data:
+            return table_data, idx
+        return None, start_idx
+
+    # Split content into lines
+    lines = content.split('\n')
+    i = 0
+    in_code_block = False
+    code_block_content = []
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Handle code blocks
+        if line.strip().startswith('```'):
+            if not in_code_block:
+                in_code_block = True
+                code_block_content = []
+            else:
+                # End of code block - add it as preformatted text
+                in_code_block = False
+                if code_block_content:
+                    p = doc.add_paragraph()
+                    p.style = 'Normal'
+                    code_text = '\n'.join(code_block_content)
+                    run = p.add_run(code_text)
+                    run.font.name = 'Courier New'
+                    run.font.size = Pt(10)
+                    run.font.color.rgb = RGBColor(64, 64, 64)
+            i += 1
+            continue
+
+        if in_code_block:
+            code_block_content.append(line)
+            i += 1
+            continue
+
+        # Check for table
+        table_data, end_idx = parse_table(lines, i)
+        if table_data:
+            # Create Word table
+            table = doc.add_table(rows=len(table_data), cols=len(table_data[0]))
+            table.style = 'Table Grid'
+
+            # Populate table
+            for row_idx, row_data in enumerate(table_data):
+                for col_idx, cell_text in enumerate(row_data):
+                    if col_idx < len(table.rows[row_idx].cells):
+                        cell = table.rows[row_idx].cells[col_idx]
+                        # Clear existing paragraphs and add new one
+                        cell.text = ""
+                        p = cell.add_paragraph()
+                        add_formatted_run(p, cell_text)
+                        # Make header row bold
+                        if row_idx == 0:
+                            for run in p.runs:
+                                run.bold = True
+
+            doc.add_paragraph('')  # Space after table
+            i = end_idx
+            continue
+
+        line = line.rstrip()
+
+        # Skip empty lines
+        if not line:
+            doc.add_paragraph('')
+            i += 1
+            continue
+
+        # Horizontal rule
+        if re.match(r'^(\*{3,}|-{3,}|_{3,})$', line.strip()):
+            p = doc.add_paragraph('─' * 50)
+            p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            i += 1
+            continue
+
+        # Headings
+        if line.startswith('# '):
+            doc.add_heading(line[2:], 1)
+        elif line.startswith('## '):
+            doc.add_heading(line[3:], 2)
+        elif line.startswith('### '):
+            doc.add_heading(line[4:], 3)
+        elif line.startswith('#### '):
+            doc.add_heading(line[5:], 4)
+        # Bullet points
+        elif line.lstrip().startswith('- ') or line.lstrip().startswith('* '):
+            # Get the indentation level
+            indent = len(line) - len(line.lstrip())
+            bullet_text = line.lstrip()[2:]
+            p = doc.add_paragraph(style='List Bullet')
+            # Add indentation if nested
+            if indent > 0:
+                p.paragraph_format.left_indent = Pt(indent * 10)
+            add_formatted_run(p, bullet_text)
+        # Numbered lists
+        elif re.match(r'^\s*\d+\.', line):
+            match = re.match(r'^(\s*)(\d+)\.\s*(.*)', line)
+            if match:
+                indent = len(match.group(1))
+                list_text = match.group(3)
+                p = doc.add_paragraph(style='List Number')
+                if indent > 0:
+                    p.paragraph_format.left_indent = Pt(indent * 10)
+                add_formatted_run(p, list_text)
+        # Blockquote
+        elif line.startswith('> '):
+            p = doc.add_paragraph()
+            p.paragraph_format.left_indent = Pt(30)
+            add_formatted_run(p, line[2:])
+            # Add a gray color to indicate quote
+            for run in p.runs:
+                run.font.color.rgb = RGBColor(100, 100, 100)
+        else:
+            # Regular paragraph
+            p = doc.add_paragraph()
+            add_formatted_run(p, line)
+
+        i += 1
+
 # --- Database Models ---
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -2294,14 +2534,17 @@ Summarization Instructions:
             
             if summary:
                 recording.summary = summary
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
                 db.session.commit()
                 app.logger.info(f"Summary generated successfully for recording {recording_id}")
 
-                # Extract events if enabled for this user
+                # Extract events if enabled for this user BEFORE marking as completed
                 if recording.owner and recording.owner.extract_events:
                     extract_events_from_transcript(recording_id, formatted_transcription, summary)
+
+                # Mark as completed AFTER event extraction
+                recording.status = 'COMPLETED'
+                recording.completed_at = datetime.utcnow()
+                db.session.commit()
             else:
                 app.logger.warning(f"Empty summary generated for recording {recording_id}")
                 recording.summary = "[Summary not generated]"
@@ -2523,6 +2766,11 @@ You must respond with valid JSON format only."""},
                 continue
 
         db.session.commit()
+
+        # Refresh the recording to ensure events relationship is loaded
+        recording = db.session.get(Recording, recording_id)
+        if recording:
+            db.session.refresh(recording)
 
     except Exception as e:
         app.logger.error(f"Error extracting events for recording {recording_id}: {str(e)}")
@@ -3512,6 +3760,7 @@ def download_transcript_with_template(recording_id):
         app.logger.error(f"Error downloading transcript: {e}")
         return jsonify({'error': 'Failed to generate transcript download'}), 500
 
+
 @app.route('/recording/<int:recording_id>/download/summary')
 @login_required
 def download_summary_word(recording_id):
@@ -3549,58 +3798,9 @@ def download_summary_word(recording_id):
             tags_str = ', '.join([tag.name for tag in recording.tags])
             doc.add_paragraph(f'Tags: {tags_str}')
         doc.add_paragraph('')  # Empty line
-        
-        # Convert markdown-like formatting to Word formatting
-        def add_formatted_content(paragraph, text):
-            # Handle bold text (**text**)
-            bold_pattern = r'\*\*(.*?)\*\*'
-            parts = re.split(bold_pattern, text)
-            
-            for i, part in enumerate(parts):
-                if i % 2 == 0:  # Regular text
-                    if part:
-                        paragraph.add_run(part)
-                else:  # Bold text
-                    if part:
-                        paragraph.add_run(part).bold = True
-        
-        # Split summary into paragraphs and process
-        summary_lines = recording.summary.split('\n')
-        current_paragraph = None
-        
-        for line in summary_lines:
-            line = line.strip()
-            if not line:
-                current_paragraph = None
-                continue
-                
-            # Check if line starts with markdown heading
-            if line.startswith('# '):
-                doc.add_heading(line[2:], 1)
-                current_paragraph = None
-            elif line.startswith('## '):
-                doc.add_heading(line[3:], 2)
-                current_paragraph = None
-            elif line.startswith('### '):
-                doc.add_heading(line[4:], 3)
-                current_paragraph = None
-            elif line.startswith('- ') or line.startswith('* '):
-                # Bullet point
-                p = doc.add_paragraph(style='List Bullet')
-                add_formatted_content(p, line[2:])
-                current_paragraph = None
-            elif re.match(r'^\d+\.', line):
-                # Numbered list
-                p = doc.add_paragraph(style='List Number')
-                add_formatted_content(p, re.sub(r'^\d+\.\s*', '', line))
-                current_paragraph = None
-            else:
-                # Regular paragraph
-                if current_paragraph is None:
-                    current_paragraph = doc.add_paragraph()
-                else:
-                    current_paragraph.add_run('\n')
-                add_formatted_content(current_paragraph, line)
+
+        # Process markdown content using the helper function
+        process_markdown_to_docx(doc, recording.summary)
         
         # Save to BytesIO
         doc_stream = BytesIO()
@@ -3709,71 +3909,8 @@ def download_chat_word(recording_id):
                 p.add_run(thinking).italic = True
                 doc.add_paragraph('')  # Empty line
             
-            # Add message content
-            # Convert markdown-like formatting
-            lines = content.split('\n')
-            current_paragraph = None
-            
-            for line in lines:
-                if line.startswith('# '):
-                    # Heading
-                    doc.add_heading(line[2:], level=1)
-                    current_paragraph = None
-                elif line.startswith('## '):
-                    # Subheading
-                    doc.add_heading(line[3:], level=2)
-                    current_paragraph = None
-                elif line.startswith('### '):
-                    # Sub-subheading
-                    doc.add_heading(line[4:], level=3)
-                    current_paragraph = None
-                elif line.startswith('- ') or line.startswith('* '):
-                    # Bullet point
-                    p = doc.add_paragraph(style='List Bullet')
-                    # Handle bold text
-                    text = line[2:]
-                    bold_pattern = r'\*\*(.*?)\*\*'
-                    parts = re.split(bold_pattern, text)
-                    for i, part in enumerate(parts):
-                        if i % 2 == 0:  # Regular text
-                            if part:
-                                p.add_run(part)
-                        else:  # Bold text
-                            if part:
-                                p.add_run(part).bold = True
-                    current_paragraph = None
-                elif re.match(r'^\d+\.', line):
-                    # Numbered list
-                    p = doc.add_paragraph(style='List Number')
-                    text = re.sub(r'^\d+\.\s*', '', line)
-                    # Handle bold text
-                    bold_pattern = r'\*\*(.*?)\*\*'
-                    parts = re.split(bold_pattern, text)
-                    for i, part in enumerate(parts):
-                        if i % 2 == 0:  # Regular text
-                            if part:
-                                p.add_run(part)
-                        else:  # Bold text
-                            if part:
-                                p.add_run(part).bold = True
-                    current_paragraph = None
-                else:
-                    # Regular paragraph
-                    if current_paragraph is None:
-                        current_paragraph = doc.add_paragraph()
-                    else:
-                        current_paragraph.add_run('\n')
-                    
-                    # Handle bold text
-                    bold_pattern = r'\*\*(.*?)\*\*'
-                    parts = re.split(bold_pattern, line)
-                    for i, part in enumerate(parts):
-                        if i % 2 == 0:  # Regular text
-                            if part:
-                                current_paragraph.add_run(part)
-                        else:  # Bold text
-                            if part:
-                                current_paragraph.add_run(part).bold = True
+            # Add message content with markdown formatting
+            process_markdown_to_docx(doc, content)
             
             doc.add_paragraph('')  # Empty line between messages
         
@@ -3867,6 +4004,62 @@ def download_event_ics(event_id):
 
     except Exception as e:
         app.logger.error(f"Error generating ICS for event {event_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recording/<int:recording_id>/events/ics', methods=['GET'])
+@login_required
+def download_all_events_ics(recording_id):
+    """Generate and download an ICS file containing all events from a recording."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        # Check permissions
+        if recording.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        # Get all events for this recording
+        events = Event.query.filter_by(recording_id=recording_id).all()
+        if not events:
+            return jsonify({'error': 'No events found for this recording'}), 404
+
+        # Generate combined ICS content
+        ics_lines = []
+        ics_lines.append("BEGIN:VCALENDAR")
+        ics_lines.append("VERSION:2.0")
+        ics_lines.append("PRODID:-//Speakr//Event Export//EN")
+        ics_lines.append("CALSCALE:GREGORIAN")
+        ics_lines.append("METHOD:PUBLISH")
+
+        # Add each event
+        for event in events:
+            # Get the individual event's ICS content and extract just the VEVENT portion
+            individual_ics = generate_ics_content(event)
+            # Extract VEVENT block from individual ICS
+            lines = individual_ics.split('\n')
+            in_event = False
+            for line in lines:
+                if line.startswith('BEGIN:VEVENT'):
+                    in_event = True
+                if in_event:
+                    ics_lines.append(line)
+                if line.startswith('END:VEVENT'):
+                    in_event = False
+
+        ics_lines.append("END:VCALENDAR")
+        ics_content = '\n'.join(ics_lines)
+
+        # Create response with ICS file
+        response = make_response(ics_content)
+        response.headers['Content-Type'] = 'text/calendar; charset=utf-8'
+        filename = f"events-{secure_filename(recording.title or f'recording-{recording_id}')}.ics"
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Error generating ICS for recording {recording_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
 def generate_ics_content(event):
@@ -3995,58 +4188,9 @@ def download_notes_word(recording_id):
             tags_str = ', '.join([tag.name for tag in recording.tags])
             doc.add_paragraph(f'Tags: {tags_str}')
         doc.add_paragraph('')  # Empty line
-        
-        # Convert markdown-like formatting to Word formatting
-        def add_formatted_content(paragraph, text):
-            # Handle bold text (**text**)
-            bold_pattern = r'\*\*(.*?)\*\*'
-            parts = re.split(bold_pattern, text)
-            
-            for i, part in enumerate(parts):
-                if i % 2 == 0:  # Regular text
-                    if part:
-                        paragraph.add_run(part)
-                else:  # Bold text
-                    if part:
-                        paragraph.add_run(part).bold = True
-        
-        # Split notes into paragraphs and process
-        notes_lines = recording.notes.split('\n')
-        current_paragraph = None
-        
-        for line in notes_lines:
-            line = line.strip()
-            if not line:
-                current_paragraph = None
-                continue
-                
-            # Check if line starts with markdown heading
-            if line.startswith('# '):
-                doc.add_heading(line[2:], 1)
-                current_paragraph = None
-            elif line.startswith('## '):
-                doc.add_heading(line[3:], 2)
-                current_paragraph = None
-            elif line.startswith('### '):
-                doc.add_heading(line[4:], 3)
-                current_paragraph = None
-            elif line.startswith('- ') or line.startswith('* '):
-                # Bullet point
-                p = doc.add_paragraph(style='List Bullet')
-                add_formatted_content(p, line[2:])
-                current_paragraph = None
-            elif re.match(r'^\d+\.', line):
-                # Numbered list
-                p = doc.add_paragraph(style='List Number')
-                add_formatted_content(p, re.sub(r'^\d+\.\s*', '', line))
-                current_paragraph = None
-            else:
-                # Regular paragraph
-                if current_paragraph is None:
-                    current_paragraph = doc.add_paragraph()
-                else:
-                    current_paragraph.add_run('\n')
-                add_formatted_content(current_paragraph, line)
+
+        # Process markdown content using the helper function
+        process_markdown_to_docx(doc, recording.notes)
         
         # Save to BytesIO
         doc_stream = BytesIO()
@@ -4623,7 +4767,14 @@ def reprocess_transcription(recording_id):
         recording.transcription = None
         recording.summary = None
         recording.status = 'PROCESSING'
+
+        # Clear existing events since they depend on the transcription
+        Event.query.filter_by(recording_id=recording_id).delete()
+
         db.session.commit()
+
+        # Refresh the recording object to ensure it has the latest committed data
+        db.session.refresh(recording)
 
         app.logger.info(f"Starting transcription reprocessing for recording {recording_id}")
 
@@ -4651,7 +4802,7 @@ def reprocess_transcription(recording_id):
             # Apply tag defaults if no user input provided (get merged defaults from all tags on this recording)
             if (min_speakers is None or max_speakers is None) and recording.tags:
                 # Get tag defaults (use first non-None value from ordered tags)
-                for tag_association in sorted(recording.recording_associations, key=lambda x: x.order):
+                for tag_association in sorted(recording.tag_associations, key=lambda x: x.order):
                     tag = tag_association.tag
                     if min_speakers is None and tag.default_min_speakers:
                         min_speakers = tag.default_min_speakers
@@ -4735,8 +4886,15 @@ def reprocess_summary(recording_id):
         # Set status to SUMMARIZING and clear existing summary
         recording.summary = None
         recording.status = 'SUMMARIZING'
+
+        # Clear existing events since they might be re-extracted during summary generation
+        Event.query.filter_by(recording_id=recording_id).delete()
+
         db.session.commit()
-        
+
+        # Refresh the recording object to ensure it has the latest committed data
+        db.session.refresh(recording)
+
         app.logger.info(f"Starting summary reprocessing for recording {recording_id}")
         
         # Start summary generation in background thread
@@ -6126,11 +6284,14 @@ def get_status(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
-        
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to view this recording'}), 403
-            
+
+        # Ensure events are loaded (refresh the recording to get latest relationships)
+        db.session.refresh(recording)
+
         return jsonify(recording.to_dict())
     except Exception as e:
         app.logger.error(f"Error fetching status for recording {recording_id}: {e}", exc_info=True)

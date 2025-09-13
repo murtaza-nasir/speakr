@@ -968,6 +968,11 @@
                             <button @click="mobileTab = 'summary'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'summary' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('summary.title')"></button>
                             <button @click="mobileTab = 'notes'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'notes' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('notes.title')"></button>
                             <button @click="mobileTab = 'chat'" :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'chat' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']" v-text="t('chat.title')"></button>
+                            <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
+                                    @click="mobileTab = 'events'"
+                                    :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap', mobileTab === 'events' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']">
+                                <i class="fas fa-calendar-alt mr-1"></i>${ selectedRecording.events.length }
+                            </button>
                         </div>
 
                         <!-- Mobile Tab Content -->
@@ -1078,7 +1083,15 @@
                                 </div>
                             </div>
                             <!-- Chat Panel -->
-                            <div v-if="mobileTab === 'chat'" class="h-full flex flex-col rounded-lg border border-[var(--border-primary)] overflow-hidden">
+                            <div v-if="mobileTab === 'chat'" class="h-full flex flex-col rounded-lg border border-[var(--border-primary)] overflow-hidden relative">
+                                <!-- Clear button - fixed at top right -->
+                                <button v-if="chatMessages.length > 0"
+                                        @click="clearChat"
+                                        class="absolute top-2 right-2 p-1 text-[var(--text-muted)] opacity-60 hover:opacity-100 hover:text-[var(--text-danger)] rounded transition-all duration-200 z-20"
+                                        title="Clear chat">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+
                                 <div ref="chatMessagesRef" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-secondary)]">
                                     <div v-if="chatMessages.length === 0" class="text-center py-8">
                                         <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
@@ -1121,6 +1134,64 @@
                                         <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED'" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                             <i class="fas fa-paper-plane"></i>
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Events Panel (Mobile) -->
+                            <div v-if="mobileTab === 'events' && selectedRecording.events && selectedRecording.events.length > 0" class="h-full flex flex-col space-y-4">
+                                <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
+                                    <button @click="downloadICS" v-if="selectedRecording.events && selectedRecording.events.length > 0"
+                                            class="copy-btn"
+                                            :title="t('buttons.exportCalendar')">
+                                        <i class="fas fa-calendar-plus"></i>
+                                    </button>
+                                </div>
+                                <div class="flex-grow overflow-y-auto mobile-content-box">
+                                    <div class="space-y-3">
+                                        <div v-for="event in selectedRecording.events" :key="event.id"
+                                             class="bg-[var(--bg-tertiary)] rounded-lg p-3 border border-[var(--border-primary)]">
+                                            <div class="flex justify-between items-start mb-2">
+                                                <div class="flex-1">
+                                                    <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
+                                                        <i class="fas fa-calendar-check mr-2 text-[var(--text-accent)] text-sm"></i>
+                                                        ${ event.title }
+                                                    </h3>
+                                                    <p v-if="event.description" class="text-xs text-[var(--text-secondary)] mb-2">
+                                                        ${ event.description }
+                                                    </p>
+                                                </div>
+                                                <button @click="downloadEventICS(event)"
+                                                        class="px-2 py-1 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-xs flex items-center gap-1"
+                                                        :title="t('events.addToCalendar')">
+                                                    <i class="fas fa-download text-xs"></i>
+                                                    <span>Add</span>
+                                                </button>
+                                            </div>
+                                            <div class="grid grid-cols-1 gap-2 text-xs">
+                                                <div class="flex items-center text-[var(--text-muted)]">
+                                                    <i class="fas fa-clock mr-2 text-[var(--text-accent)]"></i>
+                                                    <span>
+                                                        ${ formatEventDateTime(event.start_datetime) }
+                                                        <template v-if="event.end_datetime">
+                                                            - ${ formatEventDateTime(event.end_datetime, true) }
+                                                        </template>
+                                                    </span>
+                                                </div>
+                                                <div v-if="event.location" class="flex items-center text-[var(--text-muted)]">
+                                                    <i class="fas fa-map-marker-alt mr-2 text-[var(--text-accent)]"></i>
+                                                    <span>${ event.location }</span>
+                                                </div>
+                                                <div v-if="event.attendees && event.attendees.length > 0" class="flex items-start text-[var(--text-muted)]">
+                                                    <i class="fas fa-users mr-2 text-[var(--text-accent)] mt-0.5"></i>
+                                                    <div class="flex-1">
+                                                        <span v-for="(attendee, index) in event.attendees" :key="index"
+                                                              class="inline-block bg-[var(--bg-secondary)] px-2 py-0.5 rounded mr-1 mb-1">
+                                                            ${ attendee }
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1410,7 +1481,7 @@
                                 </div>
 
                                 <!-- Summary/Notes Tabs -->
-                                <div class="flex-1 flex flex-col overflow-hidden">
+                                <div :class="{'flex-1': !isChatMaximized, 'flex-none': isChatMaximized}" class="flex flex-col overflow-hidden">
                                     <!-- Tab Navigation -->
                                     <div class="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex">
                                         <button @click="selectedTab = 'summary'" 
@@ -1445,7 +1516,7 @@
                                     </div>
 
                                     <!-- Tab Content -->
-                                    <div class="flex-1 overflow-hidden">
+                                    <div v-if="!isChatMaximized" class="flex-1 overflow-hidden">
                                         <!-- Summary Tab -->
                                         <div v-if="selectedTab === 'summary'" class="h-full p-4 overflow-y-auto">
                                             <div v-if="selectedRecording.status === 'SUMMARIZING'" class="text-center py-8">
@@ -1627,24 +1698,28 @@
                                 </div>
 
                                 <!-- Chat Section -->
-                                <div class="border-t border-[var(--border-primary)] flex flex-col">
+                                <div class="border-t border-[var(--border-primary)] flex flex-col" :class="{'flex-1 overflow-hidden': isChatMaximized}">
                                     <!-- Chat Toggle -->
-                                    <div class="bg-[var(--bg-tertiary)] px-4 py-3 hover:bg-[var(--bg-accent-hover)] transition-colors flex items-center">
-                                        <button @click="showChat = !showChat" 
-                                                class="flex-1 text-left flex items-center">
+                                    <div class="bg-[var(--bg-tertiary)] px-4 py-3 flex items-center">
+                                        <div class="flex-1 flex items-center">
                                             <span class="font-medium flex items-center">
                                                 <i class="fas fa-comments mr-2"></i>
                                                 ${ t('chat.chatWithTranscription') }
                                             </span>
-                                        </button>
+                                        </div>
                                         <div class="flex items-center gap-2">
-                                            <button v-if="chatMessages.length > 0" 
+                                            <button v-if="chatMessages.length > 0"
                                                     @click="downloadChat"
                                                     class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                                                     :title="t('buttons.downloadChat')">
                                                 <i class="fas fa-download text-sm"></i>
                                             </button>
-                                            <button @click="showChat = !showChat" 
+                                            <button @click="toggleChatMaximize"
+                                                    class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                                                    :title="isChatMaximized ? 'Restore chat' : 'Maximize chat'">
+                                                <i :class="['fas text-sm', isChatMaximized ? 'fa-compress' : 'fa-expand']"></i>
+                                            </button>
+                                            <button @click="() => { showChat = !showChat; if (!showChat) isChatMaximized = false; }"
                                                     class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                                                 <i :class="['fas transition-transform duration-200', showChat ? 'fa-chevron-down' : 'fa-chevron-up']"></i>
                                             </button>
@@ -1652,9 +1727,17 @@
                                     </div>
 
                                     <!-- Chat Content -->
-                                    <div v-if="showChat" class="flex-1 flex flex-col min-h-0 max-h-96">
+                                    <div v-if="showChat" class="flex flex-col relative" :class="isChatMaximized ? 'flex-1 overflow-hidden' : 'max-h-96'">
+                                        <!-- Clear button - fixed at top right -->
+                                        <button v-if="chatMessages.length > 0"
+                                                @click="clearChat"
+                                                class="absolute top-2 right-2 p-1 text-[var(--text-muted)] opacity-60 hover:opacity-100 hover:text-[var(--text-danger)] rounded transition-all duration-200 z-20"
+                                                title="Clear chat">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+
                                         <!-- Chat Messages -->
-                                        <div ref="chatMessagesRef" 
+                                        <div ref="chatMessagesRef"
                                              class="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-secondary)]">
                                             <div v-if="chatMessages.length === 0" class="text-center py-8">
                                                 <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
