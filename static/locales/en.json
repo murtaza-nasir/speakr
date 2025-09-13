@@ -12,7 +12,7 @@
     "dockerDescription": "Official Docker images",
     "dockerHub": "Docker Hub",
     "documentation": "Documentation",
-    "documentationDescription": "Setup guides and user manual",
+    "documentationDescription": "User guide and tutorials",
     "endpoint": "Endpoint",
     "frontend": "Frontend",
     "githubDescription": "Source code, issues, and releases",
@@ -116,7 +116,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "selectOrCreate": "Select a template to edit or create a new one"
+    "selectOrCreate": "Select a template to edit or create a new one",
+    "viewGuide": "View Template Guide"
   },
   "admin": {
     "title": "Admin",

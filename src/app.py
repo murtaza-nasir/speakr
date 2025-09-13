@@ -5002,6 +5002,76 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+@app.route('/docs/transcript-templates-guide')
+def transcript_templates_guide():
+    """Serve the transcript templates documentation."""
+    import os
+    import markdown
+
+    docs_path = os.path.join(app.root_path, '..', 'docs', 'transcript-templates-guide.md')
+
+    if not os.path.exists(docs_path):
+        return "Documentation not found", 404
+
+    with open(docs_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # Convert markdown to HTML
+    html_content = markdown.markdown(content, extensions=['tables', 'fenced_code', 'codehilite'])
+
+    # Wrap in basic HTML template with Speakr styling
+    html_template = f'''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Transcript Templates Guide - Speakr</title>
+        <link rel="stylesheet" href="/static/css/output.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <style>
+            .markdown-body {{
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 2rem;
+                line-height: 1.6;
+            }}
+            .markdown-body h1 {{ font-size: 2.5rem; margin-bottom: 1rem; }}
+            .markdown-body h2 {{ font-size: 2rem; margin-top: 2rem; margin-bottom: 1rem; }}
+            .markdown-body h3 {{ font-size: 1.5rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }}
+            .markdown-body pre {{ background: #f4f4f4; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }}
+            .markdown-body code {{ background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 0.25rem; }}
+            .markdown-body pre code {{ background: none; padding: 0; }}
+            .markdown-body ul, .markdown-body ol {{ margin-left: 2rem; margin-bottom: 1rem; }}
+            .markdown-body li {{ margin-bottom: 0.5rem; }}
+            .markdown-body blockquote {{ border-left: 4px solid #ddd; padding-left: 1rem; margin: 1rem 0; }}
+            .markdown-body table {{ border-collapse: collapse; width: 100%; margin: 1rem 0; }}
+            .markdown-body th, .markdown-body td {{ border: 1px solid #ddd; padding: 0.5rem; }}
+            .markdown-body th {{ background: #f4f4f4; }}
+        </style>
+    </head>
+    <body class="bg-[var(--bg-primary)]">
+        <div class="min-h-screen">
+            <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] p-4">
+                <div class="max-w-6xl mx-auto flex items-center justify-between">
+                    <a href="/" class="text-2xl font-bold text-[var(--text-primary)]">
+                        <i class="fas fa-microphone-alt mr-2"></i>Speakr
+                    </a>
+                    <a href="/account" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                        Back to Account
+                    </a>
+                </div>
+            </div>
+            <div class="markdown-body text-[var(--text-primary)]">
+                {html_content}
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+
+    return html_template
+
 @app.route('/account', methods=['GET', 'POST'])
 @login_required
 def account():
