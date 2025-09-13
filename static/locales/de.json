@@ -91,7 +91,25 @@
     "about": "Über",
     "customPrompts": "Benutzerdefinierte Prompts",
     "sharedTranscripts": "Geteilte Transkripte",
-    "tagManagement": "Tag-Verwaltung"
+    "speakersManagement": "Sprecher-Verwaltung",
+    "tagManagement": "Tag-Verwaltung",
+    "transcriptTemplates": "Transkript-Vorlagen"
+  },
+  "transcriptTemplates": {
+    "title": "Transkript-Vorlagen",
+    "description": "Anpassen, wie Transkripte für Download und Export formatiert werden.",
+    "createNew": "Vorlage Erstellen",
+    "availableTemplates": "Verfügbare Vorlagen",
+    "createDefaults": "Standardvorlagen Erstellen",
+    "templateName": "Vorlagenname",
+    "template": "Vorlage",
+    "availableVars": "Verfügbare Variablen",
+    "filters": "Filter: |upper für Großbuchstaben, |srt für Untertitelformat",
+    "setDefault": "Als Standardvorlage festlegen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "selectOrCreate": "Wählen Sie eine Vorlage zum Bearbeiten oder erstellen Sie eine neue"
   },
   "admin": {
     "title": "Administration",

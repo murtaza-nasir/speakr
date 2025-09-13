@@ -979,8 +979,9 @@
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']"><i class="fas fa-list"></i></button>
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']"><i class="fas fa-comments"></i></button>
                                     </div>
-                                    <button @click="copyTranscription" class="copy-btn"><i class="fas fa-copy"></i></button>
-                                    <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn"><i class="fas fa-edit"></i></button>
+                                    <button @click="copyTranscription" class="copy-btn" title="Copy transcript"><i class="fas fa-copy"></i></button>
+                                    <button @click="downloadTranscript" class="copy-btn" title="Download transcript with template"><i class="fas fa-download"></i></button>
+                                    <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" title="Edit transcript"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
                                     <div v-if="selectedRecording.status === 'PROCESSING'" class="text-center py-8">

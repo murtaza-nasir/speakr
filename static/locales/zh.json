@@ -109,7 +109,25 @@
     "about": "关于",
     "customPrompts": "自定义提示",
     "sharedTranscripts": "共享转录",
-    "tagManagement": "标签管理"
+    "speakersManagement": "发言人管理",
+    "tagManagement": "标签管理",
+    "transcriptTemplates": "转录模板"
+  },
+  "transcriptTemplates": {
+    "title": "转录模板",
+    "description": "自定义转录的下载和导出格式。",
+    "createNew": "创建模板",
+    "availableTemplates": "可用模板",
+    "createDefaults": "创建默认模板",
+    "templateName": "模板名称",
+    "template": "模板",
+    "availableVars": "可用变量",
+    "filters": "过滤器：|upper 转大写，|srt 字幕格式",
+    "setDefault": "设为默认模板",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "selectOrCreate": "选择要编辑的模板或创建新模板"
   },
   "admin": {
     "title": "管理员",

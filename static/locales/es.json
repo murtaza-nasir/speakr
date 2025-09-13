@@ -91,7 +91,25 @@
     "about": "Acerca de",
     "customPrompts": "Prompts Personalizados",
     "sharedTranscripts": "Transcripciones Compartidas",
-    "tagManagement": "Gestión de Etiquetas"
+    "speakersManagement": "Gestión de Hablantes",
+    "tagManagement": "Gestión de Etiquetas",
+    "transcriptTemplates": "Plantillas de Transcripción"
+  },
+  "transcriptTemplates": {
+    "title": "Plantillas de Transcripción",
+    "description": "Personaliza cómo se formatean las transcripciones para descarga y exportación.",
+    "createNew": "Crear Plantilla",
+    "availableTemplates": "Plantillas Disponibles",
+    "createDefaults": "Crear Plantillas Predeterminadas",
+    "templateName": "Nombre de Plantilla",
+    "template": "Plantilla",
+    "availableVars": "Variables Disponibles",
+    "filters": "Filtros: |upper para mayúsculas, |srt para formato de subtítulos",
+    "setDefault": "Establecer como plantilla predeterminada",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "selectOrCreate": "Selecciona una plantilla para editar o crea una nueva"
   },
   "admin": {
     "title": "Administración",

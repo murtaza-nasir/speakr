@@ -91,7 +91,25 @@
     "about": "À Propos",
     "customPrompts": "Invites Personnalisées",
     "sharedTranscripts": "Transcriptions Partagées",
-    "tagManagement": "Gestion des Étiquettes"
+    "speakersManagement": "Gestion des Locuteurs",
+    "tagManagement": "Gestion des Étiquettes",
+    "transcriptTemplates": "Modèles de Transcription"
+  },
+  "transcriptTemplates": {
+    "title": "Modèles de Transcription",
+    "description": "Personnalisez le formatage des transcriptions pour le téléchargement et l'exportation.",
+    "createNew": "Créer un Modèle",
+    "availableTemplates": "Modèles Disponibles",
+    "createDefaults": "Créer des Modèles par Défaut",
+    "templateName": "Nom du Modèle",
+    "template": "Modèle",
+    "availableVars": "Variables Disponibles",
+    "filters": "Filtres: |upper pour majuscules, |srt pour format sous-titres",
+    "setDefault": "Définir comme modèle par défaut",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "selectOrCreate": "Sélectionnez un modèle à éditer ou créez-en un nouveau"
   },
   "admin": {
     "title": "Administration",

@@ -180,6 +180,39 @@
         applyTheme();
     </script>
     <style>
+        /* Horizontal scrollbar for tab navigation */
+        .tab-nav {
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-secondary) transparent;
+        }
+
+        .tab-nav::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .tab-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tab-nav::-webkit-scrollbar-thumb {
+            background-color: var(--border-secondary);
+            border-radius: 3px;
+        }
+
+        .tab-nav::-webkit-scrollbar-thumb:hover {
+            background-color: var(--border-accent);
+        }
+
+        /* Ensure tabs don't shrink below their content */
+        .tab-nav a {
+            flex-shrink: 0;
+        }
+
+        /* Add some padding at the end of scrollable area */
+        .tab-nav > div {
+            padding-right: 1rem;
+        }
+
         /* Custom scrollbar styling for Speakers Management */
         #content-speakers .overflow-y-auto::-webkit-scrollbar {
             width: 8px;
@@ -273,7 +306,9 @@
         <main class="flex-grow">
             <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
                 <div class="mb-6 border-b border-[var(--border-primary)] sm:border-b">
-                    <nav class="tab-nav -mb-px flex flex-col sm:flex-row sm:space-x-8" aria-label="Tabs">
+                    <div class="relative">
+                        <nav class="tab-nav -mb-px flex overflow-x-auto scrollbar-thin scrollbar-thumb-[var(--border-secondary)] scrollbar-track-transparent" aria-label="Tabs" style="scrollbar-width: thin;">
+                            <div class="flex flex-col sm:flex-row sm:space-x-4 min-w-full sm:min-w-0">
                         <a href="#" id="tab-account" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b-2 sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-[var(--border-accent)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent">
                             <i class="fas fa-user-circle mr-2"></i><span data-i18n="account.title">Account Information</span>
                         </a>
@@ -289,10 +324,15 @@
                         <a href="#" id="tab-tags" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
                             <i class="fas fa-tags mr-2"></i><span data-i18n="accountTabs.tagManagement">Tag Management</span>
                         </a>
+                        <a href="#" id="tab-templates" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
+                            <i class="fas fa-file-alt mr-2"></i><span data-i18n="accountTabs.transcriptTemplates">Transcript Templates</span>
+                        </a>
                         <a href="#" id="tab-about" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
                             <i class="fas fa-info-circle mr-2"></i><span data-i18n="accountTabs.about">About</span>
                         </a>
-                    </nav>
+                            </div>
+                        </nav>
+                    </div>
                 </div>
 
                 <div id="content-account">
@@ -574,6 +614,99 @@
                         <!-- Tags grid -->
                         <div id="tagsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <!-- Tags will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div id="content-templates" class="hidden">
+                    <div class="space-y-6">
+                        <!-- Templates Header -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="transcriptTemplates.title">Transcript Templates</h2>
+                                <p class="text-[var(--text-secondary)]" data-i18n="transcriptTemplates.description">Customize how transcripts are formatted for download and export.</p>
+                            </div>
+                            <button id="createTemplateBtn" class="px-4 py-2 bg-[var(--bg-accent)] text-white rounded-md hover:bg-[var(--bg-accent-hover)] flex items-center gap-2">
+                                <i class="fas fa-plus"></i>
+                                <span data-i18n="transcriptTemplates.createNew">Create Template</span>
+                            </button>
+                        </div>
+
+                        <!-- Templates Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Templates List (Left) -->
+                            <div class="lg:col-span-1">
+                                <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                    <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="transcriptTemplates.availableTemplates">Available Templates</h3>
+                                    <div id="templatesList" class="space-y-2">
+                                        <!-- Templates will be populated here -->
+                                    </div>
+                                    <button id="createDefaultTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
+                                        <i class="fas fa-magic mr-2"></i>
+                                        <span data-i18n="transcriptTemplates.createDefaults">Create Default Templates</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Template Editor (Right) -->
+                            <div class="lg:col-span-2">
+                                <div id="templateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
+                                    <form id="templateForm" class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.templateName">Template Name</label>
+                                            <input type="text" id="templateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.description">Description</label>
+                                            <input type="text" id="templateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.template">Template</label>
+                                            <textarea id="templateContent" rows="6" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required></textarea>
+
+                                            <!-- Available Variables -->
+                                            <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
+                                                <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="transcriptTemplates.availableVars">Available Variables:</p>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{index}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{speaker}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{text}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{start_time}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{end_time}}</code>
+                                                </div>
+                                                <p class="text-xs text-[var(--text-muted)] mt-2" data-i18n="transcriptTemplates.filters">Filters: |upper for uppercase, |srt for subtitle time format</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center">
+                                            <input type="checkbox" id="templateIsDefault" class="mr-2">
+                                            <label for="templateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="transcriptTemplates.setDefault">Set as default template</label>
+                                        </div>
+
+                                        <div class="flex gap-3">
+                                            <button type="submit" class="px-4 py-2 bg-[var(--bg-accent)] text-white rounded-md hover:bg-[var(--bg-accent-hover)]">
+                                                <i class="fas fa-save mr-2"></i>
+                                                <span data-i18n="transcriptTemplates.save">Save</span>
+                                            </button>
+                                            <button type="button" id="cancelTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
+                                                <span data-i18n="transcriptTemplates.cancel">Cancel</span>
+                                            </button>
+                                            <button type="button" id="deleteTemplateBtn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 hidden">
+                                                <i class="fas fa-trash mr-2"></i>
+                                                <span data-i18n="transcriptTemplates.delete">Delete</span>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- Empty State -->
+                                <div id="templateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
+                                    <i class="fas fa-file-alt text-4xl text-[var(--text-muted)] mb-4"></i>
+                                    <p class="text-[var(--text-muted)]" data-i18n="transcriptTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -987,25 +1120,28 @@
             const tabPrompts = document.getElementById('tab-prompts');
             const tabShares = document.getElementById('tab-shares');
             const tabTags = document.getElementById('tab-tags');
+            const tabTemplates = document.getElementById('tab-templates');
             const tabAbout = document.getElementById('tab-about');
             const contentAccount = document.getElementById('content-account');
             const contentPrompts = document.getElementById('content-prompts');
             const contentShares = document.getElementById('content-shares');
             const contentSpeakers = document.getElementById('content-speakers');
             const contentTags = document.getElementById('content-tags');
+            const contentTemplates = document.getElementById('content-templates');
             const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
-            
+
 
             // Simplified tab switching
             const tabSpeakers = document.getElementById('tab-speakers');
-            
+
             const tabs = [
                 { tab: tabAccount, content: contentAccount, name: 'account' },
                 { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
                 { tab: tabTags, content: contentTags, name: 'tags' },
+                { tab: tabTemplates, content: contentTemplates, name: 'templates' },
                 { tab: tabAbout, content: contentAbout, name: 'about' }
             ];
 
@@ -1031,6 +1167,8 @@
                     loadShares();
                 } else if (targetName === 'tags') {
                     loadTags();
+                } else if (targetName === 'templates') {
+                    loadTemplates();
                 } else if (targetName === 'about') {
                     loadSystemInfo();
                 }
@@ -1054,6 +1192,10 @@
 
             function showTagsTab() {
                 switchToTab('tags');
+            }
+
+            function showTemplatesTab() {
+                switchToTab('templates');
             }
 
             function showAboutTab() {
@@ -1083,6 +1225,11 @@
             tabTags.addEventListener('click', (e) => {
                 e.preventDefault();
                 showTagsTab();
+            });
+
+            tabTemplates.addEventListener('click', (e) => {
+                e.preventDefault();
+                showTemplatesTab();
             });
 
             tabAbout.addEventListener('click', (e) => {
@@ -2223,6 +2370,247 @@
                 localStorage.setItem('preferredLanguage', newUILanguage);
             }
         });
+
+        // Template Management Functions
+        let templates = [];
+        let currentTemplate = null;
+        let isEditingTemplate = false;
+
+        async function loadTemplates() {
+            try {
+                const response = await fetch('/api/transcript-templates');
+                if (!response.ok) {
+                    throw new Error('Failed to load templates');
+                }
+                templates = await response.json();
+
+                // Create default templates if none exist
+                if (templates.length === 0) {
+                    document.getElementById('createDefaultTemplatesBtn').style.display = 'block';
+                } else {
+                    document.getElementById('createDefaultTemplatesBtn').style.display = 'none';
+                }
+
+                renderTemplatesList();
+            } catch (error) {
+                console.error('Error loading templates:', error);
+                showToast('Failed to load templates', 'error');
+            }
+        }
+
+        function renderTemplatesList() {
+            const templatesList = document.getElementById('templatesList');
+            templatesList.innerHTML = '';
+
+            if (templates.length === 0) {
+                templatesList.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">No templates yet</p>';
+                return;
+            }
+
+            templates.forEach(template => {
+                const templateItem = document.createElement('div');
+                templateItem.className = 'p-3 bg-[var(--bg-primary)] rounded-md hover:bg-[var(--bg-tertiary)] cursor-pointer transition-colors border border-[var(--border-primary)]';
+                if (template.is_default) {
+                    templateItem.className += ' ring-2 ring-[var(--ring-focus)]';
+                }
+
+                templateItem.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-[var(--text-primary)]">${template.name}</h4>
+                            ${template.description ? `<p class="text-xs text-[var(--text-muted)] mt-1">${template.description}</p>` : ''}
+                            ${template.is_default ? '<span class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>Default</span>' : ''}
+                        </div>
+                    </div>
+                `;
+
+                templateItem.addEventListener('click', () => selectTemplate(template));
+                templatesList.appendChild(templateItem);
+            });
+        }
+
+        function selectTemplate(template) {
+            currentTemplate = template;
+            isEditingTemplate = true;
+
+            // Show editor, hide empty state
+            document.getElementById('templateEditor').classList.remove('hidden');
+            document.getElementById('templateEmptyState').classList.add('hidden');
+
+            // Populate form
+            document.getElementById('templateName').value = template.name;
+            document.getElementById('templateDescription').value = template.description || '';
+            document.getElementById('templateContent').value = template.template;
+            document.getElementById('templateIsDefault').checked = template.is_default;
+
+            // Show delete button
+            document.getElementById('deleteTemplateBtn').classList.remove('hidden');
+        }
+
+        function createNewTemplate() {
+            currentTemplate = null;
+            isEditingTemplate = false;
+
+            // Show editor, hide empty state
+            document.getElementById('templateEditor').classList.remove('hidden');
+            document.getElementById('templateEmptyState').classList.add('hidden');
+
+            // Clear form
+            document.getElementById('templateForm').reset();
+
+            // Hide delete button
+            document.getElementById('deleteTemplateBtn').classList.add('hidden');
+        }
+
+        document.getElementById('createTemplateBtn')?.addEventListener('click', createNewTemplate);
+
+        document.getElementById('cancelTemplateBtn')?.addEventListener('click', () => {
+            // Hide editor, show empty state
+            document.getElementById('templateEditor').classList.add('hidden');
+            document.getElementById('templateEmptyState').classList.remove('hidden');
+            currentTemplate = null;
+            isEditingTemplate = false;
+        });
+
+        document.getElementById('templateForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const templateData = {
+                name: document.getElementById('templateName').value,
+                description: document.getElementById('templateDescription').value,
+                template: document.getElementById('templateContent').value,
+                is_default: document.getElementById('templateIsDefault').checked
+            };
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const url = isEditingTemplate ? `/api/transcript-templates/${currentTemplate.id}` : '/api/transcript-templates';
+                const method = isEditingTemplate ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(templateData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save template');
+                }
+
+                const savedTemplate = await response.json();
+
+                if (isEditingTemplate) {
+                    // Update existing template
+                    const index = templates.findIndex(t => t.id === savedTemplate.id);
+                    if (index !== -1) {
+                        templates[index] = savedTemplate;
+                    }
+                } else {
+                    // Add new template
+                    templates.push(savedTemplate);
+                }
+
+                // Update default status for other templates if needed
+                if (savedTemplate.is_default) {
+                    templates.forEach(t => {
+                        if (t.id !== savedTemplate.id) {
+                            t.is_default = false;
+                        }
+                    });
+                }
+
+                renderTemplatesList();
+                showToast(isEditingTemplate ? 'Template updated successfully' : 'Template created successfully', 'success');
+
+                // Hide editor
+                document.getElementById('templateEditor').classList.add('hidden');
+                document.getElementById('templateEmptyState').classList.remove('hidden');
+                currentTemplate = null;
+                isEditingTemplate = false;
+            } catch (error) {
+                console.error('Error saving template:', error);
+                showToast(error.message || 'Failed to save template', 'error');
+            }
+        });
+
+        document.getElementById('deleteTemplateBtn')?.addEventListener('click', async () => {
+            if (!currentTemplate || !confirm('Are you sure you want to delete this template?')) {
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch(`/api/transcript-templates/${currentTemplate.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete template');
+                }
+
+                // Remove from local array
+                templates = templates.filter(t => t.id !== currentTemplate.id);
+                renderTemplatesList();
+
+                // Hide editor
+                document.getElementById('templateEditor').classList.add('hidden');
+                document.getElementById('templateEmptyState').classList.remove('hidden');
+                currentTemplate = null;
+                isEditingTemplate = false;
+
+                showToast('Template deleted successfully', 'success');
+            } catch (error) {
+                console.error('Error deleting template:', error);
+                showToast('Failed to delete template', 'error');
+            }
+        });
+
+        document.getElementById('createDefaultTemplatesBtn')?.addEventListener('click', async () => {
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch('/api/transcript-templates/create-defaults', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create default templates');
+                }
+
+                const result = await response.json();
+                templates = result.templates;
+                renderTemplatesList();
+                showToast('Default templates created successfully', 'success');
+            } catch (error) {
+                console.error('Error creating default templates:', error);
+                showToast('Failed to create default templates', 'error');
+            }
+        });
+
+        function showToast(message, type = 'info') {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-md text-white z-50 ${
+                type === 'success' ? 'bg-green-600' :
+                type === 'error' ? 'bg-red-600' :
+                'bg-blue-600'
+            }`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
     });
     </script>
 </body>

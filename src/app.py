@@ -1,7 +1,7 @@
 # Speakr - Audio Transcription and Summarization App
 import os
 import sys
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response, make_response
 from urllib.parse import urlparse, urljoin, quote
 from email.utils import encode_rfc2231
 try:
@@ -1193,6 +1193,31 @@ class TranscriptChunk(db.Model):
             'end_time': self.end_time,
             'speaker_name': self.speaker_name,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class TranscriptTemplate(db.Model):
+    """Stores user-defined templates for transcript formatting."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    template = db.Column(db.Text, nullable=False)
+    description = db.Column(db.String(500), nullable=True)
+    is_default = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref=db.backref('transcript_templates', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'template': self.template,
+            'description': self.description,
+            'is_default': self.is_default,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
 class InquireSession(db.Model):
@@ -3124,6 +3149,117 @@ def delete_all_speakers():
         app.logger.error(f"Error deleting all speakers: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/recording/<int:recording_id>/download/transcript')
+@login_required
+def download_transcript_with_template(recording_id):
+    """Download transcript with custom template formatting."""
+    try:
+        import re
+        from datetime import timedelta
+
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        # Check if the recording belongs to the current user
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to access this recording'}), 403
+
+        if not recording.transcription:
+            return jsonify({'error': 'No transcription available for this recording'}), 400
+
+        # Get template ID from query params
+        template_id = request.args.get('template_id', type=int)
+
+        # Get the template
+        if template_id:
+            template = TranscriptTemplate.query.filter_by(
+                id=template_id,
+                user_id=current_user.id
+            ).first()
+        else:
+            # Use default template
+            template = TranscriptTemplate.query.filter_by(
+                user_id=current_user.id,
+                is_default=True
+            ).first()
+
+        # If no template found, use a basic format
+        if not template:
+            template_format = "[{{speaker}}]: {{text}}"
+        else:
+            template_format = template.template
+
+        # Helper functions for formatting
+        def format_time(seconds):
+            """Format seconds to HH:MM:SS"""
+            if seconds is None:
+                return "00:00:00"
+            td = timedelta(seconds=seconds)
+            hours = int(td.total_seconds() // 3600)
+            minutes = int((td.total_seconds() % 3600) // 60)
+            secs = int(td.total_seconds() % 60)
+            return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+        def format_srt_time(seconds):
+            """Format seconds to SRT format HH:MM:SS,mmm"""
+            if seconds is None:
+                return "00:00:00,000"
+            td = timedelta(seconds=seconds)
+            hours = int(td.total_seconds() // 3600)
+            minutes = int((td.total_seconds() % 3600) // 60)
+            secs = int(td.total_seconds() % 60)
+            millis = int((td.total_seconds() % 1) * 1000)
+            return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+        # Parse transcription JSON
+        try:
+            transcription_data = json.loads(recording.transcription)
+        except:
+            return jsonify({'error': 'Invalid transcription format'}), 400
+
+        # Generate formatted transcript
+        output_lines = []
+        for index, segment in enumerate(transcription_data, 1):
+            line = template_format
+
+            # Replace variables
+            replacements = {
+                '{{index}}': str(index),
+                '{{speaker}}': segment.get('speaker', 'Unknown'),
+                '{{text}}': segment.get('sentence', ''),
+                '{{start_time}}': format_time(segment.get('start_time')),
+                '{{end_time}}': format_time(segment.get('end_time')),
+            }
+
+            for key, value in replacements.items():
+                line = line.replace(key, value)
+
+            # Handle filters
+            # Upper case filter
+            line = re.sub(r'{{(.*?)\|upper}}', lambda m: replacements.get('{{' + m.group(1) + '}}', '').upper(), line)
+            # SRT time filter
+            line = re.sub(r'{{start_time\|srt}}', format_srt_time(segment.get('start_time')), line)
+            line = re.sub(r'{{end_time\|srt}}', format_srt_time(segment.get('end_time')), line)
+
+            output_lines.append(line)
+
+        # Join lines
+        formatted_transcript = '\n'.join(output_lines)
+
+        # Create response
+        response = make_response(formatted_transcript)
+        filename = f"{recording.title or 'transcript'}_{template.name if template else 'formatted'}.txt"
+        filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', filename)
+        response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Error downloading transcript: {e}")
+        return jsonify({'error': 'Failed to generate transcript download'}), 500
+
 @app.route('/recording/<int:recording_id>/download/summary')
 @login_required
 def download_summary_word(recording_id):
@@ -4672,6 +4808,138 @@ def admin_get_stats():
         'top_users': top_users,
         'total_queries': total_queries
     })
+
+# --- Transcript Template Routes ---
+@app.route('/api/transcript-templates', methods=['GET'])
+@login_required
+def get_transcript_templates():
+    """Get all transcript templates for the current user."""
+    templates = TranscriptTemplate.query.filter_by(user_id=current_user.id).all()
+    return jsonify([template.to_dict() for template in templates])
+
+@app.route('/api/transcript-templates', methods=['POST'])
+@login_required
+def create_transcript_template():
+    """Create a new transcript template."""
+    data = request.json
+    if not data or not data.get('name') or not data.get('template'):
+        return jsonify({'error': 'Name and template are required'}), 400
+
+    # If this is set as default, unset other defaults
+    if data.get('is_default'):
+        TranscriptTemplate.query.filter_by(
+            user_id=current_user.id,
+            is_default=True
+        ).update({'is_default': False})
+
+    template = TranscriptTemplate(
+        user_id=current_user.id,
+        name=data['name'],
+        template=data['template'],
+        description=data.get('description'),
+        is_default=data.get('is_default', False)
+    )
+
+    db.session.add(template)
+    db.session.commit()
+
+    return jsonify(template.to_dict()), 201
+
+@app.route('/api/transcript-templates/<int:template_id>', methods=['PUT'])
+@login_required
+def update_transcript_template(template_id):
+    """Update an existing transcript template."""
+    template = TranscriptTemplate.query.filter_by(
+        id=template_id,
+        user_id=current_user.id
+    ).first()
+
+    if not template:
+        return jsonify({'error': 'Template not found'}), 404
+
+    data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    # If this is set as default, unset other defaults
+    if data.get('is_default'):
+        TranscriptTemplate.query.filter_by(
+            user_id=current_user.id,
+            is_default=True
+        ).update({'is_default': False})
+
+    template.name = data.get('name', template.name)
+    template.template = data.get('template', template.template)
+    template.description = data.get('description', template.description)
+    template.is_default = data.get('is_default', template.is_default)
+    template.updated_at = datetime.utcnow()
+
+    db.session.commit()
+
+    return jsonify(template.to_dict())
+
+@app.route('/api/transcript-templates/<int:template_id>', methods=['DELETE'])
+@login_required
+def delete_transcript_template(template_id):
+    """Delete a transcript template."""
+    template = TranscriptTemplate.query.filter_by(
+        id=template_id,
+        user_id=current_user.id
+    ).first()
+
+    if not template:
+        return jsonify({'error': 'Template not found'}), 404
+
+    db.session.delete(template)
+    db.session.commit()
+
+    return jsonify({'success': True})
+
+@app.route('/api/transcript-templates/create-defaults', methods=['POST'])
+@login_required
+def create_default_templates():
+    """Create default templates for the user if they don't have any."""
+    existing_templates = TranscriptTemplate.query.filter_by(user_id=current_user.id).count()
+
+    if existing_templates > 0:
+        return jsonify({'message': 'User already has templates'}), 200
+
+    # Default template 1: Simple with timestamps
+    template1 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="Simple with Timestamps",
+        template="[{{start_time}} - {{end_time}}] {{speaker}}: {{text}}",
+        description="Basic format with timestamps and speaker names",
+        is_default=True
+    )
+
+    # Default template 2: Screenplay format
+    template2 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="Screenplay",
+        template="{{speaker|upper}}\n({{start_time}})\n{{text}}\n",
+        description="Screenplay-style format with speaker in caps",
+        is_default=False
+    )
+
+    # Default template 3: Subtitle format
+    template3 = TranscriptTemplate(
+        user_id=current_user.id,
+        name="SRT Subtitle",
+        template="{{index}}\n{{start_time|srt}} --> {{end_time|srt}}\n{{text}}\n",
+        description="SRT subtitle format for video editing",
+        is_default=False
+    )
+
+    db.session.add(template1)
+    db.session.add(template2)
+    db.session.add(template3)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'templates': [template1.to_dict(), template2.to_dict(), template3.to_dict()]
+    }), 201
 
 @app.route('/admin/settings', methods=['GET'])
 @login_required

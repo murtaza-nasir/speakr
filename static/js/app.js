@@ -4163,6 +4163,118 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            const downloadTranscript = async () => {
+                if (!selectedRecording.value || !selectedRecording.value.transcription) {
+                    showToast('No transcription available to download.', 'fa-exclamation-circle');
+                    return;
+                }
+
+                try {
+                    // First, fetch available templates
+                    const templatesResponse = await fetch('/api/transcript-templates');
+                    let templates = [];
+                    if (templatesResponse.ok) {
+                        templates = await templatesResponse.json();
+                    }
+
+                    // If there are templates, show a selection dialog
+                    let templateId = null;
+                    if (templates.length > 0) {
+                        // Create a simple modal for template selection
+                        const modal = document.createElement('div');
+                        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                        modal.innerHTML = `
+                            <div class="bg-[var(--bg-secondary)] rounded-lg p-6 max-w-md w-full mx-4">
+                                <h3 class="text-lg font-semibold mb-4">Select Template</h3>
+                                <div class="space-y-2 max-h-60 overflow-y-auto">
+                                    ${templates.map(t => `
+                                        <button class="template-option w-full text-left p-3 rounded border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] ${t.is_default ? 'ring-2 ring-[var(--ring-focus)]' : ''}" data-template-id="${t.id}">
+                                            <div class="font-medium">${t.name}</div>
+                                            ${t.description ? `<div class="text-sm text-[var(--text-muted)]">${t.description}</div>` : ''}
+                                            ${t.is_default ? '<div class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>Default</div>' : ''}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                <div class="mt-4 flex gap-2">
+                                    <button class="cancel-btn px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded hover:bg-[var(--bg-accent-light)]">Cancel</button>
+                                    <button class="download-without-template-btn px-4 py-2 bg-[var(--bg-accent)] text-white rounded hover:bg-[var(--bg-accent-hover)]">Download without template</button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+
+                        // Wait for user selection
+                        await new Promise((resolve) => {
+                            modal.querySelectorAll('.template-option').forEach(btn => {
+                                btn.addEventListener('click', () => {
+                                    templateId = btn.dataset.templateId;
+                                    modal.remove();
+                                    resolve();
+                                });
+                            });
+
+                            modal.querySelector('.cancel-btn').addEventListener('click', () => {
+                                modal.remove();
+                                resolve();
+                            });
+
+                            modal.querySelector('.download-without-template-btn').addEventListener('click', () => {
+                                templateId = null;
+                                modal.remove();
+                                resolve();
+                            });
+
+                            modal.addEventListener('click', (e) => {
+                                if (e.target === modal) {
+                                    modal.remove();
+                                    resolve();
+                                }
+                            });
+                        });
+
+                        if (templateId === undefined) {
+                            // User cancelled
+                            return;
+                        }
+                    }
+
+                    // Download the transcript with the selected template
+                    const url = templateId
+                        ? `/recording/${selectedRecording.value.id}/download/transcript?template_id=${templateId}`
+                        : `/recording/${selectedRecording.value.id}/download/transcript`;
+
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error('Failed to download transcript');
+                    }
+
+                    const blob = await response.blob();
+                    const contentDisposition = response.headers.get('content-disposition');
+                    let filename = 'transcript.txt';
+                    if (contentDisposition) {
+                        const matches = contentDisposition.match(/filename="([^"]+)"/);
+                        if (matches && matches[1]) {
+                            filename = matches[1];
+                        }
+                    }
+
+                    // Create download link
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(downloadUrl);
+
+                    showToast('Transcript downloaded successfully!');
+                } catch (error) {
+                    console.error('Error downloading transcript:', error);
+                    showToast('Failed to download transcript', 'fa-exclamation-circle');
+                }
+            };
+
             const downloadNotes = async () => {
                 if (!selectedRecording.value || !selectedRecording.value.notes) {
                     showToast('No notes available to download.', 'fa-exclamation-circle');
@@ -5098,7 +5210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 autoSaveNotes, autoSaveSummary,
                 sendChatMessage, isChatScrolledToBottom, scrollChatToBottom, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
-                downloadSummary, downloadNotes, downloadChat,
+                downloadSummary, downloadTranscript, downloadNotes, downloadChat,
                 toggleInbox, toggleHighlight,
                 toggleTranscriptionViewMode,
                 reprocessTranscription,

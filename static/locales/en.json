@@ -92,7 +92,24 @@
     "customPrompts": "Custom Prompts",
     "sharedTranscripts": "Shared Transcripts",
     "speakersManagement": "Speakers Management",
-    "tagManagement": "Tag Management"
+    "tagManagement": "Tag Management",
+    "transcriptTemplates": "Transcript Templates"
+  },
+  "transcriptTemplates": {
+    "title": "Transcript Templates",
+    "description": "Customize how transcripts are formatted for download and export.",
+    "createNew": "Create Template",
+    "availableTemplates": "Available Templates",
+    "createDefaults": "Create Default Templates",
+    "templateName": "Template Name",
+    "template": "Template",
+    "availableVars": "Available Variables",
+    "filters": "Filters: |upper for uppercase, |srt for subtitle time format",
+    "setDefault": "Set as default template",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "selectOrCreate": "Select a template to edit or create a new one"
   },
   "admin": {
     "title": "Admin",
