@@ -388,7 +388,7 @@
                 </div>
 
                 <div class="tab-content-wrapper px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
-                    <div id="content-account" class="tab-content">
+                    <div id="content-account" class="tab-content pt-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="account.title">Account Information</h2>
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -523,7 +523,7 @@
                 </div>
                 </div>
 
-                    <div id="content-prompts" class="hidden tab-content">
+                    <div id="content-prompts" class="hidden tab-content pt-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
 
                     <form id="customPromptsForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
@@ -614,14 +614,14 @@
                     </form>
                 </div>
 
-                    <div id="content-shares" class="hidden tab-content">
+                    <div id="content-shares" class="hidden tab-content pt-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">My Shared Transcripts</h2>
                     <div id="shares-container" class="space-y-4">
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
                 </div>
 
-                    <div id="content-speakers" class="hidden tab-content">
+                    <div id="content-speakers" class="hidden tab-content pt-6">
                     <div class="flex-shrink-0">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
                         <p class="text-[var(--text-secondary)] mb-4" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
@@ -666,7 +666,7 @@
                     </div>
                 </div>
 
-                    <div id="content-tags" class="hidden tab-content">
+                    <div id="content-tags" class="hidden tab-content pt-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
                     
                     <div class="mb-6">
@@ -703,7 +703,7 @@
                     </div>
                 </div>
 
-                    <div id="content-templates" class="hidden tab-content">
+                    <div id="content-templates" class="hidden tab-content pt-6">
                     <div class="space-y-6">
                         <!-- Templates Header -->
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -711,8 +711,8 @@
                                 <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="transcriptTemplates.title">Transcript Templates</h2>
                                 <p class="text-[var(--text-secondary)]" data-i18n="transcriptTemplates.description">Customize how transcripts are formatted for download and export.</p>
                             </div>
-                            <button id="createTemplateBtn" class="px-4 py-2 bg-[var(--bg-accent)] text-white rounded-md hover:bg-[var(--bg-accent-hover)] flex items-center gap-2">
-                                <i class="fas fa-plus"></i>
+                            <button id="createTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <i class="fas fa-plus mr-2"></i>
                                 <span data-i18n="transcriptTemplates.createNew">Create Template</span>
                             </button>
                         </div>
@@ -771,14 +771,14 @@
                                         </div>
 
                                         <div class="flex gap-3">
-                                            <button type="submit" class="px-4 py-2 bg-[var(--bg-accent)] text-white rounded-md hover:bg-[var(--bg-accent-hover)]">
+                                            <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                                 <i class="fas fa-save mr-2"></i>
                                                 <span data-i18n="transcriptTemplates.save">Save</span>
                                             </button>
                                             <button type="button" id="cancelTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
                                                 <span data-i18n="transcriptTemplates.cancel">Cancel</span>
                                             </button>
-                                            <button type="button" id="deleteTemplateBtn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 hidden">
+                                            <button type="button" id="deleteTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
                                                 <i class="fas fa-trash mr-2"></i>
                                                 <span data-i18n="transcriptTemplates.delete">Delete</span>
                                             </button>
@@ -796,7 +796,7 @@
 
                         <!-- Documentation Link -->
                         <div class="mt-8 text-center">
-                            <a href="https://murtaza-nasir.github.io/speakr" target="_blank" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+                            <a href="https://murtaza-nasir.github.io/speakr/user-guide/transcript-templates/" target="_blank" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
                                 <i class="fas fa-question-circle mr-1"></i>
                                 <span data-i18n="transcriptTemplates.viewGuide">View Template Guide</span>
                             </a>
@@ -804,7 +804,7 @@
                     </div>
                 </div>
 
-                    <div id="content-about" class="hidden tab-content">
+                    <div id="content-about" class="hidden tab-content pt-6">
                     <div class="space-y-8">
                         <!-- Header Section -->
                         <div class="text-center">
