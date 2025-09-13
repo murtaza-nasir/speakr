@@ -255,15 +255,7 @@
             background-color: var(--border-accent);
         }
 
-        /* Ensure tabs don't shrink below their content */
-        .tab-nav a {
-            flex-shrink: 0;
-        }
 
-        /* Add some padding at the end of scrollable area */
-        .tab-nav > div {
-            padding-right: 1rem;
-        }
 
         /* Custom scrollbar styling for Speakers Management */
         #content-speakers .overflow-y-auto::-webkit-scrollbar {
@@ -314,6 +306,14 @@
                 grid-template-columns: repeat(4, 1fr);
             }
         }
+        /* Hide scrollbar for tabs */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
@@ -356,31 +356,39 @@
         </header>
 
         <main class="flex-grow flex flex-col">
-            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-lg border border-[var(--border-primary)] flex flex-col flex-grow">
-                <div class="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-6 border-b border-[var(--border-primary)]">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-lg border border-[var(--border-primary)] flex flex-col flex-grow overflow-hidden">
+                <div class="border-b border-[var(--border-primary)]">
                     <div class="relative">
-                        <nav class="tab-nav -mb-px flex overflow-x-auto scrollbar-thin scrollbar-thumb-[var(--border-secondary)] scrollbar-track-transparent" aria-label="Tabs" style="scrollbar-width: thin;">
-                            <div class="flex flex-col sm:flex-row sm:space-x-4 min-w-full sm:min-w-0">
-                        <a href="#" id="tab-account" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b-2 sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-[var(--border-accent)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent">
-                            <i class="fas fa-user-circle mr-2"></i><span data-i18n="account.title">Account Information</span>
+                        <!-- Scroll gradient indicators -->
+                        <div class="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--bg-secondary)] to-transparent z-10 pointer-events-none opacity-0 transition-opacity duration-200 flex items-center justify-start" id="left-scroll-indicator">
+                            <i class="fas fa-chevron-left text-[var(--text-muted)] ml-1"></i>
+                        </div>
+                        <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--bg-secondary)] to-transparent z-10 pointer-events-none opacity-100 transition-opacity duration-200 flex items-center justify-end" id="right-scroll-indicator">
+                            <i class="fas fa-chevron-right text-[var(--text-muted)] mr-1"></i>
+                        </div>
+
+                        <nav class="tab-nav px-1 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 pb-4 sm:pb-6 -mb-px overflow-x-auto scrollbar-hide" aria-label="Tabs" id="tabs-container">
+                            <div class="inline-flex gap-1 sm:gap-2">
+                        <a href="#" id="tab-account" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-[var(--border-accent)] text-[var(--text-accent)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-user-circle mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="account.title">Account</span>
                         </a>
-                        <a href="#" id="tab-prompts" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-cog mr-2"></i><span data-i18n="accountTabs.promptOptions">Prompt Options</span>
+                        <a href="#" id="tab-prompts" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-cog mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.promptOptions">Prompts</span>
                         </a>
-                        <a href="#" id="tab-shares" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-share-alt mr-2"></i><span data-i18n="accountTabs.sharedTranscripts">Shared Transcripts</span>
+                        <a href="#" id="tab-shares" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-share-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.sharedTranscripts">Shares</span>
                         </a>
-                        <a href="#" id="tab-speakers" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-users mr-2"></i><span data-i18n="accountTabs.speakersManagement">Speakers Management</span>
+                        <a href="#" id="tab-speakers" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-users mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.speakersManagement">Speakers</span>
                         </a>
-                        <a href="#" id="tab-tags" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-tags mr-2"></i><span data-i18n="accountTabs.tagManagement">Tag Management</span>
+                        <a href="#" id="tab-tags" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-tags mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.tagManagement">Tags</span>
                         </a>
-                        <a href="#" id="tab-templates" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-file-alt mr-2"></i><span data-i18n="accountTabs.transcriptTemplates">Transcript Templates</span>
+                        <a href="#" id="tab-templates" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-file-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.transcriptTemplates">Templates</span>
                         </a>
-                        <a href="#" id="tab-about" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-info-circle mr-2"></i><span data-i18n="accountTabs.about">About</span>
+                        <a href="#" id="tab-about" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-info-circle mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.about">About</span>
                         </a>
                             </div>
                         </nav>
@@ -1210,6 +1218,47 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize i18n
             await initializeI18n();
+
+            // Setup scroll indicators for tabs
+            const tabsContainer = document.getElementById('tabs-container');
+            const leftIndicator = document.getElementById('left-scroll-indicator');
+            const rightIndicator = document.getElementById('right-scroll-indicator');
+
+            function updateScrollIndicators() {
+                if (tabsContainer && leftIndicator && rightIndicator) {
+                    const scrollLeft = tabsContainer.scrollLeft;
+                    const scrollWidth = tabsContainer.scrollWidth;
+                    const clientWidth = tabsContainer.clientWidth;
+
+                    // Show/hide left indicator
+                    if (scrollLeft > 10) {
+                        leftIndicator.classList.remove('opacity-0');
+                        leftIndicator.classList.add('opacity-100');
+                    } else {
+                        leftIndicator.classList.add('opacity-0');
+                        leftIndicator.classList.remove('opacity-100');
+                    }
+
+                    // Show/hide right indicator
+                    if (scrollLeft < scrollWidth - clientWidth - 10) {
+                        rightIndicator.classList.remove('opacity-0');
+                        rightIndicator.classList.add('opacity-100');
+                    } else {
+                        rightIndicator.classList.add('opacity-0');
+                        rightIndicator.classList.remove('opacity-100');
+                    }
+                }
+            }
+
+            if (tabsContainer) {
+                tabsContainer.addEventListener('scroll', updateScrollIndicators);
+                window.addEventListener('resize', updateScrollIndicators);
+                // Initial check - run immediately and after a delay
+                updateScrollIndicators();
+                setTimeout(updateScrollIndicators, 100);
+                setTimeout(updateScrollIndicators, 500);
+            }
+
             const tabAccount = document.getElementById('tab-account');
             const tabPrompts = document.getElementById('tab-prompts');
             const tabShares = document.getElementById('tab-shares');
@@ -1243,13 +1292,13 @@
                 tabs.forEach(({ tab, content, name }) => {
                     if (name === targetName) {
                         // Active tab
-                        tab.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
-                        tab.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
+                        tab.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                        tab.classList.remove('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
                         content.classList.remove('hidden');
                     } else {
                         // Inactive tab
-                        tab.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]', 'hover:bg-[var(--bg-tertiary)]', 'sm:hover:bg-transparent');
-                        tab.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]', 'bg-[var(--bg-tertiary)]', 'sm:bg-transparent');
+                        tab.classList.add('border-transparent', 'text-[var(--text-muted)]', 'hover:text-[var(--text-secondary)]', 'hover:border-[var(--border-secondary)]');
+                        tab.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                         content.classList.add('hidden');
                     }
                 });
