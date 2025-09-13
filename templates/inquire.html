@@ -17,6 +17,11 @@
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
+
+    <!-- Loading overlay to prevent FOUC -->
+    {% include 'includes/loading_overlay.html' %}
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -890,6 +895,13 @@
                 },
                 delimiters: ['${', '}']
             }).mount('#inquire-app');
+
+            // Hide loading overlay after app mounts
+            Vue.nextTick(() => {
+                if (window.AppLoader) {
+                    AppLoader.waitForReady();
+                }
+            });
         });
     </script>
 </body>

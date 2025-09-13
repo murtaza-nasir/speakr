@@ -5489,4 +5489,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Mount the app
     app.mount('#app');
+
+    // Hide loading overlay after Vue is mounted and ready
+    Vue.nextTick(() => {
+        const overlay = document.querySelector('.app-loading-overlay');
+        if (overlay) {
+            // Small delay to ensure everything is rendered
+            setTimeout(() => {
+                overlay.classList.add('fade-out');
+                setTimeout(() => {
+                    overlay.remove();
+                    document.body.classList.remove('app-loading');
+                }, 300);
+            }, 100);
+        } else {
+            document.body.classList.remove('app-loading');
+        }
+    });
 });

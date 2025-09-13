@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Admin Dashboard - Speakr</title>
+
+    <!-- Loading overlay to prevent FOUC - MUST be first -->
+    {% include 'includes/loading_overlay.html' %}
+
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
@@ -14,7 +18,13 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
     <style>
+        /* Hide Vue content until compiled */
+        [v-cloak] {
+            display: none !important;
+        }
+
         /* Hide scrollbar for tabs */
         .scrollbar-hide {
             -ms-overflow-style: none;
@@ -84,7 +94,7 @@
     </script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
-    <div id="app" class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
+    <div id="app" v-cloak class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
                 <a href="{{ url_for('index') }}" class="flex items-center">
@@ -1748,6 +1758,22 @@ Summarization Instructions:
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2
         }).mount('#app');
+
+        // Hide loading overlay after Vue is mounted
+        Vue.nextTick(() => {
+            const overlay = document.querySelector('.app-loading-overlay');
+            if (overlay) {
+                setTimeout(() => {
+                    overlay.classList.add('fade-out');
+                    setTimeout(() => {
+                        overlay.remove();
+                        document.body.classList.remove('app-loading');
+                    }, 300);
+                }, 100);
+            } else {
+                document.body.classList.remove('app-loading');
+            }
+        });
         }); // End of initializeI18n().then()
     </script>
 </body>

@@ -12,6 +12,11 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+
+    <!-- Loading overlay to prevent FOUC -->
+    {% include 'includes/loading_overlay.html' %}
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+
     <script>
         // Initialize i18n
         let t = (key) => key; // Default fallback
@@ -1218,6 +1223,11 @@
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize i18n
             await initializeI18n();
+
+            // Hide loading overlay after everything is ready
+            if (window.AppLoader) {
+                AppLoader.waitForReady();
+            }
 
             // Setup scroll indicators for tabs
             const tabsContainer = document.getElementById('tabs-container');

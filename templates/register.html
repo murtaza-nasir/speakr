@@ -10,6 +10,11 @@
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- Loading overlay to prevent FOUC -->
+    {% include 'includes/loading_overlay.html' %}
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+
     <script>
         // Function to apply the theme based on localStorage
         function applyTheme() {
@@ -143,5 +148,14 @@
             Speakr &copy; {{ now.year }}
         </footer>
     </div>
+
+    <script>
+        // Hide loading overlay when page is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.AppLoader) {
+                AppLoader.waitForReady();
+            }
+        });
+    </script>
 </body>
 </html>

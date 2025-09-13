@@ -13,6 +13,11 @@
 <script src="{{ url_for('static', filename='vendor/js/axios.min.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
+
+    <!-- Loading overlay to prevent FOUC -->
+    {% include 'includes/loading_overlay.html' %}
+    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -469,6 +474,13 @@
         
         app.config.compilerOptions.delimiters = ['${', '}'];
         app.mount('#app');
+
+        // Hide loading overlay after app mounts
+        Vue.nextTick(() => {
+            if (window.AppLoader) {
+                AppLoader.waitForReady();
+            }
+        });
     </script>
 </body>
 </html>

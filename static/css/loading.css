@@ -1,0 +1,83 @@
+/* Critical loading styles - inline these in the HTML head for instant loading */
+.app-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary, #1a1b26);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s ease-out;
+}
+
+.app-loading-overlay.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.app-loading-content {
+    text-align: center;
+}
+
+.app-loading-spinner {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 20px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--text-accent, #7aa2f7);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.app-loading-text {
+    color: var(--text-muted, #a0a0b0);
+    font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: 0.5px;
+}
+
+.app-loading-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    opacity: 0.8;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Hide body content until ready */
+body.app-loading {
+    overflow: hidden;
+}
+
+body.app-loading > *:not(.app-loading-overlay) {
+    opacity: 0;
+}
+
+/* Dark mode default colors */
+@media (prefers-color-scheme: dark) {
+    .app-loading-overlay {
+        background: #1a1b26;
+    }
+}
+
+/* Light mode if explicitly set */
+body.light .app-loading-overlay {
+    background: #ffffff;
+}
+
+body.light .app-loading-spinner {
+    border-color: rgba(0, 0, 0, 0.1);
+    border-top-color: #3b82f6;
+}
+
+body.light .app-loading-text {
+    color: #6b7280;
+}

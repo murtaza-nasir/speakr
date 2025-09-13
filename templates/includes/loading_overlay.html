@@ -1,0 +1,60 @@
+<!-- Loading Overlay - Prevents FOUC -->
+<style>
+    /* Inline critical loading styles for instant rendering */
+    .app-loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #1a1b26;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.3s ease-out;
+    }
+    .app-loading-overlay.fade-out {
+        opacity: 0;
+        pointer-events: none;
+    }
+    .app-loading-content {
+        text-align: center;
+    }
+    .app-loading-spinner {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 20px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #7aa2f7;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    .app-loading-text {
+        color: #a0a0b0;
+        font-size: 14px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        letter-spacing: 0.5px;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    body.app-loading { overflow: hidden; }
+    body.app-loading > *:not(.app-loading-overlay) { opacity: 0; }
+    body.light .app-loading-overlay { background: #ffffff; }
+    body.light .app-loading-spinner {
+        border-color: rgba(0, 0, 0, 0.1);
+        border-top-color: #3b82f6;
+    }
+    body.light .app-loading-text { color: #6b7280; }
+</style>
+<script>
+    // Immediate loading overlay initialization
+    (function() {
+        document.body.classList.add('app-loading');
+        var overlay = document.createElement('div');
+        overlay.className = 'app-loading-overlay';
+        overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text">Loading Speakr...</div></div>';
+        document.body.appendChild(overlay);
+    })();
+</script>

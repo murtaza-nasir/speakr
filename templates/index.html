@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Speakr - Audio Transcription & Summarization</title>
+    {% include 'includes/loading_overlay.html' %}
     <!-- All dependencies bundled locally for offline support -->
     <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
     <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
