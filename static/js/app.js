@@ -1224,10 +1224,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     showToast('Transcription reprocessing started', 'fa-sync-alt');
-                    
+
+                    // Switch to Summary tab to show progress
+                    selectedTab.value = 'summary';
+
                     // Show progress modal for reprocessing
                     showProgressModalForReprocessing(recordingId, 'transcription');
-                    
+
                     // Start polling for status updates
                     startReprocessingPoll(recordingId);
                     
@@ -1270,10 +1273,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     showToast('Summary reprocessing started', 'fa-sync-alt');
-                    
+
+                    // Switch to Summary tab to show progress
+                    selectedTab.value = 'summary';
+
                     // Show progress modal for reprocessing
                     showProgressModalForReprocessing(recordingId, 'summary');
-                    
+
                     // Start polling for status updates
                     startReprocessingPoll(recordingId);
                     
