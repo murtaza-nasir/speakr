@@ -4246,6 +4246,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             });
 
                             modal.querySelector('.cancel-btn').addEventListener('click', () => {
+                                templateId = 'cancelled'; // Mark as cancelled
                                 modal.remove();
                                 resolve();
                             });
@@ -4258,13 +4259,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                             modal.addEventListener('click', (e) => {
                                 if (e.target === modal) {
+                                    templateId = 'cancelled'; // Mark as cancelled when clicking outside
                                     modal.remove();
                                     resolve();
                                 }
                             });
                         });
 
-                        if (templateId === undefined) {
+                        if (templateId === null || templateId === undefined || templateId === 'cancelled') {
                             // User cancelled
                             return;
                         }
