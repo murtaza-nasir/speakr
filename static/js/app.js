@@ -4133,9 +4133,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const contentDisposition = response.headers.get('Content-Disposition');
                     let filename = 'summary.docx';
                     if (contentDisposition) {
-                        const matches = /filename="(.+)"/.exec(contentDisposition);
-                        if (matches) {
-                            filename = matches[1];
+                        console.log('DEBUG: Content-Disposition header:', contentDisposition);
+
+                        // Try UTF-8 encoded filename first (for Chinese characters)
+                        const utf8Match = /filename\*=utf-8''(.+)/.exec(contentDisposition);
+                        if (utf8Match) {
+                            filename = decodeURIComponent(utf8Match[1]);
+                            console.log('DEBUG: Using UTF-8 filename:', filename);
+                        } else {
+                            // Fallback to regular filename
+                            const regularMatch = /filename="(.+)"/.exec(contentDisposition);
+                            if (regularMatch) {
+                                filename = regularMatch[1];
+                                console.log('DEBUG: Using regular filename:', filename);
+                            }
                         }
                     }
                     a.download = filename;
@@ -4177,9 +4188,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const contentDisposition = response.headers.get('Content-Disposition');
                     let filename = 'notes.docx';
                     if (contentDisposition) {
-                        const matches = /filename="(.+)"/.exec(contentDisposition);
-                        if (matches) {
-                            filename = matches[1];
+                        console.log('DEBUG: Content-Disposition header:', contentDisposition);
+
+                        // Try UTF-8 encoded filename first (for Chinese characters)
+                        const utf8Match = /filename\*=utf-8''(.+)/.exec(contentDisposition);
+                        if (utf8Match) {
+                            filename = decodeURIComponent(utf8Match[1]);
+                            console.log('DEBUG: Using UTF-8 filename:', filename);
+                        } else {
+                            // Fallback to regular filename
+                            const regularMatch = /filename="(.+)"/.exec(contentDisposition);
+                            if (regularMatch) {
+                                filename = regularMatch[1];
+                                console.log('DEBUG: Using regular filename:', filename);
+                            }
                         }
                     }
                     a.download = filename;
@@ -4231,9 +4253,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const contentDisposition = response.headers.get('Content-Disposition');
                     let filename = 'chat.docx';
                     if (contentDisposition) {
-                        const matches = /filename="(.+)"/.exec(contentDisposition);
-                        if (matches) {
-                            filename = matches[1];
+                        console.log('DEBUG: Content-Disposition header:', contentDisposition);
+
+                        // Try UTF-8 encoded filename first (for Chinese characters)
+                        const utf8Match = /filename\*=utf-8''(.+)/.exec(contentDisposition);
+                        if (utf8Match) {
+                            filename = decodeURIComponent(utf8Match[1]);
+                            console.log('DEBUG: Using UTF-8 filename:', filename);
+                        } else {
+                            // Fallback to regular filename
+                            const regularMatch = /filename="(.+)"/.exec(contentDisposition);
+                            if (regularMatch) {
+                                filename = regularMatch[1];
+                                console.log('DEBUG: Using regular filename:', filename);
+                            }
                         }
                     }
                     a.download = filename;

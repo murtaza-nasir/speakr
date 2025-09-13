@@ -2,7 +2,8 @@
 import os
 import sys
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse, urljoin, quote
+from email.utils import encode_rfc2231
 try:
     from flask import Markup
 except ImportError:
@@ -3219,17 +3220,39 @@ def download_summary_word(recording_id):
         doc_stream.seek(0)
         
         # Create safe filename
-        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
         filename = f'summary-{safe_title}.docx' if safe_title else f'summary-recording-{recording_id}.docx'
-        
+
+        # Create ASCII fallback for send_file - if title has non-ASCII chars, use generic name with ID
+        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii')
+        if not ascii_filename.strip() or ascii_filename.strip() in ['summary-.docx', 'summary-recording-.docx']:
+            ascii_filename = f'summary-recording-{recording_id}.docx'
+
         response = send_file(
             doc_stream,
-            as_attachment=True,
-            download_name=filename,
+            as_attachment=False,
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        # Properly encode filename for international characters
+        # Check if filename contains non-ASCII characters
+        try:
+            # Try to encode as ASCII - if this works, use simple format
+            filename.encode('ascii')
+            # ASCII-only filename, use simple format
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            # Contains non-ASCII characters, use proper RFC 2231 encoding
+            try:
+                # Use Python's built-in RFC 2231 encoder
+                encoded_value = encode_rfc2231(filename, charset='utf-8')
+                header_value = f'attachment; filename*={encoded_value}'
+                app.logger.error(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+                response.headers['Content-Disposition'] = header_value
+            except Exception as e:
+                # Fallback to simple attachment with generic name
+                app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
+                response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
         return response
         
     except Exception as e:
@@ -3372,18 +3395,40 @@ def download_chat_word(recording_id):
         doc_stream.seek(0)
         
         # Create safe filename
-        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
         filename = f'chat-{safe_title}.docx' if safe_title else f'chat-recording-{recording_id}.docx'
-        
+
+        # Create ASCII fallback for send_file - if title has non-ASCII chars, use generic name with ID
+        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii')
+        if not ascii_filename.strip() or ascii_filename.strip() in ['chat-.docx', 'chat-recording-.docx']:
+            ascii_filename = f'chat-recording-{recording_id}.docx'
+
         response = send_file(
             doc_stream,
-            as_attachment=True,
-            download_name=filename,
+            as_attachment=False,
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        # Properly encode filename for international characters
+        # Check if filename contains non-ASCII characters
+        try:
+            # Try to encode as ASCII - if this works, use simple format
+            filename.encode('ascii')
+            # ASCII-only filename, use simple format
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            # Contains non-ASCII characters, use proper RFC 2231 encoding
+            try:
+                # Use Python's built-in RFC 2231 encoder
+                encoded_value = encode_rfc2231(filename, charset='utf-8')
+                header_value = f'attachment; filename*={encoded_value}'
+                app.logger.error(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+                response.headers['Content-Disposition'] = header_value
+            except Exception as e:
+                # Fallback to simple attachment with generic name
+                app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
+                response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
         return response
         
     except Exception as e:
@@ -3486,17 +3531,39 @@ def download_notes_word(recording_id):
         doc_stream.seek(0)
         
         # Create safe filename
-        safe_title = re.sub(r'[^\w\s-]', '', recording.title or 'Untitled')
+        safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
         filename = f'notes-{safe_title}.docx' if safe_title else f'notes-recording-{recording_id}.docx'
-        
+
+        # Create ASCII fallback for send_file - if title has non-ASCII chars, use generic name with ID
+        ascii_filename = filename.encode('ascii', 'ignore').decode('ascii')
+        if not ascii_filename.strip() or ascii_filename.strip() in ['notes-.docx', 'notes-recording-.docx']:
+            ascii_filename = f'notes-recording-{recording_id}.docx'
+
         response = send_file(
             doc_stream,
-            as_attachment=True,
-            download_name=filename,
+            as_attachment=False,
             mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
-        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        # Properly encode filename for international characters
+        # Check if filename contains non-ASCII characters
+        try:
+            # Try to encode as ASCII - if this works, use simple format
+            filename.encode('ascii')
+            # ASCII-only filename, use simple format
+            response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        except UnicodeEncodeError:
+            # Contains non-ASCII characters, use proper RFC 2231 encoding
+            try:
+                # Use Python's built-in RFC 2231 encoder
+                encoded_value = encode_rfc2231(filename, charset='utf-8')
+                header_value = f'attachment; filename*={encoded_value}'
+                app.logger.error(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+                response.headers['Content-Disposition'] = header_value
+            except Exception as e:
+                # Fallback to simple attachment with generic name
+                app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
+                response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
         return response
         
     except Exception as e:
