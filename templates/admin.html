@@ -14,6 +14,16 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <style>
+        /* Hide scrollbar for tabs */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
     <script>
         // Initialize i18n
         let t = (key) => key; // Default fallback
@@ -125,35 +135,46 @@
                 {% endwith %}
                 
                 <!-- Tabs -->
-                <div class="border-b border-[var(--border-primary)] mb-6 sm:border-b">
-                    <nav class="tab-nav -mb-px flex flex-col sm:flex-row sm:space-x-8" aria-label="Tabs">
-                        <button @click="activeTab = 'users'" 
-                                :class="activeTab === 'users' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
-                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-users mr-2"></i><span>${t('adminDashboard.userManagement')}</span>
-                        </button>
-                        <button @click="activeTab = 'stats'" 
-                                :class="activeTab === 'stats' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
-                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-chart-bar mr-2"></i><span>${t('adminDashboard.systemStatistics')}</span>
-                        </button>
-                        <button @click="activeTab = 'settings'" 
-                                :class="activeTab === 'settings' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
-                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-cogs mr-2"></i><span>${t('adminDashboard.systemSettings')}</span>
-                        </button>
-                        <button @click="activeTab = 'prompts'" 
-                                :class="activeTab === 'prompts' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
-                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm">
-                            <i class="fas fa-file-alt mr-2"></i><span>${t('adminDashboard.defaultPrompts')}</span>
-                        </button>
-                        <button @click="activeTab = 'vectorstore'" 
-                                :class="activeTab === 'vectorstore' ? 'border-[var(--border-focus)] text-[var(--text-accent)] bg-[var(--bg-tertiary)] sm:bg-transparent' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent'"
-                                class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm"
-                                v-if="inquireModeEnabled">
-                            <i class="fas fa-database mr-2"></i><span>${t('adminDashboard.vectorStore')}</span>
-                        </button>
-                    </nav>
+                <div class="border-b border-[var(--border-primary)] mb-6">
+                    <div class="relative">
+                        <!-- Scroll gradient indicators -->
+                        <div class="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--bg-secondary)] to-transparent z-[1] pointer-events-none opacity-0 transition-opacity duration-200 flex items-center justify-start" id="admin-left-scroll-indicator">
+                            <i class="fas fa-chevron-left text-[var(--text-muted)] ml-1"></i>
+                        </div>
+                        <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--bg-secondary)] to-transparent z-[1] pointer-events-none opacity-100 transition-opacity duration-200 flex items-center justify-end" id="admin-right-scroll-indicator">
+                            <i class="fas fa-chevron-right text-[var(--text-muted)] mr-1"></i>
+                        </div>
+                        <nav class="tab-nav px-1 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 pb-4 sm:pb-6 -mb-px overflow-x-auto scrollbar-hide" aria-label="Tabs" id="admin-tabs-container">
+                            <div class="inline-flex gap-1 sm:gap-2">
+                                <button @click="activeTab = 'users'"
+                                        :class="activeTab === 'users' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                                    <i class="fas fa-users mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.userManagement')}</span>
+                                </button>
+                                <button @click="activeTab = 'stats'"
+                                        :class="activeTab === 'stats' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                                    <i class="fas fa-chart-bar mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.systemStatistics')}</span>
+                                </button>
+                                <button @click="activeTab = 'settings'"
+                                        :class="activeTab === 'settings' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                                    <i class="fas fa-cogs mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.systemSettings')}</span>
+                                </button>
+                                <button @click="activeTab = 'prompts'"
+                                        :class="activeTab === 'prompts' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                                    <i class="fas fa-file-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.defaultPrompts')}</span>
+                                </button>
+                                <button @click="activeTab = 'vectorstore'"
+                                        :class="activeTab === 'vectorstore' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
+                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]"
+                                        v-if="inquireModeEnabled">
+                                    <i class="fas fa-database mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.vectorStore')}</span>
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
                 </div>
                 
                 <!-- User Management Tab -->
@@ -1575,15 +1596,55 @@ Summarization Instructions:
                     loadUsers();
                     loadStats();
                     initializeDarkMode();
-                    
+
                     // Load settings first, then default prompt can use that data
                     if (activeTab.value === 'settings' || activeTab.value === 'prompts') {
                         await loadSettings();
                     }
                     loadDefaultPrompt();
-                    
+
                     if (inquireModeEnabled.value) {
                         loadInquireStatus();
+                    }
+
+                    // Setup scroll indicators for tabs
+                    const tabsContainer = document.getElementById('admin-tabs-container');
+                    const leftIndicator = document.getElementById('admin-left-scroll-indicator');
+                    const rightIndicator = document.getElementById('admin-right-scroll-indicator');
+
+                    function updateScrollIndicators() {
+                        if (tabsContainer && leftIndicator && rightIndicator) {
+                            const scrollLeft = tabsContainer.scrollLeft;
+                            const scrollWidth = tabsContainer.scrollWidth;
+                            const clientWidth = tabsContainer.clientWidth;
+
+                            // Show/hide left indicator
+                            if (scrollLeft > 10) {
+                                leftIndicator.classList.remove('opacity-0');
+                                leftIndicator.classList.add('opacity-100');
+                            } else {
+                                leftIndicator.classList.remove('opacity-100');
+                                leftIndicator.classList.add('opacity-0');
+                            }
+
+                            // Show/hide right indicator
+                            if (scrollWidth - scrollLeft - clientWidth > 10) {
+                                rightIndicator.classList.remove('opacity-0');
+                                rightIndicator.classList.add('opacity-100');
+                            } else {
+                                rightIndicator.classList.remove('opacity-100');
+                                rightIndicator.classList.add('opacity-0');
+                            }
+                        }
+                    }
+
+                    if (tabsContainer) {
+                        tabsContainer.addEventListener('scroll', updateScrollIndicators);
+                        window.addEventListener('resize', updateScrollIndicators);
+                        // Initial check
+                        updateScrollIndicators();
+                        setTimeout(updateScrollIndicators, 100);
+                        setTimeout(updateScrollIndicators, 500);
                     }
                 });
                 
