@@ -180,6 +180,58 @@
         applyTheme();
     </script>
     <style>
+        /* Make the page take full height */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Container layout for full height */
+        .main-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Tab content area with fixed height and scrolling */
+        .tab-content-wrapper {
+            height: calc(100vh - 280px); /* Adjust based on header and tab nav height */
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        @media (max-width: 640px) {
+            .tab-content-wrapper {
+                height: calc(100vh - 320px); /* Slightly less height on mobile */
+            }
+        }
+
+        /* Ensure all tab content divs take full height */
+        .tab-content {
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Custom scrollbar for content areas */
+        .tab-content-wrapper::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tab-content-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tab-content-wrapper::-webkit-scrollbar-thumb {
+            background-color: var(--border-secondary);
+            border-radius: 4px;
+        }
+
+        .tab-content-wrapper::-webkit-scrollbar-thumb:hover {
+            background-color: var(--border-accent);
+        }
+
         /* Horizontal scrollbar for tab navigation */
         .tab-nav {
             scrollbar-width: thin;
@@ -265,7 +317,7 @@
     </style>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
+    <div class="main-container container mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
                 <a href="{{ url_for('index') }}" class="flex items-center">
@@ -303,9 +355,9 @@
             </div>
         </header>
 
-        <main class="flex-grow">
-            <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
-                <div class="mb-6 border-b border-[var(--border-primary)] sm:border-b">
+        <main class="flex-grow flex flex-col">
+            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-lg border border-[var(--border-primary)] flex flex-col flex-grow">
+                <div class="px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-6 border-b border-[var(--border-primary)]">
                     <div class="relative">
                         <nav class="tab-nav -mb-px flex overflow-x-auto scrollbar-thin scrollbar-thumb-[var(--border-secondary)] scrollbar-track-transparent" aria-label="Tabs" style="scrollbar-width: thin;">
                             <div class="flex flex-col sm:flex-row sm:space-x-4 min-w-full sm:min-w-0">
@@ -335,7 +387,8 @@
                     </div>
                 </div>
 
-                <div id="content-account">
+                <div class="tab-content-wrapper px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+                    <div id="content-account" class="tab-content">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="account.title">Account Information</h2>
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -470,7 +523,7 @@
                 </div>
                 </div>
 
-                <div id="content-prompts" class="hidden">
+                    <div id="content-prompts" class="hidden tab-content">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.customPrompts">Custom Prompts</h2>
                     
                     <form id="customPromptsForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
@@ -529,14 +582,14 @@
                     </form>
                 </div>
 
-                <div id="content-shares" class="hidden">
+                    <div id="content-shares" class="hidden tab-content">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">My Shared Transcripts</h2>
                     <div id="shares-container" class="space-y-4">
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
                 </div>
 
-                <div id="content-speakers" class="hidden flex flex-col h-full" style="max-height: calc(100vh - 280px);">
+                    <div id="content-speakers" class="hidden tab-content">
                     <div class="flex-shrink-0">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
                         <p class="text-[var(--text-secondary)] mb-4" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
@@ -581,7 +634,7 @@
                     </div>
                 </div>
 
-                <div id="content-tags" class="hidden">
+                    <div id="content-tags" class="hidden tab-content">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
                     
                     <div class="mb-6">
@@ -618,7 +671,7 @@
                     </div>
                 </div>
 
-                <div id="content-templates" class="hidden">
+                    <div id="content-templates" class="hidden tab-content">
                     <div class="space-y-6">
                         <!-- Templates Header -->
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -711,7 +764,7 @@
                     </div>
                 </div>
 
-                <div id="content-about" class="hidden">
+                    <div id="content-about" class="hidden tab-content">
                     <div class="space-y-8">
                         <!-- Header Section -->
                         <div class="text-center">
@@ -929,6 +982,7 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>

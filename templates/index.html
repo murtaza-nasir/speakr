@@ -980,7 +980,7 @@
                                         <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']"><i class="fas fa-comments"></i></button>
                                     </div>
                                     <button @click="copyTranscription" class="copy-btn" title="Copy transcript"><i class="fas fa-copy"></i></button>
-                                    <button @click="downloadTranscript" class="copy-btn" title="Download transcript with template"><i class="fas fa-download"></i></button>
+                                    <button @click="downloadTranscript" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" title="Download transcript with template"><i class="fas fa-download"></i></button>
                                     <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" title="Edit transcript"><i class="fas fa-edit"></i></button>
                                 </div>
                                 <div class="flex-grow overflow-y-auto mobile-content-box">
@@ -1282,9 +1282,16 @@
                                         </div>
                                         
                                         <!-- Copy Button -->
-                                        <button @click="copyTranscription" 
+                                        <button @click="copyTranscription"
                                                 class="copy-btn">
                                             <i class="fas fa-copy mr-1"></i><span v-text="t('transcription.copy')"></span>
+                                        </button>
+                                        <!-- Download Button -->
+                                        <button @click="downloadTranscript"
+                                                v-if="selectedRecording && selectedRecording.transcription"
+                                                class="copy-btn"
+                                                title="Download transcript with template">
+                                            <i class="fas fa-download mr-1"></i><span v-text="t('transcription.download')"></span>
                                         </button>
                                         <!-- Edit Transcription Button -->
                                         <button @click="openTranscriptionEditor"

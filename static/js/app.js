@@ -4219,7 +4219,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             });
 
                             modal.querySelector('.download-without-template-btn').addEventListener('click', () => {
-                                templateId = null;
+                                templateId = 'none'; // Use 'none' to indicate no template
                                 modal.remove();
                                 resolve();
                             });
@@ -4236,6 +4236,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                             // User cancelled
                             return;
                         }
+                    }
+
+                    // If templateId is 'none', download raw transcript without any template
+                    if (templateId === 'none') {
+                        // Create raw transcript text
+                        let rawText = '';
+                        try {
+                            const transcriptionData = JSON.parse(selectedRecording.value.transcription);
+                            if (Array.isArray(transcriptionData)) {
+                                rawText = transcriptionData.map(segment => {
+                                    const speaker = segment.speaker || 'Unknown';
+                                    const text = segment.sentence || '';
+                                    return `${speaker}: ${text}`;
+                                }).join('\n');
+                            } else {
+                                rawText = selectedRecording.value.transcription;
+                            }
+                        } catch (e) {
+                            rawText = selectedRecording.value.transcription;
+                        }
+
+                        // Create and download the file directly
+                        const blob = new Blob([rawText], { type: 'text/plain;charset=utf-8' });
+                        const downloadUrl = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = `${selectedRecording.value.title || 'transcript'}_raw.txt`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(downloadUrl);
+
+                        showToast('Transcript downloaded successfully!');
+                        return;
                     }
 
                     // Download the transcript with the selected template
