@@ -118,6 +118,22 @@ You can export the summary in multiple ways. The copy button copies the entire s
 
 You can regenerate the summary with different settings if needed, which is useful if you want to focus on different aspects of the content or if you've made significant edits to the transcription. When regenerating, you can temporarily adjust tags to apply different prompts without permanently changing the recording's categorization.
 
+## Event Extraction
+
+When event extraction is enabled in your account settings, Speakr automatically identifies calendar-worthy events from your recordings during the summary generation process. This feature intelligently detects meetings, deadlines, appointments, and other time-sensitive items mentioned in your conversations.
+
+### Viewing Extracted Events
+
+After a recording is processed with event extraction enabled, an Events tab appears in the right panel if any events were detected. The tab shows a clean list of identified events, each displaying the event title, date, time, and description extracted from the conversation. Events are automatically parsed with intelligent date recognition that understands relative references like "next Tuesday" or "in two weeks" based on the recording date.
+
+### Exporting to Calendar
+
+Each extracted event can be exported as an ICS file that's compatible with virtually any calendar application including Google Calendar, Outlook, Apple Calendar, and Thunderbird. Simply click the download button next to any event to save it as a calendar file. The ICS file includes the event title, date and time, and a description with context from the recording. When no specific time is mentioned in the conversation, events default to 9 AM to ensure they appear prominently in your calendar.
+
+### Enabling Event Extraction
+
+Event extraction can be toggled on or off in your Account Settings under the Custom Prompts tab. When enabled, the system adds event extraction instructions to your summary prompt, asking the AI to identify calendar-worthy items during summary generation. This feature works with any LLM provider configured in your system and adapts to different conversation styles, from formal meetings to casual discussions. The quality of event extraction depends on the AI model being used, with more advanced models providing better detection of nuanced scheduling references.
+
 ## Interactive Chat
 
 The Chat tab provides an AI assistant that can answer questions about your recording. This feature is particularly powerful for long recordings where finding specific information might be time-consuming.
@@ -168,7 +184,11 @@ Your notes are fully searchable alongside transcriptions, making them valuable f
 
 The Copy button in the transcription toolbar copies the entire transcription to your clipboard in plain text format. This maintains paragraph structure, making it easy to paste into documents or emails.
 
-If your recording was processed with ASR and speaker diarization, the copied text will include speaker identifiers (either the generic labels like SPEAKER_01 or the actual names if you've identified them). For recordings without speaker diarization, the transcription is copied as continuous text. The format remains consistent regardless of whether you're viewing the transcription in simple or bubble view - the copied text always uses the same structured format from the underlying data.
+### Downloading Transcriptions
+
+Next to the Copy button, you'll find the Download button that offers flexible export options through customizable templates. When you click Download, a popup appears allowing you to select from your saved [transcript templates](transcript-templates.md) or export the raw transcript without formatting. Templates let you control exactly how your transcript is formatted, whether you need timestamps for subtitles, speaker-focused formats for interviews, or screenplay-style formatting. You can create and manage these templates in your account settings.
+
+If your recording was processed with ASR and speaker diarization, the exported text will include speaker identifiers (either the generic labels like SPEAKER_01 or the actual names if you've identified them). For recordings without speaker diarization, the transcription is exported as continuous text. The format remains consistent regardless of whether you're viewing the transcription in simple or bubble view - the exported text uses the structured format from the underlying data, formatted according to your chosen template.
 
 ## Next Steps
 

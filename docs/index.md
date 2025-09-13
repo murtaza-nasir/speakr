@@ -112,12 +112,16 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 
 ## Latest Updates
 
-!!! info "Version 0.5.5 - Latest Release"
-    - **Full Internationalization** - Complete multi-language support for UI and content
-    - **Enhanced Audio Processing** - 128kbps MP3 for better transcription accuracy
-    - **Recording Disclaimer** - Configurable legal notices for compliance
-    - **Advanced Filtering** - Smart date presets and multi-tag selection
-    - **Offline Deployment** - All dependencies bundled for air-gapped environments
+!!! info "Version 0.5.6 - Latest Release"
+    - **Event Extraction** - Automatically identify and export calendar events from recordings
+    - **Transcript Templates** - Customize download formats with flexible templating system
+    - **Enhanced Export Options** - Download transcripts in multiple formats for different use cases
+    - **Improved UI** - Better mobile layouts and loading overlays across all pages
+
+    Previous release (v0.5.5):
+    - Full internationalization with multi-language support
+    - Enhanced audio processing at 128kbps for better accuracy
+    - Advanced filtering with date presets and multi-tag selection
 
 ## Getting Help
 

@@ -80,15 +80,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.5.5)
+## Latest Release (v0.5.6)
 
 ### Highlights
+- **Event Extraction** - Automatically identify calendar events from recordings and export to ICS
+- **Transcript Templates** - Create custom formats for transcript downloads
+- **Enhanced Export** - Flexible transcript export with template support
+- **UI Improvements** - Better mobile layouts and loading states
 - **Full Internationalization** - Complete multi-language interface
-- **Enhanced Audio Quality** - 128kbps MP3 processing for better accuracy
-- **Recording Disclaimers** - Configurable legal notices for compliance
 - **Advanced Filtering** - Multi-tag selection with date presets
-- **Documentation Overhaul** - Professional docs with MkDocs Material
-- **Speakers Management** - New interface for managing speaker profiles
 
 ## Screenshots
 

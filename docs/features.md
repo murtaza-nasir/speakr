@@ -22,6 +22,10 @@ Transcribe content in dozens of languages with automatic detection or manual sel
 
 Every recording receives an AI-generated summary that captures key points, decisions, and action items. Configure this through [custom prompts](admin-guide/prompts.md). Users can also set [personal prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Summaries adapt to your content type - technical meetings get detailed technical summaries, while casual conversations receive lighter overviews. Custom prompts let you shape summaries to match your specific needs.
 
+### Event Extraction
+
+Speakr can automatically extract calendar-worthy events from your recordings during the summary process. When enabled in your account settings, the system identifies mentions of meetings, deadlines, appointments, and other time-sensitive items. Each detected event can be exported as an ICS file compatible with any calendar application. The feature intelligently parses relative date references and provides sensible defaults when specific times aren't mentioned. Learn more about [using event extraction](user-guide/transcripts.md#event-extraction) in your workflow.
+
 ### Interactive Chat
 
 Transform static transcripts into dynamic conversations with the integrated chat feature. Learn how to use AI chat effectively in the [transcripts guide](user-guide/transcripts.md). Ask questions about your recordings and receive intelligent answers based on the actual content. Request custom summaries, extract specific information, or generate derivative content like emails or reports. The AI maintains context throughout the conversation, allowing complex multi-turn interactions.
@@ -52,7 +56,7 @@ Generate cryptographically secure links to [share recordings](user-guide/sharing
 
 ### Export Options
 
-Export recordings in multiple formats for different purposes. Generate Word documents with complete transcripts, summaries, and notes for formal documentation. Copy formatted text to clipboards for quick sharing. Export individual components like summaries or notes for focused distribution.
+Export recordings in multiple formats for different purposes. Generate Word documents with complete transcripts, summaries, and notes for formal documentation. Copy formatted text to clipboards for quick sharing. Export individual components like summaries or notes for focused distribution. Download transcriptions with [customizable templates](user-guide/transcript-templates.md) that format your content for different use cases, from subtitles to interview formats.
 
 ### Real-Time Monitoring
 
