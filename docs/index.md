@@ -119,6 +119,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
     - **Improved UI** - Better mobile layouts and loading overlays across all pages
 
     Previous release (v0.5.5):
+    
     - Full internationalization with multi-language support
     - Enhanced audio processing at 128kbps for better accuracy
     - Advanced filtering with date presets and multi-tag selection

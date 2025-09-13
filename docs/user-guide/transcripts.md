@@ -122,6 +122,8 @@ You can regenerate the summary with different settings if needed, which is usefu
 
 When event extraction is enabled in your account settings, Speakr automatically identifies calendar-worthy events from your recordings during the summary generation process. This feature intelligently detects meetings, deadlines, appointments, and other time-sensitive items mentioned in your conversations.
 
+![Event Extraction](../assets/images/screenshots/event extraction.png)
+
 ### Viewing Extracted Events
 
 After a recording is processed with event extraction enabled, an Events tab appears in the right panel if any events were detected. The tab shows a clean list of identified events, each displaying the event title, date, time, and description extracted from the conversation. Events are automatically parsed with intelligent date recognition that understands relative references like "next Tuesday" or "in two weeks" based on the recording date.
