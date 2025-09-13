@@ -1700,13 +1700,14 @@
                                 <!-- Chat Section -->
                                 <div class="border-t border-[var(--border-primary)] flex flex-col" :class="{'flex-1 overflow-hidden': isChatMaximized}">
                                     <!-- Chat Toggle -->
-                                    <div class="bg-[var(--bg-tertiary)] px-4 py-3 flex items-center">
-                                        <div class="flex-1 flex items-center">
+                                    <div class="bg-[var(--bg-tertiary)] px-4 py-3 hover:bg-[var(--bg-accent-hover)] transition-colors flex items-center">
+                                        <button @click="() => { showChat = !showChat; if (!showChat) isChatMaximized = false; }"
+                                                class="flex-1 text-left flex items-center">
                                             <span class="font-medium flex items-center">
                                                 <i class="fas fa-comments mr-2"></i>
                                                 ${ t('chat.chatWithTranscription') }
                                             </span>
-                                        </div>
+                                        </button>
                                         <div class="flex items-center gap-2">
                                             <button v-if="chatMessages.length > 0"
                                                     @click="downloadChat"
