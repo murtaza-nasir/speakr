@@ -1422,14 +1422,25 @@
                                                 ]">
                                             ${ t('summary.title') }
                                         </button>
-                                        <button @click="selectedTab = 'notes'" 
+                                        <button @click="selectedTab = 'notes'"
                                                 :class="[
                                                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                                                    selectedTab === 'notes' 
-                                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' 
+                                                    selectedTab === 'notes'
+                                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                                 ]">
                                             ${ t('notes.title') }
+                                        </button>
+                                        <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
+                                                @click="selectedTab = 'events'"
+                                                :class="[
+                                                    'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                                                    selectedTab === 'events'
+                                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
+                                                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                                                ]">
+                                            <i class="fas fa-calendar-alt mr-1"></i>
+                                            Events (${ selectedRecording.events.length })
                                         </button>
                                     </div>
 
@@ -1550,6 +1561,65 @@
                                                             Save
                                                         </button>
                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Events Tab -->
+                                        <div v-if="selectedTab === 'events' && selectedRecording.events && selectedRecording.events.length > 0" class="h-full p-4 overflow-y-auto">
+                                            <div class="space-y-4">
+                                                <div v-for="event in selectedRecording.events" :key="event.id"
+                                                     class="bg-[var(--bg-tertiary)] rounded-lg p-4 border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors">
+                                                    <div class="flex justify-between items-start mb-3">
+                                                        <div class="flex-1">
+                                                            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-1">
+                                                                <i class="fas fa-calendar-check mr-2 text-[var(--text-accent)]"></i>
+                                                                ${ event.title }
+                                                            </h3>
+                                                            <p v-if="event.description" class="text-sm text-[var(--text-secondary)] mb-2">
+                                                                ${ event.description }
+                                                            </p>
+                                                        </div>
+                                                        <button @click="downloadEventICS(event)"
+                                                                class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-1.5"
+                                                                :title="t('events.addToCalendar')">
+                                                            <i class="fas fa-download"></i>
+                                                            <span>Add to Calendar</span>
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="space-y-2 text-sm">
+                                                        <div class="flex items-center gap-2" v-if="event.start_datetime">
+                                                            <i class="fas fa-clock text-[var(--text-muted)] w-4"></i>
+                                                            <span class="text-[var(--text-secondary)]">
+                                                                <strong>Start:</strong> ${ formatEventDateTime(event.start_datetime) }
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2" v-if="event.end_datetime">
+                                                            <i class="fas fa-clock text-[var(--text-muted)] w-4"></i>
+                                                            <span class="text-[var(--text-secondary)]">
+                                                                <strong>End:</strong> ${ formatEventDateTime(event.end_datetime) }
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2" v-if="event.location">
+                                                            <i class="fas fa-map-marker-alt text-[var(--text-muted)] w-4"></i>
+                                                            <span class="text-[var(--text-secondary)]">
+                                                                <strong>Location:</strong> ${ event.location }
+                                                            </span>
+                                                        </div>
+                                                        <div class="flex items-start gap-2" v-if="event.attendees && event.attendees.length > 0">
+                                                            <i class="fas fa-users text-[var(--text-muted)] w-4 mt-0.5"></i>
+                                                            <div class="text-[var(--text-secondary)]">
+                                                                <strong>Attendees:</strong>
+                                                                <span class="ml-1">${ event.attendees.join(', ') }</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div v-if="selectedRecording.events.length === 0" class="text-center py-8">
+                                                    <i class="fas fa-calendar-times text-3xl text-[var(--text-muted)] mb-3"></i>
+                                                    <p class="text-[var(--text-muted)]">No events detected in this recording</p>
                                                 </div>
                                             </div>
                                         </div>

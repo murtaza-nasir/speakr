@@ -93,7 +93,8 @@
     "sharedTranscripts": "Transcriptions Partagées",
     "speakersManagement": "Gestion des Locuteurs",
     "tagManagement": "Gestion des Étiquettes",
-    "transcriptTemplates": "Modèles de Transcription"
+    "transcriptTemplates": "Modèles de Transcription",
+    "promptOptions": "Options de Prompt"
   },
   "transcriptTemplates": {
     "title": "Modèles de Transcription",
@@ -274,7 +275,8 @@
     "saveCustomPrompt": "Save Custom Prompt",
     "shareRecording": "Partager l'Enregistrement",
     "toggleTheme": "Changer de thème",
-    "updateTag": "Update Tag"
+    "updateTag": "Update Tag",
+    "saveSettings": "Enregistrer les Paramètres"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmer le Nouveau Mot de Passe",
@@ -841,5 +843,20 @@
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
+  },
+  "eventExtraction": {
+    "title": "Extraction d'Événements",
+    "enableLabel": "Activer l'extraction automatique d'événements des transcriptions",
+    "description": "Lorsqu'activé, l'IA identifiera les réunions, rendez-vous et échéances mentionnés dans vos enregistrements et créera des événements de calendrier téléchargeables.",
+    "info": "Les événements extraits apparaîtront dans l'onglet 'Événements' sur les enregistrements où des éléments de calendrier sont détectés."
+  },
+  "events": {
+    "title": "Événements",
+    "addToCalendar": "Ajouter au Calendrier",
+    "noEvents": "Aucun événement détecté dans cet enregistrement",
+    "start": "Début",
+    "end": "Fin",
+    "location": "Lieu",
+    "attendees": "Participants"
   }
 }

@@ -90,10 +90,17 @@
   "accountTabs": {
     "about": "Acerca de",
     "customPrompts": "Prompts Personalizados",
+    "promptOptions": "Opciones de Prompt",
     "sharedTranscripts": "Transcripciones Compartidas",
     "speakersManagement": "Gestión de Hablantes",
     "tagManagement": "Gestión de Etiquetas",
     "transcriptTemplates": "Plantillas de Transcripción"
+  },
+  "eventExtraction": {
+    "title": "Extracción de Eventos",
+    "enableLabel": "Habilitar extracción automática de eventos de las transcripciones",
+    "description": "Cuando está habilitado, la IA identificará reuniones, citas y plazos mencionados en tus grabaciones y creará eventos de calendario descargables.",
+    "info": "Los eventos extraídos aparecerán en la pestaña 'Eventos' en las grabaciones donde se detecten elementos de calendario."
   },
   "transcriptTemplates": {
     "title": "Plantillas de Transcripción",
@@ -271,7 +278,8 @@
     "reprocessWithAsr": "Reprocesar con ASR",
     "resetStuckProcessing": "Restablecer procesamiento bloqueado",
     "saveChanges": "Guardar Cambios",
-    "saveCustomPrompt": "Save Custom Prompt",
+    "saveCustomPrompt": "Guardar Prompt Personalizado",
+    "saveSettings": "Guardar Configuración",
     "shareRecording": "Compartir Grabación",
     "toggleTheme": "Cambiar tema",
     "updateTag": "Update Tag"
@@ -841,5 +849,14 @@
   },
   "uploadProgress": {
     "title": "Progreso de Carga"
+  },
+  "events": {
+    "title": "Eventos",
+    "addToCalendar": "Agregar al Calendario",
+    "noEvents": "No se detectaron eventos en esta grabación",
+    "start": "Inicio",
+    "end": "Fin",
+    "location": "Ubicación",
+    "attendees": "Asistentes"
   }
 }

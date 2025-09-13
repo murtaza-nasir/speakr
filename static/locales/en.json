@@ -90,10 +90,17 @@
   "accountTabs": {
     "about": "About",
     "customPrompts": "Custom Prompts",
+    "promptOptions": "Prompt Options",
     "sharedTranscripts": "Shared Transcripts",
     "speakersManagement": "Speakers Management",
     "tagManagement": "Tag Management",
     "transcriptTemplates": "Transcript Templates"
+  },
+  "eventExtraction": {
+    "title": "Event Extraction",
+    "enableLabel": "Enable automatic event extraction from transcripts",
+    "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",
+    "info": "Extracted events will appear in an 'Events' tab on recordings where calendar items are detected."
   },
   "transcriptTemplates": {
     "title": "Transcript Templates",
@@ -272,6 +279,7 @@
     "resetStuckProcessing": "Reset stuck processing",
     "saveChanges": "Save Changes",
     "saveCustomPrompt": "Save Custom Prompt",
+    "saveSettings": "Save Settings",
     "shareRecording": "Share recording",
     "toggleTheme": "Toggle theme",
     "updateTag": "Update Tag"
@@ -853,5 +861,14 @@
   },
   "uploadProgress": {
     "title": "Upload Progress"
+  },
+  "events": {
+    "title": "Events",
+    "addToCalendar": "Add to Calendar",
+    "noEvents": "No events detected in this recording",
+    "start": "Start",
+    "end": "End",
+    "location": "Location",
+    "attendees": "Attendees"
   }
 }

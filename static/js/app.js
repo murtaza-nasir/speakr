@@ -4364,6 +4364,57 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            const downloadEventICS = async (event) => {
+                if (!event || !event.id) {
+                    showToast('Invalid event data', 'fa-exclamation-circle');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/event/${event.id}/ics`);
+                    if (!response.ok) {
+                        const error = await response.json();
+                        showToast(error.error || 'Failed to download event', 'fa-exclamation-circle');
+                        return;
+                    }
+
+                    // Create blob and download
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `${event.title || 'event'}.ics`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    showToast(`Event "${event.title}" downloaded. Open the file to add to your calendar.`, 'fa-calendar-check', 3000);
+                } catch (error) {
+                    console.error('Download failed:', error);
+                    showToast('Failed to download event', 'fa-exclamation-circle');
+                }
+            };
+
+            const formatEventDateTime = (dateTimeStr) => {
+                if (!dateTimeStr) return '';
+                try {
+                    const date = new Date(dateTimeStr);
+                    const options = {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    };
+                    return date.toLocaleString(undefined, options);
+                } catch (e) {
+                    return dateTimeStr;
+                }
+            };
+
             const downloadChat = async () => {
                 if (!selectedRecording.value || chatMessages.value.length === 0) {
                     showToast('No chat messages to download.', 'fa-exclamation-circle');
@@ -5244,7 +5295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 autoSaveNotes, autoSaveSummary,
                 sendChatMessage, isChatScrolledToBottom, scrollChatToBottom, startColumnResize, handleChatKeydown, seekAudio, seekAudioFromEvent, onPlayerVolumeChange,
                 showToast, copyMessage, copyTranscription, copySummary, copyNotes,
-                downloadSummary, downloadTranscript, downloadNotes, downloadChat,
+                downloadSummary, downloadTranscript, downloadNotes, downloadChat, downloadEventICS, formatEventDateTime,
                 toggleInbox, toggleHighlight,
                 toggleTranscriptionViewMode,
                 reprocessTranscription,

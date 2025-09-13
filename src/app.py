@@ -948,6 +948,7 @@ class User(db.Model, UserMixin):
     output_language = db.Column(db.String(50), nullable=True) # For full language names like "Spanish"
     ui_language = db.Column(db.String(10), nullable=True, default='en') # For UI language preference (en, es, fr, zh)
     summary_prompt = db.Column(db.Text, nullable=True)
+    extract_events = db.Column(db.Boolean, default=False)  # Enable event extraction from transcripts
     name = db.Column(db.String(100), nullable=True)
     job_title = db.Column(db.String(100), nullable=True)
     company = db.Column(db.String(100), nullable=True)
@@ -1087,6 +1088,35 @@ class Tag(db.Model):
             'recording_count': len(self.recording_associations)
         }
 
+class Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    start_datetime = db.Column(db.DateTime, nullable=False)
+    end_datetime = db.Column(db.DateTime, nullable=True)
+    location = db.Column(db.String(500), nullable=True)
+    attendees = db.Column(db.Text, nullable=True)  # JSON list of attendees
+    reminder_minutes = db.Column(db.Integer, nullable=True, default=15)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship
+    recording = db.relationship('Recording', backref=db.backref('events', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'recording_id': self.recording_id,
+            'title': self.title,
+            'description': self.description,
+            'start_datetime': self.start_datetime.isoformat() if self.start_datetime else None,
+            'end_datetime': self.end_datetime.isoformat() if self.end_datetime else None,
+            'location': self.location,
+            'attendees': json.loads(self.attendees) if self.attendees else [],
+            'reminder_minutes': self.reminder_minutes,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
 class Share(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     public_id = db.Column(db.String(32), unique=True, nullable=False, default=lambda: secrets.token_urlsafe(16))
@@ -1095,7 +1125,7 @@ class Share(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     share_summary = db.Column(db.Boolean, default=True)
     share_notes = db.Column(db.Boolean, default=True)
-    
+
     user = db.relationship('User', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
     recording = db.relationship('Recording', backref=db.backref('shares', lazy=True, cascade='all, delete-orphan'))
 
@@ -1163,7 +1193,8 @@ class Recording(db.Model):
             'is_inbox': self.is_inbox,
             'is_highlighted': self.is_highlighted,
             'mime_type': self.mime_type,
-            'tags': [tag.to_dict() for tag in self.tags] if self.tags else []
+            'tags': [tag.to_dict() for tag in self.tags] if self.tags else [],
+            'events': [event.to_dict() for event in self.events] if self.events else []
         }
 
 class TranscriptChunk(db.Model):
@@ -1622,6 +1653,10 @@ with app.app_context():
         # Add language preference columns to User table
         if add_column_if_not_exists(engine, 'user', 'transcription_language', 'VARCHAR(10)'):
             app.logger.info("Added transcription_language column to user table")
+
+        # Add extract_events column to User table
+        if add_column_if_not_exists(engine, 'user', 'extract_events', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added extract_events column to user table")
         if add_column_if_not_exists(engine, 'user', 'output_language', 'VARCHAR(50)'):
             app.logger.info("Added output_language column to user table")
         if add_column_if_not_exists(engine, 'user', 'summary_prompt', 'TEXT'):
@@ -2263,6 +2298,10 @@ Summarization Instructions:
                 recording.completed_at = datetime.utcnow()
                 db.session.commit()
                 app.logger.info(f"Summary generated successfully for recording {recording_id}")
+
+                # Extract events if enabled for this user
+                if recording.owner and recording.owner.extract_events:
+                    extract_events_from_transcript(recording_id, formatted_transcription, summary)
             else:
                 app.logger.warning(f"Empty summary generated for recording {recording_id}")
                 recording.summary = "[Summary not generated]"
@@ -2275,6 +2314,219 @@ Summarization Instructions:
             recording.summary = error_msg
             recording.status = 'FAILED'
             db.session.commit()
+
+def extract_events_from_transcript(recording_id, transcript_text, summary_text):
+    """Extract calendar events from transcript using LLM.
+
+    Args:
+        recording_id: ID of the recording
+        transcript_text: The formatted transcript text
+        summary_text: The generated summary text
+    """
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording or not recording.owner or not recording.owner.extract_events:
+            return  # Event extraction not enabled for this user
+
+        app.logger.info(f"Extracting events for recording {recording_id}")
+
+        # Build comprehensive context information
+        current_date = datetime.now()
+        context_parts = []
+
+        # CRITICAL: Determine the reference date for relative date calculations
+        reference_date = None
+        reference_date_source = ""
+
+        if recording.meeting_date:
+            # Prefer meeting date if available
+            reference_date = recording.meeting_date
+            reference_date_source = "Meeting Date"
+            context_parts.append(f"**MEETING DATE (use this for relative date calculations): {recording.meeting_date.strftime('%A, %B %d, %Y')}**")
+        elif recording.created_at:
+            # Fall back to upload date
+            reference_date = recording.created_at.date()
+            reference_date_source = "Upload Date (no meeting date available)"
+            context_parts.append(f"**REFERENCE DATE (use this for relative date calculations): {recording.created_at.strftime('%A, %B %d, %Y')}**")
+
+        context_parts.append(f"Today's actual date: {current_date.strftime('%A, %B %d, %Y')}")
+        context_parts.append(f"Current time: {current_date.strftime('%I:%M %p')}")
+
+        # Add additional recording context
+        if recording.created_at:
+            context_parts.append(f"Recording uploaded on: {recording.created_at.strftime('%B %d, %Y at %I:%M %p')}")
+        if recording.meeting_date and reference_date_source == "Meeting Date":
+            # Calculate days between meeting and today for context
+            days_since = (current_date.date() - recording.meeting_date).days
+            if days_since == 0:
+                context_parts.append("This meeting happened today")
+            elif days_since == 1:
+                context_parts.append("This meeting happened yesterday")
+            else:
+                context_parts.append(f"This meeting happened {days_since} days ago")
+
+        # Add user context for better understanding
+        if recording.owner:
+            user_context = []
+            if recording.owner.name:
+                user_context.append(f"User's name: {recording.owner.name}")
+            if recording.owner.job_title:
+                user_context.append(f"Job title: {recording.owner.job_title}")
+            if recording.owner.company:
+                user_context.append(f"Company: {recording.owner.company}")
+            if user_context:
+                context_parts.append("User information: " + ", ".join(user_context))
+
+        # Add participants if available
+        if recording.participants:
+            context_parts.append(f"Participants in the meeting: {recording.participants}")
+
+        context_section = "\n".join(context_parts)
+
+        # Prepare the prompt for event extraction
+        event_prompt = f"""You are analyzing a meeting transcript to extract calendar events. Use the context below to correctly interpret relative dates and times.
+
+IMPORTANT CONTEXT:
+{context_section}
+
+INSTRUCTIONS:
+1. **CRITICAL**: Use the MEETING DATE shown above as your reference point for ALL relative date calculations
+2. When people say "next Wednesday" or "tomorrow" or "next week", calculate from the MEETING DATE, not today's date
+3. Example: If the meeting date is September 13, 2025 and someone says "next Wednesday", that means September 17, 2025
+4. If no specific time is mentioned for an event, use 09:00:00 (9 AM) as the default start time
+5. Pay attention to time zones if mentioned
+6. Extract ONLY events that are explicitly discussed as future appointments, meetings, or deadlines
+7. Do NOT create events for past occurrences or general discussions
+
+For each event found, extract:
+- Title: A clear, concise title for the event
+- Description: Brief description including context from the meeting
+- Start date/time: The calculated actual date/time (in ISO format YYYY-MM-DDTHH:MM:SS, use 09:00:00 if no time specified)
+- End date/time: When the event ends (if mentioned, in ISO format, default to 1 hour after start if not specified)
+- Location: Where the event will take place (if mentioned)
+- Attendees: List of people who should attend (if mentioned)
+- Reminder minutes: How many minutes before to remind (default 15)
+
+Transcript Summary:
+{summary_text}
+
+Transcript excerpt (for additional context):
+{transcript_text[:8000]}
+
+RESPONSE FORMAT:
+Respond with a JSON object containing an "events" array. If no events are found, return a JSON object with an empty events array.
+
+Example response:
+{{
+  "events": [
+    {{
+      "title": "Project Review Meeting",
+      "description": "Quarterly review to discuss project progress and next steps as discussed in the meeting",
+      "start_datetime": "2025-07-22T14:00:00",
+      "end_datetime": "2025-07-22T15:30:00",
+      "location": "Conference Room A",
+      "attendees": ["John Smith", "Jane Doe", "Bob Johnson"],
+      "reminder_minutes": 15
+    }}
+  ]
+}}
+
+CRITICAL RULES:
+1. **BASE ALL DATE CALCULATIONS ON THE MEETING DATE PROVIDED IN THE CONTEXT ABOVE**
+2. Only extract events that are FUTURE relative to the MEETING DATE (not today's date)
+3. Convert all relative dates using the MEETING DATE as the reference point
+4. Example: If the meeting date is September 13, 2025 (Friday) and someone says:
+   - "next Wednesday" = September 17, 2025
+   - "tomorrow" = September 14, 2025
+   - "next week" = week of September 15-19, 2025
+5. IMPORTANT: If no time is mentioned, always use 09:00:00 (9 AM) as the start time, NOT midnight
+6. Include context from the discussion in the description
+7. Do NOT invent or assume events not explicitly discussed
+8. If unsure about a date/time, do not include that event"""
+
+        completion = call_llm_completion(
+            messages=[
+                {"role": "system", "content": """You are an expert at extracting calendar events from meeting transcripts. You excel at:
+1. Understanding relative date references ("next Tuesday", "tomorrow", "in two weeks") and converting them to absolute dates
+2. Identifying genuine future appointments, meetings, and deadlines from conversations
+3. Distinguishing between actual planned events vs. general discussions
+4. Extracting participant names and meeting details accurately
+
+You must respond with valid JSON format only."""},
+                {"role": "user", "content": event_prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            max_tokens=3000
+        )
+
+        response_content = completion.choices[0].message.content
+        events_data = safe_json_loads(response_content, {})
+
+        # Handle both {"events": [...]} and direct array format
+        if isinstance(events_data, dict) and 'events' in events_data:
+            events_list = events_data['events']
+        elif isinstance(events_data, list):
+            events_list = events_data
+        else:
+            events_list = []
+
+        app.logger.info(f"Found {len(events_list)} events for recording {recording_id}")
+
+        # Save events to database
+        for event_data in events_list:
+            try:
+                # Parse dates
+                start_dt = None
+                end_dt = None
+
+                if 'start_datetime' in event_data:
+                    try:
+                        # Try ISO format first
+                        start_dt = datetime.fromisoformat(event_data['start_datetime'].replace('Z', '+00:00'))
+                    except:
+                        # Try other common formats
+                        from dateutil import parser
+                        try:
+                            start_dt = parser.parse(event_data['start_datetime'])
+                        except:
+                            app.logger.warning(f"Could not parse start_datetime: {event_data['start_datetime']}")
+                            continue  # Skip this event if we can't parse the date
+
+                if 'end_datetime' in event_data and event_data['end_datetime']:
+                    try:
+                        end_dt = datetime.fromisoformat(event_data['end_datetime'].replace('Z', '+00:00'))
+                    except:
+                        from dateutil import parser
+                        try:
+                            end_dt = parser.parse(event_data['end_datetime'])
+                        except:
+                            pass  # End time is optional
+
+                # Create event record
+                event = Event(
+                    recording_id=recording_id,
+                    title=event_data.get('title', 'Untitled Event')[:200],
+                    description=event_data.get('description', ''),
+                    start_datetime=start_dt,
+                    end_datetime=end_dt,
+                    location=event_data.get('location', '')[:500] if event_data.get('location') else None,
+                    attendees=json.dumps(event_data.get('attendees', [])) if event_data.get('attendees') else None,
+                    reminder_minutes=event_data.get('reminder_minutes', 15)
+                )
+
+                db.session.add(event)
+                app.logger.info(f"Added event '{event.title}' for recording {recording_id}")
+
+            except Exception as e:
+                app.logger.error(f"Error saving event for recording {recording_id}: {str(e)}")
+                continue
+
+        db.session.commit()
+
+    except Exception as e:
+        app.logger.error(f"Error extracting events for recording {recording_id}: {str(e)}")
+        db.session.rollback()
 
 def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_original=True):
     """Extract audio from video containers using FFmpeg.
@@ -3571,8 +3823,143 @@ def download_chat_word(recording_id):
         app.logger.error(f"Error generating chat Word document: {e}")
         return jsonify({'error': 'Failed to generate Word document'}), 500
 
+@app.route('/api/recording/<int:recording_id>/events', methods=['GET'])
+@login_required
+def get_recording_events(recording_id):
+    """Get all events extracted from a recording."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        events = Event.query.filter_by(recording_id=recording_id).all()
+        return jsonify({'events': [event.to_dict() for event in events]})
+
+    except Exception as e:
+        app.logger.error(f"Error fetching events for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/event/<int:event_id>/ics', methods=['GET'])
+@login_required
+def download_event_ics(event_id):
+    """Generate and download an ICS file for a single event."""
+    try:
+        event = db.session.get(Event, event_id)
+        if not event:
+            return jsonify({'error': 'Event not found'}), 404
+
+        # Check permissions through recording ownership
+        if event.recording.user_id != current_user.id:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        # Generate ICS content
+        ics_content = generate_ics_content(event)
+
+        # Create response with ICS file
+        response = make_response(ics_content)
+        response.headers['Content-Type'] = 'text/calendar; charset=utf-8'
+        response.headers['Content-Disposition'] = f'attachment; filename="{secure_filename(event.title)}.ics"'
+
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Error generating ICS for event {event_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def generate_ics_content(event):
+    """Generate ICS calendar file content for an event."""
+    import uuid
+    from datetime import datetime, timedelta
+
+    # Generate unique ID for the event
+    uid = f"{event.id}-{uuid.uuid4()}@speakr.app"
+
+    # Format dates in iCalendar format (YYYYMMDDTHHMMSS)
+    def format_ical_date(dt):
+        if dt:
+            return dt.strftime('%Y%m%dT%H%M%S')
+        return None
+
+    # Start building ICS content
+    lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Speakr//Event Export//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        f'UID:{uid}',
+        f'DTSTAMP:{format_ical_date(datetime.utcnow())}',
+    ]
+
+    # Add event details
+    if event.start_datetime:
+        lines.append(f'DTSTART:{format_ical_date(event.start_datetime)}')
+
+    if event.end_datetime:
+        lines.append(f'DTEND:{format_ical_date(event.end_datetime)}')
+    elif event.start_datetime:
+        # If no end time, default to 1 hour after start
+        end_time = event.start_datetime + timedelta(hours=1)
+        lines.append(f'DTEND:{format_ical_date(end_time)}')
+
+    # Add title and description
+    lines.append(f'SUMMARY:{escape_ical_text(event.title)}')
+
+    if event.description:
+        lines.append(f'DESCRIPTION:{escape_ical_text(event.description)}')
+
+    # Add location if available
+    if event.location:
+        lines.append(f'LOCATION:{escape_ical_text(event.location)}')
+
+    # Add attendees if available
+    if event.attendees:
+        try:
+            attendees_list = json.loads(event.attendees)
+            for attendee in attendees_list:
+                if attendee:
+                    lines.append(f'ATTENDEE:CN={escape_ical_text(attendee)}:mailto:{attendee.replace(" ", ".").lower()}@example.com')
+        except:
+            pass
+
+    # Add reminder/alarm if specified
+    if event.reminder_minutes and event.reminder_minutes > 0:
+        lines.extend([
+            'BEGIN:VALARM',
+            'TRIGGER:-PT{}M'.format(event.reminder_minutes),
+            'ACTION:DISPLAY',
+            f'DESCRIPTION:Reminder: {escape_ical_text(event.title)}',
+            'END:VALARM'
+        ])
+
+    # Close event and calendar
+    lines.extend([
+        'STATUS:CONFIRMED',
+        'TRANSP:OPAQUE',
+        'END:VEVENT',
+        'END:VCALENDAR'
+    ])
+
+    return '\r\n'.join(lines)
+
+def escape_ical_text(text):
+    """Escape special characters for iCalendar format."""
+    if not text:
+        return ''
+    # Escape special characters
+    text = str(text)
+    text = text.replace('\\', '\\\\')
+    text = text.replace(',', '\\,')
+    text = text.replace(';', '\\;')
+    text = text.replace('\n', '\\n')
+    return text
+
 @app.route('/recording/<int:recording_id>/download/notes')
-@login_required  
+@login_required
 def download_notes_word(recording_id):
     """Download recording notes as a Word document."""
     try:
@@ -4486,6 +4873,8 @@ def account():
             # Handle custom prompt updates
             summary_prompt_text = request.form.get('summary_prompt')
             current_user.summary_prompt = summary_prompt_text if summary_prompt_text else None
+            # Handle event extraction setting
+            current_user.extract_events = 'extract_events' in request.form
         
         # Only update diarize if it's not locked by env var
         if 'ASR_DIARIZE' not in os.environ:

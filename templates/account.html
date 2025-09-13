@@ -365,7 +365,7 @@
                             <i class="fas fa-user-circle mr-2"></i><span data-i18n="account.title">Account Information</span>
                         </a>
                         <a href="#" id="tab-prompts" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
-                            <i class="fas fa-file-alt mr-2"></i><span data-i18n="accountTabs.customPrompts">Custom Prompts</span>
+                            <i class="fas fa-cog mr-2"></i><span data-i18n="accountTabs.promptOptions">Prompt Options</span>
                         </a>
                         <a href="#" id="tab-shares" class="flex items-center whitespace-nowrap py-3 sm:py-4 px-3 sm:px-1 border-b sm:border-b-2 border-l-4 sm:border-l-0 font-medium text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] sm:hover:bg-transparent">
                             <i class="fas fa-share-alt mr-2"></i><span data-i18n="accountTabs.sharedTranscripts">Shared Transcripts</span>
@@ -524,11 +524,43 @@
                 </div>
 
                     <div id="content-prompts" class="hidden tab-content">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.customPrompts">Custom Prompts</h2>
-                    
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
+
                     <form id="customPromptsForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        
+
+                        <!-- Event Extraction Settings -->
+                        <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
+                                <i class="fas fa-calendar-alt mr-2"></i>
+                                <span data-i18n="eventExtraction.title">Event Extraction</span>
+                            </h3>
+
+                            <div class="mb-4">
+                                <label class="flex items-start space-x-3">
+                                    <input type="checkbox" name="extract_events" id="extract_events"
+                                        {% if current_user.extract_events %}checked{% endif %}
+                                        class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
+                                    <div>
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="eventExtraction.enableLabel">
+                                            Enable automatic event extraction from transcripts
+                                        </span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-1" data-i18n="eventExtraction.description">
+                                            When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="mt-4 p-3 bg-[var(--bg-info-light)] text-[var(--text-info-strong)] rounded-lg text-sm">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                <span data-i18n="eventExtraction.info">
+                                    Extracted events will appear in a new "Events" tab on recordings where calendar items are detected.
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Custom Prompts Section -->
                         <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4" data-i18n="customPrompts.summaryGeneration">Summary Generation Prompt</h3>
                             
@@ -576,7 +608,7 @@
                         
                         <div class="flex justify-end">
                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveCustomPrompt">Save Custom Prompt</span>
+                                <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
                             </button>
                         </div>
                     </form>

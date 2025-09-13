@@ -93,7 +93,8 @@
     "sharedTranscripts": "Geteilte Transkripte",
     "speakersManagement": "Sprecher-Verwaltung",
     "tagManagement": "Tag-Verwaltung",
-    "transcriptTemplates": "Transkript-Vorlagen"
+    "transcriptTemplates": "Transkript-Vorlagen",
+    "promptOptions": "Prompt-Optionen"
   },
   "transcriptTemplates": {
     "title": "Transkript-Vorlagen",
@@ -274,7 +275,8 @@
     "saveCustomPrompt": "Save Custom Prompt",
     "shareRecording": "Aufnahme teilen",
     "toggleTheme": "Design umschalten",
-    "updateTag": "Update Tag"
+    "updateTag": "Update Tag",
+    "saveSettings": "Einstellungen Speichern"
   },
   "changePasswordModal": {
     "confirmPassword": "Neues Passwort Bestätigen",
@@ -841,5 +843,20 @@
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
+  },
+  "eventExtraction": {
+    "title": "Ereignisextraktion",
+    "enableLabel": "Automatische Ereignisextraktion aus Transkripten aktivieren",
+    "description": "Wenn aktiviert, identifiziert die KI Meetings, Termine und Fristen in Ihren Aufnahmen und erstellt herunterladbare Kalenderereignisse.",
+    "info": "Extrahierte Ereignisse erscheinen im 'Ereignisse'-Tab bei Aufnahmen, in denen Kalenderelemente erkannt werden."
+  },
+  "events": {
+    "title": "Ereignisse",
+    "addToCalendar": "Zum Kalender Hinzufügen",
+    "noEvents": "Keine Ereignisse in dieser Aufnahme erkannt",
+    "start": "Beginn",
+    "end": "Ende",
+    "location": "Ort",
+    "attendees": "Teilnehmer"
   }
 }
