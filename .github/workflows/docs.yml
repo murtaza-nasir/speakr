@@ -1,8 +1,10 @@
 name: Deploy Documentation
 
 on:
+  release:
+    types: [published]
   push:
-    branches: [ master, main ]
+    tags: [ 'v*.*.*' ]
     paths:
       - 'docs/**'
       - '.github/workflows/docs.yml'

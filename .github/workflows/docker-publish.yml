@@ -1,11 +1,11 @@
 name: Docker Build and Publish
 
 on:
+  release:
+    types: [published]
   push:
-    branches: [ "master" ]
     tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ "master" ]
+  workflow_dispatch:
 
 env:
   # Use docker.io for Docker Hub if empty
