@@ -18,6 +18,9 @@
     <script>
         // Function to apply the theme based on localStorage
         function applyTheme() {
+            // Guard against early execution
+            if (!document.documentElement) return;
+
             // Apply dark mode
             const savedMode = localStorage.getItem('darkMode');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

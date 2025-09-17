@@ -957,7 +957,24 @@ def process_markdown_to_docx(doc, content):
     """
     from docx.shared import RGBColor, Pt
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.oxml.ns import qn
     import re
+
+    def ensure_unicode_font(run, text):
+        """Ensure the run uses a font that supports the characters in the text."""
+        # Check if text contains non-ASCII characters
+        try:
+            text.encode('ascii')
+            # Text is pure ASCII, no special font needed
+        except UnicodeEncodeError:
+            # Text contains non-ASCII characters, use a font with better Unicode support
+            # Use Arial for broad compatibility - it has good Unicode support on most systems
+            run.font.name = 'Arial'
+            # Set the East Asian font for CJK (Chinese, Japanese, Korean) text
+            # This ensures proper rendering in Word
+            r = run._element
+            r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+        return run
 
     def add_formatted_run(paragraph, text):
         """Add a run with inline formatting to a paragraph."""
@@ -967,11 +984,11 @@ def process_markdown_to_docx(doc, content):
         # Pattern for all inline formatting
         # Order matters: check triple asterisk before double/single
         patterns = [
-            (r'\*\*\*(.*?)\*\*\*', lambda p, t: setattr(p.add_run(t), 'bold', True) or setattr(p.runs[-1], 'italic', True)),  # Bold italic
-            (r'\*\*(.*?)\*\*', lambda p, t: setattr(p.add_run(t), 'bold', True)),  # Bold
-            (r'(?<!\*)\*(?!\*)(.*?)\*(?!\*)', lambda p, t: setattr(p.add_run(t), 'italic', True)),  # Italic with *
-            (r'\b_(.*?)_\b', lambda p, t: setattr(p.add_run(t), 'italic', True)),  # Italic with _
-            (r'~~(.*?)~~', lambda p, t: setattr(p.add_run(t), 'strike', True)),  # Strikethrough
+            (r'\*\*\*(.*?)\*\*\*', lambda p, t: (lambda r: (setattr(r, 'bold', True), setattr(r, 'italic', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Bold italic
+            (r'\*\*(.*?)\*\*', lambda p, t: (lambda r: (setattr(r, 'bold', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Bold
+            (r'(?<!\*)\*(?!\*)(.*?)\*(?!\*)', lambda p, t: (lambda r: (setattr(r, 'italic', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Italic with *
+            (r'\b_(.*?)_\b', lambda p, t: (lambda r: (setattr(r, 'italic', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Italic with _
+            (r'~~(.*?)~~', lambda p, t: (lambda r: (setattr(r, 'strike', True), ensure_unicode_font(r, t)))(p.add_run(t))),  # Strikethrough
             (r'`([^`]+)`', lambda p, t: add_code_run(p, t)),  # Inline code
             (r'\[([^\]]+)\]\(([^)]+)\)', lambda p, t, u: add_link_run(p, t, u)),  # Links
         ]
@@ -982,13 +999,22 @@ def process_markdown_to_docx(doc, content):
             run.font.name = 'Courier New'
             run.font.size = Pt(10)
             run.font.color.rgb = RGBColor(220, 20, 60)  # Crimson color for code
+            # Check if we need Unicode support for code
+            try:
+                text.encode('ascii')
+            except UnicodeEncodeError:
+                # Use Consolas as fallback for better Unicode support in monospace
+                r = run._element
+                r.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
             return run
 
         def add_link_run(para, text, url):
             """Add a hyperlink-styled run (note: actual hyperlinks require more complex handling)."""
-            run = para.add_run(f"{text} ({url})")
+            full_text = f"{text} ({url})"
+            run = para.add_run(full_text)
             run.font.color.rgb = RGBColor(0, 0, 255)  # Blue color for links
             run.font.underline = True
+            ensure_unicode_font(run, full_text)
             return run
 
         # Process the text with all patterns
@@ -1009,7 +1035,8 @@ def process_markdown_to_docx(doc, content):
             if earliest_match:
                 # Add text before the match
                 if earliest_pos > 0:
-                    paragraph.add_run(remaining_text[:earliest_pos])
+                    run = paragraph.add_run(remaining_text[:earliest_pos])
+                    ensure_unicode_font(run, remaining_text[:earliest_pos])
 
                 # Apply formatting for the matched text
                 if '[' in earliest_match.group(0) and '](' in earliest_match.group(0):
@@ -1022,7 +1049,8 @@ def process_markdown_to_docx(doc, content):
                 remaining_text = remaining_text[earliest_match.end():]
             else:
                 # No more patterns, add the rest as plain text
-                paragraph.add_run(remaining_text)
+                run = paragraph.add_run(remaining_text)
+                ensure_unicode_font(run, remaining_text)
                 break
 
     def parse_table(lines, start_idx):
@@ -1084,6 +1112,12 @@ def process_markdown_to_docx(doc, content):
                     run.font.name = 'Courier New'
                     run.font.size = Pt(10)
                     run.font.color.rgb = RGBColor(64, 64, 64)
+                    # Check if we need Unicode support for code blocks
+                    try:
+                        code_text.encode('ascii')
+                    except UnicodeEncodeError:
+                        r = run._element
+                        r.rPr.rFonts.set(qn('w:eastAsia'), 'Consolas')
             i += 1
             continue
 
@@ -3786,17 +3820,41 @@ def download_summary_word(recording_id):
         doc = Document()
         
         # Add title
-        title = doc.add_heading(f'Summary: {recording.title or "Untitled Recording"}', 0)
-        
+        title_text = f'Summary: {recording.title or "Untitled Recording"}'
+        title = doc.add_heading(title_text, 0)
+        # Check if title needs Unicode font support
+        try:
+            title_text.encode('ascii')
+        except UnicodeEncodeError:
+            # Title contains non-ASCII characters
+            from docx.oxml.ns import qn
+            for run in title.runs:
+                run.font.name = 'Arial'
+                r = run._element
+                r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+
+        # Helper function to add paragraph with Unicode support
+        def add_unicode_paragraph(doc, text):
+            p = doc.add_paragraph(text)
+            try:
+                text.encode('ascii')
+            except UnicodeEncodeError:
+                from docx.oxml.ns import qn
+                for run in p.runs:
+                    run.font.name = 'Arial'
+                    r = run._element
+                    r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+            return p
+
         # Add metadata
-        doc.add_paragraph(f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        add_unicode_paragraph(doc, f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
         if recording.meeting_date:
-            doc.add_paragraph(f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+            add_unicode_paragraph(doc, f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
         if recording.participants:
-            doc.add_paragraph(f'Participants: {recording.participants}')
+            add_unicode_paragraph(doc, f'Participants: {recording.participants}')
         if recording.tags:
             tags_str = ', '.join([tag.name for tag in recording.tags])
-            doc.add_paragraph(f'Tags: {tags_str}')
+            add_unicode_paragraph(doc, f'Tags: {tags_str}')
         doc.add_paragraph('')  # Empty line
 
         # Process markdown content using the helper function
@@ -3835,7 +3893,7 @@ def download_summary_word(recording_id):
                 # Use Python's built-in RFC 2231 encoder
                 encoded_value = encode_rfc2231(filename, charset='utf-8')
                 header_value = f'attachment; filename*={encoded_value}'
-                app.logger.error(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+                app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
                 response.headers['Content-Disposition'] = header_value
             except Exception as e:
                 # Fallback to simple attachment with generic name
@@ -3878,11 +3936,34 @@ def download_chat_word(recording_id):
         doc = Document()
         
         # Add title
-        title = doc.add_heading(f'Chat Conversation: {recording.title or "Untitled Recording"}', 0)
+        title_text = f'Chat Conversation: {recording.title or "Untitled Recording"}'
+        title = doc.add_heading(title_text, 0)
+        # Check if title needs Unicode font support
+        try:
+            title_text.encode('ascii')
+        except UnicodeEncodeError:
+            from docx.oxml.ns import qn
+            for run in title.runs:
+                run.font.name = 'Arial'
+                r = run._element
+                r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
         
+        # Helper function to add paragraph with Unicode support
+        def add_unicode_paragraph(doc, text):
+            p = doc.add_paragraph(text)
+            try:
+                text.encode('ascii')
+            except UnicodeEncodeError:
+                from docx.oxml.ns import qn
+                for run in p.runs:
+                    run.font.name = 'Arial'
+                    r = run._element
+                    r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+            return p
+
         # Add metadata
-        doc.add_paragraph(f'Recording Date: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
-        doc.add_paragraph(f'Chat Export Date: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}')
+        add_unicode_paragraph(doc, f'Recording Date: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        add_unicode_paragraph(doc, f'Chat Export Date: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}')
         doc.add_paragraph('')  # Empty line
         
         # Add chat messages
@@ -3894,13 +3975,16 @@ def download_chat_word(recording_id):
             # Add role header
             if role == 'user':
                 p = doc.add_paragraph()
-                p.add_run('You: ').bold = True
+                run = p.add_run('You: ')
+                run.bold = True
             elif role == 'assistant':
                 p = doc.add_paragraph()
-                p.add_run('Assistant: ').bold = True
+                run = p.add_run('Assistant: ')
+                run.bold = True
             else:
                 p = doc.add_paragraph()
-                p.add_run(f'{role.title()}: ').bold = True
+                run = p.add_run(f'{role.title()}: ')
+                run.bold = True
             
             # Add thinking content if present
             if thinking and role == 'assistant':
@@ -3948,7 +4032,7 @@ def download_chat_word(recording_id):
                 # Use Python's built-in RFC 2231 encoder
                 encoded_value = encode_rfc2231(filename, charset='utf-8')
                 header_value = f'attachment; filename*={encoded_value}'
-                app.logger.error(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+                app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
                 response.headers['Content-Disposition'] = header_value
             except Exception as e:
                 # Fallback to simple attachment with generic name
@@ -4176,17 +4260,40 @@ def download_notes_word(recording_id):
         doc = Document()
         
         # Add title
-        title = doc.add_heading(f'Notes: {recording.title or "Untitled Recording"}', 0)
-        
+        title_text = f'Notes: {recording.title or "Untitled Recording"}'
+        title = doc.add_heading(title_text, 0)
+        # Check if title needs Unicode font support
+        try:
+            title_text.encode('ascii')
+        except UnicodeEncodeError:
+            from docx.oxml.ns import qn
+            for run in title.runs:
+                run.font.name = 'Arial'
+                r = run._element
+                r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+
+        # Helper function to add paragraph with Unicode support
+        def add_unicode_paragraph(doc, text):
+            p = doc.add_paragraph(text)
+            try:
+                text.encode('ascii')
+            except UnicodeEncodeError:
+                from docx.oxml.ns import qn
+                for run in p.runs:
+                    run.font.name = 'Arial'
+                    r = run._element
+                    r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
+            return p
+
         # Add metadata
-        doc.add_paragraph(f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
+        add_unicode_paragraph(doc, f'Uploaded: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
         if recording.meeting_date:
-            doc.add_paragraph(f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
+            add_unicode_paragraph(doc, f'Recording Date: {recording.meeting_date.strftime("%Y-%m-%d")}')
         if recording.participants:
-            doc.add_paragraph(f'Participants: {recording.participants}')
+            add_unicode_paragraph(doc, f'Participants: {recording.participants}')
         if recording.tags:
             tags_str = ', '.join([tag.name for tag in recording.tags])
-            doc.add_paragraph(f'Tags: {tags_str}')
+            add_unicode_paragraph(doc, f'Tags: {tags_str}')
         doc.add_paragraph('')  # Empty line
 
         # Process markdown content using the helper function
@@ -4225,7 +4332,7 @@ def download_notes_word(recording_id):
                 # Use Python's built-in RFC 2231 encoder
                 encoded_value = encode_rfc2231(filename, charset='utf-8')
                 header_value = f'attachment; filename*={encoded_value}'
-                app.logger.error(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
+                app.logger.info(f"DEBUG CHINESE FILENAME (RFC2231): Original='{filename}', Header='{header_value}'")
                 response.headers['Content-Disposition'] = header_value
             except Exception as e:
                 # Fallback to simple attachment with generic name

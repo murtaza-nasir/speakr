@@ -2217,6 +2217,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            const startStatusPolling = (fileItem, recordingId) => {
+                fileItem.recordingId = recordingId;
+                pollProcessingStatus(fileItem);
+            };
+
             const pollProcessingStatus = (fileItem) => {
                 if (pollInterval.value) clearInterval(pollInterval.value);
 
