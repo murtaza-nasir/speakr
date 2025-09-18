@@ -54,7 +54,7 @@
             const savedScheme = localStorage.getItem('colorScheme') || 'blue';
             const isDark = document.documentElement.classList.contains('dark');
             const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
-            
+
             // Remove all other theme classes
             const themeClasses = ['blue', 'emerald', 'purple', 'rose', 'amber', 'teal'];
             themeClasses.forEach(theme => {
@@ -67,7 +67,13 @@
                  document.documentElement.classList.add(themePrefix + savedScheme);
             }
         }
-        applyTheme();
+
+        // Wait for DOM to be ready before applying theme
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyTheme);
+        } else {
+            applyTheme();
+        }
     </script>
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
@@ -82,9 +88,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button @click="toggleDarkMode" 
+                <button @click="toggleDarkMode"
                         class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :title="t('buttons.toggleTheme')">
+                        title="Toggle Theme">
                     <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
                 </button>
             </div>
