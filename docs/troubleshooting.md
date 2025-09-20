@@ -52,7 +52,9 @@ For recordings with multiple speakers, using the [ASR endpoint with speaker diar
 
 ### Chinese Transcription Issues
 
-For [Chinese language transcription](features.md#language-support), model selection is critical. See the [FAQ on language support](faq.md#can-speakr-transcribe-languages-other-than-english) for more details. The large-v3 model works best with Chinese content. Smaller models like distil-large-v3 may not output Chinese characters correctly even when the language is set to "zh". If you're getting romanized output instead of Chinese characters, upgrade to the large-v3 model.
+For [Chinese language transcription](features.md#language-support), model selection is critical. See the [FAQ on language support](faq.md#can-speakr-transcribe-languages-other-than-english) for more details.
+
+**Important**: Distil models (like distil-large-v3) do not support Chinese transcription properly. Even when you set the language to "zh", these models may recognize Chinese audio as English and produce incorrect output. Always use the full large-v3 model or similar non-distilled models for Chinese content. If you're getting English transcription for Chinese audio or romanized output instead of Chinese characters, switch from a distil model to large-v3.
 
 ### Summary Language Doesn't Match Preference
 
@@ -101,7 +103,27 @@ After transcription, speakers appear as generic labels (SPEAKER_01, etc.). You m
 
 ### WhisperX Shows UNKNOWN_SPEAKER
 
-If WhisperX only shows "UNKNOWN_SPEAKER" instead of numbered speakers, ensure you're using the correct ASR_ENGINE setting. Set `ASR_ENGINE=whisperx` in your Docker environment. Also verify that your HF_TOKEN (Hugging Face token) is valid, as it's required for the speaker diarization models.
+If WhisperX only shows "UNKNOWN_SPEAKER" instead of numbered speakers (SPEAKER_00, SPEAKER_01, etc.), check these common issues:
+
+1. **Wrong ASR_ENGINE**: You must use `ASR_ENGINE=whisperx` in your ASR container's Docker environment. The `faster_whisper` engine does NOT support speaker diarization, even though it can transcribe audio.
+
+2. **Missing or invalid HF_TOKEN**: The ASR container needs a valid HuggingFace token to download the diarization models. Ensure your `HF_TOKEN` environment variable is set in the ASR container configuration.
+
+3. **ASR_DIARIZE not enabled**: While this should be automatic when `USE_ASR_ENDPOINT=true`, explicitly set `ASR_DIARIZE=true` in your Speakr .env file if speakers aren't being detected.
+
+4. **Docker networking issues**: If using the Speakr and ASR webservice containers in the same docker-compose, containers must communicate via service names (e.g., `http://whisper-asr:9000`), not localhost or external IPs.
+
+Check your ASR container logs for pyannote/VAD messages to confirm diarization models are loading correctly.
+
+### ASR Service on Mac Shows GPU Errors
+
+If you're running the ASR webservice on macOS and getting GPU-related errors or "no matching manifest" errors:
+
+- **Use the CPU image**: Replace `onerahmet/openai-whisper-asr-webservice:latest-gpu` with `onerahmet/openai-whisper-asr-webservice:latest`
+- **Remove GPU configuration**: Delete the entire `deploy` section with GPU device reservations from your docker-compose.yml
+- **Expect slower processing**: CPU-based transcription works but is significantly slower than GPU acceleration
+
+This is a Docker limitation on macOS - GPU passthrough isn't supported because Docker runs in a Linux VM. See the [FAQ](faq.md#can-i-use-the-asr-webservice-for-speaker-diarization-on-mac) for complete Mac configuration.
 
 ### Sharing Links Don't Work
 
