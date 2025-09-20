@@ -272,6 +272,8 @@ networks:
     driver: bridge
 ```
 
+> **Note for Mac users:** GPU passthrough doesn't work on macOS due to Docker's architecture. Use `onerahmet/openai-whisper-asr-webservice:latest` (CPU version) instead of `:latest-gpu` and remove the `deploy` section. The ASR service will use CPU processing, which is slower but fully functional. See the [FAQ](../faq.md#can-i-use-the-asr-webservice-for-speaker-diarization-on-mac) for Mac-specific configuration examples.
+
 When running both services in the same Docker Compose file, containers communicate using service names. In your `.env` file, set `ASR_BASE_URL=http://whisper-asr:9000` using the service name, not localhost or an IP address. This is a common source of confusion but is how Docker networking works.
 
 #### Running Services in Separate Docker Compose Files

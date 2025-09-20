@@ -34,6 +34,28 @@ Basic Docker knowledge helps but isn't essential. The [quick start guide](gettin
 
 Yes, Speakr can run on a Raspberry Pi 4 or newer with at least 4GB of RAM. Performance won't match a full server, especially for transcription processing, but it's perfectly usable for personal use. The ARM-compatible Docker images work out of the box. Just be patient with longer processing times for large recordings.
 
+### Can I use the ASR webservice for speaker diarization on Mac?
+
+The optional ASR webservice (`onerahmet/openai-whisper-asr-webservice`) that provides [speaker diarization](features.md#speaker-diarization) has specific requirements on macOS:
+
+**GPU limitation**: GPU passthrough doesn't work on macOS because Docker runs containers within a Linux VM. This is a fundamental Docker limitation on Mac.
+
+**Solution**: Use the standard CPU image instead of the GPU version:
+- Use `onerahmet/openai-whisper-asr-webservice:latest` (NOT `:latest-gpu`)
+- The `:latest` tag provides both amd64 (Intel) and arm64 (Apple Silicon) architectures
+- Processing will be slower without GPU acceleration but fully functional
+
+Example configuration for Mac:
+```bash
+docker run -d -p 9000:9000 \
+  -e ASR_MODEL=base \
+  -e ASR_ENGINE=whisperx \
+  -e HF_TOKEN=your_huggingface_token \
+  onerahmet/openai-whisper-asr-webservice:latest
+```
+
+Note: If you don't need speaker identification in your transcriptions, you can use Speakr with the standard Whisper API instead, which doesn't require this additional container.
+
 ### How do I backup my Speakr data?
 
 Your Speakr data consists of three essential components: the SQLite database in the `instance/` directory, audio files and transcriptions in the `uploads/` directory, and your configuration in the `.env` file. To create a complete backup, stop the container first to ensure database consistency, then backup all three directories:
@@ -56,9 +78,13 @@ Transcription accuracy depends on several factors - audio quality, speaker clari
 
 Whisper API provides basic transcription - converting speech to text without speaker identification. The [recommended ASR container](getting-started.md#option-b-custom-asr-endpoint-configuration) (`onerahmet/openai-whisper-asr-webservice`) offers advanced features like [speaker diarization](features.md#speaker-diarization), which identifies and labels different speakers in the conversation. Learn to [manage speakers](user-guide/transcripts.md#speaker-identification) after transcription. Diarization is essential for meetings with multiple participants, while Whisper API works fine for single-speaker recordings like dictations or podcasts.
 
+**Note on ASR engines**: For speaker diarization to work properly with the ASR webservice, you must use `ASR_ENGINE=whisperx`, not `faster_whisper`. While faster_whisper provides transcription, it doesn't support speaker identification.
+
 ### Can Speakr transcribe languages other than English?
 
 Yes, Speakr supports multiple languages through its transcription services. Whisper models handle dozens of languages with varying accuracy - major languages like Spanish, French, German, and Chinese work well, while less common languages may have reduced accuracy. Set your preferred language in [account settings](user-guide/settings.md#language-preferences) or leave it blank for automatic detection. See [language support details](features.md#language-support).
+
+**Important for Chinese transcription**: When using ASR endpoints for Chinese audio, avoid using distil models (e.g., distil-large-v3) as they may incorrectly recognize Chinese as English. Use the full large-v3 model or similar non-distilled models for accurate Chinese transcription.
 
 ### How long can my recordings be?
 
@@ -113,6 +139,18 @@ Several factors affect transcription speed - file size, API service load, networ
 ### My recordings are stuck in "pending" status
 
 This usually means the background processor has stopped or encountered an error. Check the Docker logs for error messages. See the [troubleshooting guide](troubleshooting.md#transcription-never-starts) for details. Monitor processing in [vector store](admin-guide/vector-store.md). Common causes include invalid API keys, exceeded API quotas, or network connectivity issues. Restarting the container often resolves temporary issues. Check your API provider's dashboard for usage limits or billing problems.
+
+### Why are all speakers showing as "UNKNOWN_SPEAKER"?
+
+This is a common issue when speaker diarization isn't configured correctly. Here's how to fix it:
+
+1. **Check ASR_ENGINE**: Ensure you're using `ASR_ENGINE=whisperx` in your ASR container, not `faster_whisper`
+2. **Verify ASR_DIARIZE**: While this is set to `true` by default when `USE_ASR_ENDPOINT=true`, explicitly set `ASR_DIARIZE=true` in your .env file
+3. **HuggingFace Token**: The ASR container needs a valid `HF_TOKEN` environment variable for downloading diarization models
+4. **Docker networking**: If containers are in the same docker-compose, use the container name (e.g., `http://whisper-asr:9000`), not localhost or external IPs
+5. **Check logs**: Look for pyannote/VAD messages in your ASR container logs to confirm diarization is active
+
+The ASR service should return speaker labels like "SPEAKER_00", "SPEAKER_01" in the transcription. You can then [identify these speakers](user-guide/transcripts.md#speaker-identification) with real names.
 
 ### Why can't I share recordings?
 
