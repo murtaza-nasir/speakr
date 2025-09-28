@@ -440,9 +440,9 @@
                     </div>
                 </div>
 
-                <div id="content-tokens" class="hidden tab-content pt-6">
+                <div id="content-tokens" class="hidden tab-content pt-6 p-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">API Tokens</h2>
-                    <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)] space-y-4">
+                    <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)] space-y-5">
                         <p class="text-[var(--text-secondary)]">Create tokens to use with curl or other clients. Treat
                             tokens like passwords.</p>
 
@@ -453,29 +453,35 @@
                             <code id="newTokenValue" class="block break-words"></code>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <input id="tokenNameInput"
-                                class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md"
-                                placeholder="Name (optional, e.g. 'CLI')" />
-                            <input id="tokenTtlInput" type="number" min="1"
-                                class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md"
-                                placeholder="TTL hours (optional)" />
-                            <div></div>
-                            <button id="createTokenBtn"
-                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]"><i
-                                    class="fas fa-plus mr-2"></i>Create Token</button>
+                        <div class="bg-[var(--bg-secondary)] p-4 rounded-lg border border-[var(--border-secondary)]">
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                <div class="md:col-span-6">
+                                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">Name (optional)</label>
+                                    <input id="tokenNameInput" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md" placeholder="e.g. CLI, Zapier, n8n" />
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">TTL hours (optional)</label>
+                                    <input id="tokenTtlInput" type="number" min="1" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md" placeholder="e.g. 168" />
+                                </div>
+                                <div class="md:col-span-3">
+                                    <button id="createTokenBtn" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                                        <i class="fas fa-plus mr-2"></i>
+                                        <span>Create Token</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="overflow-x-auto">
-                            <table class="min-w-full">
+                            <table class="min-w-full text-sm">
                                 <thead>
                                     <tr class="text-left text-[var(--text-secondary)]">
-                                        <th class="py-2 pr-4">Name</th>
-                                        <th class="py-2 pr-4">Created</th>
-                                        <th class="py-2 pr-4">Last used</th>
-                                        <th class="py-2 pr-4">Expires</th>
-                                        <th class="py-2 pr-4">Status</th>
-                                        <th class="py-2 pr-0"></th>
+                                        <th class="px-3 py-2">Name</th>
+                                        <th class="px-3 py-2">Created</th>
+                                        <th class="px-3 py-2">Last used</th>
+                                        <th class="px-3 py-2">Expires</th>
+                                        <th class="px-3 py-2">Status</th>
+                                        <th class="px-3 py-2"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="tokensTableBody"></tbody>
@@ -1779,12 +1785,12 @@
                 (tokens || []).forEach(t => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td class="py-2 pr-4">${t.name || '-'}</td>
-                        <td class="py-2 pr-4">${fmtDate(t.created_at)}</td>
-                        <td class="py-2 pr-4">${fmtDate(t.last_used_at)}</td>
-                        <td class="py-2 pr-4">${fmtDate(t.expires_at)}</td>
-                        <td class="py-2 pr-4">${t.revoked ? 'Revoked' : 'Active'}</td>
-                        <td class="py-2 pr-0 text-right">${t.revoked ? '' : `<button data-id="${t.id}" class="revoke-token-btn px-3 py-1 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">Revoke</button>`}</td>
+                        <td class="px-3 py-2">${t.name || '-'}</td>
+                        <td class="px-3 py-2">${fmtDate(t.created_at)}</td>
+                        <td class="px-3 py-2">${fmtDate(t.last_used_at)}</td>
+                        <td class="px-3 py-2">${fmtDate(t.expires_at)}</td>
+                        <td class="px-3 py-2">${t.revoked ? 'Revoked' : 'Active'}</td>
+                        <td class="px-3 py-2 text-right">${t.revoked ? '' : `<button data-id="${t.id}" class="revoke-token-btn px-3 py-1 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">Revoke</button>`}</td>
                     `;
                     tbody.appendChild(tr);
                 });
