@@ -703,6 +703,16 @@ def maybe_exempt_csrf_for_token_auth():
         # On any error, do not exempt
         return
 
+# Ensure token CSRF-bypass runs before Flask-WTF CSRF checks
+try:
+    funcs = app.before_request_funcs.setdefault(None, [])
+    for i, f in enumerate(list(funcs)):
+        if getattr(f, '__name__', '') == 'maybe_exempt_csrf_for_token_auth':
+            funcs.insert(0, funcs.pop(i))
+            break
+except Exception:
+    pass
+
 # --- Embedding and Chunking Utilities ---
 
 # Initialize embedding model (lazy loading)
@@ -6394,9 +6404,41 @@ def toggle_highlight(recording_id):
 
 
 @app.route('/upload', methods=['POST'])
+@csrf.exempt
 @login_required
 def upload_file():
     try:
+        # Allow CSRF bypass only for valid Bearer token requests
+        def _is_valid_api_token_request(req):
+            try:
+                token = _extract_bearer_token_from_request(req)
+                if not token:
+                    return False
+                token_hash = _hash_token(token)
+                if not token_hash:
+                    return False
+                api_token = APIToken.query.filter_by(token_hash=token_hash, revoked=False).first()
+                if not api_token:
+                    return False
+                if api_token.expires_at and api_token.expires_at < datetime.utcnow():
+                    return False
+                return True
+            except Exception:
+                return False
+
+        if not _is_valid_api_token_request(request):
+            # Enforce CSRF for non-token requests (e.g., browser session form posts)
+            try:
+                from flask_wtf.csrf import validate_csrf
+                csrf_token = (
+                    request.headers.get('X-CSRFToken')
+                    or request.headers.get('X-CSRF-Token')
+                    or request.form.get('csrf_token')
+                )
+                validate_csrf(csrf_token)
+            except Exception:
+                return jsonify({'error': 'The CSRF token is missing or invalid.'}), 400
+
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
 
