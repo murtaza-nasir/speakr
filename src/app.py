@@ -46,6 +46,7 @@ from babel.dates import format_datetime
 import ast
 import logging
 import secrets
+import hashlib
 import time
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 
@@ -630,6 +631,87 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+# --- Token Authentication Utilities ---
+# We support header-based API tokens alongside existing session auth
+def _hash_token(plain_token):
+    try:
+        return hashlib.sha256(plain_token.encode('utf-8')).hexdigest()
+    except Exception:
+        return None
+
+def _extract_bearer_token_from_request(req):
+    auth_header = req.headers.get('Authorization', '')
+    if auth_header.lower().startswith('bearer '):
+        return auth_header.split(' ', 1)[1].strip()
+    # Also support "Token <token>"
+    if auth_header.lower().startswith('token '):
+        return auth_header.split(' ', 1)[1].strip()
+    # Support alternative header and query param for convenience
+    alt = req.headers.get('X-API-Token')
+    if alt:
+        return alt.strip()
+    qp = req.args.get('access_token')
+    if qp:
+        return qp.strip()
+    return None
+
+@login_manager.request_loader
+def load_user_from_request(req):
+    """Allow API requests to authenticate via Bearer token."""
+    try:
+        token = _extract_bearer_token_from_request(req)
+        if not token:
+            return None
+        token_hash = _hash_token(token)
+        if not token_hash:
+            return None
+        api_token = APIToken.query.filter_by(token_hash=token_hash, revoked=False).first()
+        if not api_token:
+            return None
+        # Check expiration if set
+        if api_token.expires_at and api_token.expires_at < datetime.utcnow():
+            return None
+        # Update last_used_at for visibility
+        try:
+            api_token.last_used_at = datetime.utcnow()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return api_token.user
+    except Exception:
+        return None
+
+# Skip CSRF checks for valid token-based API usage
+@app.before_request
+def maybe_exempt_csrf_for_token_auth():
+    try:
+        token = _extract_bearer_token_from_request(request)
+        if not token:
+            return
+        token_hash = _hash_token(token)
+        if not token_hash:
+            return
+        api_token = APIToken.query.filter_by(token_hash=token_hash, revoked=False).first()
+        if not api_token:
+            return
+        if api_token.expires_at and api_token.expires_at < datetime.utcnow():
+            return
+        # Mark this request as CSRF-exempt for Flask-WTF
+        setattr(request, 'csrf_processing_exempt', True)
+    except Exception:
+        # On any error, do not exempt
+        return
+
+# Ensure token CSRF-bypass runs before Flask-WTF CSRF checks
+try:
+    funcs = app.before_request_funcs.setdefault(None, [])
+    for i, f in enumerate(list(funcs)):
+        if getattr(f, '__name__', '') == 'maybe_exempt_csrf_for_token_auth':
+            funcs.insert(0, funcs.pop(i))
+            break
+except Exception:
+    pass
 
 # --- Embedding and Chunking Utilities ---
 
@@ -1557,6 +1639,29 @@ class InquireSession(db.Model):
             'last_used': self.last_used.isoformat() if self.last_used else None
         }
 
+# --- API Token Model ---
+class APIToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    revoked = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User', backref=db.backref('api_tokens', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'revoked': self.revoked
+        }
+
 # --- Forms for Authentication ---
 # --- Custom Password Validator ---
 def password_check(form, field):
@@ -1744,6 +1849,57 @@ def get_system_info():
         app.logger.error(f"Error getting system info: {e}")
         return jsonify({'error': 'Unable to retrieve system information'}), 500
 
+# --- API Token Endpoints ---
+@app.route('/api/tokens', methods=['GET'])
+@login_required
+def list_tokens():
+    tokens = APIToken.query.filter_by(user_id=current_user.id).order_by(APIToken.created_at.desc()).all()
+    return jsonify([t.to_dict() for t in tokens])
+
+@app.route('/api/tokens', methods=['POST'])
+@login_required
+def create_token():
+    try:
+        data = request.json or {}
+        name = (data.get('name') or '').strip() or None
+        ttl_hours = data.get('ttl_hours')
+        plain_token = secrets.token_urlsafe(32)
+        token_hash = _hash_token(plain_token)
+        if not token_hash:
+            return jsonify({'error': 'Token generation failed'}), 500
+        expires_at = None
+        if ttl_hours is not None:
+            try:
+                ttl_hours = int(ttl_hours)
+                if ttl_hours > 0:
+                    expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
+            except Exception:
+                pass
+        rec = APIToken(
+            user_id=current_user.id,
+            token_hash=token_hash,
+            name=name,
+            expires_at=expires_at,
+        )
+        db.session.add(rec)
+        db.session.commit()
+        # Return the plain token once; not stored
+        return jsonify({'token': plain_token, 'token_preview': plain_token[:6] + '...' , 'record': rec.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating API token: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to create token'}), 500
+
+@app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
+@login_required
+def revoke_token(token_id):
+    rec = APIToken.query.filter_by(id=token_id, user_id=current_user.id).first()
+    if not rec:
+        return jsonify({'error': 'Not found'}), 404
+    rec.revoked = True
+    db.session.commit()
+    return jsonify({'success': True})
+
 # --- Tag API Endpoints ---
 @app.route('/api/tags', methods=['GET'])
 @login_required
@@ -1916,6 +2072,7 @@ with app.app_context():
     # Check and add new columns if they don't exist
     engine = db.engine
     try:
+        # Add APIToken table columns if needed is handled by create_all; nothing extra
         # Add is_inbox column with default value of 1 (True)
         if add_column_if_not_exists(engine, 'recording', 'is_inbox', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added is_inbox column to recording table")
@@ -6247,9 +6404,41 @@ def toggle_highlight(recording_id):
 
 
 @app.route('/upload', methods=['POST'])
+@csrf.exempt
 @login_required
 def upload_file():
     try:
+        # Allow CSRF bypass only for valid Bearer token requests
+        def _is_valid_api_token_request(req):
+            try:
+                token = _extract_bearer_token_from_request(req)
+                if not token:
+                    return False
+                token_hash = _hash_token(token)
+                if not token_hash:
+                    return False
+                api_token = APIToken.query.filter_by(token_hash=token_hash, revoked=False).first()
+                if not api_token:
+                    return False
+                if api_token.expires_at and api_token.expires_at < datetime.utcnow():
+                    return False
+                return True
+            except Exception:
+                return False
+
+        if not _is_valid_api_token_request(request):
+            # Enforce CSRF for non-token requests (e.g., browser session form posts)
+            try:
+                from flask_wtf.csrf import validate_csrf
+                csrf_token = (
+                    request.headers.get('X-CSRFToken')
+                    or request.headers.get('X-CSRF-Token')
+                    or request.form.get('csrf_token')
+                )
+                validate_csrf(csrf_token)
+            except Exception:
+                return jsonify({'error': 'The CSRF token is missing or invalid.'}), 400
+
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
 
