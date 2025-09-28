@@ -46,6 +46,7 @@ from babel.dates import format_datetime
 import ast
 import logging
 import secrets
+import hashlib
 import time
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 
@@ -630,6 +631,77 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
+# --- Token Authentication Utilities ---
+# We support header-based API tokens alongside existing session auth
+def _hash_token(plain_token):
+    try:
+        return hashlib.sha256(plain_token.encode('utf-8')).hexdigest()
+    except Exception:
+        return None
+
+def _extract_bearer_token_from_request(req):
+    auth_header = req.headers.get('Authorization', '')
+    if auth_header.lower().startswith('bearer '):
+        return auth_header.split(' ', 1)[1].strip()
+    # Also support "Token <token>"
+    if auth_header.lower().startswith('token '):
+        return auth_header.split(' ', 1)[1].strip()
+    # Support alternative header and query param for convenience
+    alt = req.headers.get('X-API-Token')
+    if alt:
+        return alt.strip()
+    qp = req.args.get('access_token')
+    if qp:
+        return qp.strip()
+    return None
+
+@login_manager.request_loader
+def load_user_from_request(req):
+    """Allow API requests to authenticate via Bearer token."""
+    try:
+        token = _extract_bearer_token_from_request(req)
+        if not token:
+            return None
+        token_hash = _hash_token(token)
+        if not token_hash:
+            return None
+        api_token = APIToken.query.filter_by(token_hash=token_hash, revoked=False).first()
+        if not api_token:
+            return None
+        # Check expiration if set
+        if api_token.expires_at and api_token.expires_at < datetime.utcnow():
+            return None
+        # Update last_used_at for visibility
+        try:
+            api_token.last_used_at = datetime.utcnow()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        return api_token.user
+    except Exception:
+        return None
+
+# Skip CSRF checks for valid token-based API usage
+@app.before_request
+def maybe_exempt_csrf_for_token_auth():
+    try:
+        token = _extract_bearer_token_from_request(request)
+        if not token:
+            return
+        token_hash = _hash_token(token)
+        if not token_hash:
+            return
+        api_token = APIToken.query.filter_by(token_hash=token_hash, revoked=False).first()
+        if not api_token:
+            return
+        if api_token.expires_at and api_token.expires_at < datetime.utcnow():
+            return
+        # Mark this request as CSRF-exempt for Flask-WTF
+        setattr(request, 'csrf_processing_exempt', True)
+    except Exception:
+        # On any error, do not exempt
+        return
 
 # --- Embedding and Chunking Utilities ---
 
@@ -1557,6 +1629,29 @@ class InquireSession(db.Model):
             'last_used': self.last_used.isoformat() if self.last_used else None
         }
 
+# --- API Token Model ---
+class APIToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token_hash = db.Column(db.String(64), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    revoked = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User', backref=db.backref('api_tokens', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
+            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
+            'revoked': self.revoked
+        }
+
 # --- Forms for Authentication ---
 # --- Custom Password Validator ---
 def password_check(form, field):
@@ -1744,6 +1839,57 @@ def get_system_info():
         app.logger.error(f"Error getting system info: {e}")
         return jsonify({'error': 'Unable to retrieve system information'}), 500
 
+# --- API Token Endpoints ---
+@app.route('/api/tokens', methods=['GET'])
+@login_required
+def list_tokens():
+    tokens = APIToken.query.filter_by(user_id=current_user.id).order_by(APIToken.created_at.desc()).all()
+    return jsonify([t.to_dict() for t in tokens])
+
+@app.route('/api/tokens', methods=['POST'])
+@login_required
+def create_token():
+    try:
+        data = request.json or {}
+        name = (data.get('name') or '').strip() or None
+        ttl_hours = data.get('ttl_hours')
+        plain_token = secrets.token_urlsafe(32)
+        token_hash = _hash_token(plain_token)
+        if not token_hash:
+            return jsonify({'error': 'Token generation failed'}), 500
+        expires_at = None
+        if ttl_hours is not None:
+            try:
+                ttl_hours = int(ttl_hours)
+                if ttl_hours > 0:
+                    expires_at = datetime.utcnow() + timedelta(hours=ttl_hours)
+            except Exception:
+                pass
+        rec = APIToken(
+            user_id=current_user.id,
+            token_hash=token_hash,
+            name=name,
+            expires_at=expires_at,
+        )
+        db.session.add(rec)
+        db.session.commit()
+        # Return the plain token once; not stored
+        return jsonify({'token': plain_token, 'token_preview': plain_token[:6] + '...' , 'record': rec.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating API token: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to create token'}), 500
+
+@app.route('/api/tokens/<int:token_id>', methods=['DELETE'])
+@login_required
+def revoke_token(token_id):
+    rec = APIToken.query.filter_by(id=token_id, user_id=current_user.id).first()
+    if not rec:
+        return jsonify({'error': 'Not found'}), 404
+    rec.revoked = True
+    db.session.commit()
+    return jsonify({'success': True})
+
 # --- Tag API Endpoints ---
 @app.route('/api/tags', methods=['GET'])
 @login_required
@@ -1916,6 +2062,7 @@ with app.app_context():
     # Check and add new columns if they don't exist
     engine = db.engine
     try:
+        # Add APIToken table columns if needed is handled by create_all; nothing extra
         # Add is_inbox column with default value of 1 (True)
         if add_column_if_not_exists(engine, 'recording', 'is_inbox', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added is_inbox column to recording table")
@@ -5249,6 +5396,166 @@ def account():
                            use_asr_endpoint=USE_ASR_ENDPOINT,
                            asr_diarize_locked=asr_diarize_locked,
                            asr_diarize_env_value=ASR_DIARIZE)
+
+# --- Simple Tokens Management UI ---
+@app.route('/account/tokens', methods=['GET'])
+@login_required
+def account_tokens_ui():
+    html = f'''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>API Tokens - Speakr</title>
+        <link rel="stylesheet" href="/static/css/output.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <style>
+            .container {{ max-width: 900px; margin: 0 auto; padding: 2rem; }}
+            .card {{ background: var(--bg-secondary); border: 1px solid var(--border-primary); border-radius: 0.75rem; }}
+            .card-header {{ padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-primary); }}
+            .card-body {{ padding: 1.25rem; }}
+            .btn {{ padding: 0.5rem 0.75rem; border-radius: 0.5rem; }}
+            .btn-primary {{ background: #3B82F6; color: white; }}
+            .btn-danger {{ background: #EF4444; color: white; }}
+            .btn-secondary {{ background: #6B7280; color: white; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th, td {{ padding: 0.75rem; border-bottom: 1px solid var(--border-primary); text-align: left; }}
+            .muted {{ color: var(--text-secondary); }}
+            .input {{ background: var(--bg-primary); border: 1px solid var(--border-primary); padding: 0.5rem 0.75rem; border-radius: 0.5rem; width: 100%; }}
+            .row {{ display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 0.75rem; }}
+            .token-banner {{ background: #0f172a; color: #e2e8f0; padding: 0.75rem 1rem; border: 1px solid #1f2937; border-radius: 0.5rem; word-break: break-all; }}
+        </style>
+    </head>
+    <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
+        <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] p-4">
+            <div class="max-w-6xl mx-auto flex items-center justify-between">
+                <a href="/" class="text-2xl font-bold text-[var(--text-primary)]"><i class="fas fa-microphone-alt mr-2"></i>Speakr</a>
+                <div class="space-x-4">
+                    <a href="/account" class="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">Back to Account</a>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="card">
+                <div class="card-header flex items-center justify-between">
+                    <h2 class="text-xl font-semibold">API Tokens</h2>
+                </div>
+                <div class="card-body">
+                    <p class="muted mb-4">Create tokens to use with curl or other clients. Treat tokens like passwords.</p>
+
+                    <div id="new-token" class="hidden mb-4">
+                        <div class="token-banner">
+                            <div class="font-semibold mb-1">Copy your new token now. You won't be able to see it again.</div>
+                            <code id="new-token-value"></code>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <input id="token-name" class="input" placeholder="Name (optional, e.g. 'CLI')" />
+                        <input id="ttl-hours" class="input" type="number" min="1" placeholder="TTL hours (optional)" />
+                        <div></div>
+                        <button id="create-btn" class="btn btn-primary">Create token</button>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Created</th>
+                                <th>Last used</th>
+                                <th>Expires</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tokens-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        let csrfToken = null;
+        async function ensureCsrf() {{
+            if (csrfToken) return csrfToken;
+            const r = await fetch('/api/csrf-token');
+            if (!r.ok) return null;
+            const j = await r.json();
+            csrfToken = j.csrf_token;
+            return csrfToken;
+        }}
+
+        function fmt(dt) {{
+            if (!dt) return '-';
+            try {{ return new Date(dt).toLocaleString(); }} catch {{ return dt; }}
+        }}
+
+        function el(tag, attrs = {{}}, children = []) {{
+            const e = document.createElement(tag);
+            for (const [k,v] of Object.entries(attrs)) {{
+                if (k === 'class') e.className = v; else e.setAttribute(k, v);
+            }}
+            for (const c of children) {{
+                e.append(c);
+            }}
+            return e;
+        }}
+
+        async function loadTokens() {{
+            const r = await fetch('/api/tokens');
+            const data = await r.json();
+            const body = document.getElementById('tokens-body');
+            body.innerHTML = '';
+            (data || []).forEach(t => {{
+                const tr = el('tr', {{}}, [
+                    el('td', {{}}, [document.createTextNode(t.name || '-')]),
+                    el('td', {{}}, [document.createTextNode(fmt(t.created_at))]),
+                    el('td', {{}}, [document.createTextNode(fmt(t.last_used_at))]),
+                    el('td', {{}}, [document.createTextNode(fmt(t.expires_at))]),
+                    el('td', {{}}, [document.createTextNode(t.revoked ? 'Revoked' : 'Active')]),
+                    el('td', {{}}, [
+                        !t.revoked ? el('button', {{ class: 'btn btn-danger', onclick: () => revokeToken(t.id) }}, [document.createTextNode('Revoke')]) : document.createTextNode('')
+                    ])
+                ]);
+                body.appendChild(tr);
+            }});
+        }}
+
+        async function createToken() {{
+            const name = document.getElementById('token-name').value.trim();
+            const ttlRaw = document.getElementById('ttl-hours').value;
+            const ttl = ttlRaw ? parseInt(ttlRaw) : null;
+            const token = await ensureCsrf();
+            const r = await fetch('/api/tokens', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json', 'X-CSRFToken': token, 'X-CSRF-Token': token }},
+                body: JSON.stringify({{ name: name || null, ttl_hours: ttl }})
+            }});
+            if (!r.ok) {{ alert('Failed to create token'); return; }}
+            const j = await r.json();
+            document.getElementById('new-token').classList.remove('hidden');
+            document.getElementById('new-token-value').textContent = j.token;
+            document.getElementById('token-name').value = '';
+            document.getElementById('ttl-hours').value = '';
+            loadTokens();
+        }}
+
+        async function revokeToken(id) {{
+            if (!confirm('Revoke this token?')) return;
+            const token = await ensureCsrf();
+            const r = await fetch(`/api/tokens/${{id}}`, {{ method: 'DELETE', headers: {{ 'X-CSRFToken': token, 'X-CSRF-Token': token }} }});
+            if (!r.ok) {{ alert('Failed to revoke token'); return; }}
+            loadTokens();
+        }}
+
+        document.getElementById('create-btn').addEventListener('click', createToken);
+        loadTokens();
+        </script>
+    </body>
+    </html>
+    '''
+    return html
 
 @app.route('/change_password', methods=['POST'])
 @login_required
