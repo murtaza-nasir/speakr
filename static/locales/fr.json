@@ -853,6 +853,7 @@
   },
   "events": {
     "title": "Événements",
+    "add": "Ajouter",
     "addToCalendar": "Ajouter au Calendrier",
     "noEvents": "Aucun événement détecté dans cet enregistrement",
     "start": "Début",
