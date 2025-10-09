@@ -116,7 +116,23 @@ The summary is fully editable using a markdown editor similar to the one in the 
 
 You can export the summary in multiple ways. The copy button copies the entire summary to your clipboard in markdown format, ready to paste into emails, documents, or other applications. The download button exports the summary as a Microsoft Word (.docx) file, preserving formatting and making it easy to share with colleagues who prefer traditional documents. The downloaded file is named using the recording title and date for easy identification.
 
-You can regenerate the summary with different settings if needed, which is useful if you want to focus on different aspects of the content or if you've made significant edits to the transcription. When regenerating, you can temporarily adjust tags to apply different prompts without permanently changing the recording's categorization.
+### Reprocessing Summaries with Custom Prompts
+
+Speakr provides powerful flexibility when you need to regenerate a summary with different instructions. The summary reprocessing feature allows you to experiment with various prompts without permanently changing your recording's configuration.
+
+To reprocess a summary, click the reprocess button in the summary toolbar. This opens the reprocessing modal, which offers three distinct prompt options:
+
+**Use Default Prompt**: This option applies the standard prompt hierarchy based on your current settings—using tag prompts if present, falling back to your personal prompt, then the admin default, and finally the system fallback. This is useful when you want to update the summary using your standard configuration, perhaps after editing the transcription.
+
+**Use Prompt from Tag**: If you have created tags with custom summarization prompts in your account settings, you can select any of them to apply that tag's prompt to this specific regeneration—even if the recording doesn't have that tag applied. This is particularly powerful for experimentation: you might have a "Technical Deep Dive" tag with prompts focused on implementation details, a "Executive Summary" tag that emphasizes high-level decisions, or a "Client Presentation" tag that formats information for external audiences. You can try each one to see which produces the most useful summary for your current needs, all without changing the recording's actual tags.
+
+When you select a tag, a preview displays the first portion of that tag's custom prompt, helping you confirm you've chosen the right one. This preview is especially helpful when you've created multiple tags with similar names but different focuses.
+
+**Enter Custom Prompt**: For complete control, you can enter a one-time custom prompt directly in the reprocessing modal. This freeform text field lets you provide specific instructions for this single regeneration without saving the prompt anywhere. This is ideal for edge cases where you need a unique perspective on the content—perhaps "Extract all technical terms and their definitions" or "Create a summary focusing only on budget discussions" or "List all mentioned deadlines in chronological order." Your custom prompt completely overrides all other prompts, giving the AI entirely new instructions for how to process the transcription.
+
+The custom prompt option is temporary and won't affect future regenerations or other recordings. If you find yourself using the same custom prompt repeatedly, consider creating a new tag with that prompt in your account settings so you can easily reuse it.
+
+After selecting your prompt source and any additional options, the system processes only the summary—your transcription remains untouched. This means you can experiment freely with different summary approaches without any risk to your original content. The reprocessing respects your current transcription, including any manual edits you've made, and generates a fresh summary based solely on the prompt you've chosen.
 
 ## Event Extraction
 

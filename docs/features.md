@@ -20,7 +20,7 @@ Transcribe content in dozens of languages with automatic detection or manual sel
 
 ### Automatic Summarization
 
-Every recording receives an AI-generated summary that captures key points, decisions, and action items. Configure this through [custom prompts](admin-guide/prompts.md). Users can also set [personal prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Summaries adapt to your content type - technical meetings get detailed technical summaries, while casual conversations receive lighter overviews. Custom prompts let you shape summaries to match your specific needs.
+Every recording receives an AI-generated summary that captures key points, decisions, and action items. Configure this through [custom prompts](admin-guide/prompts.md). Users can also set [personal prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Summaries adapt to your content type - technical meetings get detailed technical summaries, while casual conversations receive lighter overviews. Custom prompts let you shape summaries to match your specific needs. For optimal results, Speakr supports [advanced AI models](admin-guide/model-configuration.md) including OpenAI's GPT-5 series with specialized parameters for reasoning depth and output verbosity.
 
 ### Event Extraction
 
