@@ -64,6 +64,8 @@ WHISPER_MODEL=whisper-1
 
 The text model can use OpenRouter for access to various AI models, or you can point it directly to OpenAI by using the same base URL and API key as your transcription service. OpenRouter provides access to multiple models including GPT-4, Claude, and others, which can be more cost-effective for text generation tasks.
 
+For OpenAI's latest GPT-5 models (`gpt-5`, `gpt-5-mini`, `gpt-5-nano`), you must use the OpenAI API directly with `TEXT_MODEL_BASE_URL=https://api.openai.com/v1`. See the [Model Configuration Guide](admin-guide/model-configuration.md) for detailed GPT-5 setup and optimization.
+
 ### Option B: Custom ASR Endpoint Configuration
 
 > **Prerequisites:** This option requires running an additional ASR service container (`onerahmet/openai-whisper-asr-webservice`). You can either:

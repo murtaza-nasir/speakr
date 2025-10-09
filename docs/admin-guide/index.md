@@ -25,14 +25,21 @@ Welcome to the Speakr Admin Guide! As an administrator, you control the heart of
     <p>Configure global limits, timeouts, file sizes, and system-wide behavior that affects all users.</p>
     <a href="system-settings" class="card-link">Configure System →</a>
   </div>
-  
+
+  <div class="guide-card">
+    <div class="card-icon">🤖</div>
+    <h3>Model Configuration</h3>
+    <p>Configure AI models for text generation, including GPT-5 support and provider selection.</p>
+    <a href="model-configuration" class="card-link">Configure Models →</a>
+  </div>
+
   <div class="guide-card">
     <div class="card-icon">✨</div>
     <h3>Default Prompts</h3>
     <p>Customize AI behavior with default summary prompts that shape how content is processed.</p>
     <a href="prompts" class="card-link">Set Prompts →</a>
   </div>
-  
+
   <div class="guide-card">
     <div class="card-icon">🔍</div>
     <h3>Vector Store</h3>
