@@ -368,10 +368,10 @@
                 <div class="border-b border-[var(--border-primary)]">
                     <div class="relative">
                         <!-- Scroll gradient indicators -->
-                        <div class="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--bg-secondary)] to-transparent z-[1] pointer-events-none opacity-0 transition-opacity duration-200 flex items-center justify-start" id="left-scroll-indicator">
+                        <div class="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--bg-secondary)] to-transparent z-[1] opacity-0 transition-opacity duration-200 flex items-center justify-start cursor-pointer hover:bg-[var(--bg-tertiary)] hover:bg-opacity-30" id="left-scroll-indicator">
                             <i class="fas fa-chevron-left text-[var(--text-muted)] ml-1"></i>
                         </div>
-                        <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--bg-secondary)] to-transparent z-[1] pointer-events-none opacity-100 transition-opacity duration-200 flex items-center justify-end" id="right-scroll-indicator">
+                        <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--bg-secondary)] to-transparent z-[1] opacity-100 transition-opacity duration-200 flex items-center justify-end cursor-pointer hover:bg-[var(--bg-tertiary)] hover:bg-opacity-30" id="right-scroll-indicator">
                             <i class="fas fa-chevron-right text-[var(--text-muted)] mr-1"></i>
                         </div>
 
@@ -1270,6 +1270,18 @@
                 updateScrollIndicators();
                 setTimeout(updateScrollIndicators, 100);
                 setTimeout(updateScrollIndicators, 500);
+
+                // Add click handlers for scroll indicators
+                if (leftIndicator) {
+                    leftIndicator.addEventListener('click', () => {
+                        tabsContainer.scrollBy({ left: -200, behavior: 'smooth' });
+                    });
+                }
+                if (rightIndicator) {
+                    rightIndicator.addEventListener('click', () => {
+                        tabsContainer.scrollBy({ left: 200, behavior: 'smooth' });
+                    });
+                }
             }
 
             const tabAccount = document.getElementById('tab-account');
