@@ -116,7 +116,11 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
-    "selectOrCreate": "Selecciona una plantilla para editar o crea una nueva"
+    "selectOrCreate": "Selecciona una plantilla para editar o crea una nueva",
+    "viewGuide": "Ver Guía de Plantillas",
+    "selectTemplate": "Seleccionar Plantilla",
+    "default": "Predeterminado",
+    "downloadWithoutTemplate": "Descargar sin plantilla"
   },
   "admin": {
     "title": "Administración",
@@ -710,8 +714,18 @@
     "title": "Configuración",
     "twoFactorAuth": "Autenticación de Dos Factores"
   },
+  "speakersManagement": {
+    "used": "Usado",
+    "time": "vez",
+    "times": "veces",
+    "last": "Último",
+    "added": "Añadido"
+  },
   "sharedTranscripts": {
-    "noSharedTranscripts": "Aún no has compartido ninguna transcripción."
+    "noSharedTranscripts": "Aún no has compartido ninguna transcripción.",
+    "sharedOn": "Compartido el",
+    "shareSummary": "Compartir Resumen",
+    "shareNotes": "Compartir Notas"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Aún no has compartido ninguna transcripción."

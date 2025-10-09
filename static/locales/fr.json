@@ -110,7 +110,11 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "delete": "Supprimer",
-    "selectOrCreate": "Sélectionnez un modèle à éditer ou créez-en un nouveau"
+    "selectOrCreate": "Sélectionnez un modèle à éditer ou créez-en un nouveau",
+    "viewGuide": "Voir le Guide des Modèles",
+    "selectTemplate": "Sélectionner un Modèle",
+    "default": "Par Défaut",
+    "downloadWithoutTemplate": "Télécharger sans modèle"
   },
   "admin": {
     "title": "Administration",
@@ -704,8 +708,18 @@
     "title": "Paramètres",
     "twoFactorAuth": "Authentification à Deux Facteurs"
   },
+  "speakersManagement": {
+    "used": "Utilisé",
+    "time": "fois",
+    "times": "fois",
+    "last": "Dernier",
+    "added": "Ajouté"
+  },
   "sharedTranscripts": {
-    "noSharedTranscripts": "Vous n'avez encore partagé aucune transcription."
+    "noSharedTranscripts": "Vous n'avez encore partagé aucune transcription.",
+    "sharedOn": "Partagé le",
+    "shareSummary": "Partager le Résumé",
+    "shareNotes": "Partager les Notes"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Vous n'avez pas encore partagé de transcriptions."

@@ -110,7 +110,11 @@
     "save": "Speichern",
     "cancel": "Abbrechen",
     "delete": "Löschen",
-    "selectOrCreate": "Wählen Sie eine Vorlage zum Bearbeiten oder erstellen Sie eine neue"
+    "selectOrCreate": "Wählen Sie eine Vorlage zum Bearbeiten oder erstellen Sie eine neue",
+    "viewGuide": "Vorlagen-Leitfaden Anzeigen",
+    "selectTemplate": "Vorlage Auswählen",
+    "default": "Standard",
+    "downloadWithoutTemplate": "Ohne Vorlage Herunterladen"
   },
   "admin": {
     "title": "Administration",
@@ -704,8 +708,18 @@
     "title": "Einstellungen",
     "twoFactorAuth": "Zwei-Faktor-Authentifizierung"
   },
+  "speakersManagement": {
+    "used": "Verwendet",
+    "time": "Mal",
+    "times": "Mal",
+    "last": "Zuletzt",
+    "added": "Hinzugefügt"
+  },
   "sharedTranscripts": {
-    "noSharedTranscripts": "Sie haben noch keine Transkripte geteilt."
+    "noSharedTranscripts": "Sie haben noch keine Transkripte geteilt.",
+    "sharedOn": "Geteilt am",
+    "shareSummary": "Zusammenfassung Teilen",
+    "shareNotes": "Notizen Teilen"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "Sie haben noch keine Transkripte geteilt."
