@@ -4810,11 +4810,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Watch for tab changes to save content properly
             watch(selectedTab, (newTab, oldTab) => {
-                // Close maximized chat when switching tabs
-                if (isChatMaximized.value) {
-                    isChatMaximized.value = false;
-                }
-
                 // Save content when switching away from notes tab but keep editor open
                 if (oldTab === 'notes' && editingNotes.value && markdownEditorInstance.value) {
                     // Save the current content from the editor
@@ -4912,10 +4907,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         saveEditSummary(); // This will save and cleanup
                         selectedRecording.value = newVal; // Switch back to new recording
                     }
-                    
+
+                    // Preserve chat maximized state when switching recordings
+                    // Don't reset chat visibility or maximized state if chat is currently maximized
+                    if (!isChatMaximized.value) {
+                        showChat.value = false;
+                        selectedTab.value = 'summary';
+                    }
+                    // Clear messages for the new recording
                     chatMessages.value = [];
-                    showChat.value = false;
-                    selectedTab.value = 'summary';
                     
                     editingParticipants.value = false;
                     editingMeetingDate.value = false;
