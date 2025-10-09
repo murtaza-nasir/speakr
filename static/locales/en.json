@@ -866,6 +866,7 @@
   },
   "events": {
     "title": "Events",
+    "add": "Add",
     "addToCalendar": "Add to Calendar",
     "noEvents": "No events detected in this recording",
     "start": "Start",

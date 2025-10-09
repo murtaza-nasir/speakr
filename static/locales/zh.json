@@ -1008,6 +1008,7 @@
   },
   "events": {
     "title": "事件",
+    "add": "添加",
     "addToCalendar": "添加到日历",
     "noEvents": "此录音中未检测到事件",
     "start": "开始",
