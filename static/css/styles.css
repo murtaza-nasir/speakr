@@ -432,8 +432,8 @@ main {
     flex: 1; /* Take up available space in content-box */
     min-height: 0; /* Critical for flex shrinking */
     max-height: 100%; /* Prevent expansion beyond parent */
-    overflow-y: auto; /* Enable scrolling */
-    overflow-x: hidden; /* Prevent horizontal overflow */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: auto; /* Enable horizontal scrolling for wide content like tables */
     /* Keep existing styling */
     background-color: var(--bg-tertiary);
     padding: 1rem;
@@ -741,6 +741,7 @@ div[v-if="!editingNotes"] {
      border-radius: 1.25rem 1.25rem 1.25rem 0.25rem;
      padding: 0.875rem 1rem;
      border: 1px solid var(--border-secondary);
+     overflow-x: auto; /* Enable horizontal scrolling for wide content like tables */
  }
 
  
