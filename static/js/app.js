@@ -204,6 +204,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 min_speakers: null,
                 max_speakers: null
             });
+            const summaryReprocessPromptSource = ref('default'); // 'default', 'tag', or 'custom'
+            const summaryReprocessSelectedTagId = ref('');
+            const summaryReprocessCustomPrompt = ref('');
             const speakerMap = ref({});
             const regenerateSummaryAfterSpeakerUpdate = ref(true);
             const speakerSuggestions = ref({});
@@ -1161,26 +1164,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showReprocessModal.value = false;
                 reprocessType.value = null;
                 reprocessRecording.value = null;
+                // Reset summary reprocess options
+                summaryReprocessPromptSource.value = 'default';
+                summaryReprocessSelectedTagId.value = '';
+                summaryReprocessCustomPrompt.value = '';
             };
             
             const executeReprocess = async () => {
                 if (!reprocessRecording.value || !reprocessType.value) return;
-                
+
                 const recordingId = reprocessRecording.value.id;
                 const type = reprocessType.value;
-                
-                // Close the modal first
+
+                // Save values before closing the modal (cancelReprocess resets them)
+                const savedAsrOptions = {
+                    language: asrReprocessOptions.language,
+                    min_speakers: asrReprocessOptions.min_speakers,
+                    max_speakers: asrReprocessOptions.max_speakers
+                };
+                const savedSummaryPromptSource = summaryReprocessPromptSource.value;
+                const savedSummaryTagId = summaryReprocessSelectedTagId.value;
+                const savedSummaryCustomPrompt = summaryReprocessCustomPrompt.value;
+
+                // Close the modal
                 cancelReprocess();
-                
+
                 if (type === 'transcription') {
                     await performReprocessTranscription(
-                        recordingId, 
-                        asrReprocessOptions.language, 
-                        asrReprocessOptions.min_speakers, 
-                        asrReprocessOptions.max_speakers
+                        recordingId,
+                        savedAsrOptions.language,
+                        savedAsrOptions.min_speakers,
+                        savedAsrOptions.max_speakers
                     );
                 } else if (type === 'summary') {
-                    await performReprocessSummary(recordingId);
+                    await performReprocessSummary(
+                        recordingId,
+                        savedSummaryPromptSource,
+                        savedSummaryTagId,
+                        savedSummaryCustomPrompt
+                    );
                 }
             };
 
@@ -1240,16 +1262,38 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
             
-            const performReprocessSummary = async (recordingId) => {
+            const performReprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt) => {
                 if (!recordingId) {
                     setGlobalError('No recording ID provided for reprocessing.');
                     return;
                 }
-                
+
                 try {
+                    // Prepare payload with custom prompt data
+                    const payload = {};
+
+                    console.log('[Reprocess Summary] Prompt source:', promptSource);
+                    console.log('[Reprocess Summary] Selected tag ID:', selectedTagId);
+                    console.log('[Reprocess Summary] Custom prompt:', customPrompt);
+
+                    if (promptSource === 'tag' && selectedTagId) {
+                        const selectedTag = availableTags.value.find(t => t.id == selectedTagId);
+                        if (selectedTag && selectedTag.custom_prompt) {
+                            payload.custom_prompt = selectedTag.custom_prompt;
+                            console.log('[Reprocess Summary] Using tag prompt:', selectedTag.name, 'Length:', selectedTag.custom_prompt.length);
+                        }
+                    } else if (promptSource === 'custom' && customPrompt && customPrompt.trim()) {
+                        payload.custom_prompt = customPrompt.trim();
+                        console.log('[Reprocess Summary] Using custom prompt, Length:', payload.custom_prompt.length);
+                    }
+                    // If 'default' is selected or no custom prompt, payload will be empty and backend will use default
+
+                    console.log('[Reprocess Summary] Final payload:', payload);
+
                     const response = await fetch(`/recording/${recordingId}/reprocess_summary`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
                     });
                     
                     const data = await response.json();
@@ -2670,6 +2714,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Use advanced filter instead of text-based
                 filterTags.value = [tag.id];
                 applyAdvancedFilters();
+            };
+
+            // Computed property for tags with custom prompts (for reprocess modal)
+            const tagsWithCustomPrompts = computed(() => {
+                return availableTags.value.filter(tag => tag.custom_prompt && tag.custom_prompt.trim());
+            });
+
+            // Helper function to get tag prompt preview
+            const getTagPromptPreview = (tagId) => {
+                const tag = availableTags.value.find(t => t.id == tagId);
+                if (!tag || !tag.custom_prompt) return '';
+                // Return first 100 characters
+                return tag.custom_prompt.length > 100
+                    ? tag.custom_prompt.substring(0, 100) + '...'
+                    : tag.custom_prompt;
             };
             const clearTagFilter = () => {
                 searchQuery.value = '';
@@ -5472,6 +5531,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cancelReprocess,
                 executeReprocess,
                 asrReprocessOptions,
+                summaryReprocessPromptSource,
+                summaryReprocessSelectedTagId,
+                summaryReprocessCustomPrompt,
+                tagsWithCustomPrompts,
+                getTagPromptPreview,
                 showSpeakerModal,
                 showShareModal,
                 recordingToShare,

@@ -2398,12 +2398,13 @@ Title:"""
             except Exception as e:
                 app.logger.error(f"Error processing chunks for completed recording {recording_id}: {e}")
 
-def generate_summary_only_task(app_context, recording_id):
+def generate_summary_only_task(app_context, recording_id, custom_prompt_override=None):
     """Generates only a summary for a recording (no title, no JSON response).
-    
+
     Args:
         app_context: Flask app context
         recording_id: ID of the recording
+        custom_prompt_override: Optional custom prompt that overrides all other prompts (for reprocessing)
     """
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -2477,11 +2478,14 @@ def generate_summary_only_task(app_context, recording_id):
             transcript_text = formatted_transcription[:transcript_limit]
         
         language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}. The entire response must be in {user_output_language}." if user_output_language else ""
-        
+
         # Determine which summarization instructions to use
-        # Priority order: tag custom prompt > user summary prompt > admin default prompt > hardcoded fallback
+        # Priority order: custom_prompt_override > tag custom prompt > user summary prompt > admin default prompt > hardcoded fallback
         summarization_instructions = ""
-        if tag_custom_prompt:
+        if custom_prompt_override:
+            app.logger.info(f"Using custom prompt override for recording {recording_id} (length: {len(custom_prompt_override)})")
+            summarization_instructions = custom_prompt_override
+        elif tag_custom_prompt:
             app.logger.info(f"Using tag custom prompt for recording {recording_id}")
             summarization_instructions = tag_custom_prompt
         elif user_summary_prompt:
@@ -4989,7 +4993,17 @@ def reprocess_summary(recording_id):
         # Check if OpenRouter client is available
         if client is None:
             return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
-            
+
+        # Get custom prompt from request if provided
+        data = request.get_json() or {}
+        custom_prompt = data.get('custom_prompt', '').strip() if data.get('custom_prompt') else None
+
+        # Debug logging
+        if custom_prompt:
+            app.logger.info(f"Received custom prompt override for recording {recording_id} (length: {len(custom_prompt)})")
+        else:
+            app.logger.info(f"No custom prompt override provided for recording {recording_id}, will use default priority")
+
         # Set status to SUMMARIZING and clear existing summary
         recording.summary = None
         recording.status = 'SUMMARIZING'
@@ -5002,16 +5016,17 @@ def reprocess_summary(recording_id):
         # Refresh the recording object to ensure it has the latest committed data
         db.session.refresh(recording)
 
-        app.logger.info(f"Starting summary reprocessing for recording {recording_id}")
-        
+        app.logger.info(f"Starting summary reprocessing for recording {recording_id}" +
+                       (f" with custom prompt (length: {len(custom_prompt)})" if custom_prompt else ""))
+
         # Start summary generation in background thread
-        def reprocess_summary_task(app_context, recording_id):
+        def reprocess_summary_task(app_context, recording_id, custom_prompt_override=None):
             app.logger.info(f"Starting summary reprocessing for recording {recording_id} using generate_summary_only_task")
-            generate_summary_only_task(app_context, recording_id)
-        
+            generate_summary_only_task(app_context, recording_id, custom_prompt_override=custom_prompt_override)
+
         thread = threading.Thread(
             target=reprocess_summary_task,
-            args=(app.app_context(), recording.id)
+            args=(app.app_context(), recording.id, custom_prompt)
         )
         thread.start()
         
