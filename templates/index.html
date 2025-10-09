@@ -834,17 +834,15 @@
                                         
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
-                                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                    {% raw %}{{ t('form.minSpeakers') }}{% endraw %}
+                                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
                                                 </label>
                                                 <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
                                                        min="1" max="20" :placeholder="t('form.auto')"
                                                        class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
                                             </div>
-                                            
+
                                             <div>
-                                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                                    {% raw %}{{ t('form.maxSpeakers') }}{% endraw %}
+                                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
                                                 </label>
                                                 <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
                                                        min="1" max="20" :placeholder="t('form.auto')"
