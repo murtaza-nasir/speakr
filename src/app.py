@@ -2133,42 +2133,88 @@ except Exception as client_init_e:
     app.logger.error(f"Failed to initialize LLM client: {client_init_e}", exc_info=True)
     client = None
 
+def is_gpt5_model(model_name):
+    """
+    Check if the model is a GPT-5 series model that requires special API parameters.
+
+    Args:
+        model_name: The model name string
+
+    Returns:
+        Boolean indicating if this is a GPT-5 model
+    """
+    if not model_name:
+        return False
+    model_lower = model_name.lower()
+    return model_lower.startswith('gpt-5') or model_lower in ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5-chat-latest']
+
+def is_using_openai_api():
+    """
+    Check if we're using the official OpenAI API (not OpenRouter or other providers).
+
+    Returns:
+        Boolean indicating if this is the OpenAI API
+    """
+    return TEXT_MODEL_BASE_URL and 'api.openai.com' in TEXT_MODEL_BASE_URL
+
 def call_llm_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None):
     """
     Centralized function for LLM API calls with proper error handling and logging.
-    
+
     Args:
         messages: List of message dicts with 'role' and 'content'
-        temperature: Sampling temperature (0-1)
+        temperature: Sampling temperature (0-1) - ignored for GPT-5 models
         response_format: Optional response format dict (e.g., {"type": "json_object"})
         stream: Whether to stream the response
         max_tokens: Optional maximum tokens to generate
-        
+
     Returns:
         OpenAI completion object or generator (if streaming)
     """
     if not client:
         raise ValueError("LLM client not initialized")
-    
+
     if not TEXT_MODEL_API_KEY:
         raise ValueError("TEXT_MODEL_API_KEY not configured")
-    
+
     try:
+        # Check if we're using GPT-5 with OpenAI API
+        using_gpt5 = is_gpt5_model(TEXT_MODEL_NAME) and is_using_openai_api()
+
         completion_args = {
             "model": TEXT_MODEL_NAME,
             "messages": messages,
-            "temperature": temperature,
             "stream": stream
         }
-        
+
+        if using_gpt5:
+            # GPT-5 models don't support temperature, top_p, or logprobs
+            # They use reasoning_effort and verbosity instead
+            app.logger.debug(f"Using GPT-5 model: {TEXT_MODEL_NAME} - applying GPT-5 specific parameters")
+
+            # Get GPT-5 specific parameters from environment variables
+            reasoning_effort = os.environ.get("GPT5_REASONING_EFFORT", "medium")  # minimal, low, medium, high
+            verbosity = os.environ.get("GPT5_VERBOSITY", "medium")  # low, medium, high
+
+            # Add GPT-5 specific parameters
+            completion_args["reasoning_effort"] = reasoning_effort
+            completion_args["verbosity"] = verbosity
+
+            # Use max_completion_tokens instead of max_tokens for GPT-5
+            if max_tokens:
+                completion_args["max_completion_tokens"] = max_tokens
+        else:
+            # Non-GPT-5 models use standard parameters
+            completion_args["temperature"] = temperature
+
+            if max_tokens:
+                completion_args["max_tokens"] = max_tokens
+
         if response_format:
             completion_args["response_format"] = response_format
-            
-        if max_tokens:
-            completion_args["max_tokens"] = max_tokens
-            
+
         return client.chat.completions.create(**completion_args)
-        
+
     except Exception as e:
         app.logger.error(f"LLM API call failed: {e}")
         raise
