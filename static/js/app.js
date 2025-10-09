@@ -4312,19 +4312,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
                         modal.innerHTML = `
                             <div class="bg-[var(--bg-secondary)] rounded-lg p-6 max-w-md w-full mx-4">
-                                <h3 class="text-lg font-semibold mb-4">Select Template</h3>
+                                <h3 class="text-lg font-semibold mb-4">${t('transcriptTemplates.selectTemplate')}</h3>
                                 <div class="space-y-2 max-h-60 overflow-y-auto">
-                                    ${templates.map(t => `
-                                        <button class="template-option w-full text-left p-3 rounded border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] ${t.is_default ? 'ring-2 ring-[var(--ring-focus)]' : ''}" data-template-id="${t.id}">
-                                            <div class="font-medium">${t.name}</div>
-                                            ${t.description ? `<div class="text-sm text-[var(--text-muted)]">${t.description}</div>` : ''}
-                                            ${t.is_default ? '<div class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>Default</div>' : ''}
+                                    ${templates.map(tmpl => `
+                                        <button class="template-option w-full text-left p-3 rounded border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] ${tmpl.is_default ? 'ring-2 ring-[var(--ring-focus)]' : ''}" data-template-id="${tmpl.id}">
+                                            <div class="font-medium">${tmpl.name}</div>
+                                            ${tmpl.description ? `<div class="text-sm text-[var(--text-muted)]">${tmpl.description}</div>` : ''}
+                                            ${tmpl.is_default ? `<div class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>${t('transcriptTemplates.default')}</div>` : ''}
                                         </button>
                                     `).join('')}
                                 </div>
                                 <div class="mt-4 flex gap-2">
-                                    <button class="cancel-btn px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded hover:bg-[var(--bg-accent-light)]">Cancel</button>
-                                    <button class="download-without-template-btn px-4 py-2 bg-[var(--bg-accent)] text-white rounded hover:bg-[var(--bg-accent-hover)]">Download without template</button>
+                                    <button class="cancel-btn px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded hover:bg-[var(--bg-accent-light)]">${t('transcriptTemplates.cancel')}</button>
+                                    <button class="download-without-template-btn px-4 py-2 bg-[var(--bg-accent)] text-white rounded hover:bg-[var(--bg-accent-hover)]">${t('transcriptTemplates.downloadWithoutTemplate')}</button>
                                 </div>
                             </div>
                         `;

@@ -128,7 +128,11 @@
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
-    "selectOrCreate": "选择要编辑的模板或创建新模板"
+    "selectOrCreate": "选择要编辑的模板或创建新模板",
+    "viewGuide": "查看模板指南",
+    "selectTemplate": "选择模板",
+    "default": "默认",
+    "downloadWithoutTemplate": "不使用模板下载"
   },
   "admin": {
     "title": "管理员",
@@ -831,8 +835,27 @@
     "title": "设置",
     "twoFactorAuth": "双因素认证"
   },
+  "speakersManagement": {
+    "description": "管理您保存的发言人。当您在录音中使用发言人姓名时，这些会自动保存。",
+    "loadingSpeakers": "加载发言人...",
+    "failedToLoad": "加载发言人失败",
+    "noSpeakersYet": "尚未保存发言人",
+    "speakersWillAppear": "当您在录音中使用发言人姓名时，发言人将出现在这里",
+    "totalSpeakers": "个已保存发言人",
+    "usedTimes": "已使用",
+    "lastUsed": "上次使用",
+    "created": "创建时间",
+    "used": "已使用",
+    "time": "次",
+    "times": "次",
+    "last": "上次",
+    "added": "添加时间"
+  },
   "sharedTranscripts": {
-    "noSharedTranscripts": "您尚未分享任何转录。"
+    "noSharedTranscripts": "您尚未分享任何转录。",
+    "sharedOn": "分享于",
+    "shareSummary": "分享摘要",
+    "shareNotes": "分享笔记"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "您尚未分享任何转录。"

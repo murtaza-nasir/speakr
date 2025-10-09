@@ -117,7 +117,10 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "selectOrCreate": "Select a template to edit or create a new one",
-    "viewGuide": "View Template Guide"
+    "viewGuide": "View Template Guide",
+    "selectTemplate": "Select Template",
+    "default": "Default",
+    "downloadWithoutTemplate": "Download without template"
   },
   "admin": {
     "title": "Admin",
@@ -589,7 +592,12 @@
     "totalSpeakers": "speakers saved",
     "usedTimes": "Used",
     "lastUsed": "Last used",
-    "created": "Created"
+    "created": "Created",
+    "used": "Used",
+    "time": "time",
+    "times": "times",
+    "last": "Last",
+    "added": "Added"
   },
   "manageSpeakersModal": {
     "created": "Created",
@@ -724,7 +732,10 @@
     "twoFactorAuth": "Two-Factor Authentication"
   },
   "sharedTranscripts": {
-    "noSharedTranscripts": "You haven't shared any transcripts yet."
+    "noSharedTranscripts": "You haven't shared any transcripts yet.",
+    "sharedOn": "Shared on",
+    "shareSummary": "Share Summary",
+    "shareNotes": "Share Notes"
   },
   "sharedTranscriptsPage": {
     "noSharedTranscripts": "You have not shared any transcripts yet."

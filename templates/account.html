@@ -1480,15 +1480,15 @@
                             <div class="space-y-1 text-xs text-[var(--text-muted)]">
                                 <p class="flex items-center">
                                     <i class="fas fa-chart-line mr-1.5 text-xs opacity-60"></i>
-                                    <span>Used ${speaker.use_count} time${speaker.use_count !== 1 ? 's' : ''}</span>
+                                    ${t('speakersManagement.used')} ${speaker.use_count} ${t('speakersManagement.' + (speaker.use_count !== 1 ? 'times' : 'time'))}
                                 </p>
                                 <p class="flex items-center">
                                     <i class="fas fa-clock mr-1.5 text-xs opacity-60"></i>
-                                    <span>Last: ${lastUsedDate}</span>
+                                    ${t('speakersManagement.last')}: ${lastUsedDate}
                                 </p>
                                 <p class="flex items-center">
                                     <i class="fas fa-calendar-plus mr-1.5 text-xs opacity-60"></i>
-                                    <span>Added: ${createdDate}</span>
+                                    ${t('speakersManagement.added')}: ${createdDate}
                                 </p>
                             </div>
                         </div>
@@ -1644,18 +1644,18 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="font-semibold">${escapeHtml(share.recording_title)}</p>
-                                    <p class="text-sm text-[var(--text-muted)]">Shared on: ${share.created_at}</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('sharedTranscripts.sharedOn')}: ${share.created_at}</p>
                                 </div>
                                 <button data-share-id="${share.id}" class="delete-share-btn text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
                             </div>
                             <div class="mt-4 flex items-center gap-4">
                                 <label class="flex items-center text-sm">
                                     <input type="checkbox" data-share-id="${share.id}" data-share-prop="share_summary" class="share-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${share.share_summary ? 'checked' : ''}>
-                                    <span class="ml-2">Share Summary</span>
+                                    <span class="ml-2">${t('sharedTranscripts.shareSummary')}</span>
                                 </label>
                                 <label class="flex items-center text-sm">
                                     <input type="checkbox" data-share-id="${share.id}" data-share-prop="share_notes" class="share-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${share.share_notes ? 'checked' : ''}>
-                                    <span class="ml-2">Share Notes</span>
+                                    <span class="ml-2">${t('sharedTranscripts.shareNotes')}</span>
                                 </label>
                             </div>
                             <div class="mt-4">
@@ -2225,18 +2225,18 @@
                 <div class="space-y-2 text-sm text-[var(--text-muted)]">
                     ${tag.custom_prompt ? `
                         <div>
-                            <span class="font-medium" data-i18n="tagManagement.customPrompt">Custom Prompt:</span>
+                            <span class="font-medium">${t('tagManagement.customPrompt')}:</span>
                             <span class="text-xs">${escapeHtml(tag.custom_prompt.substring(0, 60))}${tag.custom_prompt.length > 60 ? '...' : ''}</span>
                         </div>
                     ` : ''}
-                    
+
                     ${tag.default_language || tag.default_min_speakers || tag.default_max_speakers ? `
                         <div class="pt-2 border-t border-[var(--border-secondary)]">
-                            <span class="font-medium text-xs" data-i18n="tagManagement.asrDefaults">ASR Defaults:</span>
+                            <span class="font-medium text-xs">${t('tagManagement.asrDefaults')}:</span>
                             <div class="flex flex-wrap gap-2 mt-1">
-                                ${tag.default_language ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Lang: ${escapeHtml(tag.default_language)}</span>` : ''}
-                                ${tag.default_min_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Min: ${tag.default_min_speakers}</span>` : ''}
-                                ${tag.default_max_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">Max: ${tag.default_max_speakers}</span>` : ''}
+                                ${tag.default_language ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">${t('form.language')}: ${escapeHtml(tag.default_language)}</span>` : ''}
+                                ${tag.default_min_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">${t('tagManagement.minSpeakers')}: ${tag.default_min_speakers}</span>` : ''}
+                                ${tag.default_max_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">${t('tagManagement.maxSpeakers')}: ${tag.default_max_speakers}</span>` : ''}
                             </div>
                         </div>
                     ` : ''}
@@ -2575,7 +2575,7 @@
                         <div class="flex-1">
                             <h4 class="text-sm font-medium text-[var(--text-primary)]">${template.name}</h4>
                             ${template.description ? `<p class="text-xs text-[var(--text-muted)] mt-1">${template.description}</p>` : ''}
-                            ${template.is_default ? '<span class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>Default</span>' : ''}
+                            ${template.is_default ? `<span class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>${t('transcriptTemplates.default')}</span>` : ''}
                         </div>
                     </div>
                 `;
