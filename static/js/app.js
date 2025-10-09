@@ -1978,18 +1978,42 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             // --- View Management ---
+            const hasUnsavedRecording = () => {
+                // Check if we have an active recording or a finished recording that hasn't been uploaded
+                return currentView.value === 'recording' && (isRecording.value || audioBlobURL.value);
+            };
+
+            const confirmNavigationWithUnsavedRecording = () => {
+                if (hasUnsavedRecording()) {
+                    const message = isRecording.value
+                        ? 'Recording in progress. Are you sure you want to leave? Your recording will be lost.'
+                        : 'You have an unsaved recording. Are you sure you want to leave? Your recording will be lost.';
+                    return confirm(message);
+                }
+                return true;
+            };
+
             const switchToUploadView = () => {
+                if (!confirmNavigationWithUnsavedRecording()) {
+                    return;
+                }
                 currentView.value = 'upload';
                 selectedRecording.value = null;
                 if (isMobileScreen.value) {
                     isSidebarCollapsed.value = true;
                 }
+                // Clean up any active or unsaved recording
+                if (isRecording.value) {
+                    stopRecording();
+                }
+                if (audioBlobURL.value) {
+                    discardRecording();
+                }
             };
 
             const selectRecording = (recording) => {
-                if (currentView.value === 'recording' && isRecording.value) {
-                    // If we are in the middle of a recording, don't switch views
-                    setGlobalError("Please stop the current recording before selecting another one.");
+                // Check for active or unsaved recording before switching
+                if (!confirmNavigationWithUnsavedRecording()) {
                     return;
                 }
                 selectedRecording.value = recording;
@@ -2001,6 +2025,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 if (isMobileScreen.value) {
                     isSidebarCollapsed.value = true;
+                }
+                // Clean up any active or unsaved recording
+                if (isRecording.value) {
+                    stopRecording();
+                }
+                if (audioBlobURL.value) {
+                    discardRecording();
                 }
             };
 
@@ -5242,6 +5273,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 window.addEventListener('resize', updateMobileStatus);
                 updateMobileStatus();
+
+                // Add beforeunload event listener to warn about unsaved recordings
+                window.addEventListener('beforeunload', (e) => {
+                    if (hasUnsavedRecording()) {
+                        e.preventDefault();
+                        e.returnValue = 'You have an unsaved recording. Are you sure you want to leave?';
+                        return e.returnValue;
+                    }
+                });
+
+                // Intercept navigation clicks when there's an unsaved recording
+                document.addEventListener('click', (e) => {
+                    // Check if click is on an anchor tag or inside one
+                    const link = e.target.closest('a[href]');
+                    if (link && hasUnsavedRecording()) {
+                        // Check if it's an external navigation (not just a hash change within the same page)
+                        const href = link.getAttribute('href');
+                        if (href && href !== '#' && !href.startsWith('javascript:')) {
+                            if (!confirmNavigationWithUnsavedRecording()) {
+                                e.preventDefault();
+                                return false;
+                            } else {
+                                // User confirmed, clean up the recording
+                                if (isRecording.value) {
+                                    stopRecording();
+                                }
+                                if (audioBlobURL.value) {
+                                    discardRecording();
+                                }
+                            }
+                        }
+                    }
+                });
 
                 // Start polling for inbox recordings
                 setInterval(pollInboxRecordings, 10000); // Poll every 10 seconds
