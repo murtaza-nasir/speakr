@@ -2930,8 +2930,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
-            // Show persistent notification during recording
+            // Detect if running on mobile device
+            const isMobileDevice = computed(() => {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            });
+
+            // Show persistent notification during recording (mobile only)
             const showRecordingNotification = async () => {
+                // Only show notifications on mobile devices
+                if (!isMobileDevice.value) {
+                    console.log('[Notification] Skipping notification on desktop');
+                    return false;
+                }
+
                 if ('Notification' in window && 'serviceWorker' in navigator) {
                     try {
                         // Request notification permission if not already granted
@@ -2987,22 +2998,70 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             // Handle page visibility changes to maintain recording state
-            const handleVisibilityChange = () => {
+            const handleVisibilityChange = async () => {
                 const wasVisible = isPageVisible.value;
                 isPageVisible.value = !document.hidden;
 
                 if (isRecording.value) {
                     if (isPageVisible.value && !wasVisible) {
                         // Page became visible again
-                        console.log('[Visibility] Page visible - recording continues');
+                        console.log('[Visibility] Page visible - resuming recording if needed');
+
+                        // Resume audio context if suspended
+                        if (audioContext.value && audioContext.value.state === 'suspended') {
+                            try {
+                                await audioContext.value.resume();
+                                console.log('[Visibility] Audio context resumed');
+                            } catch (err) {
+                                console.error('[Visibility] Failed to resume audio context:', err);
+                            }
+                        }
+
+                        // Resume MediaRecorder if paused
+                        if (mediaRecorder.value && mediaRecorder.value.state === 'paused') {
+                            try {
+                                mediaRecorder.value.resume();
+                                console.log('[Visibility] MediaRecorder resumed');
+                            } catch (err) {
+                                console.error('[Visibility] Failed to resume MediaRecorder:', err);
+                            }
+                        }
 
                         // Re-acquire wake lock if it was lost
                         if (wakeLock.value === null) {
                             requestWakeLock();
                         }
+
+                        // Hide notification when returning to foreground
+                        hideRecordingNotification();
                     } else if (!isPageVisible.value && wasVisible) {
                         // Page became hidden
-                        console.log('[Visibility] Page hidden - maintaining recording state');
+                        console.log('[Visibility] Page hidden - keeping recording active');
+
+                        // Keep audio context running
+                        if (audioContext.value && audioContext.value.state === 'suspended') {
+                            try {
+                                await audioContext.value.resume();
+                                console.log('[Visibility] Audio context resumed in background');
+                            } catch (err) {
+                                console.error('[Visibility] Failed to resume audio context:', err);
+                            }
+                        }
+
+                        // Ensure MediaRecorder is still recording
+                        if (mediaRecorder.value) {
+                            console.log('[Visibility] MediaRecorder state:', mediaRecorder.value.state);
+
+                            // If paused, try to resume
+                            if (mediaRecorder.value.state === 'paused') {
+                                try {
+                                    mediaRecorder.value.resume();
+                                    console.log('[Visibility] MediaRecorder resumed from paused state');
+                                } catch (err) {
+                                    console.error('[Visibility] Failed to resume MediaRecorder:', err);
+                                }
+                            }
+                        }
 
                         // Show notification to keep process alive
                         showRecordingNotification();
@@ -3277,8 +3336,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     console.log(`Recording with estimated bitrate: ${actualBitrate.value} bps`);
-                    
-                    mediaRecorder.value.ondataavailable = event => audioChunks.value.push(event.data);
+
+                    // Add state change monitoring
+                    mediaRecorder.value.onpause = () => {
+                        console.warn('[MediaRecorder] Recording PAUSED - attempting to resume');
+                        // Automatically resume if paused (shouldn't happen in normal operation)
+                        setTimeout(() => {
+                            if (mediaRecorder.value && mediaRecorder.value.state === 'paused' && isRecording.value) {
+                                try {
+                                    mediaRecorder.value.resume();
+                                    console.log('[MediaRecorder] Auto-resumed from paused state');
+                                } catch (err) {
+                                    console.error('[MediaRecorder] Failed to auto-resume:', err);
+                                }
+                            }
+                        }, 100);
+                    };
+
+                    mediaRecorder.value.onresume = () => {
+                        console.log('[MediaRecorder] Recording RESUMED');
+                    };
+
+                    mediaRecorder.value.onerror = (event) => {
+                        console.error('[MediaRecorder] Error occurred:', event.error);
+                    };
+
+                    mediaRecorder.value.ondataavailable = event => {
+                        if (event.data && event.data.size > 0) {
+                            audioChunks.value.push(event.data);
+                            // Only log every 10th chunk to reduce console noise
+                            if (audioChunks.value.length % 10 === 0) {
+                                console.log(`[MediaRecorder] ${audioChunks.value.length} chunks received (${(audioChunks.value.reduce((sum, chunk) => sum + chunk.size, 0) / 1024).toFixed(1)} KB total)`);
+                            }
+                        } else {
+                            console.warn('[MediaRecorder] Received empty data chunk');
+                        }
+                    };
                     mediaRecorder.value.onstop = () => {
                         const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' });
                         audioBlobURL.value = URL.createObjectURL(audioBlob);
@@ -3329,16 +3422,51 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     // Start recording and timer
-                    mediaRecorder.value.start();
+                    // Use timeslice to force regular data emission - helps prevent pausing in background
+                    // Request data every 1 second (1000ms)
+                    mediaRecorder.value.start(1000);
+                    console.log('[MediaRecorder] Started with 1-second timeslice for background resilience');
                     isRecording.value = true;
                     recordingTime.value = 0;
-                    recordingInterval.value = setInterval(() => recordingTime.value++, 1000);
+                    recordingInterval.value = setInterval(() => {
+                        recordingTime.value++;
+
+                        // Keep audio context alive (check every second)
+                        if (audioContext.value && audioContext.value.state === 'suspended') {
+                            audioContext.value.resume().then(() => {
+                                console.log('[Audio Context] Resumed from suspended state');
+                            }).catch(err => {
+                                console.error('[Audio Context] Failed to resume:', err);
+                            });
+                        }
+
+                        // Check MediaRecorder state
+                        if (mediaRecorder.value) {
+                            if (mediaRecorder.value.state === 'paused') {
+                                console.warn('[MediaRecorder] Detected paused state during recording');
+                                mediaRecorder.value.resume();
+                            }
+
+                            // Every 30 seconds, check if we're still receiving audio
+                            if (recordingTime.value % 30 === 0) {
+                                console.log(`[Recording] ${recordingTime.value}s - State: ${mediaRecorder.value.state}, Chunks: ${audioChunks.value.length}`);
+
+                                // Check if audio tracks are still active
+                                activeStreams.value.forEach((stream, idx) => {
+                                    const audioTracks = stream.getAudioTracks();
+                                    audioTracks.forEach((track, trackIdx) => {
+                                        console.log(`[Stream ${idx}] Track ${trackIdx}: ${track.label} - enabled: ${track.enabled}, muted: ${track.muted}, readyState: ${track.readyState}`);
+                                    });
+                                });
+                            }
+                        }
+                    }, 1000);
+
+                    // Switch to recording view FIRST (immediately show UI)
+                    currentView.value = 'recording';
 
                     // Start size monitoring
                     startSizeMonitoring();
-
-                    // Switch to recording view FIRST (before async operations)
-                    currentView.value = 'recording';
 
                     // Start visualizer(s)
                     drawVisualizers();
@@ -5191,7 +5319,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     const originalTime = recordingAudio.currentTime;
                                     recordingAudio.currentTime = 1e101;
                                     recordingAudio.addEventListener('timeupdate', function resetTime() {
-                                        recordingAudio.currentTime = originalTime;
+                                        if (Number.isFinite(originalTime)) {
+                                            recordingAudio.currentTime = originalTime;
+                                        }
                                         recordingAudio.removeEventListener('timeupdate', resetTime);
                                     }, { once: true });
                                 }
@@ -5628,8 +5758,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // UI State
                 browser,
-                isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, isDarkMode, currentColorScheme, 
-                showColorSchemeModal, windowWidth, isMobileScreen,
+                isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, isDarkMode, currentColorScheme,
+                showColorSchemeModal, windowWidth, isMobileScreen, isMobileDevice,
                 mobileTab, isMetadataExpanded,
                 
                 // i18n State
