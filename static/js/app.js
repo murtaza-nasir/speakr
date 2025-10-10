@@ -2999,12 +2999,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Handle page visibility changes to maintain recording state
             const handleVisibilityChange = async () => {
+            const handleVisibilityChange = async () => {
                 const wasVisible = isPageVisible.value;
                 isPageVisible.value = !document.hidden;
 
                 if (isRecording.value) {
                     if (isPageVisible.value && !wasVisible) {
                         // Page became visible again
+                        console.log('[Visibility] Page visible - resuming recording if needed');
+
+                        // Resume audio context if suspended
+                        if (audioContext.value && audioContext.value.state === 'suspended') {
+                            try {
+                                await audioContext.value.resume();
+                                console.log('[Visibility] Audio context resumed');
+                            } catch (err) {
+                                console.error('[Visibility] Failed to resume audio context:', err);
+                            }
+                        }
+
+                        // Resume MediaRecorder if paused
+                        if (mediaRecorder.value && mediaRecorder.value.state === 'paused') {
+                            try {
+                                mediaRecorder.value.resume();
+                                console.log('[Visibility] MediaRecorder resumed');
+                            } catch (err) {
+                                console.error('[Visibility] Failed to resume MediaRecorder:', err);
+                            }
+                        }
                         console.log('[Visibility] Page visible - resuming recording if needed');
 
                         // Resume audio context if suspended
@@ -3034,8 +3056,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         // Hide notification when returning to foreground
                         hideRecordingNotification();
+
+                        // Hide notification when returning to foreground
+                        hideRecordingNotification();
                     } else if (!isPageVisible.value && wasVisible) {
                         // Page became hidden
+                        console.log('[Visibility] Page hidden - keeping recording active');
+
+                        // Keep audio context running
+                        if (audioContext.value && audioContext.value.state === 'suspended') {
+                            try {
+                                await audioContext.value.resume();
+                                console.log('[Visibility] Audio context resumed in background');
+                            } catch (err) {
+                                console.error('[Visibility] Failed to resume audio context:', err);
+                            }
+                        }
+
+                        // Ensure MediaRecorder is still recording
+                        if (mediaRecorder.value) {
+                            console.log('[Visibility] MediaRecorder state:', mediaRecorder.value.state);
+
+                            // If paused, try to resume
+                            if (mediaRecorder.value.state === 'paused') {
+                                try {
+                                    mediaRecorder.value.resume();
+                                    console.log('[Visibility] MediaRecorder resumed from paused state');
+                                } catch (err) {
+                                    console.error('[Visibility] Failed to resume MediaRecorder:', err);
+                                }
+                            }
+                        }
                         console.log('[Visibility] Page hidden - keeping recording active');
 
                         // Keep audio context running
@@ -3422,6 +3473,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     
                     // Start recording and timer
+                    // Use timeslice to force regular data emission - helps prevent pausing in background
+                    // Request data every 1 second (1000ms)
+                    mediaRecorder.value.start(1000);
+                    console.log('[MediaRecorder] Started with 1-second timeslice for background resilience');
                     // Use timeslice to force regular data emission - helps prevent pausing in background
                     // Request data every 1 second (1000ms)
                     mediaRecorder.value.start(1000);
