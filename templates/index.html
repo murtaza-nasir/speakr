@@ -671,6 +671,18 @@
                                     </audio>
                                 </div>
                             </div>
+                            <!-- Mobile Background Recording Warning -->
+                            <div v-if="isRecording && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)"
+                                 class="mb-4 p-3 bg-amber-50 dark:bg-amber-900 dark:bg-opacity-20 border border-amber-300 dark:border-amber-700 rounded-lg">
+                                <div class="flex items-start gap-2 text-left">
+                                    <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"></i>
+                                    <div class="text-xs text-amber-800 dark:text-amber-200">
+                                        <strong class="block mb-1">Keep this app visible!</strong>
+                                        <span>Recording will pause if you minimize the window or lock your screen. For long meetings, keep Speakr in the foreground or use a native recording app and upload the file when done.</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
                                 <div class="text-2xl font-mono text-[var(--text-accent)]">${formatTime(recordingTime)}</div>
                                 <p class="text-sm text-[var(--text-muted)]">${ isRecording ? 'Recording in progress...' : 'Recording finished' }</p>

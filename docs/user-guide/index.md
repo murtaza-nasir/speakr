@@ -13,12 +13,18 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   </div>
   
   <div class="guide-card">
+    <div class="card-icon">📱</div>
+    <h3>Progressive Web App</h3>
+    <p>Install as a PWA for offline access and wake lock support during recording.</p>
+    <a href="pwa" class="card-link">Learn About PWA →</a>
+  </div>
+
+  <div class="guide-card">
     <div class="card-icon">🎙️</div>
     <h3>Recording & Uploading</h3>
     <p>Upload audio files or record directly in your browser with live note-taking capabilities.</p>
     <a href="recording" class="card-link">Start Recording →</a>
   </div>
-  
   <div class="guide-card">
     <div class="card-icon">📝</div>
     <h3>Working with Transcripts</h3>
