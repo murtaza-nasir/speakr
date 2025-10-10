@@ -3426,10 +3426,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Request data every 1 second (1000ms)
                     mediaRecorder.value.start(1000);
                     console.log('[MediaRecorder] Started with 1-second timeslice for background resilience');
-                    // Use timeslice to force regular data emission - helps prevent pausing in background
-                    // Request data every 1 second (1000ms)
-                    mediaRecorder.value.start(1000);
-                    console.log('[MediaRecorder] Started with 1-second timeslice for background resilience');
                     isRecording.value = true;
                     recordingTime.value = 0;
                     recordingInterval.value = setInterval(() => {
