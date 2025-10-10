@@ -130,7 +130,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const animationFrameId = ref(null);
             const recordingMode = ref('microphone'); // 'microphone', 'system', or 'both'
             const activeStreams = ref([]); // Track active streams for cleanup
-            
+
+            // --- Wake Lock and Background Recording ---
+            const wakeLock = ref(null); // Screen wake lock to prevent screen from turning off
+            const recordingNotification = ref(null); // Persistent notification during recording
+            const isPageVisible = ref(true); // Track page visibility state
+
             // --- Recording Size Monitoring ---
             const estimatedFileSize = ref(0);
             const fileSizeWarningShown = ref(false);
@@ -2876,6 +2881,154 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // --- Wake Lock and Background Recording Support ---
+
+            // Request screen wake lock to prevent screen from turning off during recording
+            const requestWakeLock = async () => {
+                if ('wakeLock' in navigator) {
+                    try {
+                        wakeLock.value = await navigator.wakeLock.request('screen');
+                        console.log('[Wake Lock] Screen wake lock acquired');
+
+                        wakeLock.value.addEventListener('release', () => {
+                            console.log('[Wake Lock] Screen wake lock was released');
+                            wakeLock.value = null;
+
+                            // Auto re-acquire if still recording and page is visible
+                            if (isRecording.value && document.visibilityState === 'visible') {
+                                console.log('[Wake Lock] Attempting to re-acquire wake lock...');
+                                setTimeout(() => {
+                                    if (isRecording.value) {
+                                        requestWakeLock();
+                                    }
+                                }, 100);
+                            }
+                        });
+
+                        return true;
+                    } catch (err) {
+                        console.error('[Wake Lock] Failed to acquire wake lock:', err);
+                        // Not a critical error - recording can continue without wake lock
+                        return false;
+                    }
+                } else {
+                    console.warn('[Wake Lock] Wake Lock API not supported');
+                    return false;
+                }
+            };
+
+            // Release screen wake lock
+            const releaseWakeLock = async () => {
+                if (wakeLock.value !== null) {
+                    try {
+                        await wakeLock.value.release();
+                        wakeLock.value = null;
+                        console.log('[Wake Lock] Wake lock released successfully');
+                    } catch (err) {
+                        console.error('[Wake Lock] Error releasing wake lock:', err);
+                    }
+                }
+            };
+
+            // Show persistent notification during recording
+            const showRecordingNotification = async () => {
+                if ('Notification' in window && 'serviceWorker' in navigator) {
+                    try {
+                        // Request notification permission if not already granted
+                        let permission = Notification.permission;
+                        if (permission === 'default') {
+                            permission = await Notification.requestPermission();
+                        }
+
+                        if (permission === 'granted') {
+                            // Use service worker to show notification (keeps it persistent)
+                            const registration = await navigator.serviceWorker.ready;
+
+                            await registration.showNotification('Speakr Recording', {
+                                body: 'Recording in progress...',
+                                icon: '/static/img/icon-192x192.png',
+                                badge: '/static/img/icon-192x192.png',
+                                tag: 'recording',
+                                requireInteraction: true, // Keep notification visible
+                                silent: true, // Don't make sound
+                                data: {
+                                    type: 'recording'
+                                }
+                            });
+
+                            console.log('[Notification] Recording notification shown');
+                            return true;
+                        } else {
+                            console.warn('[Notification] Permission denied');
+                            return false;
+                        }
+                    } catch (err) {
+                        console.error('[Notification] Failed to show notification:', err);
+                        return false;
+                    }
+                } else {
+                    console.warn('[Notification] Notifications not supported');
+                    return false;
+                }
+            };
+
+            // Hide recording notification
+            const hideRecordingNotification = async () => {
+                if ('serviceWorker' in navigator) {
+                    try {
+                        const registration = await navigator.serviceWorker.ready;
+                        const notifications = await registration.getNotifications({ tag: 'recording' });
+                        notifications.forEach(notification => notification.close());
+                        console.log('[Notification] Recording notification hidden');
+                    } catch (err) {
+                        console.error('[Notification] Error hiding notification:', err);
+                    }
+                }
+            };
+
+            // Handle page visibility changes to maintain recording state
+            const handleVisibilityChange = () => {
+                const wasVisible = isPageVisible.value;
+                isPageVisible.value = !document.hidden;
+
+                if (isRecording.value) {
+                    if (isPageVisible.value && !wasVisible) {
+                        // Page became visible again
+                        console.log('[Visibility] Page visible - recording continues');
+
+                        // Re-acquire wake lock if it was lost
+                        if (wakeLock.value === null) {
+                            requestWakeLock();
+                        }
+                    } else if (!isPageVisible.value && wasVisible) {
+                        // Page became hidden
+                        console.log('[Visibility] Page hidden - maintaining recording state');
+
+                        // Show notification to keep process alive
+                        showRecordingNotification();
+
+                        // Notify service worker that recording is active
+                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.controller.postMessage({
+                                type: 'RECORDING_STATE',
+                                isRecording: true,
+                                duration: recordingTime.value
+                            });
+                        }
+                    }
+                }
+            };
+
+            // Handle wake lock release (e.g., when screen turns off despite wake lock)
+            const handleWakeLockRelease = async () => {
+                console.log('[Wake Lock] Wake lock was released, attempting to re-acquire...');
+
+                // If still recording and page is visible, try to re-acquire
+                if (isRecording.value && isPageVisible.value) {
+                    await requestWakeLock();
+                }
+            };
+
             // --- Audio Recording ---
             const startRecordingWithDisclaimer = async (mode = 'microphone') => {
                 // Check if disclaimer needs to be shown
@@ -2918,7 +3071,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     recordingNotes.value = '';
                     activeStreams.value = [];
                     // Clear previous tag selection and ASR options for fresh recording
-                    selectedTags.value = [];
+                    selectedTagIds.value = [];
                     asrLanguage.value = '';
                     asrMinSpeakers.value = '';
                     asrMaxSpeakers.value = '';
@@ -3180,15 +3333,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                     isRecording.value = true;
                     recordingTime.value = 0;
                     recordingInterval.value = setInterval(() => recordingTime.value++, 1000);
-                    
+
                     // Start size monitoring
                     startSizeMonitoring();
-                    
-                    // Switch to recording view
+
+                    // Switch to recording view FIRST (before async operations)
                     currentView.value = 'recording';
-                    
+
                     // Start visualizer(s)
                     drawVisualizers();
+
+                    // Acquire wake lock to prevent screen from turning off (non-blocking)
+                    requestWakeLock().catch(err => {
+                        console.warn('[Wake Lock] Failed to acquire, recording continues:', err);
+                    });
+
+                    // Show notification for background recording support (non-blocking)
+                    // This helps keep the app active when screen is locked
+                    showRecordingNotification().catch(err => {
+                        console.warn('[Notification] Failed to show, recording continues:', err);
+                    });
+
+                    // Notify service worker that recording has started (non-blocking)
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'RECORDING_STATE',
+                            isRecording: true,
+                            duration: 0
+                        });
+                    }
 
                     setGlobalError(null);
                 } catch (err) {
@@ -3204,13 +3377,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
-            const stopRecording = () => {
+            const stopRecording = async () => {
                 if (mediaRecorder.value && isRecording.value) {
                     mediaRecorder.value.stop();
                     isRecording.value = false;
                     stopSizeMonitoring();
                     cancelAnimationFrame(animationFrameId.value);
                     animationFrameId.value = null;
+
+                    // Release wake lock
+                    await releaseWakeLock();
+
+                    // Hide recording notification
+                    await hideRecordingNotification();
+
+                    // Notify service worker that recording has stopped
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'RECORDING_STATE',
+                            isRecording: false,
+                            duration: recordingTime.value
+                        });
+                    }
                 }
             };
 
@@ -3239,7 +3427,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentView.value = 'upload';
             };
 
-            const discardRecording = () => {
+            const discardRecording = async () => {
                 if (audioBlobURL.value) {
                     URL.revokeObjectURL(audioBlobURL.value);
                 }
@@ -3250,10 +3438,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (recordingInterval.value) clearInterval(recordingInterval.value);
                 recordingNotes.value = '';
                 // Clear tags and ASR options for fresh start
-                selectedTags.value = [];
+                selectedTagIds.value = [];
                 asrLanguage.value = '';
                 asrMinSpeakers.value = '';
                 asrMaxSpeakers.value = '';
+
+                // Clean up wake lock and notification
+                await releaseWakeLock();
+                await hideRecordingNotification();
             };
 
             const drawSingleVisualizer = (analyserNode, canvasElement) => {
@@ -5332,6 +5524,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 window.addEventListener('resize', updateMobileStatus);
                 updateMobileStatus();
+
+                // Add Page Visibility API listener to handle screen lock/background
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                console.log('[Visibility] Page visibility change listener registered');
 
                 // Add beforeunload event listener to warn about unsaved recordings
                 window.addEventListener('beforeunload', (e) => {
