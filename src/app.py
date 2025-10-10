@@ -2657,6 +2657,11 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
 
         app.logger.info(f"Extracting events for recording {recording_id}")
 
+        # Get user language preference
+        user_output_language = None
+        if recording.owner:
+            user_output_language = recording.owner.output_language
+
         # Build comprehensive context information
         current_date = datetime.now()
         context_parts = []
@@ -2710,11 +2715,16 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
 
         context_section = "\n".join(context_parts)
 
+        # Add language directive if user has a language preference
+        language_directive = ""
+        if user_output_language:
+            language_directive = f"\n\nLANGUAGE REQUIREMENT:\n**CRITICAL**: You MUST generate ALL event titles and descriptions in {user_output_language}. This is mandatory. The entire event content (title, description, location) must be in {user_output_language}."
+
         # Prepare the prompt for event extraction
         event_prompt = f"""You are analyzing a meeting transcript to extract calendar events. Use the context below to correctly interpret relative dates and times.
 
 IMPORTANT CONTEXT:
-{context_section}
+{context_section}{language_directive}
 
 INSTRUCTIONS:
 1. **CRITICAL**: Use the MEETING DATE shown above as your reference point for ALL relative date calculations
@@ -2771,15 +2781,21 @@ CRITICAL RULES:
 7. Do NOT invent or assume events not explicitly discussed
 8. If unsure about a date/time, do not include that event"""
 
-        completion = call_llm_completion(
-            messages=[
-                {"role": "system", "content": """You are an expert at extracting calendar events from meeting transcripts. You excel at:
+        # Build system message with language requirement if applicable
+        system_message_content = """You are an expert at extracting calendar events from meeting transcripts. You excel at:
 1. Understanding relative date references ("next Tuesday", "tomorrow", "in two weeks") and converting them to absolute dates
 2. Identifying genuine future appointments, meetings, and deadlines from conversations
 3. Distinguishing between actual planned events vs. general discussions
 4. Extracting participant names and meeting details accurately
 
-You must respond with valid JSON format only."""},
+You must respond with valid JSON format only."""
+
+        if user_output_language:
+            system_message_content += f"\n\nLanguage Requirement: You MUST generate ALL event titles, descriptions, and locations in {user_output_language}. This is mandatory."
+
+        completion = call_llm_completion(
+            messages=[
+                {"role": "system", "content": system_message_content},
                 {"role": "user", "content": event_prompt}
             ],
             temperature=0.2,
