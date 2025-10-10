@@ -2909,7 +2909,28 @@
             }
         })();
     </script>
-    
+
+    <!-- Service Worker Registration for PWA and Background Recording -->
+    <script>
+        // Register service worker for PWA functionality and background recording support
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then((registration) => {
+                        console.log('Service Worker registered successfully:', registration.scope);
+
+                        // Check for updates periodically
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000); // Check every minute
+                    })
+                    .catch((error) => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+
     <!-- Vue.js Application Script -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
