@@ -124,6 +124,32 @@ At the bottom of the modal, you have three options for proceeding. The "Upload" 
 
 ## Best Practices for Quality Recordings
 
+### Mobile Recording Considerations
+
+!!! danger "Keep App Visible on Mobile Devices"
+    **Critical Limitation**: Mobile browsers (Chrome, Safari, etc.) will **pause audio recording** when you minimize the app or lock your screen. This is a fundamental browser limitation that cannot be overcome.
+
+    **To record successfully on mobile:**
+    - **Keep Speakr visible** in the foreground at all times
+    - **Don't minimize** the window or switch to other apps
+    - **Don't lock** your screen during recording
+    - Wake Lock will **prevent screen from auto-sleeping** while app is visible
+
+    **For long meetings on mobile:**
+    1. **Option 1**: Keep Speakr open and visible (wake lock prevents screen sleep)
+    2. **Option 2**: Use your phone's native voice recorder app, then upload the file to Speakr when done
+
+    **Desktop browsers don't have this limitation** - recording continues even when minimized.
+
+**Installing as a PWA** - For the best mobile experience, install Speakr as a Progressive Web App. This provides:
+
+- Wake Lock API to prevent screen from auto-sleeping while recording
+- Faster load times with offline caching
+- Native app-like experience
+- Persistent notification during recording
+
+See the [PWA Guide](pwa.md) for installation instructions and important limitations.
+
 ### Optimizing Audio Quality
 
 The quality of your transcription starts with the quality of your recording. When using a microphone, find a quiet space with minimal echo and background noise. Soft furnishings and carpeted rooms generally provide better acoustics than empty rooms with hard surfaces. Position your microphone consistently, about 6-12 inches from your mouth, and speak at a steady volume.

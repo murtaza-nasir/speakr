@@ -115,7 +115,8 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 !!! info "Version 0.5.7 - Latest Release"
     - **GPT-5 Support** - Full support for OpenAI's GPT-5 model family with automatic parameter detection
     - **Custom Summary Prompts on Reprocessing** - Experiment with different prompts when regenerating summaries
-    - **Enhanced Model Configuration** - Comprehensive documentation for configuring AI models
+    - **PWA Enhancements** - Service worker for wake lock to prevent screen sleep on mobile
+    - **Mobile Recording** - Documentation and warnings about keeping app visible on mobile devices
     - **Navigation Warnings** - Prevent data loss with warnings when leaving pages with unsaved work
 
     Previous release (v0.5.6):

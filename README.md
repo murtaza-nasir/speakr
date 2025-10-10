@@ -80,15 +80,14 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.5.6)
+## Latest Release (v0.5.7)
 
 ### Highlights
-- **Event Extraction** - Automatically identify calendar events from recordings and export to ICS
-- **Transcript Templates** - Create custom formats for transcript downloads
-- **Enhanced Export** - Flexible transcript export with template support
-- **UI Improvements** - Better mobile layouts and loading states
-- **Full Internationalization** - Complete multi-language interface
-- **Advanced Filtering** - Multi-tag selection with date presets
+- **GPT-5 Model Support** - Automatic detection and support for GPT-5 models with advanced parameters
+- **Custom Prompt Selection** - Choose between default, tag-based, or custom prompts when reprocessing summaries
+- **PWA Enhancements** - Service worker for wake lock to prevent screen sleep during recording
+- **Mobile Recording** - Warning banner and documentation about keeping app visible on mobile devices
+- **Navigation Warnings** - Prevent accidental data loss when leaving pages with unsaved recordings
 
 ## Screenshots
 
