@@ -2636,7 +2636,7 @@ Summarization Instructions:
                 db.session.commit()
                 
         except Exception as e:
-            error_msg = handle_openai_api_error(e, "summary")
+            error_msg = format_api_error_message(str(e))
             app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
             recording.summary = error_msg
             recording.status = 'FAILED'
