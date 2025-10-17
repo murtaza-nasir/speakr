@@ -565,7 +565,14 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-
 
 # Apply ProxyFix to handle headers from a reverse proxy (like Nginx or Caddy)
 # This is crucial for request.is_secure to work correctly behind an SSL-terminating proxy.
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+trusted_proxy_hops = int(os.environ.get('TRUSTED_PROXY_HOPS', '1'))
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, 
+    x_for=trusted_proxy_hops, 
+    x_proto=trusted_proxy_hops, 
+    x_host=trusted_proxy_hops, 
+    x_prefix=trusted_proxy_hops
+)
 
 # --- Secure Session Cookie Configuration ---
 # For local network usage, disable secure cookies to allow HTTP connections
