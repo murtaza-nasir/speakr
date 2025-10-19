@@ -112,12 +112,16 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 
 ## Latest Updates
 
-!!! info "Version 0.5.7 - Latest Release"
+!!! info "Version 0.5.8 - Latest Release"
+    - **Inline Transcript Editing** - Edit speaker assignments and text directly in the speaker identification modal
+    - **Add Speaker Functionality** - Dynamically add new speakers during transcript review
+    - **Enhanced Speaker Modal** - Improved UX with hover-based edit controls and real-time updates
+
+    Previous release (v0.5.7):
+
     - **GPT-5 Support** - Full support for OpenAI's GPT-5 model family with automatic parameter detection
     - **Custom Summary Prompts on Reprocessing** - Experiment with different prompts when regenerating summaries
     - **PWA Enhancements** - Service worker for wake lock to prevent screen sleep on mobile
-    - **Mobile Recording** - Documentation and warnings about keeping app visible on mobile devices
-    - **Navigation Warnings** - Prevent data loss with warnings when leaving pages with unsaved work
 
     Previous release (v0.5.6):
 
