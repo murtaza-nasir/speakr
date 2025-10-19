@@ -2531,6 +2531,14 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Add Speaker Button -->
+                        <div class="pt-4 border-t border-[var(--border-primary)]">
+                            <button @click="openAddSpeakerModal" class="w-full px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] transition-colors flex items-center justify-center">
+                                <i class="fas fa-plus mr-2"></i>
+                                Add Speaker
+                            </button>
+                        </div>
                     </div>
                     <div class="w-2/3 p-6 flex flex-col overflow-hidden">
                         <!-- Audio Player Section -->
@@ -2546,11 +2554,34 @@
                         <!-- Transcript Section -->
                         <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript" @click="seekAudioFromEvent">
                             <div v-if="processedTranscription.isJson">
-                                <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment mb-2" :data-start-time="segment.startTime">
-                                    <p>
+                                <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment mb-2 group relative" :data-start-time="segment.startTime">
+                                    <p class="flex items-start">
                                         <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId">[${ segment.speaker }]</span>:
-                                        <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5">${ segment.sentence }</span>
+                                        <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1">${ segment.sentence }</span>
+
+                                        <!-- Edit buttons (shown on hover) -->
+                                        <span class="ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1 flex-shrink-0">
+                                            <!-- Change Speaker Button -->
+                                            <button @click.stop="openSpeakerChangeDropdown(index)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" title="Change speaker">
+                                                <i class="fas fa-user-edit text-xs"></i>
+                                            </button>
+                                            <!-- Edit Text Button -->
+                                            <button @click.stop="openEditTextModal(index)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" title="Edit text">
+                                                <i class="fas fa-edit text-xs"></i>
+                                            </button>
+                                        </span>
                                     </p>
+
+                                    <!-- Speaker Change Dropdown -->
+                                    <div v-if="editingSpeakerIndex === index" @click.stop class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] shadow-lg">
+                                        <p class="text-xs text-[var(--text-muted)] mb-2">Select new speaker:</p>
+                                        <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                                            <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(index, speaker)" class="w-full text-left px-3 py-2 rounded hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] transition-colors flex items-center space-x-2">
+                                                <div :class="speakerMap[speaker].color" class="w-3 h-3 rounded-full flex-shrink-0"></div>
+                                                <span class="text-sm">${ speakerMap[speaker].name || speaker }</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div v-else v-html="highlightedTranscript"></div>
@@ -2614,6 +2645,76 @@
                             Save Names
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Speaker Modal -->
+        <div v-if="showAddSpeakerModal" @click="closeAddSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md p-6">
+                <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4">Add New Speaker</h3>
+
+                <!-- "This is Me" checkbox -->
+                <div class="mb-4">
+                    <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                        <input type="checkbox" v-model="newSpeakerIsMe" class="speaker-checkbox">
+                        <span class="ml-2 select-none">This is Me</span>
+                    </label>
+                </div>
+
+                <!-- Speaker name input (disabled if "This is Me" is checked) -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                        Speaker Name
+                    </label>
+                    <input
+                        type="text"
+                        v-model="newSpeakerName"
+                        :disabled="newSpeakerIsMe"
+                        :placeholder="newSpeakerIsMe ? 'Me' : 'Enter speaker name...'"
+                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
+                        @keyup.enter="addNewSpeaker"
+                    >
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button @click="closeAddSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="addNewSpeaker" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Add Speaker
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Text Modal -->
+        <div v-if="showEditTextModal" @click="closeEditTextModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl p-6">
+                <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4">Edit Transcript Text</h3>
+
+                <!-- Text editor -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                        Text Content
+                    </label>
+                    <textarea
+                        v-model="editedText"
+                        rows="6"
+                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] resize-y"
+                        placeholder="Enter transcript text..."
+                    ></textarea>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex justify-end space-x-3">
+                    <button @click="closeEditTextModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="saveEditedText" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        Save Changes
+                    </button>
                 </div>
             </div>
         </div>

@@ -4586,6 +4586,81 @@ def update_speakers(recording_id):
         app.logger.error(f"Error updating speakers for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/recording/<int:recording_id>/update_transcript', methods=['POST'])
+@login_required
+def update_transcript(recording_id):
+    """Updates the complete transcript data including text edits and speaker changes."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if recording.user_id and recording.user_id != current_user.id:
+            return jsonify({'error': 'You do not have permission to edit this recording'}), 403
+
+        data = request.json
+        transcript_data = data.get('transcript_data')
+        speaker_map = data.get('speaker_map', {})
+        regenerate_summary = data.get('regenerate_summary', False)
+
+        if not transcript_data or not isinstance(transcript_data, list):
+            return jsonify({'error': 'Invalid transcript data provided'}), 400
+
+        # Update speaker names in the transcript data
+        speaker_names_used = []
+        for segment in transcript_data:
+            original_speaker_label = segment.get('speaker')
+
+            # Apply speaker name mapping if provided
+            if original_speaker_label in speaker_map:
+                new_name_info = speaker_map[original_speaker_label]
+                new_name = new_name_info.get('name', '').strip()
+                if new_name_info.get('isMe'):
+                    new_name = current_user.name or 'Me'
+
+                if new_name:
+                    segment['speaker'] = new_name
+                    if new_name not in speaker_names_used:
+                        speaker_names_used.append(new_name)
+
+        # Save the updated transcript
+        recording.transcription = json.dumps(transcript_data)
+
+        # Update participants
+        final_speakers = set()
+        for seg in transcript_data:
+            speaker = seg.get('speaker')
+            if speaker and str(speaker).strip():
+                # Only include speakers with real names (not default labels)
+                if not re.match(r'^SPEAKER_\d+$', str(speaker), re.IGNORECASE):
+                    final_speakers.add(speaker)
+        recording.participants = ', '.join(sorted(list(final_speakers)))
+
+        # Update speaker usage statistics
+        if speaker_names_used:
+            update_speaker_usage(speaker_names_used)
+
+        db.session.commit()
+
+        if regenerate_summary:
+            app.logger.info(f"Regenerating summary for recording {recording_id} after transcript update.")
+            thread = threading.Thread(
+                target=generate_summary_only_task,
+                args=(app.app_context(), recording.id)
+            )
+            thread.start()
+
+        return jsonify({
+            'success': True,
+            'message': 'Transcript updated successfully.',
+            'recording': recording.to_dict()
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error updating transcript for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
 def identify_speakers_from_text(transcription):
     """
     Uses an LLM to identify speakers from a transcription.

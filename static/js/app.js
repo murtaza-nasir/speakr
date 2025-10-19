@@ -218,6 +218,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const loadingSuggestions = ref({});
             const activeSpeakerInput = ref(null);
 
+            // --- Transcript Editing State ---
+            const editingSegmentIndex = ref(null);
+            const editingSpeakerIndex = ref(null);
+            const showEditTextModal = ref(false);
+            const editedText = ref('');
+            const showAddSpeakerModal = ref(false);
+            const newSpeakerName = ref('');
+            const newSpeakerIsMe = ref(false);
+            const editedTranscriptData = ref(null);
+
             // --- Inline Editing State ---
             const editingParticipants = ref(false);
             const editingMeetingDate = ref(false);
@@ -1645,7 +1655,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
             const saveSpeakerNames = async () => {
                 if (!selectedRecording.value) return;
-    
+
+                // If there are transcript edits, save those instead
+                if (editedTranscriptData.value) {
+                    return saveTranscriptEdits();
+                }
+
                 // Create a filtered speaker map that excludes entries with blank names
                 const filteredSpeakerMap = Object.entries(speakerMap.value).reduce((acc, [speakerId, speakerData]) => {
                     if (speakerData.name && speakerData.name.trim() !== '') {
@@ -1653,7 +1668,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     return acc;
                 }, {});
-    
+
                 try {
                     const response = await fetch(`/recording/${selectedRecording.value.id}/update_speakers`, {
                         method: 'POST',
@@ -1884,6 +1899,171 @@ document.addEventListener('DOMContentLoaded', async () => {
                     showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 5000);
                 } finally {
                     isAutoIdentifying.value = false;
+                }
+            };
+
+            // --- Transcript Editing Functions ---
+
+            const openAddSpeakerModal = () => {
+                newSpeakerName.value = '';
+                newSpeakerIsMe.value = false;
+                showAddSpeakerModal.value = true;
+            };
+
+            const closeAddSpeakerModal = () => {
+                showAddSpeakerModal.value = false;
+                newSpeakerName.value = '';
+                newSpeakerIsMe.value = false;
+            };
+
+            const addNewSpeaker = () => {
+                const name = newSpeakerIsMe.value ? (currentUserName.value || 'Me') : newSpeakerName.value.trim();
+
+                if (!newSpeakerIsMe.value && !name) {
+                    showToast('Please enter a speaker name', 'fa-exclamation-circle');
+                    return;
+                }
+
+                // Generate new speaker ID
+                const existingSpeakerNumbers = modalSpeakers.value
+                    .map(s => {
+                        const match = s.match(/^SPEAKER_(\d+)$/);
+                        return match ? parseInt(match[1]) : -1;
+                    })
+                    .filter(n => n >= 0);
+
+                const nextNumber = existingSpeakerNumbers.length > 0
+                    ? Math.max(...existingSpeakerNumbers) + 1
+                    : modalSpeakers.value.length;
+
+                const newSpeakerId = `SPEAKER_${String(nextNumber).padStart(2, '0')}`;
+
+                // Add to modalSpeakers
+                modalSpeakers.value.push(newSpeakerId);
+
+                // Add to speakerMap with next available color
+                const colorIndex = modalSpeakers.value.length - 1;
+                speakerMap.value[newSpeakerId] = {
+                    name: name,
+                    isMe: newSpeakerIsMe.value,
+                    color: `speaker-color-${(colorIndex % 8) + 1}`
+                };
+
+                // Add to speakerDisplayMap
+                speakerDisplayMap.value[newSpeakerId] = newSpeakerId;
+
+                closeAddSpeakerModal();
+                showToast('Speaker added successfully', 'fa-check-circle');
+            };
+
+            const openSpeakerChangeDropdown = (segmentIndex) => {
+                editingSpeakerIndex.value = editingSpeakerIndex.value === segmentIndex ? null : segmentIndex;
+            };
+
+            const changeSpeaker = (segmentIndex, newSpeakerId) => {
+                if (!selectedRecording.value?.transcription) return;
+
+                try {
+                    const transcriptionData = JSON.parse(selectedRecording.value.transcription);
+                    if (transcriptionData && Array.isArray(transcriptionData) && transcriptionData[segmentIndex]) {
+                        transcriptionData[segmentIndex].speaker = newSpeakerId;
+                        editedTranscriptData.value = transcriptionData;
+
+                        // Update the recording's transcription temporarily for UI update
+                        selectedRecording.value.transcription = JSON.stringify(transcriptionData);
+
+                        editingSpeakerIndex.value = null;
+                        showToast('Speaker changed. Click "Save Names" to persist changes.', 'fa-info-circle');
+                    }
+                } catch (e) {
+                    console.error('Error changing speaker:', e);
+                    showToast('Error changing speaker', 'fa-exclamation-circle');
+                }
+            };
+
+            const openEditTextModal = (segmentIndex) => {
+                if (!selectedRecording.value?.transcription) return;
+
+                try {
+                    const transcriptionData = JSON.parse(selectedRecording.value.transcription);
+                    if (transcriptionData && Array.isArray(transcriptionData) && transcriptionData[segmentIndex]) {
+                        editingSegmentIndex.value = segmentIndex;
+                        editedText.value = transcriptionData[segmentIndex].sentence || '';
+                        showEditTextModal.value = true;
+                    }
+                } catch (e) {
+                    console.error('Error opening text editor:', e);
+                    showToast('Error opening text editor', 'fa-exclamation-circle');
+                }
+            };
+
+            const closeEditTextModal = () => {
+                showEditTextModal.value = false;
+                editingSegmentIndex.value = null;
+                editedText.value = '';
+            };
+
+            const saveEditedText = () => {
+                if (editingSegmentIndex.value === null || !selectedRecording.value?.transcription) return;
+
+                try {
+                    const transcriptionData = JSON.parse(selectedRecording.value.transcription);
+                    if (transcriptionData && Array.isArray(transcriptionData) && transcriptionData[editingSegmentIndex.value]) {
+                        transcriptionData[editingSegmentIndex.value].sentence = editedText.value;
+                        editedTranscriptData.value = transcriptionData;
+
+                        // Update the recording's transcription temporarily for UI update
+                        selectedRecording.value.transcription = JSON.stringify(transcriptionData);
+
+                        closeEditTextModal();
+                        showToast('Text updated. Click "Save Names" to persist changes.', 'fa-info-circle');
+                    }
+                } catch (e) {
+                    console.error('Error saving text:', e);
+                    showToast('Error saving text', 'fa-exclamation-circle');
+                }
+            };
+
+            const saveTranscriptEdits = async () => {
+                if (!selectedRecording.value || !editedTranscriptData.value) {
+                    return saveSpeakerNames(); // Fall back to regular speaker name save
+                }
+
+                try {
+                    // Save both speaker names and transcript edits
+                    const filteredSpeakerMap = Object.entries(speakerMap.value).reduce((acc, [speakerId, speakerData]) => {
+                        if (speakerData.name && speakerData.name.trim() !== '') {
+                            acc[speakerId] = speakerData;
+                        }
+                        return acc;
+                    }, {});
+
+                    const response = await fetch(`/recording/${selectedRecording.value.id}/update_transcript`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            transcript_data: editedTranscriptData.value,
+                            speaker_map: filteredSpeakerMap,
+                            regenerate_summary: regenerateSummaryAfterSpeakerUpdate.value
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Failed to update transcript');
+
+                    closeSpeakerModal();
+
+                    const index = recordings.value.findIndex(r => r.id === selectedRecording.value.id);
+                    if (index !== -1) {
+                        recordings.value[index] = data.recording;
+                    }
+                    selectedRecording.value = data.recording;
+                    editedTranscriptData.value = null;
+
+                    showToast('Transcript updated successfully!', 'fa-check-circle');
+                } catch (error) {
+                    console.error('Save Transcript Error:', error);
+                    showToast(`Error: ${error.message}`, 'fa-exclamation-circle');
                 }
             };
 
@@ -5903,6 +6083,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 closeSpeakerSuggestionsOnClick,
                 autoIdentifySpeakers,
                 isAutoIdentifying,
+
+                // Transcript Editing
+                editingSegmentIndex,
+                editingSpeakerIndex,
+                showEditTextModal,
+                editedText,
+                showAddSpeakerModal,
+                newSpeakerName,
+                newSpeakerIsMe,
+                editedTranscriptData,
+                openAddSpeakerModal,
+                closeAddSpeakerModal,
+                addNewSpeaker,
+                openSpeakerChangeDropdown,
+                changeSpeaker,
+                openEditTextModal,
+                closeEditTextModal,
+                saveEditedText,
+                saveTranscriptEdits,
+
                 formatDuration,
                 openShareModal,
                 closeShareModal,
