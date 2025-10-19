@@ -16,6 +16,9 @@ docker-compose.yml
 changes.txt
 
 !README.md
+!CLA.md
+!CONTRIBUTING.md
+!.github/CLA-SETUP.md
 !docs/**/*.md
 docker-compose.dev.yml
 .clinerules

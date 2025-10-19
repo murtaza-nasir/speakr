@@ -80,14 +80,17 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.5.7)
+## Latest Release (v0.5.8)
 
 ### Highlights
-- **GPT-5 Model Support** - Automatic detection and support for GPT-5 models with advanced parameters
-- **Custom Prompt Selection** - Choose between default, tag-based, or custom prompts when reprocessing summaries
-- **PWA Enhancements** - Service worker for wake lock to prevent screen sleep during recording
-- **Mobile Recording** - Warning banner and documentation about keeping app visible on mobile devices
-- **Navigation Warnings** - Prevent accidental data loss when leaving pages with unsaved recordings
+- **Inline Transcript Editing** - Edit speaker assignments and text directly within the speaker identification modal
+- **Add Speaker Functionality** - Dynamically add new speakers during transcript review
+- **Enhanced Speaker Modal** - Improved UX with hover-based edit controls and real-time updates
+
+### Previous Release (v0.5.7)
+- GPT-5 Model Support with automatic detection
+- Custom Prompt Selection for summary reprocessing
+- PWA Enhancements and mobile recording improvements
 
 ## Screenshots
 
@@ -171,6 +174,21 @@ Speakr is in active development. Planned features include a faster way to switch
 
 ## Contributing
 
-Feedback, bug reports, and feature suggestions are highly encouraged\! Please open an issue on the GitHub repository to share your thoughts.
+We welcome contributions to Speakr! There are many ways to help:
 
-**Note on Code Contributions:** Should the project begin formally accepting external code contributions, a Contributor License Agreement (CLA) will be required.
+- **Bug Reports & Feature Requests**: [Open an issue](https://github.com/murtaza-nasir/speakr/issues)
+- **Discussions**: [Share ideas and ask questions](https://github.com/murtaza-nasir/speakr/discussions)
+- **Documentation**: Help improve our docs
+- **Translations**: Contribute translations for internationalization
+
+### Code Contributions
+
+All code contributions require signing a [Contributor License Agreement (CLA)](CLA.md). This one-time process ensures we can maintain our dual-license model (AGPLv3 and Commercial).
+
+**See our [Contributing Guide](CONTRIBUTING.md) for complete details on:**
+- How the CLA works and why we need it
+- Step-by-step contribution process
+- Development setup instructions
+- Coding standards and best practices
+
+The CLA is automatically enforced via GitHub Actions. When you submit your first PR, our bot will guide you through signing.
