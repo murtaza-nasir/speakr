@@ -23,10 +23,27 @@ export function useAudio(state, utils) {
         try {
             if ('wakeLock' in navigator) {
                 wakeLock.value = await navigator.wakeLock.request('screen');
-                console.log('[WakeLock] Acquired');
+                console.log('[WakeLock] Acquired - screen will stay awake during recording');
+
+                // Listen for wake lock release
+                wakeLock.value.addEventListener('release', () => {
+                    console.log('[WakeLock] Released');
+                });
+
+                return true;
+            } else {
+                console.warn('[WakeLock] Wake Lock API not supported');
+                showToast('Screen may sleep during recording', 'info');
+                return false;
             }
         } catch (err) {
             console.warn('[WakeLock] Could not acquire:', err.message);
+            if (err.name === 'NotAllowedError') {
+                showToast('Screen lock permission denied', 'warning');
+            } else if (err.name === 'NotSupportedError') {
+                showToast('Wake lock not supported on this device', 'info');
+            }
+            return false;
         }
     };
 
@@ -83,7 +100,12 @@ export function useAudio(state, utils) {
     const handleVisibilityChange = async () => {
         if (document.visibilityState === 'visible' && isRecording.value) {
             console.log('[Visibility] Page visible, re-acquiring wake lock');
-            await acquireWakeLock();
+            const acquired = await acquireWakeLock();
+            if (acquired) {
+                showToast('Recording resumed - screen will stay awake', 'success');
+            }
+        } else if (document.visibilityState === 'hidden' && isRecording.value) {
+            console.log('[Visibility] Page hidden, wake lock may be released by browser');
         }
     };
 

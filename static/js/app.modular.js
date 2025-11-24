@@ -12,6 +12,7 @@ import { useTranscription } from './modules/composables/transcription.js';
 import { useSpeakers } from './modules/composables/speakers.js';
 import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
+import { usePWA } from './modules/composables/pwa.js';
 
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
@@ -173,6 +174,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const wakeLock = ref(null);
             const recordingNotification = ref(null);
             const isPageVisible = ref(true);
+
+            // --- PWA Features ---
+            const deferredInstallPrompt = ref(null);
+            const showInstallButton = ref(false);
+            const isPWAInstalled = ref(false);
+            const notificationPermission = ref('default');
+            const pushSubscription = ref(null);
+            const appBadgeCount = ref(0);
+            const currentMediaMetadata = ref(null);
+            const isMediaSessionActive = ref(false);
 
             // --- Recording Size Monitoring ---
             const estimatedFileSize = ref(0);
@@ -410,6 +421,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 wakeLock, recordingNotification, isPageVisible,
                 estimatedFileSize, fileSizeWarningShown, recordingQuality, actualBitrate,
                 maxRecordingMB, sizeCheckInterval,
+
+                // PWA Features
+                deferredInstallPrompt, showInstallButton, isPWAInstalled,
+                notificationPermission, pushSubscription, appBadgeCount,
+                currentMediaMetadata, isMediaSessionActive,
 
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
@@ -920,6 +936,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sharingComposable = useSharing(state, utils);
             const transcriptionComposable = useTranscription(state, utils);
             const chatComposable = useChat(state, utils);
+            const pwaComposable = usePWA(state, utils);
             const tagsComposable = useTags({
                 recordings,
                 availableTags,
@@ -1261,6 +1278,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Initialize audio capabilities
                 await audioComposable.initializeAudio();
 
+                // Initialize PWA features
+                pwaComposable.initPWA();
+
                 // Show app - hide loader and show main content
                 const loader = document.getElementById('loader');
                 const appEl = document.getElementById('app');
@@ -1287,6 +1307,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Visibility change handler for wake lock
                 document.addEventListener('visibilitychange', audioComposable.handleVisibilityChange);
+            });
+
+            // =========================================================================
+            // WATCHERS
+            // =========================================================================
+
+            // Update badge count when recordings change
+            watch(recordings, (newRecordings) => {
+                if (newRecordings && Array.isArray(newRecordings)) {
+                    pwaComposable.updateBadgeCount(newRecordings);
+                }
             });
 
             // =========================================================================
@@ -1346,7 +1377,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...transcriptionComposable,
                 ...speakersComposable,
                 ...chatComposable,
-                ...tagsComposable
+                ...tagsComposable,
+                ...pwaComposable
             };
         },
         delimiters: ['${', '}']

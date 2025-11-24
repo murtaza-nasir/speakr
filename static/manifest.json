@@ -22,8 +22,8 @@
       "purpose": "any"
     },
     {
-      "src": "/static/img/icon-192x192.png",
-      "sizes": "192x192",
+      "src": "/static/img/icon-maskable-512x512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
@@ -32,18 +32,42 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "/static/img/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     },
     {
       "src": "/static/img/icon-180x180.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/img/screenshots/main-view.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Main recording gallery view"
+    },
+    {
+      "src": "/static/img/screenshots/recording-interface.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Live recording interface with notes"
+    },
+    {
+      "src": "/static/img/screenshots/transcript-view.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Transcript view with speaker identification"
+    },
+    {
+      "src": "/static/img/screenshots/mobile-view.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile recording view"
     }
   ],
   "shortcuts": [
@@ -80,5 +104,19 @@
   },
   "edge_side_panel": {
     "preferred_width": 480
-  }
+  },
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "audio/*": [".mp3", ".wav", ".m4a", ".ogg", ".webm", ".flac", ".aac", ".wma", ".opus"]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+speakr",
+      "url": "/?audio=%s"
+    }
+  ]
 }

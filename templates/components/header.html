@@ -26,6 +26,15 @@
         </a>
         {% endif %}
 
+        <!-- Install PWA Button -->
+        <button v-if="showInstallButton && !isPWAInstalled"
+                @click="promptInstall"
+                class="px-2 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:px-4 sm:py-2 sm:flex sm:items-center sm:gap-2"
+                title="Install Speakr">
+            <i class="fas fa-download"></i>
+            <span class="hidden sm:inline">Install App</span>
+        </button>
+
         <!-- New Recording Button -->
         <button @click="switchToUploadView"
                 class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
