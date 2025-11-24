@@ -15,7 +15,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 
     **Key Environment Variables:** `ENABLE_INTERNAL_SHARING`, `SHOW_USERNAMES_IN_UI`, `USERS_CAN_DELETE`, `ENABLE_AUTO_DELETION`, `GLOBAL_RETENTION_DAYS`, `ENABLE_AUTO_EXPORT`, `ENABLE_PUBLIC_SHARING`
 
-    See the [configuration guide](getting-started/installation.md#configuration-updates) for complete setup instructions. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.5.9)
+    See the [configuration guide](getting-started/installation.md#step-3-environment-configuration) for complete setup instructions. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.5.9)
 
 ## Quick Navigation
 
@@ -134,7 +134,7 @@ Experience seamless bidirectional synchronization between your audio and transcr
 Learn more about [audio synchronization features](user-guide/transcripts.md#audio-synchronization-and-follow-mode) in the user guide.
 
 !!! tip "Transform Your Recordings with Custom Tag Prompts"
-    Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts#creative-tag-prompt-use-cases).
+    Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
 
@@ -153,7 +153,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **UI/UX Enhancements** - Compact controls, inline editing, unified toast notifications, improved badges
     - **Enhanced Internationalization** - 29 new tooltip translations across all languages (EN, DE, ES, FR, ZH)
 
-    **Required `.env` variables:** See [configuration guide](getting-started/installation.md#configuration-updates)
+    **Required `.env` variables:** See [configuration guide](getting-started/installation.md#step-3-environment-configuration)
 
     Previous release (v0.5.8):
 

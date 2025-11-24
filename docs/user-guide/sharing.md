@@ -23,7 +23,7 @@ Your Speakr administrator must enable internal sharing before this feature becom
 
 ### Sharing a Recording with Another User
 
-![Share with User Modal](../assets/images/screenshots/share-with-user.png)
+![Share with User Modal](../assets/images/screenshots/Share modal.png)
 
 When viewing any recording you own, look for the blue users icon button in the toolbar. Clicking this opens the share modal where you can search for colleagues and configure access permissions.
 
@@ -41,7 +41,7 @@ To share with view-only access, simply search for the user and click their name 
 
 ### Managing Your Shares
 
-![Manage Shares Modal](../assets/images/screenshots/manage-shares.png)
+![Manage Shares Modal](../assets/images/screenshots/Share modal.png)
 
 The unified share modal shows everyone who has access to a recording, making it easy to track and control sharing. Each entry displays the recipient's name, their permissions level, and when you granted access. The red user-times icon lets you instantly revoke access when collaboration ends or circumstances change.
 
