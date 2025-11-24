@@ -1,0 +1,68 @@
+<!-- Add Speaker Modal -->
+<div v-if="showAddSpeakerModal" @click="closeAddSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md p-6">
+        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4" v-text="t('modal.addSpeaker')"></h3>
+
+        <!-- "This is Me" checkbox -->
+        <div class="mb-4">
+            <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                <input type="checkbox" v-model="newSpeakerIsMe" class="speaker-checkbox">
+                <span class="ml-2 select-none" v-text="t('help.me')"></span>
+            </label>
+        </div>
+
+        <!-- Speaker name input with autocomplete (disabled if "This is Me" is checked) -->
+        <div class="mb-6 relative">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" v-text="t('help.speakerName')">
+            </label>
+            <input
+                type="text"
+                v-model="newSpeakerName"
+                @input="searchNewSpeaker"
+                @focus="showNewSpeakerSuggestions = true"
+                @blur="hideNewSpeakerSuggestionsDelayed"
+                :disabled="newSpeakerIsMe"
+                :placeholder="newSpeakerIsMe ? currentUserName : t('help.enterSpeakerName')"
+                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
+                @keyup.enter="addNewSpeaker"
+                autocomplete="off"
+            >
+
+            <!-- Loading indicator -->
+            <div v-if="loadingNewSpeakerSuggestions && !newSpeakerIsMe" class="absolute right-3 top-[42px] transform -translate-y-1/2">
+                <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-sm"></i>
+            </div>
+
+            <!-- Suggestions dropdown -->
+            <div v-if="showNewSpeakerSuggestions && newSpeakerSuggestions.length > 0 && !newSpeakerIsMe"
+                 @click.stop
+                 class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto">
+                <div class="py-1">
+                    <div v-for="suggestion in newSpeakerSuggestions"
+                         :key="suggestion.id"
+                         @click="selectNewSpeakerSuggestion(suggestion)"
+                         class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] flex items-center justify-between">
+                        <div class="flex-grow">
+                            <div class="text-sm font-medium text-[var(--text-primary)]">${ suggestion.name }</div>
+                            <div class="text-xs text-[var(--text-muted)]">
+                                Used ${ suggestion.use_count } time${ suggestion.use_count !== 1 ? 's' : '' }
+                                <span v-if="suggestion.last_used">
+                                    • Last: ${ new Date(suggestion.last_used).toLocaleDateString() }
+                                </span>
+                            </div>
+                        </div>
+                        <i class="fas fa-user text-[var(--text-muted)] ml-2"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex justify-end space-x-3">
+            <button @click="closeAddSpeakerModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors" v-text="t('common.cancel')">
+            </button>
+            <button @click="addNewSpeaker" class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] transition-colors" v-text="t('buttons.addSpeaker')">
+            </button>
+        </div>
+    </div>
+</div>

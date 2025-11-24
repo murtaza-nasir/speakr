@@ -1,0 +1,55 @@
+<!-- Mobile Chat Panel -->
+<div v-if="mobileTab === 'chat'" class="h-full flex flex-col rounded-lg border border-[var(--border-primary)] overflow-hidden relative">
+    <!-- Clear button - fixed at top right -->
+    <button v-if="chatMessages.length > 0"
+            @click="clearChat"
+            class="absolute top-2 right-2 p-1 text-[var(--text-muted)] opacity-60 hover:opacity-100 hover:text-[var(--text-danger)] rounded transition-all duration-200 z-20"
+            title="Clear chat">
+        <i class="fas fa-times text-xs"></i>
+    </button>
+
+    <div ref="chatMessagesRef" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-secondary)]">
+        <div v-if="chatMessages.length === 0" class="text-center py-8">
+            <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
+            <p class="text-[var(--text-muted)]" v-text="t('help.askAboutTranscription')"></p>
+        </div>
+        <div v-for="(message, index) in chatMessages" :key="index"
+             :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message',
+                      message.role === 'assistant' ? 'pr-10' : '']">
+            <!-- Copy button for assistant messages -->
+            <button v-if="message.role === 'assistant'"
+                    @click="copyMessage(message.content, $event)"
+                    class="absolute top-2 right-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-all duration-200"
+                    :title="t('buttons.copyMessage')">
+                <i class="fas fa-copy text-sm"></i>
+            </button>
+            <!-- Show thinking content if available -->
+            <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
+                <button @click="message.thinkingExpanded = !message.thinkingExpanded"
+                        class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
+                    <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                    <span v-text="t('help.modelReasoning')"></span>
+                    <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
+                </button>
+                <div v-if="message.thinkingExpanded"
+                     class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
+                    <pre class="whitespace-pre-wrap font-mono">${message.thinking}</pre>
+                </div>
+            </div>
+            <!-- Main message content -->
+            <div v-if="message.html" v-html="message.html"></div>
+            <div v-else class="whitespace-pre-wrap">${message.content}</div>
+        </div>
+        <div v-if="isChatLoading" class="ai-message">
+            <i class="fas fa-spinner fa-spin mr-2"></i> Thinking...
+        </div>
+    </div>
+    <div class="border-t border-[var(--border-primary)] p-4 bg-[var(--bg-tertiary)]">
+        <div class="flex gap-2">
+            <textarea v-model="chatInput" @keydown="handleChatKeydown" :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED'" :placeholder="t('chat.placeholder')" class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" rows="2"></textarea>
+            <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED'" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>

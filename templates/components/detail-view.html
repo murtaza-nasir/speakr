@@ -1,0 +1,35 @@
+<!-- Detail View Container -->
+<div v-if="currentView === 'detail' && selectedRecording" class="flex-1 flex flex-col overflow-hidden">
+    <!-- Mobile View -->
+    <div v-if="isMobile" class="flex flex-col h-full overflow-hidden">
+        {% include 'components/detail/mobile-header.html' %}
+        {% include 'components/detail/audio-player.html' %}
+        {% include 'components/detail/tab-navigation.html' %}
+
+        <!-- Mobile Tab Content -->
+        <div class="flex-1 overflow-y-auto p-4">
+            {% include 'components/detail/mobile-transcript-panel.html' %}
+            {% include 'components/detail/mobile-summary-panel.html' %}
+            {% include 'components/detail/mobile-notes-panel.html' %}
+            {% include 'components/detail/mobile-chat-panel.html' %}
+            {% include 'components/detail/mobile-events-panel.html' %}
+        </div>
+    </div>
+
+    <!-- Desktop View -->
+    <div v-else class="flex-1 flex flex-col overflow-hidden">
+        {% include 'components/detail/desktop-header.html' %}
+
+        <!-- Main Content Split View -->
+        <div id="mainContentColumns" class="flex-1 flex overflow-hidden">
+            {% include 'components/detail/desktop-transcription-panel.html' %}
+
+            <!-- Resizable Divider -->
+            <div id="mainColumnResizer" @mousedown="startColumnResize"></div>
+
+            {% include 'components/detail/desktop-right-panel.html' %}
+        </div>
+    </div>
+</div>
+
+{% include 'components/detail/empty-state.html' %}

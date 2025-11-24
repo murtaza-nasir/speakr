@@ -1,0 +1,26 @@
+<!-- Mobile Notes Panel -->
+<div v-if="mobileTab === 'notes'" class="h-full flex flex-col space-y-4">
+    <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
+        <button @click="copyNotes" class="copy-btn" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
+        <button @click="downloadNotes" class="copy-btn" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+        <button @click="toggleEditNotes" class="copy-btn" :title="t('buttons.editNotes')"><i class="fas fa-edit"></i></button>
+    </div>
+    <div class="flex-grow overflow-y-auto mobile-content-box">
+        <div v-if="editingNotes" class="h-full flex flex-col">
+            <div class="markdown-editor-container flex-1">
+                <textarea ref="notesMarkdownEditor" v-model="selectedRecording.notes"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 mt-2">
+                <button @click="cancelEditNotes" class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
+                <button @click="saveEditNotes" class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] border border-transparent rounded hover:bg-[var(--bg-button-hover)]" v-text="t('common.save')"></button>
+            </div>
+        </div>
+        <div v-else @click="clickToEditNotes">
+            <div v-if="!selectedRecording.notes" class="text-center py-8 cursor-pointer hover:text-[var(--text-secondary)]">
+                <i class="fas fa-sticky-note text-3xl text-[var(--text-muted)] mb-3"></i>
+                <p class="text-[var(--text-muted)]" v-text="t('help.clickToAddNotes')"></p>
+            </div>
+            <div v-else class="notes-box h-full" v-html="selectedRecording.notes_html || selectedRecording.notes"></div>
+        </div>
+    </div>
+</div>

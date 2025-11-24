@@ -1,0 +1,47 @@
+<!-- Share Delete Confirmation Modal -->
+<div v-if="showShareDeleteModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+        <!-- Header with gradient background -->
+        <div class="bg-gradient-to-r from-red-500 to-red-600 p-5 rounded-t-xl">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mr-4">
+                    <i class="fas fa-trash-alt text-white text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-white">Delete Shared Link</h3>
+                    <p class="text-red-100 text-sm mt-1">This action cannot be undone</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+            <p class="text-[var(--text-secondary)] mb-4">
+                Are you sure you want to delete the shared link for:
+            </p>
+            <div v-if="shareToDelete" class="bg-[var(--bg-tertiary)] p-3 rounded-lg border border-[var(--border-primary)]">
+                <p class="font-medium text-[var(--text-primary)]">${shareToDelete.recording_title}</p>
+                <p class="text-sm text-[var(--text-muted)] mt-1">Shared on: ${shareToDelete.created_at}</p>
+            </div>
+            <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 mt-0.5 mr-2"></i>
+                    <p class="text-sm text-red-800 dark:text-red-300">
+                        The share link will be permanently deleted and anyone with this link will no longer be able to access the recording.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="p-6 pt-0 flex justify-end gap-3">
+            <button @click="cancelDeleteShare" class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                Cancel
+            </button>
+            <button @click="deleteShare" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+                <i class="fas fa-trash"></i>
+                Delete Share Link
+            </button>
+        </div>
+    </div>
+</div>

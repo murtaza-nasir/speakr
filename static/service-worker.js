@@ -1,15 +1,15 @@
 // Speakr Service Worker
 // Provides offline support and background capabilities for recording
 
-const CACHE_VERSION = 'speakr-v1';
+const CACHE_VERSION = 'speakr-v2';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_DYNAMIC = `${CACHE_VERSION}-dynamic`;
 
 // Files to cache for offline functionality
 const STATIC_ASSETS = [
     '/',
-    '/static/css/style.css',
-    '/static/js/app.js',
+    '/static/css/styles.css',
+    '/static/js/app.modular.js',
     '/static/manifest.json',
     '/static/offline.html',
     '/static/img/icon-192x192.png',

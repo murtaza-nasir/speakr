@@ -88,13 +88,35 @@ WHISPER_MODEL=whisper-1
 
 #### For Custom ASR Endpoint with Speaker Diarization
 
-If you want speaker diarization to identify who's speaking in your recordings, you'll need to use an ASR webservice endpoint. **This requires running an additional Docker container** (`onerahmet/openai-whisper-asr-webservice`) alongside Speakr, but provides powerful features for meeting transcriptions and multi-speaker recordings.
+If you want speaker diarization to identify who's speaking in your recordings, you'll need to use an ASR webservice endpoint. **This requires running an additional Docker container** alongside Speakr, but provides powerful features for meeting transcriptions and multi-speaker recordings.
 
-> **Important:** Before proceeding with this configuration, you'll need to set up the ASR service container. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
+**ASR Service Options:**
 
-Download the ASR configuration template:
+1. **WhisperX ASR Service (Recommended for Voice Profiles)** - Required for AI-powered voice profile features using speaker embeddings
+   - Repository: [murtaza-nasir/whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service)
+   - Uses `pyannote/speaker-diarization-community-1` model with exclusive diarization
+   - Supports 256-dimensional speaker embeddings for voice profile identification
+   - Better timestamp alignment between speakers and words
+   - **Required for:** Voice profiles, automatic speaker recognition, speaker embeddings
+   - **Environment file:** `config/env.whisperx.example`
+
+2. **OpenAI Whisper ASR Webservice (Basic Diarization)** - For basic speaker diarization without voice profiles
+   - Repository: [ahmetoner/openai-whisper-asr-webservice](https://github.com/ahmetoner/openai-whisper-asr-webservice)
+   - Uses `pyannote/speaker-diarization-3.1` model
+   - Simpler setup, less resource intensive
+   - **Supports:** Basic speaker identification (Speaker 1, Speaker 2, etc.)
+   - **Does not support:** Voice profiles, speaker embeddings, automatic speaker recognition
+   - **Environment file:** `config/env.asr.example`
+
+> **Important:** Before proceeding with this configuration, you'll need to set up one of the ASR service containers. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
+
+Download the appropriate ASR configuration template:
 
 ```bash
+# For WhisperX ASR Service (with voice profiles):
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisperx.example -O .env
+
+# OR for basic ASR (without voice profiles):
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
 ```
 
@@ -102,10 +124,17 @@ The ASR configuration enables the custom endpoint and tells Speakr where to find
 
 ```bash
 USE_ASR_ENDPOINT=true
-ASR_BASE_URL=http://your-asr-service:9000
+
+# For WhisperX ASR Service:
+ASR_BASE_URL=http://whisperx-asr:9000
+
+# OR for basic ASR Webservice:
+ASR_BASE_URL=http://whisper-asr:9000
 ```
 
-The ASR_BASE_URL depends on your deployment architecture. If you're running the ASR service in the same Docker Compose stack as Speakr, use the service name from your docker-compose.yml file, like `http://whisper-asr:9000`. This uses Docker's internal networking for communication. If the ASR service is running elsewhere, use its full URL with the appropriate IP address or domain name.
+The ASR_BASE_URL depends on your deployment architecture:
+- **Same Docker Compose stack:** Use the service name (e.g., `http://whisperx-asr:9000` or `http://whisper-asr:9000`) - Docker's internal networking
+- **Separate machine:** Use the full URL with IP address or domain name (e.g., `http://192.168.1.100:9000`)
 
 Speaker diarization is automatically enabled when using ASR endpoints. The system will identify different speakers in your recordings and label them as Speaker 1, Speaker 2, and so on. You can optionally override the default speaker detection settings by uncommenting and adjusting ASR_MIN_SPEAKERS and ASR_MAX_SPEAKERS in your environment file.
 
@@ -129,7 +158,7 @@ TIMEZONE="America/New_York"
 LOG_LEVEL="INFO"
 ```
 
-Setting `ALLOW_REGISTRATION=false` means only the admin can create new user accounts, which is recommended for private installations where you want to control access. If you're running Speakr for a team or family, this prevents random people from creating accounts. The timezone setting affects how dates and times are displayed throughout the interface, so set it to your local timezone for convenience. The log level controls how much information Speakr writes to its logs. Use `INFO` during initial setup and testing to see what's happening, then switch to `ERROR` for production to reduce log volume and improve performance.
+Setting `ALLOW_REGISTRATION=false` means only the admin can create new user accounts, which is recommended for private installations where you want to control access. If you're running Speakr for a group or family, this prevents random people from creating accounts. The timezone setting affects how dates and times are displayed throughout the interface, so set it to your local timezone for convenience. The log level controls how much information Speakr writes to its logs. Use `INFO` during initial setup and testing to see what's happening, then switch to `ERROR` for production to reduce log volume and improve performance.
 
 ### Step 5: Configure Advanced Features
 
@@ -222,32 +251,98 @@ If transcription fails, check the Docker logs for API authentication errors or c
 
 ### Running ASR Service for Speaker Diarization
 
-If you need speaker diarization to identify different speakers in your recordings, you'll need to run an ASR service alongside Speakr. This involves deploying an additional Docker container (`onerahmet/openai-whisper-asr-webservice`) that provides the ASR endpoint. The recommended approach is running both containers in the same Docker Compose stack for simplified networking and management.
+If you need speaker diarization to identify different speakers in your recordings, you'll need to run an ASR service alongside Speakr. There are two options depending on whether you need voice profile features:
 
-First, you'll need a Hugging Face token to access the speaker diarization models. Create an account at Hugging Face, generate an access token, and importantly, visit the model pages for pyannote/segmentation-3.0 and pyannote/speaker-diarization-3.1 to accept their terms. These are gated models that require explicit approval.
+#### Option 1: WhisperX ASR Service (Recommended - Supports Voice Profiles)
 
-Here's a complete Docker Compose configuration that includes both services:
+**Use this if you want:**
+- AI-powered speaker voice profiles with automatic recognition
+- 256-dimensional speaker embeddings
+- Better speaker-to-word timestamp alignment
+- Exclusive diarization for cleaner speaker transitions
+
+**Prerequisites:**
+1. **Hugging Face Account & Model Access** - Visit and accept terms for ALL models:
+   - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
+   - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+   - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+
+2. **Generate HF Token** - Create a read-access token at [Hugging Face Settings](https://huggingface.co/settings/tokens)
+
+3. **GPU Requirements** - NVIDIA GPU with 14GB+ VRAM for large-v3 model (RTX 3090/4090 recommended)
+
+**Setup Instructions:**
+
+Clone the WhisperX ASR Service repository:
+```bash
+git clone https://github.com/murtaza-nasir/whisperx-asr-service.git
+cd whisperx-asr-service
+
+# Copy environment file
+cp .env.example .env
+
+# Edit .env and add your Hugging Face token
+nano .env  # Set HF_TOKEN=hf_xxxxx...
+
+# Build and start
+docker compose up -d
+
+# Verify it's running
+curl http://localhost:9000/health
+```
+
+See the [WhisperX ASR Service README](https://github.com/murtaza-nasir/whisperx-asr-service#readme) for detailed configuration options, troubleshooting, and performance tuning.
+
+#### Option 2: OpenAI Whisper ASR Webservice (Basic Diarization Only)
+
+**Use this if you:**
+- Only need basic speaker identification (Speaker 1, Speaker 2, etc.)
+- Don't need voice profiles or speaker embeddings
+- Want simpler setup with lower resource requirements
+
+**Prerequisites:**
+1. **Hugging Face Account & Model Access** - Visit and accept terms:
+   - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+   - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+
+2. **Generate HF Token** - Create a read-access token at [Hugging Face Settings](https://huggingface.co/settings/tokens)
+
+**Setup Instructions:**
+
+Visit the [ahmetoner/whisper-asr-webservice repository](https://github.com/ahmetoner/whisper-asr-webservice) for complete setup instructions.
+
+#### Deploying ASR Service with Speakr
+
+Once you've chosen and set up your ASR service, you can deploy it alongside Speakr in several ways:
+
+**Same Machine - Combined Docker Compose (Recommended)**
+
+Example with WhisperX ASR Service (for voice profiles):
 
 ```yaml
 services:
-  whisper-asr:
-    image: onerahmet/openai-whisper-asr-webservice:latest-gpu
-    container_name: whisper-asr-webservice
+  whisperx-asr:
+    build:
+      context: ./whisperx-asr-service
+      dockerfile: Dockerfile
+    container_name: whisperx-asr-api
+    restart: unless-stopped
     ports:
       - "9000:9000"
     environment:
-      - ASR_MODEL=distil-large-v3
-      - ASR_COMPUTE_TYPE=int8
-      - ASR_ENGINE=whisperx
+      - DEVICE=cuda
+      - COMPUTE_TYPE=float16
+      - BATCH_SIZE=16
       - HF_TOKEN=your_huggingface_token_here
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
+              count: all
               capabilities: [gpu]
-              device_ids: ["0"]
-    restart: unless-stopped
+    volumes:
+      - whisperx-cache:/.cache
     networks:
       - speakr-network
 
@@ -263,18 +358,28 @@ services:
       - ./uploads:/data/uploads
       - ./instance:/data/instance
     depends_on:
-      - whisper-asr
+      - whisperx-asr
     networks:
       - speakr-network
 
 networks:
   speakr-network:
     driver: bridge
+
+volumes:
+  whisperx-cache:
+    driver: local
 ```
 
-> **Note for Mac users:** GPU passthrough doesn't work on macOS due to Docker's architecture. Use `onerahmet/openai-whisper-asr-webservice:latest` (CPU version) instead of `:latest-gpu` and remove the `deploy` section. The ASR service will use CPU processing, which is slower but fully functional. See the [FAQ](../faq.md#can-i-use-the-asr-webservice-for-speaker-diarization-on-mac) for Mac-specific configuration examples.
+In Speakr's `.env` file:
+```bash
+USE_ASR_ENDPOINT=true
+ASR_BASE_URL=http://whisperx-asr:9000
+```
 
-When running both services in the same Docker Compose file, containers communicate using service names. In your `.env` file, set `ASR_BASE_URL=http://whisper-asr:9000` using the service name, not localhost or an IP address. This is a common source of confusion but is how Docker networking works.
+> **Note for Mac users:** GPU passthrough doesn't work on macOS due to Docker's architecture. Use CPU mode by setting `DEVICE=cpu` and `COMPUTE_TYPE=float32` in the environment variables. The ASR service will use CPU processing, which is slower but fully functional.
+
+**Important:** When running both services in the same Docker Compose file, use the service name (e.g., `whisperx-asr` or `whisper-asr`) in `ASR_BASE_URL`, not `localhost` or an IP address.
 
 #### Running Services in Separate Docker Compose Files
 

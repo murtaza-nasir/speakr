@@ -1,20 +1,22 @@
-const CACHE_NAME = 'Speakr-cache-v3';
+const CACHE_NAME = 'Speakr-cache-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/static/offline.html',
   '/static/manifest.json',
   '/static/css/styles.css',
-  '/static/js/app.js',
-  '/static/img/icon-192x192.png', // Assuming you will add this
-  '/static/img/icon-512x512.png', // Assuming you will add this
-  '/static/img/favicon.ico',      // Keep existing SVG as a fallback or for other uses
-  // HTML templates (these are typically served via routes, but caching the routes themselves is handled by fetch strategies)
-  // We cache '/' which should serve the main page.
-  // Other specific page routes like /login, /register, /account will be handled by networkFirst.
-  // CDN assets - caching these can be beneficial but also complex if they change often.
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/vue@3/dist/vue.global.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css'
+  '/static/js/app.modular.js',
+  '/static/js/i18n.js',
+  '/static/js/csrf-refresh.js',
+  '/static/img/icon-192x192.png',
+  '/static/img/icon-512x512.png',
+  '/static/img/favicon.ico',
+  // Local vendor assets (no external CDN dependencies)
+  '/static/vendor/js/tailwind.min.js',
+  '/static/vendor/js/vue.global.js',
+  '/static/vendor/js/marked.min.js',
+  '/static/vendor/js/easymde.min.js',
+  '/static/vendor/css/fontawesome.min.css',
+  '/static/vendor/css/easymde.min.css'
 ];
 
 // Function to update shortcuts (structure from your example)

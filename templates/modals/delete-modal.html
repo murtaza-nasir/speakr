@@ -1,0 +1,27 @@
+<!-- Delete Confirmation Modal -->
+<div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6">
+            <div class="flex items-center gap-4 mb-4">
+                <i class="fas fa-exclamation-triangle text-3xl text-[var(--text-danger)]"></i>
+                <div>
+                    <h3 class="text-lg font-semibold" v-text="t('modal.deleteRecording')"></h3>
+                    <p class="text-[var(--text-muted)]" v-text="t('help.thisActionCannotBeUndone')"></p>
+                </div>
+            </div>
+            <p class="text-[var(--text-secondary)] mb-6">
+                Are you sure you want to delete "${recordingToDelete?.title || 'this recording'}"?
+            </p>
+            <div class="flex justify-end gap-3">
+                <button @click="cancelDelete"
+                        class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button @click="deleteRecording"
+                        class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

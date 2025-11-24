@@ -1,0 +1,56 @@
+<!-- Edit Participants Modal -->
+<div v-if="showEditParticipantsModal" @click="closeEditParticipantsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click.stop="closeAllParticipantSuggestions" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+        <div class="p-6 border-b border-[var(--border-primary)] flex-shrink-0">
+            <h3 class="text-lg font-semibold" v-text="t('modal.editParticipants')"></h3>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1" @scroll="closeAllParticipantSuggestions">
+            <p class="text-sm text-[var(--text-muted)] mb-4">Manage participants for this recording.</p>
+
+            <div class="space-y-2">
+                <div v-for="(participant, index) in editingParticipantsList" :key="index" class="relative">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 relative" @click.stop>
+                            <input v-model="participant.name"
+                                   @input="filterParticipantSuggestions(index)"
+                                   @focus="filterParticipantSuggestions(index)"
+                                   @blur="closeParticipantSuggestionsDelayed(index)"
+                                   type="text"
+                                   class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm"
+                                   placeholder="Participant name...">
+                        </div>
+                        <!-- Teleported Suggestions dropdown -->
+                        <teleport to="body">
+                            <div v-if="editingParticipantSuggestions[index]?.length > 0"
+                                 class="fixed z-[100] bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg max-h-32 overflow-y-auto"
+                                 :style="getParticipantDropdownPosition(index)">
+                                <button v-for="suggestion in editingParticipantSuggestions[index]" :key="suggestion"
+                                        @mousedown="selectParticipantSuggestion(index, suggestion)"
+                                        class="w-full px-3 py-2 text-left hover:bg-[var(--bg-tertiary)] transition-colors text-sm">
+                                    ${suggestion}
+                                </button>
+                            </div>
+                        </teleport>
+                        <button @click="removeParticipant(index)"
+                                class="p-1 text-[var(--text-muted)] hover:text-red-500 transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button @click="addParticipant"
+                    class="mt-4 w-full px-3 py-2 border border-dashed border-[var(--border-secondary)] rounded-lg text-sm text-[var(--text-muted)] hover:border-[var(--border-accent)] hover:text-[var(--text-accent)] transition-colors">
+                <i class="fas fa-plus mr-2"></i>Add Participant
+            </button>
+        </div>
+        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end gap-3">
+            <button @click="closeEditParticipantsModal" class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                Cancel
+            </button>
+            <button @click="saveParticipants" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>

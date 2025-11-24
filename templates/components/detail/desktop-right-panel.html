@@ -1,0 +1,71 @@
+<!-- Desktop Right Panel (Summary/Notes/Chat) -->
+<div id="rightMainColumn" class="flex flex-col overflow-hidden" :style="{width: rightColumnWidth + '%'}">
+    <!-- Audio Player -->
+    <div class="bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
+        <div class="audio-player-container">
+            <!-- Show message if audio has been deleted -->
+            <div v-if="selectedRecording.audio_deleted_at"
+                 class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+                <i class="fas fa-info-circle"></i>
+                <span v-text="t('help.audioDeletedMessage')"></span>
+            </div>
+            <!-- Show audio player if audio is available -->
+            <audio v-else
+                   ref="audioPlayerElement"
+                   controls
+                   :src="'/audio/' + selectedRecording.id"
+                   :volume="playerVolume"
+                   @volumechange="onPlayerVolumeChange"
+                   @timeupdate="handleAudioTimeUpdate"
+                   class="w-full">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+    </div>
+
+    <!-- Summary/Notes Tabs -->
+    <div :class="{'flex-1': !isChatMaximized, 'flex-none': isChatMaximized}" class="flex flex-col overflow-hidden">
+        <!-- Tab Navigation -->
+        <div class="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex">
+            <button @click="selectedTab = 'summary'"
+                    :class="[
+                        'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                        selectedTab === 'summary'
+                            ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                    ]">
+                ${ t('summary.title') }
+            </button>
+            <button @click="selectedTab = 'notes'"
+                    :class="[
+                        'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                        selectedTab === 'notes'
+                            ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                    ]">
+                ${ t('notes.title') }
+            </button>
+            <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
+                    @click="selectedTab = 'events'"
+                    :class="[
+                        'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                        selectedTab === 'events'
+                            ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                    ]">
+                <i class="fas fa-calendar-alt mr-1"></i>
+                ${ t('events.title') } (${ selectedRecording.events.length })
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div v-if="!isChatMaximized" class="flex-1 overflow-hidden">
+            {% include 'components/detail/desktop-summary-tab.html' %}
+            {% include 'components/detail/desktop-notes-tab.html' %}
+            {% include 'components/detail/desktop-events-tab.html' %}
+        </div>
+    </div>
+
+    <!-- Chat Section -->
+    {% include 'components/detail/desktop-chat-section.html' %}
+</div>

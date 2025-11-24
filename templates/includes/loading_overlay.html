@@ -51,10 +51,19 @@
 <script>
     // Immediate loading overlay initialization
     (function() {
-        document.body.classList.add('app-loading');
-        var overlay = document.createElement('div');
-        overlay.className = 'app-loading-overlay';
-        overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text">Loading Speakr...</div></div>';
-        document.body.appendChild(overlay);
+        function initLoadingOverlay() {
+            if (!document.body) {
+                // Body not ready yet, wait a bit
+                setTimeout(initLoadingOverlay, 10);
+                return;
+            }
+            document.body.classList.add('app-loading');
+            var overlay = document.createElement('div');
+            overlay.className = 'app-loading-overlay';
+            overlay.innerHTML = '<div class="app-loading-content"><div class="app-loading-spinner"></div><div class="app-loading-text">Loading Speakr...</div></div>';
+            document.body.appendChild(overlay);
+        }
+        initLoadingOverlay();
     })();
 </script>
+<script src="{{ url_for('static', filename='js/loading.js') }}"></script>

@@ -179,8 +179,8 @@ If you have no templates, click **Create Default Templates** to generate a compr
 - Interview Q&A - Professional interview format
 - Meeting Minutes - Bulleted format for meeting notes
 - Court Transcript - Legal deposition style with line numbers
-- SRT Subtitle - Standard subtitle format for videos
-- Screenplay - Film script formatting
+- SRT Subtitle - Standard subtitle format for content creation
+- Screenplay - Script formatting for creative projects
 
 ## Advanced Tips
 
@@ -223,7 +223,7 @@ Create an "Interview Format" template with timestamps and speaker labels for eas
 Use a numbered format with timestamps to cite specific moments in recorded interviews or focus groups.
 
 ### For Content Creators
-Export in SRT format for adding subtitles to videos, or use screenplay format for video scripts.
+Export in SRT format for adding captions to podcasts or other multimedia content, or use screenplay format for creative audio scripts and productions.
 
 ### For Business Meetings
 Create a "Meeting Minutes" template that clearly shows who said what and when, perfect for action items and follow-ups.
@@ -233,6 +233,94 @@ Use court transcript style formatting with line numbers and uppercase speaker na
 
 ### For Podcasters
 Format transcripts for show notes with timestamps that listeners can click to jump to specific topics.
+
+## Integrating with External Tools
+
+Transcript templates become even more powerful when you combine them with external applications. Here are some practical integrations people use:
+
+### Obsidian and Note-Taking Apps
+
+If you use Obsidian, Logseq, or similar markdown-based note apps, you can set up automatic export of your transcripts. Speakr includes an auto-export feature that automatically writes completed transcripts to markdown files.
+
+Enable auto-export by adding these settings to your `.env` file:
+```bash
+ENABLE_AUTO_EXPORT=true
+AUTO_EXPORT_DIR=/data/exports
+AUTO_EXPORT_TRANSCRIPTION=true
+AUTO_EXPORT_SUMMARY=true
+```
+
+Then map the exports directory to your note app's folder in `docker-compose.yml`:
+```yaml
+volumes:
+  - ./uploads:/data/uploads
+  - ./instance:/data/instance
+  - /Users/username/Documents/Obsidian/Transcripts:/data/exports
+```
+
+Create a default transcript template in your Speakr settings that formats the way you want - the auto-export system uses your default template. When a recording finishes processing, Speakr automatically writes a markdown file to the exports directory with metadata, summary, and formatted transcription.
+
+Files are organized into subdirectories by username, so multiple users can export to the same vault without conflicts. Obsidian picks up these markdown files automatically, and you can reference them in daily notes, link them to related content, and search across all your transcripts.
+
+### Automated Processing Workflows
+
+Mount Speakr's upload directory as a Docker volume pointing to a location your automation tools can access. Create a template that exports in a structured format (like JSON or CSV), then use scripts to process the files automatically.
+
+For example, export client call transcripts to a folder that triggers a script to extract action items and add them to your project management tool. Or export interview transcripts to a research folder where analysis software picks them up for coding and categorization.
+
+The key is creating a template that produces the exact format your downstream tool expects, then using file system watching or scheduled scripts to move the files where they need to go.
+
+### Subtitle and Content Creation Workflows
+
+Create SRT-format templates and export transcripts for use in content creation projects. The SRT format provides time-coded text that can be used for subtitles in multimedia content, podcast show notes with timestamps, or any project where you need synchronized text.
+
+If you're creating multimedia content, you can export these transcripts to folders that your editing software monitors. Some tools watch specific directories for subtitle files - save your Speakr transcripts there, and they appear automatically for integration.
+
+This eliminates the manual export-import-format cycle when you're producing content from your audio recordings.
+
+### Documentation Systems
+
+Groups using wikis or documentation platforms can create templates that match their documentation format. Export meeting transcripts in the right format, clean them up minimally, and publish them to the group wiki. Some groups have scripts that take Speakr exports and create wiki pages automatically, preserving the discussion context for future reference.
+
+### Example: Obsidian Auto-Export Setup
+
+Here's a complete setup for automatic export to Obsidian:
+
+1. **Enable auto-export in `.env`**:
+   ```bash
+   ENABLE_AUTO_EXPORT=true
+   AUTO_EXPORT_DIR=/data/exports
+   AUTO_EXPORT_TRANSCRIPTION=true
+   AUTO_EXPORT_SUMMARY=true
+   ```
+
+2. **Map exports to Obsidian vault in `docker-compose.yml`**:
+   ```yaml
+   volumes:
+     - ./uploads:/data/uploads
+     - ./instance:/data/instance
+     - /Users/username/Documents/Obsidian/Transcripts:/data/exports
+   ```
+
+3. **Create a default transcript template** in Speakr settings with the format you want:
+   ```
+   [{{start_time}}] {{speaker}}: {{text}}
+   ```
+
+4. **Restart Speakr** to apply the changes:
+   ```bash
+   docker compose restart
+   ```
+
+Now when any recording finishes processing, Speakr automatically writes a markdown file to your Obsidian vault with:
+- Metadata (date, participants, tags, processing times)
+- Notes (if you added any)
+- AI-generated summary
+- Formatted transcription using your template
+
+Files appear in subdirectories by username, so `alice` gets her transcripts in `Transcripts/alice/` and `bob` gets his in `Transcripts/bob/`. Obsidian indexes these automatically, and you can link to them from daily notes, search across all transcripts, and reference them alongside your other knowledge.
+
+This same approach works with Logseq, Notion (if you set the export directory to Notion's import folder), or any markdown-based knowledge management system.
 
 ## Troubleshooting
 

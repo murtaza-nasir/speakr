@@ -62,6 +62,78 @@ Consider the AI model's strengths and limitations. Current models excel at ident
 
 Balance detail with readability. Extremely detailed prompts might produce comprehensive summaries that users don't read. Sometimes a concise, focused summary serves users better than exhaustive documentation.
 
+## Creative Tag Prompt Use Cases
+
+Tags with custom prompts unlock powerful transformation capabilities. Here are creative ways people use this feature:
+
+### Recipe Recordings
+
+Create a "Recipe" tag with a prompt like: "Convert this free-form cooking narration into a properly formatted recipe with ingredients list, step-by-step instructions, cooking times, and servings. Organize ingredients by quantity and item. Number the steps clearly."
+
+When you record yourself cooking while talking through what you're doing - "okay I'm adding maybe two cups of flour, bit more actually, and then half a cup of sugar, no wait three quarters" - the AI transforms that messy stream-of-consciousness into a clean, usable recipe format with organized ingredients and numbered steps.
+
+### Lecture Notes
+
+A "Lecture" tag could use: "Extract the main concepts, supporting examples, key terminology with definitions, and any practical applications mentioned. Organize in an outline format suitable for study notes."
+
+Students record lectures as they happen. The messy 90-minute recording becomes organized study notes with concepts clearly labeled, examples pulled out, and terminology defined. Much more useful than trying to review the raw transcript.
+
+### Meeting Action Items
+
+Create a "Project Meeting" tag with: "Focus exclusively on action items, decisions made, and next steps. For each action item, identify who is responsible and any mentioned deadlines. Ignore general discussion."
+
+The group spends an hour talking about a project. The summary ignores all the background discussion and debate, giving you just the concrete outcomes - who's doing what and when.
+
+### Brainstorming Sessions
+
+A "Ideas" tag with: "List every distinct idea mentioned, no matter how brief the discussion. For each idea, note any immediate reactions or concerns raised. Don't evaluate or synthesize - just capture everything."
+
+Free-flowing creative sessions produce transcripts full of half-formed thoughts and tangents. This prompt pulls out every idea fragment so nothing gets lost in the noise.
+
+### Code Review Sessions
+
+"Code Review" tag: "For each piece of code or system discussed, list: 1) What was reviewed, 2) Issues identified, 3) Suggested changes, 4) Who will implement fixes. Use technical language, don't simplify."
+
+Technical discussions stay technical. The summary uses proper terminology and maintains the level of detail needed for developers to act on the feedback.
+
+## Tag Stacking and Order
+
+When a recording has multiple tags with prompts, they concatenate in the order tags were applied. This creates powerful combinations:
+
+### Example: Personal Lecture + Specific Course
+
+You have a personal "My Lectures" tag with: "Organize as study notes with clear headers."
+
+You also tag with "Biology 301" which adds: "Pay special attention to biological processes, terminology, and diagrams mentioned."
+
+The result combines both: study notes format focused on biological content. The order doesn't matter much here since they're complementary.
+
+### Example: Client Meeting + Legal Review
+
+"Client Meeting" tag: "Extract client requirements, concerns, and preferences."
+
+"Legal Review" tag: "Identify any legal considerations, compliance requirements, or risk factors mentioned."
+
+Together, you get client needs plus legal implications in one summary - useful when client calls touch on contractual matters. If you tagged "Legal Review" first and "Client Meeting" second, the legal aspects would be emphasized first, then client concerns.
+
+### Example: Recipe + Dietary Restriction
+
+"Recipe" tag: "Convert to formatted recipe."
+
+"Gluten Free" tag: "Note which ingredients contain gluten and suggest substitutions."
+
+The recipe gets formatted properly, plus you get automatic gluten-free adaptation notes. Perfect when you're adapting traditional recipes for dietary needs.
+
+### When Order Matters
+
+More specific prompts should generally come last, as they refine the output from general prompts. Start broad (format type) then add specifics (focus areas).
+
+If you tag "Technical Details" + "Executive Summary", you're asking for detailed technical content presented as an executive summary - probably condensed but still technical.
+
+Reverse it to "Executive Summary" + "Technical Details" and you're requesting executive-level content with technical depth where applicable - probably less detailed overall.
+
+Test your tag combinations with sample recordings to see which order produces the results you want.
+
 ## Coordinating with User Prompts
 
 Your default prompt should complement, not compete with, user customization. Design it as a solid foundation that works for most cases while encouraging power users to customize for their specific needs.

@@ -133,6 +133,53 @@ Log in using the admin credentials you configured in Step 4. You should now see 
 
 After logging in, you can immediately start using Speakr. Click the "New Recording" button in the top navigation to either upload an existing audio file or start a [live recording](user-guide/recording.md). For detailed instructions, see the [recording guide](user-guide/recording.md). For uploads, Speakr supports [common audio formats](faq.md#what-audio-formats-does-speakr-support) like MP3, M4A, WAV, and more, with files up to 500MB by default. You can adjust this limit in [system settings](admin-guide/system-settings.md). For live recording, you can capture from your microphone, system audio, or both simultaneously.
 
+## Setting Up Collaboration (Optional)
+
+If you're using Speakr with your family or team, you can leverage powerful collaboration features including groups, group tags, and automatic sharing. These features work great for project teams, departments, or families who want to automatically share certain types of recordings.
+
+### Creating a Group
+
+As an admin, you can create groups to organize users who regularly collaborate:
+
+1. Navigate to **Admin → User Groups** in the admin dashboard
+2. Click "Create New Group" and enter a group name (e.g., "Engineering Team", "Family", "Sales Department")
+3. Optionally assign a group lead who can manage group settings
+4. Add members by searching for usernames and clicking to add them
+5. Save the group
+
+### Creating Group Tags
+
+Group tags automatically share recordings with all group members when applied:
+
+1. While editing or creating a group, navigate to the **Tags** section
+2. Click "Create Group Tag" and enter:
+   - **Tag Name**: What the tag will be called (e.g., "Team Meetings", "Family Events")
+   - **Color**: Choose a color for easy visual identification
+   - **Custom Prompt** (optional): AI instructions for how to summarize recordings with this tag
+   - **Protected**: Enable to prevent automatic deletion by retention policies
+   - **Retention Days** (optional): Auto-delete recordings after this many days (leave blank to keep forever)
+3. Save the tag
+
+When any group member applies this tag to a recording, all group members automatically get access to it.
+
+### Sharing a Recording with a Group
+
+There are two ways to share recordings with groups:
+
+**Method 1: Using Group Tags** (Automatic)
+1. When uploading or after creating a recording, click the tag icon
+2. Select any group tag you have access to
+3. All group members automatically receive access to this recording
+4. Future group members will NOT see historical recordings, only new ones tagged after they join
+
+**Method 2: Individual Sharing** (Manual)
+1. Open any recording and click the share icon (users icon) in the toolbar
+2. Search for and select users to share with
+3. Choose permission level: view-only, edit, or reshare
+4. Each user receives immediate access
+
+For more details on collaboration features, see the [Sharing & Collaboration guide](user-guide/sharing.md).
+
 ## Optional Features
 
 ### Enable Inquire Mode

@@ -52,6 +52,54 @@ If API costs spike unexpectedly, review your transcript length limit. A single u
 
 Processing backlogs might indicate your timeout is too high. If the system waits 30 minutes for each failed transcription attempt, a series of problematic files could block the queue for hours. Balance patience for slow processing with the need to fail fast when services are actually down.
 
+## Environment Variable Configuration
+
+Beyond the UI-configurable settings above, several environment variables in your `.env` file control fundamental system behaviors. These require instance restart to take effect.
+
+### Collaboration & Sharing
+
+**ENABLE_INTERNAL_SHARING**: Controls user-to-user sharing capabilities. Set to `true` to enable internal sharing features, allowing users to share recordings with specific colleagues. Required for group functionality. Default: `false`.
+
+**SHOW_USERNAMES_IN_UI**: Controls username visibility in the interface. When `true`, usernames are displayed throughout the UI when sharing and collaborating. When `false`, usernames are hidden - users must know each other's usernames to share recordings (they type the username manually). Default: `false`.
+
+**ENABLE_PUBLIC_SHARING**: Controls whether public share links can be created. When `true`, authorized users can generate secure links for external sharing. When `false`, only internal sharing is available. Default: `false`.
+
+### User Permissions
+
+**USERS_CAN_DELETE**: Determines whether regular users can delete their own recordings. When `true`, users see delete buttons for their recordings. When `false`, only administrators can delete recordings. This helps prevent accidental data loss and maintains content retention for compliance. Default: `true`.
+
+### Retention & Auto-Deletion
+
+**ENABLE_AUTO_DELETION**: Enables the automated retention system. When `true`, recordings older than the retention period are automatically processed for deletion. Default: `false`.
+
+**DEFAULT_RETENTION_DAYS**: Global retention period in days for recordings without tag-specific retention. Set to `0` to disable auto-deletion. Tag-level retention policies can override this default. Default: `0` (disabled).
+
+**DELETION_MODE**: Controls what gets deleted: `audio_only` removes audio files but preserves transcriptions and metadata, while `full_recording` removes everything. Audio-only mode maintains searchable records while saving storage space. Default: `audio_only`.
+
+For detailed retention configuration, see the [Retention & Auto-Deletion](retention.md) guide.
+
+### Configuration Example
+
+```bash
+# Enable collaboration features
+ENABLE_INTERNAL_SHARING=true
+SHOW_USERNAMES_IN_UI=true
+ENABLE_PUBLIC_SHARING=false
+
+# User permissions
+USERS_CAN_DELETE=false  # Only admins can delete
+
+# Retention policy
+ENABLE_AUTO_DELETION=true
+DEFAULT_RETENTION_DAYS=90
+DELETION_MODE=audio_only
+```
+
+After modifying environment variables, restart your Speakr instance for changes to take effect:
+```bash
+docker compose restart
+```
+
 ---
 
 Next: [Default Prompts](prompts.md) →

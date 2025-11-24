@@ -84,17 +84,29 @@ The delete button (trash icon) immediately revokes access. Once deleted, anyone 
 
 ## Speakers Management Tab
 
-![Speakers Management](../assets/images/screenshots/settings speakr management.png)
+![Speakers Management with Voice Profiles](../assets/images/screenshots/speakers-management-voice-profiles.png)
+*Speakers Management with voice profile statistics, confidence scores, and voice sample playback*
 
-The Speakers Management tab provides a comprehensive interface for managing all speakers identified across your recordings.
+The Speakers Management tab provides a comprehensive interface for managing all speakers identified across your recordings, including advanced voice profile capabilities.
 
 ### Automatic Speaker Creation
 
-Speakers are automatically saved when you identify them during transcription editing. The system builds your library over time as you consistently name participants across recordings.
+Speakers are automatically saved when you identify them during transcription editing. The system builds your library over time as you consistently name participants across recordings. When speaker diarization is enabled, Speakr automatically collects voice embeddings to build recognition profiles.
 
 ### Speaker Card Information
 
 Each speaker card displays essential information in a clean, scannable format. The speaker's name appears prominently, followed by usage statistics showing how many times they've been identified across your recordings. The last used date helps you understand which speakers are current versus historical. When a speaker was added to your library is tracked for reference.
+
+#### Voice Profile Information
+
+For speakers with voice recognition data, each card displays additional information:
+
+- **Voice Profile Badge**: Shows confidence level (high/medium/low) based on the number and quality of voice samples collected
+- **Sample Count**: Number of voice embeddings collected from different recordings, helping assess profile strength
+- **Voice Samples Button**: Click to hear representative audio clips of this speaker's voice for verification
+- **Profile Strength Indicator**: Visual feedback showing how well the system can recognize this speaker in future recordings
+
+The voice profile data improves speaker suggestion accuracy when identifying speakers in new recordings. When you open the speaker identification modal, Speakr analyzes voice patterns and suggests likely matches with confidence scores, making the identification process faster and more accurate over time.
 
 ### Interface Layout
 
@@ -108,15 +120,36 @@ At the bottom of the interface, a count shows your total saved speakers - "77 sp
 
 Regular maintenance keeps your speaker library relevant. Remove speakers who no longer appear in recordings, consolidate duplicates created with slight name variations, and ensure names are consistent for better transcript coherence. Periodic reviews help keep your library manageable and useful.
 
+### Automatic Speaker Cleanup
+
+When recordings are deleted (either manually or through auto-deletion), Speakr automatically manages speaker voice profiles to protect your privacy:
+
+- **Speakers with remaining recordings**: Voice profiles are preserved and continue to provide recognition suggestions
+- **Speakers with no recordings**: Automatically removed during the next scheduled cleanup to ensure voice data is not retained unnecessarily
+- **No manual action needed**: Cleanup happens automatically when auto-deletion is enabled
+
+This automatic cleanup ensures your speaker list stays current and maintains compliance with data privacy regulations. Voice embeddings (biometric data) are only retained when there are active recordings that reference the speaker, following data minimization principles.
+
+**Note**: If you want to preserve a speaker's voice profile, ensure at least one recording containing that speaker is retained. Protected recordings (with protected tags) will preserve their associated speakers.
+
 ## Tag Management Tab
 
-![Tag Management](../assets/images/screenshots/settings Tags that allow custom prompts stackable and custom asr settings.png)
+![Tag Management with Enhanced Badges](../assets/images/screenshots/tag-management-enhanced-badges.png)
+*Tag Management with visual badges for retention policies, protection status, sharing settings, and ASR defaults*
 
-Tag Management transforms simple labels into powerful processing instructions. Each tag you create carries multiple capabilities - a color for visual identification, an optional custom prompt that shapes AI summaries, and even default ASR (Automatic Speech Recognition) settings that optimize transcription for specific scenarios.
+Tag Management transforms simple labels into powerful processing instructions. Each tag you create carries multiple capabilities - a color for visual identification, an optional custom prompt that shapes AI summaries, default ASR (Automatic Speech Recognition) settings, retention policies, and sharing configurations.
 
 ### Tag Display and Features
 
-The interface displays your tags as cards, each showing the tag name with its color indicator, custom prompt if configured, and ASR defaults when set. In the example shown, "BSB Meetings" has a blue indicator with instructions to summarize transcripts in extreme detail. "Court Action" uses red and includes both a custom prompt and ASR defaults set to "Max 10" speakers - perfect for legal proceedings with multiple participants. The green "Fun" tag keeps summaries light and backwards, showing how creative prompts can serve different purposes.
+The interface displays your tags as cards with clear visual badges indicating their configuration. Each card shows the tag name with its color indicator, and visual badges that make it easy to see at a glance:
+
+- **Retention Policy Badges**: Display retention periods (e.g., "90 days") or protection status (∞ infinity symbol for protected tags)
+- **Sharing Badges**: Indicate if this is a group tag with auto-share capabilities (👥 users icon)
+- **Language Badges**: Show custom language settings for transcription or summarization
+- **Speaker Range Badges**: Display ASR defaults like "Max 10" speakers for meetings with many participants
+- **Custom Prompts**: Preview of tag-specific AI summarization instructions
+
+These visual indicators make it immediately clear which tags have special behaviors, helping you quickly select the right tags when uploading or organizing recordings.
 
 ### Creating New Tags
 
@@ -158,7 +191,7 @@ Colorful cards remind you of Speakr's core capabilities. Audio Transcription hig
 
 ### Using This Information
 
-This information-rich tab serves multiple purposes. For troubleshooting, it provides all the version and configuration details support teams need. For planning, it shows which features are available and properly configured. For learning, it links to all the resources needed to master Speakr's capabilities.
+This information-rich tab serves multiple purposes. For troubleshooting, it provides all the version and configuration details support groups need. For planning, it shows which features are available and properly configured. For learning, it links to all the resources needed to master Speakr's capabilities.
 
 ## Privacy and Security Considerations
 
@@ -176,7 +209,7 @@ The most effective Speakr setup evolves with your needs. Start with basic config
 
 Monitor which settings you actually use. If you never change certain preferences, they're probably fine at defaults. If you constantly adjust others, consider whether different base settings would reduce this friction. Your settings should work for you, not require constant attention.
 
-Share successful configurations with your team. If you've crafted an excellent prompt for technical summaries, share it with colleagues who might benefit. If your tag taxonomy works well, document it for others to adopt. Collective improvement benefits everyone.
+Share successful configurations with your group. If you've crafted an excellent prompt for technical summaries, share it with colleagues who might benefit. If your tag taxonomy works well, document it for others to adopt. Collective improvement benefits everyone.
 
 Remember that settings are tools for productivity, not endpoints themselves. The goal isn't perfect configuration but effective recording management. When your settings fade into the background and Speakr just works how you expect, you've achieved the right balance.
 

@@ -324,7 +324,7 @@ class FileMonitor:
                     title=f"Auto-processed - {original_filename}",
                     file_size=file_size,
                     status='PENDING',
-                    meeting_date=now.date(),
+                    meeting_date=now,
                     user_id=user_id,
                     mime_type=mime_type,
                     is_inbox=True,  # Auto-processed files go to inbox

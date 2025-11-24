@@ -1,0 +1,323 @@
+<!-- Mobile Sidebar Backdrop -->
+<div v-if="!isSidebarCollapsed && isMobileScreen"
+     @click="toggleSidebar"
+     class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden">
+</div>
+
+<!-- Sidebar -->
+<aside :class="['sidebar', isSidebarCollapsed ? 'collapsed' : '']">
+    <div class="sidebar-content-wrapper">
+        <!-- Sidebar Header -->
+        <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold" v-text="t('nav.recording')"></h2>
+                <div class="flex gap-2">
+                    {% if inquire_mode_enabled %}
+                    <a href="/inquire"
+                       class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm">
+                        <i class="fas fa-search"></i>
+                    </a>
+                    {% endif %}
+                    <button @click="switchToUploadView"
+                            class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
+                        <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search and Sort Controls -->
+            <div class="space-y-3">
+                <!-- Filter Toggle Button -->
+                <div class="flex items-center space-x-2">
+                    <button @click="showAdvancedFilters = !showAdvancedFilters"
+                            class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <span class="flex items-center">
+                            <i class="fas fa-filter mr-2 text-[var(--text-muted)]"></i>
+                            <span v-if="!searchQuery && filterTags.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery"
+                                  v-text="t('sidebar.searchRecordings')">
+                            </span>
+                            <span v-else class="text-[var(--text-accent)]">
+                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) })
+                            </span>
+                        </span>
+                        <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)]', showAdvancedFilters ? 'rotate-180' : '']"></i>
+                    </button>
+                    <button v-if="searchQuery || filterTags.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery"
+                            @click="clearAllFilters"
+                            class="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                            :title="t('buttons.clearAllFilters')">
+                        <i class="fas fa-times text-[var(--text-muted)]"></i>
+                    </button>
+                </div>
+
+                <!-- Advanced Filters Panel -->
+                <div v-show="showAdvancedFilters" class="p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg space-y-3">
+                    <!-- Text Search -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.filters')"></label>
+                        <div class="relative">
+                            <input v-model="filterTextQuery"
+                                   type="text"
+                                   :placeholder="t('sidebar.searchRecordings')"
+                                   class="w-full px-3 py-1.5 pl-8 pr-8 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <i class="fas fa-search absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] text-xs"></i>
+                            <button v-if="filterTextQuery"
+                                    @click="filterTextQuery = ''"
+                                    class="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs"
+                                    :title="t('buttons.clearSearchText')">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tag Filter -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('tags.filterByTag')"></label>
+                        <div class="flex flex-wrap gap-1.5">
+                            <button v-for="tag in availableTags"
+                                    :key="tag.id"
+                                    @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                                    :class="[
+                                        'px-2 py-1 rounded-full text-xs font-medium transition-all',
+                                        filterTags.includes(tag.id)
+                                            ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]'
+                                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
+                                    ]">
+                                <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                ${ tag.name }
+                            </button>
+                        </div>
+                        <p v-if="availableTags.length === 0" class="text-xs text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
+                    </div>
+
+                    <!-- Date Filter -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('sidebar.dateRange')"></label>
+                        <div class="grid grid-cols-3 gap-1.5 mb-2">
+                            <button v-for="preset in datePresetOptions"
+                                    :key="preset.value"
+                                    @click="filterDatePreset = filterDatePreset === preset.value ? '' : preset.value; filterDateRange = { start: '', end: '' }"
+                                    :class="[
+                                        'px-2 py-1 rounded-md text-xs transition-all',
+                                        filterDatePreset === preset.value
+                                            ? 'bg-[var(--bg-accent)] text-[var(--text-accent)]'
+                                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
+                                    ]"
+                                    :title="preset.label">
+                                ${ preset.label }
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <input v-model="filterDateRange.start"
+                                       @change="filterDatePreset = ''"
+                                       type="date"
+                                       class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
+                                       :placeholder="t('form.dateFrom')">
+                            </div>
+                            <div>
+                                <input v-model="filterDateRange.end"
+                                       @change="filterDatePreset = ''"
+                                       type="date"
+                                       class="w-full px-2 py-1 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]"
+                                       :placeholder="t('form.dateTo')">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compact Controls Row -->
+                <div class="flex items-center gap-1.5">
+                    <!-- Sort Toggle -->
+                    <button @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
+                            :class="[
+                                'flex-1 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
+                            ]"
+                            :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
+                        <i :class="['fas', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
+                        <span class="hidden sm:inline">Sort</span>
+                        <i class="fas fa-exchange-alt text-[var(--text-muted)] text-[10px]"></i>
+                    </button>
+
+                    <!-- Archived Toggle (only show when audio-only deletion mode is active) -->
+                    <button v-if="enableArchiveToggle" @click="showArchivedRecordings = !showArchivedRecordings"
+                            :class="[
+                                'flex-1 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                showArchivedRecordings
+                                    ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
+                                    : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
+                            ]"
+                            :title="t('sidebar.archivedRecordings')">
+                        <i class="fas fa-archive"></i>
+                        <span class="hidden sm:inline">Archived</span>
+                        <i :class="['fas text-[10px]', showArchivedRecordings ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
+                    </button>
+
+                    <!-- Shared Toggle -->
+                    <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
+                            :class="[
+                                'flex-1 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                showSharedWithMe
+                                    ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
+                                    : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
+                            ]"
+                            :title="t('sidebar.sharedWithMe')">
+                        <i class="fas fa-users"></i>
+                        <span class="hidden sm:inline">Shared</span>
+                        <i :class="['fas text-[10px]', showSharedWithMe ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recordings List -->
+        <div class="flex-1 overflow-y-auto p-4"
+             @scroll="(e) => {
+                const element = e.target;
+                const threshold = 100; // Load more when 100px from bottom
+                if (element.scrollHeight - element.scrollTop - element.clientHeight < threshold) {
+                    loadMoreRecordings();
+                }
+             }">
+            <div v-if="isLoadingRecordings && recordings.length === 0" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.loadingRecordings')"></p>
+            </div>
+
+            <div v-else-if="recordings.length === 0 && !isLoadingRecordings" class="text-center py-8">
+                <i class="fas fa-microphone-slash text-3xl text-[var(--text-muted)] mb-3"></i>
+                <p class="text-[var(--text-muted)]" v-text="t('sidebar.noRecordings')"></p>
+                <p v-if="searchQuery.trim()" class="text-sm text-[var(--text-muted)] mt-1">
+                    <span v-text="t('help.tryAdjustingSearch')"></span> <button @click="clearAllFilters()" class="text-[var(--text-accent)] hover:underline" v-text="t('help.clearFilters')"></button>
+                </p>
+            </div>
+
+            <div v-if="recordings.length > 0" class="space-y-2">
+                <div v-for="group in groupedRecordings" :key="group.title" class="mb-6">
+                    <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                        ${group.title}
+                    </h3>
+                    <div class="space-y-1">
+                        <div v-for="recording in group.items"
+                             :key="recording.id"
+                             @click="selectRecording(recording)"
+                             :class="[
+                                 'p-3 rounded-lg cursor-pointer transition-all duration-200 border-2',
+                                 selectedRecording?.id === recording.id
+                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
+                                     : recording.is_shared
+                                         ? 'bg-[var(--bg-secondary)] border-[var(--bg-tertiary)] hover:bg-[var(--bg-accent-hover)]'
+                                         : 'bg-[var(--bg-tertiary)] border-transparent hover:bg-[var(--bg-accent-hover)]'
+                             ]">
+                            <!-- Title and Status Row -->
+                            <div class="flex items-center justify-between mb-1">
+                                <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                                    ${ recording.title || t('common.untitled') }
+                                </h4>
+                                <div class="flex items-center gap-0.5 flex-shrink-0">
+                                    <!-- Combined sharing status badge -->
+                                    <span v-if="recording.is_shared || recording.has_group_tags || recording.shared_with_count > 0 || recording.public_share_count > 0"
+                                          class="inline-flex items-center justify-center gap-1 h-5 px-2 rounded-full text-[9px] leading-none bg-violet-100 dark:bg-violet-900/50 border border-violet-300 dark:border-violet-600"
+                                          :title="[
+                                              recording.is_shared ? t('sharing.sharedBy') + ' ' + (recording.owner_username || t('sharing.unknown')) : '',
+                                              recording.has_group_tags ? t('sharing.teamRecording') : '',
+                                              !recording.is_shared && recording.shared_with_count > 0 ? t('sharing.sharedWith') + ' ' + recording.shared_with_count + ' ' + t('sharing.users') : '',
+                                              !recording.is_shared && recording.public_share_count > 0 ? recording.public_share_count + ' ' + t('sharing.publicLinksGenerated') : ''
+                                          ].filter(s => s).join(' • ')">
+                                        <i v-if="recording.is_shared" class="fas fa-arrow-down text-purple-600 dark:text-purple-400"></i>
+                                        <i v-if="recording.has_group_tags" class="fas fa-users text-blue-600 dark:text-blue-400"></i>
+                                        <i v-if="!recording.is_shared && recording.shared_with_count > 0" class="fas fa-arrow-up text-indigo-600 dark:text-indigo-400"></i>
+                                        <i v-if="!recording.is_shared && recording.public_share_count > 0" class="fas fa-globe text-teal-600 dark:text-teal-400"></i>
+                                    </span>
+
+                                    <!-- Show Audio Deleted badge -->
+                                    <span v-if="recording.audio_deleted_at"
+                                          class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600"
+                                          :title="t('sidebar.archived')">
+                                        <i class="fas fa-file-audio text-gray-600 dark:text-gray-400"></i>
+                                    </span>
+
+                                    <!-- Show Failed status for failed recordings -->
+                                    <span v-if="recording.status === 'FAILED'"
+                                          class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                    </span>
+
+                                    <!-- Show Processing status for non-completed recordings -->
+                                    <span v-else-if="recording.status !== 'COMPLETED'"
+                                          :class="getStatusClass(recording.status)"
+                                          class="status-badge">
+                                        ${formatStatus(recording.status)}
+                                    </span>
+
+                                    <!-- For completed recordings, show highlight and inbox badges -->
+                                    <template v-else>
+                                        <span v-if="recording.is_highlighted"
+                                              @click.stop="toggleHighlight(recording)"
+                                              class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-amber-100 dark:bg-amber-900/50 border border-amber-400 dark:border-amber-600 cursor-pointer hover:bg-amber-200 dark:hover:bg-amber-800/50"
+                                              :title="t('sidebar.removeFromHighlighted')">
+                                            <i class="fas fa-star text-amber-600 dark:text-amber-400"></i>
+                                        </span>
+                                        <span v-if="recording.is_inbox"
+                                              @click.stop="toggleInbox(recording)"
+                                              class="inline-flex items-center justify-center h-5 px-1.5 rounded-full text-[9px] leading-none bg-blue-100 dark:bg-blue-900/50 border border-blue-400 dark:border-blue-600 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                                              :title="t('sidebar.markAsRead')">
+                                            <i class="fas fa-inbox text-blue-600 dark:text-blue-400"></i>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Date and Participants -->
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]">
+                                <!-- Date -->
+                                <div class="flex items-center flex-shrink-0">
+                                    <i class="fas fa-calendar-alt mr-1 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                                    ${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
+                                </div>
+
+                                <!-- Participants -->
+                                <div v-if="recording.participants" class="flex items-center min-w-0 flex-1">
+                                    <i class="fas fa-users mr-1 text-[var(--text-muted)] flex-shrink-0" style="font-size: 10px;"></i>
+                                    <span class="truncate">
+                                        ${recording.participants}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Tags -->
+                            <div v-if="getRecordingTags(recording).length > 0" class="flex flex-wrap gap-1 mt-1">
+                                <button v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id"
+                                        @click.stop="filterByTag(tag)"
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
+                                        :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                                        :title="tag.group_id ? ('Group: ' + tag.group_name) : ('Filter by ' + tag.name)">
+                                    <i v-if="tag.group_id" class="fas fa-users mr-1" style="font-size: 9px; vertical-align: middle; line-height: 0;"></i>
+                                    <span v-text="tag.name"></span>
+                                </button>
+                                <span v-if="getRecordingTags(recording).length > 4"
+                                      class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"
+                                      :title="getRecordingTags(recording).slice(4).map(t => t.name).join(', ')">
+                                    +${getRecordingTags(recording).length - 4}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Load More Indicator -->
+                <div v-if="isLoadingMore" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin text-lg text-[var(--text-muted)]"></i>
+                    <p class="text-sm text-[var(--text-muted)] mt-1" v-text="t('help.loadingMore')"></p>
+                </div>
+
+                <!-- End of Results Indicator -->
+                <div v-else-if="!hasNextPage && totalRecordings > 0" class="text-center py-4 text-xs text-[var(--text-muted)]">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    <span v-text="t('help.allRecordingsLoaded')"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</aside>

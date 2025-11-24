@@ -1,0 +1,100 @@
+<!-- ASR Editor Modal -->
+<div v-if="showAsrEditorModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click="closeAllSpeakerSuggestions" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-6xl flex flex-col max-h-[90vh]">
+        <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0 flex justify-between items-center">
+            <h3 class="text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.editAsrTranscription')"></h3>
+            <button @click="closeAsrEditorModal" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Audio Player Section -->
+        <div class="px-6 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
+            <div class="audio-player-container">
+                <!-- Show message if audio has been deleted -->
+                <div v-if="selectedRecording.audio_deleted_at"
+                     class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+                    <i class="fas fa-info-circle"></i>
+                    <span v-text="t('help.audioDeletedMessage')"></span>
+                </div>
+                <audio v-else ref="asrEditorAudio" controls class="w-full" :key="'asr-editor-' + selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        </div>
+
+        <div class="flex-grow overflow-y-auto custom-scrollbar" @scroll="closeAllSpeakerSuggestions">
+            <table class="min-w-full asr-editor-table border border-[var(--border-primary)]">
+                <thead class="sticky top-0 z-10">
+                    <tr class="text-xs uppercase text-[var(--text-muted)]">
+                        <th class="w-40 text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.speakerCount')"></th>
+                        <th class="w-20 text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.startTime')"></th>
+                        <th class="w-20 text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.endTime')"></th>
+                        <th class="text-left py-2 px-3 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]" v-text="t('help.sentence')"></th>
+                        <th class="w-24 text-center py-2 px-1 font-medium border border-[var(--border-primary)] bg-[var(--bg-tertiary)]"><span class="sr-only" v-text="t('help.actions')"></span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(segment, index) in editingSegments" :key="segment.id || index" class="hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]">
+                        <td class="border-r border-[var(--border-primary)] align-middle">
+                            <div class="relative h-full" :ref="'speakerDropdown' + index">
+                                <div class="flex items-center h-full">
+                                    <input type="text" v-model="segment.speaker"
+                                           @input="filterSpeakers(index); openSpeakerSuggestions(index)"
+                                           @focus="openSpeakerSuggestions(index)"
+                                           class="w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
+                                    <button type="button" @click.stop="openSpeakerSuggestions(index)"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Fixed position dropdown that can escape modal overflow -->
+                            <teleport to="body">
+                                <div v-if="segment.showSuggestions"
+                                     class="fixed z-[100] w-40 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                     :style="getDropdownPosition(index)">
+                                    <div v-for="speaker in segment.filteredSpeakers" :key="speaker" @mousedown.prevent="selectSpeaker(index, speaker)" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] text-sm">${speaker}</div>
+                                    <div @mousedown.prevent="openEditSpeakersModal" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-accent)] text-sm text-[var(--text-accent)] border-t border-[var(--border-primary)] flex items-center">
+                                        <i class="fas fa-user-edit mr-2"></i> <span v-text="t('buttons.editSpeakers')"></span>
+                                    </div>
+                                </div>
+                            </teleport>
+                        </td>
+                        <td class="border-r border-[var(--border-primary)] align-middle">
+                            <input type="number" step="0.01" v-model.number="segment.start_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                        </td>
+                        <td class="border-r border-[var(--border-primary)] align-middle">
+                            <input type="number" step="0.01" v-model.number="segment.end_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                        </td>
+                        <td class="border-r border-[var(--border-primary)] align-top">
+                            <textarea v-model="segment.sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none max-h-20 overflow-y-auto custom-scrollbar block" @input="autoResizeTextarea($event)"></textarea>
+                        </td>
+                        <td class="px-1 text-center align-middle">
+                            <div class="flex items-center justify-center gap-1">
+                                <button @click="seekToSegmentTime(segment.start_time)" class="p-1.5 rounded hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" :title="t('help.playFromHere')">
+                                    <i class="fas fa-play text-xs"></i>
+                                </button>
+                                <button @click="addSegmentBelow(index)" class="p-1.5 rounded hover:bg-green-600/20 text-[var(--text-muted)] hover:text-green-500 transition-colors" :title="t('help.addSegmentBelow')">
+                                    <i class="fas fa-plus text-xs"></i>
+                                </button>
+                                <button @click="removeSegment(index)" class="p-1.5 rounded hover:bg-red-600/20 text-[var(--text-muted)] hover:text-red-500 transition-colors" :title="t('help.deleteSegment')">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="py-4 flex justify-center">
+                <button @click="addSegment" class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] flex items-center text-sm">
+                    <i class="fas fa-plus mr-2"></i> <span v-text="t('buttons.addSegment')"></span>
+                </button>
+            </div>
+        </div>
+        <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
+            <button @click="closeAsrEditorModal" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
+            <button @click="saveAsrTranscription" class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)]" v-text="t('buttons.saveChanges')"></button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,46 @@
+<!-- Shares List Modal -->
+<div v-if="showSharesListModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="p-6 border-b border-[var(--border-primary)] flex justify-between items-center">
+            <h3 class="text-lg font-semibold" v-text="t('modal.sharedTranscripts')"></h3>
+            <button @click="closeSharesList" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-6 space-y-4 overflow-y-auto">
+            <div v-if="isLoadingShares" class="text-center">
+                <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+            </div>
+            <div v-else-if="userShares.length === 0" class="text-center text-[var(--text-muted)]">
+                <span v-text="t('sharedTranscripts.noSharedTranscripts')"></span>
+            </div>
+            <div v-else class="space-y-3">
+                <div v-for="share in userShares" :key="share.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-semibold">${share.recording_title}</p>
+                            <p class="text-sm text-[var(--text-muted)]">${ t('help.sharedOn') }: ${share.created_at}</p>
+                        </div>
+                        <button @click="confirmDeleteShare(share)" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div class="mt-4 flex items-center gap-4">
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" v-model="share.share_summary" @change="updateShare(share)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2" v-text="t('form.shareSummary')"></span>
+                        </label>
+                        <label class="flex items-center text-sm">
+                            <input type="checkbox" v-model="share.share_notes" @change="updateShare(share)" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2" v-text="t('form.shareNotes')"></span>
+                        </label>
+                    </div>
+                    <div class="mt-4 relative">
+                        <input :value="'{{ request.url_root }}share/' + share.public_id" :id="'share-link-' + share.id" readonly class="w-full px-3 py-2 pr-12 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-accent)]">
+                        <button @click="copyIndividualShareLink(share.id)" class="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)] transition-colors" :title="t('buttons.copy')">
+                            <i :class="copiedShareId === share.id ? 'fas fa-check' : 'fas fa-copy'" class="text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

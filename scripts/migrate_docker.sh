@@ -7,9 +7,9 @@ echo "🎯 Inquire Mode Manual Migration for Docker"
 echo "============================================="
 
 # Check if container is running
-if ! docker-compose ps | grep -q "speakr.*Up"; then
+if ! docker compose ps | grep -q "speakr.*Up"; then
     echo "❌ Speakr container is not running. Please start it first with:"
-    echo "   docker-compose up -d"
+    echo "   docker compose up -d"
     exit 1
 fi
 
@@ -19,7 +19,7 @@ echo ""
 echo "🔍 Checking how many recordings still need processing..."
 
 # First, do a dry run to see what would be processed
-docker-compose exec app python migrate_existing_recordings.py --dry-run
+docker compose exec app python migrate_existing_recordings.py --dry-run
 
 echo ""
 echo "⚠️  Do you want to proceed with processing these recordings?"
@@ -29,7 +29,7 @@ echo
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🚀 Starting migration..."
-    docker-compose exec app python migrate_existing_recordings.py --process --batch-size 5
+    docker compose exec app python migrate_existing_recordings.py --process --batch-size 5
     
     if [ $? -eq 0 ]; then
         echo "✅ Migration completed successfully!"

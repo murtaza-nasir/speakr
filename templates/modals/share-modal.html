@@ -1,0 +1,82 @@
+<!-- Share Modal -->
+<div v-if="showShareModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-[var(--border-primary)] flex justify-between items-center">
+            <h3 class="text-lg font-semibold" v-text="t('modal.shareRecording')"></h3>
+            <button @click="closeShareModal" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="px-6 py-4 space-y-3 overflow-y-auto flex-1">
+            <p class="text-xs text-[var(--text-muted)]" v-text="t('help.createPublicLink')"></p>
+
+            <!-- Share Options -->
+            <div class="flex items-center gap-3 mb-2">
+                <label class="flex items-center">
+                    <input type="checkbox" v-model="shareOptions.share_summary" id="share_summary" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span class="ml-2 text-xs" v-text="t('form.shareSummary')"></span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" v-model="shareOptions.share_notes" id="share_notes" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    <span class="ml-2 text-xs" v-text="t('form.shareNotes')"></span>
+                </label>
+            </div>
+
+            <!-- Create New Share Button -->
+            <button @click="createShare(true)" class="w-full px-3 py-2 bg-[var(--bg-accent)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium">
+                <i class="fas fa-plus-circle mr-1.5"></i>Create New Share Link
+            </button>
+
+            <!-- Loading State -->
+            <div v-if="isLoadingPublicShares" class="text-center py-8">
+                <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                <p class="mt-2 text-sm text-[var(--text-muted)]">Loading share links...</p>
+            </div>
+
+            <!-- Existing Shares List -->
+            <div v-else-if="recordingPublicShares.length > 0" class="space-y-2">
+                <h4 class="text-xs font-medium text-[var(--text-secondary)]">
+                    Existing Share Links (${recordingPublicShares.length})
+                </h4>
+                <div v-for="share in recordingPublicShares" :key="share.id" class="bg-[var(--bg-tertiary)] p-2.5 rounded-lg border border-[var(--border-primary)]">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <p class="text-xs text-[var(--text-muted)]">${ t('help.sharedOn') }: ${share.created_at}</p>
+                        </div>
+                        <button @click="confirmDeletePublicShare(share)" class="text-red-500 hover:text-red-700 p-1">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <label class="flex items-center text-xs">
+                            <input type="checkbox" v-model="share.share_summary" @change="updateShare(share)" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-1.5" v-text="t('form.shareSummary')"></span>
+                        </label>
+                        <label class="flex items-center text-xs">
+                            <input type="checkbox" v-model="share.share_notes" @change="updateShare(share)" class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-1.5" v-text="t('form.shareNotes')"></span>
+                        </label>
+                    </div>
+                    <div class="relative">
+                        <input :value="share.share_url" :id="'share-link-' + share.id" readonly class="w-full px-2 py-1.5 pr-10 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs font-mono">
+                        <button @click="copyPublicShareLinkWithFeedback(share.share_url, share.id)" class="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-7 flex items-center justify-center rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)] transition-colors" :title="t('buttons.copy')">
+                            <i :class="copiedShareId === share.id ? 'fas fa-check' : 'fas fa-copy'" class="text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Shares Yet -->
+            <div v-else-if="!isLoadingPublicShares" class="text-center py-8 text-[var(--text-muted)]">
+                <i class="fas fa-link text-3xl mb-2"></i>
+                <p v-text="t('sharedTranscripts.noSharedTranscripts')"></p>
+                <p class="text-xs mt-1">Click the button above to create one</p>
+            </div>
+        </div>
+        <div class="px-6 py-3 border-t border-[var(--border-primary)] flex justify-end">
+            <button @click="closeShareModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm font-medium">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
