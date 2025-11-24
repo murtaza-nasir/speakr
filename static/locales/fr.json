@@ -1025,6 +1025,17 @@
     "location": "Lieu",
     "attendees": "Participants"
   },
+  "pwa": {
+    "installApp": "Installer l'App",
+    "installing": "Installation...",
+    "installed": "Installé avec succès",
+    "updateAvailable": "Mise à jour disponible",
+    "offline": "Vous êtes hors ligne",
+    "screenAwake": "L'écran restera actif pendant l'enregistrement",
+    "screenAwakeFailed": "Impossible de garder l'écran actif",
+    "notificationPermissionDenied": "Permission de notification refusée",
+    "notificationsEnabled": "Notifications activées"
+  },
   "tooltips": {
     "copyTranscript": "Copier la transcription",
     "downloadTranscriptWithTemplate": "Télécharger la transcription avec modèle",

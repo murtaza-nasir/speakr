@@ -1173,6 +1173,17 @@
     "location": "地点",
     "attendees": "参与者"
   },
+  "pwa": {
+    "installApp": "安装应用",
+    "installing": "安装中...",
+    "installed": "安装成功",
+    "updateAvailable": "有可用更新",
+    "offline": "您处于离线状态",
+    "screenAwake": "录音时屏幕将保持唤醒",
+    "screenAwakeFailed": "无法保持屏幕唤醒",
+    "notificationPermissionDenied": "通知权限被拒绝",
+    "notificationsEnabled": "通知已启用"
+  },
   "tooltips": {
     "copyTranscript": "复制转录",
     "downloadTranscriptWithTemplate": "使用模板下载转录",

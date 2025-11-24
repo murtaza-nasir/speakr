@@ -1019,6 +1019,17 @@
     "location": "Ort",
     "attendees": "Teilnehmer"
   },
+  "pwa": {
+    "installApp": "App installieren",
+    "installing": "Installiere...",
+    "installed": "Erfolgreich installiert",
+    "updateAvailable": "Update verfügbar",
+    "offline": "Sie sind offline",
+    "screenAwake": "Bildschirm bleibt während der Aufnahme wach",
+    "screenAwakeFailed": "Bildschirm konnte nicht wach gehalten werden",
+    "notificationPermissionDenied": "Benachrichtigungsberechtigung verweigert",
+    "notificationsEnabled": "Benachrichtigungen aktiviert"
+  },
   "tooltips": {
     "copyTranscript": "Transkript kopieren",
     "downloadTranscriptWithTemplate": "Transkript mit Vorlage herunterladen",
