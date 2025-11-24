@@ -261,3 +261,99 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// Background sync for failed uploads
+self.addEventListener('sync', (event) => {
+  console.log('[Service Worker] Background sync triggered:', event.tag);
+
+  if (event.tag === 'sync-uploads') {
+    event.waitUntil(syncFailedUploads());
+  }
+});
+
+// Sync failed uploads from IndexedDB
+async function syncFailedUploads() {
+  console.log('[Service Worker] Syncing failed uploads');
+
+  try {
+    // Notify that sync is checking for failed uploads
+    await self.registration.showNotification('Speakr Upload Sync', {
+      body: 'Checking for failed uploads to retry...',
+      icon: '/static/img/icon-192x192.png',
+      badge: '/static/img/icon-192x192.png',
+      tag: 'upload-sync',
+      requireInteraction: false
+    });
+
+    // Future: Retrieve and retry failed uploads from IndexedDB
+    // This would require storing failed uploads in IndexedDB from the main app
+    // const db = await openIndexedDB();
+    // const failedUploads = await getFailedUploads(db);
+    // for (const upload of failedUploads) {
+    //     await retryUpload(upload);
+    // }
+
+    return Promise.resolve();
+  } catch (error) {
+    console.error('[Service Worker] Failed to sync uploads:', error);
+    return Promise.reject(error);
+  }
+}
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push notification received');
+
+  const options = {
+    icon: '/static/img/icon-192x192.png',
+    badge: '/static/img/icon-192x192.png',
+    vibrate: [200, 100, 200],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1
+    }
+  };
+
+  if (event.data) {
+    const data = event.data.json();
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Speakr Notification', {
+        body: data.body || 'You have a new notification',
+        ...options,
+        data: data
+      })
+    );
+  } else {
+    event.waitUntil(
+      self.registration.showNotification('Speakr Notification', {
+        body: 'You have a new notification',
+        ...options
+      })
+    );
+  }
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notification clicked:', event.notification.tag);
+  event.notification.close();
+
+  // Handle different notification types
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Check if there's already a window open
+        for (const client of clientList) {
+          if (client.url === urlToOpen && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If no window is open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
