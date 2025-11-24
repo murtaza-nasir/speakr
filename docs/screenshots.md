@@ -8,21 +8,28 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Filters.png" alt="Main Dashboard with Filters" />
-    <p class="caption">Main dashboard with advanced filtering options</p>
+    <img src="../assets/images/screenshots/Main view.png" alt="Main Dashboard" />
+    <p class="caption">Main dashboard with bubble chat interface</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main view no diarization.png" alt="Simple Transcription View" />
-    <p class="caption">Clean interface for simple transcriptions</p>
+    <img src="../assets/images/screenshots/filters-sidebar-expanded.png" alt="Expanded Filters" />
+    <p class="caption">Advanced filtering options in expanded sidebar</p>
   </div>
 </div>
 
 ### Multi-language Support
 
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/Multilingual.png" alt="Multi-language Interface" />
-  <p class="caption">Full internationalization with support for 5 languages</p>
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/ui-chinese.png" alt="Chinese UI" />
+    <p class="caption">Full interface in Chinese with language switching</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/multilingual-chinese.png" alt="Multilingual Chat" />
+    <p class="caption">AI chat and transcription translation in multiple languages</p>
+  </div>
 </div>
 
 ## Recording & Upload
@@ -31,13 +38,13 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/new recording view.png" alt="Recording Interface" />
+    <img src="../assets/images/screenshots/Recording interface.png" alt="Recording Interface" />
     <p class="caption">Upload or record audio directly in your browser</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/live recording view with notes.png" alt="Live Recording with Notes" />
-    <p class="caption">Take notes while recording in real-time</p>
+    <img src="../assets/images/screenshots/upload-interface.png" alt="File Upload Interface" />
+    <p class="caption">Multi-file drag and drop with advanced options and tag selection</p>
   </div>
 </div>
 
@@ -45,35 +52,61 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/record from tab.png" alt="Record from Tab" />
-    <p class="caption">Record audio from a specific browser tab</p>
+    <img src="../assets/images/screenshots/recording-dual-source.png" alt="Dual Source Recording" />
+    <p class="caption">Record both system audio and microphone simultaneously</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/record from screen.png" alt="Record from Screen" />
-    <p class="caption">Capture system audio while screen sharing</p>
+    <img src="../assets/images/screenshots/recording-single-source.png" alt="Single Source Recording" />
+    <p class="caption">Single source recording with real-time notes</p>
   </div>
 </div>
 
 ### Post-Recording
 
 <div class="screenshot-item">
-  <img src="../assets/images/screenshots/after recording, finalize tags and settings and notes before uploading or discard.png" alt="Post-Recording Options" />
+  <img src="../assets/images/screenshots/recording-upload-modal.png" alt="Post-Recording Options" />
   <p class="caption">Add tags, notes, and configure settings before processing</p>
 </div>
 
 ## Transcription Features
 
+### Interactive Audio Synchronization
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/audio-sync-simple-view.png" alt="Audio Sync Simple View" />
+    <p class="caption">Real-time transcript highlighting in simple view with auto-scroll follow mode</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/audio-sync-bubble-view.png" alt="Audio Sync Bubble View" />
+    <p class="caption">Interactive audio-transcript synchronization in bubble view</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/highlighted-transcript-following-simple-light.png" alt="Follow Mode Light Theme" />
+    <p class="caption">Auto-scroll follow mode in light theme - click any text to jump to that point in audio</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/highlighted-transcript-following-simple-dark.png" alt="Follow Mode Dark Theme" />
+    <p class="caption">Follow mode in dark theme with active segment highlighting</p>
+  </div>
+</div>
+
 ### Transcription Views
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/recording view with simple transcription view and chat visible.png" alt="Transcription with Chat" />
-    <p class="caption">Simple transcription view with AI chat panel</p>
+    <img src="../assets/images/screenshots/main-view-with-speakers.png" alt="Transcription with Speakers" />
+    <p class="caption">Transcription with identified speakers and metadata</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Summary View.png" alt="Summary View" />
+    <img src="../assets/images/screenshots/main-view-summary-tab.png" alt="Summary View" />
     <p class="caption">AI-generated summary with key points</p>
   </div>
 </div>
@@ -82,12 +115,12 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/speaker id modal.png" alt="Speaker Identification" />
-    <p class="caption">Identify and label speakers in your recordings</p>
+    <img src="../assets/images/screenshots/speaker-identification-voice-profiles.png" alt="Voice Profile Speaker Identification" />
+    <p class="caption">AI-powered speaker identification with voice profile suggestions and confidence scores</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/edit transcript with ASR.png" alt="ASR Transcript Editor" />
+    <img src="../assets/images/screenshots/edit-transcription-modal.png" alt="ASR Transcript Editor" />
     <p class="caption">Advanced segment-based editor for ASR transcriptions</p>
   </div>
 </div>
@@ -98,12 +131,12 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/chat view with question.png" alt="AI Chat Interface" />
-    <p class="caption">Ask questions about your recordings and get intelligent answers</p>
+    <img src="../assets/images/screenshots/chat-interface.png" alt="AI Chat Interface" />
+    <p class="caption">Ask questions about your recordings with expanded chat view</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/notes tab.png" alt="Notes Tab" />
+    <img src="../assets/images/screenshots/main-view-notes-tab.png" alt="Notes Tab" />
     <p class="caption">Organize your thoughts with markdown notes</p>
   </div>
 </div>
@@ -112,18 +145,18 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/inquire mode.png" alt="Inquire Mode Search" />
+    <img src="../assets/images/screenshots/Inquire mode.png" alt="Inquire Mode Search" />
     <p class="caption">Semantic search across all your recordings</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/inquire mode 2.png" alt="Inquire Mode Results" />
-    <p class="caption">Natural language search with contextual results</p>
+    <img src="../assets/images/screenshots/inquire-dark-mode.png" alt="Inquire Mode Dark" />
+    <p class="caption">Inquire mode with dark theme</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/iinquire mode contextual searches.png" alt="Contextual Search Results" />
-    <p class="caption">Find relevant content across multiple recordings</p>
+    <img src="../assets/images/screenshots/chat-chinese.png" alt="Multilingual Inquire" />
+    <p class="caption">Chat and inquire in multiple languages</p>
   </div>
 </div>
 
@@ -133,13 +166,13 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/tag selection and stacking.png" alt="Tag Selection" />
-    <p class="caption">Multi-tag selection with intelligent prompt stacking</p>
+    <img src="../assets/images/screenshots/edit-tags.png" alt="Edit Tags" />
+    <p class="caption">Edit and organize tags for recordings</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/settings Tags that allow custom prompts stackable and custom asr settings.png" alt="Tag Management" />
-    <p class="caption">Create tags with custom AI prompts and ASR settings</p>
+    <img src="../assets/images/screenshots/tag-management-enhanced-badges.png" alt="Enhanced Tag Management" />
+    <p class="caption">Comprehensive tag management with visual badges for retention policies, sharing settings, and custom prompts</p>
   </div>
 </div>
 
@@ -163,12 +196,12 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/share recording modal.png" alt="Share Modal" />
+    <img src="../assets/images/screenshots/Share modal.png" alt="Share Modal" />
     <p class="caption">Generate secure share links with customizable permissions</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/shared recording.png" alt="Shared Recording View" />
+    <img src="../assets/images/screenshots/Share link.png" alt="Shared Recording View" />
     <p class="caption">Clean public view for shared recordings</p>
   </div>
 </div>
@@ -177,14 +210,42 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/shared transcript modal.png" alt="Manage Shares" />
-    <p class="caption">Control and revoke shared links</p>
+    <img src="../assets/images/screenshots/share-notes-view.png" alt="Shared Notes View" />
+    <p class="caption">Public notes view for shared recordings</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/settings shared transcripts.png" alt="Shared Transcripts Settings" />
-    <p class="caption">Overview of all your shared recordings</p>
+    <img src="../assets/images/screenshots/share-summary-view.png" alt="Shared Summary View" />
+    <p class="caption">Summary view of shared recordings</p>
   </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/share-translated.png" alt="Shared Translated Recording" />
+    <p class="caption">Shared recording with AI translation</p>
+  </div>
+</div>
+
+## Content Creation & Editing
+
+### Markdown Editor
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/markdown-editor.png" alt="Markdown Editor" />
+    <p class="caption">Rich markdown editor for notes and summaries</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/markdown-editor-fullscreen.png" alt="Fullscreen Markdown Editor" />
+    <p class="caption">Fullscreen markdown editor with side-by-side preview</p>
+  </div>
+</div>
+
+### Template Export
+
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/template-selector.png" alt="Template Selector" />
+  <p class="caption">Select templates for downloading transcripts in various formats</p>
 </div>
 
 ## User Settings
@@ -196,27 +257,53 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
     <img src="../assets/images/screenshots/settings account info.png" alt="Account Settings" />
     <p class="caption">Personal information and language preferences</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/settings custom prompts.png" alt="Custom Prompts" />
-    <p class="caption">Configure personal AI summarization prompts</p>
+    <img src="../assets/images/screenshots/settings-create-tag-modal.png" alt="Create Tag" />
+    <p class="caption">Create custom tags with specific processing options</p>
   </div>
 </div>
 
 ### Speaker Management
 
 <div class="screenshot-item">
-  <img src="../assets/images/screenshots/settings speakr management.png" alt="Speaker Management" />
-  <p class="caption">Manage your speaker library with usage statistics</p>
+  <img src="../assets/images/screenshots/speakers-management-voice-profiles.png" alt="Enhanced Speaker Management" />
+  <p class="caption">Manage your speaker library with voice profile statistics, confidence scores, and voice sample playback</p>
 </div>
 
 ## Admin Features
 
 ### User Management
 
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/Admin dashboard.png" alt="Admin Dashboard" />
-  <p class="caption">Manage users and monitor system usage</p>
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/Admin dashboard.png" alt="Admin Dashboard" />
+    <p class="caption">Manage users and monitor system usage</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-user-groups.png" alt="User Groups" />
+    <p class="caption">Manage user groups and permissions</p>
+  </div>
+</div>
+
+### Group Management
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-edit-group-modal.png" alt="Edit Group" />
+    <p class="caption">Edit group settings and properties</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-manage-group-modal.png" alt="Manage Group Members" />
+    <p class="caption">Manage group members and permissions</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-manage-group-tags.png" alt="Manage Group Tags" />
+    <p class="caption">Configure tags for specific user groups</p>
+  </div>
 </div>
 
 ### System Configuration
@@ -251,13 +338,13 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/full recording reprocessing.png" alt="Full Reprocessing" />
-    <p class="caption">Reprocess recordings with updated settings</p>
+    <img src="../assets/images/screenshots/processing-tooltip.png" alt="Processing Tooltip" />
+    <p class="caption">View transcription and summary processing times</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/summary reprocessing modal.png" alt="Summary Reprocessing" />
-    <p class="caption">Regenerate summaries with new prompts</p>
+    <img src="../assets/images/screenshots/archived-recording.png" alt="Archived Recording" />
+    <p class="caption">Archived recordings are marked in sidebar with no audio playback</p>
   </div>
 </div>
 

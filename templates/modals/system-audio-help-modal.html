@@ -1,0 +1,47 @@
+<!-- System Audio Help Modal -->
+<div v-if="showSystemAudioHelp" @click="showSystemAudioHelp = false" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+        <div class="p-6 border-b border-[var(--border-primary)]">
+            <h3 class="text-lg font-semibold" v-text="t('help.systemAudioHelp')"></h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
+                    <div>
+                        <p class="font-medium text-blue-800 dark:text-blue-300 mb-2">Browser Compatibility</p>
+                        <p class="text-sm text-blue-700 dark:text-blue-400">
+                            System audio recording requires a Chromium-based browser (Chrome, Edge, Brave) and is not supported on mobile devices.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="font-medium mb-2">How to record system audio:</h4>
+                <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
+                    <li>Click "System Audio" or "Mic + System" button</li>
+                    <li>A screen sharing dialog will appear</li>
+                    <li>Select a Chrome tab or entire screen</li>
+                    <li>Make sure "Share audio" checkbox is enabled</li>
+                    <li>Click "Share" to start recording</li>
+                </ol>
+            </div>
+
+            <div>
+                <h4 class="font-medium mb-2">Troubleshooting:</h4>
+                <ul class="list-disc list-inside space-y-1 text-sm text-[var(--text-muted)]">
+                    <li>Ensure you're using Chrome, Edge, or Brave</li>
+                    <li>Check that "Share audio" option is visible and enabled</li>
+                    <li>Some content may have DRM protection that blocks recording</li>
+                    <li>Firefox and Safari do not support this feature</li>
+                </ul>
+            </div>
+        </div>
+        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end">
+            <button @click="showSystemAudioHelp = false" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                Got it
+            </button>
+        </div>
+    </div>
+</div>

@@ -41,11 +41,18 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   
   <div class="guide-card">
     <div class="card-icon">🔗</div>
-    <h3>Sharing Recordings</h3>
-    <p>Create secure share links for recordings with control over what content is visible.</p>
+    <h3>Sharing & Collaboration</h3>
+    <p>Share recordings internally with colleagues or create public links for external stakeholders.</p>
     <a href="sharing" class="card-link">Share Content →</a>
   </div>
-  
+
+  <div class="guide-card">
+    <div class="card-icon">👥</div>
+    <h3>Group Collaboration</h3>
+    <p>Work with groups using auto-sharing tags and organized group access to recordings.</p>
+    <a href="groups" class="card-link">Collaborate with Groups →</a>
+  </div>
+
   <div class="guide-card">
     <div class="card-icon">⚙️</div>
     <h3>Account Settings</h3>

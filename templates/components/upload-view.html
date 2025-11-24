@@ -1,0 +1,275 @@
+<!-- Upload View -->
+<div v-if="currentView === 'upload'" class="flex-1 flex items-center justify-center p-4 md:p-8 overflow-y-auto">
+    <div class="max-w-lg w-full my-auto">
+        <!-- Compact Header -->
+        <div class="text-center mb-3">
+            <h2 class="text-lg font-semibold flex items-center justify-center gap-2">
+                <i class="fas fa-microphone text-[var(--text-accent)]"></i>
+                <span v-text="t('upload.title')"></span>
+            </h2>
+        </div>
+
+        <div class="bg-[var(--bg-secondary)] p-4 md:p-6 rounded-xl border border-[var(--border-primary)]">
+            <!-- File Upload Area -->
+            <div @drop="handleDrop" @dragover="handleDragOver" @dragleave="handleDragLeave" @click="$refs.fileInput.click()"
+                 :class="['border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-300', dragover ? 'border-[var(--border-accent)] bg-[var(--bg-accent)]' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]']">
+                <i class="fas fa-cloud-upload-alt text-2xl text-[var(--text-muted)] mb-2"></i>
+                <p class="text-sm text-[var(--text-secondary)] mb-1" v-text="t('upload.dropzone')"></p>
+                <p class="text-xs text-[var(--text-muted)]" v-text="t('upload.supportedFormats')"></p>
+            </div>
+            <input ref="fileInput" type="file" @change="handleFileSelect" accept="audio/*,video/mp4,video/quicktime,video/x-msvideo,video/webm,.mp4,.mov,.avi,.mkv,.webm" multiple class="hidden">
+
+            <!-- Queued Files Display -->
+            <div v-if="pendingQueueFiles.length > 0" class="mt-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <h4 class="text-xs font-medium text-[var(--text-secondary)]">
+                        <i class="fas fa-list mr-1"></i>
+                        Files to Upload (${pendingQueueFiles.length})
+                    </h4>
+                </div>
+                <div class="space-y-1 max-h-32 overflow-y-auto">
+                    <div v-for="item in pendingQueueFiles" :key="item.clientId"
+                         class="flex items-center justify-between px-2 py-1.5 bg-[var(--bg-tertiary)] rounded border border-[var(--border-secondary)]">
+                        <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                            <i class="fas fa-file-audio text-[var(--text-muted)] text-xs"></i>
+                            <span class="text-xs text-[var(--text-primary)] truncate">${item.file.name}</span>
+                            <span class="text-[10px] text-[var(--text-muted)] flex-shrink-0">(${formatFileSize(item.file.size)})</span>
+                        </div>
+                        <button @click="removeFromQueue(item.clientId)"
+                                class="ml-1.5 p-0.5 text-[var(--text-muted)] hover:text-red-500 transition-colors flex-shrink-0"
+                                title="Remove from queue">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Upload Button -->
+                <button @click="startUpload"
+                        class="w-full mt-2 px-4 py-2.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2 font-medium text-sm">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Upload ${pendingQueueFiles.length} File${pendingQueueFiles.length !== 1 ? 's' : ''}</span>
+                </button>
+            </div>
+
+            <!-- Divider (hidden when files are selected) -->
+            <div v-if="pendingQueueFiles.length === 0" class="my-4 flex items-center">
+                <div class="flex-grow border-t border-[var(--border-secondary)]"></div>
+                <span class="flex-shrink mx-3 text-[10px] text-[var(--text-muted)] uppercase" v-text="t('common.or')"></span>
+                <div class="flex-grow border-t border-[var(--border-secondary)]"></div>
+            </div>
+
+            <!-- Audio Recording Options (hidden when files are selected) -->
+            <div v-if="pendingQueueFiles.length === 0" class="space-y-2">
+                <h3 class="text-xs font-medium text-[var(--text-secondary)] text-center" v-text="t('recording.title')"></h3>
+
+                <!-- Microphone Recording -->
+                <button @click="startRecording('microphone')"
+                        class="w-full px-3 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm">
+                    <i class="fas fa-microphone"></i>
+                    <span v-text="t('recording.microphone')"></span>
+                </button>
+
+                <!-- System Audio and Both - Side by Side -->
+                <div v-if="canRecordSystemAudio" class="grid grid-cols-2 gap-2">
+                    <!-- System Audio Recording -->
+                    <button @click="startRecording('system')"
+                            class="px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-sm">
+                        <i class="fas fa-desktop"></i>
+                        <span v-text="t('recording.systemAudio')"></span>
+                    </button>
+
+                    <!-- Both Audio Sources -->
+                    <button @click="startRecording('both')"
+                            class="px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1 text-sm">
+                        <i class="fas fa-microphone"></i>
+                        <i class="fas fa-desktop"></i>
+                        <span class="hidden sm:inline" v-text="t('recording.microphoneAndSystem')"></span>
+                        <span class="sm:hidden">Mic + Sys</span>
+                    </button>
+                </div>
+
+                <!-- Help Text - Compact -->
+                <div class="text-[10px] text-[var(--text-muted)] space-y-0.5 mt-2">
+                    <div class="flex items-center justify-between">
+                        <span><strong v-text="t('recording.microphone') + ':'"></strong> <span v-text="t('help.microphoneDesc')"></span></span>
+                        <i class="fas fa-microphone text-red-500 flex-shrink-0 ml-1"></i>
+                    </div>
+                    <div v-if="canRecordSystemAudio" class="flex items-center justify-between">
+                        <span><strong v-text="t('recording.systemAudio') + ':'"></strong> <span v-text="t('help.systemAudioDesc')"></span></span>
+                        <i class="fas fa-desktop text-blue-500 flex-shrink-0 ml-1"></i>
+                    </div>
+                    <div v-if="canRecordSystemAudio" class="flex items-center justify-between">
+                        <span><strong v-text="t('recording.microphoneAndSystem') + ':'"></strong> <span v-text="t('help.bothAudioDesc')"></span></span>
+                        <div class="flex items-center gap-0.5 flex-shrink-0 ml-1">
+                            <i class="fas fa-microphone text-purple-500"></i>
+                            <i class="fas fa-desktop text-purple-500"></i>
+                        </div>
+                    </div>
+                    <div v-if="!canRecordSystemAudio" class="text-amber-600 dark:text-amber-400">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        ${ t('recording.systemAudioNotSupported') }
+                        <button @click="showSystemAudioHelp = true" class="ml-1 text-blue-500 hover:text-blue-600 underline">
+                            <span v-text="t('buttons.help')"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tag Selection -->
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                    <i class="fas fa-tags mr-1 text-[var(--text-muted)]"></i>
+                    ${ t('tags.title') }
+                </label>
+
+                <!-- Selected Tags Display - Compact -->
+                <div v-if="selectedTags.length > 0" class="mb-2">
+                    <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto">
+                        <div class="flex flex-wrap gap-1">
+                            <span v-for="(tag, index) in selectedTags" :key="tag.id"
+                                  class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium cursor-help"
+                                  :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                                  :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                                <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
+                                <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
+                                <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>
+                                <span>${tag.name}</span>
+                                <button @click="removeTagFromSelection(tag.id)"
+                                        class="ml-1 hover:opacity-100 opacity-70">
+                                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
+                        <i class="fas fa-info-circle mr-0.5" style="font-size: 9px;"></i>
+                        Tags ordered by priority
+                    </p>
+                </div>
+
+                <!-- Tag Selection Container - Compact -->
+                <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0"
+                     class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
+                    <!-- Search Filter (always visible if tags available) -->
+                    <div class="mb-1.5">
+                        <div class="relative">
+                            <input v-model="uploadTagSearchFilter"
+                                   type="text"
+                                   :placeholder="t('tagsModal.searchTags')"
+                                   class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                            <button v-if="uploadTagSearchFilter"
+                                    @click="uploadTagSearchFilter = ''"
+                                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                <i class="fas fa-times" style="font-size: 9px;"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Available Tags Grid - Fixed Height -->
+                    <div v-if="filteredAvailableTagsForUpload.length > 0"
+                         class="overflow-y-auto"
+                         style="max-height: 100px;">
+                        <div class="grid grid-cols-2 gap-1">
+                            <button v-for="tag in filteredAvailableTagsForUpload"
+                                    :key="tag.id"
+                                    @click="addTagToSelection(tag.id)"
+                                    class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
+                                <div class="flex items-center gap-1 min-w-0">
+                                    <i v-if="tag.group_id" class="fas fa-users flex-shrink-0" style="font-size: 9px;" :style="{ color: tag.color || '#6B7280' }"></i>
+                                    <span v-else class="w-2 h-2 rounded-full flex-shrink-0"
+                                          :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                    <span class="text-[11px] text-[var(--text-primary)] truncate">
+                                        <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>${tag.name}
+                                    </span>
+                                </div>
+                                <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div v-else class="py-2 text-center">
+                        <p class="text-[11px] text-[var(--text-muted)]">
+                            <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
+                            No matching tags
+                        </p>
+                    </div>
+                </div>
+                <!-- Empty States -->
+                <div v-else-if="availableTags.length === 0"
+                     class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                    <p class="text-xs text-[var(--text-muted)] text-center">
+                        <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
+                        <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
+                    </p>
+                </div>
+                <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                    <p class="text-xs text-[var(--text-muted)] text-center">
+                        <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
+                        All tags selected
+                    </p>
+                </div>
+
+                <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+                    <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                    Selected tags include custom summary prompts
+                </p>
+                <p v-if="selectedTags.length > 0 && useAsrEndpoint && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
+                   class="text-xs text-[var(--text-muted)] mt-1">
+                    <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+                    First tag's ASR settings will be applied: ${selectedTags[0].name}
+                </p>
+            </div>
+
+            <!-- Advanced Options for ASR (collapsible) -->
+            <div v-if="useAsrEndpoint" class="mt-4">
+                <button @click="showAdvancedOptions = !showAdvancedOptions"
+                        class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                    <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                        <i class="fas fa-cog text-[var(--text-muted)]"></i>
+                        <span v-text="t('help.advancedAsrOptions')"></span>
+                    </span>
+                    <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                </button>
+
+                <div v-show="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3 border border-[var(--border-secondary)]">
+                    <!-- Language Selection -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                            Transcription Language
+                        </label>
+                        <select v-model="uploadLanguage"
+                                class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
+                        </select>
+                    </div>
+
+                    <!-- Speaker Settings -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
+                            </label>
+                            <input v-model.number="uploadMinSpeakers"
+                                   type="number"
+                                   min="1"
+                                   max="20"
+                                   class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
+                            </label>
+                            <input v-model.number="uploadMaxSpeakers"
+                                   type="number"
+                                   min="1"
+                                   max="20"
+                                   class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-[var(--text-muted)] pt-1">
+                        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                        Settings apply to all files in this session
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

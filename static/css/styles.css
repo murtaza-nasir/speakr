@@ -429,20 +429,25 @@ main {
 }
 .summary-box,
 .notes-box {
-    flex: 1; /* Take up available space in content-box */
-    min-height: 0; /* Critical for flex shrinking */
-    max-height: 100%; /* Prevent expansion beyond parent */
-    overflow-y: auto; /* Enable vertical scrolling */
-    overflow-x: auto; /* Enable horizontal scrolling for wide content like tables */
-    /* Keep existing styling */
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
     background-color: var(--bg-tertiary);
     padding: 1rem;
     border-radius: 0.75rem;
     border: 1px solid var(--border-primary);
-    /* Fix scrollbar clipping rounded corners */
     scrollbar-gutter: stable;
     color: var(--text-secondary);
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    display: block !important;
 }
 
 .transcription-box {
@@ -632,6 +637,25 @@ div[v-if="!editingNotes"] {
     align-items: center;
     justify-content: center;
  }
+
+ /* Desktop only: match height of toggle buttons when icon-only */
+ @media (min-width: 1024px) {
+    #leftMainColumn .view-mode-toggle {
+        height: 1.75rem;
+    }
+    #leftMainColumn .toggle-button {
+        height: 1.75rem;
+        padding-top: 0;
+        padding-bottom: 0;
+        line-height: 1;
+    }
+    #leftMainColumn .copy-btn {
+        height: 1.75rem;
+        padding-top: 0;
+        padding-bottom: 0;
+        line-height: 1;
+    }
+ }
  
  .copy-btn:hover {
      background-color: var(--bg-accent-hover);
@@ -764,6 +788,16 @@ div[v-if="!editingNotes"] {
  
  .ai-message p, .summary-box p, .notes-box p {
      margin-bottom: 0.75rem;
+     width: 100% !important;
+     max-width: 100% !important;
+     word-wrap: break-word;
+     overflow-wrap: break-word;
+ }
+
+ .summary-box > *, .notes-box > * {
+     width: 100% !important;
+     max-width: 100% !important;
+     display: block;
  }
  
  .ai-message ul, .ai-message ol,
@@ -815,6 +849,13 @@ div[v-if="!editingNotes"] {
      overflow-wrap: break-word;
  }
  
+ /* Wrap tables in scrollable container */
+ .summary-box > table, .notes-box > table {
+     display: block;
+     width: 100%;
+     overflow-x: auto;
+ }
+
  .ai-message table, .summary-box table, .notes-box table {
      border-collapse: collapse;
      width: 100%;
@@ -1292,6 +1333,7 @@ body {
     padding: 0.5rem 0.75rem;
     border-radius: 0.75rem;
     max-width: fit-content;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
     min-width: fit-content;
     width: auto;
     word-wrap: break-word;
@@ -1424,6 +1466,125 @@ body {
 
 .speaker-segment {
     margin-bottom: 1rem;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Active segment highlighting - for currently playing transcript */
+.speaker-segment.active-playing-segment,
+.transcript-segment.active-playing-segment {
+    background-color: var(--bg-accent) !important;
+    box-shadow: 0 0 0 2px var(--border-accent) !important;
+    animation: pulse-highlight 0.5s ease-in-out;
+    padding: 0.75rem !important;
+    margin: 0.25rem 0 !important;
+    border-radius: 0.5rem !important;
+}
+
+.speaker-bubble.active-playing-segment {
+    background-color: var(--bg-accent) !important;
+    box-shadow: 0 0 0 2px var(--border-accent) !important;
+    animation: pulse-highlight 0.5s ease-in-out;
+    transform: scale(1.02);
+}
+
+@keyframes pulse-highlight {
+    0% {
+        box-shadow: 0 0 0 0 var(--border-accent);
+    }
+    50% {
+        box-shadow: 0 0 0 4px var(--border-accent);
+    }
+    100% {
+        box-shadow: 0 0 0 2px var(--border-accent);
+    }
+}
+
+/* Follow Player Mode Checkbox Styling */
+.follow-player-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.follow-player-control:hover {
+    background-color: var(--bg-accent-hover);
+}
+
+.follow-player-control input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border-secondary);
+    border-radius: 0.25rem;
+    background-color: var(--bg-input);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.follow-player-control input[type="checkbox"]:hover {
+    border-color: var(--border-accent);
+}
+
+.follow-player-control input[type="checkbox"]:checked {
+    background-color: var(--bg-button);
+    border-color: var(--bg-button);
+    animation: checkboxPop 0.2s ease-out;
+}
+
+.follow-player-control input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3.5px;
+    height: 7px;
+    border: solid var(--text-button);
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -60%) rotate(45deg);
+    animation: checkmarkDraw 0.2s ease-out;
+}
+
+@keyframes checkboxPop {
+    0% {
+        transform: scale(0.8);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes checkmarkDraw {
+    0% {
+        width: 0;
+        height: 0;
+        opacity: 0;
+    }
+    100% {
+        width: 3.5px;
+        height: 7px;
+        opacity: 1;
+    }
+}
+
+.follow-player-control .follow-icon {
+    font-size: 11px;
+    flex-shrink: 0;
+    opacity: 0.85;
+}
+
+.follow-player-control:hover .follow-icon {
+    opacity: 1;
 }
 
 .speaker-tablet {
@@ -1448,12 +1609,13 @@ body {
 /* View mode toggle - compact tablet style */
 .view-mode-toggle {
     display: inline-flex;
-    align-items: center;
+    align-items: stretch;
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-primary);
     border-radius: 0.5rem;
     padding: 0;
     gap: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .toggle-button {
@@ -1471,13 +1633,12 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    height: 100%;
 }
 
 .toggle-button.active {
     background-color: var(--bg-accent);
     color: var(--text-accent);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .toggle-button:hover:not(.active) {
@@ -1772,6 +1933,48 @@ body {
         color: var(--text-secondary);
         min-height: 0;
     }
+
+    /* Remove inner box styling for summary and notes on mobile */
+    .mobile-content-box .summary-box,
+    .mobile-content-box .notes-box {
+        background-color: transparent;
+        border: none;
+        padding: 0;
+        border-radius: 0;
+        height: auto;
+    }
+
+    /* Remove padding from mobile-content-box when it contains markdown editor */
+    .mobile-content-box:has(.markdown-editor-container) {
+        padding: 0;
+        overflow: hidden; /* Ensure rounded corners are respected */
+    }
+
+    /* Make editor fill the rounded container properly */
+    .mobile-content-box .markdown-editor-container {
+        height: 100%;
+    }
+
+    .mobile-content-box .markdown-editor-container .EasyMDEContainer {
+        border: none !important;
+        border-radius: 0.75rem;
+        height: 100%;
+    }
+
+    .mobile-content-box .markdown-editor-container .EasyMDEContainer .editor-toolbar {
+        border: none !important;
+        border-radius: 0.75rem 0.75rem 0 0;
+        border-bottom: 1px solid var(--border-primary) !important;
+    }
+
+    .mobile-content-box .markdown-editor-container .EasyMDEContainer .CodeMirror {
+        border: none !important;
+        border-radius: 0 0 0.75rem 0.75rem;
+    }
+
+    .mobile-content-box .markdown-editor-container .EasyMDEContainer .CodeMirror-scroll {
+        border-radius: 0 0 0.75rem 0.75rem;
+    }
     
     /* Mobile chat layout */
     .mobile-chat-content {
@@ -2010,6 +2213,29 @@ body {
 
 .toast i {
     flex-shrink: 0;
+}
+
+/* Toast message stacking with fly-in animation */
+.toast-message {
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    pointer-events: auto;
+    transform: translateX(400px);
+    margin-bottom: 0.5rem;
+    display: block !important;
+    max-width: 450px;
+    word-wrap: break-word;
+    /* All other styles handled by Tailwind classes */
+}
+
+.toast-message.toast-show {
+    transform: translateX(0);
+}
+
+#toastContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    max-width: 450px;
 }
 
 /* Discrete horizontal resize divider */
@@ -2568,9 +2794,43 @@ body {
 }
 
 .asr-editor-table td {
-    padding: 0.25rem; /* Reduced padding */
+    padding: 0; /* No padding - let inputs fill the cell */
     vertical-align: middle;
-    border: 1px solid var(--border-primary);
+    border: 1px solid var(--border-secondary);
+}
+
+/* More visible borders in dark mode */
+.dark .asr-editor-table,
+.dark .asr-editor-table th,
+.dark .asr-editor-table td {
+    border-color: rgba(148, 163, 184, 0.3); /* slate-400 with opacity for visibility */
+}
+
+/* ASR Editor inputs - blend into table cells */
+.asr-editor-table input,
+.asr-editor-table textarea {
+    border-radius: 0 !important; /* Override global rounded corners */
+    margin: 0;
+    display: block;
+    min-height: 100%;
+}
+
+.asr-editor-table textarea {
+    vertical-align: top;
+    min-height: 2.5rem; /* Minimum height for single line */
+    line-height: 1.5;
+}
+
+/* Sticky header for ASR editor table */
+.asr-editor-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.asr-editor-table thead th {
+    background-color: var(--bg-tertiary);
+    border-collapse: collapse;
 }
 
 /* Custom Number Input with Subtle Spinners */

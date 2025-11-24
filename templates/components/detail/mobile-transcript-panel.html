@@ -1,0 +1,59 @@
+<!-- Mobile Transcript Panel -->
+<div v-if="mobileTab === 'transcript'" class="h-full flex flex-col space-y-4">
+    <div class="flex items-center justify-between gap-2 flex-shrink-0 px-3">
+        <!-- Follow Player Checkbox -->
+        <div v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
+             class="follow-player-control text-[var(--text-muted)]"
+             @click="toggleFollowPlayerMode"
+             :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
+            <input type="checkbox"
+                   :checked="followPlayerMode"
+                   @click.stop="toggleFollowPlayerMode">
+            <i class="fas fa-arrows-alt-v follow-icon"></i>
+        </div>
+        <div class="flex items-center gap-2">
+            <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
+                <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']"><i class="fas fa-list"></i></button>
+                <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']"><i class="fas fa-comments"></i></button>
+            </div>
+            <button @click="copyTranscription" class="copy-btn" :title="t('tooltips.copyTranscript')"><i class="fas fa-copy"></i></button>
+            <button @click="downloadTranscript" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" :title="t('tooltips.downloadTranscriptWithTemplate')"><i class="fas fa-download"></i></button>
+            <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" :title="t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>
+        </div>
+    </div>
+    <div class="flex-grow overflow-y-auto mobile-content-box">
+        <div v-if="selectedRecording.status === 'PROCESSING'" class="text-center py-8">
+            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+            <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.processingTranscription')"></p>
+        </div>
+        <div v-else-if="!selectedRecording.transcription" class="text-center py-8">
+            <i class="fas fa-file-text text-3xl text-[var(--text-muted)] mb-3"></i>
+            <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
+        </div>
+        <div v-else>
+            <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
+                <div v-if="processedTranscription.hasDialogue">
+                    <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="segment.startTime || Math.random()" :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">
+                        <div v-if="segment.showSpeaker" :class="['speaker-tablet', segment.color]">${segment.speaker}</div>
+                        <div class="speaker-text">${segment.sentence}</div>
+                    </div>
+                </div>
+                <div v-else>
+                    <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
+                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="segment.startTime || Math.random()" :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">${segment.sentence}</div>
+                    </div>
+                    <div v-else class="whitespace-pre-wrap">${processedTranscription.content}</div>
+                </div>
+            </div>
+            <div v-else-if="transcriptionViewMode === 'bubble'" class="transcription-with-speakers">
+                <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
+                    <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
+                        <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="bubble.startTime || Math.random()" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
+                            <div class="speaker-bubble-content">${bubble.sentence}</div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>

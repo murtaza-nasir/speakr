@@ -1,0 +1,274 @@
+<!-- Unified Share Modal (Public + Internal Sharing) -->
+<div v-if="showUnifiedShareModal" @click="closeUnifiedShareModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
+            <h3 class="text-lg font-semibold" v-text="t('modal.shareRecording')"></h3>
+            <p class="text-sm text-[var(--text-muted)] mt-0.5">${internalShareRecording?.title}</p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto">
+            <!-- Public Sharing Section -->
+            <div v-if="!internalShareRecording?.is_shared || internalShareRecording?.share_info?.can_reshare" class="px-6 py-4 border-b border-[var(--border-primary)]">
+                <h4 class="font-medium mb-2 flex items-center gap-2">
+                    <i class="fas fa-globe text-[var(--text-accent)]"></i>
+                    <span v-text="t('sharing.publicLink')"></span>
+                </h4>
+
+                <p class="text-xs text-[var(--text-muted)] mb-3" v-text="t('help.publicLinkDesc')"></p>
+
+                <div class="space-y-3">
+                    <!-- Share Options -->
+                    <div class="flex items-center gap-4 mb-2">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" v-model="shareOptions.share_summary" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm" v-text="t('form.shareSummary')"></span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" v-model="shareOptions.share_notes" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="ml-2 text-sm" v-text="t('form.shareNotes')"></span>
+                        </label>
+                    </div>
+
+                    <!-- Create New Share Button -->
+                    <button @click="createShare(true)"
+                            class="w-full px-3 py-2 bg-[var(--bg-accent)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium">
+                        <i class="fas fa-plus-circle mr-1.5"></i>Create New Public Share Link
+                    </button>
+
+                    <!-- Loading State -->
+                    <div v-if="isLoadingPublicShares" class="text-center py-6">
+                        <i class="fas fa-spinner fa-spin text-xl text-[var(--text-muted)]"></i>
+                        <p class="mt-2 text-xs text-[var(--text-muted)]">Loading share links...</p>
+                    </div>
+
+                    <!-- Existing Shares List -->
+                    <div v-else-if="recordingPublicShares.length > 0" class="space-y-2">
+                        <h5 class="text-xs font-medium text-[var(--text-secondary)] mb-1.5">
+                            Existing Share Links (${recordingPublicShares.length})
+                        </h5>
+                        <div v-for="share in recordingPublicShares" :key="share.id"
+                             class="bg-[var(--bg-tertiary)] p-2.5 rounded-lg border border-[var(--border-primary)]">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <div class="flex items-center gap-2 flex-1 min-w-0">
+                                    <i class="fas fa-calendar text-[var(--text-muted)] text-xs"></i>
+                                    <span class="text-xs text-[var(--text-muted)] truncate">Created: ${share.created_at}</span>
+                                    <span v-if="share.share_summary" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                        <i class="fas fa-file-alt mr-1"></i>Summary
+                                    </span>
+                                    <span v-if="share.share_notes" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                        <i class="fas fa-sticky-note mr-1"></i>Notes
+                                    </span>
+                                </div>
+                                <button @click="confirmDeletePublicShare(share)"
+                                        class="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                                        :title="'Delete share link'">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input :value="share.share_url" :id="'unified-share-link-' + share.id" readonly
+                                       class="w-full px-2 py-1.5 pr-10 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                <button @click="copyPublicShareLinkWithFeedback(share.share_url, share.id)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-7 flex items-center justify-center rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)] transition-all"
+                                        :title="t('buttons.copy')">
+                                    <i :class="copiedShareId === share.id ? 'fas fa-check' : 'fas fa-copy'" class="text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- No Shares Yet -->
+                    <div v-else-if="!isLoadingPublicShares" class="text-center py-4 text-xs text-[var(--text-muted)]">
+                        <i class="fas fa-link text-xl mb-1"></i>
+                        <p>No public share links yet</p>
+                        <p class="text-xs mt-0.5 opacity-75">Click the button above to create one</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Internal Sharing Section -->
+            <div v-if="enableInternalSharing && (!internalShareRecording?.is_shared || internalShareRecording?.share_info?.can_reshare)" class="px-6 py-4">
+                <h4 class="font-medium mb-2 flex items-center gap-2">
+                    <i class="fas fa-users text-[var(--text-accent)]"></i>
+                    <span v-text="t('sharing.internalSharing')"></span>
+                </h4>
+
+                <p class="text-xs text-[var(--text-muted)] mb-3" v-text="t('help.internalSharingDesc')"></p>
+
+                <!-- Share with New User Section -->
+                <div class="bg-[var(--bg-tertiary)] p-3 rounded-lg border border-[var(--border-primary)] mb-3">
+                    <h5 class="font-medium text-sm text-[var(--text-primary)] mb-2 flex items-center">
+                        <i class="fas fa-user-plus mr-1.5 text-blue-500 text-xs"></i>
+                        Share with User
+                    </h5>
+
+                    <!-- User Search/Selection (when SHOW_USERNAMES_IN_UI is enabled) -->
+                    <div v-if="showUsernamesInUI" class="space-y-3">
+                        <!-- Search Input (for filtering) -->
+                        <div class="relative">
+                            <input v-model="internalShareUserSearch"
+                                   @input="searchInternalShareUsers()"
+                                   type="text"
+                                   placeholder="Search users..."
+                                   class="w-full px-4 py-2 pl-10 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-[var(--text-muted)]"></i>
+                        </div>
+
+                        <!-- User Grid -->
+                        <div v-if="isLoadingAllUsers" class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                            <p class="mt-2 text-sm text-[var(--text-muted)]">Loading users...</p>
+                        </div>
+                        <div v-else-if="internalShareSearchResults.length === 0" class="text-center py-8 text-[var(--text-muted)]">
+                            <i class="fas fa-users-slash text-3xl mb-2"></i>
+                            <p>No users found</p>
+                        </div>
+                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                            <div v-for="user in internalShareSearchResults" :key="user.id"
+                                 @click="createInternalShare(user.id, user.username)"
+                                 class="group p-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-lg border border-[var(--border-secondary)] hover:border-blue-500 cursor-pointer transition-all">
+                                <div class="flex items-center gap-2">
+                                    <div :class="['w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xs', getUserColorClass(user.username)]">
+                                        ${user.username ? user.username.charAt(0).toUpperCase() : '?'}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium text-sm text-[var(--text-primary)] truncate">${user.username}</p>
+                                        <p v-if="user.email" class="text-xs text-[var(--text-muted)] truncate">${user.email}</p>
+                                    </div>
+                                    <i class="fas fa-user-plus text-blue-500 group-hover:scale-110 transition-transform"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direct Username Entry (when SHOW_USERNAMES_IN_UI is disabled - Privacy Mode) -->
+                    <div v-else class="space-y-3">
+                        <p class="text-sm text-[var(--text-muted)]">Enter the exact username to share with</p>
+                        <div class="flex gap-2">
+                            <input v-model="internalShareUserSearch"
+                                   @keyup.enter="shareWithUsername()"
+                                   type="text"
+                                   placeholder="Enter full username..."
+                                   class="flex-1 px-4 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <button @click="shareWithUsername()"
+                                    :disabled="!internalShareUserSearch.trim() || isSearchingUsers"
+                                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <i v-if="isSearchingUsers" class="fas fa-spinner fa-spin"></i>
+                                <span v-else>Add</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-[var(--text-muted)]">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            You must enter the exact username. If the user exists, they will be added to the share list.
+                        </p>
+                    </div>
+
+                    <!-- Permissions -->
+                    <div class="border-t border-[var(--border-primary)] mt-3 pt-2.5 space-y-1.5">
+                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-1.5">Share Permissions</p>
+                        <div class="flex items-center">
+                            <input type="checkbox"
+                                   v-model="internalSharePermissions.can_edit"
+                                   :disabled="!internalShareMaxPermissions.can_edit"
+                                   id="unified_share_can_edit"
+                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <label for="unified_share_can_edit"
+                                   :class="['ml-2 block text-sm', internalShareMaxPermissions.can_edit ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)] opacity-60']">
+                                <i class="fas fa-pencil-alt mr-1"></i>Allow editing notes and metadata
+                                <span v-if="!internalShareMaxPermissions.can_edit" class="text-xs italic ml-1">(You don't have this permission)</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox"
+                                   v-model="internalSharePermissions.can_reshare"
+                                   :disabled="!internalShareMaxPermissions.can_reshare"
+                                   id="unified_share_can_reshare"
+                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <label for="unified_share_can_reshare"
+                                   :class="['ml-2 block text-sm', internalShareMaxPermissions.can_reshare ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)] opacity-60']">
+                                <i class="fas fa-share-alt mr-1"></i>Allow re-sharing with others
+                                <span v-if="!internalShareMaxPermissions.can_reshare" class="text-xs italic ml-1">(You don't have this permission)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Already Shared With Section -->
+                <div class="bg-[var(--bg-tertiary)] p-3 rounded-lg border border-[var(--border-primary)]">
+                    <h5 class="font-medium text-sm text-[var(--text-primary)] mb-2 flex items-center justify-between">
+                        <span class="flex items-center">
+                            <i class="fas fa-users-cog mr-1.5 text-purple-500 text-xs"></i>
+                            Already Shared With
+                        </span>
+                        <span v-if="recordingInternalShares.length > 0" class="text-xs font-normal text-[var(--text-muted)]">
+                            ${recordingInternalShares.length} user(s)
+                        </span>
+                    </h5>
+
+                    <div v-if="isLoadingInternalShares" class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                        <p class="mt-2 text-sm text-[var(--text-muted)]">Loading shares...</p>
+                    </div>
+                    <div v-else-if="recordingInternalShares.length === 0" class="text-center py-8 text-[var(--text-muted)]">
+                        <i class="fas fa-user-slash text-3xl mb-3"></i>
+                        <p>Not shared with anyone yet</p>
+                        <p class="text-sm mt-1">Select a user above to share this recording</p>
+                    </div>
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                        <div v-for="share in recordingInternalShares" :key="share.user_id"
+                             class="bg-[var(--bg-secondary)] p-2 rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-primary)] transition-colors">
+                            <div class="flex items-center gap-2">
+                                <div :class="['w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xs', getUserColorClass(share.username)]">
+                                    ${share.username ? share.username.charAt(0).toUpperCase() : '#'}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium text-sm text-[var(--text-primary)] truncate">${share.username || 'User #' + share.user_id}</p>
+                                    <p class="text-xs text-[var(--text-muted)] mb-0.5">${share.is_owner ? 'Recording Owner' : formatShareDate(share.created_at)}</p>
+                                    <div class="flex flex-wrap gap-1 text-[10px]">
+                                        <span v-if="share.is_owner" class="inline-flex items-center px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">
+                                            <i class="fas fa-crown mr-0.5 text-[9px]"></i>Owner
+                                        </span>
+                                        <template v-else>
+                                            <span v-if="share.can_edit" class="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                                <i class="fas fa-pencil-alt mr-0.5 text-[8px]"></i>Edit
+                                            </span>
+                                            <span v-if="share.can_reshare" class="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                                <i class="fas fa-share-alt mr-0.5 text-[8px]"></i>Reshare
+                                            </span>
+                                            <span v-if="!share.can_edit && !share.can_reshare" class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
+                                                <i class="fas fa-eye mr-0.5 text-[8px]"></i>View
+                                            </span>
+                                        </template>
+                                    </div>
+                                </div>
+                                <button v-if="!share.is_owner"
+                                        @click="revokeInternalShare(share.id, share.username || share.user_name)"
+                                        class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                                        :title="'Revoke access'">
+                                    <i class="fas fa-user-times text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Permission Message -->
+        <div v-if="internalShareRecording?.is_shared && !internalShareRecording?.share_info?.can_reshare" class="px-6 py-6 text-center">
+            <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                <i class="fas fa-info-circle text-yellow-600 dark:text-yellow-400 text-2xl mb-2"></i>
+                <p class="text-sm text-yellow-800 dark:text-yellow-300 font-medium">Sharing Not Available</p>
+                <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
+                    This recording was shared with you, but you don't have permission to share it with others.
+                </p>
+            </div>
+        </div>
+
+        <div class="px-6 py-3 border-t border-[var(--border-primary)] flex justify-end flex-shrink-0">
+            <button @click="closeUnifiedShareModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                <span v-text="t('tagsModal.done')"></span>
+            </button>
+        </div>
+    </div>
+</div>

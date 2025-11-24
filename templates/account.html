@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>{{ title }} - Speakr</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
         <!-- All dependencies bundled locally for offline support -->
@@ -15,7 +16,6 @@
 
     <!-- Loading overlay to prevent FOUC -->
     {% include 'includes/loading_overlay.html' %}
-    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 
     <script>
         // Initialize i18n
@@ -23,20 +23,20 @@
         
         async function initializeI18n(language) {
             const userLanguage = language || "{{ user_language }}";
-            
+
             // Initialize the global i18n instance
             if (window.i18n) {
                 await window.i18n.init(userLanguage);
-                
+
                 // Create a shorthand translation function
                 t = (key, params) => window.i18n.t(key, params);
-                
+
                 // Update all elements with data-i18n attribute
                 document.querySelectorAll('[data-i18n]').forEach(el => {
                     const key = el.getAttribute('data-i18n');
                     el.textContent = t(key);
                 });
-                
+
                 // Update all elements with data-i18n-placeholder attribute
                 document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                     const key = el.getAttribute('data-i18n-placeholder');
@@ -52,7 +52,7 @@
                 const key = el.getAttribute('data-i18n');
                 el.textContent = t(key);
             });
-            
+
             // Update all elements with data-i18n-placeholder attribute
             document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
                 const key = el.getAttribute('data-i18n-placeholder');
@@ -109,7 +109,7 @@
                 formData.append('output_language', document.getElementById('output_language').value || '');
                 
                 // Send AJAX request to update language preference
-                const response = await fetch('{{ url_for("account") }}', {
+                const response = await fetch('{{ url_for("auth.account") }}', {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -322,13 +322,77 @@
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
+
+        /* Custom themed audio player for speaker snippets */
+        .snippet-audio-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-secondary);
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        .snippet-audio-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--bg-accent);
+            color: var(--text-accent);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .snippet-audio-btn:hover {
+            opacity: 0.8;
+        }
+
+        .snippet-audio-progress {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .snippet-audio-progress-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: var(--bg-accent);
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+
+        .snippet-audio-time {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+
+        /* Hide the native audio element */
+        .snippet-audio {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
     <div class="main-container container mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
-                <a href="{{ url_for('index') }}" class="flex items-center">
+                <a href="{{ url_for('recordings.index') }}" class="flex items-center">
                     <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
                     Speakr
                 </a>
@@ -344,18 +408,19 @@
                         <i class="fas fa-chevron-down ml-2"></i>
                     </button>
                     <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
-                        <a href="{{ url_for('index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                        <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-home mr-2"></i> <span data-i18n="nav.home">Home</span>
                         </a>
-                        <a href="{{ url_for('account') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
+                        <a href="{{ url_for('auth.account') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
                             <i class="fas fa-user-circle mr-2"></i> <span data-i18n="nav.account">Account</span>
                         </a>
-                        {% if current_user.is_admin %}
-                        <a href="{{ url_for('admin') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-user-shield mr-2"></i> <span data-i18n="nav.admin">Admin</span>
+                        {% if current_user.is_admin or is_team_admin %}
+                        <a href="{{ url_for('admin.admin') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas {% if current_user.is_admin %}fa-user-shield{% else %}fa-users-cog{% endif %} mr-2"></i>
+                            <span data-i18n="{% if current_user.is_admin %}nav.admin{% else %}nav.groupManagement{% endif %}">{% if current_user.is_admin %}Admin{% else %}Team Management{% endif %}</span>
                         </a>
                         {% endif %}
-                        <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
+                        <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
                             <i class="fas fa-sign-out-alt mr-2"></i> <span data-i18n="nav.signOut">Logout</span>
                         </a>
                     </div>
@@ -419,7 +484,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <!-- Left Column: Form -->
                     <div>
-                        <form id="accountInfoForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
+                        <form id="accountInfoForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6">
                             <div class="mb-6">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.personalInfo">Personal Information</h3>
@@ -527,7 +592,7 @@
                         <div class="mt-6"> <!-- Added mt-6 for spacing, was mt-8 on Account Actions -->
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.accountActions">Account Actions</h3>
                             <div class="flex flex-col space-y-3">
-                                <a href="{{ url_for('index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <a href="{{ url_for('recordings.index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-microphone mr-2"></i> <span data-i18n="account.goToRecordings">Go to Recordings</span>
                                 </a>
                                 <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
@@ -542,7 +607,7 @@
                     <div id="content-prompts" class="hidden tab-content pt-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
 
-                    <form id="customPromptsForm" method="POST" action="{{ url_for('account') }}" class="space-y-6">
+                    <form id="customPromptsForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                         <!-- Event Extraction Settings -->
@@ -631,52 +696,96 @@
                 </div>
 
                     <div id="content-shares" class="hidden tab-content pt-6">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">My Shared Transcripts</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">Shared Transcripts</h2>
                     <div id="shares-container" class="space-y-4">
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
                 </div>
 
-                    <div id="content-speakers" class="hidden tab-content pt-6">
-                    <div class="flex-shrink-0">
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-4" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
-                        <p class="text-[var(--text-secondary)] mb-4" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
+                    <div id="content-speakers" class="hidden tab-content pt-6 flex flex-col h-full">
+                    <!-- Header -->
+                    <div class="flex-shrink-0 mb-4">
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-2" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
+                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
                     </div>
-                    
+
+                    <!-- Top toolbar with bulk actions -->
+                    <div class="flex-shrink-0 flex justify-between items-center py-3 px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mb-3">
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                                <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                <span>Select All</span>
+                            </label>
+                            <span class="text-sm text-[var(--text-muted)]">
+                                <span id="speakersTabCountTop" class="speakers-count">0</span> <span data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
+                            </span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="bulk-delete-btn px-3 py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                                <i class="fas fa-trash mr-1"></i>
+                                <span>Delete</span>
+                            </button>
+                            <button class="bulk-clear-btn px-3 py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                                <i class="fas fa-waveform-lines mr-1"></i>
+                                <span>Clear Profiles</span>
+                            </button>
+                            <button class="bulk-merge-btn px-3 py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                                <i class="fas fa-object-group mr-1"></i>
+                                <span>Merge</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable content area -->
                     <div class="flex-1 overflow-y-auto min-h-0 pr-2" style="scrollbar-width: thin; scrollbar-color: var(--border-secondary) transparent;">
                         <!-- Loading state -->
                         <div id="speakersTabLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
                             <p class="text-[var(--text-muted)] mt-2" data-i18n="speakersManagement.loadingSpeakers">Loading speakers...</p>
                         </div>
-                        
+
                         <!-- Error state -->
                         <div id="speakersTabError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
                             <span id="speakersTabErrorMessage" data-i18n="speakersManagement.failedToLoad">Failed to load speakers</span>
                         </div>
-                        
+
                         <!-- Empty state -->
                         <div id="speakersTabEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-users text-4xl text-[var(--text-light)] mb-4"></i>
                             <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="speakersManagement.noSpeakersYet">No speakers saved yet</p>
                             <p class="text-sm text-[var(--text-light)]" data-i18n="speakersManagement.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</p>
                         </div>
-                        
-                        <!-- Speakers grid with scrollable container -->
-                        <div id="speakersTabGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+
+                        <!-- Speakers grid -->
+                        <div id="speakersTabGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                             <!-- Speakers will be populated here -->
                         </div>
                     </div>
-                    
-                    <!-- Fixed footer with count and actions -->
-                    <div class="flex-shrink-0 flex justify-between items-center mt-4 pt-4 border-t border-[var(--border-primary)]">
-                        <div class="text-sm text-[var(--text-muted)]">
-                            <span id="speakersTabCount">0</span> <span data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
+
+                    <!-- Bottom toolbar with bulk actions -->
+                    <div class="flex-shrink-0 flex justify-between items-center py-3 px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mt-3">
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                                <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                <span>Select All</span>
+                            </label>
+                            <span class="text-sm text-[var(--text-muted)]">
+                                <span id="speakersTabCountBottom" class="speakers-count">0</span> <span data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
+                            </span>
                         </div>
-                        <div class="flex space-x-3">
-                            <button id="deleteAllSpeakersTabBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i class="fas fa-trash mr-2"></i> <span data-i18n="buttons.deleteAll">Delete All</span>
+                        <div class="flex space-x-2">
+                            <button class="bulk-delete-btn px-3 py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                                <i class="fas fa-trash mr-1"></i>
+                                <span>Delete</span>
+                            </button>
+                            <button class="bulk-clear-btn px-3 py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                                <i class="fas fa-waveform-lines mr-1"></i>
+                                <span>Clear Profiles</span>
+                            </button>
+                            <button class="bulk-merge-btn px-3 py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
+                                <i class="fas fa-object-group mr-1"></i>
+                                <span>Merge</span>
                             </button>
                         </div>
                     </div>
@@ -1056,20 +1165,20 @@
                 <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.changePassword">Change Password</h3>
                 <button id="closeModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
             </div>
-            <form id="changePasswordForm" method="POST" action="{{ url_for('change_password') }}">
+            <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-4">
                     <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current Password</label>
-                    <input type="password" id="current_password" name="current_password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                    <input type="password" id="current_password" name="current_password" autocomplete="current-password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                 </div>
                 <div class="mb-4">
                     <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New Password</label>
-                    <input type="password" id="new_password" name="new_password" required minlength="8" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                    <input type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="8" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                     <p class="text-xs text-[var(--text-muted)] mt-1" data-i18n="changePasswordModal.passwordRequirement">Password must be at least 8 characters long</p>
                 </div>
                 <div class="mb-6">
                     <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                    <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button type="button" id="cancelBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
@@ -1154,6 +1263,220 @@
         </div>
     </div>
 
+    <!-- Delete Selected Speakers Confirmation Modal -->
+    <div id="deleteSelectedSpeakersModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm hidden">
+        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+            <!-- Header -->
+            <div class="p-6 border-b border-[var(--border-primary)]">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                        <i class="fas fa-trash text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-[var(--text-primary)]">Delete Speakers</h3>
+                        <p class="text-sm text-[var(--text-muted)] mt-0.5">This action cannot be undone</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6">
+                <div class="mb-4">
+                    <p class="text-[var(--text-secondary)] mb-3">
+                        You are about to delete <strong id="deleteSelectedCount" class="text-[var(--text-primary)]">0</strong> speaker(s):
+                    </p>
+                    <div id="deleteSelectedSpeakersList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-lg p-3 border border-[var(--border-primary)]">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-3 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                    <div class="w-6 h-6 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-red-800 dark:text-red-200">
+                            All voice profiles, recordings associations, and usage data will be permanently deleted.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                <button id="cancelDeleteSelectedBtn" class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </button>
+                <button id="confirmDeleteSelectedBtn" class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 flex items-center shadow-lg font-medium">
+                    <i class="fas fa-trash mr-2"></i>
+                    Delete Speakers
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Voice Profiles Confirmation Modal -->
+    <div id="clearVoiceProfilesModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm hidden">
+        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-orange-500 to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                        <i class="fas fa-waveform-lines text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Clear Voice Profiles</h3>
+                        <p class="text-sm text-[var(--text-muted)]">Remove voice recognition data</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-6 modal-content">
+                <div class="mb-4">
+                    <p class="text-[var(--text-secondary)] mb-3">
+                        Clear voice profiles for <strong id="clearVoiceProfilesCount" class="text-[var(--text-primary)]">0</strong> speaker(s):
+                    </p>
+                    <div id="clearVoiceProfilesList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-lg p-3 border border-[var(--border-primary)]">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-start space-x-3">
+                        <div class="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="fas fa-info-circle text-amber-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-[var(--text-secondary)] font-medium mb-1">What will happen:</p>
+                            <p class="text-sm text-[var(--text-muted)]">
+                                All voice embeddings and recognition data will be removed. Speaker names and usage history will be preserved.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start space-x-3">
+                        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="fas fa-check text-green-600 text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-[var(--text-muted)]">
+                                New voice profiles will be created when you identify these speakers in future recordings.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                <button id="cancelClearVoiceProfilesBtn" class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </button>
+                <button id="confirmClearVoiceProfilesBtn" class="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all duration-200 flex items-center shadow-lg font-medium">
+                    <i class="fas fa-waveform-lines mr-2"></i>
+                    Clear Profiles
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merge Speakers Modal -->
+    <div id="mergeSpeakersModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-60 p-4 backdrop-blur-sm hidden">
+        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col transform transition-all duration-300 ease-in-out">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center justify-between flex-shrink-0">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                        <i class="fas fa-object-group text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Merge Speakers</h3>
+                        <p class="text-sm text-[var(--text-muted)]">Combine speaker profiles</p>
+                    </div>
+                </div>
+                <button id="closeMergeModal" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-tertiary)] transition-colors">&times;</button>
+            </div>
+
+            <!-- Info Section -->
+            <div class="p-6 flex-shrink-0 border-b border-[var(--border-primary)]">
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-info-circle text-blue-600 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm text-[var(--text-secondary)]">
+                            Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable speaker list -->
+            <div class="flex-1 overflow-y-auto min-h-0 p-6">
+                <div id="mergeSpeakersList" class="space-y-2">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0">
+                <button id="cancelMergeBtn" class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancel
+                </button>
+                <button id="executeMergeBtn" class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center shadow-lg font-medium" disabled>
+                    <i class="fas fa-object-group mr-2"></i>
+                    <span>Merge Speakers</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Speaker Modal -->
+    <div id="editSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-60 p-4 backdrop-blur-sm hidden">
+        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+            <!-- Header -->
+            <div class="p-5 border-b border-[var(--border-primary)]">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 bg-[var(--bg-accent)] rounded-full flex items-center justify-center mr-3">
+                            <i class="fas fa-edit text-[var(--text-button)]"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-[var(--text-primary)]">Edit Speaker Name</h3>
+                    </div>
+                    <button id="closeEditSpeakerModal" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-tertiary)] transition-colors">&times;</button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6">
+                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                    Speaker Name
+                </label>
+                <input
+                    type="text"
+                    id="editSpeakerNameInput"
+                    class="w-full px-4 py-2 border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                    placeholder="Enter speaker name">
+                <div id="editSpeakerError" class="mt-2 text-sm text-[var(--text-danger)] hidden"></div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+                <button id="cancelEditSpeakerBtn" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                    Cancel
+                </button>
+                <button id="saveEditSpeakerBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                    <i class="fas fa-save mr-2"></i>
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Create/Edit Tag Modal -->
     <div id="tagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1184,7 +1507,91 @@
                     <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag" data-i18n-placeholder="editTagModal.customPromptPlaceholder"></textarea>
                     <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.leaveBlankPrompt">Leave blank to use your default summary prompt</p>
                 </div>
-                
+
+                <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
+                <div id="tagGroupSelectionSection" class="hidden">
+                    <label for="tagGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
+                    <select id="tagGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="">Personal Tag (Not Associated with a Group)</option>
+                        <!-- Group options will be populated dynamically -->
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1">
+                        Assign this tag to a group to enable auto-sharing when applied to recordings
+                    </p>
+                </div>
+
+                <!-- Group-Specific Settings (only shown when a group is selected) -->
+                <div id="tagGroupSettingsSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                        <i class="fas fa-users mr-2"></i>Group Sharing Settings
+                    </h4>
+
+                    <div class="space-y-3">
+                        <div class="flex items-start space-x-3">
+                            <input type="checkbox" id="tagAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                            <div class="flex-1">
+                                <label for="tagAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                    <i class="fas fa-share-alt mr-1"></i>
+                                    Auto-share recordings with all group members when this tag is applied
+                                </label>
+                                <p class="text-xs text-[var(--text-light)] mt-1">
+                                    All group members will automatically get access to recordings with this tag
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3">
+                            <input type="checkbox" id="tagShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                            <div class="flex-1">
+                                <label for="tagShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                    <i class="fas fa-user-shield mr-1"></i>
+                                    Share recordings with group admins only when this tag is applied
+                                </label>
+                                <p class="text-xs text-[var(--text-light)] mt-1">
+                                    Only group admins will get access (not all members)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-[var(--text-light)] italic mt-3">
+                        Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                    </p>
+                </div>
+
+                <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
+                <div id="tagRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                        <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion Settings
+                    </h4>
+
+                    <div class="space-y-3">
+                        <!-- Retention Period Override -->
+                        <div id="tagRetentionDaysContainer">
+                            <label for="tagRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                                Retention Period (days)
+                            </label>
+                            <input type="number" id="tagRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
+                            <p class="text-xs text-[var(--text-light)] mt-1">
+                                Leave empty to use global retention period. Set a custom value to override for recordings with this tag.
+                            </p>
+                        </div>
+
+                        <!-- Deletion Protection Checkbox -->
+                        <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                            <input type="checkbox" id="tagProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                            <div class="flex-1">
+                                <label for="tagProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                    <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
+                                    Protect from Auto-Deletion (Infinite Retention)
+                                </label>
+                                <p class="text-xs text-[var(--text-light)] mt-1">
+                                    Recordings with this tag will never be automatically deleted. When enabled, retention period is set to infinite.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {% if use_asr_endpoint %}
                 <div class="border-t border-[var(--border-primary)] pt-4">
                     <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="editTagModal.asrDefaultSettings">ASR Default Settings</h4>
@@ -1224,12 +1631,157 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
-            // Initialize i18n
-            await initializeI18n();
+            try {
+                // Initialize i18n
+                await initializeI18n();
+            } catch (error) {
+                console.error('Error initializing i18n:', error);
+            }
 
-            // Hide loading overlay after everything is ready
+            // Setup merge modal event listeners
+            const closeMergeModalBtn = document.getElementById('closeMergeModal');
+            const cancelMergeBtn = document.getElementById('cancelMergeBtn');
+            const executeMergeBtn = document.getElementById('executeMergeBtn');
+            const mergeSpeakersModal = document.getElementById('mergeSpeakersModal');
+
+            if (closeMergeModalBtn) {
+                closeMergeModalBtn.addEventListener('click', () => {
+                    mergeSpeakersModal.classList.add('hidden');
+                });
+            }
+
+            if (cancelMergeBtn) {
+                cancelMergeBtn.addEventListener('click', () => {
+                    mergeSpeakersModal.classList.add('hidden');
+                });
+            }
+
+            if (executeMergeBtn) {
+                executeMergeBtn.addEventListener('click', () => {
+                    executeSpeakerMerge();
+                });
+            }
+
+            // Setup edit speaker modal event listeners
+            const closeEditSpeakerModalBtn = document.getElementById('closeEditSpeakerModal');
+            const cancelEditSpeakerBtn = document.getElementById('cancelEditSpeakerBtn');
+            const saveEditSpeakerBtn = document.getElementById('saveEditSpeakerBtn');
+            const editSpeakerModal = document.getElementById('editSpeakerModal');
+            const editSpeakerNameInput = document.getElementById('editSpeakerNameInput');
+            const editSpeakerError = document.getElementById('editSpeakerError');
+
+            let currentEditingSpeakerId = null;
+
+            function closeEditSpeakerModalFn() {
+                editSpeakerModal.classList.add('hidden');
+                editSpeakerNameInput.value = '';
+                editSpeakerError.classList.add('hidden');
+                currentEditingSpeakerId = null;
+            }
+
+            if (closeEditSpeakerModalBtn) {
+                closeEditSpeakerModalBtn.addEventListener('click', closeEditSpeakerModalFn);
+            }
+
+            if (cancelEditSpeakerBtn) {
+                cancelEditSpeakerBtn.addEventListener('click', closeEditSpeakerModalFn);
+            }
+
+            // Close modal when clicking outside
+            editSpeakerModal.addEventListener('click', (event) => {
+                if (event.target === editSpeakerModal) {
+                    closeEditSpeakerModalFn();
+                }
+            });
+
+            // Handle Enter key to save
+            editSpeakerNameInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    saveEditSpeakerBtn.click();
+                }
+            });
+
+            if (saveEditSpeakerBtn) {
+                saveEditSpeakerBtn.addEventListener('click', async () => {
+                    const newName = editSpeakerNameInput.value.trim();
+
+                    if (!newName) {
+                        editSpeakerError.textContent = 'Speaker name cannot be empty';
+                        editSpeakerError.classList.remove('hidden');
+                        return;
+                    }
+
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const response = await fetch(`/speakers/${currentEditingSpeakerId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({ name: newName })
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            editSpeakerError.textContent = data.error || 'Failed to update speaker';
+                            editSpeakerError.classList.remove('hidden');
+                            return;
+                        }
+
+                        showToast('Speaker name updated successfully');
+                        closeEditSpeakerModalFn();
+
+                        // Reload speakers - reset flag to force reload
+                        speakersTabLoaded = false;
+                        await loadSpeakersTab();
+                    } catch (error) {
+                        console.error('Error updating speaker:', error);
+                        editSpeakerError.textContent = 'Failed to update speaker';
+                        editSpeakerError.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Setup delete selected speakers modal event listeners
+            const cancelDeleteSelectedBtn = document.getElementById('cancelDeleteSelectedBtn');
+            const confirmDeleteSelectedBtn = document.getElementById('confirmDeleteSelectedBtn');
+            const deleteSelectedSpeakersModal = document.getElementById('deleteSelectedSpeakersModal');
+
+            if (cancelDeleteSelectedBtn) {
+                cancelDeleteSelectedBtn.addEventListener('click', () => {
+                    deleteSelectedSpeakersModal.classList.add('hidden');
+                });
+            }
+
+            if (confirmDeleteSelectedBtn) {
+                confirmDeleteSelectedBtn.addEventListener('click', () => {
+                    executeDeleteSelectedSpeakers();
+                });
+            }
+
+            // Setup clear voice profiles modal event listeners
+            const cancelClearVoiceProfilesBtn = document.getElementById('cancelClearVoiceProfilesBtn');
+            const confirmClearVoiceProfilesBtn = document.getElementById('confirmClearVoiceProfilesBtn');
+            const clearVoiceProfilesModal = document.getElementById('clearVoiceProfilesModal');
+
+            if (cancelClearVoiceProfilesBtn) {
+                cancelClearVoiceProfilesBtn.addEventListener('click', () => {
+                    clearVoiceProfilesModal.classList.add('hidden');
+                });
+            }
+
+            if (confirmClearVoiceProfilesBtn) {
+                confirmClearVoiceProfilesBtn.addEventListener('click', () => {
+                    executeClearVoiceProfiles();
+                });
+            }
+
+            // Hide loading overlay
             if (window.AppLoader) {
-                AppLoader.waitForReady();
+                window.AppLoader.hide();
             }
 
             // Setup scroll indicators for tabs
@@ -1419,39 +1971,38 @@
                 const speakersTabEmpty = document.getElementById('speakersTabEmpty');
                 const speakersTabGrid = document.getElementById('speakersTabGrid');
                 const speakersTabCount = document.getElementById('speakersTabCount');
-                const deleteAllSpeakersTabBtn = document.getElementById('deleteAllSpeakersTabBtn');
-                
+
                 // Show loading state
                 speakersTabLoading.classList.remove('hidden');
                 speakersTabError.classList.add('hidden');
                 speakersTabEmpty.classList.add('hidden');
                 speakersTabGrid.classList.add('hidden');
-                
+
                 try {
                     const response = await fetch('/speakers');
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
-                    
+
                     speakersTabData = await response.json();
                     speakersTabLoaded = true;
-                    
+
                     // Hide loading state
                     speakersTabLoading.classList.add('hidden');
-                    
+
                     if (speakersTabData.length === 0) {
                         speakersTabEmpty.classList.remove('hidden');
                         speakersTabGrid.classList.add('hidden');
-                        deleteAllSpeakersTabBtn.disabled = true;
                     } else {
                         speakersTabEmpty.classList.add('hidden');
                         speakersTabGrid.classList.remove('hidden');
-                        deleteAllSpeakersTabBtn.disabled = false;
                         renderSpeakersTabGrid();
                     }
                     
-                    // Update count
-                    speakersTabCount.textContent = speakersTabData.length;
+                    // Update counts in all locations
+                    document.querySelectorAll('.speakers-count').forEach(el => {
+                        el.textContent = speakersTabData.length;
+                    });
                     
                 } catch (error) {
                     console.error('Error loading speakers:', error);
@@ -1460,65 +2011,139 @@
                     speakersTabEmpty.classList.add('hidden');
                     speakersTabGrid.classList.add('hidden');
                     speakersTabErrorMessage.textContent = error.message;
-                    speakersTabCount.textContent = '0';
+                    document.querySelectorAll('.speakers-count').forEach(el => {
+                        el.textContent = '0';
+                    });
                 }
             }
             
             function renderSpeakersTabGrid() {
                 const speakersTabGrid = document.getElementById('speakersTabGrid');
                 speakersTabGrid.innerHTML = '';
-                
+
                 speakersTabData.forEach(speaker => {
                     const createdDate = new Date(speaker.created_at).toLocaleDateString();
                     const lastUsedDate = new Date(speaker.last_used).toLocaleDateString();
-                    
+
+                    // Voice profile status
+                    const hasVoiceProfile = speaker.embedding_count && speaker.embedding_count > 0;
+                    const confidenceLevel = speaker.confidence_score
+                        ? (speaker.confidence_score >= 0.8 ? 'high' : speaker.confidence_score >= 0.6 ? 'medium' : 'low')
+                        : null;
+                    const confidenceBadge = hasVoiceProfile && confidenceLevel
+                        ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium" style="background-color: ${confidenceLevel === 'high' ? '#10b981' : confidenceLevel === 'medium' ? '#f59e0b' : '#f97316'}; color: white;">
+                            <i class="fas fa-shield-alt mr-1"></i>${confidenceLevel}
+                          </span>`
+                        : '';
+
                     const speakerCard = document.createElement('div');
-                    speakerCard.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] p-4 hover:border-[var(--border-accent)] transition-colors duration-200';
-                    
+                    speakerCard.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors duration-200';
+                    speakerCard.dataset.speakerId = speaker.id;
+
                     speakerCard.innerHTML = `
-                        <div class="flex flex-col h-full">
-                            <div class="flex items-start justify-between mb-3">
-                                <div class="flex items-center flex-1 min-w-0">
-                                    <i class="fas fa-user text-[var(--text-accent)] mr-2 flex-shrink-0"></i>
-                                    <h3 class="font-medium text-base text-[var(--text-primary)] truncate">${escapeHtml(speaker.name)}</h3>
+                        <div class="p-3">
+                            <!-- Header with checkbox, name, and action buttons -->
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center flex-1 min-w-0 gap-2">
+                                    <input type="checkbox" class="speaker-select-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                                           data-speaker-id="${speaker.id}" data-speaker-name="${escapeHtml(speaker.name)}">
+                                    <i class="fas fa-user text-[var(--text-accent)] text-sm flex-shrink-0"></i>
+                                    <h3 class="font-medium text-sm text-[var(--text-primary)] truncate">${escapeHtml(speaker.name)}</h3>
                                 </div>
-                                <button class="delete-speaker-tab-btn ml-2 p-1.5 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded-md transition-colors duration-200 flex-shrink-0" 
-                                        data-speaker-id="${speaker.id}" 
-                                        data-speaker-name="${escapeHtml(speaker.name)}"
-                                        data-i18n-title="buttons.deleteSpeaker">
-                                    <i class="fas fa-trash text-sm"></i>
-                                </button>
+                                <div class="flex gap-1 flex-shrink-0">
+                                    <button class="edit-speaker-tab-btn p-1 text-[var(--text-accent)] hover:bg-[var(--bg-accent-light)] rounded transition-colors"
+                                            data-speaker-id="${speaker.id}"
+                                            data-speaker-name="${escapeHtml(speaker.name)}"
+                                            title="Edit speaker name">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </button>
+                                    <button class="delete-speaker-tab-btn p-1 text-[var(--text-danger)] hover:bg-[var(--bg-danger-light)] rounded transition-colors"
+                                            data-speaker-id="${speaker.id}"
+                                            data-speaker-name="${escapeHtml(speaker.name)}"
+                                            title="Delete speaker">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="space-y-1 text-xs text-[var(--text-muted)]">
-                                <p class="flex items-center">
-                                    <i class="fas fa-chart-line mr-1.5 text-xs opacity-60"></i>
-                                    ${t('speakersManagement.used')} ${speaker.use_count} ${t('speakersManagement.' + (speaker.use_count !== 1 ? 'times' : 'time'))}
-                                </p>
-                                <p class="flex items-center">
-                                    <i class="fas fa-clock mr-1.5 text-xs opacity-60"></i>
-                                    ${t('speakersManagement.last')}: ${lastUsedDate}
-                                </p>
-                                <p class="flex items-center">
-                                    <i class="fas fa-calendar-plus mr-1.5 text-xs opacity-60"></i>
-                                    ${t('speakersManagement.added')}: ${createdDate}
-                                </p>
+
+                            <!-- Voice Profile Badge (if exists) -->
+                            ${hasVoiceProfile ? `
+                            <div class="flex items-center justify-between gap-2 mb-2 px-2 py-1 bg-[var(--bg-secondary)] rounded">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <i class="fas fa-waveform-lines text-blue-500 text-[10px] flex-shrink-0"></i>
+                                    <span class="text-[10px] text-[var(--text-muted)] truncate">${speaker.embedding_count} sample${speaker.embedding_count !== 1 ? 's' : ''}</span>
+                                </div>
+                                ${confidenceBadge}
+                            </div>
+                            ` : ''}
+
+                            <!-- Stats in compact grid -->
+                            <div class="grid grid-cols-2 gap-1 text-[10px] text-[var(--text-muted)] mb-2">
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-chart-line opacity-60"></i>
+                                    <span>${speaker.use_count}x</span>
+                                </div>
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-clock opacity-60"></i>
+                                    <span class="truncate">${lastUsedDate}</span>
+                                </div>
+                            </div>
+
+                            <!-- View Voice Samples Button -->
+                            <button class="view-snippets-btn w-full px-2 py-1 text-[10px] bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-colors"
+                                    data-speaker-id="${speaker.id}">
+                                <i class="fas fa-volume-up mr-1"></i>
+                                <span>Voice Samples</span>
+                                <i class="fas fa-chevron-down ml-1 transition-transform duration-200"></i>
+                            </button>
+
+                            <!-- Snippets Container -->
+                            <div class="snippets-container mt-2 hidden">
+                                <div class="snippets-loading text-center py-3">
+                                    <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-xs"></i>
+                                </div>
+                                <div class="snippets-content"></div>
                             </div>
                         </div>
                     `;
-                    
+
+                    // Add edit functionality
+                    const editBtn = speakerCard.querySelector('.edit-speaker-tab-btn');
+                    editBtn.addEventListener('click', () => openEditSpeakerModal(speaker.id, speaker.name));
+
                     // Add delete functionality
                     const deleteBtn = speakerCard.querySelector('.delete-speaker-tab-btn');
                     deleteBtn.addEventListener('click', () => deleteSpeakerFromTab(speaker.id, speaker.name));
-                    
+
+                    // Add view snippets functionality
+                    const viewSnippetsBtn = speakerCard.querySelector('.view-snippets-btn');
+                    const snippetsContainer = speakerCard.querySelector('.snippets-container');
+                    viewSnippetsBtn.addEventListener('click', () => toggleSpeakerSnippets(speaker.id, viewSnippetsBtn, snippetsContainer));
+
                     speakersTabGrid.appendChild(speakerCard);
                 });
+
+                // Update bulk operation buttons state
+                updateBulkOperationButtons();
             }
             
+            function openEditSpeakerModal(speakerId, currentName) {
+                currentEditingSpeakerId = speakerId;
+                editSpeakerNameInput.value = currentName;
+                editSpeakerError.classList.add('hidden');
+                editSpeakerModal.classList.remove('hidden');
+                // Focus input and select text for easy editing
+                setTimeout(() => {
+                    editSpeakerNameInput.focus();
+                    editSpeakerNameInput.select();
+                }, 100);
+            }
+
             async function deleteSpeakerFromTab(speakerId, speakerName) {
                 if (!confirm(`Are you sure you want to delete "${speakerName}"?`)) {
                     return;
                 }
-                
+
                 try {
                     // Get CSRF token
                     const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
@@ -1544,65 +2169,514 @@
                     if (speakersTabData.length === 0) {
                         document.getElementById('speakersTabEmpty').classList.remove('hidden');
                         document.getElementById('speakersTabGrid').classList.add('hidden');
-                        document.getElementById('deleteAllSpeakersTabBtn').disabled = true;
                     } else {
                         renderSpeakersTabGrid();
                     }
                     
-                    document.getElementById('speakersTabCount').textContent = speakersTabData.length;
+                    document.querySelectorAll('.speakers-count').forEach(el => {
+                        el.textContent = speakersTabData.length;
+                    });
                     showToast(`Speaker "${speakerName}" deleted successfully`);
                 } catch (error) {
                     console.error('Error deleting speaker:', error);
                     showToast(`Failed to delete speaker: ${error.message}`, 'error');
                 }
             }
-            
-            // Delete all speakers from tab
-            document.getElementById('deleteAllSpeakersTabBtn')?.addEventListener('click', async () => {
-                if (!confirm('Are you sure you want to delete all speakers? This action cannot be undone.')) {
+
+            // Toggle speaker snippets
+            async function toggleSpeakerSnippets(speakerId, button, container) {
+                const isExpanded = !container.classList.contains('hidden');
+                const chevron = button.querySelector('.fa-chevron-down');
+
+                if (isExpanded) {
+                    container.classList.add('hidden');
+                    chevron.classList.remove('rotate-180');
+                    // Pause all audio players in this container
+                    container.querySelectorAll('audio').forEach(audio => audio.pause());
                     return;
                 }
-                
+
+                // Expand and load snippets
+                container.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+
+                const loadingEl = container.querySelector('.snippets-loading');
+                const contentEl = container.querySelector('.snippets-content');
+
+                loadingEl.classList.remove('hidden');
+                contentEl.classList.add('hidden');
+
                 try {
-                    // Get CSRF token
-                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
-                    
-                    const headers = {};
-                    if (csrfToken) {
-                        headers['X-CSRFToken'] = csrfToken;
+                    const response = await fetch(`/speakers/${speakerId}/snippets?limit=3`);
+                    if (!response.ok) throw new Error('Failed to load snippets');
+
+                    const data = await response.json();
+                    const snippets = data.snippets || [];
+
+                    loadingEl.classList.add('hidden');
+                    contentEl.classList.remove('hidden');
+
+                    if (snippets.length === 0) {
+                        contentEl.innerHTML = `
+                            <div class="text-xs text-[var(--text-muted)] text-center py-3 px-2">
+                                <i class="fas fa-info-circle mb-2 text-blue-500"></i>
+                                <p class="mb-1">No voice samples found</p>
+                                <p class="text-[10px] leading-relaxed">Voice samples are created when you identify speakers in recordings</p>
+                            </div>
+                        `;
+                    } else {
+                        contentEl.innerHTML = `
+                            <div class="space-y-2 mt-2">
+                                ${snippets.map((snippet, idx) => `
+                                    <div class="bg-[var(--bg-secondary)] p-2 rounded border border-[var(--border-secondary)]">
+                                        <!-- Compact audio player -->
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--bg-accent)] text-[var(--text-accent)] text-[10px] font-medium flex-shrink-0 cursor-help"
+                                                title="${escapeHtml(snippet.recording_title)}">
+                                                ${idx + 1}
+                                            </div>
+                                            <div class="snippet-audio-container">
+                                                <button class="snippet-audio-btn snippet-play-btn" data-audio-id="snippet-${speakerId}-${idx}">
+                                                    <i class="fas fa-play"></i>
+                                                </button>
+                                                <div class="snippet-audio-progress" data-audio-id="snippet-${speakerId}-${idx}">
+                                                    <div class="snippet-audio-progress-bar"></div>
+                                                </div>
+                                                <div class="snippet-audio-time">
+                                                    <span class="snippet-current-time">0:00</span>
+                                                </div>
+                                                <audio
+                                                    class="snippet-audio"
+                                                    id="snippet-${speakerId}-${idx}"
+                                                    preload="none"
+                                                    src="/speakers/snippet-audio/${snippet.recording_id}?start=${snippet.start_time}&duration=${snippet.duration}">
+                                                </audio>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+
+                        // Initialize custom audio players
+                        initSnippetAudioPlayers(contentEl, speakerId);
                     }
-                    
-                    // Delete all speakers one by one
-                    const deletePromises = speakersTabData.map(speaker => 
-                        fetch(`/speakers/${speaker.id}`, { 
+                } catch (error) {
+                    console.error('Error loading snippets:', error);
+                    loadingEl.classList.add('hidden');
+                    contentEl.classList.remove('hidden');
+                    contentEl.innerHTML = '<p class="text-xs text-red-500 text-center py-2">Failed to load snippets</p>';
+                }
+            }
+
+            // Initialize custom audio players for snippets
+            function initSnippetAudioPlayers(container, speakerId) {
+                const savedVolume = window.vueApp?.playerVolume ?? 1.0;
+
+                container.querySelectorAll('.snippet-audio').forEach(audio => {
+                    const audioId = audio.id;
+                    const playBtn = container.querySelector(`.snippet-play-btn[data-audio-id="${audioId}"]`);
+                    const progressBar = container.querySelector(`.snippet-audio-progress[data-audio-id="${audioId}"]`);
+                    const progressFill = progressBar.querySelector('.snippet-audio-progress-bar');
+                    const timeDisplay = playBtn.closest('.snippet-audio-container').querySelector('.snippet-current-time');
+                    const icon = playBtn.querySelector('i');
+
+                    // Set volume
+                    audio.volume = savedVolume;
+
+                    // Play/pause button
+                    playBtn.addEventListener('click', () => {
+                        if (audio.paused) {
+                            // Pause all other snippet audios
+                            container.querySelectorAll('.snippet-audio').forEach(otherAudio => {
+                                if (otherAudio !== audio && !otherAudio.paused) {
+                                    otherAudio.pause();
+                                }
+                            });
+                            audio.play();
+                        } else {
+                            audio.pause();
+                        }
+                    });
+
+                    // Update play/pause icon
+                    audio.addEventListener('play', () => {
+                        icon.classList.remove('fa-play');
+                        icon.classList.add('fa-pause');
+                    });
+
+                    audio.addEventListener('pause', () => {
+                        icon.classList.remove('fa-pause');
+                        icon.classList.add('fa-play');
+                    });
+
+                    // Update progress and time
+                    audio.addEventListener('timeupdate', () => {
+                        if (audio.duration) {
+                            const percent = (audio.currentTime / audio.duration) * 100;
+                            progressFill.style.width = percent + '%';
+                            timeDisplay.textContent = formatTime(audio.currentTime);
+                        }
+                    });
+
+                    // Reset on end
+                    audio.addEventListener('ended', () => {
+                        progressFill.style.width = '0%';
+                        timeDisplay.textContent = '0:00';
+                        icon.classList.remove('fa-pause');
+                        icon.classList.add('fa-play');
+                    });
+
+                    // Seek by clicking progress bar
+                    progressBar.addEventListener('click', (e) => {
+                        const rect = progressBar.getBoundingClientRect();
+                        const percent = (e.clientX - rect.left) / rect.width;
+                        audio.currentTime = percent * audio.duration;
+                    });
+                });
+
+                // Helper to format time
+                function formatTime(seconds) {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+            }
+
+            // Update bulk operation buttons based on checkboxes
+            function updateBulkOperationButtons() {
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                const count = checkboxes.length;
+
+                // Update all merge buttons
+                document.querySelectorAll('.bulk-merge-btn').forEach(btn => {
+                    btn.disabled = count < 2;
+                    const btnText = btn.querySelector('span');
+                    if (btnText) {
+                        btnText.textContent = count >= 2 ? `Merge (${count})` : 'Merge';
+                    }
+                });
+
+                // Update all delete buttons
+                document.querySelectorAll('.bulk-delete-btn').forEach(btn => {
+                    btn.disabled = count === 0;
+                    const btnText = btn.querySelector('span');
+                    if (btnText) {
+                        btnText.textContent = count > 0 ? `Delete (${count})` : 'Delete';
+                    }
+                });
+
+                // Update all clear profile buttons
+                document.querySelectorAll('.bulk-clear-btn').forEach(btn => {
+                    btn.disabled = count === 0;
+                    const btnText = btn.querySelector('span');
+                    if (btnText) {
+                        btnText.textContent = count > 0 ? `Clear (${count})` : 'Clear Profiles';
+                    }
+                });
+
+                // Update speaker counts
+                document.querySelectorAll('.speakers-count').forEach(el => {
+                    el.textContent = speakersTabData.length;
+                });
+
+                // Update select-all checkboxes state
+                const allCheckboxes = document.querySelectorAll('.speaker-select-checkbox');
+                const checkedCheckboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                const allSelected = allCheckboxes.length === checkedCheckboxes.length && allCheckboxes.length > 0;
+                document.querySelectorAll('.select-all-checkbox').forEach(cb => {
+                    cb.checked = allSelected;
+                });
+            }
+
+            // Handle checkbox changes
+            document.addEventListener('change', (e) => {
+                // Handle select-all checkboxes
+                if (e.target.classList.contains('select-all-checkbox')) {
+                    const checkboxes = document.querySelectorAll('.speaker-select-checkbox');
+                    checkboxes.forEach(cb => cb.checked = e.target.checked);
+                    // Sync all select-all checkboxes
+                    document.querySelectorAll('.select-all-checkbox').forEach(cb => {
+                        cb.checked = e.target.checked;
+                    });
+                    updateBulkOperationButtons();
+                } else if (e.target.classList.contains('speaker-select-checkbox')) {
+                    updateBulkOperationButtons();
+                }
+            });
+
+            // Handle bulk operation button clicks
+            document.addEventListener('click', (e) => {
+                const btn = e.target.closest('.bulk-delete-btn, .bulk-clear-btn, .bulk-merge-btn');
+                if (!btn) return;
+
+                if (btn.classList.contains('bulk-delete-btn')) {
+                    deleteSelectedSpeakers();
+                } else if (btn.classList.contains('bulk-clear-btn')) {
+                    clearSelectedVoiceProfiles();
+                } else if (btn.classList.contains('bulk-merge-btn')) {
+                    openMergeSpeakersModal();
+                }
+            });
+
+            // Track selected target speaker for merge
+            let mergeTargetSpeakerId = null;
+
+            // Open merge modal
+            async function openMergeSpeakersModal() {
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                if (checkboxes.length < 2) {
+                    showToast('Please select at least 2 speakers to merge', 'error');
+                    return;
+                }
+
+                const selectedSpeakers = Array.from(checkboxes).map(cb => ({
+                    id: parseInt(cb.dataset.speakerId),
+                    name: cb.dataset.speakerName
+                }));
+
+                const modal = document.getElementById('mergeSpeakersModal');
+                const list = document.getElementById('mergeSpeakersList');
+                const executeBtn = document.getElementById('executeMergeBtn');
+
+                // Reset target selection
+                mergeTargetSpeakerId = null;
+                executeBtn.disabled = true;
+
+                // Populate list with clickable cards
+                list.innerHTML = selectedSpeakers.map(s => `
+                    <div class="merge-speaker-card flex items-center justify-between px-4 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--bg-primary)] border-2 border-transparent rounded-lg cursor-pointer transition-all"
+                         data-speaker-id="${s.id}">
+                        <div class="flex items-center">
+                            <i class="fas fa-user text-[var(--text-accent)] mr-3"></i>
+                            <span class="text-[var(--text-primary)] font-medium">${escapeHtml(s.name)}</span>
+                        </div>
+                        <i class="fas fa-check text-green-500 text-lg hidden check-icon"></i>
+                    </div>
+                `).join('');
+
+                // Add click handlers to speaker cards
+                list.querySelectorAll('.merge-speaker-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        // Remove selection from all cards
+                        list.querySelectorAll('.merge-speaker-card').forEach(c => {
+                            c.classList.remove('border-green-500', 'bg-[var(--bg-accent)]', 'bg-opacity-10');
+                            c.querySelector('.check-icon').classList.add('hidden');
+                        });
+
+                        // Select this card
+                        this.classList.add('border-green-500', 'bg-[var(--bg-accent)]', 'bg-opacity-10');
+                        this.querySelector('.check-icon').classList.remove('hidden');
+
+                        mergeTargetSpeakerId = parseInt(this.dataset.speakerId);
+                        executeBtn.disabled = false;
+                    });
+                });
+
+                modal.classList.remove('hidden');
+            }
+
+            // Execute speaker merge
+            async function executeSpeakerMerge() {
+                const targetId = mergeTargetSpeakerId;
+
+                if (!targetId) {
+                    showToast('Please select which speaker to keep', 'error');
+                    return;
+                }
+
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                const allIds = Array.from(checkboxes).map(cb => parseInt(cb.dataset.speakerId));
+                const sourceIds = allIds.filter(id => id !== targetId);
+
+                if (sourceIds.length === 0) {
+                    showToast('No source speakers to merge', 'error');
+                    return;
+                }
+
+                try {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+
+                    const response = await fetch('/speakers/merge', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            target_id: targetId,
+                            source_ids: sourceIds
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error || 'Merge failed');
+
+                    showToast(data.message || 'Speakers merged successfully');
+                    document.getElementById('mergeSpeakersModal').classList.add('hidden');
+
+                    // Reload speakers - reset flag to force reload
+                    speakersTabLoaded = false;
+                    await loadSpeakersTab();
+                } catch (error) {
+                    console.error('Error merging speakers:', error);
+                    showToast(`Failed to merge speakers: ${error.message}`, 'error');
+                }
+            }
+
+            // Open delete selected speakers modal
+            function deleteSelectedSpeakers() {
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                if (checkboxes.length === 0) {
+                    showToast('Please select speakers to delete', 'error');
+                    return;
+                }
+
+                const selectedSpeakers = Array.from(checkboxes).map(cb => ({
+                    id: parseInt(cb.dataset.speakerId),
+                    name: cb.dataset.speakerName
+                }));
+
+                const modal = document.getElementById('deleteSelectedSpeakersModal');
+                const countEl = document.getElementById('deleteSelectedCount');
+                const listEl = document.getElementById('deleteSelectedSpeakersList');
+
+                // Update count
+                countEl.textContent = selectedSpeakers.length;
+
+                // Populate list
+                listEl.innerHTML = selectedSpeakers.map(s => `
+                    <div class="flex items-center px-3 py-2 bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]">
+                        <i class="fas fa-user text-[var(--text-accent)] mr-2"></i>
+                        <span class="text-[var(--text-primary)]">${escapeHtml(s.name)}</span>
+                    </div>
+                `).join('');
+
+                modal.classList.remove('hidden');
+            }
+
+            // Execute deletion of selected speakers
+            async function executeDeleteSelectedSpeakers() {
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                const selectedSpeakers = Array.from(checkboxes).map(cb => ({
+                    id: parseInt(cb.dataset.speakerId),
+                    name: cb.dataset.speakerName
+                }));
+
+                // Hide modal
+                document.getElementById('deleteSelectedSpeakersModal').classList.add('hidden');
+
+                try{
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                    const headers = csrfToken ? { 'X-CSRFToken': csrfToken } : {};
+
+                    const deletePromises = selectedSpeakers.map(speaker =>
+                        fetch(`/speakers/${speaker.id}`, {
                             method: 'DELETE',
                             headers: headers
                         })
                     );
-                    
+
                     const results = await Promise.allSettled(deletePromises);
-                    
-                    // Check for any failures
                     const failures = results.filter(result => result.status === 'rejected');
+
                     if (failures.length > 0) {
                         console.error('Some speakers failed to delete:', failures);
                         showToast(`${failures.length} speaker(s) failed to delete`, 'error');
                     }
-                    
-                    // Reset the tab state
+
+                    // Reset and reload
                     speakersTabLoaded = false;
                     await loadSpeakersTab();
-                    
+
                     const successCount = results.length - failures.length;
                     if (successCount > 0) {
                         showToast(`${successCount} speaker(s) deleted successfully`);
                     }
                 } catch (error) {
-                    console.error('Error deleting all speakers:', error);
+                    console.error('Error deleting speakers:', error);
                     showToast(`Failed to delete speakers: ${error.message}`, 'error');
                 }
-            });
-            
+            }
+
+            // Open clear voice profiles modal
+            function clearSelectedVoiceProfiles() {
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                if (checkboxes.length === 0) {
+                    showToast('Please select speakers to clear voice profiles', 'error');
+                    return;
+                }
+
+                const selectedSpeakers = Array.from(checkboxes).map(cb => ({
+                    id: parseInt(cb.dataset.speakerId),
+                    name: cb.dataset.speakerName
+                }));
+
+                const modal = document.getElementById('clearVoiceProfilesModal');
+                const countEl = document.getElementById('clearVoiceProfilesCount');
+                const listEl = document.getElementById('clearVoiceProfilesList');
+
+                // Update count
+                countEl.textContent = selectedSpeakers.length;
+
+                // Populate list
+                listEl.innerHTML = selectedSpeakers.map(s => `
+                    <div class="flex items-center px-3 py-2 bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]">
+                        <i class="fas fa-user text-[var(--text-accent)] mr-2"></i>
+                        <span class="text-[var(--text-primary)]">${escapeHtml(s.name)}</span>
+                    </div>
+                `).join('');
+
+                modal.classList.remove('hidden');
+            }
+
+            // Execute clearing voice profiles
+            async function executeClearVoiceProfiles() {
+                const checkboxes = document.querySelectorAll('.speaker-select-checkbox:checked');
+                const selectedSpeakers = Array.from(checkboxes).map(cb => ({
+                    id: parseInt(cb.dataset.speakerId),
+                    name: cb.dataset.speakerName
+                }));
+
+                // Hide modal
+                document.getElementById('clearVoiceProfilesModal').classList.add('hidden');
+
+                try {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+
+                    const clearPromises = selectedSpeakers.map(speaker =>
+                        fetch(`/speakers/${speaker.id}/clear_embeddings`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            }
+                        })
+                    );
+
+                    const results = await Promise.allSettled(clearPromises);
+                    const failures = results.filter(result => result.status === 'rejected');
+
+                    if (failures.length > 0) {
+                        console.error('Some voice profiles failed to clear:', failures);
+                        showToast(`${failures.length} voice profile(s) failed to clear`, 'error');
+                    }
+
+                    // Reset and reload
+                    speakersTabLoaded = false;
+                    await loadSpeakersTab();
+
+                    const successCount = results.length - failures.length;
+                    if (successCount > 0) {
+                        showToast(`${successCount} voice profile(s) cleared successfully`);
+                    }
+                } catch (error) {
+                    console.error('Error clearing voice profiles:', error);
+                    showToast(`Failed to clear voice profiles: ${error.message}`, 'error');
+                }
+            }
+
             async function loadSystemInfo() {
                 try {
                     const response = await fetch('/api/system/info');
@@ -1670,8 +2744,11 @@
                                     <span class="ml-2">${t('sharedTranscripts.shareNotes')}</span>
                                 </label>
                             </div>
-                            <div class="mt-4">
-                                <input value="{{ request.url_root }}share/${share.public_id}" readonly class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm">
+                            <div class="mt-4 relative">
+                                <input value="{{ request.url_root }}share/${share.public_id}" readonly class="share-link-input w-full px-3 py-2 pr-12 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-accent)]">
+                                <button class="copy-share-link-btn absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded bg-[var(--bg-button)] text-[var(--text-button)] hover:bg-[var(--bg-button-hover)] transition-colors" title="${t('buttons.copy')}">
+                                    <i class="fas fa-copy text-xs"></i>
+                                </button>
                             </div>
                         `;
                         sharesContainer.appendChild(shareEl);
@@ -1682,6 +2759,32 @@
                     });
                     document.querySelectorAll('.share-checkbox').forEach(box => {
                         box.addEventListener('change', handleUpdateShare);
+                    });
+                    document.querySelectorAll('.copy-share-link-btn').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            const button = e.currentTarget;
+                            const input = button.previousElementSibling;
+
+                            navigator.clipboard.writeText(input.value).then(() => {
+                                const icon = button.querySelector('i');
+
+                                // Change to success state
+                                icon.className = 'fas fa-check text-xs';
+                                button.style.transition = 'background-color 0.2s ease';
+                                button.style.backgroundColor = 'var(--bg-success, #10b981)';
+
+                                // Revert after delay
+                                setTimeout(() => {
+                                    button.style.backgroundColor = '';
+                                    icon.className = 'fas fa-copy text-xs';
+                                    setTimeout(() => {
+                                        button.style.transition = '';
+                                    }, 200);
+                                }, 1500);
+                            }).catch(err => {
+                                console.error('Failed to copy:', err);
+                            });
+                        });
                     });
 
                 } catch (error) {
@@ -2104,31 +3207,43 @@
             // Create toast element
             const toast = document.createElement('div');
             toast.className = `fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg transition-all duration-300 transform translate-x-full ${
-                type === 'error' 
-                    ? 'bg-[var(--bg-danger)] text-[var(--text-button)]' 
+                type === 'error'
+                    ? 'bg-[var(--bg-danger)] text-[var(--text-button)]'
                     : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'
             }`;
+            toast.style.cursor = 'pointer';
             toast.innerHTML = `
                 <div class="flex items-center">
                     <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2"></i>
                     <span>${escapeHtml(message)}</span>
                 </div>
             `;
-            
+
             document.body.appendChild(toast);
-            
+
             // Animate in
             setTimeout(() => {
                 toast.classList.remove('translate-x-full');
             }, 10);
-            
-            // Animate out and remove
-            setTimeout(() => {
+
+            // Function to dismiss the toast
+            const dismissToast = () => {
                 toast.classList.add('translate-x-full');
                 setTimeout(() => {
-                    document.body.removeChild(toast);
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
                 }, 300);
-            }, 3000);
+            };
+
+            // Add click handler to dismiss toast
+            toast.addEventListener('click', () => {
+                clearTimeout(timeoutId);
+                dismissToast();
+            });
+
+            // Auto-dismiss after 3 seconds
+            const timeoutId = setTimeout(dismissToast, 3000);
         }
 
         // ===== TAG MANAGEMENT FUNCTIONALITY =====
@@ -2150,6 +3265,98 @@
 
         let tags = [];
         let isEditingTag = false;
+
+        // Groups where current user is admin (passed from backend)
+        let userAdminGroups = {{ user_admin_groups | tojson }};
+        console.log('User admin groups:', userAdminGroups);
+
+        // Update visibility of group selection based on whether user is admin of any groups
+        function updateGroupSelectionVisibility() {
+            const groupSelectionSection = document.getElementById('tagGroupSelectionSection');
+            if (groupSelectionSection) {
+                const isInternalSharingEnabled = {{ 'true' if enable_internal_sharing else 'false' }};
+                if (isInternalSharingEnabled && userAdminGroups.length > 0) {
+                    groupSelectionSection.classList.remove('hidden');
+                    populateGroupDropdown();
+                } else {
+                    groupSelectionSection.classList.add('hidden');
+                }
+            }
+        }
+
+        // Populate the group dropdown with groups where user is admin
+        function populateGroupDropdown() {
+            const groupSelect = document.getElementById('tagGroupId');
+            if (!groupSelect) return;
+
+            // Clear existing options except the first one
+            while (groupSelect.options.length > 1) {
+                groupSelect.remove(1);
+            }
+
+            // Add group options
+            userAdminGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group.id;
+                option.textContent = group.name;
+                groupSelect.appendChild(option);
+            });
+        }
+
+        // Toggle group settings section based on selection
+        function toggleGroupSettings() {
+            const groupSelect = document.getElementById('tagGroupId');
+            const groupSettingsSection = document.getElementById('tagGroupSettingsSection');
+
+            if (groupSelect && groupSettingsSection) {
+                if (groupSelect.value) {
+                    groupSettingsSection.classList.remove('hidden');
+                } else {
+                    groupSettingsSection.classList.add('hidden');
+                }
+            }
+        }
+
+        // Add event listener for group selection changes
+        const tagGroupSelect = document.getElementById('tagGroupId');
+        if (tagGroupSelect) {
+            tagGroupSelect.addEventListener('change', toggleGroupSettings);
+        }
+
+        // Add event listener for protect from deletion checkbox
+        const tagProtectCheckbox = document.getElementById('tagProtectFromDeletion');
+        const tagRetentionDaysInput = document.getElementById('tagRetentionDays');
+
+        if (tagProtectCheckbox && tagRetentionDaysInput) {
+            tagProtectCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // When protect is enabled, disable retention field and set to -1
+                    tagRetentionDaysInput.value = '';
+                    tagRetentionDaysInput.disabled = true;
+                    tagRetentionDaysInput.classList.add('opacity-50', 'cursor-not-allowed');
+                    tagRetentionDaysInput.placeholder = 'Infinite retention (protected)';
+                } else {
+                    // When protect is disabled, re-enable retention field
+                    tagRetentionDaysInput.disabled = false;
+                    tagRetentionDaysInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                    tagRetentionDaysInput.placeholder = 'Leave empty to use global retention';
+                }
+            });
+        }
+
+        // Check if auto-deletion is enabled and show/hide the retention section
+        function checkAutoDeletionEnabled() {
+            const isAutoDeletionEnabled = {{ 'true' if enable_auto_deletion else 'false' }};
+            const retentionSection = document.getElementById('tagRetentionSection');
+
+            if (retentionSection && isAutoDeletionEnabled) {
+                retentionSection.classList.remove('hidden');
+            }
+        }
+
+        // Initialize visibility based on user's admin groups
+        updateGroupSelectionVisibility();
+        checkAutoDeletionEnabled();
 
         // Load tags from API
         async function loadTags() {
@@ -2214,54 +3421,133 @@
         // Create tag card element
         function createTagCard(tag) {
             const div = document.createElement('div');
-            div.className = 'bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] hover:shadow-md transition-shadow duration-200';
-            
+            const isGroupTag = tag.group_id !== null && tag.group_id !== undefined;
+            const canEdit = tag.can_edit !== undefined ? tag.can_edit : true;
+
+            div.className = `bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:shadow-md transition-shadow duration-200 overflow-hidden`;
+
+            // Build metadata badges
+            const metadata = [];
+
+            // Protection/Retention badge
+            if (tag.protect_from_deletion || tag.retention_days === -1) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #f59e0b; color: white;" title="Protected with infinite retention">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>∞</span>
+                </span>`);
+            } else if (tag.retention_days && tag.retention_days > 0) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #2563eb; color: white;" title="Retention: ${tag.retention_days} days">
+                    <i class="fas fa-clock"></i>
+                    <span>${tag.retention_days}d</span>
+                </span>`);
+            }
+
+            // Sharing badge for group tags
+            if (isGroupTag) {
+                const shareIcon = tag.auto_share_on_apply ? 'user-friends' : (tag.share_with_group_lead ? 'user-tie' : 'user-lock');
+                const shareText = tag.auto_share_on_apply ? 'All members' : (tag.share_with_group_lead ? 'Admins only' : 'Manual');
+                const shareTooltip = tag.auto_share_on_apply ? 'Auto-shares with all group members' : (tag.share_with_group_lead ? 'Shares with group admins only' : 'Manual sharing only');
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #9333ea; color: white;" title="${shareTooltip}">
+                    <i class="fas fa-${shareIcon}"></i>
+                    <span>${shareText}</span>
+                </span>`);
+            }
+
+            // ASR defaults badges
+            if (tag.default_language) {
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #16a34a; color: white;" title="Language: ${escapeHtml(tag.default_language)}">
+                    <i class="fas fa-language"></i>
+                    <span>${escapeHtml(tag.default_language).toUpperCase()}</span>
+                </span>`);
+            }
+            if (tag.default_min_speakers || tag.default_max_speakers) {
+                const min = tag.default_min_speakers || '?';
+                const max = tag.default_max_speakers || '?';
+                metadata.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style="background-color: #0d9488; color: white;" title="Speaker range: ${min}-${max}">
+                    <i class="fas fa-users"></i>
+                    <span>${min}-${max}</span>
+                </span>`);
+            }
+
+            // Custom prompt indicator
+            const hasPrompt = tag.custom_prompt && tag.custom_prompt.trim().length > 0;
+
             div.innerHTML = `
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center">
-                        <div class="w-4 h-4 rounded-full mr-3" style="background-color: ${escapeHtml(tag.color)}"></div>
-                        <h3 class="font-semibold text-[var(--text-primary)]">${escapeHtml(tag.name)}</h3>
+                <!-- Header with color indicator and name -->
+                <div class="flex items-center justify-between gap-2 px-3 py-2 bg-[var(--bg-secondary)] border-b border-[var(--border-primary)]">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        ${isGroupTag
+                            ? `<i class="fas fa-users flex-shrink-0 text-sm" style="color: ${escapeHtml(tag.color)}"></i>`
+                            : `<div class="w-3 h-3 rounded-full flex-shrink-0 border border-white/20" style="background-color: ${escapeHtml(tag.color)}"></div>`
+                        }
+                        <h3 class="font-semibold text-sm text-[var(--text-primary)] truncate" title="${escapeHtml(tag.name)}">
+                            ${isGroupTag ? `<span class="text-xs opacity-60">${escapeHtml(tag.group_name || 'Group')}:</span> ` : ''}${escapeHtml(tag.name)}
+                        </h3>
                     </div>
-                    <div class="flex space-x-1">
-                        <button class="edit-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] rounded" 
-                                data-tag-id="${tag.id}" data-i18n-title="buttons.editTag">
-                            <i class="fas fa-edit text-sm"></i>
-                        </button>
-                        <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] rounded" 
-                                data-tag-id="${tag.id}" data-i18n-title="buttons.deleteTag">
-                            <i class="fas fa-trash text-sm"></i>
-                        </button>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        ${!canEdit ? `
+                            <span class="px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded border border-[var(--border-secondary)]" title="Team tag - cannot edit">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                        ` : ''}
+                        ${canEdit ? `
+                            <button class="edit-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors rounded" data-tag-id="${tag.id}" title="Edit tag">
+                                <i class="fas fa-edit text-xs"></i>
+                            </button>
+                            <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-red-500 transition-colors rounded" data-tag-id="${tag.id}" title="Delete tag">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
-                
-                <div class="space-y-2 text-sm text-[var(--text-muted)]">
-                    ${tag.custom_prompt ? `
-                        <div>
-                            <span class="font-medium">${t('tagManagement.customPrompt')}:</span>
-                            <span class="text-xs">${escapeHtml(tag.custom_prompt.substring(0, 60))}${tag.custom_prompt.length > 60 ? '...' : ''}</span>
-                        </div>
-                    ` : ''}
 
-                    ${tag.default_language || tag.default_min_speakers || tag.default_max_speakers ? `
-                        <div class="pt-2 border-t border-[var(--border-secondary)]">
-                            <span class="font-medium text-xs">${t('tagManagement.asrDefaults')}:</span>
-                            <div class="flex flex-wrap gap-2 mt-1">
-                                ${tag.default_language ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">${t('form.language')}: ${escapeHtml(tag.default_language)}</span>` : ''}
-                                ${tag.default_min_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">${t('tagManagement.minSpeakers')}: ${tag.default_min_speakers}</span>` : ''}
-                                ${tag.default_max_speakers ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[var(--bg-accent)] text-[var(--text-accent)]">${t('tagManagement.maxSpeakers')}: ${tag.default_max_speakers}</span>` : ''}
+                <!-- Metadata badges -->
+                ${metadata.length > 0 ? `
+                    <div class="px-3 py-2 flex flex-wrap gap-1.5">
+                        ${metadata.join('')}
+                    </div>
+                ` : ''}
+
+                <!-- Custom prompt section (collapsible) -->
+                ${hasPrompt ? `
+                    <div class="border-t border-[var(--border-primary)]">
+                        <button class="toggle-prompt-btn w-full px-3 py-2 flex items-center justify-between text-left hover:bg-[var(--bg-secondary)] transition-colors group" data-tag-id="${tag.id}">
+                            <span class="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1.5">
+                                <i class="fas fa-message-lines text-[10px]"></i>
+                                Custom Prompt
+                            </span>
+                            <i class="fas fa-chevron-down text-[10px] text-[var(--text-muted)] transition-transform group-hover:text-[var(--text-secondary)]"></i>
+                        </button>
+                        <div class="prompt-content hidden px-3 pb-2">
+                            <div class="text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded p-2 max-h-24 overflow-y-auto custom-scrollbar border border-[var(--border-secondary)]">
+                                ${escapeHtml(tag.custom_prompt)}
                             </div>
                         </div>
-                    ` : ''}
-                </div>
+                    </div>
+                ` : ''}
             `;
-            
+
             // Add event listeners
             const editBtn = div.querySelector('.edit-tag-btn');
             const deleteBtn = div.querySelector('.delete-tag-btn');
-            
-            editBtn.addEventListener('click', () => editTag(tag));
-            deleteBtn.addEventListener('click', () => deleteTag(tag.id, tag.name));
-            
+            const toggleBtn = div.querySelector('.toggle-prompt-btn');
+
+            if (editBtn) {
+                editBtn.addEventListener('click', () => editTag(tag));
+            }
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => deleteTag(tag.id, tag.name));
+            }
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const content = this.nextElementSibling;
+                    const icon = this.querySelector('.fa-chevron-down');
+                    content.classList.toggle('hidden');
+                    icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                });
+            }
+
             return div;
         }
 
@@ -2295,13 +3581,79 @@
                 isEditingTag = true;
                 tagModalTitle.textContent = 'Edit Tag';
                 saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Tag';
-                
+
                 // Populate form
                 document.getElementById('tagId').value = tag.id;
                 document.getElementById('tagName').value = tag.name;
                 document.getElementById('tagColor').value = tag.color;
                 document.getElementById('tagCustomPrompt').value = tag.custom_prompt || '';
-                
+
+                // Populate group selection
+                const groupIdSelect = document.getElementById('tagGroupId');
+                const groupSelectionSection = document.getElementById('tagGroupSelectionSection');
+                const isInternalSharingEnabled = {{ 'true' if enable_internal_sharing else 'false' }};
+
+                if (groupIdSelect && isInternalSharingEnabled) {
+                    // If this tag has a group_id, force show the group selection section
+                    if (tag.group_id) {
+                        groupSelectionSection?.classList.remove('hidden');
+
+                        // Ensure the current group is in the dropdown (in case async load hasn't finished)
+                        if (tag.group_name) {
+                            // Check if option already exists
+                            const existingOption = Array.from(groupIdSelect.options).find(opt => opt.value == tag.group_id);
+                            if (!existingOption) {
+                                // Add the current group as an option
+                                const option = document.createElement('option');
+                                option.value = tag.group_id;
+                                option.textContent = tag.group_name;
+                                groupIdSelect.appendChild(option);
+                            }
+                        }
+                    }
+
+                    groupIdSelect.value = tag.group_id || '';
+                    toggleGroupSettings();
+                }
+
+                // Populate group-specific settings
+                if (document.getElementById('tagAutoShareOnApply')) {
+                    document.getElementById('tagAutoShareOnApply').checked = tag.auto_share_on_apply !== undefined ? tag.auto_share_on_apply : true;
+                }
+                if (document.getElementById('tagShareWithGroupLead')) {
+                    document.getElementById('tagShareWithGroupLead').checked = tag.share_with_group_lead !== undefined ? tag.share_with_group_lead : true;
+                }
+
+                // Populate retention settings
+                // If retention_days is -1, it means protected from deletion
+                const retentionDaysInput = document.getElementById('tagRetentionDays');
+                const protectCheckbox = document.getElementById('tagProtectFromDeletion');
+
+                if (tag.retention_days === -1 || tag.protect_from_deletion) {
+                    // Protected from deletion
+                    if (protectCheckbox) {
+                        protectCheckbox.checked = true;
+                    }
+                    if (retentionDaysInput) {
+                        retentionDaysInput.value = '';
+                        retentionDaysInput.disabled = true;
+                        retentionDaysInput.classList.add('opacity-50', 'cursor-not-allowed');
+                        retentionDaysInput.placeholder = 'Infinite retention (protected)';
+                    }
+                } else {
+                    // Not protected
+                    if (protectCheckbox) {
+                        protectCheckbox.checked = false;
+                    }
+                    if (retentionDaysInput) {
+                        retentionDaysInput.value = tag.retention_days || '';
+                        retentionDaysInput.disabled = false;
+                        retentionDaysInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                        retentionDaysInput.placeholder = 'Leave empty to use global retention';
+                    }
+                }
+
+                // Populate ASR settings
                 if (document.getElementById('tagLanguage')) {
                     document.getElementById('tagLanguage').value = tag.default_language || '';
                 }
@@ -2318,8 +3670,36 @@
                 saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Tag';
                 tagForm.reset();
                 document.getElementById('tagColor').value = '#3B82F6';
+
+                // Reset group selection
+                if (document.getElementById('tagGroupId')) {
+                    document.getElementById('tagGroupId').value = '';
+                    toggleGroupSettings();
+                }
+
+                // Set default values for group settings
+                if (document.getElementById('tagAutoShareOnApply')) {
+                    document.getElementById('tagAutoShareOnApply').checked = true;
+                }
+                if (document.getElementById('tagShareWithGroupLead')) {
+                    document.getElementById('tagShareWithGroupLead').checked = true;
+                }
+
+                // Clear retention settings and ensure field is enabled
+                const retentionInput = document.getElementById('tagRetentionDays');
+                const protectCheck = document.getElementById('tagProtectFromDeletion');
+
+                if (retentionInput) {
+                    retentionInput.value = '';
+                    retentionInput.disabled = false;
+                    retentionInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                    retentionInput.placeholder = 'Leave empty to use global retention';
+                }
+                if (protectCheck) {
+                    protectCheck.checked = false;
+                }
             }
-            
+
             tagModal.classList.remove('hidden');
         }
 
@@ -2365,16 +3745,39 @@
         // Save tag form submission
         tagForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const formData = new FormData(tagForm);
+
+            // Determine retention_days: -1 if protected, otherwise use the input value
+            const isProtected = document.getElementById('tagProtectFromDeletion')?.checked || false;
+            let retentionDays = null;
+
+            if (isProtected) {
+                retentionDays = -1; // -1 means protected/infinite retention
+            } else {
+                const retentionInput = formData.get('retention_days');
+                retentionDays = retentionInput ? parseInt(retentionInput) : null;
+            }
+
             const tagData = {
                 name: formData.get('name'),
                 color: formData.get('color'),
                 custom_prompt: formData.get('custom_prompt') || null,
                 default_language: formData.get('default_language') || null,
                 default_min_speakers: formData.get('default_min_speakers') ? parseInt(formData.get('default_min_speakers')) : null,
-                default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null
+                default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null,
+                retention_days: retentionDays
             };
+
+            // Add group-related fields
+            const groupId = formData.get('group_id');
+            if (groupId) {
+                tagData.group_id = parseInt(groupId);
+                tagData.auto_share_on_apply = document.getElementById('tagAutoShareOnApply')?.checked || false;
+                tagData.share_with_group_lead = document.getElementById('tagShareWithGroupLead')?.checked || false;
+            } else {
+                tagData.group_id = null;
+            }
             
             try {
                 const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
@@ -2767,17 +4170,30 @@
         function showToast(message, type = 'info') {
             // Simple toast notification
             const toast = document.createElement('div');
-            toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-md text-white z-50 ${
+            toast.className = `fixed top-4 right-4 px-4 py-2 rounded-md text-white z-50 ${
                 type === 'success' ? 'bg-green-600' :
                 type === 'error' ? 'bg-red-600' :
                 'bg-blue-600'
             }`;
+            toast.style.cursor = 'pointer';
             toast.textContent = message;
             document.body.appendChild(toast);
 
-            setTimeout(() => {
-                toast.remove();
-            }, 3000);
+            // Function to dismiss the toast
+            const dismissToast = () => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            };
+
+            // Add click handler to dismiss toast
+            toast.addEventListener('click', () => {
+                clearTimeout(timeoutId);
+                dismissToast();
+            });
+
+            // Auto-dismiss after 3 seconds
+            const timeoutId = setTimeout(dismissToast, 3000);
         }
     });
     </script>

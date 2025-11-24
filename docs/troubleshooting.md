@@ -6,7 +6,7 @@ When something goes wrong with Speakr, this guide helps you identify and resolve
 
 ### Container Won't Start
 
-When your Docker container refuses to start or immediately exits, the problem usually lies in your configuration. Check your [environment file](getting-started.md#step-3-configure-your-transcription-service) first - a single typo in API keys or mismatched quotes can prevent startup. Review the [installation guide](getting-started/installation.md) for proper setup. Run `docker-compose logs app` to see the actual error messages. Common culprits include port conflicts (another service using 8899), missing volume mounts, or incorrect file permissions on your data directory.
+When your Docker container refuses to start or immediately exits, the problem usually lies in your configuration. Check your [environment file](getting-started.md#step-3-configure-your-transcription-service) first - a single typo in API keys or mismatched quotes can prevent startup. Review the [installation guide](getting-started/installation.md) for proper setup. Run `docker compose logs app` to see the actual error messages. Common culprits include port conflicts (another service using 8899), missing volume mounts, or incorrect file permissions on your data directory.
 
 If you see database connection errors, ensure your database file has proper permissions. The container runs as a specific user and needs read/write access to the data directories. On Linux systems, you might need to adjust ownership with `chown -R 1000:1000 ./uploads ./instance`.
 
@@ -157,9 +157,9 @@ While Docker is the only officially supported installation method, you can attem
 
 ### Check the Logs
 
-Docker logs contain valuable debugging information. Use `docker-compose logs -f app` to see real-time logs. Look for ERROR or WARNING messages that correspond to when problems occurred. Python tracebacks indicate code-level issues that might require support.
+Docker logs contain valuable debugging information. Use `docker compose logs -f app` to see real-time logs. Look for ERROR or WARNING messages that correspond to when problems occurred. Python tracebacks indicate code-level issues that might require support.
 
-For ASR issues, also check the ASR container logs: `docker-compose logs -f whisper-asr-webservice`
+For ASR issues, also check the ASR container logs: `docker compose logs -f whisper-asr-webservice`
 
 ### System Information
 

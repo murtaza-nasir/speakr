@@ -9,7 +9,7 @@ nav_order: 4
 
 Inquire Mode transforms your entire recording library into an intelligent knowledge base that you can search using natural language questions. Instead of hunting through individual recordings or trying to remember which meeting contained a specific discussion, you can simply ask questions and receive comprehensive answers drawn from all your relevant recordings.
 
-![Inquire Mode Interface](../assets/images/screenshots/inquire mode.png)
+![Inquire Mode Interface](../assets/images/screenshots/Inquire mode.png)
 
 ## Understanding Inquire Mode
 
@@ -35,7 +35,7 @@ Date range filtering helps you focus on recent discussions or search within a sp
 
 ## Asking Effective Questions
 
-![Inquire Mode Example Results](../assets/images/screenshots/inquire mode 2.png)
+![Inquire Mode Example Results](../assets/images/screenshots/inquire-dark-mode.png)
 
 The key to getting great results from Inquire Mode is asking clear, specific questions. The system works best when you provide context and be specific about what you're looking for.
 
@@ -45,7 +45,7 @@ The system excels at different types of queries. You can ask for summaries of sp
 
 ## Understanding Your Results
 
-![Contextual Search Results](../assets/images/screenshots/inquire mode.png)
+![Contextual Search Results](../assets/images/screenshots/Inquire mode.png)
 
 When Inquire Mode returns results, it provides a synthesized answer that draws from all relevant recordings. The response isn't just a list of search hits - it's a coherent narrative that combines information from multiple sources into a unified answer.
 
@@ -57,7 +57,7 @@ The system intelligently organizes information, grouping related points together
 
 Inquire Mode shines in numerous real-world scenarios. When preparing for meetings, you can quickly review what was previously discussed about agenda topics, what questions remained unresolved, and what commitments were made. This ensures you walk into meetings fully informed without spending hours reviewing old recordings.
 
-For project management, the system helps track decisions across multiple meetings, identify all action items assigned to team members, and monitor how project requirements or priorities have changed over time. You can ask questions like "What risks have been identified for the product launch?" and receive a comprehensive list drawn from all relevant discussions.
+For project management, the system helps track decisions across multiple meetings, identify all action items assigned to group members, and monitor how project requirements or priorities have changed over time. You can ask questions like "What risks have been identified for the product launch?" and receive a comprehensive list drawn from all relevant discussions.
 
 Research and analysis become dramatically more efficient. Whether you're analyzing customer feedback patterns, tracking competitor mentions, or identifying recurring themes across interviews, Inquire Mode can surface insights that might otherwise remain buried in hours of recordings.
 

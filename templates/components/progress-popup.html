@@ -1,0 +1,104 @@
+<!-- Upload Progress Popup -->
+<div v-if="uploadQueue.length > 0 && !progressPopupClosed"
+     :class="[
+         'fixed bottom-4 left-4 z-[100] w-96 transition-all duration-300',
+         progressPopupMinimized ? 'minimized' : ''
+     ]">
+    <div class="bg-[var(--bg-secondary)] border-2 border-[var(--bg-accent)] rounded-lg shadow-2xl overflow-hidden backdrop-blur-sm bg-opacity-95
+                ring-4 ring-[var(--bg-accent)] ring-opacity-20"
+         style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px var(--bg-accent), 0 0 20px rgba(var(--bg-accent-rgb), 0.3)">
+        <!-- Progress Header -->
+        <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-4 py-3">
+            <!-- Top row: Title and buttons -->
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fas fa-upload text-gray-800 dark:text-white animate-pulse"></i>
+                    <span class="font-semibold text-gray-800 dark:text-white truncate" v-text="t('uploadProgress.title')"></span>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button v-if="completedInQueue > 0" @click="clearCompletedUploads()"
+                            class="px-2 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all duration-200 text-gray-800 dark:text-white font-medium"
+                            :title="t('buttons.clearCompleted')">
+                        Clear
+                    </button>
+                    <button @click="progressPopupMinimized = !progressPopupMinimized"
+                            class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
+                        <i :class="progressPopupMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                    </button>
+                    <button @click="progressPopupClosed = true"
+                            class="p-1 rounded hover:bg-red-600 dark:hover:bg-red-500 hover:bg-opacity-20 dark:hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-white transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Overall Progress Bar -->
+            <div class="space-y-1">
+                <div class="flex justify-between items-center text-xs text-gray-800 dark:text-white">
+                    <span class="font-medium">${completedInQueue} of ${totalInQueue} files</span>
+                    <span class="font-bold">${Math.round((completedInQueue / Math.max(totalInQueue, 1)) * 100)}%</span>
+                </div>
+                <div class="w-full bg-black dark:bg-black bg-opacity-30 dark:bg-opacity-30 rounded-full h-2 overflow-hidden">
+                    <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden"
+                         :style="{width: (completedInQueue / Math.max(totalInQueue, 1) * 100) + '%'}">
+                        <div class="absolute inset-0 bg-black dark:bg-white opacity-30 dark:opacity-20 animate-pulse"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Content -->
+        <div v-if="!progressPopupMinimized" class="p-3 max-h-64 overflow-y-auto">
+            <!-- Currently Processing File -->
+            <div v-if="currentlyProcessingFile" class="mb-3 p-3 bg-[var(--bg-accent)] bg-opacity-10 border border-[var(--border-accent)] rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="font-semibold truncate min-w-0 text-sm text-[var(--text-primary)]">${currentlyProcessingFile.file.name}</span>
+                    <span class="text-sm flex-shrink-0 ml-2 font-bold text-[var(--text-accent)]">${processingProgress}%</span>
+                </div>
+                <div class="w-full bg-black dark:bg-[var(--bg-tertiary)] bg-opacity-20 rounded-full h-2 mb-2 overflow-hidden">
+                    <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] h-full rounded-full transition-all duration-300 relative"
+                         :style="{width: processingProgress + '%'}">
+                        <div class="absolute inset-0 bg-black dark:bg-white opacity-30 dark:opacity-20 animate-pulse"></div>
+                    </div>
+                </div>
+                <p class="text-xs text-[var(--text-secondary)] font-medium">${processingMessage}</p>
+            </div>
+
+            <!-- Waiting Files -->
+            <div v-if="waitingFilesInQueue.length > 0" class="space-y-2 mb-3">
+                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70">Waiting (${waitingFilesInQueue.length})</h4>
+                <div v-for="item in waitingFilesInQueue"
+                     :key="item.clientId"
+                     class="progress-list-item p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
+                    <i class="fas fa-clock text-[var(--text-muted)] text-sm"></i>
+                    <span class="truncate text-sm flex-1 text-[var(--text-primary)]">${item.file.name}</span>
+                    <span class="text-xs text-[var(--text-muted)]">${formatFileSize(item.file.size)}</span>
+                    <button @click="cancelWaitingFile(item.clientId)"
+                            class="p-1 rounded hover:bg-red-500 hover:bg-opacity-20 transition-colors flex-shrink-0"
+                            :title="'Remove from queue'">
+                        <i class="fas fa-times text-[var(--text-muted)] hover:text-red-500 text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Finished Files -->
+            <div v-if="finishedFilesInQueue.length > 0" class="space-y-2">
+                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70" v-text="t('help.completedFiles')"></h4>
+                <div v-for="item in finishedFilesInQueue"
+                     :key="item.clientId"
+                     class="progress-list-item p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
+                    <i :class="[
+                        'fas',
+                        item.status === 'completed' ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'
+                    ]"></i>
+                    <span class="truncate text-sm flex-1 text-[var(--text-primary)]">${item.file.name}</span>
+                    <span :class="[
+                        'text-xs px-2 py-1 rounded-full font-semibold',
+                        item.status === 'completed' ? 'bg-green-500 bg-opacity-20 text-green-600 dark:text-green-400' : 'bg-red-500 bg-opacity-20 text-red-600 dark:text-red-400'
+                    ]">
+                        ${item.status === 'completed' ? t('tagsModal.done') : t('status.failed')}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

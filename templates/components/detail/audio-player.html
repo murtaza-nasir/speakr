@@ -1,0 +1,22 @@
+<!-- Audio Player Component -->
+<div class="bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
+    <div class="audio-player-container">
+        <!-- Show message if audio has been deleted -->
+        <div v-if="selectedRecording.audio_deleted_at"
+             class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+            <i class="fas fa-info-circle"></i>
+            <span v-text="t('help.audioDeletedMessage')"></span>
+        </div>
+        <!-- Show audio player if audio is available -->
+        <audio v-else
+               ref="audioPlayerElement"
+               controls
+               :src="'/audio/' + selectedRecording.id"
+               :volume="playerVolume"
+               @volumechange="onPlayerVolumeChange"
+               @timeupdate="handleAudioTimeUpdate"
+               class="w-full">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
+</div>

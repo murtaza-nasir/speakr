@@ -1,0 +1,43 @@
+<!-- Edit Modal -->
+<div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg">
+        <div class="p-6 border-b border-[var(--border-primary)]">
+            <h3 class="text-lg font-semibold" v-text="t('modal.editRecording')"></h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-2" v-text="t('form.title')"></label>
+                <input v-model="editingRecording.title"
+                       class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2" v-text="t('form.participants')"></label>
+                <input v-model="editingRecording.participants"
+                       class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2" v-text="t('form.meetingDate')"></label>
+                <input v-model="editingRecording.meeting_date"
+                       type="date"
+                       class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-2" v-text="t('form.notes')"></label>
+                <textarea v-model="editingRecording.notes"
+                          rows="4"
+                          class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                </textarea>
+            </div>
+        </div>
+        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end gap-3">
+            <button @click="cancelEdit"
+                    class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                Cancel
+            </button>
+            <button @click="saveEdit"
+                    class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>

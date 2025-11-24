@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Shared Recording - {{ recording.title }}</title>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
@@ -16,7 +17,6 @@
 
     <!-- Loading overlay to prevent FOUC -->
     {% include 'includes/loading_overlay.html' %}
-    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 
     <script>
         tailwind.config = {
@@ -101,7 +101,14 @@
             <!-- Audio Player - Fixed at top -->
             <div class="bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
                 <div class="max-w-4xl mx-auto">
-                    <div class="audio-player-container">
+                    <!-- Show message if audio has been deleted -->
+                    <div v-if="recording.audio_deleted_at"
+                         class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Audio file has been archived and is no longer available for playback.</span>
+                    </div>
+                    <!-- Show audio player if audio is available -->
+                    <div v-else class="audio-player-container">
                         <audio controls class="w-full" :src="'/share/audio/' + recording.public_id" ref="audioPlayer"></audio>
                     </div>
                 </div>
@@ -148,9 +155,9 @@
 
             <!-- Tab Content - Fixed height container -->
             <div class="flex-1 flex flex-col overflow-hidden">
-                <div class="max-w-4xl mx-auto p-4 flex-1 flex flex-col overflow-hidden">
+                <div class="w-full max-w-4xl mx-auto p-4 flex-1 flex flex-col overflow-hidden">
                     <!-- Transcription View -->
-                    <div v-show="activeTab === 'transcription'" class="flex-1 flex flex-col overflow-hidden">
+                    <div v-show="activeTab === 'transcription'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <!-- Transcription Controls -->
                         <div class="flex items-center justify-between mb-4 flex-shrink-0">
                             <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
@@ -189,7 +196,7 @@
                         </div>
 
                         <!-- Transcription Content - Scrollable Box -->
-                        <div class="flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick">
+                        <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick">
                             <!-- Simple View -->
                             <div v-if="transcriptView === 'simple'" class="transcription-simple-view">
                                 <div v-for="segment in processedTranscription.simpleSegments" 
@@ -233,13 +240,13 @@
 
                     <!-- Summary View -->
                     {% if recording.summary %}
-                    <div v-show="activeTab === 'summary'" class="flex-1 flex flex-col overflow-hidden">
+                    <div v-show="activeTab === 'summary'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <div class="flex items-center justify-end mb-4 flex-shrink-0">
                             <button @click="copySummary" class="copy-btn">
                                 <i class="fas fa-copy mr-1"></i>Copy
                             </button>
                         </div>
-                        <div class="flex-1 overflow-y-auto summary-box">
+                        <div class="w-full flex-1 overflow-y-auto summary-box">
                             {{ recording.summary|safe }}
                         </div>
                     </div>
@@ -247,13 +254,13 @@
 
                     <!-- Notes View -->
                     {% if recording.notes %}
-                    <div v-show="activeTab === 'notes'" class="flex-1 flex flex-col overflow-hidden">
+                    <div v-show="activeTab === 'notes'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <div class="flex items-center justify-end mb-4 flex-shrink-0">
                             <button @click="copyNotes" class="copy-btn">
                                 <i class="fas fa-copy mr-1"></i>Copy
                             </button>
                         </div>
-                        <div class="flex-1 overflow-y-auto notes-box">
+                        <div class="w-full flex-1 overflow-y-auto notes-box">
                             {{ recording.notes|safe }}
                         </div>
                     </div>
@@ -285,7 +292,7 @@
         </footer>
 
         <!-- Toast Container -->
-        <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+        <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none"></div>
     </div>
 
     <script>
@@ -394,6 +401,7 @@
                 });
 
                 function seekAudio(startTime) {
+                    if (recording.value.audio_deleted_at) return;
                     if (startTime && audioPlayer.value) {
                         audioPlayer.value.currentTime = parseFloat(startTime);
                         audioPlayer.value.play();
@@ -401,6 +409,7 @@
                 }
 
                 function handleTranscriptClick(event) {
+                    if (recording.value.audio_deleted_at) return;
                     const startTime = event.target.dataset.startTime;
                     if (startTime && audioPlayer.value) {
                         audioPlayer.value.currentTime = parseFloat(startTime);
@@ -408,7 +417,8 @@
                     }
                 }
 
-                function copyTranscript() {
+                function copyTranscript(event) {
+                    const button = event?.currentTarget;
                     let textToCopy = '';
                     if (processedTranscription.value.isJson) {
                         textToCopy = processedTranscription.value.segments.map(s => `[${s.speaker}]: ${s.sentence}`).join('\n');
@@ -416,20 +426,39 @@
                         textToCopy = recording.value.transcription;
                     }
                     navigator.clipboard.writeText(textToCopy).then(() => {
+                        animateCopyButton(button);
                         showToast('Transcription copied to clipboard!');
                     });
                 }
 
-                function copySummary() {
-                    navigator.clipboard.writeText(recording.value.summary).then(() => {
+                function copySummary(event) {
+                    const button = event?.currentTarget;
+                    const textToCopy = recording.value.summary_raw || recording.value.summary;
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        animateCopyButton(button);
                         showToast('Summary copied to clipboard!');
                     });
                 }
 
-                function copyNotes() {
-                    navigator.clipboard.writeText(recording.value.notes).then(() => {
+                function copyNotes(event) {
+                    const button = event?.currentTarget;
+                    const textToCopy = recording.value.notes_raw || recording.value.notes;
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        animateCopyButton(button);
                         showToast('Notes copied to clipboard!');
                     });
+                }
+
+                function animateCopyButton(button) {
+                    if (!button) return;
+                    const icon = button.querySelector('i');
+                    if (icon) {
+                        const originalClass = icon.className;
+                        icon.className = 'fas fa-check mr-1';
+                        setTimeout(() => {
+                            icon.className = originalClass;
+                        }, 2000);
+                    }
                 }
 
                 function toggleDarkMode() {
@@ -448,19 +477,33 @@
                 function showToast(message) {
                     const container = document.getElementById('toastContainer');
                     const toast = document.createElement('div');
-                    toast.className = 'toast bg-[var(--bg-success)] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2';
+                    toast.className = 'toast bg-[var(--bg-success)] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 pointer-events-auto';
+                    toast.style.cursor = 'pointer';
                     toast.innerHTML = `<i class="fas fa-check"></i>${message}`;
-                    
+
                     container.appendChild(toast);
-                    
+
                     // Trigger animation
                     setTimeout(() => toast.classList.add('show'), 10);
-                    
-                    // Remove after 3 seconds
-                    setTimeout(() => {
+
+                    // Function to dismiss the toast
+                    const dismissToast = () => {
                         toast.classList.remove('show');
-                        setTimeout(() => container.removeChild(toast), 300);
-                    }, 3000);
+                        setTimeout(() => {
+                            if (toast.parentNode) {
+                                container.removeChild(toast);
+                            }
+                        }, 300);
+                    };
+
+                    // Add click handler to dismiss toast
+                    toast.addEventListener('click', () => {
+                        clearTimeout(timeoutId);
+                        dismissToast();
+                    });
+
+                    // Auto-dismiss after 3 seconds
+                    const timeoutId = setTimeout(dismissToast, 3000);
                 }
 
                 return {

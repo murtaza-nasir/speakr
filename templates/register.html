@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>{{ title }} - Speakr</title>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
         <!-- All dependencies bundled locally for offline support -->
@@ -13,7 +14,6 @@
 
     <!-- Loading overlay to prevent FOUC -->
     {% include 'includes/loading_overlay.html' %}
-    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 
     <script>
         // Function to apply the theme based on localStorage
@@ -54,7 +54,7 @@
     <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
             <h1 class="text-3xl font-bold text-[var(--text-primary)]">
-                <a href="{{ url_for('index') }}" class="flex items-center">
+                <a href="{{ url_for('recordings.index') }}" class="flex items-center">
                     <img src="{{ url_for('static', filename='img/favicon.ico') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
                     Speakr
                 </a>
@@ -75,7 +75,7 @@
                     {% endif %}
                 {% endwith %}
                 
-                <form method="POST" action="{{ url_for('register') }}">
+                <form method="POST" action="{{ url_for('auth.register') }}">
                     {{ form.hidden_tag() }}
                     
                     <div class="mb-4">
@@ -140,7 +140,7 @@
                         
                         <div class="text-center text-sm text-[var(--text-muted)]">
                             <span>Already have an account?</span>
-                            <a href="{{ url_for('login') }}" class="font-medium text-[var(--text-accent)] hover:underline">Login here</a>
+                            <a href="{{ url_for('auth.login') }}" class="font-medium text-[var(--text-accent)] hover:underline">Login here</a>
                         </div>
                     </div>
                 </form>

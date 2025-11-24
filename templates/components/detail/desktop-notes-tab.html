@@ -1,0 +1,57 @@
+<!-- Desktop Notes Tab -->
+<div v-if="selectedTab === 'notes'" class="h-full p-4 overflow-y-auto">
+    <div class="content-box h-full relative">
+        <div v-if="!editingNotes" class="absolute top-2 right-4 flex gap-1 z-10">
+            <button @click="copyNotes"
+                    :title="t('buttons.copyNotes')"
+                    class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
+                <i class="fas fa-copy text-sm"></i>
+            </button>
+            <button @click="downloadNotes"
+                    :title="t('buttons.downloadNotes')"
+                    class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
+                <i class="fas fa-download text-sm"></i>
+            </button>
+            <button @click="toggleEditNotes"
+                    :title="t('buttons.editNotes')"
+                    class="w-8 h-8 flex items-center justify-center bg-transparent hover:bg-[var(--bg-secondary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-md border border-transparent hover:border-[var(--border-secondary)] transition-all duration-200 opacity-60 hover:opacity-100">
+                <i class="fas fa-edit text-sm"></i>
+            </button>
+        </div>
+
+        <div v-if="!editingNotes"
+             class="notes-box h-full"
+             @click="clickToEditNotes">
+            <div v-if="selectedRecording.notes_html"
+                 v-html="selectedRecording.notes_html">
+            </div>
+            <div v-else-if="selectedRecording.notes"
+                 class="whitespace-pre-wrap">
+                ${selectedRecording.notes}
+            </div>
+            <div v-else class="text-[var(--text-muted)] italic cursor-pointer hover:text-[var(--text-secondary)]">
+                ${ t('help.clickToAddNotes') }
+            </div>
+        </div>
+
+        <div v-else class="h-full flex flex-col">
+            <div class="markdown-editor-container flex-1">
+                <textarea ref="notesMarkdownEditor"
+                          v-model="selectedRecording.notes"
+                          class="w-full h-full p-4 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]"
+                          :placeholder="t('form.enterNotesMarkdown')">
+                </textarea>
+            </div>
+            <div class="flex justify-end gap-2 mt-2">
+                <button @click="cancelEditNotes"
+                        class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]">
+                    Cancel
+                </button>
+                <button @click="saveEditNotes"
+                        class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

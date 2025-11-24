@@ -18,6 +18,14 @@ The username becomes their identity within Speakr, appearing in the interface an
 
 Admin privileges are powerful and should be granted sparingly. Admin users can see and modify all [system settings](system-settings.md), manage other users including other admins, configure [default prompts](prompts.md), and monitor the [vector store](vector-store.md). Most users will never need these capabilities.
 
+### User Permissions
+
+Beyond the admin role, Speakr offers granular per-user permissions that control specific capabilities:
+
+**Public Sharing Permission**: The public sharing icon button (globe icon) in each user's row toggles their ability to create public share links. When enabled (green), the user can generate secure links to share recordings externally with anyone. When disabled (gray), the user can only use internal sharing to share with other Speakr users. This permission is only available if `ENABLE_PUBLIC_SHARING=true` in your environment configuration.
+
+Use this permission to control external information sharing on a per-user basis. You might grant public sharing to executives, sales groups, or marketing staff who regularly communicate with external stakeholders, while restricting it for users handling sensitive internal data.
+
 ## Managing Existing Users
 
 Each user row includes action buttons that give you complete control over that account. The edit button opens a modal where you can update their username or email address. This is useful when people change names, switch email providers, or when you need to correct initial entry mistakes.

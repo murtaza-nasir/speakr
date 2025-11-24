@@ -6,7 +6,8 @@ Once your audio has been processed, Speakr provides a rich set of tools for view
 
 When you select a recording from the sidebar, the center panel displays the full transcription. The layout is designed for easy reading and navigation, with clear visual indicators for different speakers and timestamps.
 
-![Transcription View](../assets/images/screenshots/recording view with simple transcription view and chat visible.png)
+![Transcription View with Audio Sync](../assets/images/screenshots/audio-sync-bubble-view.png)
+*Transcription view with real-time audio synchronization and active segment highlighting*
 
 ## Speaker Identification
 
@@ -16,9 +17,10 @@ If your recording was processed with [speaker diarization](../features.md#speake
 
 When you need to assign real names to speaker labels, click the speaker identification button in the toolbar. This opens a modal where you can:
 
-![Speaker ID Modal](../assets/images/screenshots/speaker id modal.png)
+![Speaker ID Modal with Voice Profiles](../assets/images/screenshots/speaker-identification-voice-profiles.png)
+*Speaker identification modal with AI-powered voice profile suggestions based on previous recordings*
 
-The speaker identification modal shows each detected speaker with a sample of their dialogue to help you identify them. You can enter real names for each speaker, and these names will replace the generic labels throughout the transcription. The system remembers these assignments for future reference, making it easier to identify the same speakers in subsequent recordings.
+The speaker identification modal shows each detected speaker with a sample of their dialogue to help you identify them. When you've identified speakers in previous recordings, Speakr's voice recognition system analyzes voice embeddings and provides intelligent suggestions with confidence scores. You can enter real names for each speaker, and these names will replace the generic labels throughout the transcription. The system remembers these assignments and builds voice profiles, making it easier and faster to identify the same speakers in subsequent recordings.
 
 ### Managing Saved Speakers
 
@@ -44,7 +46,7 @@ For standard transcriptions without speaker diarization, click the Edit button i
 
 For transcriptions processed with [ASR](../features.md#speaker-diarization) and speaker diarization, Speakr offers a powerful segment-based editor that preserves the structure and timing of your transcription. If you encounter issues with speaker identification, see [troubleshooting](../troubleshooting.md#speaker-identification-not-working).
 
-![ASR Transcription Editor](../assets/images/screenshots/edit transcript with ASR.png)
+![ASR Transcription Editor](../assets/images/screenshots/edit-transcription-modal.png)
 
 The ASR editor presents your transcription as a table of segments, where each row represents a single utterance with its associated metadata. For each segment, you can:
 
@@ -72,11 +74,48 @@ The default simple view presents the transcription as flowing text with inline s
 
 The bubble view formats the transcription like a chat conversation, with each speaker's contributions in separate message bubbles. This format works particularly well for interviews, debates, or any recording with back-and-forth dialogue. The visual separation makes it easier to follow who said what in rapid exchanges.
 
+## Audio Synchronization and Follow Mode
+
+For recordings processed with [speaker diarization](../features.md#speaker-diarization), Speakr provides bidirectional synchronization between the audio player and transcript, creating an interactive reading experience.
+
+### Click-to-Play Navigation
+
+Click on any part of the transcript to jump directly to that moment in the audio. This works in both simple and bubble views, allowing you to quickly navigate to specific portions of the conversation you want to hear. Each transcript segment includes timestamp information that seamlessly syncs with the audio player.
+
+### Active Segment Highlighting
+
+As your audio plays, Speakr automatically highlights the currently spoken text in the transcript. The active segment is displayed with a prominent rounded box and subtle animation, making it effortless to follow along with the audio. This real-time highlighting works in both view modes:
+
+- **Simple View**: The current speaker segment is highlighted with rounded corners and increased padding for clear visibility
+- **Bubble View**: The active message bubble scales slightly and receives the same highlight treatment
+
+### Auto-Scroll Follow Mode
+
+Enable follow mode using the compact checkbox control in the transcript header (indicated by vertical arrows icon). When active, the transcript panel automatically scrolls to keep the currently playing segment centered in view. This is particularly useful for:
+
+- Following along during long recordings without manual scrolling
+- Reviewing specific sections while listening at different playback speeds
+- Accessibility - keeping visual and audio content synchronized
+
+Your follow mode preference is saved automatically and persists across sessions and different recordings. The feature intelligently resets when you switch between recordings, ensuring a clean slate for each playback session.
+
+### Follow Mode in Action
+
+The auto-scroll follow mode works seamlessly in both view modes and adapts to your theme preference:
+
+![Follow Mode Simple View - Dark Theme](../assets/images/screenshots/highlighted-transcript-following-simple-dark.png)
+*Auto-scroll follow mode in simple view with dark theme - transcript automatically scrolls to keep current segment visible*
+
+![Follow Mode Simple View - Light Theme](../assets/images/screenshots/highlighted-transcript-following-simple-light.png)
+*Follow mode works seamlessly in light theme, maintaining perfect readability and visual clarity*
+
+The highlighted segment uses rounded corners and subtle animations to draw your eye to the currently playing text without being distracting. The auto-scroll behavior is smooth and intelligent, maintaining the active segment in the center of your view for comfortable reading during long recordings.
+
 ## Using the Summary Feature
 
 The Summary tab in the right panel contains an AI-generated overview of your recording. This summary is automatically created after transcription and captures key points, decisions, and action items.
 
-![Summary View](../assets/images/screenshots/Summary View.png)
+![Summary View](../assets/images/screenshots/main-view-summary-tab.png)
 
 The summary is designed to save you time by highlighting the most important information from your recording. It typically includes main topics discussed, key decisions or conclusions reached, action items and assignments, important dates or deadlines mentioned, and any significant problems or concerns raised.
 
@@ -156,11 +195,11 @@ Event extraction can be toggled on or off in your Account Settings under the Cus
 
 The Chat tab provides an AI assistant that can answer questions about your recording. This feature is particularly powerful for long recordings where finding specific information might be time-consuming.
 
-![Chat Interface](../assets/images/screenshots/chat view with question.png)
+![Chat Interface](../assets/images/screenshots/chat-interface.png)
 
 ### Effective Chat Queries
 
-The AI chat understands context and can answer various types of questions about your recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" The AI can also provide analysis, such as "What were the main concerns raised?" or "Summarize the action items for the marketing team."
+The AI chat understands context and can answer various types of questions about your recording. You can ask for specific information like "What did Sarah say about the budget?" or "When is the deadline for the project?" The AI can also provide analysis, such as "What were the main concerns raised?" or "Summarize the action items for the marketing group."
 
 The chat maintains context throughout your conversation, so you can ask follow-up questions. For example, after asking about budget discussions, you might follow up with "What solutions were proposed?" The AI will understand you're still talking about the budget topic.
 
@@ -176,27 +215,33 @@ Your entire chat conversation can be exported for future reference or sharing. T
 
 **Copy to Clipboard**: Click the copy button to copy the entire chat conversation to your clipboard. This preserves the question-and-answer format, making it easy to paste into emails, reports, or documentation. Each message includes a label indicating whether it's from you or the AI assistant.
 
-**Download as Word Document**: The download button exports your complete chat history as a formatted Microsoft Word (.docx) file. This includes all questions and responses in a clean, professional format that's easy to share with team members or include in reports. The file is automatically named with the recording title and export date, making it easy to organize multiple chat exports.
+**Download as Word Document**: The download button exports your complete chat history as a formatted Microsoft Word (.docx) file. This includes all questions and responses in a clean, professional format that's easy to share with group members or include in reports. The file is automatically named with the recording title and export date, making it easy to organize multiple chat exports.
 
 These export features are particularly useful when you've used the chat to extract specific insights or conduct a detailed analysis of the recording, allowing you to preserve and share your findings without having to recreate the conversation.
 
 ## Adding and Managing Notes
 
-The Notes tab is your personal workspace for adding context and thoughts about the recording. These notes are private to you and complement the transcription with your own insights.
+The Notes tab is your personal workspace for adding context and thoughts about the recording. These notes are **always private** - only you can see them, whether you own the recording or it's been shared with you. This is different from summaries, which are shared with all users who have access to the recording.
 
-![Notes Tab](../assets/images/screenshots/notes tab.png)
+**Important: Notes are Personal, Summaries are Shared**
+- **Notes**: Always private to each user. You can add and edit your own notes on any recording (owned or shared) without needing any special permissions. Other users cannot see your notes, and you cannot see theirs.
+- **Summary**: Shared content created by the recording owner. Only users with edit permission can modify the summary, and all users with access to the recording see the same summary.
+
+![Notes Tab](../assets/images/screenshots/main-view-notes-tab.png)
 
 Notes support full markdown formatting, allowing you to create structured documents with headers, lists, links, and emphasis. The markdown editor provides a toolbar with formatting options and supports keyboard shortcuts for efficient note-taking. You can switch between edit and preview modes to see how your formatted notes will appear.
 
 Common uses for notes include:
 
-- Personal reflections on the meeting or conversation that wouldn't be appropriate in the shared transcription
+- Personal reflections on the meeting or conversation that you want to keep private
 - Follow-up tasks that you need to complete based on the discussion
 - Additional context about decisions made or why certain topics were discussed
 - Links to related documents or resources mentioned in the recording
 - Questions you want to research or clarify later
 
-Your notes are fully searchable alongside transcriptions, making them valuable for future reference. You can search for a specific term and find it whether it appears in a transcription or in your personal notes. Notes are auto-saved as you type, ensuring you never lose your thoughts.
+Your notes are fully searchable alongside transcriptions, making them valuable for future reference. You can search for a specific term and find it whether it appears in a transcription or in your personal notes. The search will only find results in your own personal notes - you cannot search through other users' notes on shared recordings since notes are always private. Notes are auto-saved as you type, ensuring you never lose your thoughts.
+
+When viewing a shared recording, you can always add and edit your own notes without needing any special permissions. This allows you to annotate shared content with your own thoughts, action items, and follow-ups while keeping them completely private from the recording owner and other users.
 
 ## Copying and Exporting
 

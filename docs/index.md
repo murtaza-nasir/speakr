@@ -3,8 +3,19 @@
 Speakr is a powerful self-hosted transcription platform that helps you capture, transcribe, and understand your audio content. Whether you're recording meetings, interviews, lectures, or personal notes, Speakr transforms spoken words into valuable, searchable knowledge.
 
 <div style="max-width: 80%; margin: 2em auto;">
-  <img src="assets/images/screenshots/Filters.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
+
+!!! warning "Latest Release: v0.5.9 - Major Update"
+    **⚠️ IMPORTANT:** This is a **major release** with significant architectural changes. **Before upgrading:**
+
+    - **BACKUP YOUR DATA** - Database schema changes require migration
+    - **Review new environment variables** - Many features require `.env` configuration
+    - **Test in development first** - Major refactoring may affect existing workflows
+
+    **Key Environment Variables:** `ENABLE_INTERNAL_SHARING`, `SHOW_USERNAMES_IN_UI`, `USERS_CAN_DELETE`, `ENABLE_AUTO_DELETION`, `GLOBAL_RETENTION_DAYS`, `ENABLE_AUTO_EXPORT`, `ENABLE_PUBLIC_SHARING`
+
+    See the [configuration guide](getting-started/installation.md#configuration-updates) for complete setup instructions. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.5.9)
 
 ## Quick Navigation
 
@@ -69,6 +80,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
     <ul>
       <li><a href="features#language-support">Multi-language support</a></li>
       <li><a href="features#speaker-diarization">Speaker identification</a></li>
+      <li><a href="features#speaker-management">Voice profiles with AI recognition</a></li>
       <li>Custom vocabularies</li>
     </ul>
   </div>
@@ -86,8 +98,8 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
     <h4>📊 Organization</h4>
     <ul>
       <li><a href="features#tagging-system">Smart tagging system</a></li>
-      <li><a href="admin-guide/prompts">Custom AI prompts</a></li>
-      <li><a href="features#speaker-management">Participant tracking</a></li>
+      <li><a href="admin-guide/prompts">Custom AI prompts with stacking</a></li>
+      <li><a href="features#speaker-management">Speaker voice profiles with auto-cleanup</a></li>
     </ul>
   </div>
   
@@ -110,9 +122,41 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   </div>
 </div>
 
+## Interactive Audio Synchronization
+
+Experience seamless bidirectional synchronization between your audio and transcript. Click any part of the transcript to jump directly to that moment in the audio, or watch as the system automatically highlights the currently spoken text as the audio plays. Enable auto-scroll follow mode to keep the active segment centered in view, creating an effortless reading experience for even the longest recordings.
+
+<div style="max-width: 90%; margin: 2em auto;">
+  <img src="assets/images/screenshots/audio-sync-bubble-view.png" alt="Real-time audio-transcript synchronization" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">Real-time transcript highlighting synchronized with audio playback, with auto-scroll follow mode</p>
+</div>
+
+Learn more about [audio synchronization features](user-guide/transcripts.md#audio-synchronization-and-follow-mode) in the user guide.
+
+!!! tip "Transform Your Recordings with Custom Tag Prompts"
+    Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts#creative-tag-prompt-use-cases).
+
 ## Latest Updates
 
-!!! info "Version 0.5.8 - Latest Release"
+!!! warning "Version 0.5.9 - Major Release"
+    **⚠️ Backup your data before upgrading!** This release includes database migrations and architectural changes.
+
+    **New Features:**
+    - **Complete Internal Sharing System** - Share recordings with users with granular permissions (view/edit/reshare), personal notes, and independent status tracking
+    - **Group Management & Collaboration** - Create groups with leads, group tags that auto-share recordings, custom retention policies per group
+    - **Speaker Voice Profiles** - AI-powered speaker recognition with 256-dimensional embeddings (requires WhisperX ASR)
+    - **Audio-Transcript Synchronization** - Click-to-jump, auto-highlight, and follow mode for interactive navigation
+    - **Auto-Deletion & Retention System** - Global and group-level retention policies, tag protection, per-recording exemptions
+    - **Automated Export** - Auto-export transcriptions to markdown for Obsidian, Logseq, and other note-taking apps
+    - **Permission System** - Fine-grained access control with user deletion rights, public sharing permissions, role-based access
+    - **Modular Architecture** - Backend refactored into blueprints, frontend composables for shared logic
+    - **UI/UX Enhancements** - Compact controls, inline editing, unified toast notifications, improved badges
+    - **Enhanced Internationalization** - 29 new tooltip translations across all languages (EN, DE, ES, FR, ZH)
+
+    **Required `.env` variables:** See [configuration guide](getting-started/installation.md#configuration-updates)
+
+    Previous release (v0.5.8):
+
     - **Inline Transcript Editing** - Edit speaker assignments and text directly in the speaker identification modal
     - **Add Speaker Functionality** - Dynamically add new speakers during transcript review
     - **Enhanced Speaker Modal** - Improved UX with hover-based edit controls and real-time updates

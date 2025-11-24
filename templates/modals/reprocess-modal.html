@@ -1,0 +1,172 @@
+<!-- Reprocess Modal -->
+<div v-if="showReprocessModal" @click="cancelReprocess" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
+    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+        <!-- Header with gradient background -->
+        <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                    <i class="fas fa-sync-alt text-white text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1" v-text="t('help.confirmReprocessingTitle')"></h3>
+                    <p class="text-sm text-[var(--text-muted)] capitalize">${ reprocessType } reprocessing</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6 modal-content">
+            <div v-if="reprocessRecording" class="mb-6">
+                <div class="bg-[var(--bg-tertiary)] rounded-lg p-4 border border-[var(--border-primary)]">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-file-audio text-[var(--text-accent)] mt-1"></i>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium text-[var(--text-primary)] truncate" :title="reprocessRecording.title">
+                                ${ reprocessRecording.title || 'Untitled Recording' }
+                            </h4>
+                            <p class="text-sm text-[var(--text-muted)] mt-1">
+                                Created: ${ new Date(reprocessRecording.created_at).toLocaleDateString() }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-exclamation-triangle text-amber-600 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.whatWillHappen')"></p>
+                        <p class="text-sm text-[var(--text-muted)]" v-if="reprocessType === 'transcription' && !useAsrEndpoint">
+                            <span v-text="t('reprocessModal.audioReTranscribedFromScratch')"></span>
+                        </p>
+                        <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'transcription' && useAsrEndpoint">
+                            <span v-text="t('reprocessModal.audioReTranscribedWithAsr')"></span>
+                        </p>
+                        <p class="text-sm text-[var(--text-muted)]" v-else-if="reprocessType === 'summary'">
+                            <span v-text="t('reprocessModal.newTitleAndSummary')"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ASR Options -->
+                <div v-if="reprocessType === 'transcription' && useAsrEndpoint" class="space-y-4 pt-4 border-t border-[var(--border-primary)]">
+                    <h4 class="text-md font-semibold text-[var(--text-secondary)]" v-text="t('help.advancedAsrOptions')"></h4>
+                    <div>
+                        <label for="asr-language-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.language')"></label>
+                        <input type="text" id="asr-language-reprocess" v-model="asrReprocessOptions.language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh (optional)">
+                    </div>
+                    <div>
+                        <label for="asr-min-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.minSpeakers')"></label>
+                        <input type="number" id="asr-min-speakers-reprocess" v-model.number="asrReprocessOptions.min_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('form.optional')">
+                    </div>
+                    <div>
+                        <label for="asr-max-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.maxSpeakers')"></label>
+                        <input type="number" id="asr-max-speakers-reprocess" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('form.optional')">
+                    </div>
+                </div>
+
+                <!-- Custom Prompt Options for Summary Reprocessing -->
+                <div v-if="reprocessType === 'summary'" class="space-y-4 pt-4 border-t border-[var(--border-primary)]">
+                    <h4 class="text-md font-semibold text-[var(--text-secondary)]">Custom Summarization Prompt</h4>
+
+                    <!-- Prompt Source Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">Prompt Source</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" v-model="summaryReprocessPromptSource" value="default" class="text-[var(--text-accent)]" name="promptSource">
+                                <span class="text-sm text-[var(--text-secondary)]">Use default prompt</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer" v-if="tagsWithCustomPrompts.length > 0">
+                                <input type="radio" v-model="summaryReprocessPromptSource" value="tag" class="text-[var(--text-accent)]" name="promptSource">
+                                <span class="text-sm text-[var(--text-secondary)]">Use prompt from tag</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" v-model="summaryReprocessPromptSource" value="custom" class="text-[var(--text-accent)]" name="promptSource">
+                                <span class="text-sm text-[var(--text-secondary)]">Enter custom prompt</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tag Selection (shown when 'tag' is selected) -->
+                    <div v-if="summaryReprocessPromptSource === 'tag' && tagsWithCustomPrompts.length > 0">
+                        <label for="reprocess-tag-select" class="block text-sm font-medium text-[var(--text-muted)] mb-2">Select Tag</label>
+                        <select id="reprocess-tag-select" v-model="summaryReprocessSelectedTagId" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">Select a tag...</option>
+                            <option v-for="tag in tagsWithCustomPrompts" :key="tag.id" :value="tag.id">${ tag.name }</option>
+                        </select>
+                        <div v-if="summaryReprocessSelectedTagId" class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded text-xs text-[var(--text-muted)] max-h-20 overflow-y-auto">
+                            <strong>Preview:</strong> ${ getTagPromptPreview(summaryReprocessSelectedTagId) }
+                        </div>
+                    </div>
+
+                    <!-- Custom Prompt Textarea (shown when 'custom' is selected) -->
+                    <div v-if="summaryReprocessPromptSource === 'custom'">
+                        <label for="reprocess-custom-prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-2">Custom Prompt</label>
+                        <textarea id="reprocess-custom-prompt" v-model="summaryReprocessCustomPrompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Enter your custom summarization instructions..."></textarea>
+                    </div>
+
+                    <!-- Info message when no tags with custom prompts exist -->
+                    <div v-if="summaryReprocessPromptSource === 'tag' && tagsWithCustomPrompts.length === 0" class="text-xs text-[var(--text-muted)] italic">
+                        No tags with custom prompts available. Create tags with custom prompts in the Account Settings.
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-3">
+                    <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-clock text-blue-600 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.processingTime')"></p>
+                        <p class="text-sm text-[var(--text-muted)]">
+                            <span v-text="t('help.processingTimeDescription')"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-3" v-if="reprocessType === 'transcription'">
+                    <div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-info-circle text-red-600 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.importantNote')"></p>
+                        <p class="text-sm text-[var(--text-muted)]">
+                            <span v-text="t('reprocessModal.manualEditsOverwritten')"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-start space-x-3" v-else-if="reprocessType === 'summary'">
+                    <div class="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fas fa-info-circle text-red-600 text-xs"></i>
+                    </div>
+                    <div>
+                        <p class="text-[var(--text-secondary)] font-medium mb-1" v-text="t('help.importantNote')"></p>
+                        <p class="text-sm text-[var(--text-muted)]">
+                            <span v-text="t('reprocessModal.manualEditsOverwrittenSummary')"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with action buttons -->
+        <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
+            <button
+                @click="cancelReprocess"
+                class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
+                <i class="fas fa-times mr-2"></i>
+                Cancel
+            </button>
+            <button
+                @click="executeReprocess"
+                class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center shadow-lg font-medium transform hover:scale-105">
+                <i class="fas fa-sync-alt mr-2"></i>
+                Start Reprocessing
+            </button>
+        </div>
+    </div>
+</div>

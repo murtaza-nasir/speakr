@@ -5,21 +5,29 @@ services:
     restart: unless-stopped
     ports:
       - "8899:8899"
-    
+
     # --- Configuration ---
     # Environment variables are loaded from the .env file.
     #
     # To get started:
-    # 1. Choose your desired transcription method.
-    # 2. Copy the corresponding example file to .env:
+    # 1. Copy this file to your project root:
+    #    cp config/docker-compose.example.yml docker-compose.yml
     #
-    #    For standard Whisper API:
+    # 2. Choose your transcription method and copy the corresponding .env file:
+    #
+    #    For standard Whisper API (no speaker diarization):
     #    cp config/env.whisper.example .env
     #
-    #    For a custom ASR endpoint:
+    #    For WhisperX ASR with voice profiles (recommended for speaker features):
+    #    cp config/env.whisperx.example .env
+    #
+    #    For basic ASR with diarization (no voice profiles):
     #    cp config/env.asr.example .env
     #
     # 3. Edit the .env file to add your API keys and settings.
+    #
+    # 4. Start Speakr:
+    #    docker compose up -d
     env_file:
       - .env
     
@@ -36,8 +44,16 @@ services:
     volumes:
       - ./uploads:/data/uploads
       - ./instance:/data/instance
+      # Optional: Uncomment if using auto-export feature (ENABLE_AUTO_EXPORT=true)
+      # - ./exports:/data/exports
+      # Optional: Uncomment if using auto-processing feature (ENABLE_AUTO_PROCESSING=true)
+      # - ./auto-process:/data/auto-process
 
     # Option 2: Docker-managed volumes.
     # volumes:
     #   - speakr-uploads:/data/uploads
     #   - speakr-instance:/data/instance
+    #   # Optional: Uncomment if using auto-export feature
+    #   # - speakr-exports:/data/exports
+    #   # Optional: Uncomment if using auto-processing feature
+    #   # - speakr-auto-process:/data/auto-process

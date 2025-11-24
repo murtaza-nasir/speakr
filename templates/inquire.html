@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Inquire Mode - Speakr</title>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
@@ -20,7 +21,6 @@
 
     <!-- Loading overlay to prevent FOUC -->
     {% include 'includes/loading_overlay.html' %}
-    <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 
     <script>
         tailwind.config = {
@@ -183,9 +183,10 @@
                         <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
                             <i class="fas fa-share-alt mr-2 w-4 text-center"></i><span v-text="t('modal.sharedTranscripts')"></span>
                         </button>
-                        {% if current_user.is_admin %}
+                        {% if current_user.is_admin or is_group_admin %}
                         <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                            <i class="fas fa-user-shield mr-2 w-4 text-center"></i><span v-text="t('admin.title')"></span>
+                            <i class="fas fa-{% if current_user.is_admin %}user-shield{% else %}users-cog{% endif %} mr-2 w-4 text-center"></i>
+                            <span v-text="{% if current_user.is_admin %}t('admin.title'){% else %}t('nav.groupManagement'){% endif %}"></span>
                         </a>
                         {% endif %}
                         <div class="border-t border-[var(--border-primary)] my-1"></div>
@@ -430,26 +431,26 @@
         </div>
 
         <!-- Toast Container -->
-        <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+        <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
         <!-- Color Scheme Modal -->
         <div v-if="showColorSchemeModal" class="color-scheme-modal" @click.self="closeColorSchemeModal">
             <div class="color-scheme-modal-content">
                 <div class="color-scheme-header">
                     <h2 class="color-scheme-title">
                         <i class="fas fa-palette"></i>
-                        Choose Color Scheme
+                        <span v-text="t('colorScheme.title')"></span>
                     </h2>
                     <p class="color-scheme-subtitle" v-text="t('colorScheme.subtitle')"></p>
                 </div>
-                
+
                 <div class="color-scheme-body">
                     <div class="color-scheme-section">
                         <h3 class="color-scheme-section-title">
                             <i :class="isDarkMode ? 'fas fa-moon' : 'fas fa-sun'"></i>
-                            ${isDarkMode ? 'Dark' : 'Light'} Themes
+                            <span v-text="isDarkMode ? t('colorScheme.darkThemes') : t('colorScheme.lightThemes')"></span>
                         </h3>
                         <div class="color-scheme-grid">
-                            <div v-for="scheme in colorSchemes[isDarkMode ? 'dark' : 'light']" 
+                            <div v-for="scheme in colorSchemes[isDarkMode ? 'dark' : 'light']"
                                  :key="scheme.id"
                                  @click="selectColorScheme(scheme.id)"
                                  :class="['color-scheme-option', currentColorScheme === scheme.id ? 'active' : '']">
@@ -458,8 +459,8 @@
                                     <div :class="`preview-${isDarkMode ? 'dark-' : ''}${scheme.id}-secondary color-scheme-preview-segment`"></div>
                                     <div :class="`preview-${isDarkMode ? 'dark-' : ''}${scheme.id}-tertiary color-scheme-preview-segment`"></div>
                                 </div>
-                                <div class="color-scheme-name">${scheme.name}</div>
-                                <div class="color-scheme-description">${scheme.description}</div>
+                                <div class="color-scheme-name" v-text="t('colorScheme.themes.' + (isDarkMode ? 'dark' : 'light') + '.' + scheme.id + '.name')"></div>
+                                <div class="color-scheme-description" v-text="t('colorScheme.themes.' + (isDarkMode ? 'dark' : 'light') + '.' + scheme.id + '.description')"></div>
                                 <div v-if="currentColorScheme === scheme.id" class="color-scheme-check">
                                     <i class="fas fa-check"></i>
                                 </div>
@@ -467,13 +468,12 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="color-scheme-footer">
                     <button @click="resetColorScheme" class="color-scheme-reset-btn">
-                        <i class="fas fa-undo mr-2"></i>Reset to Default
+                        <i class="fas fa-undo mr-2"></i><span v-text="t('colorScheme.resetToDefault')"></span>
                     </button>
-                    <button @click="closeColorSchemeModal" class="color-scheme-close-btn">
-                        Close
+                    <button @click="closeColorSchemeModal" class="color-scheme-close-btn" v-text="t('common.close')">
                     </button>
                 </div>
             </div>

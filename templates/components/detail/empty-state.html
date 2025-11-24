@@ -1,0 +1,12 @@
+<!-- Empty State -->
+<div v-if="currentView === 'detail' && !selectedRecording" class="flex-1 flex items-center justify-center">
+    <div class="text-center">
+        <i class="fas fa-microphone text-6xl text-[var(--text-muted)] mb-4"></i>
+        <h2 class="text-2xl font-bold mb-2" v-text="t('colorScheme.selectRecording')"></h2>
+        <p class="text-[var(--text-muted)] mb-6" v-text="t('colorScheme.chooseRecording')"></p>
+        <button @click="switchToUploadView"
+                class="px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+            <i class="fas fa-plus mr-2"></i>Upload New Recording
+        </button>
+    </div>
+</div>

@@ -1,0 +1,258 @@
+<!-- Recording View -->
+<div v-else-if="currentView === 'recording'" class="flex-1 flex flex-col p-2 md:p-8 bg-[var(--bg-primary)] min-h-0">
+    <div class="flex-1 flex flex-col max-w-4xl w-full mx-auto bg-[var(--bg-secondary)] rounded-xl border border-[var(--border-primary)] min-h-0 overflow-hidden">
+        <!-- Top: Visualizer and Status (Fixed) -->
+        <div class="flex-shrink-0 p-3 md:p-6 text-center bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)]">
+            <div v-if="isRecording" class="w-full mx-auto mb-3 md:mb-4">
+                <!-- Dual visualizer for 'both' mode -->
+                <div v-if="recordingMode === 'both'" class="max-w-4xl mx-auto flex gap-2 md:gap-4">
+                    <div class="w-1/2 min-h-[8rem] md:min-h-[12rem] h-32 md:h-48 flex flex-col bg-[var(--bg-primary)] rounded-lg p-1.5 md:p-2">
+                        <div class="flex-1 w-full overflow-hidden rounded-md" style="min-height: 6rem;">
+                            <canvas ref="micVisualizer" class="w-full h-full"></canvas>
+                        </div>
+                        <p class="text-xs text-[var(--text-muted)] pt-0.5 md:pt-1" v-text="t('recording.microphone')"></p>
+                    </div>
+                    <div class="w-1/2 min-h-[8rem] md:min-h-[12rem] h-32 md:h-48 flex flex-col bg-[var(--bg-primary)] rounded-lg p-1.5 md:p-2">
+                        <div class="flex-1 w-full overflow-hidden rounded-md" style="min-height: 6rem;">
+                            <canvas ref="systemVisualizer" class="w-full h-full"></canvas>
+                        </div>
+                        <p class="text-xs text-[var(--text-muted)] pt-0.5 md:pt-1" v-text="t('recording.systemAudio')"></p>
+                    </div>
+                </div>
+                <!-- Single visualizer for other modes -->
+                <div v-else class="min-h-[8rem] md:min-h-[12rem] h-32 md:h-48 max-w-2xl mx-auto bg-[var(--bg-primary)] rounded-lg p-1.5 md:p-2 flex flex-col">
+                    <div class="flex-1 w-full overflow-hidden rounded-md" style="min-height: 6rem;">
+                        <canvas ref="visualizer" class="w-full h-full"></canvas>
+                    </div>
+                    <p class="text-xs text-[var(--text-muted)] pt-0.5 md:pt-1 capitalize">${recordingMode}</p>
+                </div>
+            </div>
+            <div v-if="!isRecording && audioBlobURL" class="w-full mb-3 md:mb-4">
+                <div class="audio-player-container">
+                    <audio :src="audioBlobURL" controls class="w-full">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            </div>
+
+            <div>
+                <div class="text-xl md:text-2xl font-mono text-[var(--text-accent)]">${formatTime(recordingTime)}</div>
+                <p class="text-xs md:text-sm text-[var(--text-muted)]">${ isRecording ? 'Recording in progress...' : 'Recording finished' }</p>
+                <!-- Real-time file size display -->
+                <div v-if="isRecording && estimatedFileSize > 0" class="mt-1.5">
+                    <p class="text-xs text-[var(--text-muted)]">
+                        Estimated size: <span class="font-mono">${formatFileSize(estimatedFileSize)}</span>
+                        <span v-if="actualBitrate > 0" class="ml-2">
+                            (${Math.round(actualBitrate / 1000)}kbps)
+                        </span>
+                    </p>
+                    <!-- Size warning indicator -->
+                    <div v-if="estimatedFileSize > (maxRecordingMB * 1024 * 1024 * 0.8)" class="mt-0.5">
+                        <div class="flex items-center text-xs text-amber-600 dark:text-amber-400">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            <span v-text="t('help.approachingLimit', { limit: maxRecordingMB })"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Background Recording Warning - Below timer -->
+                <div v-if="isRecording && isMobileDevice"
+                     class="mt-2 p-2 bg-amber-50 dark:bg-amber-900 dark:bg-opacity-20 border border-amber-300 dark:border-amber-700 rounded">
+                    <div class="flex items-start gap-1.5 text-left">
+                        <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 flex-shrink-0 text-xs" style="margin-top: 2px;"></i>
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs text-amber-800 dark:text-amber-200 leading-snug">
+                                <strong class="font-semibold">Keep this app visible!</strong>
+                                <span class="block text-[10px] mt-0.5">Recording pauses if minimized or screen locked.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scrollable Content Area: Notes + Actions -->
+        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
+            <!-- Middle: Notepad (flexible height) -->
+            <div class="flex-1 p-3 md:p-6 flex flex-col" style="min-height: 200px;">
+                <label for="recordingNotes" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 flex-shrink-0">
+                    <i class="fas fa-pencil-alt mr-1"></i>
+                    Recording Notes (Markdown)
+                </label>
+                <div class="flex-1 recording-notes-editor" style="min-height: 150px;">
+                    <textarea ref="recordingNotesEditor" v-model="recordingNotes"
+                              class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-2 md:p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"
+                              :placeholder="t('form.notesPlaceholder')"></textarea>
+                </div>
+            </div>
+
+            <!-- Bottom: Action Buttons -->
+            <div class="flex-shrink-0 p-3 md:p-6 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
+            <div v-if="isRecording" class="text-center">
+                <button @click="stopRecording"
+                        class="px-6 md:px-8 py-2.5 md:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors animate-pulse text-sm md:text-base">
+                    <i class="fas fa-stop mr-2"></i>Stop Recording
+                </button>
+            </div>
+            <div v-if="!isRecording && audioBlobURL" class="flex flex-col gap-3 md:gap-4">
+                <!-- Tag Selection -->
+                <div>
+                    <label for="recordingTagSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
+                        <i class="fas fa-tags mr-1"></i>
+                        Select Tags (optional, in priority order)
+                    </label>
+
+                    <!-- Selected Tags Display - Compact -->
+                    <div v-if="selectedTags.length > 0" class="mb-2">
+                        <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto">
+                            <div class="flex flex-wrap gap-1">
+                                <span v-for="(tag, index) in selectedTags" :key="tag.id"
+                                      class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium cursor-help"
+                                      :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                                      :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                                    <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
+                                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
+                                    <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>
+                                    <span>${tag.name}</span>
+                                    <button @click="removeTagFromSelection(tag.id)"
+                                            class="ml-1 hover:opacity-100 opacity-70">
+                                        <i class="fas fa-times" style="font-size: 9px;"></i>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tag Selection Container - Compact -->
+                    <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0"
+                         class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
+                        <!-- Search Filter -->
+                        <div class="mb-1.5">
+                            <div class="relative">
+                                <input v-model="uploadTagSearchFilter"
+                                       type="text"
+                                       :placeholder="t('tagsModal.searchTags')"
+                                       class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                                <button v-if="uploadTagSearchFilter"
+                                        @click="uploadTagSearchFilter = ''"
+                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Available Tags Grid -->
+                        <div v-if="filteredAvailableTagsForUpload.length > 0"
+                             class="overflow-y-auto"
+                             style="max-height: 100px;">
+                            <div class="grid grid-cols-2 gap-1">
+                                <button v-for="tag in filteredAvailableTagsForUpload"
+                                        :key="tag.id"
+                                        @click="addTagToSelection(tag.id)"
+                                        class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
+                                    <div class="flex items-center gap-1 min-w-0">
+                                        <i v-if="tag.group_id" class="fas fa-users flex-shrink-0 text-[9px]"
+                                           :style="{ color: tag.color || '#6B7280' }"></i>
+                                        <span v-else class="w-2 h-2 rounded-full flex-shrink-0"
+                                              :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                        <span class="text-[11px] text-[var(--text-primary)] truncate">
+                                            <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>${tag.name}
+                                        </span>
+                                    </div>
+                                    <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div v-else class="py-2 text-center">
+                            <p class="text-[11px] text-[var(--text-muted)]">
+                                <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
+                                No matching tags
+                            </p>
+                        </div>
+                    </div>
+                    <!-- Empty States -->
+                    <div v-else-if="availableTags.length === 0"
+                         class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                        <p class="text-xs text-[var(--text-muted)] text-center">
+                            <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
+                            <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
+                        </p>
+                    </div>
+                    <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                        <p class="text-xs text-[var(--text-muted)] text-center">
+                            <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
+                            All tags selected
+                        </p>
+                    </div>
+
+                    <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+                        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                        Selected tags include custom summary prompts
+                    </p>
+                    <p v-if="selectedTags.length > 0 && useAsrEndpoint && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
+                       class="text-xs text-[var(--text-muted)] mt-1">
+                        <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+                        First tag's ASR settings will be applied: ${selectedTags[0].name}
+                    </p>
+                </div>
+
+                <!-- Advanced Options for ASR (collapsible) -->
+                <div v-if="useAsrEndpoint">
+                    <button @click="showAdvancedOptions = !showAdvancedOptions"
+                            class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                        <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                            <i class="fas fa-cog text-[var(--text-muted)]"></i>
+                            <span v-text="t('help.advancedAsrOptions')"></span>
+                        </span>
+                        <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                    </button>
+
+                    <div v-if="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] space-y-3">
+                        <div>
+                            <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                Language
+                            </label>
+                            <select id="recordingAsrLanguage" v-model="asrLanguage"
+                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
+                                </label>
+                                <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
+                                       min="1" max="20" :placeholder="t('form.auto')"
+                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                            </div>
+
+                            <div>
+                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
+                                </label>
+                                <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
+                                       min="1" max="20" :placeholder="t('form.auto')"
+                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload/Discard Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button @click="uploadRecordedAudio"
+                        class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-upload"></i>
+                    <span v-text="t('help.uploadRecordingNotes')"></span>
+                </button>
+                    <button @click="discardRecording"
+                            class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
+                        <i class="fas fa-trash"></i>
+                        <span v-text="t('help.discard')"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>

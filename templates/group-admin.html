@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <title>Group Management - Speakr</title>
+
+    <!-- Loading overlay to prevent FOUC - MUST be first -->
+    {% include 'includes/loading_overlay.html' %}
+
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/svg+xml">
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
+        <!-- All dependencies bundled locally for offline support -->
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+    <style>
+        /* Hide Vue content until compiled */
+        [v-cloak] {
+            display: none !important;
+        }
+
+        /* Hide scrollbar for tabs */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Custom select dropdown styling */
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 2.5rem !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 12px 12px;
+        }
+
+        .dark select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aaa' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        }
+    </style>
+    <script>
+        // Initialize i18n
+        let t = (key) => key; // Default fallback
+        
+        async function initializeI18n() {
+            const userLanguage = "{{ user_language }}";
+            
+            // Initialize the global i18n instance
+            if (window.i18n) {
+                await window.i18n.init(userLanguage);
+                
+                // Create a shorthand translation function
+                t = (key, params) => window.i18n.t(key, params);
+                
+                // Update all elements with data-i18n attribute
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    el.textContent = t(key);
+                });
+                
+                // Update all elements with data-i18n-placeholder attribute
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    el.placeholder = t(key);
+                });
+            }
+        }
+        
+        // Function to apply the theme based on localStorage
+        function applyTheme() {
+            // Guard against early execution
+            if (!document.documentElement) return;
+
+            // Apply dark mode
+            const savedMode = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedMode === 'true' || (savedMode === null && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            // Apply color scheme
+            const savedScheme = localStorage.getItem('colorScheme') || 'blue';
+            const isDark = document.documentElement.classList.contains('dark');
+            const themePrefix = isDark ? 'theme-dark-' : 'theme-light-';
+            
+            // Remove all other theme classes
+            const themeClasses = ['blue', 'emerald', 'purple', 'rose', 'amber', 'teal'];
+            themeClasses.forEach(theme => {
+                document.documentElement.classList.remove(`theme-light-${theme}`);
+                document.documentElement.classList.remove(`theme-dark-${theme}`);
+            });
+
+            // Add the correct theme class
+            if (savedScheme !== 'blue') {
+                 document.documentElement.classList.add(themePrefix + savedScheme);
+            }
+        }
+        applyTheme();
+    </script>
+</head>
+<body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <div id="app" v-cloak class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
+        <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
+            <h1 class="text-3xl font-bold text-[var(--text-primary)]">
+                <a href="{{ url_for('recordings.index') }}" class="flex items-center">
+                    <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
+                    Speakr
+                </a>
+            </h1>
+            <div class="flex items-center space-x-2">
+                <button @click="toggleDarkMode" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+                    <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+                </button>
+                <div class="relative">
+                    <button @click="isUserMenuOpen = !isUserMenuOpen" class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
+                        <i class="fas fa-users-cog mr-2"></i>
+                        <span>{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down ml-2"></i>
+                    </button>
+                    <div v-if="isUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
+                        <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas fa-home mr-2"></i> Home
+                        </a>
+                        <a href="{{ url_for('auth.account') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
+                            <i class="fas fa-user mr-2"></i> Account
+                        </a>
+                        <a href="{{ url_for('admin.group_management') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
+                            <i class="fas fa-users-cog mr-2"></i>
+                            Group Management
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Sign Out
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow">
+            <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
+                <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6">Group Management</h2>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="mb-4 p-3 rounded-lg {% if category == 'success' %}bg-[var(--bg-success-light)] text-[var(--text-success-strong)]{% elif category == 'danger' %}bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]{% else %}bg-[var(--bg-info-light)] text-[var(--text-info-strong)]{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                
+                <!-- Tabs -->
+            <!-- Main Content Area -->
+            <div class="p-6">
+                <!-- Groups Management -->
+                <div v-show="activeTab === 'groups'">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium text-[var(--text-secondary)]">Group Management</h3>
+                        <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                            <i class="fas fa-plus mr-2"></i> Create Group
+                        </button>
+                    </div>
+
+                    <!-- Groups List -->
+                    <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] overflow-hidden">
+                        <div v-if="groups.length > 0">
+                            <table class="min-w-full divide-y divide-[var(--border-primary)]">
+                                <thead class="bg-[var(--bg-tertiary)]">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Group Name</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Description</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Members</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Created</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
+                                    <tr v-for="group in groups" :key="group.id" class="hover:bg-[var(--bg-tertiary)]">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm font-medium text-[var(--text-primary)]">${ group.name }</div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="text-sm text-[var(--text-secondary)]">${ group.description || 'No description' }</div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="text-sm text-[var(--text-secondary)]">
+                                                <i class="fas fa-users mr-1"></i>
+                                                ${ group.member_count || 0 } members
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
+                                            ${ new Date(group.created_at).toLocaleDateString() }
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                                            <button @click="openManageTeamModal(group)" class="text-blue-500 hover:text-blue-700" title="Manage Members">
+                                                <i class="fas fa-users-cog"></i>
+                                            </button>
+                                            <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" title="Manage Group Tags">
+                                                <i class="fas fa-tags"></i>
+                                            </button>
+                                            <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" title="Edit Group">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-red-500 hover:text-red-700" title="Delete Group">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="p-8 text-center">
+                            <i class="fas fa-users-slash text-4xl text-[var(--text-muted)] mb-3"></i>
+                            <p class="text-[var(--text-muted)]" v-text="isTeamAdminOnly ? 'You are not an admin of any groups yet' : 'No groups created yet'"></p>
+                            <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="mt-4 px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
+                                <i class="fas fa-plus mr-2"></i> Create Your First Group
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center py-4 mt-8 text-xs text-[var(--text-light)] border-t border-[var(--border-primary)]">
+            Speakr &copy; {{ now.year }}
+        </footer>
+        <!-- Create/Edit Group Modal -->
+        <div v-if="showTeamModal" @click.self="closeTeamModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
+                    <button @click="closeTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+                <form @submit.prevent="saveTeam">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Name *</label>
+                            <input v-model="teamForm.name" type="text" required
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                   placeholder="Enter group name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+                            <textarea v-model="teamForm.description" rows="3"
+                                      class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                      placeholder="Optional description"></textarea>
+                        </div>
+                        <div v-if="teamError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
+                            ${ teamError }
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" @click="closeTeamModal"
+                                class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                            ${ editingTeam ? 'Update Group' : 'Create Group' }
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Manage Group Members Modal -->
+        <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Group: ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+
+                <!-- Add Member Section -->
+                <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Add Member</h4>
+                    <div class="flex space-x-2">
+                        <div class="flex-1">
+                            <select v-model="newMemberUserId"
+                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                <option value="">Select a user...</option>
+                                <option v-for="user in availableUsers" :key="user.id" :value="user.id">
+                                    ${ user.username } (${ user.email })
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <select v-model="newMemberRole"
+                                    class="px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                <option value="member">Member</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button @click="addTeamMember" :disabled="!newMemberUserId"
+                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Current Members -->
+                <div>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Current Members (${ teamMembers.length })</h4>
+                    <div v-if="teamMembers.length > 0" class="space-y-2">
+                        <div v-for="member in teamMembers" :key="member.user_id"
+                             class="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-md">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-user text-[var(--text-muted)]"></i>
+                                <div>
+                                    <div class="text-sm font-medium text-[var(--text-primary)]">${ member.username }</div>
+                                    <div class="text-xs text-[var(--text-muted)]">${ member.email }</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <select v-model="member.role" @change="updateMemberRole(member)"
+                                        class="px-2 py-1 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option value="member">Member</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                                <button @click="removeTeamMember(member)"
+                                        class="text-red-500 hover:text-red-700" title="Remove from group">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-4 text-[var(--text-muted)]">
+                        No members yet
+                    </div>
+                </div>
+
+                <div v-if="teamMemberError" class="mt-4 p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
+                    ${ teamMemberError }
+                </div>
+
+                <div class="flex justify-between mt-6">
+                    <button @click="syncTeamShares"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
+                        <i class="fas fa-sync-alt"></i>
+                        Sync Group Shares
+                    </button>
+                    <button @click="closeManageTeamModal"
+                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Group Shares Confirmation Modal -->
+        <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Sync Group Shares</h3>
+                    <button @click="showSyncSharesModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+                <p class="mb-4 text-[var(--text-secondary)]">
+                    This will create shares for all recordings with group tags that have auto-sharing enabled.
+                </p>
+                <p class="mb-4 text-[var(--text-muted)] text-sm">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Only missing shares will be created - existing shares won't be duplicated.
+                </p>
+                <div class="flex justify-end space-x-3">
+                    <button @click="showSyncSharesModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                    <button @click="confirmSyncShares" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        <i class="fas fa-sync-alt mr-2"></i>Sync Now
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Results Modal -->
+        <div v-if="showSyncResultsModal" @click.self="showSyncResultsModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>Sync Complete
+                    </h3>
+                    <button @click="showSyncResultsModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+                <div class="mb-4 space-y-2">
+                    <div class="flex justify-between text-[var(--text-secondary)]">
+                        <span>Shares created:</span>
+                        <span class="font-semibold">${ syncResults.shares_created }</span>
+                    </div>
+                    <div class="flex justify-between text-[var(--text-secondary)]">
+                        <span>Recordings processed:</span>
+                        <span class="font-semibold">${ syncResults.recordings_processed }</span>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button @click="showSyncResultsModal = false" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Group Confirmation Modal -->
+        <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Delete Group</h3>
+                    <button @click="showDeleteTeamModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+                <p class="mb-4 text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
+                <div class="flex justify-end space-x-3">
+                    <button @click="showDeleteTeamModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                    <button @click="deleteTeam" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">Delete Group</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manage Group Tags Modal -->
+        <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Tags for ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamTagsModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+
+                <!-- Create/Edit Tag Form -->
+                <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)]">
+                            ${ editingTeamTagId ? 'Edit Group Tag' : 'Create New Group Tag' }
+                        </h4>
+                        <button v-if="editingTeamTagId" @click="cancelEditTeamTag" type="button" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
+                    <form @submit.prevent="saveTeamTag" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Tag Name *</label>
+                                <input v-model="newTeamTag.name" type="text" required maxlength="50"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                       placeholder="e.g., Project Alpha">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                                <input v-model="newTeamTag.color" type="color"
+                                       class="w-full h-10 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- Custom Prompt -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                Custom Summarization Prompt
+                                <span class="text-[var(--text-muted)] font-normal">- Optional AI instructions</span>
+                            </label>
+                            <textarea v-model="newTeamTag.custom_prompt" rows="3"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   placeholder="Enter custom instructions for AI summarization (e.g., 'Focus on action items and deadlines')"></textarea>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">
+                                Recordings with this tag will use this prompt for AI summaries and chat.
+                            </p>
+                        </div>
+
+                        <!-- Transcription Settings -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Default Language</label>
+                                <select v-model="newTeamTag.default_language"
+                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]">
+                                    <option value="">Auto-detect</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="zh">Chinese</option>
+                                    <option value="ja">Japanese</option>
+                                    <option value="pt">Portuguese</option>
+                                    <option value="it">Italian</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Min Speakers</label>
+                                <input v-model.number="newTeamTag.default_min_speakers" type="number" min="1" max="10"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                       placeholder="1">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Max Speakers</label>
+                                <input v-model.number="newTeamTag.default_max_speakers" type="number" min="1" max="10"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                       placeholder="5">
+                            </div>
+                        </div>
+
+                        <!-- Retention and Protection -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                Retention Period (days)
+                                <span class="text-[var(--text-muted)] font-normal">- Optional override for auto-deletion</span>
+                            </label>
+                            <input v-model.number="newTeamTag.retention_days" type="number" min="0" step="1"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   placeholder="Leave empty to use global retention">
+                            <p class="text-xs text-[var(--text-muted)] mt-1">
+                                Recordings with this tag will be deleted after this many days. Leave empty to use global retention (${ globalRetentionDays } days).
+                            </p>
+                        </div>
+                        <div class="flex items-center">
+                            <input v-model="newTeamTag.protect_from_deletion" type="checkbox" id="protectFromDeletion"
+                                   class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                            <label for="protectFromDeletion" class="text-xs text-[var(--text-secondary)]">
+                                <i class="fas fa-shield-alt mr-1"></i> Protect recordings with this tag from auto-deletion
+                            </label>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input v-model="newTeamTag.auto_share_on_apply" type="checkbox" id="autoShareOnApply"
+                                       class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                                <label for="autoShareOnApply" class="text-xs text-[var(--text-secondary)]">
+                                    <i class="fas fa-user-friends mr-1"></i> Auto-share recordings with all group members when this tag is applied
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input v-model="newTeamTag.share_with_group_lead" type="checkbox" id="shareWithGroupLead"
+                                       class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                                <label for="shareWithGroupLead" class="text-xs text-[var(--text-secondary)]">
+                                    <i class="fas fa-user-tie mr-1"></i> Share recordings with group admins when this tag is applied
+                                </label>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] ml-6">
+                                Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                            </p>
+                        </div>
+                        <div v-if="teamTagError" class="text-[var(--text-danger)] text-xs">${ teamTagError }</div>
+                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm">
+                            <i :class="editingTeamTagId ? 'fas fa-save' : 'fas fa-plus'" class="mr-1"></i>
+                            ${ editingTeamTagId ? 'Update Tag' : 'Create Tag' }
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Existing Group Tags -->
+                <div>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Group Tags</h4>
+                    <div v-if="teamTags.length > 0" class="space-y-3">
+                        <div v-for="tag in teamTags" :key="tag.id"
+                             class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center space-x-3 flex-1">
+                                    <span class="inline-block w-4 h-4 rounded flex-shrink-0" :style="{ backgroundColor: tag.color }"></span>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-[var(--text-primary)]">${ tag.name }</div>
+                                        <div class="text-xs text-[var(--text-muted)] mt-1 space-x-3">
+                                            <span v-if="tag.retention_days">
+                                                <i class="fas fa-clock mr-1"></i> ${ tag.retention_days } day retention
+                                            </span>
+                                            <span v-else>
+                                                <i class="fas fa-globe mr-1"></i> Global retention
+                                            </span>
+                                            <span v-if="tag.protect_from_deletion" class="text-green-500">
+                                                <i class="fas fa-shield-alt mr-1"></i> Protected
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 flex-shrink-0">
+                                    <button @click="editTeamTag(tag)" class="text-blue-500 hover:text-blue-700 px-2 py-1" title="Edit Tag">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button @click="deleteTeamTag(tag)" class="text-red-500 hover:text-red-700 px-2 py-1" title="Delete Tag">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Additional details if configured -->
+                            <div v-if="tag.custom_prompt || tag.default_language || tag.default_min_speakers || tag.default_max_speakers"
+                                 class="mt-2 pt-2 border-t border-[var(--border-secondary)] space-y-1">
+                                <div v-if="tag.custom_prompt" class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-comment-dots mr-1"></i> Custom prompt configured
+                                </div>
+                                <div v-if="tag.default_language" class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-language mr-1"></i> Language: ${ tag.default_language.toUpperCase() }
+                                </div>
+                                <div v-if="tag.default_min_speakers || tag.default_max_speakers" class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-users mr-1"></i> Speakers:
+                                    <span v-if="tag.default_min_speakers">${ tag.default_min_speakers }-</span><span v-if="tag.default_max_speakers">${ tag.default_max_speakers }</span><span v-else>auto</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-8 text-[var(--text-muted)]">
+                        <i class="fas fa-tags text-3xl mb-2"></i>
+                        <p class="text-sm">No group tags created yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue
+        
+        // Initialize i18n before Vue app creation
+        initializeI18n().then(() => {
+            // Get the i18n instance to properly bind the t function
+            const i18nInstance = window.i18n;
+            
+            createApp({
+            setup() {
+                // State - groups only
+                const isTeamAdminOnly = ref(true); // This page is only for group admins
+                const activeTab = ref('groups'); // Single tab page
+                const groups = ref([]);
+                const globalRetentionDays = ref({{ global_retention_days }});
+                const isDarkMode = ref(document.documentElement.classList.contains('dark'));
+                const isUserMenuOpen = ref(false);
+
+                // Group modals state
+                const showTeamModal = ref(false);
+                const showManageTeamModal = ref(false);
+                const showDeleteTeamModal = ref(false);
+                const showSyncSharesModal = ref(false);
+                const showSyncResultsModal = ref(false);
+                const showManageTeamTagsModal = ref(false);
+                const editingTeam = ref(null);
+                const teamToDelete = ref(null);
+                const currentTeam = ref(null);
+                const teamForm = ref({ name: '', description: '' });
+                const teamError = ref('');
+                const teamMembers = ref([]);
+                const teamMemberError = ref('');
+                const newMemberUserId = ref('');
+                const newMemberRole = ref('member');
+                const availableUsers = ref([]);
+                const teamTags = ref([]);
+                const editingTeamTagId = ref(null);
+                const newTeamTag = ref({
+                    name: '',
+                    color: '#3B82F6',
+                    custom_prompt: '',
+                    default_language: '',
+                    default_min_speakers: null,
+                    default_max_speakers: null,
+                    retention_days: null,
+                    protect_from_deletion: false,
+                    auto_share_on_apply: true,
+                    share_with_group_lead: true
+                });
+                const teamTagError = ref('');
+                const syncResults = ref({ shares_created: 0, recordings_processed: 0 });
+                const users = ref([]);
+                
+                const loadGroups = async () => {
+                    try {
+                        const response = await fetch('/api/admin/groups');
+                        if (!response.ok) throw new Error('Failed to load groups');
+                        const data = await response.json();
+                        groups.value = data.groups || [];
+                    } catch (error) {
+                        console.error('Error loading teams:', error);
+                    }
+                };
+
+                const openCreateTeamModal = () => {
+                    editingTeam.value = null;
+                    teamForm.value = { name: '', description: '' };
+                    teamError.value = '';
+                    showTeamModal.value = true;
+                };
+
+                const openEditTeamModal = (group) => {
+                    editingTeam.value = group;
+                    teamForm.value = { name: group.name, description: group.description || '' };
+                    teamError.value = '';
+                    showTeamModal.value = true;
+                };
+
+                const closeTeamModal = () => {
+                    showTeamModal.value = false;
+                    editingTeam.value = null;
+                    teamForm.value = { name: '', description: '' };
+                    teamError.value = '';
+                };
+
+                const saveTeam = async () => {
+                    teamError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const url = editingTeam.value
+                            ? `/api/admin/groups/${editingTeam.value.id}`
+                            : '/api/admin/groups';
+                        const method = editingTeam.value ? 'PUT' : 'POST';
+
+                        const response = await fetch(url, {
+                            method,
+                            headers,
+                            body: JSON.stringify(teamForm.value)
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to save group');
+                        }
+
+                        closeTeamModal();
+                        await loadGroups();
+                    } catch (error) {
+                        teamError.value = error.message;
+                    }
+                };
+
+                const confirmDeleteTeam = (group) => {
+                    teamToDelete.value = group;
+                    showDeleteTeamModal.value = true;
+                };
+
+                const deleteTeam = async () => {
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = {};
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/admin/groups/${teamToDelete.value.id}`, {
+                            method: 'DELETE',
+                            headers
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to delete group');
+                        }
+
+                        showDeleteTeamModal.value = false;
+                        teamToDelete.value = null;
+                        await loadGroups();
+                    } catch (error) {
+                        alert(error.message);
+                    }
+                };
+
+                const openManageTeamModal = async (group) => {
+                    currentTeam.value = group;
+                    newMemberUserId.value = '';
+                    newMemberRole.value = 'member';
+                    teamMemberError.value = '';
+                    showManageTeamModal.value = true;
+                    await loadTeamMembers(group.id);
+                };
+
+                const closeManageTeamModal = () => {
+                    showManageTeamModal.value = false;
+                    currentTeam.value = null;
+                    teamMembers.value = [];
+                    newMemberUserId.value = '';
+                    newMemberRole.value = 'member';
+                    teamMemberError.value = '';
+                };
+
+                const loadTeamMembers = async (groupId) => {
+                    try {
+                        const response = await fetch(`/api/admin/groups/${groupId}`);
+                        if (!response.ok) throw new Error('Failed to load group members');
+                        const data = await response.json();
+                        teamMembers.value = data.members || [];
+                    } catch (error) {
+                        console.error('Error loading group members:', error);
+                        teamMemberError.value = error.message;
+                    }
+                };
+
+                const addTeamMember = async () => {
+                    if (!newMemberUserId.value) return;
+
+                    teamMemberError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/admin/groups/${currentTeam.value.id}/members`, {
+                            method: 'POST',
+                            headers,
+                            body: JSON.stringify({
+                                user_id: parseInt(newMemberUserId.value),
+                                role: newMemberRole.value
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to add member');
+                        }
+
+                        newMemberUserId.value = '';
+                        newMemberRole.value = 'member';
+                        await loadTeamMembers(currentTeam.value.id);
+                        await loadGroups(); // Refresh to update member count
+                    } catch (error) {
+                        teamMemberError.value = error.message;
+                    }
+                };
+
+                const updateMemberRole = async (member) => {
+                    teamMemberError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/admin/groups/${currentTeam.value.id}/members/${member.user_id}`, {
+                            method: 'PUT',
+                            headers,
+                            body: JSON.stringify({ role: member.role })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to update role');
+                        }
+                    } catch (error) {
+                        teamMemberError.value = error.message;
+                        await loadTeamMembers(currentTeam.value.id); // Reload to revert on error
+                    }
+                };
+
+                const removeTeamMember = async (member) => {
+                    if (!confirm(`Remove ${member.username} from the group?`)) return;
+
+                    teamMemberError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = {};
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/admin/groups/${currentTeam.value.id}/members/${member.user_id}`, {
+                            method: 'DELETE',
+                            headers
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to remove member');
+                        }
+
+                        await loadTeamMembers(currentTeam.value.id);
+                        await loadGroups(); // Refresh to update member count
+                    } catch (error) {
+                        teamMemberError.value = error.message;
+                    }
+                };
+
+                const syncTeamShares = () => {
+                    if (!currentTeam.value) return;
+                    showSyncSharesModal.value = true;
+                };
+
+                const confirmSyncShares = async () => {
+                    showSyncSharesModal.value = false;
+                    teamMemberError.value = '';
+
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/groups/${currentTeam.value.id}/sync-shares`, {
+                            method: 'POST',
+                            headers
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to sync shares');
+                        }
+
+                        const result = await response.json();
+                        syncResults.value = {
+                            shares_created: result.shares_created,
+                            recordings_processed: result.recordings_processed
+                        };
+                        showSyncResultsModal.value = true;
+                    } catch (error) {
+                        teamMemberError.value = error.message;
+                    }
+                };
+
+                // Group Tags Management
+                const openManageTeamTagsModal = async (group) => {
+                    currentTeam.value = group;
+                    teamTagError.value = '';
+                    await loadTeamTags(group.id);
+                    showManageTeamTagsModal.value = true;
+                };
+
+                const closeManageTeamTagsModal = () => {
+                    showManageTeamTagsModal.value = false;
+                    currentTeam.value = null;
+                    teamTags.value = [];
+                    editingTeamTagId.value = null;
+                    newTeamTag.value = {
+                        name: '',
+                        color: '#3B82F6',
+                        custom_prompt: '',
+                        default_language: '',
+                        default_min_speakers: null,
+                        default_max_speakers: null,
+                        retention_days: null,
+                        protect_from_deletion: false,
+                        auto_share_on_apply: true,
+                        share_with_group_lead: true
+                    };
+                    teamTagError.value = '';
+                };
+
+                const loadTeamTags = async (groupId) => {
+                    try {
+                        const response = await fetch(`/api/groups/${groupId}/tags`);
+                        if (!response.ok) throw new Error('Failed to load group tags');
+                        const data = await response.json();
+                        teamTags.value = data.tags || [];
+                    } catch (error) {
+                        teamTagError.value = error.message;
+                    }
+                };
+
+                const editTeamTag = (tag) => {
+                    editingTeamTagId.value = tag.id;
+                    newTeamTag.value = {
+                        name: tag.name,
+                        color: tag.color,
+                        custom_prompt: tag.custom_prompt || '',
+                        default_language: tag.default_language || '',
+                        default_min_speakers: tag.default_min_speakers,
+                        default_max_speakers: tag.default_max_speakers,
+                        retention_days: tag.retention_days,
+                        protect_from_deletion: tag.protect_from_deletion || false,
+                        auto_share_on_apply: tag.auto_share_on_apply !== undefined ? tag.auto_share_on_apply : true,
+                        share_with_group_lead: tag.share_with_group_lead !== undefined ? tag.share_with_group_lead : true
+                    };
+                    // Scroll to top of modal
+                    document.querySelector('.max-h-\\[90vh\\]')?.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const cancelEditTeamTag = () => {
+                    editingTeamTagId.value = null;
+                    newTeamTag.value = {
+                        name: '',
+                        color: '#3B82F6',
+                        custom_prompt: '',
+                        default_language: '',
+                        default_min_speakers: null,
+                        default_max_speakers: null,
+                        retention_days: null,
+                        protect_from_deletion: false,
+                        auto_share_on_apply: true,
+                        share_with_group_lead: true
+                    };
+                    teamTagError.value = '';
+                };
+
+                const saveTeamTag = async () => {
+                    teamTagError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const payload = {
+                            name: newTeamTag.value.name,
+                            color: newTeamTag.value.color,
+                            protect_from_deletion: newTeamTag.value.protect_from_deletion,
+                            auto_share_on_apply: newTeamTag.value.auto_share_on_apply,
+                            share_with_group_lead: newTeamTag.value.share_with_group_lead
+                        };
+
+                        // Add custom prompt if provided
+                        if (newTeamTag.value.custom_prompt && newTeamTag.value.custom_prompt.trim()) {
+                            payload.custom_prompt = newTeamTag.value.custom_prompt.trim();
+                        }
+
+                        // Add language if selected
+                        if (newTeamTag.value.default_language) {
+                            payload.default_language = newTeamTag.value.default_language;
+                        }
+
+                        // Add speaker settings if provided
+                        if (newTeamTag.value.default_min_speakers) {
+                            payload.default_min_speakers = newTeamTag.value.default_min_speakers;
+                        }
+                        if (newTeamTag.value.default_max_speakers) {
+                            payload.default_max_speakers = newTeamTag.value.default_max_speakers;
+                        }
+
+                        // Only include retention_days if it's set and > 0
+                        if (newTeamTag.value.retention_days && newTeamTag.value.retention_days > 0) {
+                            payload.retention_days = newTeamTag.value.retention_days;
+                        }
+
+                        let response;
+                        if (editingTeamTagId.value) {
+                            // Update existing tag
+                            response = await fetch(`/api/tags/${editingTeamTagId.value}`, {
+                                method: 'PUT',
+                                headers,
+                                body: JSON.stringify(payload)
+                            });
+                        } else {
+                            // Create new tag
+                            response = await fetch(`/api/groups/${currentTeam.value.id}/tags`, {
+                                method: 'POST',
+                                headers,
+                                body: JSON.stringify(payload)
+                            });
+                        }
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || (editingTeamTagId.value ? 'Failed to update tag' : 'Failed to create tag'));
+                        }
+
+                        // Reset form and reload
+                        editingTeamTagId.value = null;
+                        newTeamTag.value = {
+                            name: '',
+                            color: '#3B82F6',
+                            custom_prompt: '',
+                            default_language: '',
+                            default_min_speakers: null,
+                            default_max_speakers: null,
+                            retention_days: null,
+                            protect_from_deletion: false,
+                            auto_share_on_apply: true,
+                            share_with_group_lead: true
+                        };
+                        await loadTeamTags(currentTeam.value.id);
+                    } catch (error) {
+                        teamTagError.value = error.message;
+                    }
+                };
+
+                const deleteTeamTag = async (tag) => {
+                    if (!confirm(`Delete the tag "${tag.name}"? This will remove the tag from all recordings.`)) return;
+
+                    teamTagError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = {};
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/tags/${tag.id}`, {
+                            method: 'DELETE',
+                            headers
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to delete tag');
+                        }
+
+                        await loadTeamTags(currentTeam.value.id);
+                    } catch (error) {
+                        teamTagError.value = error.message;
+                    }
+                };
+
+                const formatFileSize = (bytes) => {
+                    if (!bytes || bytes === 0) return '0 Bytes';
+                    
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                };
+                
+                const toggleDarkMode = () => {
+                    isDarkMode.value = !isDarkMode.value;
+                    if (isDarkMode.value) {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('darkMode', 'true');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('darkMode', 'false');
+                    }
+                };
+
+                const initializeDarkMode = () => {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const savedMode = localStorage.getItem('darkMode');
+                    if (savedMode === 'true' || (savedMode === null && prefersDark)) {
+                        isDarkMode.value = true;
+                        document.documentElement.classList.add('dark');
+                    }
+                };
+
+                onMounted(async () => {
+                    loadGroups();
+                    initializeDarkMode();
+                });
+
+                return {
+                    // i18n - bind to i18n instance to maintain context
+                    t: (key, params) => i18nInstance ? i18nInstance.t(key, params) : key,
+
+                    // State
+                    isTeamAdminOnly,
+                    activeTab,
+                    groups,
+                    globalRetentionDays,
+                    isDarkMode,
+                    isUserMenuOpen,
+                    toggleDarkMode,
+                    showTeamModal,
+                    showManageTeamModal,
+                    showDeleteTeamModal,
+                    showSyncSharesModal,
+                    showSyncResultsModal,
+                    showManageTeamTagsModal,
+                    editingTeam,
+                    teamToDelete,
+                    currentTeam,
+                    teamForm,
+                    teamError,
+                    teamMembers,
+                    teamMemberError,
+                    newMemberUserId,
+                    newMemberRole,
+                    availableUsers,
+                    teamTags,
+                    editingTeamTagId,
+                    newTeamTag,
+                    teamTagError,
+                    syncResults,
+                    users,
+                    loadGroups,
+                    openCreateTeamModal,
+                    openEditTeamModal,
+                    closeTeamModal,
+                    saveTeam,
+                    confirmDeleteTeam,
+                    deleteTeam,
+                    openManageTeamModal,
+                    closeManageTeamModal,
+                    loadTeamMembers,
+                    addTeamMember,
+                    updateMemberRole,
+                    removeTeamMember,
+                    syncTeamShares,
+                    confirmSyncShares,
+                    openManageTeamTagsModal,
+                    closeManageTeamTagsModal,
+                    loadTeamTags,
+                    editTeamTag,
+                    cancelEditTeamTag,
+                    saveTeamTag,
+                    deleteTeamTag
+                }
+            },
+            delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2
+            }).mount('#app');
+
+            // Hide loading overlay after Vue app is mounted
+            if (window.AppLoader) {
+                window.AppLoader.hide();
+            }
+        }); // End of initializeI18n().then()
+    </script>
+</body>
+</html>

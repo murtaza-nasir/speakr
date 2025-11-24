@@ -12,7 +12,7 @@ When recording system audio, you'll need to grant screen sharing permissions and
 
 Click the "+ New Recording" button in the top navigation bar to access the recording interface. This opens a dedicated screen where you can either upload files or start a live recording.
 
-![New Recording View](../assets/images/screenshots/new recording view.png)
+![New Recording View](../assets/images/screenshots/Recording interface.png)
 
 ## Uploading Audio Files
 
@@ -26,7 +26,7 @@ When you upload a file, it immediately appears in the upload queue with a progre
 
 Below the upload area, you'll find the audio recording section with three distinct recording modes, each designed for different scenarios:
 
-![Recording Options](../assets/images/screenshots/after recording, finalize tags and settings and notes before uploading or discard.png)
+![Recording Options](../assets/images/screenshots/recording-upload-modal.png)
 
 ### Microphone Recording
 
@@ -34,7 +34,7 @@ The red microphone button captures audio from your selected microphone. This mod
 
 ### System Audio Recording
 
-The blue system audio button captures all sound playing through your computer. This is ideal for recording online meetings when you're primarily listening, webinars, video presentations, or any audio content playing on your computer. This feature uses the browser's screen capture API, so you'll need to select which screen or application to share when you start recording. Make sure to check the "Share system audio" checkbox in the sharing dialog.
+The blue system audio button captures all sound playing through your computer. This is ideal for recording online meetings when you're primarily listening, webinars, online presentations, podcasts, or any audio content playing on your computer. This feature uses the browser's screen capture API, so you'll need to select which screen or application to share when you start recording. Make sure to check the "Share system audio" checkbox in the sharing dialog.
 
 ### Combined Recording (Microphone + System)
 
@@ -46,7 +46,7 @@ When you click to record system audio (or both microphone and system), your brow
 
 ### Recording from a Browser Tab
 
-Choose the tab option if the audio you want to record is playing within a specific browser tab, such as a YouTube video, web-based meeting platform (like Google Meet or browser-based Zoom), or online training video.
+Choose the tab option if the audio you want to record is playing within a specific browser tab, such as audio/video content on YouTube, web-based meeting platforms (like Google Meet or browser-based Zoom), or online training sessions.
 
 ![Tab Selection with Audio](../assets/images/screenshots/record from tab.png)
 
@@ -61,7 +61,7 @@ Choose the screen option if the audio you want to record is coming from desktop 
 ![Screen Selection Dialog](../assets/images/screenshots/record from screen.png)
 
 This is the recommended option when recording:
-- Desktop applications like Zoom client, Microsoft Teams, Skype, or Discord
+- Desktop applications like Zoom client, Microsoft Groups, Skype, or Discord
 - Audio from multiple browser tabs simultaneously
 - System sounds or notifications you want to capture
 - Any combination of audio sources on your computer
@@ -74,7 +74,7 @@ When you select "Your Entire Screen", you'll see previews of all your available 
 
 Once you start recording, the interface transforms to show the active recording session:
 
-![Live Recording Interface](../assets/images/screenshots/Record mic or system audio (for online meetings) and take markdown notes.png)
+![Live Recording Interface](../assets/images/screenshots/recording-dual-source.png)
 
 ### Real-Time Audio Monitoring
 
@@ -86,7 +86,7 @@ A prominent timer at the top shows the elapsed recording time in minutes and sec
 
 One of Speakr's most powerful features is the ability to take structured notes while recording. The note-taking area appears below the audio visualizers and supports full markdown formatting.
 
-![Note Taking During Recording](../assets/images/screenshots/live recording view with notes.png)
+![Note Taking During Recording](../assets/images/screenshots/recording-single-source.png)
 
 The markdown editor includes a formatting toolbar with buttons for common formatting options like bold, italic, headers, quotes, lists, and links. You can also type markdown syntax directly if you prefer. The editor supports all standard markdown elements, allowing you to create well-structured notes that complement your recording.
 
@@ -98,7 +98,7 @@ Common use cases for live notes include capturing action items and deadlines dur
 
 After stopping a recording or selecting an uploaded file, you'll see the finalization screen where you can add metadata and configure processing options:
 
-![Upload Modal](../assets/images/screenshots/after recording, finalize tags and settings and notes before uploading or discard.png)
+![Upload Modal](../assets/images/screenshots/recording-upload-modal.png)
 
 ### Adding Tags
 
@@ -156,7 +156,7 @@ The quality of your transcription starts with the quality of your recording. Whe
 
 **Important Note for Phone Recordings:** Many smartphones have aggressive noise cancellation algorithms designed to enhance single-speaker calls. When recording meetings or conversations with multiple speakers using a phone's microphone, these noise cancellation features may incorrectly identify other speakers as background noise and filter them out. This can result in muffled or missing audio from speakers who are farther from the phone. This is not a limitation of Speakr but rather how modern phones process audio. For multi-speaker recordings, consider using an external microphone without noise cancellation or positioning the phone equidistant from all speakers.
 
-For system audio recording, close unnecessary applications that might produce notification sounds or background audio. If you're recording a video call, ensure you have a stable internet connection to avoid audio dropouts. Using wired internet instead of WiFi can improve stability for important recordings.
+For system audio recording, close unnecessary applications that might produce notification sounds or background audio. If you're recording an online call or web meeting, ensure you have a stable internet connection to avoid audio dropouts. Using wired internet instead of WiFi can improve stability for important recordings.
 
 When recording both microphone and system audio, use headphones to prevent echo and feedback. This ensures that the system audio doesn't get picked up by your microphone, which would create a confusing double recording.
 

@@ -1,0 +1,20 @@
+<!-- Tab Navigation for Mobile -->
+<div class="flex-shrink-0 bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex overflow-x-auto">
+    <button @click="mobileTab = 'transcript'"
+            :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'transcript' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+            v-text="t('transcription.title')"></button>
+    <button @click="mobileTab = 'summary'"
+            :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'summary' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+            v-text="t('summary.title')"></button>
+    <button @click="mobileTab = 'notes'"
+            :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'notes' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+            v-text="t('notes.title')"></button>
+    <button @click="mobileTab = 'chat'"
+            :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors', mobileTab === 'chat' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']"
+            v-text="t('chat.title')"></button>
+    <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
+            @click="mobileTab = 'events'"
+            :class="['flex-1 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap', mobileTab === 'events' ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]']">
+        <i class="fas fa-calendar-alt mr-1"></i>${ t('events.title') } (${ selectedRecording.events.length })
+    </button>
+</div>

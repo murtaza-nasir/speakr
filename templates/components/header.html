@@ -1,0 +1,86 @@
+<!-- Header Component -->
+<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
+    <!-- Left side: Menu toggle and logo -->
+    <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
+        <!-- Menu Toggle Button -->
+        <button @click="toggleSidebar"
+                class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200 flex-shrink-0 flex items-center justify-center">
+            <i class="fas fa-bars text-lg"></i>
+        </button>
+
+        <!-- Logo and Title -->
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+            <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
+            <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
+        </div>
+    </div>
+
+    <!-- Right side: User menu and controls -->
+    <div class="flex items-center gap-3">
+        <!-- Inquire Mode Button -->
+        {% if inquire_mode_enabled %}
+        <a href="/inquire"
+           class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
+            <i class="fas fa-search"></i>
+            <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
+        </a>
+        {% endif %}
+
+        <!-- New Recording Button -->
+        <button @click="switchToUploadView"
+                class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
+            <i class="fas fa-plus mr-1"></i><span v-text="t('nav.newRecording')"></span>
+        </button>
+
+        <!-- User menu -->
+        {% if current_user.is_authenticated %}
+        <div class="relative">
+            <button @click="isUserMenuOpen = !isUserMenuOpen"
+                    class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
+                    :title="t('admin.userMenu')">
+                <i class="fas fa-user-circle text-lg"></i>
+                <span class="hidden lg:inline text-sm">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
+                <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
+            </button>
+
+            <!-- User dropdown -->
+            <div v-if="isUserMenuOpen"
+                 class="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
+                <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
+                </a>
+                <a href="/account#tags" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-tags mr-2 w-4 text-center"></i><span v-text="t('help.tagManagement')"></span>
+                </a>
+                <button @click="openSharesList" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                    <i class="fas fa-share-alt mr-2 w-4 text-center"></i><span v-text="t('modal.sharedTranscripts')"></span>
+                </button>
+                {% if current_user.is_admin %}
+                <a href="/admin" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-user-shield mr-2 w-4 text-center"></i>
+                    <span v-text="t('admin.title')"></span>
+                </a>
+                {% elif is_group_admin %}
+                <a href="/group-management" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-users-cog mr-2 w-4 text-center"></i>
+                    <span v-text="t('nav.groupManagement')"></span>
+                </a>
+                {% endif %}
+                <div class="border-t border-[var(--border-primary)] my-1"></div>
+                <button @click="toggleDarkMode" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                    <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'" class="mr-2 w-4 text-center"></i>
+                    <span v-text="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')"></span>
+                </button>
+                <button @click="openColorSchemeModal" class="w-full text-left px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors flex items-center">
+                    <i class="fas fa-palette mr-2 w-4 text-center"></i>
+                    <span v-text="t('modal.colorScheme')"></span>
+                </button>
+                <div class="border-t border-[var(--border-primary)] my-1"></div>
+                <a href="/logout" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span v-text="t('nav.signOut')"></span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</header>

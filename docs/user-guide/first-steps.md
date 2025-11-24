@@ -2,7 +2,7 @@
 
 The Speakr main view is where you'll spend most of your time. It's designed as a three-panel interface that makes it easy to navigate your recordings, review transcriptions, and interact with your content. Understanding each component will help you work more efficiently with your audio recordings.
 
-![Main View Interface](../assets/images/screenshots/recording view with simple transcription view and chat visible.png)
+![Main View Interface](../assets/images/screenshots/Main view.png)
 
 ## Understanding the Interface Layout
 
@@ -12,7 +12,7 @@ The main view is organized into three distinct sections that work together seaml
 
 The navigation bar at the top of the screen provides quick access to essential features:
 
-![Navigation Elements](../assets/images/screenshots/Filters.png)
+![Navigation Elements](../assets/images/screenshots/Main view.png)
 
 Starting from the left, you'll find the Speakr logo which always brings you back to the main view from anywhere in the application. The Inquire button opens the semantic search interface, allowing you to search across all your recordings using natural language questions. The New Recording button is your gateway to creating new content, either by uploading existing audio files or recording directly in your browser. On the right side, your username appears with a dropdown menu containing access to settings, language preferences, and the logout option.
 
@@ -22,7 +22,7 @@ The left sidebar is your command center for organizing and finding recordings. A
 
 ### Using Filters
 
-![Filter Interface](../assets/images/screenshots/Filters.png)
+![Filter Interface](../assets/images/screenshots/filters-sidebar-expanded.png)
 
 The filter system in Speakr is designed to be both powerful and intuitive. Click on "Active filters" to expand the filtering panel. You can filter by tags, which appear as colored pills that you can click to select or deselect. The date range filter offers convenient presets like "Today", "Yesterday", "This Week", and "Last Week", or you can set a custom date range using the date pickers. When filters are active, their count appears next to the filter label, and a clear button lets you reset all filters at once.
 
@@ -36,8 +36,8 @@ The center panel is where you'll read and interact with your transcription. This
 
 ### Transcription Display
 
-![Transcription without Diarization](../assets/images/screenshots/main view no diarization.png)
-![Transcription with Diarization](../assets/images/screenshots/Summary View.png)
+![Transcription with Speakers](../assets/images/screenshots/main-view-with-speakers.png)
+![Summary View](../assets/images/screenshots/main-view-summary-tab.png)
 
 The transcription display varies depending on how your audio was processed. If you used a standard Whisper API endpoint, you'll see a simple continuous text transcription without speaker identification. The text flows as a single narrative, which works well for single-speaker recordings or when speaker identification isn't needed.
 
@@ -108,6 +108,52 @@ Make use of the notes section immediately after meetings while the context is fr
 For long recordings, the chat interface can save significant time. Instead of reading through an entire hour-long transcription, ask the AI specific questions about decisions made, action items assigned, or topics discussed.
 
 Remember that the interface updates in real-time. When you upload a new recording or when transcription completes, the interface will automatically refresh to show the latest status. You don't need to manually reload the page to see updates.
+
+## Collaboration Features (Optional)
+
+If you're working with a team or family, Speakr's collaboration features help you automatically share recordings with the right people. This section covers groups, group tags, and sharing - all optional but powerful when you need them.
+
+### Understanding Groups and Group Tags
+
+**Groups** are collections of users who regularly work together (e.g., "Engineering Team", "Family", "Sales Department"). Your administrator creates and manages groups, and you're automatically a member of any groups you've been added to.
+
+**Group Tags** are special tags that belong to a group. When you apply a group tag to a recording, all current members of that group automatically get access to it. This is perfect for project-specific content, department meetings, or family events that everyone should see.
+
+### Using Group Tags to Share Recordings
+
+If your administrator has created groups and group tags for you:
+
+1. When creating or editing a recording, click the **tag icon** in the metadata bar
+2. Look for tags that show a group indicator (these are your group tags)
+3. Select any group tag to apply it
+4. All group members instantly receive access to this recording
+
+Group tags can also include custom AI prompts for specialized summaries and retention policies for automatic cleanup. For example, a "Daily Standup" group tag might auto-delete recordings after 14 days, while a "Legal Consultations" tag keeps recordings permanently.
+
+### Individual Sharing
+
+For one-off collaborations or sharing with specific people outside your groups:
+
+1. Open the recording you want to share
+2. Click the **share icon** (users icon) in the toolbar
+3. Search for the user's name and select them
+4. Choose their permission level:
+   - **View Only**: Can read and listen, but not edit
+   - **Edit**: Can modify metadata, notes, and summary
+   - **Reshare**: Can share with additional users
+5. Click to add them - they immediately receive access
+
+### Personal Notes on Shared Recordings
+
+When someone shares a recording with you, you can add your own private notes that only you can see. This is perfect for tracking your action items or personal observations without cluttering the shared content. Your notes are completely separate from the recording owner's notes and the shared summary.
+
+To add personal notes to a shared recording, simply click on the **Notes** tab and start typing. These notes are yours alone and won't be visible to the recording owner or other people who have access.
+
+### Viewing Recordings Shared With You
+
+Recordings that others have shared with you appear in your main recording list with a subtle visual indicator. Use the **"Shared with Me"** filter in the sidebar to view only recordings others have shared with you, making it easy to focus on collaborative content.
+
+For complete details on all collaboration features, see the [Sharing & Collaboration guide](sharing.md).
 
 ## Creating New Content
 

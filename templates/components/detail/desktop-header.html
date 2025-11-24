@@ -1,0 +1,180 @@
+<!-- Desktop Recording Header -->
+<div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] p-6 flex-shrink-0">
+    <div class="flex flex-col">
+        <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                    <h1 v-if="!editingTitle"
+                        @dblclick="selectedRecording.can_edit !== false ? toggleEditTitle() : null"
+                        :class="[
+                            'text-2xl font-bold truncate transition-opacity',
+                            selectedRecording.is_shared ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]',
+                            selectedRecording.can_edit !== false ? 'cursor-text hover:opacity-80' : ''
+                        ]"
+                        :title="selectedRecording.can_edit !== false ? 'Double-click to edit' : selectedRecording.title || 'Untitled Recording'">
+                        ${selectedRecording.title || 'Untitled Recording'}
+                    </h1>
+                    <input v-else
+                           v-model="selectedRecording.title"
+                           @blur="saveTitle"
+                           @keyup.enter="saveTitle"
+                           @keyup.esc="cancelEditTitle"
+                           ref="titleInput"
+                           class="text-2xl font-bold bg-transparent border-b-2 border-[var(--border-focus)] focus:outline-none text-[var(--text-primary)] flex-1 px-1"
+                           placeholder="Untitled Recording">
+
+                    <button v-if="!editingTitle && selectedRecording.can_edit !== false"
+                            @click="toggleEditTitle"
+                            class="p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors opacity-60 hover:opacity-100 flex-shrink-0"
+                            :title="'Edit title'">
+                        <i class="fas fa-pen text-sm"></i>
+                    </button>
+
+                    <!-- Status Badge (for non-completed recordings) -->
+                    <span v-if="!editingTitle && selectedRecording.status !== 'COMPLETED'"
+                          :class="getStatusClass(selectedRecording.status)"
+                          class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0">
+                        ${formatStatus(selectedRecording.status)}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2 ml-4">
+                <button @click="toggleInbox(selectedRecording)"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
+                        :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                    <i class="fas fa-inbox"></i>
+                </button>
+                <button @click="toggleHighlight(selectedRecording)"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
+                        :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                    <i class="fas fa-star"></i>
+                </button>
+                <button @click="editRecordingTags(selectedRecording)"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :title="t('buttons.editTags')">
+                    <i class="fas fa-tags"></i>
+                </button>
+                <button @click="confirmReprocess('transcription', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                    <i class="fas fa-redo-alt"></i>
+                </button>
+                <button @click="confirmReprocess('summary', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :title="t('buttons.reprocessSummary')">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button @click="confirmReset(selectedRecording)" v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500"
+                        :title="t('buttons.resetStuckProcessing')">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :title="t('buttons.identifySpeakers')">
+                    <i class="fas fa-user-tag"></i>
+                </button>
+                <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
+                        @click="openUnifiedShareModal(selectedRecording)"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                        :title="t('buttons.shareRecording')">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+                <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false" @click="confirmDelete(selectedRecording)"
+                        class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Metadata Row -->
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)] mt-2">
+            <!-- Shared Status Badges and Tags -->
+            <div v-if="selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || selectedRecording.has_group_tags || (selectedRecording.tags && selectedRecording.tags.length > 0)" class="flex items-center gap-1.5 flex-wrap">
+                <!-- Shared by someone else (INCOMING) -->
+                <span v-if="selectedRecording.is_shared"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-purple-500 text-white cursor-help"
+                      :title="t('sharing.sharedBy') + ' ' + (selectedRecording.owner_username || t('sharing.unknown'))">
+                    <i class="fas fa-arrow-down" style="vertical-align: middle; line-height: 0;"></i>
+                </span>
+
+                <!-- Group indicator (show for both owned and shared recordings with group tags) -->
+                <span v-if="selectedRecording.has_group_tags"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-blue-500 text-white cursor-help"
+                      :title="t('sharing.teamRecording')">
+                    <i class="fas fa-users" style="vertical-align: middle; line-height: 0;"></i>
+                </span>
+
+                <!-- Shared with others (OUTGOING) -->
+                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-indigo-500 text-white cursor-help"
+                      :title="t('sharing.sharedWith') + ' ' + selectedRecording.shared_with_count + ' ' + t('sharing.users')">
+                    <i class="fas fa-arrow-up" style="vertical-align: middle; line-height: 0;"></i>
+                </span>
+
+                <!-- Public link shares -->
+                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-teal-500 text-white cursor-help"
+                      :title="selectedRecording.public_share_count + ' ' + t('sharing.publicLinksGenerated')">
+                    <i class="fas fa-globe" style="vertical-align: middle; line-height: 0;"></i>
+                </span>
+
+                <!-- Tags -->
+                <span v-for="tag in selectedRecording.tags" :key="tag.id"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full cursor-help"
+                      :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }"
+                      :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
+                    ${tag.name}
+                </span>
+            </div>
+
+            <!-- Participants -->
+            <div class="flex items-center gap-2">
+                <i class="fas fa-users text-[var(--text-accent)]"></i>
+                <span @click="openParticipantsModal"
+                      class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[300px] truncate inline-block"
+                      :title="selectedRecording.participants || t('help.noParticipants')">
+                    ${selectedRecording.participants || t('help.noParticipants')}
+                </span>
+            </div>
+
+            <!-- Owner (for shared recordings) -->
+            <div v-if="selectedRecording.is_shared" class="flex items-center gap-2">
+                <i class="fas fa-user text-[var(--text-accent)]"></i>
+                <span class="max-w-[300px] truncate inline-block"
+                      :title="'Owner: ' + (selectedRecording.owner_username || t('sharing.unknown'))">
+                    ${selectedRecording.owner_username || t('sharing.unknown')}
+                </span>
+            </div>
+
+            <!-- Meeting Date -->
+            <div class="flex items-center gap-2">
+                <i class="fas fa-calendar text-[var(--text-accent)]"></i>
+                <span v-if="!editingMeetingDate"
+                      @click="toggleEditMeetingDate"
+                      class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
+                    ${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}
+                </span>
+                <input v-else
+                       v-model="selectedRecording.meeting_date"
+                       @blur="toggleEditMeetingDate"
+                       @keyup.enter="toggleEditMeetingDate"
+                       type="date"
+                       class="bg-transparent border-b border-[var(--border-secondary)] focus:border-[var(--border-focus)] outline-none px-1">
+            </div>
+
+            <!-- Other Metadata -->
+            <div v-if="activeRecordingMetadata && activeRecordingMetadata.length > 0" class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <span v-for="(item, index) in activeRecordingMetadata" :key="index" class="flex items-center gap-1.5">
+                    <i :class="item.icon"></i>
+                    <span :title="item.fullText || item.text">${item.text}</span>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
