@@ -1025,6 +1025,17 @@
     "location": "Ubicación",
     "attendees": "Asistentes"
   },
+  "pwa": {
+    "installApp": "Instalar App",
+    "installing": "Instalando...",
+    "installed": "Instalado exitosamente",
+    "updateAvailable": "Actualización disponible",
+    "offline": "Estás desconectado",
+    "screenAwake": "La pantalla permanecerá activa durante la grabación",
+    "screenAwakeFailed": "No se pudo mantener la pantalla activa",
+    "notificationPermissionDenied": "Permiso de notificación denegado",
+    "notificationsEnabled": "Notificaciones habilitadas"
+  },
   "tooltips": {
     "copyTranscript": "Copiar transcripción",
     "downloadTranscriptWithTemplate": "Descargar transcripción con plantilla",

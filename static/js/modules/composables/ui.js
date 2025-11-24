@@ -815,19 +815,9 @@ export function useUI(state, utils, processedTranscription) {
 
     // --- Active Segment Tracking ---
     const handleAudioTimeUpdate = (event) => {
-        console.log('!!! handleAudioTimeUpdate FIRED !!!', event.target.currentTime);
-
         const transcription = processedTranscription.value;
 
-        console.log('handleAudioTimeUpdate called', {
-            hasTranscription: !!transcription,
-            isJson: transcription?.isJson,
-            hasDialogue: transcription?.hasDialogue,
-            segmentCount: transcription?.simpleSegments?.length
-        });
-
         if (!transcription || !transcription.isJson) {
-            console.log('Exiting early - no valid transcription');
             return;
         }
 

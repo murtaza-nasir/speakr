@@ -1016,6 +1016,17 @@
     "location": "Location",
     "attendees": "Attendees"
   },
+  "pwa": {
+    "installApp": "Install App",
+    "installing": "Installing...",
+    "installed": "Installed successfully",
+    "updateAvailable": "Update available",
+    "offline": "You're offline",
+    "screenAwake": "Screen will stay awake during recording",
+    "screenAwakeFailed": "Could not keep screen awake",
+    "notificationPermissionDenied": "Notification permission denied",
+    "notificationsEnabled": "Notifications enabled"
+  },
   "tooltips": {
     "copyTranscript": "Copy transcript",
     "downloadTranscriptWithTemplate": "Download transcript with template",
