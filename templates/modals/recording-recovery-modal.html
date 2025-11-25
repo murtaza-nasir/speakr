@@ -13,32 +13,32 @@
                 <div class="flex items-start gap-3">
                     <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
                     <div class="text-sm text-blue-700 dark:text-blue-400">
-                        <p class="font-medium mb-1">{{ t('recording.recoveryFound') }}</p>
-                        <p>{{ t('recording.recoveryDescription') }}</p>
+                        <p class="font-medium mb-1">${ t('recording.recoveryFound') }</p>
+                        <p>${ t('recording.recoveryDescription') }</p>
                     </div>
                 </div>
             </div>
 
             <div v-if="recoverableRecording" class="space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">{{ t('recording.recordingMode') }}:</span>
-                    <span class="font-medium">{{ formatRecordingMode(recoverableRecording.mode) }}</span>
+                    <span class="text-[var(--text-muted)]">${ t('recording.recordingMode') }:</span>
+                    <span class="font-medium">${ formatRecordingMode(recoverableRecording.mode) }</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">{{ t('recording.duration') }}:</span>
-                    <span class="font-medium">{{ formatTime(recoverableRecording.duration) }}</span>
+                    <span class="text-[var(--text-muted)]">${ t('recording.duration') }:</span>
+                    <span class="font-medium">${ formatTime(recoverableRecording.duration) }</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">{{ t('recording.size') }}:</span>
-                    <span class="font-medium">{{ formatFileSize(recoverableRecording.totalSize) }}</span>
+                    <span class="text-[var(--text-muted)]">${ t('recording.size') }:</span>
+                    <span class="font-medium">${ formatFileSize(recoverableRecording.totalSize) }</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">{{ t('recording.startedAt') }}:</span>
-                    <span class="font-medium">{{ formatDateTime(recoverableRecording.startTime) }}</span>
+                    <span class="text-[var(--text-muted)]">${ t('recording.startedAt') }:</span>
+                    <span class="font-medium">${ formatDateTime(recoverableRecording.startTime) }</span>
                 </div>
                 <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-secondary)]">
-                    <span class="text-[var(--text-muted)]">{{ t('recording.notes') }}:</span>
-                    <p class="mt-1 text-[var(--text-primary)]">{{ recoverableRecording.notes }}</p>
+                    <span class="text-[var(--text-muted)]">${ t('recording.notes') }:</span>
+                    <p class="mt-1 text-[var(--text-primary)]">${ recoverableRecording.notes }</p>
                 </div>
             </div>
         </div>
@@ -47,12 +47,12 @@
             <button
                 @click="cancelRecovery"
                 class="flex-1 px-4 py-2.5 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors font-medium">
-                <i class="fas fa-trash mr-2"></i>{{ t('recording.discardRecovery') }}
+                <i class="fas fa-trash mr-2"></i>${ t('recording.discardRecovery') }
             </button>
             <button
                 @click="recoverRecording"
                 class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                <i class="fas fa-undo mr-2"></i>{{ t('recording.restoreRecording') }}
+                <i class="fas fa-undo mr-2"></i>${ t('recording.restoreRecording') }
             </button>
         </div>
     </div>
