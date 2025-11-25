@@ -6,7 +6,7 @@
 export function useSpeakers(state, utils, processedTranscription) {
     const { nextTick } = Vue;
     const {
-        showSpeakerModal, showAddSpeakerModal, showEditSpeakersModal,
+        showSpeakerModal, speakerModalTab, showAddSpeakerModal, showEditSpeakersModal,
         showEditTextModal, selectedRecording, recordings,
         speakerMap, modalSpeakers, speakerDisplayMap, speakerSuggestions, loadingSuggestions,
         activeSpeakerInput, regenerateSummaryAfterSpeakerUpdate,
@@ -74,6 +74,7 @@ export function useSpeakers(state, utils, processedTranscription) {
         isAutoIdentifying.value = false;
         regenerateSummaryAfterSpeakerUpdate.value = true;
         voiceSuggestions.value = {};
+        speakerModalTab.value = 'speakers';  // Reset to speakers tab on mobile
 
         showSpeakerModal.value = true;
 

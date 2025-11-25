@@ -215,6 +215,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showReprocessModal = ref(false);
             const showResetModal = ref(false);
             const showSpeakerModal = ref(false);
+            const speakerModalTab = ref('speakers');  // 'speakers' or 'transcript' for mobile view
             const showShareModal = ref(false);
             const showSharesListModal = ref(false);
             const showTextEditorModal = ref(false);
@@ -431,7 +432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
-                showReprocessModal, showResetModal, showSpeakerModal, showShareModal, showSharesListModal,
+                showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, showShareModal, showSharesListModal,
                 showTextEditorModal, showAsrEditorModal, editingRecording, editingTranscriptionContent,
                 editingSegments, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
