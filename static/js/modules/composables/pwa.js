@@ -3,6 +3,8 @@
  * Handles install prompt, push notifications, badging, and other PWA APIs
  */
 
+import { isPushEnabled, getPublicKey, urlBase64ToUint8Array } from '../../config/push-config.js';
+
 export function usePWA(state, utils) {
     const {
         deferredInstallPrompt,
@@ -114,6 +116,23 @@ export function usePWA(state, utils) {
     const subscribeToPushNotifications = async () => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             console.warn('[PWA] Push notifications not supported');
+            showToast('Push notifications not supported in this browser', 'warning');
+            return null;
+        }
+
+        // Check if push is enabled on server
+        const enabled = await isPushEnabled();
+        if (!enabled) {
+            console.warn('[PWA] Push notifications not configured on server');
+            showToast('Push notifications not available. Install pywebpush on server.', 'warning');
+            return null;
+        }
+
+        // Get public key from server
+        const publicKey = await getPublicKey();
+        if (!publicKey) {
+            console.error('[PWA] Failed to get VAPID public key from server');
+            showToast('Failed to configure push notifications', 'error');
             return null;
         }
 
@@ -125,20 +144,105 @@ export function usePWA(state, utils) {
 
             if (!subscription) {
                 // Subscribe to push notifications
-                // Note: You'll need to generate VAPID keys and add them here
-                // For now, we'll just set up the structure
-                console.log('[PWA] Push notification subscription would be created here');
-                // subscription = await registration.pushManager.subscribe({
-                //     userVisibleOnly: true,
-                //     applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-                // });
+                console.log('[PWA] Creating new push subscription...');
+
+                const applicationServerKey = urlBase64ToUint8Array(publicKey);
+
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: applicationServerKey
+                });
+
+                // Send subscription to server
+                const success = await sendSubscriptionToServer(subscription);
+
+                if (success) {
+                    pushSubscription.value = subscription;
+                    showToast('Push notifications enabled', 'success');
+                    console.log('[PWA] Push subscription successful:', subscription);
+                } else {
+                    console.warn('[PWA] Failed to save subscription on server');
+                    showToast('Failed to enable push notifications', 'error');
+                    return null;
+                }
+            } else {
+                pushSubscription.value = subscription;
+                console.log('[PWA] Already subscribed to push notifications');
             }
 
-            pushSubscription.value = subscription;
             return subscription;
         } catch (error) {
             console.error('[PWA] Failed to subscribe to push notifications:', error);
+
+            if (error.name === 'NotAllowedError') {
+                showToast('Push notification permission denied', 'error');
+            } else {
+                showToast('Failed to enable push notifications', 'error');
+            }
+
             return null;
+        }
+    };
+
+    /**
+     * Send subscription to server for storage
+     */
+    const sendSubscriptionToServer = async (subscription) => {
+        try {
+            const response = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(subscription),
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                console.error('[PWA] Server rejected push subscription:', response.status);
+                return false;
+            }
+
+            const data = await response.json();
+            console.log('[PWA] Subscription saved on server:', data);
+            return true;
+        } catch (error) {
+            console.error('[PWA] Failed to send subscription to server:', error);
+            return false;
+        }
+    };
+
+    /**
+     * Unsubscribe from push notifications
+     */
+    const unsubscribeFromPushNotifications = async () => {
+        if (!pushSubscription.value) {
+            console.log('[PWA] No active push subscription to unsubscribe');
+            return true;
+        }
+
+        try {
+            // Unsubscribe on client
+            await pushSubscription.value.unsubscribe();
+
+            // Remove from server
+            await fetch('/api/push/unsubscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(pushSubscription.value),
+                credentials: 'same-origin'
+            });
+
+            pushSubscription.value = null;
+            showToast('Push notifications disabled', 'info');
+            console.log('[PWA] Unsubscribed from push notifications');
+            return true;
+        } catch (error) {
+            console.error('[PWA] Failed to unsubscribe from push notifications:', error);
+            showToast('Failed to disable push notifications', 'error');
+            return false;
         }
     };
 
@@ -390,6 +494,7 @@ export function usePWA(state, utils) {
         // Notifications
         requestNotificationPermission,
         subscribeToPushNotifications,
+        unsubscribeFromPushNotifications,
         showNotification,
 
         // Badging

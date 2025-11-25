@@ -367,7 +367,7 @@ db.init_app(app)
 from src.models import (
     User, Speaker, Recording, TranscriptChunk, Share, InternalShare,
     SharedRecordingState, Group, GroupMembership, Tag, RecordingTag,
-    Event, TranscriptTemplate, InquireSession, SystemSetting
+    Event, TranscriptTemplate, InquireSession, SystemSetting, PushSubscription
 )
 
 # Import utility functions from extracted modules
@@ -488,6 +488,7 @@ from src.api.inquire import inquire_bp, init_inquire_helpers
 from src.api.templates import templates_bp, init_templates_helpers
 from src.api.events import events_bp, init_events_helpers
 from src.api.system import system_bp, init_system_helpers
+from src.api.push_notifications import push_bp
 
 # Database initialization (extracted to src/init_db.py)
 from src.init_db import initialize_database
@@ -523,6 +524,7 @@ app.register_blueprint(inquire_bp)
 app.register_blueprint(templates_bp)
 app.register_blueprint(events_bp)
 app.register_blueprint(system_bp)
+app.register_blueprint(push_bp)
 
 # File monitor and scheduler initialization functions below
 

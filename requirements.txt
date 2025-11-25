@@ -6,6 +6,7 @@ flask-bcrypt==1.0.1
 Flask-Limiter==3.5.0
 email-validator==2.2.0
 openai>=2.2.0
+pywebpush==1.14.0
 werkzeug==2.3.7
 gunicorn==21.2.0
 python-dotenv==1.0.0

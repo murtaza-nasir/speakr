@@ -24,6 +24,7 @@ from .templates import TranscriptTemplate
 from .inquire import InquireSession
 from .system import SystemSetting
 from .audit import ShareAuditLog
+from .push_subscription import PushSubscription
 
 # Export all models
 __all__ = [
@@ -51,4 +52,5 @@ __all__ = [
     'TranscriptTemplate',
     'InquireSession',
     'SystemSetting',
+    'PushSubscription',
 ]
