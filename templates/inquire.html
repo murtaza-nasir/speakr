@@ -160,16 +160,18 @@
                 <!-- User menu -->
                 {% if current_user.is_authenticated %}
                 <div class="relative">
-                    <button @click="isUserMenuOpen = !isUserMenuOpen" 
+                    <button @click="isUserMenuOpen = !isUserMenuOpen"
+                            data-user-menu-toggle
                             class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
                             :title="t('admin.userMenu')">
                         <i class="fas fa-user-circle text-lg"></i>
                         <span class="hidden lg:inline text-sm">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
                         <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
                     </button>
-                    
+
                     <!-- User dropdown -->
                     <div v-if="isUserMenuOpen"
+                         data-user-menu-dropdown
                          class="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
                         <a href="/" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
                             <i class="fas fa-home mr-2 w-4 text-center"></i><span v-text="t('nav.home')"></span>
@@ -792,27 +794,48 @@
                         const savedDarkMode = localStorage.getItem('darkMode');
                         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                         const isDark = savedDarkMode !== null ? savedDarkMode === 'true' : prefersDark;
-                        
+
                         document.documentElement.classList.toggle('dark', isDark);
-                        
+
                         const savedScheme = localStorage.getItem('colorScheme') || 'blue';
                         const currentMode = isDark ? 'dark' : 'light';
                         const themeClass = savedScheme === 'blue' ? '' : `theme-${currentMode}-${savedScheme}`;
-                        
+
                         // Remove all existing theme classes
                         document.documentElement.className = document.documentElement.className
                             .replace(/theme-(?:light|dark)-\w+/g, '');
-                        
+
                         if (themeClass) {
                             document.documentElement.classList.add(themeClass);
                         }
                     };
-                    
+
+                    /**
+                     * Set up global click handler to close dropdowns when clicking outside
+                     * Provides elegant UX by closing menus when users click elsewhere
+                     */
+                    const setupGlobalClickHandler = () => {
+                        document.addEventListener('click', (event) => {
+                            const target = event.target;
+
+                            // Close user menu if clicking outside of it
+                            if (isUserMenuOpen.value) {
+                                const userMenuButton = target.closest('[data-user-menu-toggle]');
+                                const userMenuDropdown = target.closest('[data-user-menu-dropdown]');
+
+                                if (!userMenuButton && !userMenuDropdown) {
+                                    isUserMenuOpen.value = false;
+                                }
+                            }
+                        });
+                    };
+
                     // --- Lifecycle ---
                     onMounted(async () => {
                         // Initialize dark mode and color scheme
                         initializeDarkMode();
                         initializeColorScheme(isDarkMode.value);
+                        setupGlobalClickHandler();
                         
                         // Watch dark mode changes to update color scheme
                         Vue.watch(isDarkMode, (newValue) => {
