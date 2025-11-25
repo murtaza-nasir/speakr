@@ -123,19 +123,19 @@
                             <i class="fas fa-users-slash text-3xl mb-2"></i>
                             <p>No users found</p>
                         </div>
-                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] sm:max-h-64 overflow-y-auto">
                             <div v-for="user in internalShareSearchResults" :key="user.id"
                                  @click="createInternalShare(user.id, user.username)"
-                                 class="group p-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-lg border border-[var(--border-secondary)] hover:border-blue-500 cursor-pointer transition-all">
-                                <div class="flex items-center gap-2">
-                                    <div :class="['w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xs', getUserColorClass(user.username)]">
+                                 class="group p-3 sm:p-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] rounded-lg border border-[var(--border-secondary)] hover:border-blue-500 cursor-pointer transition-all active:scale-[0.98]">
+                                <div class="flex items-center gap-3 sm:gap-2">
+                                    <div :class="['w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm sm:text-xs', getUserColorClass(user.username)]">
                                         ${user.username ? user.username.charAt(0).toUpperCase() : '?'}
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-medium text-sm text-[var(--text-primary)] truncate">${user.username}</p>
-                                        <p v-if="user.email" class="text-xs text-[var(--text-muted)] truncate">${user.email}</p>
+                                        <p class="font-medium text-base sm:text-sm text-[var(--text-primary)] truncate">${user.username}</p>
+                                        <p v-if="user.email" class="text-sm sm:text-xs text-[var(--text-muted)] truncate">${user.email}</p>
                                     </div>
-                                    <i class="fas fa-user-plus text-blue-500 group-hover:scale-110 transition-transform"></i>
+                                    <i class="fas fa-user-plus text-blue-500 text-lg sm:text-base group-hover:scale-110 transition-transform flex-shrink-0"></i>
                                 </div>
                             </div>
                         </div>
@@ -214,38 +214,38 @@
                         <p>Not shared with anyone yet</p>
                         <p class="text-sm mt-1">Select a user above to share this recording</p>
                     </div>
-                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] sm:max-h-64 overflow-y-auto">
                         <div v-for="share in recordingInternalShares" :key="share.user_id"
-                             class="bg-[var(--bg-secondary)] p-2 rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-primary)] transition-colors">
-                            <div class="flex items-center gap-2">
-                                <div :class="['w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-xs', getUserColorClass(share.username)]">
+                             class="bg-[var(--bg-secondary)] p-3 sm:p-2 rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-primary)] transition-colors">
+                            <div class="flex items-center gap-3 sm:gap-2">
+                                <div :class="['w-10 h-10 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm sm:text-xs', getUserColorClass(share.username)]">
                                     ${share.username ? share.username.charAt(0).toUpperCase() : '#'}
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-medium text-sm text-[var(--text-primary)] truncate">${share.username || 'User #' + share.user_id}</p>
-                                    <p class="text-xs text-[var(--text-muted)] mb-0.5">${share.is_owner ? 'Recording Owner' : formatShareDate(share.created_at)}</p>
-                                    <div class="flex flex-wrap gap-1 text-[10px]">
-                                        <span v-if="share.is_owner" class="inline-flex items-center px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">
-                                            <i class="fas fa-crown mr-0.5 text-[9px]"></i>Owner
+                                    <p class="font-medium text-base sm:text-sm text-[var(--text-primary)] truncate">${share.username || 'User #' + share.user_id}</p>
+                                    <p class="text-sm sm:text-xs text-[var(--text-muted)] mb-1 sm:mb-0.5">${share.is_owner ? 'Recording Owner' : formatShareDate(share.created_at)}</p>
+                                    <div class="flex flex-wrap gap-1 text-xs sm:text-[10px]">
+                                        <span v-if="share.is_owner" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 font-medium">
+                                            <i class="fas fa-crown mr-1 sm:mr-0.5 text-xs sm:text-[9px]"></i>Owner
                                         </span>
                                         <template v-else>
-                                            <span v-if="share.can_edit" class="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                                                <i class="fas fa-pencil-alt mr-0.5 text-[8px]"></i>Edit
+                                            <span v-if="share.can_edit" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                                                <i class="fas fa-pencil-alt mr-1 sm:mr-0.5 text-xs sm:text-[8px]"></i>Edit
                                             </span>
-                                            <span v-if="share.can_reshare" class="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                                                <i class="fas fa-share-alt mr-0.5 text-[8px]"></i>Reshare
+                                            <span v-if="share.can_reshare" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                                <i class="fas fa-share-alt mr-1 sm:mr-0.5 text-xs sm:text-[8px]"></i>Reshare
                                             </span>
-                                            <span v-if="!share.can_edit && !share.can_reshare" class="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
-                                                <i class="fas fa-eye mr-0.5 text-[8px]"></i>View
+                                            <span v-if="!share.can_edit && !share.can_reshare" class="inline-flex items-center px-2 py-0.5 sm:px-1.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400">
+                                                <i class="fas fa-eye mr-1 sm:mr-0.5 text-xs sm:text-[8px]"></i>View
                                             </span>
                                         </template>
                                     </div>
                                 </div>
                                 <button v-if="!share.is_owner"
                                         @click="revokeInternalShare(share.id, share.username || share.user_name)"
-                                        class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                                        class="p-2 sm:p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 transition-all flex-shrink-0"
                                         :title="'Revoke access'">
-                                    <i class="fas fa-user-times text-xs"></i>
+                                    <i class="fas fa-user-times text-base sm:text-xs"></i>
                                 </button>
                             </div>
                         </div>
