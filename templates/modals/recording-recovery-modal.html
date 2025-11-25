@@ -1,0 +1,59 @@
+<!-- Recording Recovery Modal -->
+<div v-if="showRecoveryModal" @click="cancelRecovery" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+        <div class="p-6 border-b border-[var(--border-primary)]">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-history text-2xl text-blue-500"></i>
+                <h3 class="text-lg font-semibold" v-text="t('recording.recoveryTitle')"></h3>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
+                    <div class="text-sm text-blue-700 dark:text-blue-400">
+                        <p class="font-medium mb-1">{{ t('recording.recoveryFound') }}</p>
+                        <p>{{ t('recording.recoveryDescription') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="recoverableRecording" class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">{{ t('recording.recordingMode') }}:</span>
+                    <span class="font-medium">{{ formatRecordingMode(recoverableRecording.mode) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">{{ t('recording.duration') }}:</span>
+                    <span class="font-medium">{{ formatTime(recoverableRecording.duration) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">{{ t('recording.size') }}:</span>
+                    <span class="font-medium">{{ formatFileSize(recoverableRecording.totalSize) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">{{ t('recording.startedAt') }}:</span>
+                    <span class="font-medium">{{ formatDateTime(recoverableRecording.startTime) }}</span>
+                </div>
+                <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-secondary)]">
+                    <span class="text-[var(--text-muted)]">{{ t('recording.notes') }}:</span>
+                    <p class="mt-1 text-[var(--text-primary)]">{{ recoverableRecording.notes }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 border-t border-[var(--border-primary)] flex gap-3">
+            <button
+                @click="cancelRecovery"
+                class="flex-1 px-4 py-2.5 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--bg-hover)] transition-colors font-medium">
+                <i class="fas fa-trash mr-2"></i>{{ t('recording.discardRecovery') }}
+            </button>
+            <button
+                @click="recoverRecording"
+                class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                <i class="fas fa-undo mr-2"></i>{{ t('recording.restoreRecording') }}
+            </button>
+        </div>
+    </div>
+</div>

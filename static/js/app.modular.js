@@ -156,6 +156,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recordingNotes = ref('');
             const showSystemAudioHelp = ref(false);
             const showSystemAudioHelpModal = ref(false);
+            const showRecoveryModal = ref(false);
+            const recoverableRecording = ref(null);
             const asrLanguage = ref('');
             const asrMinSpeakers = ref('');
             const asrMaxSpeakers = ref('');
@@ -1247,6 +1249,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 uiComposable.initializeColorScheme();
                 uiComposable.initializeSidebar();
 
+                // Check for recoverable recording from IndexedDB
+                try {
+                    const recoverable = await audioComposable.checkForRecoverableRecording();
+                    if (recoverable && recoverable.chunks && recoverable.chunks.length > 0) {
+                        recoverableRecording.value = recoverable;
+                        showRecoveryModal.value = true;
+                        console.log('[App] Found recoverable recording, showing recovery dialog');
+                    }
+                } catch (error) {
+                    console.error('[App] Failed to check for recoverable recording:', error);
+                }
+
                 // Load initial data
                 await Promise.all([
                     recordingsComposable.loadRecordings(),
@@ -1319,6 +1333,52 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             // =========================================================================
+            // RECORDING RECOVERY FUNCTIONS
+            // =========================================================================
+
+            const recoverRecording = async () => {
+                try {
+                    showRecoveryModal.value = false;
+
+                    const recovered = await audioComposable.recoverRecordingFromDB();
+                    if (recovered) {
+                        currentView.value = 'preview';
+                        showToast('Recording recovered successfully', 'success');
+                    } else {
+                        showToast('Failed to recover recording', 'error');
+                    }
+
+                    recoverableRecording.value = null;
+                } catch (error) {
+                    console.error('[App] Failed to recover recording:', error);
+                    showToast('Error recovering recording', 'error');
+                }
+            };
+
+            const cancelRecovery = async () => {
+                try {
+                    showRecoveryModal.value = false;
+
+                    // Clear the recording from IndexedDB
+                    await audioComposable.clearRecordingSession();
+
+                    showToast('Recording discarded', 'info');
+                    recoverableRecording.value = null;
+                } catch (error) {
+                    console.error('[App] Failed to discard recording:', error);
+                }
+            };
+
+            const formatRecordingMode = (mode) => {
+                const modes = {
+                    'microphone': t('recording.modeMicrophone'),
+                    'system': t('recording.modeSystem'),
+                    'both': t('recording.modeBoth')
+                };
+                return modes[mode] || mode;
+            };
+
+            // =========================================================================
             // WATCHERS
             // =========================================================================
 
@@ -1374,6 +1434,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showToast,
                 getContrastTextColor,
                 getBubbleGlobalIndex,
+                formatRecordingMode,
+
+                // Recording recovery
+                showRecoveryModal,
+                recoverableRecording,
+                recoverRecording,
+                cancelRecovery,
 
                 // Composable methods
                 ...recordingsComposable,

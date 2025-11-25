@@ -3,6 +3,8 @@
  * Handles microphone/system audio recording with visualizers and wake lock
  */
 
+import * as RecordingDB from '../db/recording-persistence.js';
+
 export function useAudio(state, utils) {
     const {
         isRecording, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
@@ -177,6 +179,9 @@ export function useAudio(state, utils) {
             estimatedFileSize.value = 0;
             fileSizeWarningShown.value = false;
 
+            // Initialize IndexedDB session
+            state.currentChunkIndex = 0;
+
             let stream;
             let combinedStream;
 
@@ -302,9 +307,38 @@ export function useAudio(state, utils) {
 
             const recorder = new MediaRecorder(stream, { mimeType });
 
-            recorder.ondataavailable = (event) => {
+            // Start IndexedDB recording session
+            try {
+                await RecordingDB.startRecordingSession({
+                    mode,
+                    notes: recordingNotes.value,
+                    tags: selectedTagIds.value,
+                    asrOptions: {
+                        language: asrLanguage.value,
+                        min_speakers: asrMinSpeakers.value,
+                        max_speakers: asrMaxSpeakers.value
+                    },
+                    mimeType
+                });
+            } catch (dbError) {
+                console.warn('[Recording] IndexedDB persistence failed, continuing without persistence:', dbError);
+            }
+
+            recorder.ondataavailable = async (event) => {
                 if (event.data.size > 0) {
                     audioChunks.value.push(event.data);
+
+                    // Save chunk to IndexedDB for crash recovery
+                    try {
+                        await RecordingDB.saveChunk(event.data, state.currentChunkIndex);
+                        await RecordingDB.updateRecordingMetadata({
+                            duration: recordingTime.value,
+                            notes: recordingNotes.value
+                        });
+                        state.currentChunkIndex++;
+                    } catch (dbError) {
+                        console.warn('[Recording] Failed to save chunk to IndexedDB:', dbError);
+                    }
                 }
             };
 
@@ -402,7 +436,7 @@ export function useAudio(state, utils) {
     };
 
     // Upload recorded audio
-    const uploadRecordedAudio = () => {
+    const uploadRecordedAudio = async () => {
         if (!audioBlobURL.value) {
             setGlobalError("No recorded audio to upload.");
             return;
@@ -436,6 +470,13 @@ export function useAudio(state, utils) {
             willAutoSummarize: false // Server will tell us via SUMMARIZING status
         });
 
+        // Clear IndexedDB session after successful queue
+        try {
+            await RecordingDB.clearRecordingSession();
+        } catch (dbError) {
+            console.warn('[Recording] Failed to clear IndexedDB session:', dbError);
+        }
+
         discardRecording();
 
         // Return to upload view (main UI)
@@ -465,6 +506,13 @@ export function useAudio(state, utils) {
         asrLanguage.value = '';
         asrMinSpeakers.value = '';
         asrMaxSpeakers.value = '';
+
+        // Clear IndexedDB session
+        try {
+            await RecordingDB.clearRecordingSession();
+        } catch (dbError) {
+            console.warn('[Recording] Failed to clear IndexedDB session:', dbError);
+        }
 
         await releaseWakeLock();
         await hideRecordingNotification();
@@ -586,6 +634,41 @@ export function useAudio(state, utils) {
         return isRecording.value || audioBlobURL.value;
     };
 
+    // Recover recording from IndexedDB
+    const recoverRecordingFromDB = async () => {
+        try {
+            const recovered = await RecordingDB.recoverRecording();
+            if (!recovered) {
+                return null;
+            }
+
+            // Restore chunks
+            audioChunks.value = recovered.chunks;
+
+            // Create blob URL
+            const blob = new Blob(recovered.chunks, { type: recovered.metadata.mimeType });
+            audioBlobURL.value = URL.createObjectURL(blob);
+
+            // Restore metadata
+            recordingMode.value = recovered.metadata.mode;
+            recordingNotes.value = recovered.metadata.notes;
+            selectedTagIds.value = recovered.metadata.tags;
+            recordingTime.value = recovered.metadata.duration;
+
+            if (recovered.metadata.asrOptions) {
+                asrLanguage.value = recovered.metadata.asrOptions.language || '';
+                asrMinSpeakers.value = recovered.metadata.asrOptions.min_speakers || '';
+                asrMaxSpeakers.value = recovered.metadata.asrOptions.max_speakers || '';
+            }
+
+            console.log('[Recording] Successfully recovered recording from IndexedDB');
+            return recovered.metadata;
+        } catch (error) {
+            console.error('[Recording] Failed to recover recording:', error);
+            return null;
+        }
+    };
+
     // No initialization needed - system audio detection is handled by computed property
     const initializeAudio = async () => {
         // Placeholder for future initialization if needed
@@ -607,6 +690,9 @@ export function useAudio(state, utils) {
         hasUnsavedRecording,
         acquireWakeLock,
         releaseWakeLock,
-        initializeAudio
+        initializeAudio,
+        recoverRecordingFromDB,
+        checkForRecoverableRecording: RecordingDB.checkForRecoverableRecording,
+        clearRecordingSession: RecordingDB.clearRecordingSession
     };
 }
