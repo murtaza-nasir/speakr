@@ -597,6 +597,38 @@ export function useSpeakers(state, utils, processedTranscription) {
         }
     };
 
+    /**
+     * Select a speaker for navigation from the dropdown.
+     * This ensures proper timing with Vue's reactivity and DOM updates.
+     */
+    const selectSpeakerForNavigation = (speakerId) => {
+        if (!speakerId) {
+            highlightedSpeaker.value = null;
+            speakerGroups.value = [];
+            currentSpeakerGroupIndex.value = -1;
+            return;
+        }
+
+        highlightedSpeaker.value = speakerId;
+
+        // Wait for Vue to render, then find groups
+        // Use double nextTick to ensure transcript panel content is fully rendered
+        nextTick(() => {
+            nextTick(() => {
+                speakerGroups.value = findSpeakerGroups(speakerId);
+                currentSpeakerGroupIndex.value = 0;
+
+                // Scroll to first occurrence
+                if (speakerGroups.value.length > 0) {
+                    const firstGroup = speakerGroups.value[0];
+                    if (firstGroup && firstGroup.startElement) {
+                        firstGroup.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            });
+        });
+    };
+
     const navigateToNextSpeakerGroup = () => {
         if (speakerGroups.value.length === 0) return;
 
@@ -1029,6 +1061,7 @@ export function useSpeakers(state, utils, processedTranscription) {
         // Navigation
         findSpeakerGroups,
         highlightSpeakerInTranscript,
+        selectSpeakerForNavigation,
         navigateToNextSpeakerGroup,
         navigateToPrevSpeakerGroup,
         focusSpeaker,

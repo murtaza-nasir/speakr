@@ -2,8 +2,8 @@
 <div v-if="showSpeakerModal" @click="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
     <div @click.stop @click="closeSpeakerSuggestionsOnClick" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-[95vh] sm:h-[85vh]">
         <!-- Header -->
-        <div class="p-4 sm:p-5 border-b border-[var(--border-primary)] flex-shrink-0">
-            <h3 class="text-lg sm:text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.identifySpeakers')"></h3>
+        <div class="p-3 sm:p-5 border-b border-[var(--border-primary)] flex-shrink-0">
+            <h3 class="text-base sm:text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.identifySpeakers')"></h3>
             <!-- Warning for too many speakers -->
             <div v-if="modalSpeakers.length > 8" class="mt-3 p-3 bg-[var(--bg-warn-light)] border border-amber-300 dark:border-amber-800 rounded-lg">
                 <div class="flex items-start">
@@ -21,16 +21,16 @@
         <div class="lg:hidden flex border-b border-[var(--border-primary)] flex-shrink-0">
             <button
                 @click="speakerModalTab = 'speakers'"
-                class="flex-1 py-3 text-sm font-medium transition-colors relative"
+                class="flex-1 py-2 text-xs font-medium transition-colors relative"
                 :class="speakerModalTab === 'speakers' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-                <i class="fas fa-users mr-2"></i>Speakers
+                <i class="fas fa-users mr-1"></i>Speakers
                 <span v-if="speakerModalTab === 'speakers'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--bg-accent)]"></span>
             </button>
             <button
                 @click="speakerModalTab = 'transcript'"
-                class="flex-1 py-3 text-sm font-medium transition-colors relative"
+                class="flex-1 py-2 text-xs font-medium transition-colors relative"
                 :class="speakerModalTab === 'transcript' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
-                <i class="fas fa-file-lines mr-2"></i>Transcript
+                <i class="fas fa-file-lines mr-1"></i>Transcript
                 <span v-if="speakerModalTab === 'transcript'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--bg-accent)]"></span>
             </button>
         </div>
@@ -38,26 +38,26 @@
         <!-- Main Content - Tab-based on mobile, side-by-side on desktop -->
         <div class="flex-grow flex flex-col lg:flex-row overflow-hidden modal-content">
             <!-- Speaker List Panel - shown on mobile when speakers tab active, always on desktop -->
-            <div class="lg:w-1/3 p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto custom-scrollbar lg:border-r border-[var(--border-primary)]"
+            <div class="lg:w-1/3 p-3 sm:p-6 space-y-2 sm:space-y-4 overflow-y-auto custom-scrollbar lg:border-r border-[var(--border-primary)]"
                  :class="{ 'hidden lg:block': speakerModalTab !== 'speakers', 'flex-1': speakerModalTab === 'speakers' }">
-                <div v-for="(speaker, index) in modalSpeakers" :key="`${selectedRecording.id}-speaker-${index}-${speaker}`" class="space-y-2 sm:space-y-3">
+                <div v-for="(speaker, index) in modalSpeakers" :key="`${selectedRecording.id}-speaker-${index}-${speaker}`" class="space-y-1.5 sm:space-y-3">
                     <!-- Speaker label with color indicator and "This is Me" checkbox -->
                     <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center space-x-2 min-w-0">
-                            <div :class="speakerMap[speaker].color" class="w-4 h-4 sm:w-4 sm:h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
-                            <span class="font-mono text-sm text-[var(--text-muted)] truncate">${ speakerDisplayMap[speaker] || speaker }</span>
-                            <span v-if="index >= 8" class="text-xs text-[var(--text-warn-strong)] bg-[var(--bg-warn-light)] px-2 py-0.5 rounded-full flex-shrink-0" :title="`Color repeats from speaker ${((index % 8) + 1)}`">
+                        <div class="flex items-center space-x-1.5 min-w-0">
+                            <div :class="speakerMap[speaker].color" class="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
+                            <span class="font-mono text-xs sm:text-sm text-[var(--text-muted)] truncate">${ speakerDisplayMap[speaker] || speaker }</span>
+                            <span v-if="index >= 8" class="text-[10px] text-[var(--text-warn-strong)] bg-[var(--bg-warn-light)] px-1.5 py-0.5 rounded-full flex-shrink-0" :title="`Color repeats from speaker ${((index % 8) + 1)}`">
                                 Repeat
                             </span>
                         </div>
-                        <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors flex-shrink-0">
+                        <label class="flex items-center text-xs sm:text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors flex-shrink-0">
                             <input type="checkbox"
                                    v-model="speakerMap[speaker].isMe"
                                    @change="handleIsMeChange(speaker)"
                                    @focus="highlightSpeakerInTranscript(speaker)"
                                    @blur="clearSpeakerHighlight"
-                                   class="speaker-checkbox w-5 h-5 sm:w-4 sm:h-4">
-                            <span class="ml-2 select-none" v-text="t('help.me')"></span>
+                                   class="speaker-checkbox w-4 h-4 sm:w-4 sm:h-4">
+                            <span class="ml-1.5 select-none" v-text="t('help.me')"></span>
                         </label>
                     </div>
 
@@ -70,44 +70,41 @@
                             @focus="focusSpeaker(speaker)"
                             @blur="blurSpeaker()"
                             :disabled="speakerMap[speaker].isMe"
-                            class="w-full px-3 py-3 sm:py-2 border border-[var(--border-secondary)] rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] text-base sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
-                            :class="{ 'pr-32': shouldShowVoiceSuggestionPill(speaker) }"
+                            class="w-full px-2 py-2 sm:py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
+                            :class="{ 'pr-28': shouldShowVoiceSuggestionPill(speaker) }"
                             :placeholder="speakerMap[speaker].isMe ? currentUserName : t('help.enterNameFor') + ' ' + (speakerDisplayMap[speaker] || speaker)"
                             autocomplete="off">
 
                         <!-- Voice match suggestion pill -->
                         <button v-if="shouldShowVoiceSuggestionPill(speaker)"
                                 @click.stop="applyVoiceSuggestion(speaker, voiceSuggestions[speaker][0])"
-                                class="absolute right-2 top-1/2 transform -translate-y-1/2 px-2 py-1 sm:py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full flex items-center gap-1 hover:from-blue-600 hover:to-purple-600 transition-all shadow-sm hover:shadow group active:scale-95">
-                            <i class="fas fa-waveform-lines text-[10px]"></i>
-                            <span class="font-medium truncate max-w-[70px] sm:max-w-[80px]">${ voiceSuggestions[speaker][0].name }</span>
-                            <span class="text-[10px] opacity-90">${ voiceSuggestions[speaker][0].similarity }%</span>
+                                class="absolute right-1.5 top-1/2 transform -translate-y-1/2 px-1.5 py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[10px] rounded-full flex items-center gap-0.5 hover:from-blue-600 hover:to-purple-600 transition-all shadow-sm hover:shadow group active:scale-95">
+                            <i class="fas fa-waveform-lines text-[9px]"></i>
+                            <span class="font-medium truncate max-w-[50px] sm:max-w-[80px]">${ voiceSuggestions[speaker][0].name }</span>
+                            <span class="text-[9px] opacity-90">${ voiceSuggestions[speaker][0].similarity }%</span>
                         </button>
 
                         <!-- Loading indicator -->
-                        <div v-if="loadingSuggestions[speaker] && !speakerMap[speaker].isMe" class="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-sm"></i>
+                        <div v-if="loadingSuggestions[speaker] && !speakerMap[speaker].isMe" class="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-xs"></i>
                         </div>
 
                         <!-- Suggestions dropdown -->
                         <div v-if="activeSpeakerInput === speaker && speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0 && !speakerMap[speaker].isMe"
                              @click.stop
-                             class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                            <div class="py-1">
+                             class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-40 overflow-y-auto">
+                            <div class="py-0.5">
                                 <div v-for="suggestion in speakerSuggestions[speaker]"
                                      :key="suggestion.id"
                                      @click="selectSpeakerSuggestion(speaker, suggestion)"
-                                     class="px-3 py-3 sm:py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] active:bg-[var(--bg-accent)] flex items-center justify-between">
+                                     class="px-2 py-1.5 cursor-pointer hover:bg-[var(--bg-tertiary)] active:bg-[var(--bg-accent)] flex items-center justify-between">
                                     <div class="flex-grow min-w-0">
-                                        <div class="text-sm font-medium text-[var(--text-primary)] truncate">${ suggestion.name }</div>
-                                        <div class="text-xs text-[var(--text-muted)]">
-                                            Used ${ suggestion.use_count } time${ suggestion.use_count !== 1 ? 's' : '' }
-                                            <span v-if="suggestion.last_used" class="hidden sm:inline">
-                                                • Last: ${ new Date(suggestion.last_used).toLocaleDateString() }
-                                            </span>
+                                        <div class="text-xs font-medium text-[var(--text-primary)] truncate">${ suggestion.name }</div>
+                                        <div class="text-[10px] text-[var(--text-muted)]">
+                                            Used ${ suggestion.use_count }x
                                         </div>
                                     </div>
-                                    <i class="fas fa-user text-[var(--text-muted)] ml-2 flex-shrink-0"></i>
+                                    <i class="fas fa-user text-[var(--text-muted)] ml-1.5 flex-shrink-0 text-[10px]"></i>
                                 </div>
                             </div>
                         </div>
@@ -115,28 +112,27 @@
                 </div>
 
                 <!-- Add Speaker Button -->
-                <div class="pt-3 sm:pt-4 border-t border-[var(--border-primary)]">
-                    <button @click="openAddSpeakerModal" class="w-full px-4 py-3 sm:py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] active:scale-[0.98] transition-all flex items-center justify-center text-base sm:text-sm font-medium">
-                        <i class="fas fa-plus mr-2"></i>
+                <div class="pt-2 sm:pt-4 border-t border-[var(--border-primary)]">
+                    <button @click="openAddSpeakerModal" class="w-full px-3 py-2 sm:py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium">
+                        <i class="fas fa-plus mr-1.5"></i>
                         <span v-text="t('buttons.addSpeaker')"></span>
                     </button>
                 </div>
             </div>
 
             <!-- Audio Player & Transcript Panel - shown on mobile when transcript tab active, always on desktop -->
-            <div class="lg:w-2/3 p-4 sm:p-6 flex flex-col overflow-hidden"
+            <div class="lg:w-2/3 p-3 sm:p-6 flex flex-col overflow-hidden"
                  :class="{ 'hidden lg:flex': speakerModalTab !== 'transcript', 'flex-1': speakerModalTab === 'transcript' }">
                 <!-- Audio Player Section -->
-                <div class="mb-3 sm:mb-4 flex-shrink-0">
-                    <h4 class="font-semibold text-[var(--text-secondary)] mb-2 text-sm sm:text-base" v-text="t('help.audioPlayer')"></h4>
+                <div class="mb-2 sm:mb-4 flex-shrink-0">
                     <div class="audio-player-container">
                         <!-- Show message if audio has been deleted -->
                         <div v-if="selectedRecording.audio_deleted_at"
-                             class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+                             class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-3 py-2 rounded-md flex items-center gap-2 text-xs">
                             <i class="fas fa-info-circle"></i>
                             <span v-text="t('help.audioDeletedMessage')"></span>
                         </div>
-                        <audio v-else controls class="w-full speaker-modal-transcript" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
+                        <audio v-else controls class="w-full speaker-modal-transcript h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
                             Your browser does not support the audio element.
                         </audio>
                     </div>
@@ -145,32 +141,30 @@
                 <!-- Transcript Section -->
                 <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0" @click="seekAudioFromEvent">
                     <div v-if="processedTranscription.isJson">
-                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment mb-2 group relative" :data-start-time="segment.startTime">
-                            <p class="flex items-baseline flex-wrap sm:flex-nowrap">
-                                <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId" class="inline-block w-full sm:w-[120px] flex-shrink-0 truncate text-sm sm:text-base mb-1 sm:mb-0" :title="segment.speaker">${ segment.speaker }</span>
-                                <span class="hidden sm:inline mx-1 flex-shrink-0">:</span>
-                                <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-sm sm:text-base">${ segment.sentence }</span>
-
-                                <!-- Edit buttons (shown on hover on desktop, always visible on mobile) -->
-                                <span class="ml-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center space-x-1 flex-shrink-0">
-                                    <!-- Change Speaker Button -->
-                                    <button @click.stop="openSpeakerChangeDropdown(index)" class="p-2 sm:p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
-                                        <i class="fas fa-user-edit text-sm sm:text-xs"></i>
+                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment mb-1.5 sm:mb-2 group relative" :data-start-time="segment.startTime">
+                            <div class="flex items-start gap-1">
+                                <!-- Speaker tag on its own line on mobile -->
+                                <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId" class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24" :title="segment.speaker">${ segment.speaker }</span>
+                                <!-- Text content -->
+                                <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-xs sm:text-sm leading-relaxed">${ segment.sentence }</span>
+                                <!-- Edit buttons - inline on mobile -->
+                                <span class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                    <button @click.stop="openSpeakerChangeDropdown(index)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
+                                        <i class="fas fa-user-edit text-[10px] sm:text-xs"></i>
                                     </button>
-                                    <!-- Edit Text Button -->
-                                    <button @click.stop="openEditTextModal(index)" class="p-2 sm:p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
-                                        <i class="fas fa-edit text-sm sm:text-xs"></i>
+                                    <button @click.stop="openEditTextModal(index)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
+                                        <i class="fas fa-edit text-[10px] sm:text-xs"></i>
                                     </button>
                                 </span>
-                            </p>
+                            </div>
 
-                            <!-- Speaker Change Dropdown -->
-                            <div v-if="editingSpeakerIndex === index" @click.stop class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] shadow-lg">
-                                <p class="text-xs text-[var(--text-muted)] mb-2">Select new speaker:</p>
-                                <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
-                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(index, speaker)" class="w-full text-left px-3 py-3 sm:py-2 rounded hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center space-x-2">
-                                        <div :class="speakerMap[speaker].color" class="w-4 h-4 sm:w-3 sm:h-3 rounded-full flex-shrink-0"></div>
-                                        <span class="text-sm">${ speakerMap[speaker].name || speaker }</span>
+                            <!-- Speaker Change Dropdown - compact on mobile -->
+                            <div v-if="editingSpeakerIndex === index" @click.stop class="mt-1 p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-primary)] shadow-lg">
+                                <p class="text-[10px] text-[var(--text-muted)] mb-1">Select speaker:</p>
+                                <div class="flex flex-wrap gap-1">
+                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(index, speaker)" class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-secondary)]">
+                                        <div :class="speakerMap[speaker].color" class="w-2.5 h-2.5 rounded-full flex-shrink-0"></div>
+                                        <span class="truncate max-w-[60px]">${ speakerMap[speaker].name || speaker }</span>
                                     </button>
                                 </div>
                             </div>
@@ -179,27 +173,34 @@
                     <div v-else v-html="highlightedTranscript"></div>
                 </div>
 
-                <!-- Speaker Navigation Controls -->
-                <div class="mt-2 sm:mt-3 p-2 sm:p-3 bg-[var(--bg-tertiary)] rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-shrink-0" :class="{'opacity-50': !highlightedSpeaker || speakerGroups.length <= 1}">
-                    <div class="flex items-center justify-center sm:justify-start space-x-2 text-center sm:text-left">
-                        <span class="text-xs sm:text-sm text-[var(--text-muted)]">
-                            <span class="hidden sm:inline" v-text="t('help.navigate')"></span>
-                            <span class="font-semibold truncate max-w-[100px] inline-block align-bottom">${ speakerDisplayMap[highlightedSpeaker] || highlightedSpeaker || '—' }</span>
-                            <span class="text-xs">(${ currentSpeakerGroupIndex + 1 }/${ speakerGroups.length })</span>
+                <!-- Speaker Navigation Controls - more compact -->
+                <div class="mt-1.5 sm:mt-3 p-1.5 sm:p-3 bg-[var(--bg-tertiary)] rounded-md flex flex-col gap-1.5 flex-shrink-0">
+                    <!-- Speaker Selector Row -->
+                    <div class="flex items-center gap-1.5">
+                        <select
+                            :value="highlightedSpeaker"
+                            @change="selectSpeakerForNavigation($event.target.value)"
+                            class="flex-1 px-2 py-1 text-xs bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <option value="">Navigate to speaker...</option>
+                            <option v-for="speaker in modalSpeakers" :key="speaker" :value="speaker">
+                                ${ speakerMap[speaker]?.name || speakerDisplayMap[speaker] || speaker }
+                            </option>
+                        </select>
+                        <span v-if="highlightedSpeaker && speakerGroups.length > 0" class="text-[10px] text-[var(--text-muted)] flex-shrink-0 tabular-nums">
+                            ${ currentSpeakerGroupIndex + 1 }/${ speakerGroups.length }
                         </span>
                     </div>
-                    <div class="flex items-center justify-center space-x-2">
+                    <!-- Navigation Buttons Row -->
+                    <div class="flex items-center gap-1.5" :class="{'opacity-50': !highlightedSpeaker || speakerGroups.length <= 1}">
                         <button @mousedown.prevent @click="navigateToPrevSpeakerGroup"
-                                class="flex-1 sm:flex-none px-4 sm:px-3 py-2 sm:py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded-lg sm:rounded-md border border-[var(--border-secondary)] transition-all active:scale-95 flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="flex-1 px-2 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-all active:scale-95 flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                 :disabled="!highlightedSpeaker || speakerGroups.length <= 1">
-                            <i class="fas fa-chevron-up mr-1.5"></i>
-                            <span v-text="t('buttons.previous')"></span>
+                            <i class="fas fa-chevron-up mr-1"></i>Prev
                         </button>
                         <button @mousedown.prevent @click="navigateToNextSpeakerGroup"
-                                class="flex-1 sm:flex-none px-4 sm:px-3 py-2 sm:py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded-lg sm:rounded-md border border-[var(--border-secondary)] transition-all active:scale-95 flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="flex-1 px-2 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-all active:scale-95 flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                                 :disabled="!highlightedSpeaker || speakerGroups.length <= 1">
-                            <span v-text="t('buttons.next')"></span>
-                            <i class="fas fa-chevron-down ml-1.5"></i>
+                            Next<i class="fas fa-chevron-down ml-1"></i>
                         </button>
                     </div>
                 </div>
@@ -207,35 +208,33 @@
         </div>
 
         <!-- Regenerate Summary Checkbox -->
-        <div class="p-3 sm:p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex-shrink-0">
-            <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+        <div class="p-2 sm:p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex-shrink-0">
+            <label class="flex items-center text-xs sm:text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
                 <input type="checkbox"
                        v-model="regenerateSummaryAfterSpeakerUpdate"
-                       class="speaker-checkbox w-5 h-5 sm:w-4 sm:h-4">
-                <span class="ml-2 select-none" v-text="t('help.regenerateSummaryAfterNames')"></span>
+                       class="speaker-checkbox w-4 h-4">
+                <span class="ml-1.5 select-none" v-text="t('help.regenerateSummaryAfterNames')"></span>
             </label>
         </div>
 
         <!-- Footer Buttons -->
-        <div class="bg-[var(--bg-tertiary)] px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
+        <div class="bg-[var(--bg-tertiary)] px-3 sm:px-6 py-2 sm:py-4 flex flex-row justify-between items-center gap-2 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
             <!-- Auto Identify Button -->
-            <div class="order-2 sm:order-1">
-                <button @click="autoIdentifySpeakers" class="w-full sm:w-auto px-4 py-3 sm:py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-base sm:text-sm font-medium" :disabled="isAutoIdentifying">
-                    <i class="fas fa-magic mr-2"></i>
-                    <span v-if="!isAutoIdentifying" v-text="t('help.autoIdentify')"></span>
-                    <span v-else>
-                        <i class="fas fa-spinner fa-spin mr-2"></i>
-                        <span v-text="t('help.identifying')"></span>
-                    </span>
-                </button>
-            </div>
+            <button @click="autoIdentifySpeakers" class="px-2 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
+                <i class="fas fa-magic mr-1 sm:mr-2"></i>
+                <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
+                <span v-if="!isAutoIdentifying" class="sm:hidden">Auto</span>
+                <span v-else>
+                    <i class="fas fa-spinner fa-spin"></i>
+                </span>
+            </button>
             <!-- Cancel & Save Buttons -->
-            <div class="flex space-x-3 order-1 sm:order-2">
-                <button @click="closeSpeakerModal" class="flex-1 sm:flex-none px-4 py-3 sm:py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.98] transition-all text-base sm:text-sm" v-text="t('common.cancel')"></button>
+            <div class="flex gap-2">
+                <button @click="closeSpeakerModal" class="px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-md border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.98] transition-all text-xs sm:text-sm" v-text="t('common.cancel')"></button>
                 <button
                     @click="saveSpeakerNames"
                     :disabled="!hasSpeakerNames"
-                    class="flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-lg transition-all text-base sm:text-sm font-medium active:scale-[0.98]"
+                    class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm font-medium active:scale-[0.98]"
                     :class="hasSpeakerNames
                         ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] hover:bg-[var(--bg-accent-hover)] cursor-pointer'
                         : 'bg-gray-400 text-gray-200 cursor-not-allowed'"
