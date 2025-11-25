@@ -39,6 +39,7 @@
             <!-- Download Button with Dropdown -->
             <div v-if="selectedRecording && selectedRecording.transcription" class="relative">
                 <button @click="showDownloadMenu = !showDownloadMenu"
+                        data-download-toggle
                         class="copy-btn flex items-center"
                         :title="t('tooltips.downloadTranscriptWithTemplate')">
                     <i class="fas fa-download"></i>
@@ -46,6 +47,7 @@
                 </button>
                 <!-- Dropdown Menu -->
                 <div v-if="showDownloadMenu"
+                     data-download-dropdown
                      class="absolute right-0 top-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50 overflow-hidden whitespace-nowrap">
                     <button @click="downloadWithDefaultTemplate(); showDownloadMenu = false"
                             class="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2">
@@ -59,8 +61,6 @@
                     </button>
                 </div>
             </div>
-            <!-- Click outside to close dropdown -->
-            <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-40"></div>
             <!-- Edit Transcription Button -->
             <button @click="openTranscriptionEditor"
                     v-if="selectedRecording && selectedRecording.transcription"

@@ -126,12 +126,16 @@
                     <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
                 </button>
                 <div class="relative">
-                    <button @click="isUserMenuOpen = !isUserMenuOpen" class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
+                    <button @click="isUserMenuOpen = !isUserMenuOpen"
+                            data-user-menu-toggle
+                            class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
                         <i :class="isTeamAdminOnly ? 'fas fa-users-cog mr-2' : 'fas fa-user-shield mr-2'"></i>
                         <span>{{ current_user.username }}</span>
                         <i class="fas fa-chevron-down ml-2"></i>
                     </button>
-                    <div v-if="isUserMenuOpen" class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
+                    <div v-if="isUserMenuOpen"
+                         data-user-menu-dropdown
+                         class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
                         <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
                             <i class="fas fa-home mr-2"></i> ${t('nav.home')}
                         </a>
@@ -2400,7 +2404,7 @@ Summarization Instructions:
                 const initializeDarkMode = () => {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                     const savedMode = localStorage.getItem('darkMode');
-                    
+
                     if (savedMode === 'true' || (savedMode === null && prefersDark)) {
                         isDarkMode.value = true;
                         document.documentElement.classList.add('dark');
@@ -2409,7 +2413,27 @@ Summarization Instructions:
                         document.documentElement.classList.remove('dark');
                     }
                 };
-                
+
+                /**
+                 * Set up global click handler to close dropdowns when clicking outside
+                 * Provides elegant UX by closing menus when users click elsewhere
+                 */
+                const setupGlobalClickHandler = () => {
+                    document.addEventListener('click', (event) => {
+                        const target = event.target;
+
+                        // Close user menu if clicking outside of it
+                        if (isUserMenuOpen.value) {
+                            const userMenuButton = target.closest('[data-user-menu-toggle]');
+                            const userMenuDropdown = target.closest('[data-user-menu-dropdown]');
+
+                            if (!userMenuButton && !userMenuDropdown) {
+                                isUserMenuOpen.value = false;
+                            }
+                        }
+                    });
+                };
+
                 // Inquire Mode methods
                 // Default Prompts methods
                 const loadDefaultPrompt = async () => {
@@ -2591,6 +2615,7 @@ Summarization Instructions:
                     }
 
                     initializeDarkMode();
+                    setupGlobalClickHandler();
 
                     // Setup scroll indicators for tabs
                     const tabsContainer = document.getElementById('admin-tabs-container');

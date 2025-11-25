@@ -1257,6 +1257,59 @@ export function useUI(state, utils, processedTranscription) {
         watch(selectedRecording, () => {
             currentPlayingSegmentIndex.value = null;
         });
+
+        // Set up global click handler to close dropdowns when clicking outside
+        setupGlobalClickHandler();
+    };
+
+    /**
+     * Set up a global click handler to close all dropdowns when clicking outside
+     * This provides elegant UX by closing menus when users click elsewhere
+     */
+    const setupGlobalClickHandler = () => {
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+
+            // Close user menu if clicking outside of it
+            if (isUserMenuOpen.value) {
+                const userMenuButton = target.closest('[data-user-menu-toggle]');
+                const userMenuDropdown = target.closest('[data-user-menu-dropdown]');
+
+                if (!userMenuButton && !userMenuDropdown) {
+                    isUserMenuOpen.value = false;
+                }
+            }
+
+            // Close sort options if clicking outside
+            if (showSortOptions.value) {
+                const sortButton = target.closest('[data-sort-toggle]');
+                const sortDropdown = target.closest('[data-sort-dropdown]');
+
+                if (!sortButton && !sortDropdown) {
+                    showSortOptions.value = false;
+                }
+            }
+
+            // Close download menu if clicking outside
+            if (showDownloadMenu.value) {
+                const downloadButton = target.closest('[data-download-toggle]');
+                const downloadDropdown = target.closest('[data-download-dropdown]');
+
+                if (!downloadButton && !downloadDropdown) {
+                    showDownloadMenu.value = false;
+                }
+            }
+
+            // Close language menu if clicking outside
+            if (state.showLanguageMenu && state.showLanguageMenu.value) {
+                const languageButton = target.closest('[data-language-toggle]');
+                const languageDropdown = target.closest('[data-language-dropdown]');
+
+                if (!languageButton && !languageDropdown) {
+                    state.showLanguageMenu.value = false;
+                }
+            }
+        });
     };
 
     // Initialize recording notes markdown editor
