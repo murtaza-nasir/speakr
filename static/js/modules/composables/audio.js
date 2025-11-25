@@ -18,8 +18,57 @@ export function useAudio(state, utils) {
 
     const { showToast, setGlobalError, formatFileSize, startUploadQueue } = utils;
 
+    // iOS detection
+    const isiOS = () => {
+        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    };
+
+    // Silent audio for iOS wake lock alternative
+    let silentAudio = null;
+
+    // Create silent audio using data URL (1 second of silence)
+    const createSilentAudio = () => {
+        if (!silentAudio) {
+            // Base64 encoded 1-second silent MP3
+            const silentMp3 = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAADhAC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7v////////////////////////////////////////////////////////////AAAAAExhdmM1OC4xMwAAAAAAAAAAAAAAACQCgAAAAAAAAAOEfxVqYQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//sQZDwP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=';
+            silentAudio = new Audio(silentMp3);
+            silentAudio.loop = true;
+            silentAudio.volume = 0.01; // Very low volume, almost silent
+        }
+        return silentAudio;
+    };
+
+    // Start iOS wake lock (play silent audio)
+    const startiOSWakeLock = async () => {
+        try {
+            const audio = createSilentAudio();
+            await audio.play();
+            console.log('[iOS Wake Lock] Silent audio playing to prevent sleep');
+            return true;
+        } catch (error) {
+            console.warn('[iOS Wake Lock] Failed to start silent audio:', error);
+            showToast('iOS wake lock may not work - keep screen active', 'warning');
+            return false;
+        }
+    };
+
+    // Stop iOS wake lock (stop silent audio)
+    const stopiOSWakeLock = () => {
+        if (silentAudio) {
+            silentAudio.pause();
+            silentAudio.currentTime = 0;
+            console.log('[iOS Wake Lock] Silent audio stopped');
+        }
+    };
+
     // Acquire wake lock to prevent screen from sleeping during recording
     const acquireWakeLock = async () => {
+        // iOS doesn't support Wake Lock API - use silent audio instead
+        if (isiOS()) {
+            return await startiOSWakeLock();
+        }
+
+        // Android/Desktop: use native Wake Lock API
         try {
             if ('wakeLock' in navigator) {
                 wakeLock.value = await navigator.wakeLock.request('screen');
@@ -49,6 +98,13 @@ export function useAudio(state, utils) {
 
     // Release wake lock
     const releaseWakeLock = async () => {
+        // iOS: stop silent audio
+        if (isiOS()) {
+            stopiOSWakeLock();
+            return;
+        }
+
+        // Android/Desktop: release native wake lock
         if (wakeLock.value) {
             try {
                 await wakeLock.value.release();
