@@ -1307,6 +1307,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Visibility change handler for wake lock
                 document.addEventListener('visibilitychange', audioComposable.handleVisibilityChange);
+
+                // Prevent data loss on tab close/refresh during recording
+                window.addEventListener('beforeunload', (e) => {
+                    if (audioComposable.hasUnsavedRecording()) {
+                        e.preventDefault();
+                        e.returnValue = ''; // Chrome requires this
+                        return 'You have an unsaved recording. Are you sure you want to leave?';
+                    }
+                });
             });
 
             // =========================================================================
