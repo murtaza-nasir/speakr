@@ -11,7 +11,7 @@
                     <div>
                         <p class="font-medium text-blue-800 dark:text-blue-300 mb-2">Browser Compatibility</p>
                         <p class="text-sm text-blue-700 dark:text-blue-400">
-                            System audio recording requires a Chromium-based browser (Chrome, Edge, Brave) and is not supported on mobile devices.
+                            System audio recording works best in Chrome, Edge, and Brave. Firefox is supported but requires the tab to be actively playing audio. Not supported on Safari or mobile devices.
                         </p>
                     </div>
                 </div>
@@ -22,8 +22,8 @@
                 <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
                     <li>Click "System Audio" or "Mic + System" button</li>
                     <li>A screen sharing dialog will appear</li>
-                    <li>Select a Chrome tab or entire screen</li>
-                    <li>Make sure "Share audio" checkbox is enabled</li>
+                    <li>Select a tab or window that is <strong>actively playing audio</strong></li>
+                    <li>Make sure "Share audio" checkbox is <strong>checked</strong></li>
                     <li>Click "Share" to start recording</li>
                 </ol>
             </div>
@@ -31,10 +31,11 @@
             <div>
                 <h4 class="font-medium mb-2">Troubleshooting:</h4>
                 <ul class="list-disc list-inside space-y-1 text-sm text-[var(--text-muted)]">
-                    <li>Ensure you're using Chrome, Edge, or Brave</li>
-                    <li>Check that "Share audio" option is visible and enabled</li>
+                    <li><strong>Important:</strong> The tab/window must be playing audio when you share it</li>
+                    <li>Check that "Share audio" checkbox is checked in the sharing dialog</li>
+                    <li>In Firefox, start playing audio first, then click record</li>
                     <li>Some content may have DRM protection that blocks recording</li>
-                    <li>Firefox and Safari do not support this feature</li>
+                    <li>Not supported on Safari or mobile browsers</li>
                 </ul>
             </div>
         </div>
