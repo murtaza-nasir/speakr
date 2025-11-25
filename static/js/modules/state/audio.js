@@ -2,7 +2,7 @@
  * Audio recording state management
  */
 
-export function createAudioState(ref) {
+export function createAudioState(ref, computed) {
     // --- Audio Recording State ---
     const isRecording = ref(false);
     const mediaRecorder = ref(null);
@@ -11,7 +11,7 @@ export function createAudioState(ref) {
     const recordingTime = ref(0);
     const recordingInterval = ref(null);
     const canRecordAudio = ref(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-    const canRecordSystemAudio = ref(false);
+    const canRecordSystemAudio = computed(() => navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
     const systemAudioSupported = ref(false);
     const systemAudioError = ref('');
     const recordingNotes = ref('');
