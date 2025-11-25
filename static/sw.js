@@ -271,31 +271,213 @@ self.addEventListener('sync', (event) => {
   }
 });
 
+// IndexedDB helper for failed uploads
+async function openFailedUploadsDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('SpeakrFailedUploads', 1);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('failedUploads')) {
+        const objectStore = db.createObjectStore('failedUploads', { keyPath: 'id', autoIncrement: true });
+        objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+        objectStore.createIndex('clientId', 'clientId', { unique: false });
+      }
+    };
+  });
+}
+
+// Get all failed uploads from IndexedDB
+async function getFailedUploads(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['failedUploads'], 'readonly');
+    const objectStore = transaction.objectStore('failedUploads');
+    const request = objectStore.getAll();
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Delete a failed upload after successful retry
+async function deleteFailedUpload(db, id) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['failedUploads'], 'readwrite');
+    const objectStore = transaction.objectStore('failedUploads');
+    const request = objectStore.delete(id);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Update retry count for a failed upload
+async function updateRetryCount(db, id, retryCount, error) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const transaction = db.transaction(['failedUploads'], 'readwrite');
+      const objectStore = transaction.objectStore('failedUploads');
+      const getRequest = objectStore.get(id);
+
+      getRequest.onsuccess = () => {
+        const upload = getRequest.result;
+        if (!upload) {
+          reject(new Error('Upload not found'));
+          return;
+        }
+
+        upload.retryCount = retryCount;
+        upload.lastRetry = Date.now();
+        if (error) {
+          upload.lastError = error;
+        }
+
+        const putRequest = objectStore.put(upload);
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject(putRequest.error);
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// Retry uploading a failed upload
+async function retryUpload(upload) {
+  const formData = new FormData();
+
+  // Reconstruct File from ArrayBuffer
+  const file = new File([upload.fileData], upload.fileName, { type: upload.mimeType });
+  formData.append('file', file);
+
+  if (upload.notes) {
+    formData.append('notes', upload.notes);
+  }
+
+  if (upload.tags && upload.tags.length > 0) {
+    upload.tags.forEach(tag => {
+      formData.append('tags[]', JSON.stringify(tag));
+    });
+  }
+
+  if (upload.asrOptions) {
+    if (upload.asrOptions.language) {
+      formData.append('asr_language', upload.asrOptions.language);
+    }
+    if (upload.asrOptions.min_speakers) {
+      formData.append('asr_min_speakers', upload.asrOptions.min_speakers);
+    }
+    if (upload.asrOptions.max_speakers) {
+      formData.append('asr_max_speakers', upload.asrOptions.max_speakers);
+    }
+  }
+
+  // Get CSRF token from cookies
+  const csrfToken = getCookie('csrf_access_token');
+  const headers = csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {};
+
+  const response = await fetch('/upload', {
+    method: 'POST',
+    headers: headers,
+    body: formData,
+    credentials: 'same-origin'
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// Get cookie value
+function getCookie(name) {
+  const value = `; ${self.cookies || ''}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
 // Sync failed uploads from IndexedDB
 async function syncFailedUploads() {
   console.log('[Service Worker] Syncing failed uploads');
 
   try {
-    // Notify that sync is checking for failed uploads
+    const db = await openFailedUploadsDB();
+    const failedUploads = await getFailedUploads(db);
+
+    if (failedUploads.length === 0) {
+      console.log('[Service Worker] No failed uploads to retry');
+      return Promise.resolve();
+    }
+
+    console.log(`[Service Worker] Found ${failedUploads.length} failed uploads to retry`);
+
+    // Notify that sync started
     await self.registration.showNotification('Speakr Upload Sync', {
-      body: 'Checking for failed uploads to retry...',
+      body: `Retrying ${failedUploads.length} failed upload(s)...`,
       icon: '/static/img/icon-192x192.png',
       badge: '/static/img/icon-192x192.png',
       tag: 'upload-sync',
       requireInteraction: false
     });
 
-    // Future: Retrieve and retry failed uploads from IndexedDB
-    // This would require storing failed uploads in IndexedDB from the main app
-    // const db = await openIndexedDB();
-    // const failedUploads = await getFailedUploads(db);
-    // for (const upload of failedUploads) {
-    //     await retryUpload(upload);
-    // }
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const upload of failedUploads) {
+      try {
+        // Limit retries to 3 attempts
+        if (upload.retryCount >= 3) {
+          console.log(`[Service Worker] Upload ${upload.id} exceeded retry limit (${upload.retryCount})`);
+          failCount++;
+          continue;
+        }
+
+        console.log(`[Service Worker] Retrying upload ${upload.id} (attempt ${upload.retryCount + 1})`);
+
+        await retryUpload(upload);
+
+        // Success - delete from IndexedDB
+        await deleteFailedUpload(db, upload.id);
+        successCount++;
+
+        console.log(`[Service Worker] Successfully retried upload ${upload.id}`);
+      } catch (error) {
+        // Update retry count
+        await updateRetryCount(db, upload.id, upload.retryCount + 1, error.message);
+        failCount++;
+
+        console.error(`[Service Worker] Failed to retry upload ${upload.id}:`, error);
+      }
+    }
+
+    // Show final notification
+    await self.registration.showNotification('Speakr Upload Sync Complete', {
+      body: `${successCount} succeeded, ${failCount} failed`,
+      icon: '/static/img/icon-192x192.png',
+      badge: '/static/img/icon-192x192.png',
+      tag: 'upload-sync-complete',
+      requireInteraction: false
+    });
 
     return Promise.resolve();
   } catch (error) {
     console.error('[Service Worker] Failed to sync uploads:', error);
+
+    await self.registration.showNotification('Speakr Upload Sync Failed', {
+      body: 'Could not sync failed uploads. Will retry later.',
+      icon: '/static/img/icon-192x192.png',
+      badge: '/static/img/icon-192x192.png',
+      tag: 'upload-sync-error',
+      requireInteraction: false
+    });
+
     return Promise.reject(error);
   }
 }

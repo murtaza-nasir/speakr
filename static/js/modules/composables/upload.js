@@ -3,6 +3,8 @@
  * Handles file uploads, queue processing, and progress tracking
  */
 
+import * as FailedUploads from '../db/failed-uploads.js';
+
 export function useUpload(state, utils) {
     const {
         uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
@@ -271,6 +273,30 @@ export function useUpload(state, utils) {
                     recordings.value[failedRecordIndex].transcription = `Upload/Processing failed: ${error.message}`;
                 } else {
                     setGlobalError(`Failed to process "${nextFileItem.file.name}": ${error.message}`);
+                }
+
+                // Store failed upload in IndexedDB for background sync retry
+                try {
+                    await FailedUploads.storeFailedUpload({
+                        file: nextFileItem.file,
+                        fileName: nextFileItem.file.name,
+                        fileSize: nextFileItem.file.size,
+                        clientId: nextFileItem.clientId,
+                        notes: nextFileItem.notes,
+                        tags: nextFileItem.tags,
+                        asrOptions: nextFileItem.asrOptions,
+                        error: error.message
+                    });
+
+                    // Register for background sync
+                    if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                        const registration = await navigator.serviceWorker.ready;
+                        await registration.sync.register('sync-uploads');
+                        console.log('[Upload] Registered background sync for failed upload');
+                        showToast('Upload will retry automatically when connection is restored', 'info');
+                    }
+                } catch (syncError) {
+                    console.warn('[Upload] Failed to register background sync:', syncError);
                 }
 
                 resetCurrentFileProcessingState();
