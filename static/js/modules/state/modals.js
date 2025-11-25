@@ -10,6 +10,7 @@ export function createModalState(ref, reactive) {
     const showReprocessModal = ref(false);
     const showResetModal = ref(false);
     const showSpeakerModal = ref(false);
+    const speakerModalTab = ref('speakers');  // 'speakers' or 'transcript' for mobile view
     const showShareModal = ref(false);
     const showSharesListModal = ref(false);
     const showTextEditorModal = ref(false);
@@ -91,6 +92,7 @@ export function createModalState(ref, reactive) {
         showReprocessModal,
         showResetModal,
         showSpeakerModal,
+        speakerModalTab,
         showShareModal,
         showSharesListModal,
         showTextEditorModal,
