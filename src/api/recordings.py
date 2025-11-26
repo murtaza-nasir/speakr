@@ -1945,11 +1945,11 @@ def upload_file():
         if needs_chunking_for_processing:
             # For chunking: only support formats that work well with chunking
             supported_formats = ('.wav', '.mp3', '.flac')
-            convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts')
+            convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
         else:
             # For direct transcription: support WebM and other formats directly
             supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
-            convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts')
+            convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
         
         # Special handling for problematic AAC files when using ASR endpoint
         is_problematic_aac = (USE_ASR_ENDPOINT and 
