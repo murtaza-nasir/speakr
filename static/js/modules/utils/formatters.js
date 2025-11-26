@@ -71,6 +71,7 @@ export const formatStatus = (status, t) => {
     if (!status || status === 'COMPLETED') return '';
     const statusMap = {
         'PENDING': t('status.queued'),
+        'QUEUED': t('status.queued'),
         'PROCESSING': t('status.processing'),
         'TRANSCRIBING': t('status.transcribing'),
         'SUMMARIZING': t('status.summarizing'),
@@ -83,6 +84,7 @@ export const formatStatus = (status, t) => {
 export const getStatusClass = (status) => {
     switch(status) {
         case 'PENDING': return 'status-pending';
+        case 'QUEUED': return 'status-pending';
         case 'PROCESSING': return 'status-processing';
         case 'SUMMARIZING': return 'status-summarizing';
         case 'COMPLETED': return '';

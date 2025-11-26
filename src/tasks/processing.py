@@ -975,7 +975,8 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                         with httpx.Client() as client:
                             # Get configurable ASR timeout from database (default 30 minutes)
                             asr_timeout_seconds = SystemSetting.get_setting('asr_timeout_seconds', 1800)
-                            timeout = httpx.Timeout(None, connect=30.0, read=float(asr_timeout_seconds), write=30.0, pool=30.0)
+                            # Use generous timeouts: write=300s for large file uploads, pool=None to wait indefinitely
+                            timeout = httpx.Timeout(None, connect=60.0, read=float(asr_timeout_seconds), write=300.0, pool=None)
                             current_app.logger.info(f"Sending ASR request to {url} with params: {params} (timeout: {asr_timeout_seconds}s)")
                             response = client.post(url, params=params, files=files, timeout=timeout)
                             current_app.logger.info(f"ASR request completed with status: {response.status_code}")
@@ -1176,13 +1177,14 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
 
             # Handle timeout errors specifically
             error_msg = str(e)
-            if "timed out" in error_msg.lower() or "timeout" in error_msg.lower():
+            error_type = type(e).__name__
+            current_app.logger.error(f"ASR processing FAILED for recording {recording_id}: [{error_type}] {error_msg}")
+
+            if "timed out" in error_msg.lower() or "timeout" in error_msg.lower() or "Timeout" in error_type:
                 asr_timeout = SystemSetting.get_setting('asr_timeout_seconds', 1800)
-                current_app.logger.error(f"ASR processing TIMED OUT for recording {recording_id} after {asr_timeout} seconds. Consider increasing 'asr_timeout_seconds' in Admin Dashboard > System Settings.")
-                user_error_msg = f"ASR processing timed out after {asr_timeout} seconds. The file may be too long for the current timeout setting."
+                current_app.logger.error(f"Timeout details - configured ASR timeout: {asr_timeout}s. Error: {error_msg}")
+                user_error_msg = f"ASR processing timed out. Error: {error_msg}"
             else:
-                # For non-timeout errors, include more detail
-                current_app.logger.error(f"ASR processing FAILED for recording {recording_id}: {error_msg}")
                 user_error_msg = f"ASR processing failed: {error_msg}"
             
             recording = db.session.get(Recording, recording_id)
