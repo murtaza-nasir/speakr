@@ -285,7 +285,6 @@ export function useReprocess(state, utils) {
 
                 // Update status in recordings list
                 const index = recordings.value.findIndex(r => r.id === recordingId);
-                console.log(`[REPROCESS] Status update: ${statusData.status} for recording ${recordingId}`);
 
                 if (index !== -1) {
                     // Create new object to ensure Vue reactivity
@@ -297,7 +296,6 @@ export function useReprocess(state, utils) {
 
                 // Update selectedRecording with new object reference for reactivity
                 if (selectedRecording.value?.id === recordingId) {
-                    console.log(`[REPROCESS] Updating selectedRecording status to: ${statusData.status}`);
                     selectedRecording.value = {
                         ...selectedRecording.value,
                         status: statusData.status

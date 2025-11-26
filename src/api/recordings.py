@@ -12,6 +12,7 @@ import threading
 import time
 import subprocess
 from datetime import datetime, timedelta
+from src.services.job_queue import job_queue
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, Response, current_app, make_response
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -1018,75 +1019,36 @@ def reprocess_transcription(recording_id):
         if not recording.audio_path or not os.path.exists(recording.audio_path):
             return jsonify({'error': 'Audio file not found for reprocessing'}), 404
 
-        if recording.status in ['PROCESSING', 'SUMMARIZING']:
+        if recording.status in ['QUEUED', 'PROCESSING', 'SUMMARIZING']:
             return jsonify({'error': 'Recording is already being processed'}), 400
 
-        # --- Convert file if necessary before reprocessing ---
+        # File path and name for processing (conversion handled in background task if needed)
         filepath = recording.audio_path
         filename_for_asr = recording.original_filename or os.path.basename(filepath)
-        filename_lower = filename_for_asr.lower()
-
-        supported_formats = ('.wav', '.mp3', '.flac')
-        if not filename_lower.endswith(supported_formats):
-            current_app.logger.info(f"Reprocessing: Converting {filename_lower} format to high-quality MP3.")
-            base_filepath, file_ext = os.path.splitext(filepath)
-            temp_mp3_filepath = f"{base_filepath}_temp.mp3"
-            final_mp3_filepath = f"{base_filepath}.mp3"
-
-            try:
-                # Convert to high-quality MP3 (128kbps, 44.1kHz)
-                subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', temp_mp3_filepath],
-                    check=True, capture_output=True, text=True
-                )
-                current_app.logger.info(f"Successfully converted {filepath} to {temp_mp3_filepath} (128kbps MP3)")
-
-                # If the original file is not the same as the final mp3 file, remove it
-                if filepath.lower() != final_mp3_filepath.lower():
-                    os.remove(filepath)
-                
-                # Rename the temporary file to the final filename
-                os.rename(temp_mp3_filepath, final_mp3_filepath)
-                
-                filepath = final_mp3_filepath
-                filename_for_asr = os.path.basename(filepath)
-                
-                # Update database with new path and mime type
-                recording.audio_path = filepath
-                recording.mime_type, _ = mimetypes.guess_type(filepath)
-                db.session.commit()
-
-            except FileNotFoundError:
-                current_app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
-                return jsonify({'error': 'Audio conversion tool (ffmpeg) not found on server.'}), 500
-            except subprocess.CalledProcessError as e:
-                current_app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
-                return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
 
         # --- Proceed with reprocessing ---
         recording.transcription = None
         recording.summary = None
-        recording.status = 'PROCESSING'
+        recording.status = 'QUEUED'  # Will change to PROCESSING when job starts
 
         # Clear existing events since they depend on the transcription
         Event.query.filter_by(recording_id=recording_id).delete()
 
         db.session.commit()
 
-        # Refresh the recording object to ensure it has the latest committed data
-        db.session.refresh(recording)
+        current_app.logger.info(f"Queueing transcription reprocessing for recording {recording_id}")
 
-        current_app.logger.info(f"Starting transcription reprocessing for recording {recording_id}")
+        # Prepare job parameters
+        data = request.json or {}
+        start_time = datetime.utcnow()
+        app_context = current_app._get_current_object().app_context()
 
         # Decide which transcription method to use
         if USE_ASR_ENDPOINT:
-            current_app.logger.info(f"Using ASR endpoint for reprocessing recording {recording_id}")
-            
-            data = request.json or {}
             language = data.get('language') or (recording.owner.transcription_language if recording.owner else None)
             min_speakers = data.get('min_speakers') or None
             max_speakers = data.get('max_speakers') or None
-            
+
             # Convert to int if provided
             if min_speakers:
                 try:
@@ -1098,21 +1060,19 @@ def reprocess_transcription(recording_id):
                     max_speakers = int(max_speakers)
                 except (ValueError, TypeError):
                     max_speakers = None
-            
-            # Apply tag defaults if no user input provided (get merged defaults from all tags on this recording)
+
+            # Apply tag defaults if no user input provided
             if (min_speakers is None or max_speakers is None) and recording.tags:
-                # Get tag defaults (use first non-None value from ordered tags)
                 for tag_association in sorted(recording.tag_associations, key=lambda x: x.order):
                     tag = tag_association.tag
                     if min_speakers is None and tag.default_min_speakers:
                         min_speakers = tag.default_min_speakers
                     if max_speakers is None and tag.default_max_speakers:
                         max_speakers = tag.default_max_speakers
-                    # Stop once we have both values
                     if min_speakers is not None and max_speakers is not None:
                         break
-            
-            # Apply environment variable defaults if still no values (reprocess hierarchy: user input > tag defaults > env vars > auto-detect)
+
+            # Apply environment variable defaults
             if min_speakers is None and ASR_MIN_SPEAKERS:
                 try:
                     min_speakers = int(ASR_MIN_SPEAKERS)
@@ -1123,36 +1083,36 @@ def reprocess_transcription(recording_id):
                     max_speakers = int(ASR_MAX_SPEAKERS)
                 except (ValueError, TypeError):
                     max_speakers = None
-            if 'ASR_DIARIZE' in os.environ:
-                diarize_setting = ASR_DIARIZE
-            elif USE_ASR_ENDPOINT:
-                # When using ASR endpoint, use the configured ASR_DIARIZE value
-                diarize_setting = ASR_DIARIZE
-            else:
-                diarize_setting = recording.owner.diarize if recording.owner else False
 
-            start_time = datetime.utcnow()
-            thread = threading.Thread(
-                target=transcribe_audio_asr,
-                args=(current_app._get_current_object().app_context(), recording.id, filepath, filename_for_asr, start_time, recording.mime_type, language, diarize_setting, min_speakers, max_speakers)
+            diarize_setting = ASR_DIARIZE if 'ASR_DIARIZE' in os.environ or USE_ASR_ENDPOINT else (recording.owner.diarize if recording.owner else False)
+
+            # Enqueue the job
+            job = job_queue.enqueue(
+                func=transcribe_audio_asr,
+                args=(app_context, recording.id, filepath, filename_for_asr, start_time, recording.mime_type, language, diarize_setting, min_speakers, max_speakers),
+                recording_id=recording.id
             )
         else:
-            current_app.logger.info(f"Using standard transcription API for reprocessing recording {recording_id}")
-            start_time = datetime.utcnow()
-            thread = threading.Thread(
-                target=transcribe_audio_task,
-                args=(current_app._get_current_object().app_context(), recording.id, filepath, filename_for_asr, start_time)
+            # Enqueue the job for standard Whisper API
+            job = job_queue.enqueue(
+                func=transcribe_audio_task,
+                args=(app_context, recording.id, filepath, filename_for_asr, start_time),
+                recording_id=recording.id
             )
-        
-        thread.start()
 
-        # Return recording with per-user status
+        # Get queue position for response
+        queue_position = job_queue.get_position_in_queue(recording.id)
+        queue_status = job_queue.get_queue_status()
+
+        # Return recording with per-user status and queue info
         recording_dict = recording.to_dict(viewer_user=current_user)
         enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
         return jsonify({
             'success': True,
-            'message': 'Transcription reprocessing started',
-            'recording': recording_dict
+            'message': 'Transcription reprocessing queued',
+            'recording': recording_dict,
+            'queue_position': queue_position,
+            'queue_status': queue_status
         })
 
     except Exception as e:

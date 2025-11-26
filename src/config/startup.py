@@ -108,6 +108,16 @@ def initialize_file_exporter(app):
         app.logger.warning(f"File exporter initialization failed: {e}")
 
 
+def initialize_job_queue(app):
+    """Initialize and start the background job queue."""
+    try:
+        from src.services.job_queue import job_queue
+        job_queue.start()
+        app.logger.info("Job queue started with 2 workers")
+    except Exception as e:
+        app.logger.error(f"Failed to start job queue: {e}")
+
+
 def run_startup_tasks(app):
     """Run all startup tasks that need to happen after app creation."""
     from src.models import SystemSetting
@@ -117,6 +127,9 @@ def run_startup_tasks(app):
         max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)
         app.config['MAX_CONTENT_LENGTH'] = max_file_size_mb * 1024 * 1024
         app.logger.info(f"Set MAX_CONTENT_LENGTH to {max_file_size_mb}MB from database setting")
+
+        # Initialize job queue for background processing
+        initialize_job_queue(app)
 
         # Initialize file monitor after app setup
         initialize_file_monitor(app)
