@@ -29,9 +29,20 @@ def initialize_database(app):
     This function should be called within an app context.
     """
     db.create_all()
-    
+
     # Check and add new columns if they don't exist
     engine = db.engine
+
+    # Enable WAL mode for SQLite (better concurrent write performance)
+    if engine.name == 'sqlite':
+        try:
+            with engine.connect() as conn:
+                conn.execute(text('PRAGMA journal_mode=WAL'))
+                conn.commit()
+                app.logger.info("SQLite WAL mode enabled for better concurrency")
+        except Exception as e:
+            app.logger.warning(f"Could not enable WAL mode: {e}")
+
     try:
         # Add is_inbox column with default value of 1 (True)
         if add_column_if_not_exists(engine, 'recording', 'is_inbox', 'BOOLEAN DEFAULT 1'):
