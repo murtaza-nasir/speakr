@@ -26,9 +26,15 @@ Sometimes the admin user creation fails silently if the password doesn't meet re
 
 ### Transcription Never Starts
 
-When recordings stay in "pending" status indefinitely, the background processor might have stopped. Check the logs for error messages about the [transcription service](features.md#multi-engine-support). Monitor processing status in the [vector store](admin-guide/vector-store.md) admin panel. API key issues are the most common cause - verify your OpenAI or OpenRouter API key is valid and has available credits.
+When recordings stay in "pending" or "queued" status indefinitely, check these common causes:
 
-Network connectivity problems can also prevent transcription. The container needs to reach external API endpoints. If you're behind a corporate proxy, you'll need to configure proxy settings in your Docker environment.
+**QUEUED status**: Recordings show "Queued" when waiting for an available worker. By default, 2 workers process jobs concurrently. If many recordings are queued, they'll be processed in fair round-robin order across users - no single user can monopolize the queue. Increase `JOB_QUEUE_WORKERS` in your environment file for faster throughput.
+
+**Background processor stopped**: Check the logs for error messages about the [transcription service](features.md#multi-engine-support). Monitor processing status in the [vector store](admin-guide/vector-store.md) admin panel.
+
+**API key issues**: The most common cause - verify your OpenAI or OpenRouter API key is valid and has available credits.
+
+**Network connectivity**: The container needs to reach external API endpoints. If you're behind a corporate proxy, you'll need to configure proxy settings in your Docker environment.
 
 ### Transcription Fails Immediately
 
@@ -69,6 +75,10 @@ Large audio files naturally take longer to process, but excessive delays indicat
 Network speed affects transcription time since audio must upload to API services. Slow internet connections create bottlenecks, particularly for large files. Consider chunking settings if you consistently work with long recordings.
 
 The choice of transcription model impacts speed. Whisper Large is more accurate but slower than Whisper Base. If speed matters more than perfect accuracy, consider using a smaller model through your API settings.
+
+### Recordings Stuck After Restart
+
+If Speakr crashed or restarted while recordings were processing, they automatically resume on next startup. The job queue persists to the database, so no uploads are lost. Check the logs for "Recovered orphaned jobs" messages confirming jobs were resumed.
 
 ### Files Over 25MB Fail with OpenAI
 

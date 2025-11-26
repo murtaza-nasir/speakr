@@ -8,7 +8,6 @@ import os
 import json
 import re
 import mimetypes
-import threading
 import time
 import subprocess
 from datetime import datetime, timedelta
@@ -24,10 +23,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE
-from src.tasks.processing import (
-    transcribe_audio_asr, transcribe_audio_task, generate_summary_only_task,
-    format_transcription_for_llm, transcribe_with_chunking
-)
+from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
@@ -573,18 +569,19 @@ def generate_summary_endpoint(recording_id):
         if client is None:
             return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
             
-        current_app.logger.info(f"Starting summary generation for recording {recording_id}")
-        
-        # Generate summary in background thread
-        thread = threading.Thread(
-            target=generate_summary_only_task,
-            args=(current_app._get_current_object().app_context(), recording_id)
+        current_app.logger.info(f"Queueing summary generation for recording {recording_id}")
+
+        # Queue summary generation job
+        job_queue.enqueue(
+            user_id=current_user.id,
+            recording_id=recording.id,
+            job_type='summarize',
+            params={'user_id': current_user.id}
         )
-        thread.start()
-        
+
         return jsonify({
-            'success': True, 
-            'message': 'Summary generation started'
+            'success': True,
+            'message': 'Summary generation queued'
         })
         
     except Exception as e:
@@ -736,12 +733,13 @@ def update_speakers(recording_id):
 
         summary_queued = False
         if regenerate_summary:
-            current_app.logger.info(f"Regenerating summary for recording {recording_id} after speaker update.")
-            thread = threading.Thread(
-                target=generate_summary_only_task,
-                args=(current_app._get_current_object().app_context(), recording.id)
+            current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after speaker update.")
+            job_queue.enqueue(
+                user_id=current_user.id,
+                recording_id=recording.id,
+                job_type='summarize',
+                params={'user_id': current_user.id}
             )
-            thread.start()
             summary_queued = True
 
         # Return recording with per-user status
@@ -819,12 +817,13 @@ def update_transcript(recording_id):
 
         summary_queued = False
         if regenerate_summary:
-            current_app.logger.info(f"Regenerating summary for recording {recording_id} after transcript update.")
-            thread = threading.Thread(
-                target=generate_summary_only_task,
-                args=(current_app._get_current_object().app_context(), recording.id)
+            current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after transcript update.")
+            job_queue.enqueue(
+                user_id=current_user.id,
+                recording_id=recording.id,
+                job_type='summarize',
+                params={'user_id': current_user.id}
             )
-            thread.start()
             summary_queued = True
             # Export will happen after summary regenerates
         else:
@@ -1084,21 +1083,22 @@ def reprocess_transcription(recording_id):
                 except (ValueError, TypeError):
                     max_speakers = None
 
-            diarize_setting = ASR_DIARIZE if 'ASR_DIARIZE' in os.environ or USE_ASR_ENDPOINT else (recording.owner.diarize if recording.owner else False)
-
-            # Enqueue the job
-            job = job_queue.enqueue(
-                func=transcribe_audio_asr,
-                args=(app_context, recording.id, filepath, filename_for_asr, start_time, recording.mime_type, language, diarize_setting, min_speakers, max_speakers),
-                recording_id=recording.id
-            )
+            # Enqueue the job using new fair queue API
+            job_params = {
+                'language': language,
+                'min_speakers': min_speakers,
+                'max_speakers': max_speakers
+            }
         else:
-            # Enqueue the job for standard Whisper API
-            job = job_queue.enqueue(
-                func=transcribe_audio_task,
-                args=(app_context, recording.id, filepath, filename_for_asr, start_time),
-                recording_id=recording.id
-            )
+            # Standard Whisper API - no special params needed
+            job_params = {}
+
+        job_id = job_queue.enqueue(
+            user_id=current_user.id,
+            recording_id=recording.id,
+            job_type='reprocess_transcription',
+            params=job_params
+        )
 
         # Get queue position for response
         queue_position = job_queue.get_position_in_queue(recording.id)
@@ -1157,32 +1157,31 @@ def reprocess_summary(recording_id):
         else:
             current_app.logger.info(f"No custom prompt override provided for recording {recording_id}, will use default priority")
 
-        # Set status to SUMMARIZING and clear existing summary
+        # Clear existing summary (status will be set to QUEUED by job_queue.enqueue)
         recording.summary = None
-        recording.status = 'SUMMARIZING'
 
         # Clear existing events since they might be re-extracted during summary generation
         Event.query.filter_by(recording_id=recording_id).delete()
 
         db.session.commit()
 
-        # Refresh the recording object to ensure it has the latest committed data
-        db.session.refresh(recording)
-
-        current_app.logger.info(f"Starting summary reprocessing for recording {recording_id}" +
+        current_app.logger.info(f"Queueing summary reprocessing for recording {recording_id}" +
                        (f" with custom prompt (length: {len(custom_prompt)})" if custom_prompt else ""))
 
-        # Start summary generation in background thread
-        def reprocess_summary_task(app_context, recording_id, custom_prompt_override=None, user_id=None):
-            with app_context:
-                current_app.logger.info(f"Starting summary reprocessing for recording {recording_id} using generate_summary_only_task")
-                generate_summary_only_task(app_context, recording_id, custom_prompt_override=custom_prompt_override, user_id=user_id)
-
-        thread = threading.Thread(
-            target=reprocess_summary_task,
-            args=(current_app._get_current_object().app_context(), recording.id, custom_prompt, current_user.id)
+        # Queue summary generation job
+        job_params = {
+            'custom_prompt': custom_prompt,
+            'user_id': current_user.id
+        }
+        job_queue.enqueue(
+            user_id=current_user.id,
+            recording_id=recording.id,
+            job_type='reprocess_summary',
+            params=job_params
         )
-        thread.start()
+
+        # Refresh recording to get updated status
+        db.session.refresh(recording)
 
         # Return recording with per-user status
         recording_dict = recording.to_dict(viewer_user=current_user)
@@ -2070,27 +2069,23 @@ def upload_file():
         
         current_app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
-        # --- Start transcription & summarization in background thread ---
-        start_time = datetime.utcnow()
-        
-        # Pass ASR parameters and first tag to the transcription task (for compatibility with existing functions)
+        # --- Queue transcription job ---
         first_tag = selected_tags[0] if selected_tags else None
-        if USE_ASR_ENDPOINT:
-            current_app.logger.info(f"Starting ASR transcription thread for recording {recording.id} with params: language={language}, min_speakers={min_speakers}, max_speakers={max_speakers}, tag_id={first_tag.id if first_tag else None}")
-            thread = threading.Thread(
-                target=transcribe_audio_task,
-                args=(current_app._get_current_object().app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
-                kwargs={'language': language, 'min_speakers': min_speakers, 'max_speakers': max_speakers, 'tag_id': first_tag.id if first_tag else None}
-            )
-        else:
-            current_app.logger.info(f"Starting Whisper transcription thread for recording {recording.id} with tag_id={first_tag.id if first_tag else None}")
-            thread = threading.Thread(
-                target=transcribe_audio_task,
-                args=(current_app._get_current_object().app_context(), recording.id, filepath, os.path.basename(filepath), start_time),
-                kwargs={'tag_id': first_tag.id if first_tag else None}
-            )
-        thread.start()
-        current_app.logger.info(f"Background processing thread started for recording ID: {recording.id}")
+        job_params = {
+            'language': language,
+            'min_speakers': min_speakers,
+            'max_speakers': max_speakers,
+            'tag_id': first_tag.id if first_tag else None
+        }
+
+        current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")
+        job_queue.enqueue(
+            user_id=current_user.id,
+            recording_id=recording.id,
+            job_type='transcribe',
+            params=job_params
+        )
+        current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
 
         return jsonify(recording.to_dict(viewer_user=current_user)), 202
 
