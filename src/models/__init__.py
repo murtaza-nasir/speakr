@@ -25,6 +25,7 @@ from .inquire import InquireSession
 from .system import SystemSetting
 from .audit import ShareAuditLog
 from .push_subscription import PushSubscription
+from .processing_job import ProcessingJob
 
 # Export all models
 __all__ = [
@@ -53,4 +54,5 @@ __all__ = [
     'InquireSession',
     'SystemSetting',
     'PushSubscription',
+    'ProcessingJob',
 ]

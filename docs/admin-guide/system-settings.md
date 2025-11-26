@@ -78,6 +78,16 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 For detailed retention configuration, see the [Retention & Auto-Deletion](retention.md) guide.
 
+### Background Processing Queue
+
+Speakr uses a fair job queue to process uploads and reprocessing requests. The queue ensures multiple users get fair access to processing resources.
+
+**JOB_QUEUE_WORKERS**: Number of concurrent workers processing jobs. Higher values increase throughput but consume more resources. Default: `2`.
+
+**JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
+
+Jobs are persisted to the database and survive application restarts. If Speakr restarts while jobs are processing, they automatically resume from where they left off.
+
 ### Configuration Example
 
 ```bash
@@ -93,6 +103,10 @@ USERS_CAN_DELETE=false  # Only admins can delete
 ENABLE_AUTO_DELETION=true
 DEFAULT_RETENTION_DAYS=90
 DELETION_MODE=audio_only
+
+# Processing queue
+JOB_QUEUE_WORKERS=2
+JOB_MAX_RETRIES=3
 ```
 
 After modifying environment variables, restart your Speakr instance for changes to take effect:

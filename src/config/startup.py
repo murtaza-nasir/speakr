@@ -109,13 +109,24 @@ def initialize_file_exporter(app):
 
 
 def initialize_job_queue(app):
-    """Initialize and start the background job queue."""
+    """Initialize and start the background job queue with orphan recovery."""
     try:
         from src.services.job_queue import job_queue
+
+        # Initialize job queue with app context
+        job_queue.init_app(app)
+
+        # Recover any jobs that were processing when the app crashed
+        job_queue.recover_orphaned_jobs()
+
+        # Start worker threads
         job_queue.start()
-        app.logger.info("Job queue started with 2 workers")
+
+        # Get queue status
+        status = job_queue.get_queue_status()
+        app.logger.info(f"Job queue started with {status['num_workers']} workers, {status['queued_jobs']} queued jobs")
     except Exception as e:
-        app.logger.error(f"Failed to start job queue: {e}")
+        app.logger.error(f"Failed to start job queue: {e}", exc_info=True)
 
 
 def run_startup_tasks(app):
