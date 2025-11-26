@@ -227,17 +227,18 @@ Fully backward compatible with v0.5.9. No configuration changes required.
 
 ## Roadmap
 
+### Completed
+- ✅ Speaker voice profiles with AI-powered identification (v0.5.9)
+- ✅ Group workspaces with shared recordings (v0.5.9)
+- ✅ PWA enhancements with offline support and background sync (v0.5.10)
+
 ### Near-term
 - Bulk operations for recordings (mass delete, export, tagging)
-- Enhanced speaker profile management with voice signatures
-- Improved mobile experience with PWA enhancements
-
-### Mid-term
-- Plugin system for custom integrations
-- Group workspaces with shared recordings
+- Quick language switching for transcription
 - Automated workflow triggers
 
 ### Long-term
+- Plugin system for custom integrations
 - End-to-end encryption option
 - Enterprise SSO integration
 
@@ -265,10 +266,6 @@ This project is **dual-licensed**:
     Please contact **speakr maintainers** for details on obtaining a commercial license.
 
 **You must choose one of these licenses** under which to use, modify, or distribute this software. If you are using or distributing the software without a commercial license agreement, you must adhere to the terms of the AGPLv3.
-
-## Roadmap
-
-Speakr is in active development. Planned features include a faster way to switch transcription languages on the fly.
 
 ## Contributing
 
