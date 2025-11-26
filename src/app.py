@@ -337,6 +337,16 @@ app = Flask(__name__,
 # Use environment variables or default paths for Docker compatibility
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:////data/instance/transcriptions.db')
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
+
+# SQLite concurrency settings for multi-worker job queue
+if 'sqlite' in app.config['SQLALCHEMY_DATABASE_URI']:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'connect_args': {
+            'timeout': 30,  # Wait up to 30 seconds for locked database
+            'check_same_thread': False  # Allow multi-threaded access
+        },
+        'pool_pre_ping': True  # Verify connections before use
+    }
 # MAX_CONTENT_LENGTH will be set dynamically after database initialization
 # Set a secret key for session management and CSRF protection
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-dev-key-change-in-production')
