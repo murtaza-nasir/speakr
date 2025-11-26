@@ -147,8 +147,38 @@ export function useAudio(state, utils) {
     };
 
     // Start recording
+    // IMPORTANT: For Firefox, getDisplayMedia MUST be the first async call from user gesture
     const startRecording = async (mode = 'microphone') => {
-        // Check if there's a disclaimer to show
+        const needsDisplayMedia = mode === 'system' || mode === 'both';
+
+        // For system audio modes, get display media FIRST before any other operations
+        // This is required for Firefox's "transient activation" security model
+        if (needsDisplayMedia) {
+            try {
+                const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+                const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: isFirefox ? true : {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
+
+                // Store stream for use after disclaimer (if any)
+                state.pendingDisplayStream = displayStream;
+            } catch (error) {
+                console.error('[Recording] Failed to get display media:', error);
+                if (error.name === 'NotAllowedError') {
+                    showToast('Screen sharing was cancelled', 'error');
+                } else {
+                    showToast(`Failed to capture: ${error.message}`, 'error');
+                }
+                return;
+            }
+        }
+
+        // Now check for disclaimer (after we've secured the display stream)
         if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
             showRecordingDisclaimerModal.value = true;
             state.pendingRecordingMode = mode;
@@ -167,6 +197,11 @@ export function useAudio(state, utils) {
     // Cancel recording disclaimer
     const cancelRecordingDisclaimer = () => {
         showRecordingDisclaimerModal.value = false;
+        // Clean up pending display stream if user cancels
+        if (state.pendingDisplayStream) {
+            state.pendingDisplayStream.getTracks().forEach(track => track.stop());
+            state.pendingDisplayStream = null;
+        }
         state.pendingRecordingMode = null;
     };
 
@@ -202,20 +237,24 @@ export function useAudio(state, utils) {
                 source.connect(analyser.value);
 
             } else if (mode === 'system') {
-                // Firefox and Chrome handle system audio differently
-                // Firefox requires simpler constraints and the tab must have audio playing
+                // Use pre-obtained display stream (required for Firefox user gesture)
+                // or get it now for browsers that don't require immediate call
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
-                const displayMediaConstraints = {
-                    video: true,  // Required by spec, we'll stop it immediately
-                    audio: isFirefox ? true : {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    }
-                };
-
-                stream = await navigator.mediaDevices.getDisplayMedia(displayMediaConstraints);
+                if (state.pendingDisplayStream) {
+                    stream = state.pendingDisplayStream;
+                    state.pendingDisplayStream = null;
+                } else {
+                    const displayMediaConstraints = {
+                        video: true,
+                        audio: isFirefox ? true : {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        }
+                    };
+                    stream = await navigator.mediaDevices.getDisplayMedia(displayMediaConstraints);
+                }
 
                 const audioTrack = stream.getAudioTracks()[0];
                 if (!audioTrack) {
@@ -223,8 +262,8 @@ export function useAudio(state, utils) {
                     const browserName = isFirefox ? 'Firefox' : 'your browser';
                     throw new Error(
                         `No system audio track available. In ${browserName}, please:\n` +
-                        `1. Share a tab or window that is actively playing audio\n` +
-                        `2. Make sure "Share audio" checkbox is checked in the sharing dialog\n` +
+                        `1. Share a BROWSER TAB that is actively playing audio\n` +
+                        `2. Make sure "Share tab audio" checkbox is checked\n` +
                         `3. The audio must be playing when you start sharing`
                     );
                 }
@@ -249,17 +288,23 @@ export function useAudio(state, utils) {
                     }
                 });
 
-                // Firefox and Chrome handle system audio differently
+                // Use pre-obtained display stream or get it now
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+                let displayStream;
 
-                const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: isFirefox ? true : {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    }
-                });
+                if (state.pendingDisplayStream) {
+                    displayStream = state.pendingDisplayStream;
+                    state.pendingDisplayStream = null;
+                } else {
+                    displayStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: isFirefox ? true : {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        }
+                    });
+                }
 
                 const systemAudioTrack = displayStream.getAudioTracks()[0];
                 if (!systemAudioTrack) {
@@ -268,8 +313,8 @@ export function useAudio(state, utils) {
                     const browserName = isFirefox ? 'Firefox' : 'your browser';
                     throw new Error(
                         `No system audio track available. In ${browserName}, please:\n` +
-                        `1. Share a tab or window that is actively playing audio\n` +
-                        `2. Make sure "Share audio" checkbox is checked in the sharing dialog\n` +
+                        `1. Share a BROWSER TAB that is actively playing audio\n` +
+                        `2. Make sure "Share tab audio" checkbox is checked\n` +
                         `3. The audio must be playing when you start sharing`
                     );
                 }
