@@ -848,7 +848,6 @@ export function useUI(state, utils, processedTranscription) {
 
         // Only update if changed
         if (activeIndex !== currentPlayingSegmentIndex.value) {
-            console.log('Active segment changed:', activeIndex, 'Time:', currentTime);
             currentPlayingSegmentIndex.value = activeIndex;
 
             // Scroll to active segment if follow mode is enabled
@@ -859,18 +858,13 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     const scrollToActiveSegment = (segmentIndex) => {
-        console.log('Scrolling to segment:', segmentIndex);
         // Find the active segment element
         const segments = document.querySelectorAll('.transcript-segment[data-segment-index], .speaker-segment[data-segment-index], .speaker-bubble[data-segment-index]');
-        console.log('Found segments:', segments.length);
         if (segments[segmentIndex]) {
-            console.log('Scrolling element into view');
             segments[segmentIndex].scrollIntoView({
                 behavior: 'smooth',
                 block: 'center'
             });
-        } else {
-            console.log('Segment element not found at index:', segmentIndex);
         }
     };
 
