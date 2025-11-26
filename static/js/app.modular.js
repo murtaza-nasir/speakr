@@ -954,26 +954,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Speakers composable needs processedTranscription, so initialize it after
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
 
-            // DEBUG: Check if handleAudioTimeUpdate exists
-            console.log('handleAudioTimeUpdate from uiComposable:', typeof uiComposable.handleAudioTimeUpdate);
-            console.log('toggleFollowPlayerMode from uiComposable:', typeof uiComposable.toggleFollowPlayerMode);
-
-            // DEBUG: Watch for when recording changes and check audio element
-            watch(selectedRecording, () => {
-                nextTick(() => {
-                    const audioElements = document.querySelectorAll('audio');
-                    console.log('Audio elements found:', audioElements.length);
-                    audioElements.forEach((audio, index) => {
-                        console.log(`Audio ${index}:`, audio);
-                        console.log(`Audio ${index} has timeupdate listener:`, audio.ontimeupdate);
-                        // Manually add a test listener
-                        audio.addEventListener('timeupdate', (e) => {
-                            console.log('MANUAL timeupdate listener fired!', e.target.currentTime);
-                        }, { once: true });
-                    });
-                });
-            });
-
             const groupedRecordings = computed(() => {
                 const groups = {};
                 recordings.value.forEach(recording => {
