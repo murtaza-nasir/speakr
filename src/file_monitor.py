@@ -335,16 +335,17 @@ class FileMonitor:
                 db.session.commit()
                 
                 self.logger.info(f"Created recording record with ID: {recording.id} for user: {user.username}")
-                
-                # Start background processing
-                start_time = datetime.utcnow()
-                thread = threading.Thread(
-                    target=transcribe_audio_task,
-                    args=(app.app_context(), recording.id, str(final_path), final_path.name, start_time)
+
+                # Queue for background processing
+                from src.services.job_queue import job_queue
+                job_queue.enqueue(
+                    user_id=user.id,
+                    recording_id=recording.id,
+                    job_type='transcribe',
+                    params={}
                 )
-                thread.start()
-                
-                self.logger.info(f"Started background processing for recording ID: {recording.id}")
+
+                self.logger.info(f"Queued background processing for recording ID: {recording.id}")
                 self.logger.info(f"Successfully processed and moved file from: {processing_path}")
                     
             except Exception as e:
