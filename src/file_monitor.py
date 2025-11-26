@@ -368,7 +368,7 @@ class FileMonitor:
         
         # Support WebM and other formats directly when possible
         supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
-        convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov')
+        convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts')
         
         if filename_lower.endswith(supported_formats):
             self.logger.info(f"File format {filename_lower} is supported, no conversion needed")
