@@ -155,15 +155,23 @@ export function useAudio(state, utils) {
         // This is required for Firefox's "transient activation" security model
         if (needsDisplayMedia) {
             try {
-                const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
                 const displayStream = await navigator.mediaDevices.getDisplayMedia({
                     video: true,
-                    audio: isFirefox ? true : {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    }
+                    audio: true
                 });
+
+                // Check if we got an audio track
+                const audioTrack = displayStream.getAudioTracks()[0];
+                if (!audioTrack) {
+                    displayStream.getTracks().forEach(track => track.stop());
+                    const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+                    if (isFirefox) {
+                        showToast('Firefox: Share a TAB and check "Share tab audio"', 'error', 5000);
+                    } else {
+                        showToast('No audio - check "Share system audio"', 'error');
+                    }
+                    return;
+                }
 
                 // Store stream for use after disclaimer (if any)
                 state.pendingDisplayStream = displayStream;
