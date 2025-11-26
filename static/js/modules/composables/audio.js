@@ -148,75 +148,30 @@ export function useAudio(state, utils) {
 
     // Start recording
     const startRecording = async (mode = 'microphone') => {
-        // For Firefox with system audio modes, we MUST call getDisplayMedia synchronously
-        // from the user gesture, before any async operations or modal displays
-        const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-        const needsDisplayMedia = mode === 'system' || mode === 'both';
-
-        if (isFirefox && needsDisplayMedia) {
-            // Get display media FIRST, synchronously from the click handler
-            try {
-                const displayStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: true,
-                    audio: true
-                });
-
-                // Store the stream for later use
-                state.pendingDisplayStream = displayStream;
-
-                // Now check for disclaimer
-                if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
-                    showRecordingDisclaimerModal.value = true;
-                    state.pendingRecordingMode = mode;
-                    return;
-                }
-
-                // No disclaimer, continue with recording using the obtained stream
-                await startRecordingInternal(mode, displayStream);
-            } catch (error) {
-                console.error('[Recording] Failed to get display media:', error);
-                if (error.name === 'NotAllowedError') {
-                    showToast('Screen sharing was denied or cancelled', 'error');
-                } else {
-                    showToast(`Failed to capture system audio: ${error.message}`, 'error');
-                }
-                return;
-            }
-        } else {
-            // Non-Firefox or microphone mode - original flow
-            if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
-                showRecordingDisclaimerModal.value = true;
-                state.pendingRecordingMode = mode;
-                return;
-            }
-
-            await startRecordingInternal(mode);
+        // Check if there's a disclaimer to show
+        if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
+            showRecordingDisclaimerModal.value = true;
+            state.pendingRecordingMode = mode;
+            return;
         }
+
+        await startRecordingInternal(mode);
     };
 
     // Accept recording disclaimer and start recording
     const acceptRecordingDisclaimer = async () => {
         showRecordingDisclaimerModal.value = false;
-        const mode = state.pendingRecordingMode || 'microphone';
-        const displayStream = state.pendingDisplayStream;
-        state.pendingDisplayStream = null;
-        await startRecordingInternal(mode, displayStream);
+        await startRecordingInternal(state.pendingRecordingMode || 'microphone');
     };
 
     // Cancel recording disclaimer
     const cancelRecordingDisclaimer = () => {
         showRecordingDisclaimerModal.value = false;
-        // Clean up any pending display stream
-        if (state.pendingDisplayStream) {
-            state.pendingDisplayStream.getTracks().forEach(track => track.stop());
-            state.pendingDisplayStream = null;
-        }
         state.pendingRecordingMode = null;
     };
 
     // Internal start recording function
-    // existingDisplayStream is used for Firefox where we need to get the stream synchronously
-    const startRecordingInternal = async (mode, existingDisplayStream = null) => {
+    const startRecordingInternal = async (mode) => {
         try {
             recordingMode.value = mode;
             audioChunks.value = [];
@@ -251,20 +206,16 @@ export function useAudio(state, utils) {
                 // Firefox requires simpler constraints and the tab must have audio playing
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
-                // Use existing stream if provided (Firefox pre-obtained it synchronously)
-                if (existingDisplayStream) {
-                    stream = existingDisplayStream;
-                } else {
-                    const displayMediaConstraints = {
-                        video: true,  // Required by spec, we'll stop it immediately
-                        audio: isFirefox ? true : {
-                            echoCancellation: false,
-                            noiseSuppression: false,
-                            autoGainControl: false
-                        }
-                    };
-                    stream = await navigator.mediaDevices.getDisplayMedia(displayMediaConstraints);
-                }
+                const displayMediaConstraints = {
+                    video: true,  // Required by spec, we'll stop it immediately
+                    audio: isFirefox ? true : {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                };
+
+                stream = await navigator.mediaDevices.getDisplayMedia(displayMediaConstraints);
 
                 const audioTrack = stream.getAudioTracks()[0];
                 if (!audioTrack) {
@@ -301,20 +252,14 @@ export function useAudio(state, utils) {
                 // Firefox and Chrome handle system audio differently
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
-                // Use existing stream if provided (Firefox pre-obtained it synchronously)
-                let displayStream;
-                if (existingDisplayStream) {
-                    displayStream = existingDisplayStream;
-                } else {
-                    displayStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: true,
-                        audio: isFirefox ? true : {
-                            echoCancellation: false,
-                            noiseSuppression: false,
-                            autoGainControl: false
-                        }
-                    });
-                }
+                const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: isFirefox ? true : {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    }
+                });
 
                 const systemAudioTrack = displayStream.getAudioTracks()[0];
                 if (!systemAudioTrack) {
