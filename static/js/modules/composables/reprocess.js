@@ -309,9 +309,6 @@ export function useReprocess(state, utils) {
                                       statusData.status === 'COMPLETED';
 
                     if (shouldFetch) {
-                        const statusLabel = statusData.status === 'SUMMARIZING' ? 'SUMMARIZING (fetching transcript)' : 'COMPLETED';
-                        console.log(`[REPROCESS] Status ${statusLabel} detected for recording ${recordingId}`);
-
                         // Mark that we've fetched for SUMMARIZING
                         if (statusData.status === 'SUMMARIZING') {
                             hasFetchedForSummarizing = true;
@@ -323,34 +320,22 @@ export function useReprocess(state, utils) {
                         }
 
                         // Fetch the full recording with updated data
-                        console.log(`[REPROCESS] Fetching full recording data from /api/recordings/${recordingId}`);
                         const fullResponse = await fetch(`/api/recordings/${recordingId}`);
-                        console.log(`[REPROCESS] Full recording fetch response OK:`, fullResponse.ok, 'Status:', fullResponse.status);
 
                         if (fullResponse.ok) {
                             const fullData = await fullResponse.json();
-                            console.log(`[REPROCESS] Full recording data received. Has transcript:`, !!fullData.transcription, 'Has summary:', !!fullData.summary);
-                            console.log(`[REPROCESS] Full data status:`, fullData.status);
 
                             // Update in recordings list first
                             const currentIndex = recordings.value.findIndex(r => r.id === recordingId);
                             if (currentIndex !== -1) {
-                                console.log(`[REPROCESS] Updating recording in list at index ${currentIndex}`);
                                 recordings.value[currentIndex] = fullData;
                             }
 
                             // Always update selectedRecording if it's the current recording
                             if (selectedRecording.value?.id === recordingId) {
-                                console.log(`[REPROCESS] Updating selectedRecording. Has transcript:`, !!fullData.transcription, 'Has summary:', !!fullData.summary);
                                 selectedRecording.value = fullData;
-                                // Force Vue to detect the change
                                 await nextTick();
-                                console.log(`[REPROCESS] After nextTick. Has transcript:`, !!selectedRecording.value.transcription, 'Has summary:', !!selectedRecording.value.summary);
-                            } else {
-                                console.log(`[REPROCESS] NOT updating selectedRecording. Current ID:`, selectedRecording.value?.id, 'Target ID:', recordingId);
                             }
-                        } else {
-                            console.error(`[REPROCESS] Failed to fetch full recording data. Status: ${fullResponse.status}`);
                         }
 
                         if (statusData.status === 'COMPLETED') {
