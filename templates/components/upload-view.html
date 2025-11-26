@@ -17,7 +17,7 @@
                 <p class="text-sm text-[var(--text-secondary)] mb-1" v-text="t('upload.dropzone')"></p>
                 <p class="text-xs text-[var(--text-muted)]" v-text="t('upload.supportedFormats')"></p>
             </div>
-            <input ref="fileInput" type="file" @change="handleFileSelect" accept="audio/*,video/*,.mp3,.m4a,.wav,.aac,.ogg,.flac,.wma,.aiff,.opus,.caf,.3gp,.3gpp,.amr,.mp4,.mov,.webm,.mkv,.avi,.m4v,.ts,.mts" multiple class="hidden">
+            <input ref="fileInput" type="file" @change="handleFileSelect" accept="audio/*,video/*,.mp3,.m4a,.wav,.aac,.ogg,.flac,.wma,.aiff,.opus,.caf,.3gp,.3gpp,.amr,.mp4,.mov,.webm,.mkv,.avi,.m4v,.ts,.mts,.wmv,.flv,.mpeg,.mpg,.ogv,.vob,.asf" multiple class="hidden">
 
             <!-- Queued Files Display -->
             <div v-if="pendingQueueFiles.length > 0" class="mt-3">
