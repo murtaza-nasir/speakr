@@ -424,6 +424,18 @@ bcrypt = Bcrypt()
 bcrypt.init_app(app)
 limiter.init_app(app)  # Initialize the limiter (uses in-memory storage by default)
 
+# Exempt frequently-polled status endpoints from rate limiting
+@limiter.request_filter
+def exempt_status_endpoints():
+    """Exempt status polling endpoints from rate limiting."""
+    from flask import request
+    # Exempt status endpoints that are polled frequently during processing
+    if '/status' in request.path and request.method == 'GET':
+        return True
+    if request.path.endswith('/batch-status') and request.method == 'POST':
+        return True
+    return False
+
 csrf = CSRFProtect(app)
 
 # Add context processor to make 'now' available to all templates
