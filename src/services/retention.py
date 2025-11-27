@@ -176,6 +176,10 @@ def process_auto_deletion():
                     if recording.audio_path and os.path.exists(recording.audio_path):
                         os.remove(recording.audio_path)
 
+                    # Delete associated processing jobs (required due to NOT NULL constraint)
+                    from src.models.processing_job import ProcessingJob
+                    ProcessingJob.query.filter_by(recording_id=recording.id).delete()
+
                     # Delete the database record (cascades to chunks, shares, etc.)
                     db.session.delete(recording)
                     db.session.commit()

@@ -12,7 +12,7 @@ export function useModals(state, utils) {
         showShareDeleteModal, showUnifiedShareModal, showColorSchemeModal,
         showSystemAudioHelpModal, editingRecording, recordingToDelete, recordingToReset,
         selectedRecording, recordings, selectedNewTagId, tagSearchFilter,
-        availableTags, currentView, totalRecordings, toasts
+        availableTags, currentView, totalRecordings, toasts, uploadQueue
     } = state;
 
     const { showToast, setGlobalError } = utils;
@@ -84,19 +84,25 @@ export function useModals(state, utils) {
 
     const deleteRecording = async () => {
         if (!recordingToDelete.value) return;
+        const deletedId = recordingToDelete.value.id;
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const response = await fetch(`/recording/${recordingToDelete.value.id}`, {
+            const response = await fetch(`/recording/${deletedId}`, {
                 method: 'DELETE',
                 headers: { 'X-CSRFToken': csrfToken }
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to delete recording');
 
-            recordings.value = recordings.value.filter(r => r.id !== recordingToDelete.value.id);
+            recordings.value = recordings.value.filter(r => r.id !== deletedId);
             totalRecordings.value--;
 
-            if (selectedRecording.value?.id === recordingToDelete.value.id) {
+            // Also remove from upload queue if present (clears processing queue entry)
+            if (uploadQueue?.value) {
+                uploadQueue.value = uploadQueue.value.filter(item => item.recordingId !== deletedId);
+            }
+
+            if (selectedRecording.value?.id === deletedId) {
                 selectedRecording.value = null;
                 currentView.value = 'upload';
             }

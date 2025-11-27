@@ -4,10 +4,7 @@ import sys
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response, make_response
 from urllib.parse import urlparse, urljoin, quote
 from email.utils import encode_rfc2231
-try:
-    from flask import Markup
-except ImportError:
-    from markupsafe import Markup
+from markupsafe import Markup
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 from openai import OpenAI # Keep using the OpenAI library
@@ -433,6 +430,9 @@ def exempt_status_endpoints():
     if '/status' in request.path and request.method == 'GET':
         return True
     if request.path.endswith('/batch-status') and request.method == 'POST':
+        return True
+    # Exempt job queue status polling (polled every 5-30 seconds during processing)
+    if request.path == '/api/recordings/job-queue-status' and request.method == 'GET':
         return True
     return False
 

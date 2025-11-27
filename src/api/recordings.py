@@ -2083,7 +2083,8 @@ def upload_file():
             user_id=current_user.id,
             recording_id=recording.id,
             job_type='transcribe',
-            params=job_params
+            params=job_params,
+            is_new_upload=True
         )
         current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
 
@@ -2134,6 +2135,12 @@ def delete_recording(recording_id):
             chunk_count = TranscriptChunk.query.filter_by(recording_id=recording_id).count()
             if chunk_count > 0:
                 current_app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
+
+        # Delete associated processing jobs (required because recording_id is NOT NULL)
+        from src.models.processing_job import ProcessingJob
+        deleted_jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
+        if deleted_jobs > 0:
+            current_app.logger.info(f"Deleted {deleted_jobs} processing jobs for recording {recording_id}")
 
         # Delete the database record (cascade will handle chunks/embeddings)
         db.session.delete(recording)
@@ -2352,6 +2359,175 @@ def get_batch_recording_status():
         return jsonify({'statuses': statuses})
     except Exception as e:
         current_app.logger.error(f"Error fetching batch status: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+@recordings_bp.route('/api/recordings/job-queue-status', methods=['GET'])
+@login_required
+def get_job_queue_status():
+    """
+    Get detailed job queue status for all jobs (active, completed, and failed).
+    Returns status for the user's jobs within the last hour.
+    """
+    try:
+        from src.models import ProcessingJob
+        from src.services.job_queue import TRANSCRIPTION_JOBS, SUMMARY_JOBS
+        from datetime import timedelta
+
+        # Expire all cached objects to ensure we see latest data from worker threads
+        db.session.expire_all()
+
+        # Get all jobs for the user (active + recent completed/failed within last hour)
+        cutoff_time = datetime.utcnow() - timedelta(hours=1)
+        all_jobs = ProcessingJob.query.filter(
+            ProcessingJob.user_id == current_user.id,
+            db.or_(
+                ProcessingJob.status.in_(['queued', 'processing']),
+                db.and_(
+                    ProcessingJob.status.in_(['completed', 'failed']),
+                    ProcessingJob.completed_at >= cutoff_time
+                )
+            )
+        ).order_by(ProcessingJob.created_at.desc()).all()
+
+        job_details = []
+        for job in all_jobs:
+            recording = db.session.get(Recording, job.recording_id)
+            recording_title = None
+            if recording:
+                recording_title = recording.title or recording.original_filename or 'Untitled'
+
+            # Determine queue type
+            queue_type = 'summary' if job.job_type in SUMMARY_JOBS else 'transcription'
+
+            # Calculate position if queued
+            position = None
+            if job.status == 'queued':
+                job_types = SUMMARY_JOBS if job.job_type in SUMMARY_JOBS else TRANSCRIPTION_JOBS
+                ahead_in_queue = ProcessingJob.query.filter(
+                    ProcessingJob.status == 'queued',
+                    ProcessingJob.job_type.in_(job_types),
+                    ProcessingJob.created_at < job.created_at
+                ).count()
+                currently_processing = ProcessingJob.query.filter(
+                    ProcessingJob.status == 'processing',
+                    ProcessingJob.job_type.in_(job_types)
+                ).count()
+                position = ahead_in_queue + currently_processing + 1
+
+            job_details.append({
+                'id': job.id,
+                'recording_id': job.recording_id,
+                'recording_title': recording_title,
+                'job_status': job.status,
+                'job_type': job.job_type,
+                'queue_type': queue_type,
+                'position': position,
+                'is_new_upload': job.is_new_upload,
+                'error_message': job.error_message,
+                'created_at': job.created_at.isoformat() if job.created_at else None,
+                'started_at': job.started_at.isoformat() if job.started_at else None,
+                'completed_at': job.completed_at.isoformat() if job.completed_at else None
+            })
+
+        return jsonify({'jobs': job_details})
+    except Exception as e:
+        current_app.logger.error(f"Error fetching job queue status: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+@recordings_bp.route('/api/recordings/jobs/<int:job_id>/retry', methods=['POST'])
+@login_required
+def retry_failed_job(job_id):
+    """Retry a failed job."""
+    try:
+        from src.models import ProcessingJob
+
+        job = db.session.get(ProcessingJob, job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+
+        if job.user_id != current_user.id:
+            return jsonify({'error': 'Access denied'}), 403
+
+        if job.status != 'failed':
+            return jsonify({'error': 'Only failed jobs can be retried'}), 400
+
+        # Reset job for retry
+        job.status = 'queued'
+        job.error_message = None
+        job.retry_count = 0
+        job.started_at = None
+        job.completed_at = None
+        db.session.commit()
+
+        current_app.logger.info(f"Job {job_id} queued for retry by user {current_user.id}")
+        return jsonify({'success': True, 'message': 'Job queued for retry'})
+
+    except Exception as e:
+        current_app.logger.error(f"Error retrying job {job_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+@recordings_bp.route('/api/recordings/jobs/<int:job_id>', methods=['DELETE'])
+@login_required
+def delete_job(job_id):
+    """Delete a job (clear from queue or history)."""
+    try:
+        from src.models import ProcessingJob
+        import os
+
+        job = db.session.get(ProcessingJob, job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+
+        if job.user_id != current_user.id:
+            return jsonify({'error': 'Access denied'}), 403
+
+        # If it's a failed new upload, also delete the recording
+        if job.status == 'failed' and job.is_new_upload:
+            recording = db.session.get(Recording, job.recording_id)
+            if recording:
+                # Delete audio file
+                if recording.audio_path and os.path.exists(recording.audio_path):
+                    try:
+                        os.remove(recording.audio_path)
+                    except Exception as e:
+                        current_app.logger.error(f"Error deleting audio file: {e}")
+                # Delete ALL processing jobs for this recording first
+                ProcessingJob.query.filter_by(recording_id=recording.id).delete()
+                db.session.delete(recording)
+        else:
+            # Just delete this job
+            db.session.delete(job)
+        db.session.commit()
+
+        current_app.logger.info(f"Job {job_id} deleted by user {current_user.id}")
+        return jsonify({'success': True, 'message': 'Job deleted'})
+
+    except Exception as e:
+        current_app.logger.error(f"Error deleting job {job_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+@recordings_bp.route('/api/recordings/jobs/clear-completed', methods=['POST'])
+@login_required
+def clear_completed_jobs():
+    """Clear all completed jobs for the current user."""
+    try:
+        from src.models import ProcessingJob
+
+        deleted = ProcessingJob.query.filter(
+            ProcessingJob.user_id == current_user.id,
+            ProcessingJob.status == 'completed'
+        ).delete(synchronize_session=False)
+
+        db.session.commit()
+        current_app.logger.info(f"Cleared {deleted} completed jobs for user {current_user.id}")
+        return jsonify({'success': True, 'deleted': deleted})
+
+    except Exception as e:
+        current_app.logger.error(f"Error clearing completed jobs: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 

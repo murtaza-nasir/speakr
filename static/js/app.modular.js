@@ -1087,7 +1087,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Upload queue computed properties
             const totalInQueue = computed(() => uploadQueue.value.length);
             const completedInQueue = computed(() => uploadQueue.value.filter(item => item.status === 'completed' || item.status === 'failed').length);
-            const finishedFilesInQueue = computed(() => uploadQueue.value.filter(item => ['completed', 'failed'].includes(item.status)));
+            // Filter out upload completions that already have a backend job (to avoid duplicates)
+            const finishedFilesInQueue = computed(() => {
+                const backendRecordingIds = new Set(allJobs.value.map(j => j.recording_id));
+                return uploadQueue.value.filter(item =>
+                    ['completed', 'failed'].includes(item.status) &&
+                    !backendRecordingIds.has(item.recordingId)
+                );
+            });
             const waitingFilesInQueue = computed(() => uploadQueue.value.filter(item => item.status === 'ready'));
             const pendingQueueFiles = computed(() => uploadQueue.value.filter(item => item.status === 'queued'));
 
@@ -1096,19 +1103,405 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return recordings.value.filter(r => ['PENDING', 'PROCESSING', 'SUMMARIZING', 'QUEUED'].includes(r.status));
             });
 
-            // Combined processing queue count (uploads + backend processing)
+            // All jobs from backend (queued, processing, completed, failed)
+            const allJobs = ref([]);
+            let jobQueuePollInterval = null;
+            let lastJobQueueFetch = 0; // Timestamp of last fetch
+            const JOB_QUEUE_POLL_INTERVAL = 5000;  // Poll every 5 seconds when active
+            const JOB_QUEUE_FETCH_DEBOUNCE = 2000; // Minimum 2 seconds between fetches
+
+            // Computed properties for different job states
+            const activeJobs = computed(() => allJobs.value.filter(j => ['queued', 'processing'].includes(j.job_status)));
+            const completedJobs = computed(() => allJobs.value.filter(j => j.job_status === 'completed'));
+            const failedJobs = computed(() => allJobs.value.filter(j => j.job_status === 'failed'));
+
+            // Job queue details map (for backward compatibility with progress popup)
+            const jobQueueDetails = computed(() => {
+                const detailsMap = {};
+                for (const job of allJobs.value) {
+                    // Use recording_id as key, store the most relevant job (prefer active over completed)
+                    if (!detailsMap[job.recording_id] || ['queued', 'processing'].includes(job.job_status)) {
+                        detailsMap[job.recording_id] = job;
+                    }
+                }
+                return detailsMap;
+            });
+
+            // Fetch job queue status from backend (with debounce protection)
+            const fetchJobQueueStatus = async (force = false) => {
+                const now = Date.now();
+                // Debounce: skip if fetched recently (unless forced)
+                if (!force && (now - lastJobQueueFetch) < JOB_QUEUE_FETCH_DEBOUNCE) {
+                    return;
+                }
+                lastJobQueueFetch = now;
+
+                try {
+                    const response = await fetch('/api/recordings/job-queue-status');
+                    if (response.ok) {
+                        const data = await response.json();
+                        allJobs.value = data.jobs || [];
+                    } else if (response.status === 429) {
+                        console.warn('Job queue polling rate limited');
+                    }
+                } catch (error) {
+                    console.error('Error fetching job queue status:', error);
+                }
+            };
+
+            // Start polling job queue status
+            const startJobQueuePolling = () => {
+                if (jobQueuePollInterval) return;
+                fetchJobQueueStatus(true); // Fetch immediately (forced)
+                jobQueuePollInterval = setInterval(() => fetchJobQueueStatus(true), JOB_QUEUE_POLL_INTERVAL);
+            };
+
+            const stopJobQueuePolling = () => {
+                if (jobQueuePollInterval) {
+                    clearInterval(jobQueuePollInterval);
+                    jobQueuePollInterval = null;
+                }
+            };
+
+            // Check if we have active items that need polling
+            const hasActiveProcessing = computed(() => {
+                const completedStatuses = ['completed', 'failed', 'COMPLETED', 'FAILED'];
+                const hasActiveUploads = uploadQueue.value.some(item =>
+                    !completedStatuses.includes(item.status)
+                );
+                const hasActiveJobs = activeJobs.value.length > 0;
+                const hasProcessingRecordings = backendProcessingRecordings.value.length > 0;
+                return hasActiveUploads || hasActiveJobs || hasProcessingRecordings;
+            });
+
+            // Start/stop polling based on whether we have active items
+            watch(hasActiveProcessing, (hasActive) => {
+                if (hasActive) {
+                    startJobQueuePolling();
+                } else {
+                    // Stop polling after a delay (to catch final status updates)
+                    setTimeout(() => {
+                        if (!hasActiveProcessing.value) {
+                            stopJobQueuePolling();
+                        }
+                    }, 10000);
+                }
+            }, { immediate: true });
+
+            // When popup opens, do a one-time fetch to populate it
+            watch(() => progressPopupClosed.value, (closed) => {
+                if (!closed) {
+                    // Popup just opened - fetch current status
+                    fetchJobQueueStatus();
+                }
+            });
+
+            // Get job details for a recording
+            const getJobDetails = (recordingId) => {
+                return jobQueueDetails.value[recordingId] || null;
+            };
+
+            // Retry a failed job
+            const retryJob = async (jobId) => {
+                try {
+                    const response = await fetch(`/api/recordings/jobs/${jobId}/retry`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        fetchJobQueueStatus();
+                        showToast('Job queued for retry', 'success');
+                    } else {
+                        const data = await response.json();
+                        showToast(data.error || 'Failed to retry job', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error retrying job:', error);
+                    showToast('Failed to retry job', 'error');
+                }
+            };
+
+            // Delete/clear a job
+            const deleteJob = async (jobId) => {
+                try {
+                    const response = await fetch(`/api/recordings/jobs/${jobId}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        fetchJobQueueStatus();
+                    } else {
+                        const data = await response.json();
+                        showToast(data.error || 'Failed to delete job', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting job:', error);
+                }
+            };
+
+            // Clear all completed jobs
+            const clearCompletedJobs = async () => {
+                try {
+                    const response = await fetch('/api/recordings/jobs/clear-completed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        // Clear upload queue completed/failed items
+                        uploadQueue.value = uploadQueue.value.filter(item =>
+                            !['completed', 'failed', 'COMPLETED', 'FAILED'].includes(item.status)
+                        );
+                        // Force fetch to update the job list (bypass debounce)
+                        await fetchJobQueueStatus(true);
+                    }
+                } catch (error) {
+                    console.error('Error clearing completed jobs:', error);
+                }
+            };
+
+            // Combined clear function for backward compatibility
+            const clearAllCompleted = () => {
+                clearCompletedJobs();
+            };
+
+            // ============================================
+            // UNIFIED PROGRESS TRACKING SYSTEM
+            // Merges upload queue, backend recordings, and job queue into single list
+            // Each recording appears ONCE with its current status
+            // ============================================
+            const unifiedProgressItems = computed(() => {
+                const items = new Map(); // Key by recordingId or clientId
+
+                // Get the currently uploading file's clientId for special handling
+                const currentUploadClientId = currentlyProcessingFile.value?.clientId;
+
+                // 1. First, add all backend jobs (these have the most accurate status)
+                for (const job of allJobs.value) {
+                    const key = `rec_${job.recording_id}`;
+                    const existing = items.get(key);
+
+                    // Determine unified status from job
+                    let unifiedStatus = 'queued';
+                    if (job.job_status === 'processing') {
+                        unifiedStatus = job.queue_type === 'summary' ? 'summarizing' : 'transcribing';
+                    } else if (job.job_status === 'completed') {
+                        unifiedStatus = 'completed';
+                    } else if (job.job_status === 'failed') {
+                        unifiedStatus = 'failed';
+                    }
+
+                    // Prefer active jobs over completed/failed
+                    if (!existing || ['queued', 'transcribing', 'summarizing'].includes(unifiedStatus)) {
+                        items.set(key, {
+                            id: key,
+                            recordingId: job.recording_id,
+                            jobId: job.id,
+                            clientId: null,
+                            title: job.recording_title || 'Untitled',
+                            status: unifiedStatus,
+                            progress: unifiedStatus === 'transcribing' ? 50 : (unifiedStatus === 'summarizing' ? 80 : null),
+                            progressMessage: unifiedStatus === 'queued' ? `#${job.position || '?'} in queue` :
+                                             unifiedStatus === 'transcribing' ? 'Transcribing audio...' :
+                                             unifiedStatus === 'summarizing' ? 'Generating summary...' :
+                                             unifiedStatus === 'completed' ? 'Done' : 'Failed',
+                            queuePosition: job.position,
+                            errorMessage: job.error_message,
+                            completedAt: job.completed_at,
+                            source: 'job'
+                        });
+                    }
+                }
+
+                // 2. Add upload queue items (client-side tracking)
+                for (const upload of uploadQueue.value) {
+                    // Check if this is the currently uploading file
+                    const isCurrentUpload = upload.clientId === currentUploadClientId;
+
+                    // If we have a recordingId and it's already tracked from jobs, check if we should merge
+                    if (upload.recordingId) {
+                        const key = `rec_${upload.recordingId}`;
+                        const existing = items.get(key);
+
+                        if (existing) {
+                            // Merge upload info into existing item
+                            existing.clientId = upload.clientId;
+                            existing.file = upload.file;
+                            // If this is the current upload, use the global progress refs
+                            if (isCurrentUpload && ['uploading', 'pending', 'processing', 'summarizing'].includes(upload.status)) {
+                                // Map upload status to unified status
+                                if (upload.status === 'uploading') {
+                                    existing.status = 'uploading';
+                                } else if (upload.status === 'summarizing') {
+                                    existing.status = 'summarizing';
+                                } else if (upload.status === 'processing' || upload.status === 'pending') {
+                                    existing.status = 'transcribing';
+                                }
+                                existing.progress = processingProgress.value;
+                                existing.progressMessage = processingMessage.value || 'Processing...';
+                                existing.title = upload.displayName || upload.file?.name || existing.title;
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Determine unified status from upload status
+                    let unifiedStatus = 'ready';
+                    let progressVal = 0;
+                    let progressMsg = 'Waiting to upload...';
+
+                    // If this is the currently processing file, use global progress refs
+                    if (isCurrentUpload) {
+                        progressVal = processingProgress.value;
+                        progressMsg = processingMessage.value || 'Processing...';
+
+                        if (upload.status === 'uploading') {
+                            unifiedStatus = 'uploading';
+                        } else if (upload.status === 'pending' || upload.status === 'processing' || upload.status === 'PROCESSING') {
+                            unifiedStatus = 'transcribing';
+                        } else if (upload.status === 'summarizing' || upload.status === 'SUMMARIZING') {
+                            unifiedStatus = 'summarizing';
+                        } else if (upload.status === 'completed' || upload.status === 'COMPLETED') {
+                            unifiedStatus = 'completed';
+                            progressMsg = 'Done';
+                        } else if (upload.status === 'failed' || upload.status === 'FAILED') {
+                            unifiedStatus = 'failed';
+                            progressMsg = upload.error || 'Processing failed';
+                        } else if (upload.status === 'ready') {
+                            unifiedStatus = 'ready';
+                            progressMsg = 'Waiting to upload...';
+                        }
+                    } else {
+                        // Not the current upload - use item's own status
+                        if (upload.status === 'uploading') {
+                            unifiedStatus = 'uploading';
+                            progressMsg = 'Uploading...';
+                        } else if (upload.status === 'completed' || upload.status === 'COMPLETED') {
+                            unifiedStatus = 'completed';
+                            progressMsg = 'Done';
+                        } else if (upload.status === 'failed' || upload.status === 'FAILED') {
+                            unifiedStatus = 'upload_failed';
+                            progressMsg = upload.error || 'Upload failed';
+                        } else if (upload.status === 'ready') {
+                            unifiedStatus = 'ready';
+                            progressMsg = 'Waiting to upload...';
+                        } else if (upload.status === 'queued') {
+                            unifiedStatus = 'ready';
+                            progressMsg = 'Waiting to upload...';
+                        }
+                    }
+
+                    const key = upload.recordingId ? `rec_${upload.recordingId}` : `client_${upload.clientId}`;
+
+                    // Skip if we already have an entry with the same recordingId (from jobs)
+                    if (upload.recordingId && items.has(key)) {
+                        continue;
+                    }
+
+                    items.set(key, {
+                        id: key,
+                        recordingId: upload.recordingId,
+                        jobId: null,
+                        clientId: upload.clientId,
+                        title: upload.displayName || upload.file?.name || 'Unknown file',
+                        status: unifiedStatus,
+                        progress: progressVal,
+                        progressMessage: progressMsg,
+                        queuePosition: null,
+                        errorMessage: upload.status === 'failed' ? upload.error : null,
+                        file: upload.file,
+                        source: 'upload'
+                    });
+                }
+
+                // Convert to array and sort: active first, then by status priority
+                const statusOrder = {
+                    'uploading': 1,
+                    'transcribing': 2,
+                    'summarizing': 3,
+                    'queued': 4,
+                    'ready': 5,
+                    'completed': 6,
+                    'failed': 7,
+                    'upload_failed': 8
+                };
+
+                return Array.from(items.values()).sort((a, b) => {
+                    return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+                });
+            });
+
+            // Filtered views of unified items
+            const activeProgressItems = computed(() =>
+                unifiedProgressItems.value.filter(item =>
+                    ['uploading', 'transcribing', 'summarizing', 'queued', 'ready'].includes(item.status)
+                )
+            );
+
+            const completedProgressItems = computed(() =>
+                unifiedProgressItems.value.filter(item => item.status === 'completed')
+            );
+
+            const failedProgressItems = computed(() =>
+                unifiedProgressItems.value.filter(item =>
+                    ['failed', 'upload_failed'].includes(item.status)
+                )
+            );
+
+            // Helper to get status display info
+            const getStatusDisplay = (status) => {
+                const displays = {
+                    'ready': { label: 'Waiting', color: 'gray', icon: 'fa-clock' },
+                    'uploading': { label: 'Uploading', color: 'blue', icon: 'fa-cloud-upload-alt', animate: true },
+                    'queued': { label: 'Queued', color: 'yellow', icon: 'fa-clock' },
+                    'transcribing': { label: 'Transcribing', color: 'purple', icon: 'fa-microphone-alt', animate: true },
+                    'summarizing': { label: 'Summarizing', color: 'green', icon: 'fa-file-alt', animate: true },
+                    'completed': { label: 'Done', color: 'green', icon: 'fa-check-circle' },
+                    'failed': { label: 'Failed', color: 'red', icon: 'fa-exclamation-circle' },
+                    'upload_failed': { label: 'Upload Failed', color: 'red', icon: 'fa-exclamation-circle' }
+                };
+                return displays[status] || displays['ready'];
+            };
+
+            // Cancel/remove an item from the queue
+            const removeProgressItem = async (item) => {
+                if (item.jobId && ['failed', 'completed'].includes(item.status)) {
+                    // Delete backend job
+                    await deleteJob(item.jobId);
+                } else if (item.clientId && !item.jobId) {
+                    // Remove from upload queue
+                    uploadQueue.value = uploadQueue.value.filter(u => u.clientId !== item.clientId);
+                }
+            };
+
+            // Retry a failed item
+            const retryProgressItem = async (item) => {
+                if (item.jobId) {
+                    await retryJob(item.jobId);
+                }
+            };
+
+            // Track recently completed for backward compat (now using allJobs)
+            const recentlyCompletedBackend = computed(() => {
+                return completedJobs.value.map(j => ({
+                    id: j.recording_id,
+                    title: j.recording_title || 'Untitled',
+                    status: 'completed',
+                    completedAt: j.completed_at
+                }));
+            });
+
+            // Combined processing queue count
             const totalProcessingCount = computed(() => {
-                // Count active uploads (not completed/failed)
-                const activeUploads = uploadQueue.value.filter(item => !['completed', 'failed'].includes(item.status)).length;
-                // Count backend processing (excluding items that are in uploadQueue to avoid double counting)
-                const uploadRecordingIds = new Set(uploadQueue.value.map(item => item.recordingId).filter(id => id));
-                const backendOnly = backendProcessingRecordings.value.filter(r => !uploadRecordingIds.has(r.id)).length;
-                return activeUploads + backendOnly;
+                return activeProgressItems.value.length;
             });
 
             // Should show the processing popup
             const showProcessingPopup = computed(() => {
-                return uploadQueue.value.length > 0 || backendProcessingRecordings.value.length > 0;
+                return unifiedProgressItems.value.length > 0;
+            });
+
+            // All completed items count
+            const allCompletedCount = computed(() => {
+                return completedProgressItems.value.length + failedProgressItems.value.length;
             });
 
             // Speaker computed properties
@@ -1422,6 +1815,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 backendProcessingRecordings,
                 totalProcessingCount,
                 showProcessingPopup,
+                jobQueueDetails,
+                getJobDetails,
+                allJobs,
+                activeJobs,
+                completedJobs,
+                failedJobs,
+                retryJob,
+                deleteJob,
+                clearCompletedJobs,
+                recentlyCompletedBackend,
+                clearAllCompleted,
+                allCompletedCount,
+                // Unified progress tracking
+                unifiedProgressItems,
+                activeProgressItems,
+                completedProgressItems,
+                failedProgressItems,
+                getStatusDisplay,
+                removeProgressItem,
+                retryProgressItem,
                 hasSpeakerNames,
                 tagsWithCustomPrompts,
                 getTagPromptPreview,
