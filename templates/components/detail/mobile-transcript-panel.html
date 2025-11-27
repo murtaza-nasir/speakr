@@ -21,16 +21,37 @@
             <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" :title="t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>
         </div>
     </div>
-    <div class="flex-grow overflow-y-auto mobile-content-box">
-        <div v-if="selectedRecording.status === 'PROCESSING'" class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-            <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.processingTranscription')"></p>
+    <div class="flex-grow overflow-y-auto mobile-content-box relative">
+        <!-- Floating Processing Indicator (Mobile) -->
+        <div v-if="selectedRecording.status === 'PROCESSING'"
+             :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">
+            <template v-if="!processingIndicatorMinimized">
+                <div class="processing-indicator-content">
+                    <i class="fas fa-spinner fa-spin text-[var(--text-accent)]"></i>
+                    <span class="text-sm text-[var(--text-secondary)]" v-text="t('help.processingTranscription')"></span>
+                </div>
+                <button @click="processingIndicatorMinimized = true"
+                        class="processing-indicator-minimize"
+                        :title="t('tooltips.minimize')">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+            </template>
+            <template v-else>
+                <button @click="processingIndicatorMinimized = false"
+                        class="processing-indicator-expand"
+                        :title="t('help.processingTranscription')">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </button>
+            </template>
         </div>
-        <div v-else-if="!selectedRecording.transcription" class="text-center py-8">
+
+        <!-- No transcription state (only show if not processing and no transcription) -->
+        <div v-if="!selectedRecording.transcription && selectedRecording.status !== 'PROCESSING'" class="text-center py-8">
             <i class="fas fa-file-text text-3xl text-[var(--text-muted)] mb-3"></i>
             <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
         </div>
-        <div v-else>
+        <!-- Transcription content (show regardless of processing state if transcription exists) -->
+        <div v-if="selectedRecording.transcription">
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
                 <div v-if="processedTranscription.hasDialogue">
                     <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="segment.startTime || Math.random()" :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">

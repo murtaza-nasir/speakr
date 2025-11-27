@@ -1215,6 +1215,8 @@
     "deleteTeam": "删除群组",
     "removeFromTeam": "从团队中移除",
     "followPlayerDisabled": "启用自动滚动 - 文字记录跟随音频播放",
-    "followPlayerEnabled": "禁用自动滚动 - 文字记录保持位置"
+    "followPlayerEnabled": "禁用自动滚动 - 文字记录保持位置",
+    "minimize": "最小化",
+    "expand": "展开"
   }
 }
