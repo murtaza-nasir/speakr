@@ -124,7 +124,13 @@ def initialize_job_queue(app):
 
         # Get queue status
         status = job_queue.get_queue_status()
-        app.logger.info(f"Job queue started with {status['num_workers']} workers, {status['queued_jobs']} queued jobs")
+        t_queue = status['transcription_queue']
+        s_queue = status['summary_queue']
+        app.logger.info(
+            f"Job queues started: "
+            f"transcription ({t_queue['workers']} workers, {t_queue['queued']} queued), "
+            f"summary ({s_queue['workers']} workers, {s_queue['queued']} queued)"
+        )
     except Exception as e:
         app.logger.error(f"Failed to start job queue: {e}", exc_info=True)
 

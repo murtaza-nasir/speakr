@@ -78,11 +78,13 @@ Beyond the UI-configurable settings above, several environment variables in your
 
 For detailed retention configuration, see the [Retention & Auto-Deletion](retention.md) guide.
 
-### Background Processing Queue
+### Background Processing Queues
 
-Speakr uses a fair job queue to process uploads and reprocessing requests. The queue ensures multiple users get fair access to processing resources.
+Speakr uses separate job queues for transcription and summarization to prevent slow ASR processing from blocking quick summary generation.
 
-**JOB_QUEUE_WORKERS**: Number of concurrent workers processing jobs. Higher values increase throughput but consume more resources. Default: `2`.
+**JOB_QUEUE_WORKERS**: Number of workers for transcription jobs (ASR processing). These are slow jobs that can take 5-30 minutes. Default: `2`.
+
+**SUMMARY_QUEUE_WORKERS**: Number of workers for summary jobs (LLM API calls). These are fast jobs that typically complete in under a minute. Default: `2`.
 
 **JOB_MAX_RETRIES**: How many times a failed job will be retried before being marked as failed. Default: `3`.
 
