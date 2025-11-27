@@ -2300,6 +2300,7 @@ def get_recording_status_only(recording_id):
     """
     Lightweight endpoint that returns only the status field.
     Used for polling during processing/summarization.
+    Note: Rate limiting exemption is configured at app level.
     """
     try:
         recording = db.session.get(Recording, recording_id)
@@ -2313,6 +2314,44 @@ def get_recording_status_only(recording_id):
         return jsonify({'status': recording.status})
     except Exception as e:
         current_app.logger.error(f"Error fetching status for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
+@recordings_bp.route('/api/recordings/batch-status', methods=['POST'])
+@login_required
+def get_batch_recording_status():
+    """
+    Batch endpoint to get status for multiple recordings at once.
+    More efficient than polling individual status endpoints.
+
+    Request body: {"recording_ids": [1, 2, 3]}
+    Response: {"statuses": {"1": "COMPLETED", "2": "PROCESSING", "3": "FAILED"}}
+    """
+    try:
+        data = request.get_json()
+        if not data or 'recording_ids' not in data:
+            return jsonify({'error': 'recording_ids is required'}), 400
+
+        recording_ids = data['recording_ids']
+        if not isinstance(recording_ids, list):
+            return jsonify({'error': 'recording_ids must be a list'}), 400
+
+        # Limit batch size to prevent abuse
+        if len(recording_ids) > 50:
+            return jsonify({'error': 'Maximum 50 recordings per batch'}), 400
+
+        # Query all recordings at once
+        recordings = Recording.query.filter(Recording.id.in_(recording_ids)).all()
+
+        # Build response with only accessible recordings
+        statuses = {}
+        for recording in recordings:
+            if has_recording_access(recording, current_user):
+                statuses[str(recording.id)] = recording.status
+
+        return jsonify({'statuses': statuses})
+    except Exception as e:
+        current_app.logger.error(f"Error fetching batch status: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
