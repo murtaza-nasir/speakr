@@ -1091,6 +1091,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             const waitingFilesInQueue = computed(() => uploadQueue.value.filter(item => item.status === 'ready'));
             const pendingQueueFiles = computed(() => uploadQueue.value.filter(item => item.status === 'queued'));
 
+            // Backend processing queue - recordings being processed on the server
+            const backendProcessingRecordings = computed(() => {
+                return recordings.value.filter(r => ['PENDING', 'PROCESSING', 'SUMMARIZING', 'QUEUED'].includes(r.status));
+            });
+
+            // Combined processing queue count (uploads + backend processing)
+            const totalProcessingCount = computed(() => {
+                // Count active uploads (not completed/failed)
+                const activeUploads = uploadQueue.value.filter(item => !['completed', 'failed'].includes(item.status)).length;
+                // Count backend processing (excluding items that are in uploadQueue to avoid double counting)
+                const uploadRecordingIds = new Set(uploadQueue.value.map(item => item.recordingId).filter(id => id));
+                const backendOnly = backendProcessingRecordings.value.filter(r => !uploadRecordingIds.has(r.id)).length;
+                return activeUploads + backendOnly;
+            });
+
+            // Should show the processing popup
+            const showProcessingPopup = computed(() => {
+                return uploadQueue.value.length > 0 || backendProcessingRecordings.value.length > 0;
+            });
+
             // Speaker computed properties
             const hasSpeakerNames = computed(() => {
                 // Check if any speaker has a non-empty name
@@ -1399,6 +1419,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 finishedFilesInQueue,
                 waitingFilesInQueue,
                 pendingQueueFiles,
+                backendProcessingRecordings,
+                totalProcessingCount,
+                showProcessingPopup,
                 hasSpeakerNames,
                 tagsWithCustomPrompts,
                 getTagPromptPreview,
