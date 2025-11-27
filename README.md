@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.5.10-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.6.0-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -145,38 +145,26 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.5.10)
+## Latest Release (v0.6.0)
 
-**Patch Release** - Bug fixes and UX improvements
+**Feature Release** - Multi-user job queue and processing improvements
 
-- **iOS File Upload Fix** - Resolved issue preventing iOS users from uploading audio/video files
-- **Click-Outside Menus** - Dropdown menus now close when clicking outside them
-- **PWA i18n** - Added internationalization for PWA install button
+- **Multi-User Job Queue** - Fair round-robin scheduling ensures equitable processing across users
+- **Unified Progress Tracking** - Single consolidated view of uploads and processing status
+- **Smart Polling** - Intelligent polling that only runs when needed, reducing server load
+- **Compact Processing Queue UI** - Redesigned progress popup with status indicators
+- **Video Format Support** - Added comprehensive video format support (MP4, MKV, AVI, MOV, etc.)
+- **Firefox System Audio** - Fixed system audio recording in Firefox
 
-Fully backward compatible with v0.5.9. No configuration changes required.
+Fully backward compatible with v0.5.10. No configuration changes required.
 
-**[View Full Release Notes →](RELEASE_NOTES_v0.5.10.md)**
+### Previous Release (v0.5.10)
 
-### Previous Release (v0.5.9)
+- iOS File Upload Fix, Click-Outside Menus, PWA i18n improvements
 
-> **⚠️ IMPORTANT - Major Release Warning:**
->
-> v0.5.9 was a **major release** with significant architectural changes and new features. Before upgrading from earlier versions:
->
-> - **BACKUP YOUR DATA** - Database schema changes require migration
-> - **Review new environment variables** - Many features require `.env` configuration
-> - **Test in development first** - Major refactoring may affect existing workflows
->
-> **Required Environment Variables for New Features:**
-> - `ENABLE_INTERNAL_SHARING` - User-to-user sharing (default: false)
-> - `SHOW_USERNAMES_IN_UI` - Username visibility control (default: false)
-> - `USERS_CAN_DELETE` - Deletion permissions (default: true)
-> - `ENABLE_AUTO_DELETION` - Retention system (default: false)
-> - `GLOBAL_RETENTION_DAYS` - Retention period (default: 0)
-> - `ENABLE_AUTO_EXPORT` - Automated markdown export (default: false)
-> - `ENABLE_PUBLIC_SHARING` - Public share links (default: true)
->
-> See [configuration guide](https://murtaza-nasir.github.io/speakr/getting-started/installation#configuration-updates) for complete setup instructions.
+### v0.5.9 - Major Release
+
+> **⚠️ IMPORTANT:** v0.5.9 introduced significant architectural changes. If upgrading from earlier versions, backup your data first and review the [configuration guide](https://murtaza-nasir.github.io/speakr/getting-started/installation#configuration-updates).
 
 #### Highlights
 - **Complete Internal Sharing System** - Share recordings with users with granular permissions (view/edit/reshare)
@@ -231,6 +219,7 @@ Fully backward compatible with v0.5.9. No configuration changes required.
 - ✅ Speaker voice profiles with AI-powered identification (v0.5.9)
 - ✅ Group workspaces with shared recordings (v0.5.9)
 - ✅ PWA enhancements with offline support and background sync (v0.5.10)
+- ✅ Multi-user job queue with fair scheduling (v0.6.0)
 
 ### Near-term
 - Bulk operations for recordings (mass delete, export, tagging)
