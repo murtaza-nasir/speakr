@@ -56,6 +56,16 @@ docker run -d -p 9000:9000 \
 
 Note: If you don't need speaker identification in your transcriptions, you can use Speakr with the standard Whisper API instead, which doesn't require this additional container.
 
+### Can Speakr run offline?
+
+Yes, Speakr can run completely offline once set up. The Docker image contains all dependencies. For offline use:
+
+- Use a local ASR endpoint (like the WhisperX container) for transcription
+- Use Ollama or another local LLM for summaries
+- **Inquire Mode**: The embedding model downloads automatically on first use and caches to `instance/huggingface/`. After the initial download, it loads from cache without needing internet access.
+
+Run Speakr once with internet access to cache the embedding model, then disconnect - everything works offline.
+
 ### How do I backup my Speakr data?
 
 Your Speakr data consists of three essential components: the SQLite database in the `instance/` directory, audio files and transcriptions in the `uploads/` directory, and your configuration in the `.env` file. To create a complete backup, stop the container first to ensure database consistency, then backup all three directories:
