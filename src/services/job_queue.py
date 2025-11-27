@@ -4,6 +4,7 @@ Fair database-backed job queue for background processing tasks.
 This queue ensures:
 - Jobs persist across application restarts
 - Fair round-robin scheduling between users
+- Separate queues for transcription (slow) and summary (fast) jobs
 - Limited concurrency to prevent overwhelming external services
 - Automatic recovery of orphaned jobs
 """
@@ -14,51 +15,57 @@ import threading
 import time
 import logging
 from datetime import datetime
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any, List
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
 # Configuration
-MAX_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
+TRANSCRIPTION_WORKERS = int(os.environ.get('JOB_QUEUE_WORKERS', '2'))
+SUMMARY_WORKERS = int(os.environ.get('SUMMARY_QUEUE_WORKERS', '2'))
 MAX_RETRIES = int(os.environ.get('JOB_MAX_RETRIES', '3'))
 POLL_INTERVAL = 1.0  # seconds between checking for new jobs
+
+# Job type categories
+TRANSCRIPTION_JOBS = ['transcribe', 'reprocess_transcription']
+SUMMARY_JOBS = ['summarize', 'reprocess_summary']
 
 
 class FairJobQueue:
     """
     A database-backed job queue with fair scheduling across users.
 
-    Uses round-robin scheduling to ensure all users get fair processing time,
-    preventing one user from monopolizing the queue.
+    Uses separate queues for transcription and summary jobs to prevent
+    slow transcription jobs from blocking fast summary jobs.
     """
 
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls, num_workers: int = None):
+    def __new__(cls):
         """Singleton pattern to ensure only one queue exists."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
                     cls._instance = super().__new__(cls)
                     cls._instance._initialized = False
-                    cls._instance._num_workers_init = num_workers or MAX_WORKERS
         return cls._instance
 
-    def __init__(self, num_workers: int = None):
+    def __init__(self):
         """Initialize the job queue."""
         if self._initialized:
             return
 
-        self._num_workers = getattr(self, '_num_workers_init', num_workers or MAX_WORKERS)
-        self._workers = []
+        self._transcription_workers = []
+        self._summary_workers = []
         self._running = False
         self._app = None
-        self._last_user_id = None  # For round-robin tracking
+        # Separate round-robin tracking for each queue
+        self._last_user_id_transcription = None
+        self._last_user_id_summary = None
         self._initialized = True
 
-        logger.info(f"FairJobQueue initialized with {self._num_workers} workers")
+        logger.info(f"FairJobQueue initialized: {TRANSCRIPTION_WORKERS} transcription workers, {SUMMARY_WORKERS} summary workers")
 
     def init_app(self, app):
         """Initialize with Flask app for context management."""
@@ -74,47 +81,66 @@ class FairJobQueue:
             yield
 
     def start(self):
-        """Start the worker threads."""
+        """Start the worker threads for both queues."""
         if self._running:
             return
 
         self._running = True
-        for i in range(self._num_workers):
+
+        # Start transcription workers
+        for i in range(TRANSCRIPTION_WORKERS):
             worker = threading.Thread(
                 target=self._worker_loop,
-                name=f"FairJobQueueWorker-{i}",
+                args=(TRANSCRIPTION_JOBS, 'transcription'),
+                name=f"TranscriptionWorker-{i}",
                 daemon=True
             )
             worker.start()
-            self._workers.append(worker)
+            self._transcription_workers.append(worker)
 
-        logger.info(f"Started {self._num_workers} fair job queue workers")
+        # Start summary workers
+        for i in range(SUMMARY_WORKERS):
+            worker = threading.Thread(
+                target=self._worker_loop,
+                args=(SUMMARY_JOBS, 'summary'),
+                name=f"SummaryWorker-{i}",
+                daemon=True
+            )
+            worker.start()
+            self._summary_workers.append(worker)
+
+        logger.info(f"Started {TRANSCRIPTION_WORKERS} transcription workers and {SUMMARY_WORKERS} summary workers")
 
     def stop(self):
         """Stop the worker threads gracefully."""
         self._running = False
-        for worker in self._workers:
+        for worker in self._transcription_workers + self._summary_workers:
             worker.join(timeout=5)
-        self._workers.clear()
-        logger.info("Fair job queue workers stopped")
+        self._transcription_workers.clear()
+        self._summary_workers.clear()
+        logger.info("Job queue workers stopped")
 
-    def _worker_loop(self):
-        """Main worker loop that processes jobs from the database."""
+    def _worker_loop(self, job_types: List[str], queue_name: str):
+        """Main worker loop that processes jobs of specific types."""
         while self._running:
             try:
-                job = self._claim_next_job()
+                job = self._claim_next_job(job_types, queue_name)
                 if job:
                     self._process_job(job)
                 else:
                     # No jobs available, sleep briefly
                     time.sleep(POLL_INTERVAL)
             except Exception as e:
-                logger.error(f"Worker error: {e}", exc_info=True)
+                logger.error(f"{queue_name.capitalize()} worker error: {e}", exc_info=True)
                 time.sleep(POLL_INTERVAL)
 
-    def _claim_next_job(self):
+    def _claim_next_job(self, job_types: List[str], queue_name: str):
         """
-        Claim the next job using fair round-robin scheduling.
+        Claim the next job of specified types using fair round-robin scheduling.
+
+        Args:
+            job_types: List of job types this worker handles
+            queue_name: Name of the queue ('transcription' or 'summary')
 
         Returns the claimed job or None if no jobs available.
         """
@@ -123,11 +149,12 @@ class FairJobQueue:
             from src.models import ProcessingJob
 
             try:
-                # Get list of users with queued jobs, ordered by oldest job first
+                # Get list of users with queued jobs of our types
                 users_with_jobs = db.session.query(
                     ProcessingJob.user_id
                 ).filter(
-                    ProcessingJob.status == 'queued'
+                    ProcessingJob.status == 'queued',
+                    ProcessingJob.job_type.in_(job_types)
                 ).group_by(
                     ProcessingJob.user_id
                 ).order_by(
@@ -139,18 +166,24 @@ class FairJobQueue:
 
                 user_ids = [u[0] for u in users_with_jobs]
 
+                # Get last user ID for this queue type
+                last_user_id = (self._last_user_id_transcription
+                               if queue_name == 'transcription'
+                               else self._last_user_id_summary)
+
                 # Round-robin: pick next user after last processed
                 next_user_id = None
-                if self._last_user_id is not None and self._last_user_id in user_ids:
-                    idx = user_ids.index(self._last_user_id)
+                if last_user_id is not None and last_user_id in user_ids:
+                    idx = user_ids.index(last_user_id)
                     next_user_id = user_ids[(idx + 1) % len(user_ids)]
                 else:
                     next_user_id = user_ids[0]
 
-                # Get oldest queued job for this user
+                # Get oldest queued job of our types for this user
                 job = ProcessingJob.query.filter(
                     ProcessingJob.user_id == next_user_id,
-                    ProcessingJob.status == 'queued'
+                    ProcessingJob.status == 'queued',
+                    ProcessingJob.job_type.in_(job_types)
                 ).order_by(
                     ProcessingJob.created_at
                 ).with_for_update(skip_locked=True).first()
@@ -160,16 +193,21 @@ class FairJobQueue:
                     job.status = 'processing'
                     job.started_at = datetime.utcnow()
                     db.session.commit()
-                    self._last_user_id = next_user_id
+
+                    # Update last user ID for this queue
+                    if queue_name == 'transcription':
+                        self._last_user_id_transcription = next_user_id
+                    else:
+                        self._last_user_id_summary = next_user_id
 
                     wait_time = (datetime.utcnow() - job.created_at).total_seconds()
-                    logger.info(f"Claimed job {job.id} (type={job.job_type}) for user {job.user_id}, recording {job.recording_id} (waited {wait_time:.1f}s)")
+                    logger.info(f"[{queue_name.upper()}] Claimed job {job.id} (type={job.job_type}) for user {job.user_id}, recording {job.recording_id} (waited {wait_time:.1f}s)")
                     return job
 
                 return None
 
             except Exception as e:
-                logger.error(f"Error claiming job: {e}", exc_info=True)
+                logger.error(f"Error claiming {queue_name} job: {e}", exc_info=True)
                 db.session.rollback()
                 return None
 
@@ -319,14 +357,16 @@ class FairJobQueue:
             from src.database import db
             from src.models import ProcessingJob, Recording
 
-            # Check for existing active job for this recording
+            # Check for existing active job of the SAME TYPE for this recording
+            # Allow different job types to coexist (e.g., transcribe and summarize)
             existing = ProcessingJob.query.filter(
                 ProcessingJob.recording_id == recording_id,
+                ProcessingJob.job_type == job_type,
                 ProcessingJob.status.in_(['queued', 'processing'])
             ).first()
 
             if existing:
-                logger.warning(f"Job already exists for recording {recording_id}: {existing.id}")
+                logger.warning(f"Job of type {job_type} already exists for recording {recording_id}: {existing.id}")
                 return existing.id
 
             # Create new job
@@ -338,10 +378,13 @@ class FairJobQueue:
             )
             db.session.add(job)
 
-            # Update recording status to QUEUED
+            # Update recording status based on job type
             recording = db.session.get(Recording, recording_id)
             if recording:
-                recording.status = 'QUEUED'
+                if job_type in SUMMARY_JOBS:
+                    recording.status = 'SUMMARIZING'
+                else:
+                    recording.status = 'QUEUED'
 
             db.session.commit()
 
@@ -349,7 +392,8 @@ class FairJobQueue:
             if not self._running:
                 self.start()
 
-            logger.info(f"Enqueued job {job.id} (type={job_type}) for user {user_id}, recording {recording_id}")
+            queue_name = 'summary' if job_type in SUMMARY_JOBS else 'transcription'
+            logger.info(f"Enqueued {queue_name} job {job.id} (type={job_type}) for user {user_id}, recording {recording_id}")
             return job.id
 
     def recover_orphaned_jobs(self):
@@ -368,29 +412,52 @@ class FairJobQueue:
             for job in orphaned:
                 job.status = 'queued'
                 job.started_at = None
-                logger.info(f"Recovered orphaned job {job.id} for recording {job.recording_id}")
+                queue_name = 'summary' if job.job_type in SUMMARY_JOBS else 'transcription'
+                logger.info(f"Recovered orphaned {queue_name} job {job.id} for recording {job.recording_id}")
 
             if orphaned:
                 db.session.commit()
                 logger.info(f"Recovered {len(orphaned)} orphaned jobs")
 
     def get_queue_status(self) -> Dict[str, Any]:
-        """Get the current queue status."""
+        """Get the current queue status for both queues."""
         with self._app_context():
             from src.models import ProcessingJob
 
-            queued = ProcessingJob.query.filter_by(status='queued').count()
-            processing = ProcessingJob.query.filter_by(status='processing').count()
+            transcription_queued = ProcessingJob.query.filter(
+                ProcessingJob.status == 'queued',
+                ProcessingJob.job_type.in_(TRANSCRIPTION_JOBS)
+            ).count()
+            transcription_processing = ProcessingJob.query.filter(
+                ProcessingJob.status == 'processing',
+                ProcessingJob.job_type.in_(TRANSCRIPTION_JOBS)
+            ).count()
+
+            summary_queued = ProcessingJob.query.filter(
+                ProcessingJob.status == 'queued',
+                ProcessingJob.job_type.in_(SUMMARY_JOBS)
+            ).count()
+            summary_processing = ProcessingJob.query.filter(
+                ProcessingJob.status == 'processing',
+                ProcessingJob.job_type.in_(SUMMARY_JOBS)
+            ).count()
 
             return {
-                "queued_jobs": queued,
-                "processing_jobs": processing,
-                "num_workers": self._num_workers,
+                "transcription_queue": {
+                    "queued": transcription_queued,
+                    "processing": transcription_processing,
+                    "workers": TRANSCRIPTION_WORKERS
+                },
+                "summary_queue": {
+                    "queued": summary_queued,
+                    "processing": summary_processing,
+                    "workers": SUMMARY_WORKERS
+                },
                 "is_running": self._running
             }
 
     def get_position_in_queue(self, recording_id: int) -> Optional[int]:
-        """Get the position of a recording's job in the queue (1-indexed)."""
+        """Get the position of a recording's job in its respective queue (1-indexed)."""
         with self._app_context():
             from src.models import ProcessingJob
 
@@ -402,9 +469,13 @@ class FairJobQueue:
             if not job:
                 return None
 
-            # Count jobs created before this one
+            # Determine which queue this job is in
+            job_types = SUMMARY_JOBS if job.job_type in SUMMARY_JOBS else TRANSCRIPTION_JOBS
+
+            # Count jobs of the same type created before this one
             position = ProcessingJob.query.filter(
                 ProcessingJob.status == 'queued',
+                ProcessingJob.job_type.in_(job_types),
                 ProcessingJob.created_at < job.created_at
             ).count() + 1
 
