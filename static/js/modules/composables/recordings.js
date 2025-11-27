@@ -81,25 +81,10 @@ export function useRecordings(state, utils, reprocessComposable) {
                 }
             }
 
-            // Handle incomplete recordings
-            const incompleteRecordings = recordingsList.filter(r =>
-                ['PENDING', 'PROCESSING', 'SUMMARIZING'].includes(r.status)
-            );
-            if (incompleteRecordings.length > 0 && !isProcessingActive.value) {
-                for (const recording of incompleteRecordings) {
-                    let queueItem = uploadQueue.value.find(item => item.recordingId === recording.id);
-                    if (!queueItem) {
-                        queueItem = {
-                            file: { name: recording.title || `Recording ${recording.id}`, size: recording.file_size },
-                            status: 'queued',
-                            recordingId: recording.id,
-                            clientId: `reload-${recording.id}`,
-                            error: null
-                        };
-                        uploadQueue.value.unshift(queueItem);
-                    }
-                }
-            }
+            // NOTE: Removed auto-queueing of incomplete recordings.
+            // Backend processing recordings are now shown via backendProcessingRecordings
+            // computed property, which filters recordings by status (PENDING, PROCESSING, etc.)
+            // The job queue system (ProcessingJob) handles background processing.
 
         } catch (error) {
             console.error('Load Recordings Error:', error);

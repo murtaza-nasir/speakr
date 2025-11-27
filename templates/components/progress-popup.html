@@ -1,157 +1,152 @@
-<!-- Processing Queue Popup -->
+<!-- Processing Queue Popup - Compact Unified Progress Tracking -->
 <div v-if="showProcessingPopup && !progressPopupClosed"
      :class="[
-         'fixed bottom-4 left-4 z-[100] w-96 transition-all duration-300',
+         'fixed bottom-4 left-4 z-[100] w-80 transition-all duration-300',
          progressPopupMinimized ? 'minimized' : ''
      ]">
-    <div class="bg-[var(--bg-secondary)] border-2 border-[var(--bg-accent)] rounded-lg shadow-2xl overflow-hidden backdrop-blur-sm bg-opacity-95
-                ring-4 ring-[var(--bg-accent)] ring-opacity-20"
-         style="box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px var(--bg-accent), 0 0 20px rgba(var(--bg-accent-rgb), 0.3)">
-        <!-- Progress Header -->
-        <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-4 py-3">
-            <!-- Top row: Title and buttons -->
-            <div class="flex items-center justify-between mb-2">
+    <div class="bg-[var(--bg-secondary)] border border-[var(--bg-accent)] rounded-lg shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">
+        <!-- Compact Header -->
+        <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2">
+            <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 min-w-0">
-                    <i class="fas fa-tasks text-gray-800 dark:text-white"></i>
-                    <span class="font-semibold text-gray-800 dark:text-white truncate">Processing Queue</span>
-                    <span class="text-xs bg-black dark:bg-white bg-opacity-20 dark:bg-opacity-20 px-2 py-0.5 rounded-full text-gray-800 dark:text-white font-medium">
+                    <i class="fas fa-tasks text-sm text-gray-800 dark:text-white"></i>
+                    <span class="font-medium text-sm text-gray-800 dark:text-white">Processing Queue</span>
+                    <span class="text-xs bg-black dark:bg-white bg-opacity-20 dark:bg-opacity-20 px-1.5 py-0.5 rounded-full text-gray-800 dark:text-white font-medium">
                         ${totalProcessingCount}
                     </span>
                 </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <button v-if="completedInQueue > 0" @click="clearCompletedUploads()"
-                            class="px-2 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all duration-200 text-gray-800 dark:text-white font-medium"
-                            :title="t('buttons.clearCompleted')">
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <button v-if="allCompletedCount > 0" @click="clearAllCompleted()"
+                            class="px-1.5 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all text-gray-800 dark:text-white">
                         Clear
                     </button>
                     <button @click="progressPopupMinimized = !progressPopupMinimized"
                             class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
-                        <i :class="progressPopupMinimized ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                        <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
                     </button>
                     <button @click="progressPopupClosed = true"
-                            class="p-1 rounded hover:bg-red-600 dark:hover:bg-red-500 hover:bg-opacity-20 dark:hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-white transition-colors">
-                        <i class="fas fa-times"></i>
+                            class="p-1 rounded hover:bg-red-500 hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                        <i class="fas fa-times text-xs"></i>
                     </button>
                 </div>
             </div>
-            <!-- Overall Progress Summary -->
-            <div class="text-xs text-gray-800 dark:text-white opacity-80">
-                <span v-if="backendProcessingRecordings.length > 0">
-                    ${backendProcessingRecordings.filter(r => r.status === 'PROCESSING').length} transcribing,
-                    ${backendProcessingRecordings.filter(r => r.status === 'SUMMARIZING').length} summarizing
+            <!-- Compact Summary Line -->
+            <div v-if="activeProgressItems.length > 0" class="text-xs text-gray-800 dark:text-white opacity-70 mt-1">
+                <span v-if="activeProgressItems.filter(i => i.status === 'uploading').length > 0">
+                    ${activeProgressItems.filter(i => i.status === 'uploading').length} uploading<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
                 </span>
-                <span v-if="waitingFilesInQueue.length > 0">
-                    <span v-if="backendProcessingRecordings.length > 0">, </span>
-                    ${waitingFilesInQueue.length} uploading
+                <span v-if="activeProgressItems.filter(i => i.status === 'transcribing').length > 0">
+                    ${activeProgressItems.filter(i => i.status === 'transcribing').length} transcribing<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'summarizing').length > 0">
+                    ${activeProgressItems.filter(i => i.status === 'summarizing').length} summarizing<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
+                </span>
+                <span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">
+                    ${activeProgressItems.filter(i => i.status === 'queued').length} queued
                 </span>
             </div>
         </div>
 
-        <!-- Progress Content -->
-        <div v-if="!progressPopupMinimized" class="p-3 max-h-80 overflow-y-auto">
-            <!-- Currently Uploading File -->
-            <div v-if="currentlyProcessingFile" class="mb-3 p-3 bg-blue-500 bg-opacity-10 border border-blue-400 border-opacity-30 rounded-lg">
-                <div class="flex items-center gap-2 mb-2">
-                    <i class="fas fa-cloud-upload-alt text-blue-500 animate-pulse"></i>
-                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Uploading</span>
-                </div>
-                <div class="flex items-center justify-between mb-2">
-                    <span class="font-medium truncate min-w-0 text-sm text-[var(--text-primary)]">${currentlyProcessingFile.file.name}</span>
-                    <span class="text-sm flex-shrink-0 ml-2 font-bold text-blue-600 dark:text-blue-400">${processingProgress}%</span>
-                </div>
-                <div class="w-full bg-black dark:bg-[var(--bg-tertiary)] bg-opacity-20 rounded-full h-2 mb-2 overflow-hidden">
-                    <div class="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full transition-all duration-300 relative"
-                         :style="{width: processingProgress + '%'}">
-                        <div class="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
+        <!-- Compact Content -->
+        <div v-if="!progressPopupMinimized" class="p-2 max-h-64 overflow-y-auto space-y-1.5">
+            <!-- Active Items -->
+            <template v-for="item in activeProgressItems" :key="item.id">
+                <div :class="[
+                    'px-2 py-1.5 rounded-md transition-all',
+                    item.status === 'uploading' ? 'bg-blue-500/10 border-l-2 border-blue-500' :
+                    item.status === 'transcribing' ? 'bg-purple-500/10 border-l-2 border-purple-500' :
+                    item.status === 'summarizing' ? 'bg-green-500/10 border-l-2 border-green-500' :
+                    'bg-[var(--bg-tertiary)]/50 border-l-2 border-yellow-500'
+                ]">
+                    <!-- Title row with status icon -->
+                    <div class="flex items-center gap-2">
+                        <i :class="[
+                            'fas text-xs',
+                            getStatusDisplay(item.status).icon,
+                            item.status === 'uploading' ? 'text-blue-500' :
+                            item.status === 'transcribing' ? 'text-purple-500' :
+                            item.status === 'summarizing' ? 'text-green-500' :
+                            'text-yellow-500',
+                            getStatusDisplay(item.status).animate ? 'animate-pulse' : ''
+                        ]"></i>
+                        <span class="text-xs font-medium truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                        <span v-if="item.status === 'uploading' && item.progress !== null"
+                              class="text-xs font-bold text-blue-500">${item.progress}%</span>
+                        <span v-else :class="[
+                            'text-xs font-medium px-1.5 py-0.5 rounded',
+                            item.status === 'uploading' ? 'bg-blue-500/20 text-blue-500' :
+                            item.status === 'transcribing' ? 'bg-purple-500/20 text-purple-500' :
+                            item.status === 'summarizing' ? 'bg-green-500/20 text-green-500' :
+                            'bg-yellow-500/20 text-yellow-500'
+                        ]">${getStatusDisplay(item.status).label}</span>
+                    </div>
+                    <!-- Progress bar for uploads -->
+                    <div v-if="item.status === 'uploading' && item.progress !== null"
+                         class="mt-1 h-1 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-500 rounded-full transition-all duration-300"
+                             :style="{width: item.progress + '%'}"></div>
+                    </div>
+                    <!-- Compact message -->
+                    <div class="flex items-center justify-between mt-0.5">
+                        <span class="text-[10px] text-[var(--text-muted)]">${item.progressMessage}</span>
+                        <button v-if="item.status === 'ready' && item.clientId"
+                                @click="removeProgressItem(item)"
+                                class="text-[10px] text-red-500 hover:text-red-600">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
                     </div>
                 </div>
-                <p class="text-xs text-[var(--text-secondary)]">${processingMessage}</p>
-            </div>
+            </template>
 
-            <!-- Backend Processing Recordings -->
-            <div v-if="backendProcessingRecordings.length > 0" class="space-y-2 mb-3">
-                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70 flex items-center gap-2">
-                    <i class="fas fa-server"></i>
-                    Server Processing (${backendProcessingRecordings.length})
-                </h4>
-                <div v-for="recording in backendProcessingRecordings"
-                     :key="'backend-' + recording.id"
-                     @click="selectRecording(recording)"
-                     class="p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200 cursor-pointer">
-                    <!-- Status Icon -->
-                    <div class="flex-shrink-0">
-                        <i v-if="recording.status === 'PROCESSING'"
-                           class="fas fa-microphone-alt text-purple-500 animate-pulse"></i>
-                        <i v-else-if="recording.status === 'SUMMARIZING'"
-                           class="fas fa-file-alt text-green-500 animate-pulse"></i>
-                        <i v-else-if="recording.status === 'QUEUED' || recording.status === 'PENDING'"
-                           class="fas fa-clock text-yellow-500"></i>
+            <!-- Failed Items -->
+            <div v-if="failedProgressItems.length > 0" class="mt-2">
+                <div class="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Failed (${failedProgressItems.length})
+                </div>
+                <div v-for="item in failedProgressItems"
+                     :key="item.id"
+                     class="px-2 py-1.5 bg-red-500/10 border-l-2 border-red-500 rounded-md mb-1">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-exclamation-circle text-xs text-red-500"></i>
+                        <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                        <div class="flex items-center gap-1">
+                            <button v-if="item.jobId" @click.stop="retryProgressItem(item)"
+                                    class="p-1 rounded bg-blue-500/20 hover:bg-blue-500/40 transition-colors"
+                                    title="Retry">
+                                <i class="fas fa-redo text-blue-500 text-[10px]"></i>
+                            </button>
+                            <button @click.stop="removeProgressItem(item)"
+                                    class="p-1 rounded bg-red-500/20 hover:bg-red-500/40 transition-colors"
+                                    title="Delete">
+                                <i class="fas fa-trash text-red-500 text-[10px]"></i>
+                            </button>
+                        </div>
                     </div>
-                    <!-- Recording Info -->
-                    <div class="flex-1 min-w-0">
-                        <span class="truncate text-sm block text-[var(--text-primary)]">${recording.title || recording.original_filename || 'Untitled'}</span>
-                    </div>
-                    <!-- Status Badge -->
-                    <span :class="[
-                        'text-xs px-2 py-1 rounded-full font-medium flex-shrink-0',
-                        recording.status === 'PROCESSING' ? 'bg-purple-500 bg-opacity-20 text-purple-600 dark:text-purple-400' :
-                        recording.status === 'SUMMARIZING' ? 'bg-green-500 bg-opacity-20 text-green-600 dark:text-green-400' :
-                        'bg-yellow-500 bg-opacity-20 text-yellow-600 dark:text-yellow-400'
-                    ]">
-                        <span v-if="recording.status === 'PROCESSING'">Transcribing</span>
-                        <span v-else-if="recording.status === 'SUMMARIZING'">Summarizing</span>
-                        <span v-else>Queued</span>
-                    </span>
+                    <span v-if="item.errorMessage" class="text-[10px] text-red-400 block truncate mt-0.5">${item.errorMessage}</span>
                 </div>
             </div>
 
-            <!-- Waiting Upload Files -->
-            <div v-if="waitingFilesInQueue.length > 0" class="space-y-2 mb-3">
-                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70 flex items-center gap-2">
-                    <i class="fas fa-upload"></i>
-                    Upload Queue (${waitingFilesInQueue.length})
-                </h4>
-                <div v-for="item in waitingFilesInQueue"
-                     :key="item.clientId"
-                     class="p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
-                    <i class="fas fa-file-audio text-[var(--text-muted)] text-sm"></i>
-                    <span class="truncate text-sm flex-1 text-[var(--text-primary)]">${item.file.name}</span>
-                    <span class="text-xs text-[var(--text-muted)]">${formatFileSize(item.file.size)}</span>
-                    <button @click="cancelWaitingFile(item.clientId)"
-                            class="p-1 rounded hover:bg-red-500 hover:bg-opacity-20 transition-colors flex-shrink-0"
-                            :title="'Remove from queue'">
-                        <i class="fas fa-times text-[var(--text-muted)] hover:text-red-500 text-xs"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Finished Files -->
-            <div v-if="finishedFilesInQueue.length > 0" class="space-y-2">
-                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70 flex items-center gap-2">
+            <!-- Completed Items -->
+            <div v-if="completedProgressItems.length > 0" class="mt-2">
+                <div class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1 flex items-center gap-1">
                     <i class="fas fa-check-double"></i>
-                    Recently Completed (${finishedFilesInQueue.length})
-                </h4>
-                <div v-for="item in finishedFilesInQueue"
-                     :key="item.clientId"
-                     class="p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
-                    <i :class="[
-                        'fas',
-                        item.status === 'completed' ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'
-                    ]"></i>
-                    <span class="truncate text-sm flex-1 text-[var(--text-primary)]">${item.file.name}</span>
-                    <span :class="[
-                        'text-xs px-2 py-1 rounded-full font-semibold',
-                        item.status === 'completed' ? 'bg-green-500 bg-opacity-20 text-green-600 dark:text-green-400' : 'bg-red-500 bg-opacity-20 text-red-600 dark:text-red-400'
-                    ]">
-                        ${item.status === 'completed' ? t('tagsModal.done') : t('status.failed')}
-                    </span>
+                    Completed (${completedProgressItems.length})
+                </div>
+                <div v-for="item in completedProgressItems"
+                     :key="item.id"
+                     @click="item.recordingId && selectRecording({id: item.recordingId})"
+                     class="px-2 py-1 bg-[var(--bg-tertiary)]/30 rounded-md flex items-center gap-2 hover:bg-[var(--bg-tertiary)]/50 cursor-pointer mb-1">
+                    <i class="fas fa-check-circle text-xs text-green-500"></i>
+                    <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">Done</span>
                 </div>
             </div>
 
             <!-- Empty State -->
-            <div v-if="!currentlyProcessingFile && backendProcessingRecordings.length === 0 && waitingFilesInQueue.length === 0 && finishedFilesInQueue.length === 0"
-                 class="text-center py-4 text-[var(--text-muted)] text-sm">
-                <i class="fas fa-inbox text-2xl mb-2 opacity-50"></i>
+            <div v-if="unifiedProgressItems.length === 0"
+                 class="text-center py-3 text-[var(--text-muted)] text-xs">
+                <i class="fas fa-inbox text-lg mb-1 opacity-50"></i>
                 <p>No items in queue</p>
             </div>
         </div>

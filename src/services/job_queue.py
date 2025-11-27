@@ -63,6 +63,8 @@ class FairJobQueue:
         # Separate round-robin tracking for each queue
         self._last_user_id_transcription = None
         self._last_user_id_summary = None
+        # Lock for claiming jobs (SQLite doesn't support row-level locking)
+        self._claim_lock = threading.Lock()
         self._initialized = True
 
         logger.info(f"FairJobQueue initialized: {TRANSCRIPTION_WORKERS} transcription workers, {SUMMARY_WORKERS} summary workers")
@@ -144,75 +146,90 @@ class FairJobQueue:
 
         Returns the claimed job or None if no jobs available.
         """
-        with self._app_context():
-            from src.database import db
-            from src.models import ProcessingJob
+        # Use lock to prevent race conditions (SQLite doesn't support row-level locking)
+        with self._claim_lock:
+            with self._app_context():
+                from src.database import db
+                from src.models import ProcessingJob
 
-            try:
-                # Get list of users with queued jobs of our types
-                users_with_jobs = db.session.query(
-                    ProcessingJob.user_id
-                ).filter(
-                    ProcessingJob.status == 'queued',
-                    ProcessingJob.job_type.in_(job_types)
-                ).group_by(
-                    ProcessingJob.user_id
-                ).order_by(
-                    db.func.min(ProcessingJob.created_at)
-                ).all()
+                try:
+                    # Get list of users with queued jobs of our types
+                    users_with_jobs = db.session.query(
+                        ProcessingJob.user_id
+                    ).filter(
+                        ProcessingJob.status == 'queued',
+                        ProcessingJob.job_type.in_(job_types)
+                    ).group_by(
+                        ProcessingJob.user_id
+                    ).order_by(
+                        db.func.min(ProcessingJob.created_at)
+                    ).all()
 
-                if not users_with_jobs:
+                    if not users_with_jobs:
+                        return None
+
+                    user_ids = [u[0] for u in users_with_jobs]
+
+                    # Get last user ID for this queue type
+                    last_user_id = (self._last_user_id_transcription
+                                   if queue_name == 'transcription'
+                                   else self._last_user_id_summary)
+
+                    # Round-robin: pick next user after last processed
+                    next_user_id = None
+                    if last_user_id is not None and last_user_id in user_ids:
+                        idx = user_ids.index(last_user_id)
+                        next_user_id = user_ids[(idx + 1) % len(user_ids)]
+                    else:
+                        next_user_id = user_ids[0]
+
+                    # Get oldest queued job of our types for this user
+                    job = ProcessingJob.query.filter(
+                        ProcessingJob.user_id == next_user_id,
+                        ProcessingJob.status == 'queued',
+                        ProcessingJob.job_type.in_(job_types)
+                    ).order_by(
+                        ProcessingJob.created_at
+                    ).first()
+
+                    if job:
+                        # Claim the job
+                        job.status = 'processing'
+                        job.started_at = datetime.utcnow()
+
+                        # Also update Recording.status to reflect active processing
+                        from src.models import Recording
+                        recording = db.session.get(Recording, job.recording_id)
+                        if recording and recording.status == 'QUEUED':
+                            recording.status = 'PROCESSING'
+
+                        db.session.commit()
+
+                        # Update last user ID for this queue
+                        if queue_name == 'transcription':
+                            self._last_user_id_transcription = next_user_id
+                        else:
+                            self._last_user_id_summary = next_user_id
+
+                        wait_time = (datetime.utcnow() - job.created_at).total_seconds()
+                        logger.info(f"[{queue_name.upper()}] Claimed job {job.id} (type={job.job_type}) for user {job.user_id}, recording {job.recording_id} (waited {wait_time:.1f}s)")
+                        return job
+
                     return None
 
-                user_ids = [u[0] for u in users_with_jobs]
-
-                # Get last user ID for this queue type
-                last_user_id = (self._last_user_id_transcription
-                               if queue_name == 'transcription'
-                               else self._last_user_id_summary)
-
-                # Round-robin: pick next user after last processed
-                next_user_id = None
-                if last_user_id is not None and last_user_id in user_ids:
-                    idx = user_ids.index(last_user_id)
-                    next_user_id = user_ids[(idx + 1) % len(user_ids)]
-                else:
-                    next_user_id = user_ids[0]
-
-                # Get oldest queued job of our types for this user
-                job = ProcessingJob.query.filter(
-                    ProcessingJob.user_id == next_user_id,
-                    ProcessingJob.status == 'queued',
-                    ProcessingJob.job_type.in_(job_types)
-                ).order_by(
-                    ProcessingJob.created_at
-                ).with_for_update(skip_locked=True).first()
-
-                if job:
-                    # Claim the job
-                    job.status = 'processing'
-                    job.started_at = datetime.utcnow()
-                    db.session.commit()
-
-                    # Update last user ID for this queue
-                    if queue_name == 'transcription':
-                        self._last_user_id_transcription = next_user_id
-                    else:
-                        self._last_user_id_summary = next_user_id
-
-                    wait_time = (datetime.utcnow() - job.created_at).total_seconds()
-                    logger.info(f"[{queue_name.upper()}] Claimed job {job.id} (type={job.job_type}) for user {job.user_id}, recording {job.recording_id} (waited {wait_time:.1f}s)")
-                    return job
-
-                return None
-
-            except Exception as e:
-                logger.error(f"Error claiming {queue_name} job: {e}", exc_info=True)
-                db.session.rollback()
-                return None
+                except Exception as e:
+                    logger.error(f"Error claiming {queue_name} job: {e}", exc_info=True)
+                    db.session.rollback()
+                    return None
 
     def _process_job(self, job):
         """Process a single job by dispatching to the appropriate task function."""
+        job_id = job.id
+        job_type = job.job_type
+        recording_id = job.recording_id
+        params_str = job.params
+        is_new_upload = job.is_new_upload
+
         with self._app_context():
             from src.database import db
             from src.models import ProcessingJob, Recording
@@ -220,55 +237,80 @@ class FairJobQueue:
 
             try:
                 # Parse job parameters
-                params = json.loads(job.params) if job.params else {}
+                params = json.loads(params_str) if params_str else {}
+
+                # Re-fetch the job in this session context to ensure it's attached
+                job = db.session.get(ProcessingJob, job_id)
+                if not job:
+                    logger.error(f"Job {job_id} not found when trying to process")
+                    return
 
                 # Get recording
-                recording = db.session.get(Recording, job.recording_id)
+                recording = db.session.get(Recording, recording_id)
                 if not recording:
-                    raise ValueError(f"Recording {job.recording_id} not found")
+                    raise ValueError(f"Recording {recording_id} not found")
 
                 # Dispatch based on job type
-                if job.job_type == 'transcribe':
+                if job_type == 'transcribe':
                     self._run_transcription(job, recording, params)
-                elif job.job_type == 'summarize':
+                elif job_type == 'summarize':
                     self._run_summarization(job, recording, params)
-                elif job.job_type == 'reprocess_transcription':
+                elif job_type == 'reprocess_transcription':
                     self._run_reprocess_transcription(job, recording, params)
-                elif job.job_type == 'reprocess_summary':
+                elif job_type == 'reprocess_summary':
                     self._run_reprocess_summary(job, recording, params)
                 else:
-                    raise ValueError(f"Unknown job type: {job.job_type}")
+                    raise ValueError(f"Unknown job type: {job_type}")
 
-                # Mark as completed
-                job.status = 'completed'
-                job.completed_at = datetime.utcnow()
-                db.session.commit()
-
-                logger.info(f"Job {job.id} completed successfully")
+                # Mark as completed - re-fetch to ensure we have latest state
+                job = db.session.get(ProcessingJob, job_id)
+                if job:
+                    job.status = 'completed'
+                    job.completed_at = datetime.utcnow()
+                    db.session.commit()
+                    logger.info(f"Job {job_id} completed successfully")
 
             except Exception as e:
-                logger.error(f"Job {job.id} failed: {e}", exc_info=True)
+                logger.error(f"Job {job_id} failed: {e}", exc_info=True)
 
-                # Update job with error
-                job.error_message = str(e)
-                job.retry_count += 1
+                # Re-fetch job to update it
+                job = db.session.get(ProcessingJob, job_id)
+                if job:
+                    job.error_message = str(e)
+                    job.retry_count += 1
 
-                if job.retry_count < MAX_RETRIES:
-                    # Re-queue for retry
-                    job.status = 'queued'
-                    job.started_at = None
-                    logger.info(f"Job {job.id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
-                else:
-                    job.status = 'failed'
-                    job.completed_at = datetime.utcnow()
-                    # Update recording status to FAILED
-                    recording = db.session.get(Recording, job.recording_id)
-                    if recording:
-                        recording.status = 'FAILED'
-                        recording.error_message = str(e)
-                    logger.error(f"Job {job.id} failed permanently after {MAX_RETRIES} retries")
+                    if job.retry_count < MAX_RETRIES:
+                        # Re-queue for retry
+                        job.status = 'queued'
+                        job.started_at = None
+                        logger.info(f"Job {job_id} re-queued for retry ({job.retry_count}/{MAX_RETRIES})")
+                    else:
+                        job.status = 'failed'
+                        job.completed_at = datetime.utcnow()
+                        recording = db.session.get(Recording, recording_id)
 
-                db.session.commit()
+                        if is_new_upload and recording:
+                            # For failed new uploads, delete the recording and file
+                            logger.info(f"Deleting failed new upload: recording {recording_id}")
+                            try:
+                                # Delete the audio file
+                                if recording.audio_path and os.path.exists(recording.audio_path):
+                                    os.remove(recording.audio_path)
+                                    logger.info(f"Deleted audio file: {recording.audio_path}")
+                                # Delete ALL processing jobs for this recording (required due to NOT NULL constraint)
+                                ProcessingJob.query.filter_by(recording_id=recording_id).delete()
+                                # Delete the recording from database
+                                db.session.delete(recording)
+                            except Exception as delete_err:
+                                logger.error(f"Error deleting failed upload recording: {delete_err}")
+                        elif recording:
+                            # For reprocessing failures, just mark as failed
+                            recording.status = 'FAILED'
+                            recording.error_message = str(e)
+
+                        logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+
+                    db.session.commit()
 
     def _run_transcription(self, job, recording, params):
         """Run transcription task. Status updates handled by task function."""
@@ -339,7 +381,8 @@ class FairJobQueue:
         user_id: int,
         recording_id: int,
         job_type: str,
-        params: Dict[str, Any] = None
+        params: Dict[str, Any] = None,
+        is_new_upload: bool = False
     ) -> int:
         """
         Add a job to the database queue.
@@ -349,6 +392,7 @@ class FairJobQueue:
             recording_id: ID of the recording to process
             job_type: Type of job (transcribe, summarize, reprocess_transcription, reprocess_summary)
             params: Optional parameters for the job
+            is_new_upload: True if this is a new file upload (for cleanup on failure)
 
         Returns:
             The created job ID
@@ -374,7 +418,8 @@ class FairJobQueue:
                 user_id=user_id,
                 recording_id=recording_id,
                 job_type=job_type,
-                params=json.dumps(params) if params else None
+                params=json.dumps(params) if params else None,
+                is_new_upload=is_new_upload
             )
             db.session.add(job)
 

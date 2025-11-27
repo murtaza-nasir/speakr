@@ -342,7 +342,8 @@ class FileMonitor:
                     user_id=user.id,
                     recording_id=recording.id,
                     job_type='transcribe',
-                    params={}
+                    params={},
+                    is_new_upload=True
                 )
 
                 self.logger.info(f"Queued background processing for recording ID: {recording.id}")
