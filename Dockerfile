@@ -36,6 +36,7 @@ ENV FLASK_APP=src/app.py
 ENV SQLALCHEMY_DATABASE_URI=sqlite:////data/instance/transcriptions.db
 ENV UPLOAD_FOLDER=/data/uploads
 ENV PYTHONPATH=/app
+ENV HF_HOME=/data/instance/huggingface
 
 # Add entrypoint script
 COPY scripts/docker-entrypoint.sh /usr/local/bin/
