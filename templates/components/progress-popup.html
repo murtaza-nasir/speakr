@@ -1,5 +1,5 @@
-<!-- Upload Progress Popup -->
-<div v-if="uploadQueue.length > 0 && !progressPopupClosed"
+<!-- Processing Queue Popup -->
+<div v-if="showProcessingPopup && !progressPopupClosed"
      :class="[
          'fixed bottom-4 left-4 z-[100] w-96 transition-all duration-300',
          progressPopupMinimized ? 'minimized' : ''
@@ -12,8 +12,11 @@
             <!-- Top row: Title and buttons -->
             <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2 min-w-0">
-                    <i class="fas fa-upload text-gray-800 dark:text-white animate-pulse"></i>
-                    <span class="font-semibold text-gray-800 dark:text-white truncate" v-text="t('uploadProgress.title')"></span>
+                    <i class="fas fa-tasks text-gray-800 dark:text-white"></i>
+                    <span class="font-semibold text-gray-800 dark:text-white truncate">Processing Queue</span>
+                    <span class="text-xs bg-black dark:bg-white bg-opacity-20 dark:bg-opacity-20 px-2 py-0.5 rounded-full text-gray-800 dark:text-white font-medium">
+                        ${totalProcessingCount}
+                    </span>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <button v-if="completedInQueue > 0" @click="clearCompletedUploads()"
@@ -31,45 +34,87 @@
                     </button>
                 </div>
             </div>
-            <!-- Overall Progress Bar -->
-            <div class="space-y-1">
-                <div class="flex justify-between items-center text-xs text-gray-800 dark:text-white">
-                    <span class="font-medium">${completedInQueue} of ${totalInQueue} files</span>
-                    <span class="font-bold">${Math.round((completedInQueue / Math.max(totalInQueue, 1)) * 100)}%</span>
-                </div>
-                <div class="w-full bg-black dark:bg-black bg-opacity-30 dark:bg-opacity-30 rounded-full h-2 overflow-hidden">
-                    <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden"
-                         :style="{width: (completedInQueue / Math.max(totalInQueue, 1) * 100) + '%'}">
-                        <div class="absolute inset-0 bg-black dark:bg-white opacity-30 dark:opacity-20 animate-pulse"></div>
-                    </div>
-                </div>
+            <!-- Overall Progress Summary -->
+            <div class="text-xs text-gray-800 dark:text-white opacity-80">
+                <span v-if="backendProcessingRecordings.length > 0">
+                    ${backendProcessingRecordings.filter(r => r.status === 'PROCESSING').length} transcribing,
+                    ${backendProcessingRecordings.filter(r => r.status === 'SUMMARIZING').length} summarizing
+                </span>
+                <span v-if="waitingFilesInQueue.length > 0">
+                    <span v-if="backendProcessingRecordings.length > 0">, </span>
+                    ${waitingFilesInQueue.length} uploading
+                </span>
             </div>
         </div>
 
         <!-- Progress Content -->
-        <div v-if="!progressPopupMinimized" class="p-3 max-h-64 overflow-y-auto">
-            <!-- Currently Processing File -->
-            <div v-if="currentlyProcessingFile" class="mb-3 p-3 bg-[var(--bg-accent)] bg-opacity-10 border border-[var(--border-accent)] rounded-lg">
+        <div v-if="!progressPopupMinimized" class="p-3 max-h-80 overflow-y-auto">
+            <!-- Currently Uploading File -->
+            <div v-if="currentlyProcessingFile" class="mb-3 p-3 bg-blue-500 bg-opacity-10 border border-blue-400 border-opacity-30 rounded-lg">
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fas fa-cloud-upload-alt text-blue-500 animate-pulse"></i>
+                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Uploading</span>
+                </div>
                 <div class="flex items-center justify-between mb-2">
-                    <span class="font-semibold truncate min-w-0 text-sm text-[var(--text-primary)]">${currentlyProcessingFile.file.name}</span>
-                    <span class="text-sm flex-shrink-0 ml-2 font-bold text-[var(--text-accent)]">${processingProgress}%</span>
+                    <span class="font-medium truncate min-w-0 text-sm text-[var(--text-primary)]">${currentlyProcessingFile.file.name}</span>
+                    <span class="text-sm flex-shrink-0 ml-2 font-bold text-blue-600 dark:text-blue-400">${processingProgress}%</span>
                 </div>
                 <div class="w-full bg-black dark:bg-[var(--bg-tertiary)] bg-opacity-20 rounded-full h-2 mb-2 overflow-hidden">
-                    <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] h-full rounded-full transition-all duration-300 relative"
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-400 h-full rounded-full transition-all duration-300 relative"
                          :style="{width: processingProgress + '%'}">
-                        <div class="absolute inset-0 bg-black dark:bg-white opacity-30 dark:opacity-20 animate-pulse"></div>
+                        <div class="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
                     </div>
                 </div>
-                <p class="text-xs text-[var(--text-secondary)] font-medium">${processingMessage}</p>
+                <p class="text-xs text-[var(--text-secondary)]">${processingMessage}</p>
             </div>
 
-            <!-- Waiting Files -->
+            <!-- Backend Processing Recordings -->
+            <div v-if="backendProcessingRecordings.length > 0" class="space-y-2 mb-3">
+                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70 flex items-center gap-2">
+                    <i class="fas fa-server"></i>
+                    Server Processing (${backendProcessingRecordings.length})
+                </h4>
+                <div v-for="recording in backendProcessingRecordings"
+                     :key="'backend-' + recording.id"
+                     @click="selectRecording(recording)"
+                     class="p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200 cursor-pointer">
+                    <!-- Status Icon -->
+                    <div class="flex-shrink-0">
+                        <i v-if="recording.status === 'PROCESSING'"
+                           class="fas fa-microphone-alt text-purple-500 animate-pulse"></i>
+                        <i v-else-if="recording.status === 'SUMMARIZING'"
+                           class="fas fa-file-alt text-green-500 animate-pulse"></i>
+                        <i v-else-if="recording.status === 'QUEUED' || recording.status === 'PENDING'"
+                           class="fas fa-clock text-yellow-500"></i>
+                    </div>
+                    <!-- Recording Info -->
+                    <div class="flex-1 min-w-0">
+                        <span class="truncate text-sm block text-[var(--text-primary)]">${recording.title || recording.original_filename || 'Untitled'}</span>
+                    </div>
+                    <!-- Status Badge -->
+                    <span :class="[
+                        'text-xs px-2 py-1 rounded-full font-medium flex-shrink-0',
+                        recording.status === 'PROCESSING' ? 'bg-purple-500 bg-opacity-20 text-purple-600 dark:text-purple-400' :
+                        recording.status === 'SUMMARIZING' ? 'bg-green-500 bg-opacity-20 text-green-600 dark:text-green-400' :
+                        'bg-yellow-500 bg-opacity-20 text-yellow-600 dark:text-yellow-400'
+                    ]">
+                        <span v-if="recording.status === 'PROCESSING'">Transcribing</span>
+                        <span v-else-if="recording.status === 'SUMMARIZING'">Summarizing</span>
+                        <span v-else>Queued</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Waiting Upload Files -->
             <div v-if="waitingFilesInQueue.length > 0" class="space-y-2 mb-3">
-                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70">Waiting (${waitingFilesInQueue.length})</h4>
+                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70 flex items-center gap-2">
+                    <i class="fas fa-upload"></i>
+                    Upload Queue (${waitingFilesInQueue.length})
+                </h4>
                 <div v-for="item in waitingFilesInQueue"
                      :key="item.clientId"
-                     class="progress-list-item p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
-                    <i class="fas fa-clock text-[var(--text-muted)] text-sm"></i>
+                     class="p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
+                    <i class="fas fa-file-audio text-[var(--text-muted)] text-sm"></i>
                     <span class="truncate text-sm flex-1 text-[var(--text-primary)]">${item.file.name}</span>
                     <span class="text-xs text-[var(--text-muted)]">${formatFileSize(item.file.size)}</span>
                     <button @click="cancelWaitingFile(item.clientId)"
@@ -82,10 +127,13 @@
 
             <!-- Finished Files -->
             <div v-if="finishedFilesInQueue.length > 0" class="space-y-2">
-                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70" v-text="t('help.completedFiles')"></h4>
+                <h4 class="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider opacity-70 flex items-center gap-2">
+                    <i class="fas fa-check-double"></i>
+                    Recently Completed (${finishedFilesInQueue.length})
+                </h4>
                 <div v-for="item in finishedFilesInQueue"
                      :key="item.clientId"
-                     class="progress-list-item p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
+                     class="p-2 bg-[var(--bg-tertiary)] bg-opacity-50 rounded-lg flex items-center gap-2 hover:bg-opacity-70 transition-all duration-200">
                     <i :class="[
                         'fas',
                         item.status === 'completed' ? 'fa-check-circle text-green-500' : 'fa-exclamation-circle text-red-500'
@@ -98,6 +146,13 @@
                         ${item.status === 'completed' ? t('tagsModal.done') : t('status.failed')}
                     </span>
                 </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="!currentlyProcessingFile && backendProcessingRecordings.length === 0 && waitingFilesInQueue.length === 0 && finishedFilesInQueue.length === 0"
+                 class="text-center py-4 text-[var(--text-muted)] text-sm">
+                <i class="fas fa-inbox text-2xl mb-2 opacity-50"></i>
+                <p>No items in queue</p>
             </div>
         </div>
     </div>
