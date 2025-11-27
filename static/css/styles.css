@@ -1318,6 +1318,104 @@ body {
     margin-left: 0.25rem;
 }
 
+/* Floating Processing Indicator */
+.processing-indicator-floating {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-accent);
+    border-radius: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease-out;
+}
+
+.dark .processing-indicator-floating {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.processing-indicator-floating.minimized {
+    position: sticky;
+    top: 0;
+    right: 0;
+    width: auto;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.processing-indicator-content {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.processing-indicator-content i {
+    font-size: 1rem;
+}
+
+.processing-indicator-minimize {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.processing-indicator-minimize:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.processing-indicator-expand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--border-accent);
+    background: var(--bg-secondary);
+    color: var(--text-accent);
+    cursor: pointer;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+.dark .processing-indicator-expand {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.processing-indicator-expand:hover {
+    background: var(--bg-tertiary);
+    transform: scale(1.1);
+}
+
 /* Enhanced transcription display with speaker bubbles */
 .transcription-with-speakers {
     line-height: 1.6;

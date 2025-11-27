@@ -1070,6 +1070,8 @@
     "deleteTeam": "Delete Group",
     "removeFromTeam": "Remove from team",
     "followPlayerDisabled": "Enable auto-scroll - transcript follows audio playback",
-    "followPlayerEnabled": "Disable auto-scroll - transcript stays in place"
+    "followPlayerEnabled": "Disable auto-scroll - transcript stays in place",
+    "minimize": "Minimize",
+    "expand": "Expand"
   }
 }

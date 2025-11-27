@@ -1061,6 +1061,8 @@
     "deleteTeam": "Gruppe Löschen",
     "removeFromTeam": "Aus Team entfernen",
     "followPlayerDisabled": "Automatisches Scrollen aktivieren - Transkript folgt der Audiowiedergabe",
-    "followPlayerEnabled": "Automatisches Scrollen deaktivieren - Transkript bleibt an Ort und Stelle"
+    "followPlayerEnabled": "Automatisches Scrollen deaktivieren - Transkript bleibt an Ort und Stelle",
+    "minimize": "Minimieren",
+    "expand": "Erweitern"
   }
 }

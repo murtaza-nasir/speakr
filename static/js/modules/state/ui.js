@@ -30,6 +30,7 @@ export function createUIState(ref, computed) {
     const transcriptionViewMode = ref('simple');
     const legendExpanded = ref(false);
     const highlightedSpeaker = ref(null);
+    const processingIndicatorMinimized = ref(false);
 
     // --- Computed Properties ---
     const isMobileScreen = computed(() => {
@@ -84,6 +85,7 @@ export function createUIState(ref, computed) {
         transcriptionViewMode,
         legendExpanded,
         highlightedSpeaker,
+        processingIndicatorMinimized,
 
         // Computed
         isMobileScreen,

@@ -309,6 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showDownloadMenu = ref(false);
             const currentPlayingSegmentIndex = ref(null);
             const followPlayerMode = ref(false);
+            const processingIndicatorMinimized = ref(false);
 
             // --- Chat State ---
             const showChat = ref(false);
@@ -462,7 +463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Transcription
                 transcriptionViewMode, legendExpanded, highlightedSpeaker, showDownloadMenu,
-                currentPlayingSegmentIndex, followPlayerMode,
+                currentPlayingSegmentIndex, followPlayerMode, processingIndicatorMinimized,
 
                 // Chat
                 showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef,

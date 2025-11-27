@@ -72,13 +72,32 @@
     </div>
 
     <!-- Transcription Content -->
-    <div class="flex-1 overflow-y-auto p-4">
-        <div v-if="selectedRecording.status === 'PROCESSING'" class="text-center py-8">
-            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-            <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.processingTranscription')"></p>
+    <div class="flex-1 overflow-y-auto p-4 relative">
+        <!-- Floating Processing Indicator -->
+        <div v-if="selectedRecording.status === 'PROCESSING'"
+             :class="['processing-indicator-floating', processingIndicatorMinimized ? 'minimized' : '']">
+            <template v-if="!processingIndicatorMinimized">
+                <div class="processing-indicator-content">
+                    <i class="fas fa-spinner fa-spin text-[var(--text-accent)]"></i>
+                    <span class="text-sm text-[var(--text-secondary)]" v-text="t('help.processingTranscription')"></span>
+                </div>
+                <button @click="processingIndicatorMinimized = true"
+                        class="processing-indicator-minimize"
+                        :title="t('tooltips.minimize')">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+            </template>
+            <template v-else>
+                <button @click="processingIndicatorMinimized = false"
+                        class="processing-indicator-expand"
+                        :title="t('help.processingTranscription')">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </button>
+            </template>
         </div>
 
-        <div v-else-if="!selectedRecording.transcription" class="text-center py-8">
+        <!-- No transcription state (only show if not processing and no transcription) -->
+        <div v-if="selectedRecording.status !== 'PROCESSING' && !selectedRecording.transcription" class="text-center py-8">
             <i class="fas fa-file-text text-3xl text-[var(--text-muted)] mb-3"></i>
             <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
         </div>
