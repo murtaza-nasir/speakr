@@ -1,0 +1,31 @@
+<!-- Recording Disclaimer Modal -->
+<div v-if="showRecordingDisclaimerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="flex-shrink-0 p-6 border-b border-[var(--border-primary)]">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-info-circle text-2xl text-[var(--text-accent)]"></i>
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]" v-text="t('modal.recordingNotice')"></h3>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6">
+            <!-- Render markdown content -->
+            <div class="prose prose-sm max-w-none text-[var(--text-secondary)]"
+                 style="color: var(--text-secondary); line-height: 1.6;">
+                <div v-html="recordingDisclaimer"></div>
+            </div>
+        </div>
+        <div class="flex-shrink-0 p-6 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] rounded-b-lg">
+            <div class="flex justify-end gap-3">
+                <button @click="cancelRecordingDisclaimer"
+                        class="px-6 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors border border-[var(--border-secondary)]">
+                    Cancel
+                </button>
+                <button @click="acceptRecordingDisclaimer"
+                        class="px-6 py-2 bg-[var(--bg-accent)] text-white rounded-lg hover:bg-[var(--bg-accent-hover)] transition-colors">
+                    <i class="fas fa-microphone mr-2"></i>
+                    Start Recording
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
