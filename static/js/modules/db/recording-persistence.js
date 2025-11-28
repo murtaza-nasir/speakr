@@ -117,7 +117,7 @@ export const saveChunk = async (chunkBlob, chunkIndex) => {
 
         // Update session - must happen before transaction auto-closes
         await promisifyRequest(objectStore.put(session));
-        console.log(`[RecordingDB] Chunk ${chunkIndex} saved (${chunkBlob.size} bytes)`);
+        // Chunk saved silently to avoid spam (happens every 5 seconds)
     } catch (error) {
         console.error('[RecordingDB] Failed to save chunk:', error);
         // Don't throw - recording should continue even if persistence fails
@@ -143,8 +143,7 @@ export const updateRecordingMetadata = async (updates) => {
         // Merge updates
         Object.assign(session, updates);
         await promisifyRequest(objectStore.put(session));
-
-        console.log('[RecordingDB] Metadata updated:', updates);
+        // Metadata updated silently to avoid spam (happens every 5 seconds)
     } catch (error) {
         console.error('[RecordingDB] Failed to update metadata:', error);
     }
