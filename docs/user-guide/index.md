@@ -59,6 +59,13 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
     <p>Configure preferences, manage speakers, create tags, and customize AI prompts.</p>
     <a href="settings" class="card-link">Customize →</a>
   </div>
+
+  <div class="guide-card">
+    <div class="card-icon">🔑</div>
+    <h3>API Tokens</h3>
+    <p>Create personal access tokens for automation tools, scripts, and programmatic API access.</p>
+    <a href="api-tokens" class="card-link">API Access →</a>
+  </div>
 </div>
 
 ## Pro Tips for Success

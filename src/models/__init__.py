@@ -15,6 +15,7 @@ from src.database import db
 
 # Import all models
 from .user import User, Speaker
+from .api_token import APIToken
 from .speaker_snippet import SpeakerSnippet
 from .recording import Recording, TranscriptChunk
 from .sharing import Share, InternalShare, SharedRecordingState
@@ -34,6 +35,7 @@ __all__ = [
     # User models
     'User',
     'Speaker',
+    'APIToken',
     'SpeakerSnippet',
     # Recording models
     'Recording',

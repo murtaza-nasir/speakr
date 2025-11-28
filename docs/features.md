@@ -124,6 +124,27 @@ Export recordings in multiple formats for different purposes. Generate Word docu
 
 Track all your shared recordings from a central dashboard. See what's been shared, when, and with what permissions. Modify share settings without generating new links, or instantly revoke access when shares are no longer appropriate. View shared recordings alongside your own content with clear visual indicators showing ownership and group affiliation.
 
+## API Access
+
+### Personal Access Tokens
+
+Speakr provides [API token authentication](user-guide/api-tokens.md) for programmatic access to your recordings. Create personal access tokens from your Account Settings to authenticate automation tools, scripts, and custom integrations without sharing your password.
+
+Tokens work with multiple authentication methods - the standard Authorization Bearer header, custom X-API-Token or API-Token headers, or query parameters for simple integrations. Each token is tied to your user account and provides the same access as logging in through the web interface.
+
+### Integration Support
+
+Build powerful workflows with popular automation platforms:
+
+- **n8n / Zapier / Make** - Trigger transcriptions, retrieve recordings, and integrate Speakr into your automation workflows
+- **Custom scripts** - Access your recordings programmatically with Python, JavaScript, or any language that supports HTTP
+- **CI/CD pipelines** - Automate audio processing as part of development workflows
+- **Mobile apps** - Build custom interfaces that connect to your Speakr instance
+
+### Token Security
+
+All tokens are hashed using SHA-256 before storage - the plaintext token is shown only once at creation. Set custom expiration periods for temporary integrations, or create non-expiring tokens for permanent workflows. Revoke tokens instantly from the Account Settings if compromised.
+
 ## Advanced Capabilities
 
 ### Audio Chunking

@@ -438,6 +438,28 @@ def exempt_status_endpoints():
 
 csrf = CSRFProtect(app)
 
+
+# Exempt token-authenticated requests from CSRF protection
+@csrf.exempt
+@app.before_request
+def csrf_exempt_for_api_tokens():
+    """
+    Exempt API token-authenticated requests from CSRF validation.
+
+    This allows automation tools (n8n, Zapier, curl, etc.) to make
+    authenticated requests without needing CSRF tokens.
+    """
+    from src.utils.token_auth import is_token_authenticated
+
+    # If request has a valid token, skip CSRF check
+    if is_token_authenticated():
+        # Mark this view as CSRF exempt
+        if hasattr(request, 'endpoint') and request.endpoint:
+            view_func = app.view_functions.get(request.endpoint)
+            if view_func:
+                csrf.exempt(view_func)
+
+
 # Add context processor to make 'now' available to all templates
 @app.context_processor
 def inject_now():
@@ -497,9 +519,23 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
+
+@login_manager.request_loader
+def load_user_from_request(request):
+    """
+    Load user from API token in the request.
+
+    This enables token-based authentication for API access
+    (e.g., from curl, n8n, Zapier, etc.).
+    """
+    from src.utils.token_auth import load_user_from_token
+    return load_user_from_token()
+
+
 # --- Embedding and Chunking Utilities ---
 
 from src.api.auth import auth_bp, init_auth_extensions
+from src.api.tokens import tokens_bp, init_tokens_helpers
 from src.api.shares import shares_bp, init_shares_helpers
 from src.api.recordings import recordings_bp, init_recordings_helpers
 from src.api.tags import tags_bp, init_tags_helpers
@@ -523,6 +559,7 @@ client, chunking_service, version = initialize_config(app)
 
 # Initialize blueprint helpers (inject extensions and utility functions)
 init_auth_extensions(bcrypt, csrf, limiter)
+init_tokens_helpers(bcrypt, csrf, limiter)
 init_shares_helpers(has_recording_access)
 init_recordings_helpers(has_recording_access=has_recording_access, get_user_recording_status=get_user_recording_status, set_user_recording_status=set_user_recording_status, enrich_recording_dict_with_user_status=enrich_recording_dict_with_user_status, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
 init_tags_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
@@ -536,6 +573,7 @@ init_system_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, cs
 
 # Register blueprints
 app.register_blueprint(auth_bp)
+app.register_blueprint(tokens_bp)
 app.register_blueprint(shares_bp)
 app.register_blueprint(recordings_bp)
 app.register_blueprint(tags_bp)
