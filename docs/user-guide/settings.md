@@ -167,6 +167,56 @@ The ASR defaults feature is particularly valuable for consistent meeting types. 
 
 Edit and delete buttons on each card provide full control. Edit to refine prompts based on results, adjust colors for better organization, or update ASR defaults as meeting patterns change. Delete removes tags no longer needed, though this doesn't affect recordings already tagged - they retain their labels for historical accuracy.
 
+## API Tokens Tab
+
+The API Tokens tab enables programmatic access to your Speakr instance through personal access tokens. These tokens allow automation tools, scripts, and custom integrations to authenticate as your user account.
+
+### Creating Tokens
+
+Click the **Create Token** button to generate a new token. You'll provide a descriptive name (like "n8n automation" or "CLI scripts") and optionally set an expiration period. The token value is shown only once after creation - copy it immediately and store it securely.
+
+!!! warning "Token Security"
+    Treat API tokens like passwords. They provide full access to your account. Never share tokens publicly, commit them to version control, or expose them in client-side code.
+
+### Token Display
+
+Active tokens appear as compact cards showing:
+
+- **Name** - The descriptive name you assigned
+- **Status badge** - Active (green), expired (yellow), or revoked (red)
+- **Created date** - When the token was created
+- **Last used** - When the token last authenticated a request
+- **Expiration** - When the token expires, or "No expiration" for permanent tokens
+
+### Using Tokens
+
+Tokens can authenticate API requests through multiple methods:
+
+```bash
+# Authorization header (recommended)
+curl -H "Authorization: Bearer YOUR_TOKEN" https://speakr.example.com/api/recordings
+
+# X-API-Token header
+curl -H "X-API-Token: YOUR_TOKEN" https://speakr.example.com/api/recordings
+
+# Query parameter (less secure)
+curl "https://speakr.example.com/api/recordings?token=YOUR_TOKEN"
+```
+
+### Revoking Tokens
+
+Click the trash icon on any token card to revoke it immediately. Revoked tokens stop working instantly and cannot be restored. Create a new token if you need continued access.
+
+### Best Practices
+
+- Use descriptive names to track each token's purpose
+- Set expiration dates for temporary integrations
+- Revoke tokens you no longer need
+- Create separate tokens for different integrations
+- Never share tokens between users - each person should create their own
+
+For detailed API documentation and integration examples, see the [API Tokens Guide](api-tokens.md).
+
 ## About Tab
 
 ![About](../assets/images/screenshots/settings about page.png)

@@ -6,16 +6,16 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.6.2 - UX Polish & Bug Fixes"
-    **Maintenance Release** - Improved user experience and stability
+!!! info "Latest Release: v0.6.3 - API Token Authentication"
+    **New Feature** - Programmatic API access for automation tools
 
-    - **Standardized Modal UX** - All 20+ modals now close on backdrop click with consistent X button
-    - **Markdown Support** - Recording disclaimer now supports full markdown formatting
-    - **Crash Recovery** - Fixed IndexedDB errors and blank screen issues after browser crashes
-    - **Processing Queue Fix** - Deleted recordings properly removed from queue
-    - **Performance** - Reduced recording chunk interval to 5 seconds for 80% less overhead
+    - **API Tokens** - Create personal access tokens for programmatic API access (n8n, Zapier, scripts)
+    - **Multiple Auth Methods** - Bearer token, X-API-Token header, API-Token header, or query parameter
+    - **Token Management** - Create, revoke, and track token usage from Account Settings
+    - **Flexible Expiration** - Set custom expiration periods or create non-expiring tokens
+    - **Secure Storage** - Tokens are hashed (SHA-256) and never stored in plaintext
 
-    ✅ Fully backward compatible with v0.6.0. No configuration changes required. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.6.2)
+    ✅ Fully backward compatible with v0.6.x. No configuration changes required. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.6.3)
 
 ## Quick Navigation
 
@@ -120,6 +120,15 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
       <li><a href="user-guide/sharing">Secure sharing</a></li>
     </ul>
   </div>
+
+  <div class="feature-card">
+    <h4>🔑 API Access</h4>
+    <ul>
+      <li><a href="user-guide/api-tokens">Personal access tokens</a></li>
+      <li>Automation tool integration</li>
+      <li>Secure token management</li>
+    </ul>
+  </div>
 </div>
 
 ## Interactive Audio Synchronization
@@ -138,17 +147,22 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.6.2 - UX Polish & Bug Fixes"
-    **Maintenance Release** - Improved user experience and stability
+!!! info "Version 0.6.3 - API Token Authentication"
+    **New Feature** - Programmatic API access for automation tools
 
-    - **Standardized Modal UX** - All 20+ modals close on backdrop click with consistent X button placement
-    - **Markdown Support** - Recording disclaimer supports full markdown formatting (headings, lists, links, code blocks)
-    - **Crash Recovery Fixed** - Resolved IndexedDB errors and blank screen issues after browser/tab crashes
-    - **Processing Queue Fix** - Deleted recordings properly removed from queue (no more ghost entries)
-    - **Recording Performance** - Reduced chunk interval to 5 seconds for 80% less IndexedDB overhead
-    - **Console Cleanup** - Removed repetitive logging during recording sessions
+    - **API Tokens** - Create personal access tokens for programmatic API access
+    - **Multiple Auth Methods** - Bearer token, X-API-Token header, API-Token header, or query parameter
+    - **Token Management** - Create, revoke, and track token usage from Account Settings
+    - **Flexible Expiration** - Set custom expiration periods or create non-expiring tokens
+    - **Secure Storage** - Tokens are hashed (SHA-256) and never stored in plaintext
 
-    ✅ Fully backward compatible with v0.6.0. No configuration changes required.
+    ✅ Fully backward compatible with v0.6.x. No configuration changes required.
+
+!!! success "Version 0.6.2 - UX Polish & Bug Fixes"
+    - Standardized modal UX with backdrop click and consistent X button placement
+    - Recording disclaimer markdown support
+    - IndexedDB crash recovery fixes
+    - Processing queue cleanup on delete
 
 !!! success "Version 0.6.1 - Offline Ready"
     - **HuggingFace Model Caching** - Embedding model persists across container restarts

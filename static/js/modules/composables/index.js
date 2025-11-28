@@ -13,6 +13,7 @@
  * - modals: Modal dialog management
  * - chat: AI chat functionality
  * - pwa: PWA features (install prompt, notifications, badging, media session)
+ * - tokens: API token management
  */
 
 export { useRecordings } from './recordings.js';
@@ -26,3 +27,4 @@ export { useTranscription } from './transcription.js';
 export { useSpeakers } from './speakers.js';
 export { useChat } from './chat.js';
 export { usePWA } from './pwa.js';
+export { useTokens } from './tokens.js';

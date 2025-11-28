@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.6.2-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.6.3-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -145,17 +145,24 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.6.2)
+## Latest Release (v0.6.3)
 
-**Maintenance Release** - UX Polish & Bug Fixes
+**New Feature** - API Token Authentication
 
-- **Standardized Modal UX** - All 20+ modals now close on backdrop click with consistent X button placement
-- **Markdown Support** - Recording disclaimer now supports full markdown formatting
-- **Crash Recovery** - Fixed IndexedDB errors and blank screen issues after browser crashes
-- **Processing Queue Fix** - Deleted recordings properly removed from queue (no more ghost entries)
-- **Performance** - Reduced recording chunk interval to 5 seconds for 80% less overhead
+- **API Tokens** - Create personal access tokens for programmatic API access (automation tools, scripts, n8n/Zapier)
+- **Multiple Auth Methods** - Bearer token, X-API-Token header, API-Token header, or query parameter
+- **Token Management** - Create, revoke, and track token usage from Account Settings
+- **Flexible Expiration** - Set custom expiration periods or create non-expiring tokens
+- **Secure Storage** - Tokens are hashed (SHA-256) and never stored in plaintext
 
-Fully backward compatible with v0.6.0. No configuration changes required.
+Fully backward compatible with v0.6.x. No configuration changes required.
+
+### Previous Release (v0.6.2)
+
+- Standardized modal UX with backdrop click and consistent X button placement
+- Recording disclaimer markdown support
+- IndexedDB crash recovery fixes
+- Processing queue cleanup on delete
 
 ### Previous Release (v0.5.10)
 

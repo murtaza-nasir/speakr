@@ -34,6 +34,13 @@ from .database import (
     migrate_column_type
 )
 
+from .token_auth import (
+    extract_token_from_request,
+    hash_token,
+    load_user_from_token,
+    is_token_authenticated
+)
+
 __all__ = [
     # JSON parsing
     'auto_close_json',
@@ -51,4 +58,9 @@ __all__ = [
     # Database
     'add_column_if_not_exists',
     'migrate_column_type',
+    # Token authentication
+    'extract_token_from_request',
+    'hash_token',
+    'load_user_from_token',
+    'is_token_authenticated',
 ]

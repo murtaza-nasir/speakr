@@ -89,12 +89,29 @@
   },
   "accountTabs": {
     "about": "About",
+    "apiTokens": "API Tokens",
     "customPrompts": "Custom Prompts",
     "promptOptions": "Prompt Options",
     "sharedTranscripts": "Shared Transcripts",
     "speakersManagement": "Speakers Management",
     "tagManagement": "Tag Management",
     "transcriptTemplates": "Transcript Templates"
+  },
+  "apiTokens": {
+    "activeTokens": "Active Tokens",
+    "created": "Created",
+    "createFirstToken": "Create your first API token to enable programmatic access",
+    "createToken": "Create Token",
+    "description": "Create and manage API tokens for programmatic access to your account",
+    "expires": "Expires",
+    "lastUsed": "Last used",
+    "neverUsed": "Never used",
+    "noExpiration": "No expiration",
+    "noTokens": "No API Tokens",
+    "securityNotice": "Security Notice",
+    "securityWarning": "Treat API tokens like passwords. They provide full access to your account. Never share tokens in publicly accessible areas such as GitHub, client-side code, or logs",
+    "title": "API Tokens",
+    "usageExamples": "Usage Examples"
   },
   "eventExtraction": {
     "title": "Event Extraction",
