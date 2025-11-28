@@ -401,7 +401,7 @@ export function useAudio(state, utils) {
             };
 
             mediaRecorder.value = recorder;
-            recorder.start(1000);
+            recorder.start(5000); // 5-second chunks for less overhead while still enabling crash recovery
             isRecording.value = true;
 
             // Start timer
