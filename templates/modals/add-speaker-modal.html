@@ -1,7 +1,15 @@
 <!-- Add Speaker Modal -->
-<div v-if="showAddSpeakerModal" @click="closeAddSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md p-6">
-        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4" v-text="t('modal.addSpeaker')"></h3>
+<div v-if="showAddSpeakerModal" @click.self="closeAddSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+        <div class="p-6 border-b border-[var(--border-primary)]">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.addSpeaker')"></h3>
+                <button @click="closeAddSpeakerModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
 
         <!-- "This is Me" checkbox -->
         <div class="mb-4">
@@ -63,6 +71,7 @@
             </button>
             <button @click="addNewSpeaker" class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] transition-colors" v-text="t('buttons.addSpeaker')">
             </button>
+        </div>
         </div>
     </div>
 </div>

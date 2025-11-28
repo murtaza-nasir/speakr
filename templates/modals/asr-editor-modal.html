@@ -1,5 +1,5 @@
 <!-- ASR Editor Modal -->
-<div v-if="showAsrEditorModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+<div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
     <div @click="closeAllSpeakerSuggestions" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-6xl flex flex-col max-h-[90vh]">
         <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0 flex justify-between items-center">
             <h3 class="text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.editAsrTranscription')"></h3>

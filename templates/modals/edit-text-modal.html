@@ -1,7 +1,15 @@
 <!-- Edit Text Modal -->
-<div v-if="showEditTextModal" @click="closeEditTextModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl p-6">
-        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-4">Edit Transcript Text</h3>
+<div v-if="showEditTextModal" @click.self="closeEditTextModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl">
+        <div class="p-6 border-b border-[var(--border-primary)]">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-bold text-[var(--text-primary)]">Edit Transcript Text</h3>
+                <button @click="closeEditTextModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6">
 
         <!-- Text editor -->
         <div class="mb-6">
@@ -24,6 +32,7 @@
             <button @click="saveEditedText" class="px-4 py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:bg-[var(--bg-accent-hover)] transition-colors">
                 Save Changes
             </button>
+        </div>
         </div>
     </div>
 </div>

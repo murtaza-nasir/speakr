@@ -1,13 +1,18 @@
 <!-- Delete Confirmation Modal -->
-<div v-if="showDeleteModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+<div v-if="showDeleteModal" @click.self="cancelDelete" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
     <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-md">
         <div class="p-6">
-            <div class="flex items-center gap-4 mb-4">
-                <i class="fas fa-exclamation-triangle text-3xl text-[var(--text-danger)]"></i>
-                <div>
-                    <h3 class="text-lg font-semibold" v-text="t('modal.deleteRecording')"></h3>
-                    <p class="text-[var(--text-muted)]" v-text="t('help.thisActionCannotBeUndone')"></p>
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-4">
+                    <i class="fas fa-exclamation-triangle text-3xl text-[var(--text-danger)]"></i>
+                    <div>
+                        <h3 class="text-lg font-semibold" v-text="t('modal.deleteRecording')"></h3>
+                        <p class="text-[var(--text-muted)]" v-text="t('help.thisActionCannotBeUndone')"></p>
+                    </div>
                 </div>
+                <button @click="cancelDelete" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
             <p class="text-[var(--text-secondary)] mb-6">
                 Are you sure you want to delete "${recordingToDelete?.title || 'this recording'}"?

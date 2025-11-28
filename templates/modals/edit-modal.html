@@ -1,8 +1,11 @@
 <!-- Edit Modal -->
-<div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+<div v-if="showEditModal" @click.self="cancelEdit" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
     <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg">
-        <div class="p-6 border-b border-[var(--border-primary)]">
+        <div class="p-6 border-b border-[var(--border-primary)] flex items-center justify-between">
             <h3 class="text-lg font-semibold" v-text="t('modal.editRecording')"></h3>
+            <button @click="cancelEdit" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
         </div>
         <div class="p-6 space-y-4">
             <div>
