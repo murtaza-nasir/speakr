@@ -36,7 +36,30 @@ The recording disclaimer appears before users start any recording session, makin
 
 Organizations often use this for compliance requirements - reminding users about consent requirements, data handling policies, or appropriate use guidelines. Educational institutions might note that recordings are for academic purposes only. Healthcare organizations could reference HIPAA compliance requirements.
 
-Keep disclaimers concise and relevant. Users see this message frequently, so lengthy legal text becomes an ignored click-through. Focus on the most important points, and link to detailed policies if needed. The markdown support lets you format the message clearly with bold text for emphasis or links to additional resources.
+!!! info "Full Markdown Support (v0.6.2+)"
+    The recording disclaimer now supports **full markdown formatting**, including:
+
+    - **Headings** - Structure your disclaimer with `# Main Title` and `## Sections`
+    - **Lists** - Bulleted and numbered lists for clear requirements
+    - **Bold and Italic** - Emphasize important terms with `**bold**` or `*italic*`
+    - **Links** - Reference detailed policies with `[Privacy Policy](https://yoursite.com/privacy)`
+    - **Code blocks** - Include examples or technical requirements
+    - **Blockquotes** - Highlight key legal notices
+
+    Example markdown disclaimer:
+    ```markdown
+    ## Recording Consent Required
+
+    By starting this recording, you agree to:
+
+    1. Obtain consent from all participants
+    2. Comply with [company privacy policy](https://example.com/privacy)
+    3. Handle recordings according to **GDPR** requirements
+
+    > **Important**: Recordings containing sensitive information must be deleted within 30 days.
+    ```
+
+Keep disclaimers concise and relevant. Users see this message frequently, so lengthy legal text becomes an ignored click-through. Focus on the most important points, and link to detailed policies if needed. The markdown support lets you format the message clearly for better readability and comprehension.
 
 ## System-Wide Impact
 

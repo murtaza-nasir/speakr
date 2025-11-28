@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.6.1-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.6.2-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -145,13 +145,15 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.6.1)
+## Latest Release (v0.6.2)
 
-**Maintenance Release** - Offline deployment improvements
+**Maintenance Release** - UX Polish & Bug Fixes
 
-- **HuggingFace Model Caching** - Embedding model now persists across container restarts
-- **Offline Documentation** - Added comprehensive offline deployment guidance
-- **Inquire Mode Reliability** - Model loads from cache after initial download, no network required
+- **Standardized Modal UX** - All 20+ modals now close on backdrop click with consistent X button placement
+- **Markdown Support** - Recording disclaimer now supports full markdown formatting
+- **Crash Recovery** - Fixed IndexedDB errors and blank screen issues after browser crashes
+- **Processing Queue Fix** - Deleted recordings properly removed from queue (no more ghost entries)
+- **Performance** - Reduced recording chunk interval to 5 seconds for 80% less overhead
 
 Fully backward compatible with v0.6.0. No configuration changes required.
 

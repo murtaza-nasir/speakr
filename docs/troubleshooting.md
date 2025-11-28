@@ -80,6 +80,17 @@ The choice of transcription model impacts speed. Whisper Large is more accurate 
 
 If Speakr crashed or restarted while recordings were processing, they automatically resume on next startup. The job queue persists to the database, so no uploads are lost. Check the logs for "Recovered orphaned jobs" messages confirming jobs were resumed.
 
+### Deleted Recordings Still in Processing Queue (Fixed in v0.6.2)
+
+!!! success "Fixed in v0.6.2"
+    Prior to v0.6.2, deleted recordings could remain visible in the processing queue as "ghost entries." Clicking on these would open an empty recording window. This has been resolved - deleted recordings are now immediately removed from both the frontend queue and backend job tracking.
+
+If you're on v0.6.1 or earlier and see this behavior, upgrade to v0.6.2. The fix ensures that when you delete a recording:
+- It's removed from your library
+- It's removed from the processing queue display
+- Any associated backend jobs are cleaned up
+- No ghost entries remain clickable
+
 ### Files Over 25MB Fail with OpenAI
 
 OpenAI's Whisper API has a 25MB file size limit. For larger files, enable [chunking](features.md#audio-chunking) in your environment configuration. Learn about [chunking strategies](faq.md#whats-the-difference-between-chunking-by-size-vs-duration):
