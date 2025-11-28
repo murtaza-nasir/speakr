@@ -429,11 +429,10 @@ main {
 }
 .summary-box,
 .notes-box {
-    flex: 1 1 auto !important;
-    width: 100% !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
+    flex: 1;
+    width: 100%;
     min-height: 0;
+    min-width: 0;
     max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
@@ -446,8 +445,6 @@ main {
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     word-wrap: break-word;
     overflow-wrap: break-word;
-    white-space: normal;
-    display: block !important;
 }
 
 .transcription-box {
@@ -676,11 +673,13 @@ div[v-if="!editingNotes"] {
  /* Hover edit button styles */
 .content-box {
     position: relative;
-    height: 100%; /* Fill the available flex space */
-    min-height: 0; /* Allow shrinking */
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Prevent overflow from affecting parent layout */
+    overflow: hidden;
 }
  
  .hover-edit-btn {
@@ -785,35 +784,39 @@ div[v-if="!editingNotes"] {
  .ai-message h1, .summary-box h1, .notes-box h1 { font-size: 1.25rem; }
  .ai-message h2, .summary-box h2, .notes-box h2 { font-size: 1.15rem; }
  .ai-message h3, .summary-box h3, .notes-box h3 { font-size: 1.05rem; }
- 
+
  .ai-message p, .summary-box p, .notes-box p {
      margin-bottom: 0.75rem;
-     width: 100% !important;
-     max-width: 100% !important;
-     word-wrap: break-word;
-     overflow-wrap: break-word;
  }
 
- .summary-box > *, .notes-box > * {
-     width: 100% !important;
-     max-width: 100% !important;
-     display: block;
- }
- 
  .ai-message ul, .ai-message ol,
  .summary-box ul, .summary-box ol,
  .notes-box ul, .notes-box ol {
      margin-left: 1.5rem;
+     margin-right: 0.5rem;
      margin-bottom: 0.75rem;
-     list-style-position: outside; /* Ensures bullets are outside the text flow */
+     padding-right: 0.5rem;
+     list-style-position: outside;
+     display: block;
+     width: auto;
+     max-width: calc(100% - 2rem);
+     box-sizing: border-box;
+     overflow-wrap: break-word;
+     word-break: break-word;
  }
  
  .ai-message ul, .summary-box ul, .notes-box ul { list-style-type: disc; }
  .ai-message ol, .summary-box ol, .notes-box ol { list-style-type: decimal; }
 
  .ai-message li, .summary-box li, .notes-box li {
-    display: list-item; /* Ensure li elements are treated as list items */
-    margin-bottom: 0.25rem; /* Add some space between list items */
+    display: list-item;
+    margin-bottom: 0.25rem;
+    width: auto;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: anywhere;
+    word-wrap: break-word;
+    hyphens: auto;
  }
  
  .ai-message code, .summary-box code, .notes-box code {
