@@ -1,8 +1,13 @@
 <!-- System Audio Help Modal -->
-<div v-if="showSystemAudioHelp" @click="showSystemAudioHelp = false" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+<div v-if="showSystemAudioHelp" @click.self="showSystemAudioHelp = false" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
         <div class="p-6 border-b border-[var(--border-primary)]">
-            <h3 class="text-lg font-semibold" v-text="t('help.systemAudioHelp')"></h3>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold" v-text="t('help.systemAudioHelp')"></h3>
+                <button @click="showSystemAudioHelp = false" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
         </div>
         <div class="p-6 space-y-4">
             <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">

@@ -126,6 +126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Upload State ---
             const uploadQueue = ref([]);
+            const allJobs = ref([]); // Backend job queue (queued, processing, completed, failed)
             const currentlyProcessingFile = ref(null);
             const processingProgress = ref(0);
             const processingMessage = ref('');
@@ -409,7 +410,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 colorSchemes, isMobileScreen, isMobileDevice,
 
                 // Upload
-                uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
+                uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,
                 isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
                 recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
@@ -1103,8 +1104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return recordings.value.filter(r => ['PENDING', 'PROCESSING', 'SUMMARIZING', 'QUEUED'].includes(r.status));
             });
 
-            // All jobs from backend (queued, processing, completed, failed)
-            const allJobs = ref([]);
+            // Job queue polling state
             let jobQueuePollInterval = null;
             let lastJobQueueFetch = 0; // Timestamp of last fetch
             const JOB_QUEUE_POLL_INTERVAL = 5000;  // Poll every 5 seconds when active
@@ -1517,6 +1517,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return availableTags.value.filter(tag => tag.custom_prompt && tag.custom_prompt.trim() !== '');
             });
 
+            // Recording disclaimer parsed as markdown
+            const recordingDisclaimerHtml = computed(() => {
+                if (!recordingDisclaimer.value || recordingDisclaimer.value.trim() === '') {
+                    return '';
+                }
+                return marked.parse(recordingDisclaimer.value);
+            });
+
             // Get tag prompt preview
             const getTagPromptPreview = (tagId) => {
                 const tag = availableTags.value.find(t => t.id == tagId);
@@ -1837,6 +1845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 retryProgressItem,
                 hasSpeakerNames,
                 tagsWithCustomPrompts,
+                recordingDisclaimerHtml,
                 getTagPromptPreview,
 
                 // Utilities

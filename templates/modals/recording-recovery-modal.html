@@ -1,10 +1,15 @@
 <!-- Recording Recovery Modal -->
-<div v-if="showRecoveryModal" @click="cancelRecovery" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+<div v-if="showRecoveryModal" @click.self="cancelRecovery" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
         <div class="p-6 border-b border-[var(--border-primary)]">
-            <div class="flex items-center gap-3">
-                <i class="fas fa-history text-2xl text-blue-500"></i>
-                <h3 class="text-lg font-semibold" v-text="t('recording.recoveryTitle')"></h3>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-history text-2xl text-blue-500"></i>
+                    <h3 class="text-lg font-semibold" v-text="t('recording.recoveryTitle')"></h3>
+                </div>
+                <button @click="cancelRecovery" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
         </div>
 

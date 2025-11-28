@@ -12,7 +12,7 @@ export function useModals(state, utils) {
         showShareDeleteModal, showUnifiedShareModal, showColorSchemeModal,
         showSystemAudioHelpModal, editingRecording, recordingToDelete, recordingToReset,
         selectedRecording, recordings, selectedNewTagId, tagSearchFilter,
-        availableTags, currentView, totalRecordings, toasts, uploadQueue
+        availableTags, currentView, totalRecordings, toasts, uploadQueue, allJobs
     } = state;
 
     const { showToast, setGlobalError } = utils;
@@ -94,14 +94,22 @@ export function useModals(state, utils) {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to delete recording');
 
+            // Remove from recordings list
             recordings.value = recordings.value.filter(r => r.id !== deletedId);
             totalRecordings.value--;
 
-            // Also remove from upload queue if present (clears processing queue entry)
+            // Remove from upload queue if present (frontend tracking)
             if (uploadQueue?.value) {
                 uploadQueue.value = uploadQueue.value.filter(item => item.recordingId !== deletedId);
             }
 
+            // Remove from backend job queue if present (backend processing tracking)
+            // This is critical - without this, deleted recordings remain in processing queue
+            if (allJobs?.value) {
+                allJobs.value = allJobs.value.filter(job => job.recording_id !== deletedId);
+            }
+
+            // Clear selected recording if it's the one being deleted
             if (selectedRecording.value?.id === deletedId) {
                 selectedRecording.value = null;
                 currentView.value = 'upload';

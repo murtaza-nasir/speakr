@@ -1,8 +1,13 @@
 <!-- Edit Participants Modal -->
-<div v-if="showEditParticipantsModal" @click="closeEditParticipantsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop="closeAllParticipantSuggestions" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+<div v-if="showEditParticipantsModal" @click.self="closeEditParticipantsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div @click="closeAllParticipantSuggestions" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <div class="p-6 border-b border-[var(--border-primary)] flex-shrink-0">
-            <h3 class="text-lg font-semibold" v-text="t('modal.editParticipants')"></h3>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold" v-text="t('modal.editParticipants')"></h3>
+                <button @click="closeEditParticipantsModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
         </div>
         <div class="p-6 overflow-y-auto flex-1" @scroll="closeAllParticipantSuggestions">
             <p class="text-sm text-[var(--text-muted)] mb-4">Manage participants for this recording.</p>

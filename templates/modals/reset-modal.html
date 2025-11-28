@@ -1,11 +1,20 @@
 <!-- Reset Status Confirmation Modal -->
-<div v-if="showResetModal" @click="cancelReset" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
-        <div class="p-6 text-center">
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-800 mb-4">
-                <i class="fas fa-exclamation-triangle text-2xl text-orange-500 dark:text-orange-300"></i>
+<div v-if="showResetModal" @click.self="cancelReset" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+        <div class="p-6">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-start gap-3">
+                    <div class="flex items-center justify-center h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-800">
+                        <i class="fas fa-exclamation-triangle text-2xl text-orange-500 dark:text-orange-300"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2" v-text="t('modal.resetStatus')"></h3>
+                    </div>
+                </div>
+                <button @click="cancelReset" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
             </div>
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2" v-text="t('modal.resetStatus')"></h3>
             <p class="text-sm text-[var(--text-muted)] mb-6">
                 This will mark the recording as 'Failed'. This is useful if processing is stuck. You will be able to reprocess it afterwards.
             </p>

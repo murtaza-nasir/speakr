@@ -1,9 +1,16 @@
 <!-- Unified Share Modal (Public + Internal Sharing) -->
-<div v-if="showUnifiedShareModal" @click="closeUnifiedShareModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div @click.stop class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+<div v-if="showUnifiedShareModal" @click.self="closeUnifiedShareModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
-            <h3 class="text-lg font-semibold" v-text="t('modal.shareRecording')"></h3>
-            <p class="text-sm text-[var(--text-muted)] mt-0.5">${internalShareRecording?.title}</p>
+            <div class="flex items-center justify-between">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold" v-text="t('modal.shareRecording')"></h3>
+                    <p class="text-sm text-[var(--text-muted)] mt-0.5">${internalShareRecording?.title}</p>
+                </div>
+                <button @click="closeUnifiedShareModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ml-4">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
         </div>
 
         <div class="flex-1 overflow-y-auto">
