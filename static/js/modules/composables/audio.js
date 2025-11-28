@@ -11,7 +11,7 @@ export function useAudio(state, utils) {
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
-        showRecordingDisclaimerModal, currentView, isDarkMode, wakeLock, animationFrameId,
+        showRecordingDisclaimerModal, pendingRecordingMode, currentView, isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
@@ -19,6 +19,10 @@ export function useAudio(state, utils) {
     } = state;
 
     const { showToast, setGlobalError, formatFileSize, startUploadQueue } = utils;
+
+    // Local state for pending streams and chunk tracking
+    let pendingDisplayStream = null;
+    let currentChunkIndex = 0;
 
     // iOS detection
     const isiOS = () => {
@@ -169,7 +173,7 @@ export function useAudio(state, utils) {
                 }
 
                 // Store stream for use after disclaimer (if any)
-                state.pendingDisplayStream = displayStream;
+                pendingDisplayStream = displayStream;
             } catch (error) {
                 console.error('[Recording] Failed to get display media:', error);
                 if (error.name === 'NotAllowedError') {
@@ -184,7 +188,7 @@ export function useAudio(state, utils) {
         // Now check for disclaimer (after we've secured the display stream)
         if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
             showRecordingDisclaimerModal.value = true;
-            state.pendingRecordingMode = mode;
+            pendingRecordingMode.value = mode;
             return;
         }
 
@@ -194,18 +198,18 @@ export function useAudio(state, utils) {
     // Accept recording disclaimer and start recording
     const acceptRecordingDisclaimer = async () => {
         showRecordingDisclaimerModal.value = false;
-        await startRecordingInternal(state.pendingRecordingMode || 'microphone');
+        await startRecordingInternal(pendingRecordingMode.value || 'microphone');
     };
 
     // Cancel recording disclaimer
     const cancelRecordingDisclaimer = () => {
         showRecordingDisclaimerModal.value = false;
         // Clean up pending display stream if user cancels
-        if (state.pendingDisplayStream) {
-            state.pendingDisplayStream.getTracks().forEach(track => track.stop());
-            state.pendingDisplayStream = null;
+        if (pendingDisplayStream) {
+            pendingDisplayStream.getTracks().forEach(track => track.stop());
+            pendingDisplayStream = null;
         }
-        state.pendingRecordingMode = null;
+        pendingRecordingMode.value = null;
     };
 
     // Internal start recording function
@@ -218,7 +222,7 @@ export function useAudio(state, utils) {
             fileSizeWarningShown.value = false;
 
             // Initialize IndexedDB session
-            state.currentChunkIndex = 0;
+            currentChunkIndex = 0;
 
             let stream;
             let combinedStream;
@@ -244,9 +248,9 @@ export function useAudio(state, utils) {
                 // or get it now for browsers that don't require immediate call
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
-                if (state.pendingDisplayStream) {
-                    stream = state.pendingDisplayStream;
-                    state.pendingDisplayStream = null;
+                if (pendingDisplayStream) {
+                    stream = pendingDisplayStream;
+                    pendingDisplayStream = null;
                 } else {
                     const displayMediaConstraints = {
                         video: true,
@@ -295,9 +299,9 @@ export function useAudio(state, utils) {
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
                 let displayStream;
 
-                if (state.pendingDisplayStream) {
-                    displayStream = state.pendingDisplayStream;
-                    state.pendingDisplayStream = null;
+                if (pendingDisplayStream) {
+                    displayStream = pendingDisplayStream;
+                    pendingDisplayStream = null;
                 } else {
                     displayStream = await navigator.mediaDevices.getDisplayMedia({
                         video: true,
@@ -378,12 +382,12 @@ export function useAudio(state, utils) {
 
                     // Save chunk to IndexedDB for crash recovery
                     try {
-                        await RecordingDB.saveChunk(event.data, state.currentChunkIndex);
+                        await RecordingDB.saveChunk(event.data, currentChunkIndex);
                         await RecordingDB.updateRecordingMetadata({
                             duration: recordingTime.value,
                             notes: recordingNotes.value
                         });
-                        state.currentChunkIndex++;
+                        currentChunkIndex++;
                     } catch (dbError) {
                         console.warn('[Recording] Failed to save chunk to IndexedDB:', dbError);
                     }
