@@ -1848,6 +1848,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formatTime,
                 formatDuration,
                 formatEventDateTime,
+                formatDateTime: formatEventDateTime, // Alias for recovery modal
                 setGlobalError,
                 showToast,
                 getContrastTextColor,

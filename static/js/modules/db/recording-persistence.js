@@ -10,6 +10,16 @@ const STORE_NAME = 'activeRecording';
 let dbInstance = null;
 
 /**
+ * Helper to promisify IDBRequest
+ */
+const promisifyRequest = (request) => {
+    return new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+/**
  * Initialize IndexedDB
  */
 export const initDB = () => {
@@ -67,7 +77,7 @@ export const startRecordingSession = async (recordingData) => {
             duration: 0
         };
 
-        await objectStore.put(session);
+        await promisifyRequest(objectStore.put(session));
         console.log('[RecordingDB] Recording session started:', session.id);
         return session;
     } catch (error) {
@@ -81,20 +91,21 @@ export const startRecordingSession = async (recordingData) => {
  */
 export const saveChunk = async (chunkBlob, chunkIndex) => {
     try {
+        // Do async prep work BEFORE creating transaction to avoid auto-close
         const db = await initDB();
+        const arrayBuffer = await chunkBlob.arrayBuffer();
+
+        // Now create transaction and do all DB operations quickly
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
 
         // Get current session
-        const session = await objectStore.get('current');
+        const session = await promisifyRequest(objectStore.get('current'));
 
         if (!session) {
             console.warn('[RecordingDB] No active session found');
             return;
         }
-
-        // Convert Blob to ArrayBuffer for storage
-        const arrayBuffer = await chunkBlob.arrayBuffer();
 
         // Add chunk to session
         session.chunks.push({
@@ -104,8 +115,8 @@ export const saveChunk = async (chunkBlob, chunkIndex) => {
             timestamp: Date.now()
         });
 
-        // Update session
-        await objectStore.put(session);
+        // Update session - must happen before transaction auto-closes
+        await promisifyRequest(objectStore.put(session));
         console.log(`[RecordingDB] Chunk ${chunkIndex} saved (${chunkBlob.size} bytes)`);
     } catch (error) {
         console.error('[RecordingDB] Failed to save chunk:', error);
@@ -122,7 +133,7 @@ export const updateRecordingMetadata = async (updates) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
 
-        const session = await objectStore.get('current');
+        const session = await promisifyRequest(objectStore.get('current'));
 
         if (!session) {
             console.warn('[RecordingDB] No active session to update');
@@ -131,7 +142,7 @@ export const updateRecordingMetadata = async (updates) => {
 
         // Merge updates
         Object.assign(session, updates);
-        await objectStore.put(session);
+        await promisifyRequest(objectStore.put(session));
 
         console.log('[RecordingDB] Metadata updated:', updates);
     } catch (error) {
@@ -148,7 +159,7 @@ export const checkForRecoverableRecording = async () => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const objectStore = transaction.objectStore(STORE_NAME);
 
-        const session = await objectStore.get('current');
+        const session = await promisifyRequest(objectStore.get('current'));
 
         if (!session || !session.chunks || session.chunks.length === 0) {
             return null;
@@ -187,7 +198,7 @@ export const recoverRecording = async () => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const objectStore = transaction.objectStore(STORE_NAME);
 
-        const session = await objectStore.get('current');
+        const session = await promisifyRequest(objectStore.get('current'));
 
         if (!session || !session.chunks || session.chunks.length === 0) {
             console.warn('[RecordingDB] No recording to recover');
@@ -228,7 +239,7 @@ export const clearRecordingSession = async () => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
 
-        await objectStore.delete('current');
+        await promisifyRequest(objectStore.delete('current'));
         console.log('[RecordingDB] Recording session cleared');
     } catch (error) {
         console.error('[RecordingDB] Failed to clear session:', error);
