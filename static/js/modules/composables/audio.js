@@ -359,16 +359,16 @@ export function useAudio(state, utils) {
 
             const recorder = new MediaRecorder(stream, { mimeType });
 
-            // Start IndexedDB recording session
+            // Start IndexedDB recording session - convert Vue reactive objects to plain objects
             try {
                 await RecordingDB.startRecordingSession({
                     mode,
-                    notes: recordingNotes.value,
-                    tags: selectedTagIds.value,
+                    notes: recordingNotes.value || '',
+                    tags: selectedTagIds.value ? [...selectedTagIds.value] : [], // Convert reactive array to plain array
                     asrOptions: {
-                        language: asrLanguage.value,
-                        min_speakers: asrMinSpeakers.value,
-                        max_speakers: asrMaxSpeakers.value
+                        language: asrLanguage.value || '',
+                        min_speakers: asrMinSpeakers.value || '',
+                        max_speakers: asrMaxSpeakers.value || ''
                     },
                     mimeType
                 });
@@ -385,11 +385,11 @@ export function useAudio(state, utils) {
                         await RecordingDB.saveChunk(event.data, currentChunkIndex);
                         await RecordingDB.updateRecordingMetadata({
                             duration: recordingTime.value,
-                            notes: recordingNotes.value
+                            notes: recordingNotes.value || ''
                         });
                         currentChunkIndex++;
                     } catch (dbError) {
-                        console.warn('[Recording] Failed to save chunk to IndexedDB:', dbError);
+                        // Don't spam console - recording continues in memory regardless
                     }
                 }
             };
