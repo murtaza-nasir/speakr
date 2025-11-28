@@ -1737,7 +1737,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const recovered = await audioComposable.recoverRecordingFromDB();
                     if (recovered) {
-                        currentView.value = 'preview';
+                        currentView.value = 'recording';
                         showToast('Recording recovered successfully', 'success');
                     } else {
                         showToast('Failed to recover recording', 'error');
