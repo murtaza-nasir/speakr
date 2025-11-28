@@ -6,16 +6,16 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! warning "Latest Release: v0.5.9 - Major Update"
-    **⚠️ IMPORTANT:** This is a **major release** with significant architectural changes. **Before upgrading:**
+!!! info "Latest Release: v0.6.2 - UX Polish & Bug Fixes"
+    **Maintenance Release** - Improved user experience and stability
 
-    - **BACKUP YOUR DATA** - Database schema changes require migration
-    - **Review new environment variables** - Many features require `.env` configuration
-    - **Test in development first** - Major refactoring may affect existing workflows
+    - **Standardized Modal UX** - All 20+ modals now close on backdrop click with consistent X button
+    - **Markdown Support** - Recording disclaimer now supports full markdown formatting
+    - **Crash Recovery** - Fixed IndexedDB errors and blank screen issues after browser crashes
+    - **Processing Queue Fix** - Deleted recordings properly removed from queue
+    - **Performance** - Reduced recording chunk interval to 5 seconds for 80% less overhead
 
-    **Key Environment Variables:** `ENABLE_INTERNAL_SHARING`, `SHOW_USERNAMES_IN_UI`, `USERS_CAN_DELETE`, `ENABLE_AUTO_DELETION`, `GLOBAL_RETENTION_DAYS`, `ENABLE_AUTO_EXPORT`, `ENABLE_PUBLIC_SHARING`
-
-    See the [configuration guide](getting-started/installation.md#step-3-environment-configuration) for complete setup instructions. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.5.9)
+    ✅ Fully backward compatible with v0.6.0. No configuration changes required. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.6.2)
 
 ## Quick Navigation
 
@@ -138,22 +138,36 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.6.2 - UX Polish & Bug Fixes"
+    **Maintenance Release** - Improved user experience and stability
+
+    - **Standardized Modal UX** - All 20+ modals close on backdrop click with consistent X button placement
+    - **Markdown Support** - Recording disclaimer supports full markdown formatting (headings, lists, links, code blocks)
+    - **Crash Recovery Fixed** - Resolved IndexedDB errors and blank screen issues after browser/tab crashes
+    - **Processing Queue Fix** - Deleted recordings properly removed from queue (no more ghost entries)
+    - **Recording Performance** - Reduced chunk interval to 5 seconds for 80% less IndexedDB overhead
+    - **Console Cleanup** - Removed repetitive logging during recording sessions
+
+    ✅ Fully backward compatible with v0.6.0. No configuration changes required.
+
+!!! success "Version 0.6.1 - Offline Ready"
+    - **HuggingFace Model Caching** - Embedding model persists across container restarts
+    - **Offline Deployment** - Run once with internet, then works fully offline
+
+!!! success "Version 0.6.0 - Queue Control"
+    - **Multi-User Job Queue** - Fair round-robin scheduling with automatic retry for failed jobs
+    - **Unified Progress Tracking** - Single view merging uploads and backend processing
+    - **Media Support** - Added video format support and fixed Firefox system audio recording
+
 !!! warning "Version 0.5.9 - Major Release"
-    **⚠️ Backup your data before upgrading!** This release includes database migrations and architectural changes.
+    **⚠️ Major architectural changes** - Backup data before upgrading!
 
-    **New Features:**
-    - **Complete Internal Sharing System** - Share recordings with users with granular permissions (view/edit/reshare), personal notes, and independent status tracking
-    - **Group Management & Collaboration** - Create groups with leads, group tags that auto-share recordings, custom retention policies per group
-    - **Speaker Voice Profiles** - AI-powered speaker recognition with 256-dimensional embeddings (requires WhisperX ASR)
-    - **Audio-Transcript Synchronization** - Click-to-jump, auto-highlight, and follow mode for interactive navigation
-    - **Auto-Deletion & Retention System** - Global and group-level retention policies, tag protection, per-recording exemptions
-    - **Automated Export** - Auto-export transcriptions to markdown for Obsidian, Logseq, and other note-taking apps
-    - **Permission System** - Fine-grained access control with user deletion rights, public sharing permissions, role-based access
-    - **Modular Architecture** - Backend refactored into blueprints, frontend composables for shared logic
-    - **UI/UX Enhancements** - Compact controls, inline editing, unified toast notifications, improved badges
-    - **Enhanced Internationalization** - 29 new tooltip translations across all languages (EN, DE, ES, FR, ZH)
-
-    **Required `.env` variables:** See [configuration guide](getting-started/installation.md#step-3-environment-configuration)
+    - **Internal Sharing System** - Share recordings with granular permissions (view/edit/reshare)
+    - **Group Management** - Create groups with leads, group tags, custom retention policies
+    - **Speaker Voice Profiles** - AI-powered recognition with embeddings (requires WhisperX)
+    - **Audio-Transcript Sync** - Click-to-jump, auto-highlight, and follow mode
+    - **Auto-Deletion & Retention** - Global and group-level policies with tag protection
+    - **Modular Architecture** - Backend refactored into blueprints, frontend composables
 
     Previous release (v0.5.8):
 

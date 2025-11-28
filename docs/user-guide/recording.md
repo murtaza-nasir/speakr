@@ -122,6 +122,33 @@ These settings are particularly useful for meetings with known participants, as 
 
 At the bottom of the modal, you have three options for proceeding. The "Upload" or "Start Processing" button begins transcription immediately with your selected settings. The recording will appear in your library with a processing indicator while transcription runs in the background. The "Discard" option deletes the recording without saving, useful if you made a test recording or captured the wrong content. Some configurations may also offer a "Save Draft" option to store the recording without processing it immediately.
 
+## Crash Recovery (v0.6.2+)
+
+!!! success "Automatic Crash Recovery"
+    Speakr now automatically saves your in-progress recordings to browser storage every 5 seconds. If your browser crashes, tab closes accidentally, or your computer restarts unexpectedly during a recording, you won't lose your work.
+
+When you return to Speakr after a crash, you'll see a recovery modal offering to restore your interrupted recording:
+
+**What Gets Recovered:**
+- All recorded audio up to the point of interruption
+- Recording mode (microphone, system audio, or combined)
+- Any notes you had entered
+- Selected tags and settings
+- Exact timestamp when recording started
+
+**How Recovery Works:**
+1. When you return to Speakr after a crash, a modal automatically appears
+2. Review the recording details (duration, size, timestamp)
+3. Click "Restore Recording" to continue where you left off, or "Discard" to start fresh
+4. Recovered recordings appear in the finalization screen ready for processing
+
+**Limitations:**
+- Recovery data is stored in your browser's IndexedDB storage (per-browser, per-device)
+- Clearing browser data will delete recovery information
+- Recording chunks are saved every 5 seconds, so up to 5 seconds of audio may be lost
+
+This feature provides peace of mind for long recordings - you can now record multi-hour sessions without fear of losing everything if something goes wrong.
+
 ## Best Practices for Quality Recordings
 
 ### Mobile Recording Considerations
