@@ -131,44 +131,59 @@ def download_transcript_with_template(recording_id):
             millis = int((td.total_seconds() % 1) * 1000)
             return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
 
-        # Parse transcription JSON
+        # Parse transcription - handle both JSON (diarized) and plain text formats
+        is_diarized = False
+        transcription_data = None
         try:
             transcription_data = json.loads(recording.transcription)
-        except:
-            return jsonify({'error': 'Invalid transcription format'}), 400
+            if isinstance(transcription_data, list):
+                is_diarized = True
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON, treat as plain text
+            pass
 
-        # Generate formatted transcript
-        output_lines = []
-        for index, segment in enumerate(transcription_data, 1):
-            line = template_format
+        # If plain text transcription, return it as-is (no template formatting applies)
+        if not is_diarized:
+            formatted_transcript = recording.transcription
+        else:
+            # Generate formatted transcript from diarized segments
+            output_lines = []
+            for index, segment in enumerate(transcription_data, 1):
+                line = template_format
 
-            # Replace variables
-            replacements = {
-                '{{index}}': str(index),
-                '{{speaker}}': segment.get('speaker', 'Unknown'),
-                '{{text}}': segment.get('sentence', ''),
-                '{{start_time}}': format_time(segment.get('start_time')),
-                '{{end_time}}': format_time(segment.get('end_time')),
-            }
+                # Replace variables
+                replacements = {
+                    '{{index}}': str(index),
+                    '{{speaker}}': segment.get('speaker', 'Unknown'),
+                    '{{text}}': segment.get('sentence', ''),
+                    '{{start_time}}': format_time(segment.get('start_time')),
+                    '{{end_time}}': format_time(segment.get('end_time')),
+                }
 
-            for key, value in replacements.items():
-                line = line.replace(key, value)
+                for key, value in replacements.items():
+                    line = line.replace(key, value)
 
-            # Handle filters
-            # Upper case filter
-            line = re.sub(r'{{(.*?)\|upper}}', lambda m: replacements.get('{{' + m.group(1) + '}}', '').upper(), line)
-            # SRT time filter
-            line = re.sub(r'{{start_time\|srt}}', format_srt_time(segment.get('start_time')), line)
-            line = re.sub(r'{{end_time\|srt}}', format_srt_time(segment.get('end_time')), line)
+                # Handle filters
+                # Upper case filter
+                line = re.sub(r'{{(.*?)\|upper}}', lambda m: replacements.get('{{' + m.group(1) + '}}', '').upper(), line)
+                # SRT time filter
+                line = re.sub(r'{{start_time\|srt}}', format_srt_time(segment.get('start_time')), line)
+                line = re.sub(r'{{end_time\|srt}}', format_srt_time(segment.get('end_time')), line)
 
-            output_lines.append(line)
+                output_lines.append(line)
 
-        # Join lines
-        formatted_transcript = '\n'.join(output_lines)
+            # Join lines
+            formatted_transcript = '\n'.join(output_lines)
 
         # Create response
         response = make_response(formatted_transcript)
-        filename = f"{recording.title or 'transcript'}_{template.name if template else 'formatted'}.txt"
+        if is_diarized and template:
+            filename = f"{recording.title or 'transcript'}_{template.name}.txt"
+        elif is_diarized:
+            filename = f"{recording.title or 'transcript'}_formatted.txt"
+        else:
+            # Plain text transcription
+            filename = f"{recording.title or 'transcript'}.txt"
         filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', filename)
         response.headers['Content-Type'] = 'text/plain; charset=utf-8'
         response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
