@@ -128,7 +128,7 @@
 </head>
 <body class="h-full bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
     <div id="inquire-app" v-cloak class="h-full flex flex-col"
-         data-current-user-name="{{ current_user.name if current_user.is_authenticated else '' }}">
+         data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}">
         
         <!-- Header -->
         <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
@@ -165,7 +165,7 @@
                             class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
                             :title="t('admin.userMenu')">
                         <i class="fas fa-user-circle text-lg"></i>
-                        <span class="hidden lg:inline text-sm">{{ current_user.name if current_user.is_authenticated else 'User' }}</span>
+                        <span class="hidden lg:inline text-sm">{{ (current_user.name or current_user.username) if current_user.is_authenticated else 'User' }}</span>
                         <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
                     </button>
 

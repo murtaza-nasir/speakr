@@ -48,7 +48,7 @@
          data-use-asr-endpoint="{{ use_asr_endpoint }}"
          data-enable-archive-toggle="{{ enable_archive_toggle }}"
          data-enable-internal-sharing="{{ enable_internal_sharing }}"
-         data-current-user-name="{{ current_user.name if current_user.is_authenticated else '' }}"
+         data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}"
          data-user-language="{{ user_language }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">
 
