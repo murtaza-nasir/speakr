@@ -28,7 +28,7 @@ from src.services.speaker import update_speaker_usage, identify_unidentified_spe
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
 from src.services.document import process_markdown_to_docx
-from src.services.llm import client, call_llm_completion, process_streaming_with_thinking
+from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
 
@@ -2630,9 +2630,9 @@ def chat_with_transcription():
         if not has_recording_access(recording, current_user):
             return jsonify({'error': 'You do not have permission to chat with this recording'}), 403
 
-        # Check if OpenRouter client is available
-        if client is None:
-            return jsonify({'error': 'Chat service is not available (OpenRouter client not configured)'}), 503
+        # Check if chat client is available
+        if chat_client is None:
+            return jsonify({'error': 'Chat service is not available (chat client not configured)'}), 503
 
         # Prepare the system prompt with the transcription
         user_chat_output_language = current_user.output_language if current_user.is_authenticated else None
@@ -2678,7 +2678,7 @@ Additional context and notes about the meeting:
         def generate():
             try:
                 # Enable streaming
-                stream = call_llm_completion(
+                stream = call_chat_completion(
                     messages=messages,
                     temperature=0.7,
                     max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),

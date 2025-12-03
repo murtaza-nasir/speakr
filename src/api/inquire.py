@@ -17,7 +17,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks
-from src.services.llm import call_llm_completion, process_streaming_with_thinking, client
+from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client
 
 # Create blueprint
 inquire_bp = Blueprint('inquire', __name__)
@@ -631,16 +631,16 @@ Order your response with notes from the most recent meetings first. Always use p
                 messages.append({"role": "user", "content": user_message})
 
                 # Enable streaming
-                stream = call_llm_completion(
+                stream = call_chat_completion(
                     messages=messages,
                     temperature=0.7,
                     max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
                     stream=True
                 )
-                
+
                 # Buffer content to detect full transcript requests
                 response_buffer = ""
-                
+
                 # Buffer content to detect full transcript requests
                 response_buffer = ""
                 content_buffer = ""
@@ -692,8 +692,8 @@ Order your response with notes from the most recent meetings first. Always use p
                                             
                                             # Generate new response with full context
                                             yield create_status_response('responding', 'Analyzing full transcript...')
-                                            
-                                            new_stream = call_llm_completion(
+
+                                            new_stream = call_chat_completion(
                                                 messages=updated_messages,
                                                 temperature=0.7,
                                                 max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
