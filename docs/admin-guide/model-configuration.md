@@ -209,6 +209,101 @@ For most use cases, we recommend:
 
 This provides a good balance of cost, speed, and quality.
 
+## Separate Chat Model Configuration
+
+Speakr allows you to configure a separate model specifically for real-time chat interactions, while using a different model for background tasks like summarization and title generation. This enables you to:
+
+- **Use different service tiers**: Configure a faster, more expensive model for interactive chat while using a cheaper model for background processing
+- **Optimize costs**: Use a budget-friendly model for summarization while keeping a high-quality model for chat
+- **Balance speed and quality**: Prioritize low latency for chat while accepting slower processing for summaries
+
+### Configuration
+
+Add these optional environment variables to your `.env` file:
+
+```bash
+# Chat Model Configuration (Optional)
+# If not set, chat will use TEXT_MODEL_* settings
+CHAT_MODEL_API_KEY=your_chat_api_key
+CHAT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+CHAT_MODEL_NAME=openai/gpt-4o
+```
+
+### Fallback Behavior
+
+| Configuration | Behavior |
+|--------------|----------|
+| No `CHAT_MODEL_*` variables set | Chat uses `TEXT_MODEL_*` settings (default) |
+| Only `CHAT_MODEL_NAME` set | Falls back to `TEXT_MODEL_*` (API key required) |
+| Only `CHAT_MODEL_API_KEY` set | Falls back to `TEXT_MODEL_*` (model name required) |
+| `CHAT_MODEL_API_KEY` + `CHAT_MODEL_NAME` set | Uses chat config with `TEXT_MODEL_BASE_URL` |
+| All `CHAT_MODEL_*` variables set | Uses fully dedicated chat configuration |
+
+### GPT-5 Settings for Chat
+
+If you use GPT-5 models for chat, you can configure separate GPT-5 parameters:
+
+```bash
+# Chat-specific GPT-5 settings (optional)
+# Falls back to GPT5_* settings if not specified
+CHAT_GPT5_REASONING_EFFORT=medium
+CHAT_GPT5_VERBOSITY=medium
+```
+
+### Example Configurations
+
+**Cheap Summarization + Premium Chat**:
+```bash
+# Background tasks: Use budget model
+TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+TEXT_MODEL_API_KEY=your_openrouter_key
+TEXT_MODEL_NAME=openai/gpt-4o-mini
+
+# Interactive chat: Use premium model
+CHAT_MODEL_API_KEY=your_openai_key
+CHAT_MODEL_BASE_URL=https://api.openai.com/v1
+CHAT_MODEL_NAME=gpt-5-mini
+CHAT_GPT5_REASONING_EFFORT=low
+CHAT_GPT5_VERBOSITY=medium
+```
+
+**Same Provider, Different Models**:
+```bash
+# Background tasks: Smaller model
+TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+TEXT_MODEL_API_KEY=your_api_key
+TEXT_MODEL_NAME=google/gemini-2.5-flash-lite
+
+# Interactive chat: Larger model (same provider)
+CHAT_MODEL_NAME=openai/gpt-4o
+# Note: CHAT_MODEL_API_KEY not needed if using same key
+# Note: CHAT_MODEL_BASE_URL not needed if using same endpoint
+```
+
+**Different Service Tiers (OpenAI)**:
+```bash
+# Background tasks: Standard tier
+TEXT_MODEL_BASE_URL=https://api.openai.com/v1
+TEXT_MODEL_API_KEY=your_standard_tier_key
+TEXT_MODEL_NAME=gpt-4o-mini
+
+# Interactive chat: Priority tier for faster responses
+CHAT_MODEL_API_KEY=your_priority_tier_key
+CHAT_MODEL_NAME=gpt-4o
+```
+
+### When to Use Separate Chat Models
+
+**Recommended for**:
+- High-volume deployments where chat responsiveness is critical
+- Users who need different service tiers for different operations
+- Cost optimization when chat usage is significantly higher than summarization
+
+**Not needed for**:
+- Small deployments with low usage
+- When using the same model for all operations is acceptable
+- Simple setups where configuration simplicity is preferred
+
 ## Model Selection Guidelines
 
 ### For Summaries
@@ -268,6 +363,15 @@ CHAT_MAX_TOKENS=2000
 # GPT-5 specific (only used with GPT-5 models and OpenAI API)
 GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
 GPT5_VERBOSITY=medium          # low, medium, high
+
+# Chat model configuration (optional - falls back to TEXT_MODEL_* if not set)
+CHAT_MODEL_API_KEY=your_chat_api_key
+CHAT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+CHAT_MODEL_NAME=openai/gpt-4o
+
+# Chat-specific GPT-5 settings (optional - falls back to GPT5_* if not set)
+CHAT_GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
+CHAT_GPT5_VERBOSITY=medium          # low, medium, high
 ```
 
 ## Troubleshooting

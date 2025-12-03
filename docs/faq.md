@@ -104,6 +104,16 @@ There's no hard limit on recording length, but practical considerations apply. V
 
 Summary generation uses the language model configured in your [environment file](getting-started.md#step-3-configure-your-transcription-service). Customize summaries with [AI prompts](admin-guide/prompts.md) - through a local LLM endpoint or a Cloud provider like OpenAI or OpenRouter. The model choice affects [summary quality](features.md#automatic-summarization), cost, and processing speed. Monitor performance in [system statistics](admin-guide/statistics.md).
 
+### Can I use different models for chat and summaries?
+
+Yes! You can configure a separate model specifically for real-time chat interactions while using a different model for background tasks like summarization. This is useful for:
+
+- **Different service tiers**: Use a faster, premium model for interactive chat while using a budget model for background processing
+- **Cost optimization**: Use cheaper models for summarization while keeping high-quality responses for chat
+- **Speed optimization**: Prioritize low latency for chat while accepting slower processing for summaries
+
+Configure this using the optional `CHAT_MODEL_*` environment variables. See the [Model Configuration](admin-guide/model-configuration.md#separate-chat-model-configuration) guide for details.
+
 ## Privacy and Security
 
 ### Is my data really private?

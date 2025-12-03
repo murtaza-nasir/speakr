@@ -78,6 +78,8 @@ TEXT_MODEL_NAME=openai/gpt-4o-mini
 
 If you prefer to use OpenAI directly for text generation, simply change the base URL to `https://api.openai.com/v1` and use your OpenAI API key. You can also use local models through Ollama or LM Studio by pointing to `http://localhost:11434/v1` or similar.
 
+> **Tip:** For advanced model configuration options—including GPT-5 support, separate chat model settings for different service tiers, and cost optimization strategies—see the [Model Configuration](../admin-guide/model-configuration.md) guide.
+
 Next, configure the transcription service. This is what converts your audio files into text:
 
 ```bash

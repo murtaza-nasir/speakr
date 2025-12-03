@@ -21,6 +21,41 @@ if TEXT_MODEL_BASE_URL:
     TEXT_MODEL_BASE_URL = TEXT_MODEL_BASE_URL.split('#')[0].strip()
 TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo")
 
+# Chat model configuration (optional - falls back to TEXT_MODEL_* if not set)
+CHAT_MODEL_API_KEY = os.environ.get("CHAT_MODEL_API_KEY")
+CHAT_MODEL_BASE_URL = os.environ.get("CHAT_MODEL_BASE_URL")
+if CHAT_MODEL_BASE_URL:
+    CHAT_MODEL_BASE_URL = CHAT_MODEL_BASE_URL.split('#')[0].strip()
+CHAT_MODEL_NAME = os.environ.get("CHAT_MODEL_NAME")
+
+# Chat-specific GPT-5 settings (optional - falls back to main GPT5_* settings)
+CHAT_GPT5_REASONING_EFFORT = os.environ.get("CHAT_GPT5_REASONING_EFFORT")
+CHAT_GPT5_VERBOSITY = os.environ.get("CHAT_GPT5_VERBOSITY")
+
+
+def get_chat_config():
+    """
+    Get chat model configuration, falling back to TEXT_MODEL if not set.
+
+    Returns a dict with api_key, base_url, model_name, and GPT-5 settings.
+    """
+    if CHAT_MODEL_API_KEY and CHAT_MODEL_NAME:
+        return {
+            'api_key': CHAT_MODEL_API_KEY,
+            'base_url': CHAT_MODEL_BASE_URL or TEXT_MODEL_BASE_URL,
+            'model_name': CHAT_MODEL_NAME,
+            'gpt5_reasoning_effort': CHAT_GPT5_REASONING_EFFORT or os.environ.get("GPT5_REASONING_EFFORT", "medium"),
+            'gpt5_verbosity': CHAT_GPT5_VERBOSITY or os.environ.get("GPT5_VERBOSITY", "medium")
+        }
+    return {
+        'api_key': TEXT_MODEL_API_KEY,
+        'base_url': TEXT_MODEL_BASE_URL,
+        'model_name': TEXT_MODEL_NAME,
+        'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
+        'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium")
+    }
+
+
 # Set up HTTP client with custom headers for OpenRouter app identification
 app_headers = {
     "HTTP-Referer": "https://github.com/murtaza-nasir/speakr",
@@ -44,6 +79,25 @@ try:
 except Exception as client_init_e:
     client = None
 
+# Create chat client (may be same as main client if no separate config)
+chat_client = None
+try:
+    chat_config = get_chat_config()
+    if chat_config['api_key']:
+        if CHAT_MODEL_API_KEY and CHAT_MODEL_API_KEY != TEXT_MODEL_API_KEY:
+            # Separate chat configuration - create dedicated client
+            chat_client = OpenAI(
+                api_key=chat_config['api_key'],
+                base_url=chat_config['base_url'],
+                http_client=http_client_no_proxy
+            )
+            logger.info(f"Separate chat client initialized: {chat_config['base_url']} / {chat_config['model_name']}")
+        else:
+            # Use same client as main LLM
+            chat_client = client
+except Exception as chat_client_init_e:
+    logger.warning(f"Failed to initialize chat client, falling back to main client: {chat_client_init_e}")
+    chat_client = client
 
 
 def is_gpt5_model(model_name):
@@ -149,7 +203,73 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         logger.error(f"LLM API call failed: {e}")
         raise
 
-# Store details for the transcription client (potentially different)
+
+def call_chat_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None):
+    """
+    Chat-specific LLM completion function. Uses dedicated chat model if configured,
+    otherwise falls back to standard TEXT_MODEL configuration.
+
+    Args:
+        messages: List of message dicts with 'role' and 'content'
+        temperature: Sampling temperature (0-1) - ignored for GPT-5 models
+        response_format: Optional response format dict (e.g., {"type": "json_object"})
+        stream: Whether to stream the response
+        max_tokens: Optional maximum tokens to generate
+
+    Returns:
+        OpenAI completion object or generator (if streaming)
+    """
+    effective_client = chat_client if chat_client else client
+    chat_config = get_chat_config()
+
+    if not effective_client:
+        raise ValueError("Chat LLM client not initialized")
+
+    if not chat_config['api_key']:
+        raise ValueError("Chat model API key not configured")
+
+    try:
+        model_name = chat_config['model_name']
+        base_url = chat_config['base_url'] or ''
+
+        # Check if we're using GPT-5 with OpenAI API
+        using_gpt5 = is_gpt5_model(model_name) and 'api.openai.com' in base_url
+
+        completion_args = {
+            "model": model_name,
+            "messages": messages,
+            "stream": stream
+        }
+
+        if using_gpt5:
+            logger.debug(f"Using GPT-5 chat model: {model_name}")
+            # Use chat-specific GPT-5 settings from config
+            completion_args["reasoning_effort"] = chat_config['gpt5_reasoning_effort']
+            completion_args["verbosity"] = chat_config['gpt5_verbosity']
+
+            if max_tokens:
+                completion_args["max_completion_tokens"] = max_tokens
+        else:
+            completion_args["temperature"] = temperature
+            if max_tokens:
+                completion_args["max_tokens"] = max_tokens
+
+        if response_format:
+            completion_args["response_format"] = response_format
+
+        response = effective_client.chat.completions.create(**completion_args)
+
+        # Debug log for empty responses
+        if not stream and response.choices:
+            content = response.choices[0].message.content
+            if not content:
+                logger.warning(f"Chat LLM returned empty content. Model: {model_name}, finish_reason: {response.choices[0].finish_reason}")
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Chat LLM API call failed: {e}")
+        raise
 
 
 def format_api_error_message(error_str):
