@@ -18,6 +18,7 @@ import subprocess
 import httpx
 from datetime import datetime
 from flask import current_app
+from openai import OpenAI
 
 from src.database import db
 from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User
@@ -25,7 +26,7 @@ from src.services.embeddings import process_recording_chunks
 from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy
 from src.utils import extract_json_object, safe_json_loads
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
-from src.config.app_config import ASR_DIARIZE, ASR_BASE_URL, transcription_api_key, transcription_base_url
+from src.config.app_config import ASR_DIARIZE, ASR_BASE_URL, transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 
 # Configuration for internal sharing
@@ -174,20 +175,13 @@ def clean_llm_response(text):
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ASR_ENDPOINT = os.environ.get('ASR_ENDPOINT', '')
 ASR_API_KEY = os.environ.get('ASR_API_KEY', '')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
-ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
-# Chunking service will be passed in from app
-chunking_service = None
+# chunking_service, ENABLE_CHUNKING, transcription_api_key, and transcription_base_url
+# are imported from src.config.app_config
 
-# Import OpenAI client
-from openai import OpenAI
-
-if USE_ASR_ENDPOINT:
-    asr_client = OpenAI(base_url=ASR_ENDPOINT, api_key=ASR_API_KEY)
-else:
-    asr_client = OpenAI(api_key=OPENAI_API_KEY)
+# Note: OpenAI clients are created inside each transcription function as needed,
+# not at module level (matching original pre-refactor behavior)
 
 
 def generate_title_task(app_context, recording_id, will_auto_summarize=False):

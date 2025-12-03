@@ -40,6 +40,9 @@ ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 CHUNK_SIZE_MB = int(os.environ.get('CHUNK_SIZE_MB', '20'))
 CHUNK_OVERLAP_SECONDS = int(os.environ.get('CHUNK_OVERLAP_SECONDS', '3'))
 
+# Create chunking service at module level so it can be imported by processing.py
+chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS) if ENABLE_CHUNKING else None
+
 
 def initialize_config(app):
     """Initialize application configuration."""
@@ -59,7 +62,7 @@ def initialize_config(app):
     except Exception as e:
         app.logger.error(f"Failed to initialize LLM client: {e}")
 
-    chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS) if ENABLE_CHUNKING else None
+    # Use module-level chunking_service (already created above)
     version = get_version()
 
     app.logger.info(f"=== Speakr {version} Starting Up ===")
