@@ -20,9 +20,13 @@
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('form.meetingDate')"></label>
-                <input v-model="editingRecording.meeting_date"
-                       type="date"
-                       class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                <div @click="openDateTimePicker('edit_modal_meeting_date', editingRecording.meeting_date, (isoString) => { editingRecording.meeting_date = isoString; })"
+                     class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg cursor-pointer hover:border-[var(--border-focus)] transition-colors flex items-center justify-between">
+                    <span :class="editingRecording.meeting_date ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
+                        ${editingRecording.meeting_date ? formatDisplayDate(editingRecording.meeting_date) : 'Select date and time...'}
+                    </span>
+                    <i class="fas fa-calendar-alt text-[var(--text-muted)]"></i>
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('form.notes')"></label>

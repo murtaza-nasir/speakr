@@ -73,9 +73,9 @@
     <div v-if="isMetadataExpanded" class="mt-4 space-y-4">
         <div class="space-y-2 text-sm text-[var(--text-muted)]">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2" @click.stop="openMeetingDatePicker">
                     <i class="fas fa-calendar text-[var(--text-accent)]"></i>
-                    <span>${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}</span>
+                    <span class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}</span>
                 </div>
                 <div v-if="selectedRecording.is_shared" class="flex items-center gap-2">
                     <i class="fas fa-user text-[var(--text-accent)]"></i>

@@ -3747,8 +3747,8 @@ select {
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%236b7280' d='M4.5 5.5L8 9l3.5-3.5L10.75 4.75 8 7.5 5.25 4.75z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.5rem center;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
+    background-size: 1em 1em;
+    padding-right: 2rem;
     cursor: pointer;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
 }
