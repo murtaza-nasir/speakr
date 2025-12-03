@@ -147,7 +147,16 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.6.3 - API Token Authentication"
+!!! info "Version 0.6.5 - Separate Chat Model Configuration"
+    **New Feature** - Configure different AI models for chat vs background tasks
+
+    - **Separate Chat Model** - Use different service tiers for chat and summarization (#143)
+    - **Custom Datetime Picker** - New themed calendar and time selection modal
+    - **Bug Fixes** - Audio chunking after refactor (#140), username display (#138)
+
+    ✅ Fully backward compatible. Optional `CHAT_MODEL_*` environment variables.
+
+!!! success "Version 0.6.3 - API Token Authentication"
     **New Feature** - Programmatic API access for automation tools
 
     - **API Tokens** - Create personal access tokens for programmatic API access
