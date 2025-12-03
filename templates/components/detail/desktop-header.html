@@ -155,17 +155,10 @@
             <!-- Meeting Date -->
             <div class="flex items-center gap-2">
                 <i class="fas fa-calendar text-[var(--text-accent)]"></i>
-                <span v-if="!editingMeetingDate"
-                      @click="toggleEditMeetingDate"
+                <span @click="openMeetingDatePicker"
                       class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
                     ${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}
                 </span>
-                <input v-else
-                       v-model="selectedRecording.meeting_date"
-                       @blur="toggleEditMeetingDate"
-                       @keyup.enter="toggleEditMeetingDate"
-                       type="date"
-                       class="bg-transparent border-b border-[var(--border-secondary)] focus:border-[var(--border-focus)] outline-none px-1">
             </div>
 
             <!-- Other Metadata -->

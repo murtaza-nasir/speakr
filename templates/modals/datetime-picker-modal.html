@@ -1,0 +1,132 @@
+<!-- DateTime Picker Modal -->
+<div v-if="showDateTimePicker" @click.self="closeDateTimePicker" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+        <!-- Header -->
+        <div class="p-4 border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+                    <i class="fas fa-calendar-alt mr-2 text-[var(--text-accent)]"></i>
+                    Select Date & Time
+                </h3>
+                <button @click="closeDateTimePicker" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Calendar Section -->
+        <div class="p-4">
+            <!-- Month/Year Navigation -->
+            <div class="flex items-center justify-between mb-4">
+                <button @click="prevMonth" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <select v-model="pickerMonth" @change="updatePickerView"
+                            class="pl-3 pr-8 py-1.5 border border-[var(--border-secondary)] rounded-lg text-sm bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                        <option v-for="(month, index) in monthNames" :key="index" :value="index">${month}</option>
+                    </select>
+                    <select v-model="pickerYear" @change="updatePickerView"
+                            class="pl-3 pr-8 py-1.5 border border-[var(--border-secondary)] rounded-lg text-sm bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                        <option v-for="year in availableYears" :key="year" :value="year">${year}</option>
+                    </select>
+                </div>
+                <button @click="nextMonth" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Day Names Header -->
+            <div class="grid grid-cols-7 gap-1 mb-2">
+                <div v-for="day in dayNames" :key="day" class="text-center text-xs font-medium text-[var(--text-muted)] py-1">
+                    ${day}
+                </div>
+            </div>
+
+            <!-- Calendar Grid -->
+            <div class="grid grid-cols-7 gap-1">
+                <button v-for="(day, index) in calendarDays" :key="index"
+                        @click="day.inMonth ? selectDate(day.date) : null"
+                        :disabled="!day.inMonth"
+                        :class="[
+                            'aspect-square flex items-center justify-center rounded-lg text-sm transition-all',
+                            day.inMonth ? 'hover:bg-[var(--bg-tertiary)]' : 'opacity-30 cursor-default',
+                            day.isSelected ? 'bg-[var(--text-accent)] text-white font-bold' : '',
+                            day.isToday && !day.isSelected ? 'ring-2 ring-[var(--text-accent)] ring-inset' : '',
+                            day.inMonth && !day.isSelected ? 'text-[var(--text-primary)]' : ''
+                        ]">
+                    ${day.day}
+                </button>
+            </div>
+
+            <!-- Time Selection -->
+            <div class="mt-4 pt-4 border-t border-[var(--border-secondary)]">
+                <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">
+                    <i class="fas fa-clock mr-1"></i> Time
+                </label>
+                <div class="flex items-center justify-center gap-2">
+                    <select v-model="pickerHour"
+                            class="pl-3 pr-8 py-2 border border-[var(--border-secondary)] rounded-lg bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                        <option v-for="h in hours12" :key="h.value" :value="h.value">${h.label}</option>
+                    </select>
+                    <span class="text-xl font-bold text-[var(--text-muted)]">:</span>
+                    <select v-model="pickerMinute"
+                            class="pl-3 pr-8 py-2 border border-[var(--border-secondary)] rounded-lg bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                        <option v-for="m in minutes" :key="m" :value="m">${m.toString().padStart(2, '0')}</option>
+                    </select>
+                    <select v-model="pickerAmPm"
+                            class="pl-3 pr-8 py-2 border border-[var(--border-secondary)] rounded-lg bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Quick Time Presets -->
+            <div class="mt-3 flex flex-wrap gap-1.5 justify-center">
+                <button @click="pickerHour = 9; pickerMinute = 0; pickerAmPm = 'AM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">9 AM</button>
+                <button @click="pickerHour = 10; pickerMinute = 0; pickerAmPm = 'AM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">10 AM</button>
+                <button @click="pickerHour = 11; pickerMinute = 0; pickerAmPm = 'AM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">11 AM</button>
+                <button @click="pickerHour = 12; pickerMinute = 0; pickerAmPm = 'PM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">12 PM</button>
+                <button @click="pickerHour = 1; pickerMinute = 0; pickerAmPm = 'PM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">1 PM</button>
+                <button @click="pickerHour = 2; pickerMinute = 0; pickerAmPm = 'PM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">2 PM</button>
+                <button @click="pickerHour = 3; pickerMinute = 0; pickerAmPm = 'PM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">3 PM</button>
+                <button @click="pickerHour = 4; pickerMinute = 0; pickerAmPm = 'PM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">4 PM</button>
+                <button @click="pickerHour = 5; pickerMinute = 0; pickerAmPm = 'PM'" class="px-2 py-1 text-xs bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] transition-colors">5 PM</button>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mt-3 flex flex-wrap gap-2 justify-center">
+                <button @click="setToNow" class="px-3 py-1.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-input)] transition-colors">
+                    <i class="fas fa-bolt mr-1"></i> Now
+                </button>
+                <button @click="setToToday" class="px-3 py-1.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-input)] transition-colors">
+                    <i class="fas fa-calendar-day mr-1"></i> Today
+                </button>
+                <button @click="clearDateTime" class="px-3 py-1.5 text-xs bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg hover:bg-[var(--bg-input)] transition-colors">
+                    <i class="fas fa-eraser mr-1"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+            <div class="text-sm text-[var(--text-muted)] mb-3 text-center">
+                <span v-if="pickerSelectedDate" class="font-medium text-[var(--text-primary)]">
+                    ${formatPickerPreview()}
+                </span>
+                <span v-else class="italic">No date selected</span>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button @click="closeDateTimePicker"
+                        class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button @click="applyDateTime"
+                        class="px-4 py-2 bg-[var(--text-accent)] text-white rounded-lg hover:opacity-90 transition-opacity font-medium whitespace-nowrap">
+                    <i class="fas fa-check mr-1"></i>Apply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

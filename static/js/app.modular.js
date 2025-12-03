@@ -270,6 +270,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const voiceSuggestions = ref({});
             const loadingVoiceSuggestions = ref(false);
 
+            // --- DateTime Picker State ---
+            const showDateTimePicker = ref(false);
+            const pickerMonth = ref(new Date().getMonth());
+            const pickerYear = ref(new Date().getFullYear());
+            const pickerHour = ref(12);
+            const pickerMinute = ref(0);
+            const pickerAmPm = ref('PM');
+            const pickerSelectedDate = ref(null);
+            const dateTimePickerTarget = ref(null);
+            const dateTimePickerCallback = ref(null);
+
             // --- Transcript Editing State ---
             const editingSegmentIndex = ref(null);
             const editingSpeakerIndex = ref(null);
@@ -447,6 +458,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
                 speakerMap, modalSpeakers, speakerDisplayMap, regenerateSummaryAfterSpeakerUpdate, speakerSuggestions,
                 loadingSuggestions, activeSpeakerInput, voiceSuggestions, loadingVoiceSuggestions,
+
+                // DateTime Picker
+                showDateTimePicker, pickerMonth, pickerYear, pickerHour, pickerMinute,
+                pickerAmPm, pickerSelectedDate, dateTimePickerTarget, dateTimePickerCallback,
 
                 // Transcript Editing
                 editingSegmentIndex, editingSpeakerIndex, showEditTextModal, editedText,

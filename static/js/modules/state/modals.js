@@ -20,6 +20,17 @@ export function createModalState(ref, reactive) {
     const showAddSpeakerModal = ref(false);
     const showShareDeleteModal = ref(false);
     const showUnifiedShareModal = ref(false);
+    const showDateTimePicker = ref(false);
+
+    // --- DateTime Picker State ---
+    const pickerMonth = ref(new Date().getMonth());
+    const pickerYear = ref(new Date().getFullYear());
+    const pickerHour = ref(12);
+    const pickerMinute = ref(0);
+    const pickerAmPm = ref('PM');
+    const pickerSelectedDate = ref(null);
+    const dateTimePickerTarget = ref(null);  // 'meeting_date' or other field name
+    const dateTimePickerCallback = ref(null);  // callback function after applying
 
     // --- Modal Data State ---
     const selectedNewTagId = ref('');
@@ -102,6 +113,17 @@ export function createModalState(ref, reactive) {
         showAddSpeakerModal,
         showShareDeleteModal,
         showUnifiedShareModal,
+        showDateTimePicker,
+
+        // DateTime picker
+        pickerMonth,
+        pickerYear,
+        pickerHour,
+        pickerMinute,
+        pickerAmPm,
+        pickerSelectedDate,
+        dateTimePickerTarget,
+        dateTimePickerCallback,
 
         // Modal data
         selectedNewTagId,

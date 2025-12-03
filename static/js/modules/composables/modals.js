@@ -12,10 +12,14 @@ export function useModals(state, utils) {
         showShareDeleteModal, showUnifiedShareModal, showColorSchemeModal,
         showSystemAudioHelpModal, editingRecording, recordingToDelete, recordingToReset,
         selectedRecording, recordings, selectedNewTagId, tagSearchFilter,
-        availableTags, currentView, totalRecordings, toasts, uploadQueue, allJobs
+        availableTags, currentView, totalRecordings, toasts, uploadQueue, allJobs,
+        // DateTime picker state
+        showDateTimePicker, pickerMonth, pickerYear, pickerHour, pickerMinute,
+        pickerAmPm, pickerSelectedDate, dateTimePickerTarget, dateTimePickerCallback
     } = state;
 
     const { showToast, setGlobalError } = utils;
+    const { computed } = Vue;
 
     // =========================================
     // Edit Recording Modal
@@ -307,6 +311,297 @@ export function useModals(state, utils) {
     const editRecording = openEditModal;
     const editRecordingTags = openEditTagsModal;
 
+    // =========================================
+    // DateTime Picker
+    // =========================================
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+    // Generate available years (10 years before and after current year)
+    const availableYears = computed(() => {
+        const currentYear = new Date().getFullYear();
+        const years = [];
+        for (let y = currentYear - 10; y <= currentYear + 10; y++) {
+            years.push(y);
+        }
+        return years;
+    });
+
+    // Generate hours for 12-hour format
+    const hours12 = computed(() => {
+        const hours = [];
+        for (let h = 1; h <= 12; h++) {
+            hours.push({ value: h, label: h.toString() });
+        }
+        return hours;
+    });
+
+    // Generate minutes
+    const minutes = computed(() => {
+        const mins = [];
+        for (let m = 0; m < 60; m++) {
+            mins.push(m);
+        }
+        return mins;
+    });
+
+    // Generate calendar days for current month view
+    const calendarDays = computed(() => {
+        const days = [];
+        const year = pickerYear.value;
+        const month = pickerMonth.value;
+
+        // First day of the month
+        const firstDay = new Date(year, month, 1);
+        const startingDay = firstDay.getDay();
+
+        // Last day of the month
+        const lastDay = new Date(year, month + 1, 0);
+        const totalDays = lastDay.getDate();
+
+        // Previous month days to fill the grid
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+        for (let i = startingDay - 1; i >= 0; i--) {
+            days.push({
+                day: prevMonthLastDay - i,
+                date: new Date(year, month - 1, prevMonthLastDay - i),
+                inMonth: false,
+                isToday: false,
+                isSelected: false
+            });
+        }
+
+        // Current month days
+        const today = new Date();
+        for (let d = 1; d <= totalDays; d++) {
+            const date = new Date(year, month, d);
+            const isToday = date.toDateString() === today.toDateString();
+            const isSelected = pickerSelectedDate.value &&
+                              date.toDateString() === pickerSelectedDate.value.toDateString();
+            days.push({
+                day: d,
+                date: date,
+                inMonth: true,
+                isToday: isToday,
+                isSelected: isSelected
+            });
+        }
+
+        // Next month days to fill the grid (6 rows * 7 days = 42 total)
+        const remainingDays = 42 - days.length;
+        for (let d = 1; d <= remainingDays; d++) {
+            days.push({
+                day: d,
+                date: new Date(year, month + 1, d),
+                inMonth: false,
+                isToday: false,
+                isSelected: false
+            });
+        }
+
+        return days;
+    });
+
+    const openDateTimePicker = (target, currentValue, callback) => {
+        dateTimePickerTarget.value = target;
+        dateTimePickerCallback.value = callback;
+
+        // Parse current value if exists
+        if (currentValue) {
+            const date = new Date(currentValue);
+            if (!isNaN(date.getTime())) {
+                pickerSelectedDate.value = date;
+                pickerMonth.value = date.getMonth();
+                pickerYear.value = date.getFullYear();
+
+                let hours = date.getHours();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours === 0 ? 12 : hours;
+
+                pickerHour.value = hours;
+                pickerMinute.value = date.getMinutes();
+                pickerAmPm.value = ampm;
+            } else {
+                setPickerToNow();
+            }
+        } else {
+            setPickerToNow();
+        }
+
+        showDateTimePicker.value = true;
+    };
+
+    const setPickerToNow = () => {
+        const now = new Date();
+        pickerSelectedDate.value = now;
+        pickerMonth.value = now.getMonth();
+        pickerYear.value = now.getFullYear();
+
+        let hours = now.getHours();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours === 0 ? 12 : hours;
+
+        pickerHour.value = hours;
+        pickerMinute.value = now.getMinutes();
+        pickerAmPm.value = ampm;
+    };
+
+    const closeDateTimePicker = () => {
+        showDateTimePicker.value = false;
+        dateTimePickerTarget.value = null;
+        dateTimePickerCallback.value = null;
+    };
+
+    const prevMonth = () => {
+        if (pickerMonth.value === 0) {
+            pickerMonth.value = 11;
+            pickerYear.value--;
+        } else {
+            pickerMonth.value--;
+        }
+    };
+
+    const nextMonth = () => {
+        if (pickerMonth.value === 11) {
+            pickerMonth.value = 0;
+            pickerYear.value++;
+        } else {
+            pickerMonth.value++;
+        }
+    };
+
+    const updatePickerView = () => {
+        // Called when month/year dropdowns change
+        // The computed calendarDays will automatically update
+    };
+
+    const selectDate = (date) => {
+        pickerSelectedDate.value = date;
+    };
+
+    const setToNow = () => {
+        setPickerToNow();
+    };
+
+    const setToToday = () => {
+        const today = new Date();
+        pickerSelectedDate.value = today;
+        pickerMonth.value = today.getMonth();
+        pickerYear.value = today.getFullYear();
+        // Keep the current time
+    };
+
+    const clearDateTime = () => {
+        pickerSelectedDate.value = null;
+        const now = new Date();
+        pickerMonth.value = now.getMonth();
+        pickerYear.value = now.getFullYear();
+        pickerHour.value = 12;
+        pickerMinute.value = 0;
+        pickerAmPm.value = 'PM';
+    };
+
+    const formatPickerPreview = () => {
+        if (!pickerSelectedDate.value) return '';
+
+        const date = pickerSelectedDate.value;
+        const monthName = monthNames[date.getMonth()];
+        const day = date.getDate();
+        const year = date.getFullYear();
+
+        const hour = pickerHour.value;
+        const minute = pickerMinute.value.toString().padStart(2, '0');
+        const ampm = pickerAmPm.value;
+
+        return `${monthName} ${day}, ${year} at ${hour}:${minute} ${ampm}`;
+    };
+
+    const applyDateTime = () => {
+        if (!pickerSelectedDate.value) {
+            // If no date selected, just close
+            closeDateTimePicker();
+            return;
+        }
+
+        // Build the full datetime
+        const date = new Date(pickerSelectedDate.value);
+        let hours = pickerHour.value;
+
+        // Convert 12-hour to 24-hour
+        if (pickerAmPm.value === 'AM') {
+            hours = hours === 12 ? 0 : hours;
+        } else {
+            hours = hours === 12 ? 12 : hours + 12;
+        }
+
+        date.setHours(hours);
+        date.setMinutes(pickerMinute.value);
+        date.setSeconds(0);
+        date.setMilliseconds(0);
+
+        // Format as ISO string for storage (YYYY-MM-DDTHH:mm:ss)
+        const isoString = date.toISOString().slice(0, 19);
+
+        // Call the callback with the result
+        if (dateTimePickerCallback.value) {
+            dateTimePickerCallback.value(isoString, date);
+        }
+
+        closeDateTimePicker();
+    };
+
+    // Helper to open datetime picker for meeting date
+    const openMeetingDatePicker = () => {
+        if (!selectedRecording.value) return;
+
+        openDateTimePicker(
+            'meeting_date',
+            selectedRecording.value.meeting_date,
+            (isoString) => {
+                selectedRecording.value.meeting_date = isoString;
+                // Auto-save the change
+                saveInlineMeetingDate();
+            }
+        );
+    };
+
+    // Save meeting date inline (similar to other inline edits)
+    const saveInlineMeetingDate = async () => {
+        if (!selectedRecording.value) return;
+
+        const fullPayload = {
+            id: selectedRecording.value.id,
+            title: selectedRecording.value.title,
+            participants: selectedRecording.value.participants,
+            notes: selectedRecording.value.notes,
+            summary: selectedRecording.value.summary,
+            meeting_date: selectedRecording.value.meeting_date
+        };
+
+        try {
+            const csrfTokenValue = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch('/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfTokenValue
+                },
+                body: JSON.stringify(fullPayload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to save meeting date');
+
+            showToast('Meeting date updated!', 'fa-calendar-check');
+        } catch (error) {
+            showToast(`Failed to save: ${error.message}`, 'fa-exclamation-circle', 3000, 'error');
+        }
+    };
+
     return {
         // Edit modal
         openEditModal,
@@ -339,6 +634,26 @@ export function useModals(state, utils) {
         closeSystemAudioHelpModal,
 
         // Toast
-        dismissToast
+        dismissToast,
+
+        // DateTime picker
+        monthNames,
+        dayNames,
+        availableYears,
+        hours12,
+        minutes,
+        calendarDays,
+        openDateTimePicker,
+        closeDateTimePicker,
+        prevMonth,
+        nextMonth,
+        updatePickerView,
+        selectDate,
+        setToNow,
+        setToToday,
+        clearDateTime,
+        formatPickerPreview,
+        applyDateTime,
+        openMeetingDatePicker
     };
 }
