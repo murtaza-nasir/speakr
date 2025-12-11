@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Build argument to determine if this is a production build
+ARG PRODUCTION=0
+
 WORKDIR /app
 
 # Install system dependencies
@@ -21,7 +24,7 @@ COPY scripts/download_offline_deps.py scripts/
 # Install requests and download vendor dependencies BEFORE copying all code
 # This allows better Docker layer caching - vendor deps won't re-download on code changes
 RUN pip install --no-cache-dir requests && \
-    python scripts/download_offline_deps.py && \
+    PRODUCTION=${PRODUCTION} python scripts/download_offline_deps.py && \
     echo "✓ Vendor dependencies downloaded successfully"
 
 # Now copy the rest of the application code
