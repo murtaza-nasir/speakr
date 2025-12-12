@@ -874,6 +874,115 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
         raise
 
 
+def compress_lossless_audio(filepath, codec='mp3', bitrate='128k'):
+    """Compress lossless audio files (WAV, AIFF) to save storage.
+
+    Only compresses lossless formats - already-compressed formats are skipped
+    to avoid quality degradation from re-encoding.
+
+    Args:
+        filepath: Path to the audio file
+        codec: Target codec - 'mp3', 'flac', or 'opus'
+        bitrate: Bitrate for lossy codecs (ignored for FLAC)
+
+    Returns:
+        tuple: (new_filepath, new_mime_type) or (original_filepath, None) if skipped
+    """
+    # Lossless formats that benefit from compression
+    lossless_extensions = {'.wav', '.aiff', '.aif'}
+
+    ext = os.path.splitext(filepath)[1].lower()
+
+    # Skip if not a lossless format
+    if ext not in lossless_extensions:
+        current_app.logger.debug(f"Skipping compression for {filepath} - not a lossless format")
+        return filepath, None
+
+    # Skip if target is same as source (e.g., FLAC to FLAC when source is already FLAC)
+    if ext == '.flac' and codec == 'flac':
+        current_app.logger.debug(f"Skipping compression for {filepath} - already FLAC")
+        return filepath, None
+
+    # Determine output extension and MIME type
+    codec_info = {
+        'mp3': {'ext': '.mp3', 'mime': 'audio/mpeg'},
+        'flac': {'ext': '.flac', 'mime': 'audio/flac'},
+        'opus': {'ext': '.opus', 'mime': 'audio/opus'}
+    }
+
+    if codec not in codec_info:
+        current_app.logger.warning(f"Unknown codec '{codec}', defaulting to mp3")
+        codec = 'mp3'
+
+    output_ext = codec_info[codec]['ext']
+    output_mime = codec_info[codec]['mime']
+
+    base_filepath = os.path.splitext(filepath)[0]
+    temp_filepath = f"{base_filepath}_compressed_temp{output_ext}"
+    final_filepath = f"{base_filepath}{output_ext}"
+
+    try:
+        # Get original file size for logging
+        original_size = os.path.getsize(filepath)
+
+        # Build FFmpeg command based on codec
+        if codec == 'mp3':
+            cmd = [
+                'ffmpeg', '-i', filepath, '-y',
+                '-acodec', 'libmp3lame',
+                '-b:a', bitrate,
+                '-ac', '1',  # Mono for speech
+                temp_filepath
+            ]
+        elif codec == 'flac':
+            cmd = [
+                'ffmpeg', '-i', filepath, '-y',
+                '-acodec', 'flac',
+                '-compression_level', '8',  # Maximum compression
+                temp_filepath
+            ]
+        elif codec == 'opus':
+            cmd = [
+                'ffmpeg', '-i', filepath, '-y',
+                '-acodec', 'libopus',
+                '-b:a', bitrate,
+                temp_filepath
+            ]
+
+        current_app.logger.info(f"Compressing {filepath} to {codec.upper()}...")
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+
+        # Get compressed file size
+        compressed_size = os.path.getsize(temp_filepath)
+        ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+
+        current_app.logger.info(
+            f"Compressed {filepath}: {original_size / 1024 / 1024:.1f}MB -> "
+            f"{compressed_size / 1024 / 1024:.1f}MB ({ratio:.1f}% reduction)"
+        )
+
+        # Remove original and rename temp to final
+        os.remove(filepath)
+        os.rename(temp_filepath, final_filepath)
+
+        return final_filepath, output_mime
+
+    except subprocess.CalledProcessError as e:
+        current_app.logger.error(f"FFmpeg compression failed for {filepath}: {e.stderr}")
+        # Clean up temp file if it exists
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+        raise Exception(f"Audio compression failed: {e.stderr}")
+    except FileNotFoundError:
+        current_app.logger.error("FFmpeg command not found for compression.")
+        raise Exception("Audio conversion tool (FFmpeg) not found on server.")
+    except Exception as e:
+        current_app.logger.error(f"Error compressing audio {filepath}: {str(e)}")
+        # Clean up temp file if it exists
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+        raise
+
 
 def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
     """Transcribes audio using the ASR webservice."""
