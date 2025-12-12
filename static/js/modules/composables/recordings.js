@@ -8,8 +8,8 @@ export function useRecordings(state, utils, reprocessComposable) {
         recordings, selectedRecording, isLoadingRecordings, isLoadingMore,
         currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
         showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
-        filterTags, filterDatePreset, filterDateRange, filterTextQuery,
-        availableTags, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+        filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
+        availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL
     } = state;
@@ -26,12 +26,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         }
 
         try {
-            let endpoint = '/api/recordings';
-            if (showArchivedRecordings.value) {
-                endpoint = '/api/recordings/archived';
-            } else if (showSharedWithMe.value) {
-                endpoint = '/api/recordings/shared-with-me';
-            }
+            const endpoint = '/api/recordings';
 
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -42,12 +37,20 @@ export function useRecordings(state, utils, reprocessComposable) {
                 params.set('q', searchQueryParam.trim());
             }
 
+            // Add archived/shared filters as query params (ANDed with other filters)
+            if (showArchivedRecordings.value) {
+                params.set('archived', 'true');
+            }
+            if (showSharedWithMe.value) {
+                params.set('shared', 'true');
+            }
+
             const response = await fetch(`${endpoint}?${params}`);
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to load recordings');
 
-            const recordingsList = (showArchivedRecordings.value || showSharedWithMe.value) ? data : data.recordings;
-            const pagination = (showArchivedRecordings.value || showSharedWithMe.value) ? null : data.pagination;
+            const recordingsList = data.recordings;
+            const pagination = data.pagination;
 
             if (!Array.isArray(recordingsList)) {
                 console.error('Unexpected response format:', data);
@@ -68,7 +71,7 @@ export function useRecordings(state, utils, reprocessComposable) {
                 hasPrevPage.value = false;
             }
 
-            if (append && !showArchivedRecordings.value) {
+            if (append) {
                 recordings.value = [...recordings.value, ...recordingsList];
             } else {
                 recordings.value = recordingsList;
@@ -128,6 +131,20 @@ export function useRecordings(state, utils, reprocessComposable) {
         } catch (error) {
             console.warn('Error loading tags:', error);
             availableTags.value = [];
+        }
+    };
+
+    const loadSpeakers = async () => {
+        try {
+            const response = await fetch('/speakers');
+            if (response.ok) {
+                availableSpeakers.value = await response.json();
+            } else {
+                availableSpeakers.value = [];
+            }
+        } catch (error) {
+            console.warn('Error loading speakers:', error);
+            availableSpeakers.value = [];
         }
     };
 
@@ -274,6 +291,13 @@ export function useRecordings(state, utils, reprocessComposable) {
             query.push(...tagNames);
         }
 
+        if (filterSpeakers.value.length > 0) {
+            const speakerNames = filterSpeakers.value.map(name =>
+                `speaker:${name.replace(/\s+/g, '_')}`
+            );
+            query.push(...speakerNames);
+        }
+
         if (filterDatePreset.value) {
             query.push(`date:${filterDatePreset.value}`);
         } else if (filterDateRange.value.start || filterDateRange.value.end) {
@@ -294,6 +318,7 @@ export function useRecordings(state, utils, reprocessComposable) {
 
     const clearAllFilters = () => {
         filterTags.value = [];
+        filterSpeakers.value = [];
         filterDateRange.value = { start: '', end: '' };
         filterDatePreset.value = '';
         filterTextQuery.value = '';
@@ -357,6 +382,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         performSearch,
         debouncedSearch,
         loadTags,
+        loadSpeakers,
         selectRecording,
         hasUnsavedRecording,
         toggleInbox,

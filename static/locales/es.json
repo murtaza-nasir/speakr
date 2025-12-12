@@ -910,7 +910,9 @@
     "manageAllTags": "Gestionar Todas las Etiquetas",
     "noAvailableTags": "No hay etiquetas disponibles",
     "noTags": "Sin etiquetas",
+    "noMatchingTags": "No hay etiquetas coincidentes",
     "removeTag": "Eliminar Etiqueta",
+    "searchTags": "Buscar...",
     "tagColor": "Color de Etiqueta",
     "tagName": "Nombre de Etiqueta",
     "title": "Etiquetas"
@@ -921,6 +923,11 @@
     "done": "Listo",
     "noTagsAssigned": "No hay etiquetas asignadas a esta grabación",
     "searchTags": "Buscar etiquetas..."
+  },
+  "speakers": {
+    "filterBySpeaker": "Filtrar por orador",
+    "searchSpeakers": "Buscar...",
+    "noMatchingSpeakers": "No hay oradores coincidentes"
   },
   "groups": {
     "title": "Gestión de Grupos",

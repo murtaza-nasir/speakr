@@ -1331,6 +1331,8 @@ def get_recordings_paginated():
         page = request.args.get('page', 1, type=int)
         per_page = min(request.args.get('per_page', 25, type=int), 100)  # Cap at 100 per page
         search_query = request.args.get('q', '').strip()
+        show_archived = request.args.get('archived', '').lower() == 'true'
+        show_shared = request.args.get('shared', '').lower() == 'true'
 
         # Get all accessible recording IDs (own + shared)
         accessible_recording_ids = get_accessible_recording_ids(current_user.id)
@@ -1351,6 +1353,16 @@ def get_recordings_paginated():
         # Build base query to include accessible recordings
         stmt = select(Recording).where(Recording.id.in_(accessible_recording_ids))
 
+        # Apply archived filter (AND with other filters)
+        if show_archived:
+            # Only show recordings where audio has been deleted
+            stmt = stmt.where(Recording.audio_deleted_at.is_not(None))
+
+        # Apply shared filter (AND with other filters)
+        if show_shared:
+            # Only show recordings shared with current user (not owned by them)
+            stmt = stmt.where(Recording.user_id != current_user.id)
+
         # Apply search filters if provided
         if search_query:
             # Extract date filters
@@ -1358,12 +1370,14 @@ def get_recordings_paginated():
             date_from_filters = re.findall(r'date_from:(\S+)', search_query.lower())
             date_to_filters = re.findall(r'date_to:(\S+)', search_query.lower())
             tag_filters = re.findall(r'tag:(\S+)', search_query.lower())
+            speaker_filters = re.findall(r'speaker:(\S+)', search_query.lower())
 
             # Remove special syntax to get text search
             text_query = re.sub(r'date:\S+', '', search_query, flags=re.IGNORECASE)
             text_query = re.sub(r'date_from:\S+', '', text_query, flags=re.IGNORECASE)
             text_query = re.sub(r'date_to:\S+', '', text_query, flags=re.IGNORECASE)
-            text_query = re.sub(r'tag:\S+', '', text_query, flags=re.IGNORECASE).strip()
+            text_query = re.sub(r'tag:\S+', '', text_query, flags=re.IGNORECASE)
+            text_query = re.sub(r'speaker:\S+', '', text_query, flags=re.IGNORECASE).strip()
 
             # Apply date filters
             for date_filter in date_filters:
@@ -1530,6 +1544,15 @@ def get_recordings_paginated():
                     tag_conditions.append(Tag.name.ilike(f'%{tag_name}%'))
 
                 stmt = stmt.join(RecordingTag).join(Tag).where(db.or_(*tag_conditions))
+
+            # Apply speaker filters
+            if speaker_filters:
+                speaker_conditions = []
+                for speaker_filter in speaker_filters:
+                    # Replace underscores back to spaces for matching
+                    speaker_name = speaker_filter.replace('_', ' ')
+                    speaker_conditions.append(Recording.participants.ilike(f'%{speaker_name}%'))
+                stmt = stmt.where(db.or_(*speaker_conditions))
 
             # Apply text search
             if text_query:

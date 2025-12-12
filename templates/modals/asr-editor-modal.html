@@ -40,7 +40,7 @@
                             <div class="relative h-full" :ref="'speakerDropdown' + index">
                                 <div class="flex items-center h-full">
                                     <input type="text" v-model="segment.speaker"
-                                           @input="filterSpeakers(index); openSpeakerSuggestions(index)"
+                                           @input="filterSpeakerSuggestions(index); openSpeakerSuggestions(index)"
                                            @focus="openSpeakerSuggestions(index)"
                                            class="w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
                                     <button type="button" @click.stop="openSpeakerSuggestions(index)"

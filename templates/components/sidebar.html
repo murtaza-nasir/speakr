@@ -33,16 +33,16 @@
                             class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
                         <span class="flex items-center">
                             <i class="fas fa-filter mr-2 text-[var(--text-muted)]"></i>
-                            <span v-if="!searchQuery && filterTags.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery"
+                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery"
                                   v-text="t('sidebar.searchRecordings')">
                             </span>
                             <span v-else class="text-[var(--text-accent)]">
-                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) })
+                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) })
                             </span>
                         </span>
                         <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)]', showAdvancedFilters ? 'rotate-180' : '']"></i>
                     </button>
-                    <button v-if="searchQuery || filterTags.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery"
+                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery"
                             @click="clearAllFilters"
                             class="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                             :title="t('buttons.clearAllFilters')">
@@ -71,23 +71,66 @@
                     </div>
 
                     <!-- Tag Filter -->
-                    <div>
-                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1" v-text="t('tags.filterByTag')"></label>
-                        <div class="flex flex-wrap gap-1.5">
-                            <button v-for="tag in availableTags"
-                                    :key="tag.id"
-                                    @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
-                                    :class="[
-                                        'px-2 py-1 rounded-full text-xs font-medium transition-all',
-                                        filterTags.includes(tag.id)
-                                            ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]'
-                                            : 'bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:bg-[var(--bg-input)]'
-                                    ]">
-                                <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
-                                ${ tag.name }
-                            </button>
+                    <div class="bg-[var(--bg-secondary)] rounded-lg p-2.5 border border-[var(--border-primary)]">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap" v-text="t('tags.filterByTag')"></label>
+                            <div class="relative flex-1 max-w-[140px]" v-if="availableTags.length > 5">
+                                <input v-model="filterTagSearch"
+                                       type="text"
+                                       :placeholder="t('tags.searchTags')"
+                                       class="w-full px-2 py-1 pl-7 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto scrollbar-thin pr-1">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="tag in filteredTagsForFilter"
+                                        :key="tag.id"
+                                        @click="filterTags.includes(tag.id) ? filterTags = filterTags.filter(id => id !== tag.id) : filterTags.push(tag.id)"
+                                        :class="[
+                                            'px-2 py-1 rounded-full text-xs font-medium transition-all',
+                                            filterTags.includes(tag.id)
+                                                ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                        ]">
+                                    <span class="inline-block w-2 h-2 rounded-full mr-1" :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                    ${ tag.name }
+                                </button>
+                            </div>
                         </div>
                         <p v-if="availableTags.length === 0" class="text-xs text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
+                        <p v-else-if="filteredTagsForFilter.length === 0" class="text-xs text-[var(--text-muted)] italic py-1" v-text="t('tags.noMatchingTags')"></p>
+                    </div>
+
+                    <!-- Speaker Filter -->
+                    <div v-if="availableSpeakers.length > 0" class="bg-[var(--bg-secondary)] rounded-lg p-2.5 border border-[var(--border-primary)]">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap" v-text="t('speakers.filterBySpeaker')"></label>
+                            <div class="relative flex-1 max-w-[140px]" v-if="availableSpeakers.length > 5">
+                                <input v-model="filterSpeakerSearch"
+                                       type="text"
+                                       :placeholder="t('speakers.searchSpeakers')"
+                                       class="w-full px-2 py-1 pl-7 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 10px;"></i>
+                            </div>
+                        </div>
+                        <div class="max-h-24 overflow-y-auto scrollbar-thin pr-1">
+                            <div class="flex flex-wrap gap-1.5">
+                                <button v-for="speaker in filteredSpeakersForFilter"
+                                        :key="speaker.id"
+                                        @click="filterSpeakers.includes(speaker.name) ? filterSpeakers = filterSpeakers.filter(n => n !== speaker.name) : filterSpeakers.push(speaker.name)"
+                                        :class="[
+                                            'px-2 py-1 rounded-full text-xs font-medium transition-all',
+                                            filterSpeakers.includes(speaker.name)
+                                                ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] ring-1 ring-[var(--border-accent)]'
+                                                : 'bg-[var(--bg-input)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                                        ]">
+                                    <i class="fas fa-user mr-1" style="font-size: 9px;"></i>
+                                    ${ speaker.name }
+                                </button>
+                            </div>
+                        </div>
+                        <p v-if="filteredSpeakersForFilter.length === 0 && filterSpeakerSearch" class="text-xs text-[var(--text-muted)] italic py-1" v-text="t('speakers.noMatchingSpeakers')"></p>
                     </div>
 
                     <!-- Date Filter -->

@@ -904,7 +904,9 @@
     "manageAllTags": "Alle Tags verwalten",
     "noAvailableTags": "Keine verfügbaren Tags",
     "noTags": "Keine Tags",
+    "noMatchingTags": "Keine passenden Tags",
     "removeTag": "Tag entfernen",
+    "searchTags": "Suchen...",
     "tagColor": "Tag-Farbe",
     "tagName": "Tag-Name",
     "title": "Tags"
@@ -915,6 +917,11 @@
     "done": "Fertig",
     "noTagsAssigned": "Dieser Aufnahme sind keine Tags zugewiesen",
     "searchTags": "Tags suchen..."
+  },
+  "speakers": {
+    "filterBySpeaker": "Nach Sprecher filtern",
+    "searchSpeakers": "Suchen...",
+    "noMatchingSpeakers": "Keine passenden Sprecher"
   },
   "groups": {
     "title": "Gruppenverwaltung",

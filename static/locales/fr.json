@@ -904,7 +904,9 @@
     "manageAllTags": "Gérer Toutes les Étiquettes",
     "noAvailableTags": "Aucune étiquette disponible",
     "noTags": "Aucune étiquette",
+    "noMatchingTags": "Aucune étiquette correspondante",
     "removeTag": "Supprimer l'Étiquette",
+    "searchTags": "Rechercher...",
     "tagColor": "Couleur de l'Étiquette",
     "tagName": "Nom de l'Étiquette",
     "title": "Étiquettes"
@@ -915,6 +917,11 @@
     "done": "Terminé",
     "noTagsAssigned": "Aucune étiquette assignée à cet enregistrement",
     "searchTags": "Rechercher des étiquettes..."
+  },
+  "speakers": {
+    "filterBySpeaker": "Filtrer par intervenant",
+    "searchSpeakers": "Rechercher...",
+    "noMatchingSpeakers": "Aucun intervenant correspondant"
   },
   "groups": {
     "title": "Gestion de Groupe",
