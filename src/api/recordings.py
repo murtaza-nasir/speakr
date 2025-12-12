@@ -2007,26 +2007,38 @@ def upload_file():
             elif filename_lower.endswith(convertible_formats):
                 current_app.logger.info(f"Converting {filename_lower} format to high-quality MP3 for processing.")
             
+            # Use compression settings if enabled, otherwise default to MP3 128k
+            codec = AUDIO_CODEC if AUDIO_COMPRESS_UPLOADS else 'mp3'
+            bitrate = AUDIO_BITRATE if AUDIO_COMPRESS_UPLOADS else '128k'
+
+            # Determine output extension based on codec
+            codec_extensions = {'mp3': '.mp3', 'flac': '.flac', 'opus': '.opus'}
+            output_ext = codec_extensions.get(codec, '.mp3')
+
             base_filepath, _ = os.path.splitext(filepath)
-            temp_mp3_filepath = f"{base_filepath}_temp.mp3"
-            mp3_filepath = f"{base_filepath}.mp3"
+            temp_filepath = f"{base_filepath}_temp{output_ext}"
+            final_filepath = f"{base_filepath}{output_ext}"
 
             try:
-                # Convert to high-quality MP3 (128kbps, 44.1kHz) for better transcription accuracy
-                subprocess.run(
-                    ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', '-ac', '1', temp_mp3_filepath],
-                    check=True, capture_output=True, text=True
-                )
-                current_app.logger.info(f"Successfully converted {filepath} to {temp_mp3_filepath} (128kbps MP3)")
-                
-                # If the original file is not the same as the final mp3 file, remove it
-                if filepath.lower() != mp3_filepath.lower():
+                # Build FFmpeg command based on codec
+                if codec == 'flac':
+                    cmd = ['ffmpeg', '-i', filepath, '-y', '-acodec', 'flac', '-compression_level', '8', temp_filepath]
+                elif codec == 'opus':
+                    cmd = ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libopus', '-b:a', bitrate, temp_filepath]
+                else:  # mp3 (default)
+                    cmd = ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libmp3lame', '-b:a', bitrate, '-ac', '1', temp_filepath]
+
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                current_app.logger.info(f"Successfully converted {filepath} to {temp_filepath} ({codec.upper()} {bitrate})")
+
+                # If the original file is not the same as the final file, remove it
+                if filepath.lower() != final_filepath.lower():
                     os.remove(filepath)
-                
+
                 # Rename the temporary file to the final filename
-                os.rename(temp_mp3_filepath, mp3_filepath)
-                
-                filepath = mp3_filepath
+                os.rename(temp_filepath, final_filepath)
+
+                filepath = final_filepath
             except FileNotFoundError:
                 current_app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
                 return jsonify({'error': 'Audio conversion tool (ffmpeg) not found on server.'}), 500
@@ -2034,7 +2046,7 @@ def upload_file():
                 current_app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
                 return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
 
-        # Compress lossless audio files (WAV, AIFF) if enabled
+        # Compress lossless audio files (WAV, AIFF) if enabled (for files that weren't already converted above)
         if AUDIO_COMPRESS_UPLOADS:
             try:
                 new_filepath, new_mime = compress_lossless_audio(filepath, AUDIO_CODEC, AUDIO_BITRATE)
