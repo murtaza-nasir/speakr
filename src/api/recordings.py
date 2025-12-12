@@ -1333,6 +1333,8 @@ def get_recordings_paginated():
         search_query = request.args.get('q', '').strip()
         show_archived = request.args.get('archived', '').lower() == 'true'
         show_shared = request.args.get('shared', '').lower() == 'true'
+        show_starred = request.args.get('starred', '').lower() == 'true'
+        show_inbox = request.args.get('inbox', '').lower() == 'true'
 
         # Get all accessible recording IDs (own + shared)
         accessible_recording_ids = get_accessible_recording_ids(current_user.id)
@@ -1362,6 +1364,43 @@ def get_recordings_paginated():
         if show_shared:
             # Only show recordings shared with current user (not owned by them)
             stmt = stmt.where(Recording.user_id != current_user.id)
+
+        # Apply starred filter (AND with other filters)
+        # For starred/inbox we need to consider both owned recordings and shared recordings
+        if show_starred:
+            from src.models.sharing import SharedRecordingState
+            # For owned recordings: check Recording.is_highlighted
+            # For shared recordings: check SharedRecordingState.is_highlighted
+            starred_subq = select(SharedRecordingState.recording_id).where(
+                db.and_(
+                    SharedRecordingState.user_id == current_user.id,
+                    SharedRecordingState.is_highlighted == True
+                )
+            ).scalar_subquery()
+            stmt = stmt.where(
+                db.or_(
+                    db.and_(Recording.user_id == current_user.id, Recording.is_highlighted == True),
+                    Recording.id.in_(starred_subq)
+                )
+            )
+
+        # Apply inbox filter (AND with other filters)
+        if show_inbox:
+            from src.models.sharing import SharedRecordingState
+            # For owned recordings: check Recording.is_inbox
+            # For shared recordings: check SharedRecordingState.is_inbox
+            inbox_subq = select(SharedRecordingState.recording_id).where(
+                db.and_(
+                    SharedRecordingState.user_id == current_user.id,
+                    SharedRecordingState.is_inbox == True
+                )
+            ).scalar_subquery()
+            stmt = stmt.where(
+                db.or_(
+                    db.and_(Recording.user_id == current_user.id, Recording.is_inbox == True),
+                    Recording.id.in_(inbox_subq)
+                )
+            )
 
         # Apply search filters if provided
         if search_query:

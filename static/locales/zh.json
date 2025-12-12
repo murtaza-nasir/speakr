@@ -403,20 +403,56 @@
     "title": "选择配色方案",
     "themes": {
       "light": {
-        "blue": { "name": "海洋蓝", "description": "专业风格的经典蓝色主题" },
-        "emerald": { "name": "森林翠绿", "description": "清新自然的绿色主题" },
-        "purple": { "name": "皇家紫", "description": "优雅精致的紫色主题" },
-        "rose": { "name": "日落玫瑰", "description": "温暖柔和的粉色主题" },
-        "amber": { "name": "金色琥珀", "description": "明亮温暖的黄色主题" },
-        "teal": { "name": "海洋青", "description": "清凉宁静的青色主题" }
+        "blue": {
+          "name": "海洋蓝",
+          "description": "专业风格的经典蓝色主题"
+        },
+        "emerald": {
+          "name": "森林翠绿",
+          "description": "清新自然的绿色主题"
+        },
+        "purple": {
+          "name": "皇家紫",
+          "description": "优雅精致的紫色主题"
+        },
+        "rose": {
+          "name": "日落玫瑰",
+          "description": "温暖柔和的粉色主题"
+        },
+        "amber": {
+          "name": "金色琥珀",
+          "description": "明亮温暖的黄色主题"
+        },
+        "teal": {
+          "name": "海洋青",
+          "description": "清凉宁静的青色主题"
+        }
       },
       "dark": {
-        "blue": { "name": "午夜蓝", "description": "专注工作的深蓝主题" },
-        "emerald": { "name": "暗夜森林", "description": "舒适观看的浓绿主题" },
-        "purple": { "name": "深紫", "description": "激发创意的神秘紫色主题" },
-        "rose": { "name": "暗玫瑰", "description": "微妙温暖的柔粉主题" },
-        "amber": { "name": "暗琥珀", "description": "舒适温馨的棕色主题" },
-        "teal": { "name": "深青", "description": "平静专注的深青主题" }
+        "blue": {
+          "name": "午夜蓝",
+          "description": "专注工作的深蓝主题"
+        },
+        "emerald": {
+          "name": "暗夜森林",
+          "description": "舒适观看的浓绿主题"
+        },
+        "purple": {
+          "name": "深紫",
+          "description": "激发创意的神秘紫色主题"
+        },
+        "rose": {
+          "name": "暗玫瑰",
+          "description": "微妙温暖的柔粉主题"
+        },
+        "amber": {
+          "name": "暗琥珀",
+          "description": "舒适温馨的棕色主题"
+        },
+        "teal": {
+          "name": "深青",
+          "description": "平静专注的深青主题"
+        }
       }
     }
   },
@@ -651,7 +687,7 @@
     "uploadRecordingNotes": "上传录音和笔记",
     "whatWillHappen": "会发生什么？",
     "whyNotWorking": "为什么不工作？",
-    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有 8 种独特的颜色可用。颜色将在第 8 位发言人后重复。",
+    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有8种独特的颜色可用。颜色将在第8位发言人之后重复。",
     "expandAll": "全部展开",
     "failedReprocess": "重新处理失败",
     "filterByTag": "按标签筛选",
@@ -701,7 +737,6 @@
     "uploading": "上传中",
     "viewDetails": "查看详情",
     "waitingToUpload": "等待上传",
-    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有8种独特的颜色可用。颜色将在第8位发言人之后重复。",
     "publicLinkDesc": "任何拥有此链接的人都可以访问录音",
     "internalSharingDesc": "与您组织中的特定用户分享",
     "enterSpeakerName": "输入发言人姓名..."
@@ -823,10 +858,6 @@
     "settings": "设置",
     "signOut": "退出登录",
     "teamManagement": "群组管理",
-    "groupManagement": "群组管理",
-    "groupManagement": "群组管理",
-    "groupManagement": "群组管理",
-    "groupManagement": "群组管理",
     "groupManagement": "群组管理",
     "upload": "上传",
     "userProfile": "用户资料"
@@ -990,7 +1021,8 @@
     "recordings": "录音",
     "sortByDuration": "按时长排序",
     "sortByName": "按名称排序",
-    "uploadFiles": "上传文件"
+    "uploadFiles": "上传文件",
+    "starred": "Starred"
   },
   "status": {
     "completed": "已完成",

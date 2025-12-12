@@ -33,16 +33,16 @@
                             class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
                         <span class="flex items-center">
                             <i class="fas fa-filter mr-2 text-[var(--text-muted)]"></i>
-                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery"
+                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox"
                                   v-text="t('sidebar.searchRecordings')">
                             </span>
                             <span v-else class="text-[var(--text-accent)]">
-                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) })
+                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) })
                             </span>
                         </span>
                         <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)]', showAdvancedFilters ? 'rotate-180' : '']"></i>
                     </button>
-                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery"
+                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox"
                             @click="clearAllFilters"
                             class="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                             :title="t('buttons.clearAllFilters')">
@@ -68,6 +68,30 @@
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Quick Filters (Starred/Inbox) -->
+                    <div class="flex gap-2">
+                        <button @click="filterStarred = !filterStarred"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
+                                    filterStarred
+                                        ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-yellow-500/30 hover:text-yellow-400'
+                                ]">
+                            <i class="fas fa-star" style="font-size: 10px;"></i>
+                            <span v-text="t('sidebar.starred')"></span>
+                        </button>
+                        <button @click="filterInbox = !filterInbox"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border',
+                                    filterInbox
+                                        ? 'bg-blue-500/20 border-blue-500/50 text-blue-400'
+                                        : 'bg-[var(--bg-input)] border-[var(--border-secondary)] text-[var(--text-muted)] hover:border-blue-500/30 hover:text-blue-400'
+                                ]">
+                            <i class="fas fa-inbox" style="font-size: 10px;"></i>
+                            <span v-text="t('sidebar.inbox')"></span>
+                        </button>
                     </div>
 
                     <!-- Tag Filter -->
