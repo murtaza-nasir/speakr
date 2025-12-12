@@ -979,21 +979,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const groupedRecordings = computed(() => {
                 const groups = {};
+                const groupDates = {}; // Track the most recent date in each group
+
                 recordings.value.forEach(recording => {
                     const date = getDateForSorting(recording);
                     if (!date) return;
+
                     let group;
-                    if (isToday(date)) group = t('sidebar.today');
-                    else if (isYesterday(date)) group = t('sidebar.yesterday');
-                    else if (isThisWeek(date)) group = t('sidebar.thisWeek');
-                    else if (isLastWeek(date)) group = t('sidebar.lastWeek');
-                    else if (isThisMonth(date)) group = t('sidebar.thisMonth');
-                    else if (isLastMonth(date)) group = t('sidebar.lastMonth');
-                    else group = t('sidebar.older');
-                    if (!groups[group]) groups[group] = [];
+                    const now = new Date();
+
+                    // Check for future dates first
+                    if (date > now && !isToday(date)) {
+                        group = t('sidebar.upcoming');
+                    } else if (isToday(date)) {
+                        group = t('sidebar.today');
+                    } else if (isYesterday(date)) {
+                        group = t('sidebar.yesterday');
+                    } else if (isThisWeek(date)) {
+                        group = t('sidebar.thisWeek');
+                    } else if (isLastWeek(date)) {
+                        group = t('sidebar.lastWeek');
+                    } else if (isThisMonth(date)) {
+                        group = t('sidebar.thisMonth');
+                    } else if (isLastMonth(date)) {
+                        group = t('sidebar.lastMonth');
+                    } else {
+                        group = t('sidebar.older');
+                    }
+
+                    if (!groups[group]) {
+                        groups[group] = [];
+                        groupDates[group] = date;
+                    }
                     groups[group].push(recording);
+
+                    // Track the most recent (largest) date in each group
+                    if (date > groupDates[group]) {
+                        groupDates[group] = date;
+                    }
                 });
-                return Object.entries(groups).map(([title, items]) => ({ title, items }));
+
+                // Sort groups by their most recent date (descending - newest first)
+                return Object.entries(groups)
+                    .sort(([a], [b]) => groupDates[b] - groupDates[a])
+                    .map(([title, items]) => ({ title, items }));
             });
 
             const filteredAvailableTags = computed(() => {
@@ -1615,6 +1644,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             watch(filterInbox, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(sortBy, () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 

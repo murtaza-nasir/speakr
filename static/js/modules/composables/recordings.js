@@ -9,7 +9,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
         showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
-        filterStarred, filterInbox,
+        filterStarred, filterInbox, sortBy,
         availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL
@@ -36,6 +36,11 @@ export function useRecordings(state, utils, reprocessComposable) {
 
             if (searchQueryParam.trim()) {
                 params.set('q', searchQueryParam.trim());
+            }
+
+            // Add sort parameter
+            if (sortBy.value) {
+                params.set('sort_by', sortBy.value);
             }
 
             // Add archived/shared/starred/inbox filters as query params (ANDed with other filters)

@@ -1335,6 +1335,7 @@ def get_recordings_paginated():
         show_shared = request.args.get('shared', '').lower() == 'true'
         show_starred = request.args.get('starred', '').lower() == 'true'
         show_inbox = request.args.get('inbox', '').lower() == 'true'
+        sort_by = request.args.get('sort_by', 'created_at')  # 'created_at' or 'meeting_date'
 
         # Get all accessible recording IDs (own + shared)
         accessible_recording_ids = get_accessible_recording_ids(current_user.id)
@@ -1625,14 +1626,19 @@ def get_recordings_paginated():
 
                 stmt = stmt.where(db.or_(*text_conditions))
 
-        # Apply ordering (most recent first based on meeting_date or created_at)
-        stmt = stmt.order_by(
-            db.case(
-                (Recording.meeting_date.is_not(None), Recording.meeting_date),
-                else_=db.func.date(Recording.created_at)
-            ).desc(),
-            Recording.created_at.desc()
-        )
+        # Apply ordering based on sort_by parameter
+        if sort_by == 'meeting_date':
+            # Sort by meeting_date first, fall back to created_at if no meeting_date
+            stmt = stmt.order_by(
+                db.case(
+                    (Recording.meeting_date.is_not(None), Recording.meeting_date),
+                    else_=db.func.date(Recording.created_at)
+                ).desc(),
+                Recording.created_at.desc()
+            )
+        else:
+            # Default: sort by created_at (upload/processing date)
+            stmt = stmt.order_by(Recording.created_at.desc())
 
         # Get total count for pagination info
         count_stmt = select(db.func.count()).select_from(stmt.subquery())
