@@ -101,6 +101,7 @@ If you want speaker diarization to identify who's speaking in your recordings, y
    - Better timestamp alignment between speakers and words
    - **Required for:** Voice profiles, automatic speaker recognition, speaker embeddings
    - **Environment file:** `config/env.whisperx.example`
+   - **Required setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features
 
 2. **OpenAI Whisper ASR Webservice (Basic Diarization)** - For basic speaker diarization without voice profiles
    - Repository: [ahmetoner/openai-whisper-asr-webservice](https://github.com/ahmetoner/openai-whisper-asr-webservice)
@@ -109,6 +110,7 @@ If you want speaker diarization to identify who's speaking in your recordings, y
    - **Supports:** Basic speaker identification (Speaker 1, Speaker 2, etc.)
    - **Does not support:** Voice profiles, speaker embeddings, automatic speaker recognition
    - **Environment file:** `config/env.asr.example`
+   - **Note:** Do not set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` with this service as it will cause errors
 
 > **Important:** Before proceeding with this configuration, you'll need to set up one of the ASR service containers. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
 
@@ -139,6 +141,16 @@ The ASR_BASE_URL depends on your deployment architecture:
 - **Separate machine:** Use the full URL with IP address or domain name (e.g., `http://192.168.1.100:9000`)
 
 Speaker diarization is automatically enabled when using ASR endpoints. The system will identify different speakers in your recordings and label them as Speaker 1, Speaker 2, and so on. You can optionally override the default speaker detection settings by uncommenting and adjusting ASR_MIN_SPEAKERS and ASR_MAX_SPEAKERS in your environment file.
+
+**Voice Profile Configuration:**
+
+If you're using WhisperX ASR Service and want to enable voice profile features (automatic speaker recognition across recordings), add this to your `.env` file:
+
+```bash
+ASR_RETURN_SPEAKER_EMBEDDINGS=true
+```
+
+This setting is disabled by default because it's only supported by WhisperX. If you're using the basic OpenAI Whisper ASR Webservice, leave this setting disabled or omit it entirely to avoid errors.
 
 ### Step 4: Configure System Settings
 

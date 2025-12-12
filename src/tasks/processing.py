@@ -26,7 +26,7 @@ from src.services.embeddings import process_recording_chunks
 from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy
 from src.utils import extract_json_object, safe_json_loads
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
-from src.config.app_config import ASR_DIARIZE, ASR_BASE_URL, transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING
+from src.config.app_config import ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS, transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 
 # Configuration for internal sharing
@@ -954,9 +954,14 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                         if language:
                             params['language'] = language
                         if diarize:
-                            params['enable_diarization'] = diarize
-                            # Request speaker embeddings when diarization is enabled
-                            params['return_speaker_embeddings'] = True
+                            # Send both parameter names for compatibility:
+                            # - 'diarize' is used by whisper-asr-webservice
+                            # - 'enable_diarization' is used by WhisperX
+                            params['diarize'] = True
+                            params['enable_diarization'] = True
+                            # Only request speaker embeddings if explicitly enabled (WhisperX only)
+                            if ASR_RETURN_SPEAKER_EMBEDDINGS:
+                                params['return_speaker_embeddings'] = True
                         if min_speakers:
                             params['min_speakers'] = min_speakers
                         if max_speakers:
@@ -975,9 +980,20 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                             response = client.post(url, params=params, files=files, timeout=timeout)
                             current_app.logger.info(f"ASR request completed with status: {response.status_code}")
                             response.raise_for_status()
-                            
-                            # Parse the JSON response from ASR (moved here so it's accessible)
-                            asr_response_data = response.json()
+
+                            # Parse the JSON response from ASR
+                            # Try to parse as JSON first, fall back to content-type check for error handling
+                            response_text = response.text
+                            try:
+                                asr_response_data = response.json()
+                            except Exception as json_err:
+                                # If JSON parsing fails, check if it looks like HTML (error page)
+                                if response_text.strip().startswith('<'):
+                                    current_app.logger.error(f"ASR returned HTML error page (status {response.status_code}): {response_text[:500]}")
+                                    raise Exception(f"ASR service returned HTML error page (status {response.status_code})")
+                                else:
+                                    current_app.logger.error(f"ASR returned non-JSON response (status {response.status_code}): {response_text[:500]}")
+                                    raise Exception(f"ASR service returned invalid response: {json_err}")
 
                             # Extract speaker embeddings if present
                             if 'speaker_embeddings' in asr_response_data:

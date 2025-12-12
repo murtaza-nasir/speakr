@@ -31,10 +31,13 @@ if USE_ASR_ENDPOINT:
     ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'true').lower() == 'true'
     ASR_MIN_SPEAKERS = os.environ.get('ASR_MIN_SPEAKERS')
     ASR_MAX_SPEAKERS = os.environ.get('ASR_MAX_SPEAKERS')
+    # Speaker embeddings are only supported by WhisperX ASR service, not the basic whisper-asr-webservice
+    ASR_RETURN_SPEAKER_EMBEDDINGS = os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
 else:
     ASR_DIARIZE = False
     ASR_MIN_SPEAKERS = None
     ASR_MAX_SPEAKERS = None
+    ASR_RETURN_SPEAKER_EMBEDDINGS = False
 
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 CHUNK_SIZE_MB = int(os.environ.get('CHUNK_SIZE_MB', '20'))

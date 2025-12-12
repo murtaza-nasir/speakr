@@ -128,8 +128,8 @@ docker compose up -d
 ```
 
 **Note:** ASR option requires running an additional ASR service container alongside Speakr:
-- **For voice profiles & speaker embeddings:** Use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) (recommended)
-- **For basic speaker diarization:** Use [OpenAI Whisper ASR Webservice](https://github.com/ahmetoner/whisper-asr-webservice)
+- **For voice profiles & speaker embeddings:** Use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) and set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` in your `.env`
+- **For basic speaker diarization:** Use [OpenAI Whisper ASR Webservice](https://github.com/ahmetoner/whisper-asr-webservice) (speaker embeddings not supported)
 
 > **⚠️ PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container's environment in docker-compose.yml. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
 
