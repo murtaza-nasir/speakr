@@ -295,6 +295,9 @@ curl http://localhost:9000/health
 
 See the [WhisperX ASR Service README](https://github.com/murtaza-nasir/whisperx-asr-service#readme) for detailed configuration options, troubleshooting, and performance tuning.
 
+!!! warning "PyTorch 2.6 Compatibility"
+    If you encounter a "Weights only load failed" error, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container's environment variables in docker-compose.yml. See [troubleshooting](../troubleshooting.md#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
+
 #### Option 2: OpenAI Whisper ASR Webservice (Basic Diarization Only)
 
 **Use this if you:**
@@ -336,6 +339,7 @@ services:
       - COMPUTE_TYPE=float16
       - BATCH_SIZE=16
       - HF_TOKEN=your_huggingface_token_here
+      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true  # Required for PyTorch 2.6+
     deploy:
       resources:
         reservations:
@@ -411,6 +415,7 @@ services:
       - ASR_COMPUTE_TYPE=int8
       - ASR_ENGINE=whisperx
       - HF_TOKEN=your_huggingface_token_here
+      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true  # Required for PyTorch 2.6+
     deploy:
       resources:
         reservations:
@@ -473,6 +478,7 @@ services:
       - ASR_COMPUTE_TYPE=int8
       - ASR_ENGINE=whisperx
       - HF_TOKEN=your_huggingface_token_here
+      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true  # Required for PyTorch 2.6+
     deploy:
       resources:
         reservations:

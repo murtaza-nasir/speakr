@@ -122,6 +122,38 @@ Even with ASR enabled, you must explicitly request diarization when uploading or
 
 After transcription, speakers appear as generic labels (SPEAKER_01, etc.). You must manually [identify speakers](user-guide/transcripts.md#speaker-identification) by clicking the labels and assigning names. Manage your [speaker library](user-guide/settings.md#speakers-management-tab) in account settings.
 
+### PyTorch 2.6 Weights Loading Error (WhisperX ASR Service)
+
+If you're getting an error like this when trying to transcribe:
+
+```
+Weights only load failed. This file can still be loaded...
+WeightsUnpickler error: Unsupported global: GLOBAL omegaconf.listconfig.ListConfig was not an allowed global by default.
+```
+
+This is caused by a breaking change in PyTorch 2.6 where the default value of `weights_only` in `torch.load` changed from `False` to `True`. The pyannote models used for voice activity detection in WhisperX are affected.
+
+**Solution**: Add this environment variable to your WhisperX ASR service container in your docker-compose.yml:
+
+```yaml
+whisper-asr:
+  image: learnedmachine/whisperx-asr-service:latest
+  environment:
+    - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true
+    # ... your other environment variables
+```
+
+!!! warning "Important"
+    This environment variable must be set directly in the docker-compose.yml file under the `environment` section of the ASR service container. Setting it in a `.env` file may not work reliably.
+
+After adding this variable, restart your ASR container:
+```bash
+docker compose down whisper-asr
+docker compose up -d whisper-asr
+```
+
+For more details, see the [WhisperX issue discussion](https://github.com/m-bain/whisperX/issues/1304).
+
 ### WhisperX Shows UNKNOWN_SPEAKER
 
 If WhisperX only shows "UNKNOWN_SPEAKER" instead of numbered speakers (SPEAKER_00, SPEAKER_01, etc.), check these common issues:
