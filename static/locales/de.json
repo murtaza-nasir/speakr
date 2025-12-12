@@ -331,20 +331,56 @@
     "title": "Farbschema wählen",
     "themes": {
       "light": {
-        "blue": { "name": "Ozeanblau", "description": "Klassisches Blau-Thema mit professioneller Anmutung" },
-        "emerald": { "name": "Waldsmaragd", "description": "Frisches grünes Thema für natürliches Gefühl" },
-        "purple": { "name": "Königslila", "description": "Elegantes Lila-Thema mit Raffinesse" },
-        "rose": { "name": "Sonnenuntergang-Rose", "description": "Warmes Rosa-Thema mit sanfter Energie" },
-        "amber": { "name": "Goldenes Bernstein", "description": "Warmes Gelb-Thema für Helligkeit" },
-        "teal": { "name": "Ozean-Türkis", "description": "Kühles Türkis-Thema für Ruhe" }
+        "blue": {
+          "name": "Ozeanblau",
+          "description": "Klassisches Blau-Thema mit professioneller Anmutung"
+        },
+        "emerald": {
+          "name": "Waldsmaragd",
+          "description": "Frisches grünes Thema für natürliches Gefühl"
+        },
+        "purple": {
+          "name": "Königslila",
+          "description": "Elegantes Lila-Thema mit Raffinesse"
+        },
+        "rose": {
+          "name": "Sonnenuntergang-Rose",
+          "description": "Warmes Rosa-Thema mit sanfter Energie"
+        },
+        "amber": {
+          "name": "Goldenes Bernstein",
+          "description": "Warmes Gelb-Thema für Helligkeit"
+        },
+        "teal": {
+          "name": "Ozean-Türkis",
+          "description": "Kühles Türkis-Thema für Ruhe"
+        }
       },
       "dark": {
-        "blue": { "name": "Mitternachtsblau", "description": "Tiefes Blau-Thema für konzentriertes Arbeiten" },
-        "emerald": { "name": "Dunkler Wald", "description": "Sattes grünes Thema für angenehmes Betrachten" },
-        "purple": { "name": "Tiefes Lila", "description": "Mysteriöses Lila-Thema für Kreativität" },
-        "rose": { "name": "Dunkle Rose", "description": "Gedämpftes Rosa-Thema mit subtiler Wärme" },
-        "amber": { "name": "Dunkles Bernstein", "description": "Warmes Braun-Thema für gemütliche Sitzungen" },
-        "teal": { "name": "Tiefes Türkis", "description": "Dunkles Türkis-Thema für ruhigen Fokus" }
+        "blue": {
+          "name": "Mitternachtsblau",
+          "description": "Tiefes Blau-Thema für konzentriertes Arbeiten"
+        },
+        "emerald": {
+          "name": "Dunkler Wald",
+          "description": "Sattes grünes Thema für angenehmes Betrachten"
+        },
+        "purple": {
+          "name": "Tiefes Lila",
+          "description": "Mysteriöses Lila-Thema für Kreativität"
+        },
+        "rose": {
+          "name": "Dunkle Rose",
+          "description": "Gedämpftes Rosa-Thema mit subtiler Wärme"
+        },
+        "amber": {
+          "name": "Dunkles Bernstein",
+          "description": "Warmes Braun-Thema für gemütliche Sitzungen"
+        },
+        "teal": {
+          "name": "Tiefes Türkis",
+          "description": "Dunkles Türkis-Thema für ruhigen Fokus"
+        }
       }
     }
   },
@@ -741,10 +777,6 @@
     "signOut": "Abmelden",
     "teamManagement": "Gruppenverwaltung",
     "groupManagement": "Gruppenverwaltung",
-    "groupManagement": "Gruppenverwaltung",
-    "groupManagement": "Gruppenverwaltung",
-    "groupManagement": "Gruppenverwaltung",
-    "groupManagement": "Gruppenverwaltung",
     "upload": "Hochladen",
     "userProfile": "Benutzerprofil"
   },
@@ -859,7 +891,8 @@
     "today": "Heute",
     "totalRecordings": "{{count}} Aufnahme",
     "totalRecordingsPlural": "{{count}} Aufnahmen",
-    "yesterday": "Gestern"
+    "yesterday": "Gestern",
+    "starred": "Starred"
   },
   "status": {
     "completed": "Abgeschlossen",

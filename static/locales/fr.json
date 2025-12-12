@@ -325,20 +325,56 @@
     "title": "Choisir le Schéma de Couleurs",
     "themes": {
       "light": {
-        "blue": { "name": "Bleu Océan", "description": "Thème bleu classique avec attrait professionnel" },
-        "emerald": { "name": "Émeraude Forêt", "description": "Thème vert frais pour une sensation naturelle" },
-        "purple": { "name": "Violet Royal", "description": "Thème violet élégant avec sophistication" },
-        "rose": { "name": "Rose Coucher de Soleil", "description": "Thème rose chaud avec énergie douce" },
-        "amber": { "name": "Ambre Doré", "description": "Thème jaune chaud pour la luminosité" },
-        "teal": { "name": "Turquoise Océan", "description": "Thème turquoise frais pour la tranquillité" }
+        "blue": {
+          "name": "Bleu Océan",
+          "description": "Thème bleu classique avec attrait professionnel"
+        },
+        "emerald": {
+          "name": "Émeraude Forêt",
+          "description": "Thème vert frais pour une sensation naturelle"
+        },
+        "purple": {
+          "name": "Violet Royal",
+          "description": "Thème violet élégant avec sophistication"
+        },
+        "rose": {
+          "name": "Rose Coucher de Soleil",
+          "description": "Thème rose chaud avec énergie douce"
+        },
+        "amber": {
+          "name": "Ambre Doré",
+          "description": "Thème jaune chaud pour la luminosité"
+        },
+        "teal": {
+          "name": "Turquoise Océan",
+          "description": "Thème turquoise frais pour la tranquillité"
+        }
       },
       "dark": {
-        "blue": { "name": "Bleu Minuit", "description": "Thème bleu profond pour travail concentré" },
-        "emerald": { "name": "Forêt Sombre", "description": "Thème vert riche pour visualisation confortable" },
-        "purple": { "name": "Violet Profond", "description": "Thème violet mystérieux pour la créativité" },
-        "rose": { "name": "Rose Sombre", "description": "Thème rose atténué avec chaleur subtile" },
-        "amber": { "name": "Ambre Sombre", "description": "Thème marron chaud pour sessions confortables" },
-        "teal": { "name": "Turquoise Profond", "description": "Thème turquoise sombre pour concentration calme" }
+        "blue": {
+          "name": "Bleu Minuit",
+          "description": "Thème bleu profond pour travail concentré"
+        },
+        "emerald": {
+          "name": "Forêt Sombre",
+          "description": "Thème vert riche pour visualisation confortable"
+        },
+        "purple": {
+          "name": "Violet Profond",
+          "description": "Thème violet mystérieux pour la créativité"
+        },
+        "rose": {
+          "name": "Rose Sombre",
+          "description": "Thème rose atténué avec chaleur subtile"
+        },
+        "amber": {
+          "name": "Ambre Sombre",
+          "description": "Thème marron chaud pour sessions confortables"
+        },
+        "teal": {
+          "name": "Turquoise Profond",
+          "description": "Thème turquoise sombre pour concentration calme"
+        }
       }
     }
   },
@@ -621,41 +657,11 @@
     "zh": "Chinois"
   },
   "speakersManagement": {
-    "description": "Gérez vos locuteurs enregistrés. Ceux-ci sont automatiquement sauvegardés lorsque vous utilisez des noms de locuteurs dans vos enregistrements.",
-    "loadingSpeakers": "Chargement des locuteurs...",
-    "failedToLoad": "Échec du chargement des locuteurs",
-    "noSpeakersYet": "Aucun locuteur enregistré pour le moment",
-    "speakersWillAppear": "Les locuteurs apparaîtront ici lorsque vous utilisez des noms de locuteurs dans vos enregistrements",
-    "totalSpeakers": "locuteurs enregistrés",
-    "usedTimes": "Utilisé",
-    "lastUsed": "Dernière utilisation",
-    "created": "Créé",
     "used": "Utilisé",
     "time": "fois",
     "times": "fois",
     "last": "Dernier",
-    "added": "Ajouté",
-    "voiceProfile": "Profil Vocal",
-    "voiceMatchSuggestions": "Suggestions de Correspondance Vocale",
-    "match": "correspondance",
-    "confidence": "Confiance",
-    "confidenceHigh": "élevée",
-    "confidenceMedium": "moyenne",
-    "confidenceLow": "faible",
-    "samples": "échantillons",
-    "sample": "échantillon",
-    "viewSnippets": "Voir les Extraits",
-    "noSnippetsAvailable": "Aucun extrait disponible",
-    "failedToLoadSnippets": "Échec du chargement des extraits",
-    "mergeSpeakers": "Fusionner les Locuteurs",
-    "selectToMerge": "Sélectionnez 2+ pour Fusionner",
-    "mergeNSpeakers": "Fusionner {{count}} Locuteurs",
-    "speakersToMerge": "Locuteurs à fusionner :",
-    "keepThisSpeaker": "Conserver ce locuteur (les autres seront fusionnés avec lui) :",
-    "mergeDescription": "Combinez plusieurs profils de locuteurs en un seul. Toutes les incorporations, extraits et données d'utilisation seront fusionnés.",
-    "targetWillReceive": "Le locuteur sélectionné recevra toutes les données vocales et extraits des autres.",
-    "mergeSuccess": "Locuteurs fusionnés avec succès",
-    "mergeFailed": "Échec de la fusion des locuteurs"
+    "added": "Ajouté"
   },
   "manageSpeakersModal": {
     "created": "Créé",
@@ -734,10 +740,6 @@
     "signOut": "Déconnexion",
     "teamManagement": "Gestion de Groupe",
     "groupManagement": "Gestion de Groupe",
-    "groupManagement": "Gestion de Groupe",
-    "groupManagement": "Gestion de Groupe",
-    "groupManagement": "Gestion de Groupe",
-    "groupManagement": "Gestion de Groupe",
     "upload": "Télécharger",
     "userProfile": "Profil Utilisateur"
   },
@@ -798,13 +800,6 @@
     "title": "Paramètres",
     "twoFactorAuth": "Authentification à Deux Facteurs"
   },
-  "speakersManagement": {
-    "used": "Utilisé",
-    "time": "fois",
-    "times": "fois",
-    "last": "Dernier",
-    "added": "Ajouté"
-  },
   "sharedTranscripts": {
     "noSharedTranscripts": "Vous n'avez encore partagé aucune transcription.",
     "sharedOn": "Partagé le",
@@ -859,7 +854,8 @@
     "today": "Aujourd'hui",
     "totalRecordings": "{{count}} enregistrement",
     "totalRecordingsPlural": "{{count}} enregistrements",
-    "yesterday": "Hier"
+    "yesterday": "Hier",
+    "starred": "Starred"
   },
   "status": {
     "completed": "Terminé",

@@ -9,6 +9,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
         showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
+        filterStarred, filterInbox,
         availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL
@@ -37,12 +38,18 @@ export function useRecordings(state, utils, reprocessComposable) {
                 params.set('q', searchQueryParam.trim());
             }
 
-            // Add archived/shared filters as query params (ANDed with other filters)
+            // Add archived/shared/starred/inbox filters as query params (ANDed with other filters)
             if (showArchivedRecordings.value) {
                 params.set('archived', 'true');
             }
             if (showSharedWithMe.value) {
                 params.set('shared', 'true');
+            }
+            if (filterStarred.value) {
+                params.set('starred', 'true');
+            }
+            if (filterInbox.value) {
+                params.set('inbox', 'true');
             }
 
             const response = await fetch(`${endpoint}?${params}`);
@@ -322,6 +329,8 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterDateRange.value = { start: '', end: '' };
         filterDatePreset.value = '';
         filterTextQuery.value = '';
+        filterStarred.value = false;
+        filterInbox.value = false;
         searchQuery.value = '';
     };
 

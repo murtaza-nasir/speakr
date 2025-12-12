@@ -91,6 +91,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterDateRange = ref({ start: '', end: '' });
             const filterDatePreset = ref('');
             const filterTextQuery = ref('');
+            const filterStarred = ref(false);
+            const filterInbox = ref(false);
             const showArchivedRecordings = ref(false);
             const showSharedWithMe = ref(false);
 
@@ -411,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Filters
                 showAdvancedFilters, filterTags, filterSpeakers, filterTagSearch, filterSpeakerSearch,
-                filterDateRange, filterDatePreset, filterTextQuery,
+                filterDateRange, filterDatePreset, filterTextQuery, filterStarred, filterInbox,
                 showArchivedRecordings, showSharedWithMe, sortBy, selectedTagFilter,
 
                 // Pagination
@@ -1606,6 +1608,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 searchDebounceTimer.value = setTimeout(() => {
                     recordingsComposable.applyAdvancedFilters();
                 }, 300);
+            });
+
+            watch(filterStarred, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(filterInbox, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
             watch(showArchivedRecordings, (newValue, oldValue) => {

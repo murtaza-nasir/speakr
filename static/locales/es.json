@@ -331,20 +331,56 @@
     "title": "Elegir Esquema de Color",
     "themes": {
       "light": {
-        "blue": { "name": "Azul Océano", "description": "Tema azul clásico con atractivo profesional" },
-        "emerald": { "name": "Esmeralda Bosque", "description": "Tema verde fresco para sensación natural" },
-        "purple": { "name": "Púrpura Real", "description": "Tema púrpura elegante con sofisticación" },
-        "rose": { "name": "Rosa Atardecer", "description": "Tema rosa cálido con energía suave" },
-        "amber": { "name": "Ámbar Dorado", "description": "Tema amarillo cálido para luminosidad" },
-        "teal": { "name": "Turquesa Océano", "description": "Tema turquesa fresco para tranquilidad" }
+        "blue": {
+          "name": "Azul Océano",
+          "description": "Tema azul clásico con atractivo profesional"
+        },
+        "emerald": {
+          "name": "Esmeralda Bosque",
+          "description": "Tema verde fresco para sensación natural"
+        },
+        "purple": {
+          "name": "Púrpura Real",
+          "description": "Tema púrpura elegante con sofisticación"
+        },
+        "rose": {
+          "name": "Rosa Atardecer",
+          "description": "Tema rosa cálido con energía suave"
+        },
+        "amber": {
+          "name": "Ámbar Dorado",
+          "description": "Tema amarillo cálido para luminosidad"
+        },
+        "teal": {
+          "name": "Turquesa Océano",
+          "description": "Tema turquesa fresco para tranquilidad"
+        }
       },
       "dark": {
-        "blue": { "name": "Azul Medianoche", "description": "Tema azul profundo para trabajo enfocado" },
-        "emerald": { "name": "Bosque Oscuro", "description": "Tema verde rico para visualización cómoda" },
-        "purple": { "name": "Púrpura Profundo", "description": "Tema púrpura misterioso para creatividad" },
-        "rose": { "name": "Rosa Oscuro", "description": "Tema rosa tenue con calidez sutil" },
-        "amber": { "name": "Ámbar Oscuro", "description": "Tema marrón cálido para sesiones acogedoras" },
-        "teal": { "name": "Turquesa Profundo", "description": "Tema turquesa oscuro para enfoque tranquilo" }
+        "blue": {
+          "name": "Azul Medianoche",
+          "description": "Tema azul profundo para trabajo enfocado"
+        },
+        "emerald": {
+          "name": "Bosque Oscuro",
+          "description": "Tema verde rico para visualización cómoda"
+        },
+        "purple": {
+          "name": "Púrpura Profundo",
+          "description": "Tema púrpura misterioso para creatividad"
+        },
+        "rose": {
+          "name": "Rosa Oscuro",
+          "description": "Tema rosa tenue con calidez sutil"
+        },
+        "amber": {
+          "name": "Ámbar Oscuro",
+          "description": "Tema marrón cálido para sesiones acogedoras"
+        },
+        "teal": {
+          "name": "Turquesa Profundo",
+          "description": "Tema turquesa oscuro para enfoque tranquilo"
+        }
       }
     }
   },
@@ -627,41 +663,11 @@
     "zh": "Chino"
   },
   "speakersManagement": {
-    "description": "Administre sus oradores guardados. Estos se guardan automáticamente cuando usa nombres de oradores en sus grabaciones.",
-    "loadingSpeakers": "Cargando oradores...",
-    "failedToLoad": "Error al cargar oradores",
-    "noSpeakersYet": "Aún no hay oradores guardados",
-    "speakersWillAppear": "Los oradores aparecerán aquí cuando use nombres de oradores en sus grabaciones",
-    "totalSpeakers": "oradores guardados",
-    "usedTimes": "Usado",
-    "lastUsed": "Último uso",
-    "created": "Creado",
     "used": "Usado",
     "time": "vez",
     "times": "veces",
     "last": "Último",
-    "added": "Agregado",
-    "voiceProfile": "Perfil de Voz",
-    "voiceMatchSuggestions": "Sugerencias de Coincidencia de Voz",
-    "match": "coincidencia",
-    "confidence": "Confianza",
-    "confidenceHigh": "alta",
-    "confidenceMedium": "media",
-    "confidenceLow": "baja",
-    "samples": "muestras",
-    "sample": "muestra",
-    "viewSnippets": "Ver Fragmentos",
-    "noSnippetsAvailable": "No hay fragmentos disponibles",
-    "failedToLoadSnippets": "Error al cargar fragmentos",
-    "mergeSpeakers": "Combinar Oradores",
-    "selectToMerge": "Seleccione 2+ para Combinar",
-    "mergeNSpeakers": "Combinar {{count}} Oradores",
-    "speakersToMerge": "Oradores para combinar:",
-    "keepThisSpeaker": "Mantener este orador (los otros se combinarán en él):",
-    "mergeDescription": "Combine múltiples perfiles de oradores en uno. Todas las incrustaciones, fragmentos y datos de uso se combinarán.",
-    "targetWillReceive": "El orador seleccionado recibirá todos los datos de voz y fragmentos de los demás.",
-    "mergeSuccess": "Oradores combinados exitosamente",
-    "mergeFailed": "Error al combinar oradores"
+    "added": "Añadido"
   },
   "manageSpeakersModal": {
     "created": "Creado",
@@ -740,10 +746,6 @@
     "signOut": "Cerrar Sesión",
     "teamManagement": "Gestión de Grupos",
     "groupManagement": "Gestión de Grupos",
-    "groupManagement": "Gestión de Grupos",
-    "groupManagement": "Gestión de Grupos",
-    "groupManagement": "Gestión de Grupos",
-    "groupManagement": "Gestión de Grupos",
     "upload": "Subir",
     "userProfile": "Perfil de Usuario"
   },
@@ -804,13 +806,6 @@
     "title": "Configuración",
     "twoFactorAuth": "Autenticación de Dos Factores"
   },
-  "speakersManagement": {
-    "used": "Usado",
-    "time": "vez",
-    "times": "veces",
-    "last": "Último",
-    "added": "Añadido"
-  },
   "sharedTranscripts": {
     "noSharedTranscripts": "Aún no has compartido ninguna transcripción.",
     "sharedOn": "Compartido el",
@@ -865,7 +860,8 @@
     "today": "Hoy",
     "totalRecordings": "{{count}} grabación",
     "totalRecordingsPlural": "{{count}} grabaciones",
-    "yesterday": "Ayer"
+    "yesterday": "Ayer",
+    "starred": "Starred"
   },
   "status": {
     "completed": "Completado",

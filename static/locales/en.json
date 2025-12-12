@@ -876,6 +876,8 @@
     "removeFromHighlighted": "Remove from starred",
     "searchRecordings": "Search recordings...",
     "sharedWithMe": "Shared with Me",
+    "starred": "Starred",
+    "inbox": "Inbox",
     "sortBy": "Sort By",
     "sortByDate": "Created Date",
     "sortByMeetingDate": "Meeting Date",
