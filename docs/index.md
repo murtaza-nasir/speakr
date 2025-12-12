@@ -147,6 +147,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! warning "PyTorch 2.6 Compatibility Issue with WhisperX ASR"
+    If you're using the WhisperX ASR service and encounter a "Weights only load failed" error after a recent update, add this environment variable to your ASR container in docker-compose.yml:
+    ```yaml
+    environment:
+      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true
+    ```
+    This is caused by a PyTorch 2.6 change. See [troubleshooting](troubleshooting.md#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
+
 !!! info "Version 0.6.5 - Separate Chat Model Configuration"
     **New Feature** - Configure different AI models for chat vs background tasks
 
