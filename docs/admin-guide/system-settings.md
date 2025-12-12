@@ -113,6 +113,22 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 Jobs are persisted to the database and survive application restarts. If Speakr restarts while jobs are processing, they automatically resume from where they left off.
 
+### Audio Compression
+
+Speakr can automatically compress lossless audio uploads (WAV, AIFF) to save storage space. This happens transparently on upload - the original file is replaced with the compressed version.
+
+**AUDIO_COMPRESS_UPLOADS**: Enable automatic compression of lossless uploads. When `true`, WAV and AIFF files are compressed on upload. Already-compressed formats (MP3, AAC, OGG, etc.) are never re-encoded. Default: `true`.
+
+**AUDIO_CODEC**: Target compression format. Options:
+
+- `mp3` - Lossy, excellent compatibility, smallest files (~90% reduction)
+- `flac` - Lossless, preserves full quality (~50-70% reduction)
+- `opus` - Modern lossy codec, efficient for speech
+
+Default: `mp3`.
+
+**AUDIO_BITRATE**: Bitrate for lossy codecs (MP3, Opus). Common values: `64k`, `128k`, `192k`. Ignored for FLAC. Default: `128k`.
+
 ### Configuration Example
 
 ```bash
@@ -128,6 +144,11 @@ USERS_CAN_DELETE=false  # Only admins can delete
 ENABLE_AUTO_DELETION=true
 DEFAULT_RETENTION_DAYS=90
 DELETION_MODE=audio_only
+
+# Audio compression (enabled by default)
+AUDIO_COMPRESS_UPLOADS=true
+AUDIO_CODEC=mp3
+AUDIO_BITRATE=128k
 
 # Processing queue
 JOB_QUEUE_WORKERS=2

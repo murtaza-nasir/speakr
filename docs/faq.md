@@ -204,6 +204,38 @@ For Chinese transcription specifically, use the large-v3 model as smaller models
 
 Chunking by file size (e.g., CHUNK_LIMIT=20MB) works well for consistent bitrate audio. Chunking by duration (e.g., CHUNK_LIMIT=1400s) is better when your transcription service has time limits, like Azure's 1500-second maximum. Duration-based chunking ensures no chunk exceeds the time limit regardless of file compression or quality.
 
+### Does Speakr compress my audio files?
+
+Yes, by default. Speakr automatically compresses lossless uploads (WAV, AIFF) to save storage space. A typical 500MB WAV file becomes roughly 50MB after compression - a 90% reduction. This happens transparently when you upload.
+
+**What gets compressed:**
+- WAV and AIFF files (uncompressed/lossless formats)
+
+**What stays unchanged:**
+- Already-compressed formats: MP3, AAC, OGG, M4A, FLAC, etc.
+- These are never re-encoded to avoid quality loss
+
+**Configuration options** (in your `.env` file):
+```bash
+AUDIO_COMPRESS_UPLOADS=true   # Enable/disable (default: true)
+AUDIO_CODEC=mp3               # mp3, flac, or opus (default: mp3)
+AUDIO_BITRATE=128k            # For lossy codecs (default: 128k)
+```
+
+If you need to preserve original audio quality, set `AUDIO_CODEC=flac` for lossless compression, or set `AUDIO_COMPRESS_UPLOADS=false` to disable compression entirely.
+
+### Which audio codec should I choose?
+
+The three codec options serve different needs:
+
+| Codec | Type | Size Reduction | Best For |
+|-------|------|----------------|----------|
+| **mp3** | Lossy | ~90% from WAV | General use, maximum storage savings |
+| **flac** | Lossless | ~50-70% from WAV | Archival, when quality preservation matters |
+| **opus** | Lossy | ~90% from WAV | Speech-focused recordings, modern systems |
+
+For most users, the default **mp3 at 128k** provides excellent quality for speech while maximizing storage savings. If you're archiving important recordings and want to preserve full audio fidelity, use **flac**. The **opus** codec is efficient for speech but has slightly less universal compatibility than MP3.
+
 ---
 
 Return to [Home](index.md) →
