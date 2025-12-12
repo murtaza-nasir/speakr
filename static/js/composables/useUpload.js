@@ -54,7 +54,7 @@ export function useUpload() {
 
             const isAudio = file.type.startsWith('audio/') ||
                            file.type.startsWith('video/') ||
-                           /\.(mp3|wav|ogg|m4a|flac|webm|mp4|mov|avi|mkv)$/i.test(file.name);
+                           /\.(mp3|wav|ogg|m4a|flac|webm|weba|mp4|mov|avi|mkv)$/i.test(file.name);
 
             if (!isAudio) {
                 uploadQueue.value.push({

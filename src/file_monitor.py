@@ -369,7 +369,7 @@ class FileMonitor:
         filename_lower = original_filename.lower()
         
         # Support WebM and other formats directly when possible
-        supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
+        supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.weba', '.m4a', '.aac', '.ogg')
         convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
         
         if filename_lower.endswith(supported_formats):

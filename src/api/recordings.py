@@ -1981,10 +1981,10 @@ def upload_file():
         if needs_chunking_for_processing:
             # For chunking: only support formats that work well with chunking
             supported_formats = ('.wav', '.mp3', '.flac')
-            convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
+            convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm', '.weba', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
         else:
             # For direct transcription: support WebM and other formats directly
-            supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.m4a', '.aac', '.ogg')
+            supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.weba', '.m4a', '.aac', '.ogg')
             convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
         
         # Special handling for problematic AAC files when using ASR endpoint
@@ -1993,16 +1993,19 @@ def upload_file():
                               'aac' in filename_lower.lower()))
         
         # Convert if file is not in supported formats OR is problematic AAC for ASR
-        should_convert = ((not filename_lower.endswith(supported_formats) and needs_chunking_for_processing) or 
-                         is_problematic_aac)
-        
+        # Also convert unknown formats proactively to avoid downstream failures
+        is_unknown_format = not filename_lower.endswith(supported_formats) and not filename_lower.endswith(convertible_formats)
+        should_convert = ((not filename_lower.endswith(supported_formats) and needs_chunking_for_processing) or
+                         is_problematic_aac or
+                         is_unknown_format)
+
         if should_convert:
             if is_problematic_aac:
                 current_app.logger.info(f"Converting AAC-encoded file {filename_lower} to high-quality MP3 for ASR endpoint compatibility.")
+            elif is_unknown_format:
+                current_app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to MP3 via FFmpeg.")
             elif filename_lower.endswith(convertible_formats):
-                current_app.logger.info(f"Converting {filename_lower} format to high-quality MP3 for chunking processing.")
-            else:
-                current_app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to high-quality MP3 for chunking.")
+                current_app.logger.info(f"Converting {filename_lower} format to high-quality MP3 for processing.")
             
             base_filepath, _ = os.path.splitext(filepath)
             temp_mp3_filepath = f"{base_filepath}_temp.mp3"
@@ -2030,9 +2033,6 @@ def upload_file():
             except subprocess.CalledProcessError as e:
                 current_app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
                 return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
-        elif not filename_lower.endswith(supported_formats):
-            # File is not supported and chunking is not needed - log but don't convert
-            current_app.logger.info(f"File format {filename_lower} will be processed directly without conversion (chunking not needed)")
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
