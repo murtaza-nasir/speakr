@@ -22,8 +22,8 @@ from email.utils import encode_rfc2231
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE
-from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking
+from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
+from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking, compress_lossless_audio
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
@@ -2033,6 +2033,17 @@ def upload_file():
             except subprocess.CalledProcessError as e:
                 current_app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
                 return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
+
+        # Compress lossless audio files (WAV, AIFF) if enabled
+        if AUDIO_COMPRESS_UPLOADS:
+            try:
+                new_filepath, new_mime = compress_lossless_audio(filepath, AUDIO_CODEC, AUDIO_BITRATE)
+                if new_filepath != filepath:
+                    filepath = new_filepath
+                    # MIME type will be updated below
+            except Exception as e:
+                current_app.logger.warning(f"Audio compression failed, continuing with original: {e}")
+                # Don't fail the upload if compression fails - just continue with original
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)

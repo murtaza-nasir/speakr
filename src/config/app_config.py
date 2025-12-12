@@ -43,6 +43,11 @@ ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 CHUNK_SIZE_MB = int(os.environ.get('CHUNK_SIZE_MB', '20'))
 CHUNK_OVERLAP_SECONDS = int(os.environ.get('CHUNK_OVERLAP_SECONDS', '3'))
 
+# Audio compression settings - compress lossless uploads (WAV, AIFF) to save storage
+AUDIO_COMPRESS_UPLOADS = os.environ.get('AUDIO_COMPRESS_UPLOADS', 'true').lower() == 'true'
+AUDIO_CODEC = os.environ.get('AUDIO_CODEC', 'mp3').lower()  # mp3, flac, opus
+AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')  # For lossy codecs
+
 # Create chunking service at module level so it can be imported by processing.py
 chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS) if ENABLE_CHUNKING else None
 
