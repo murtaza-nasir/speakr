@@ -15,12 +15,14 @@ WhisperX is an advanced ASR (Automatic Speech Recognition) service that provides
 - ✅ Better speaker diarization accuracy (Pyannote.audio 4.0)
 - ✅ More precise word-level timestamps
 - ✅ Improved multi-speaker handling
+- ✅ **Voice profile support** with 256-dimensional speaker embeddings
+- ✅ Automatic speaker recognition across recordings
 - ✅ Active development and updates
 - ✅ Production-ready Docker deployment
 
 **vs. Standard Whisper ASR:**
-- Standard: Simple, lightweight, good for single speakers
-- WhisperX: Advanced diarization, better for meetings/conversations
+- Standard: Simple, lightweight, good for single speakers, no voice profiles
+- WhisperX: Advanced diarization, voice profiles, better for meetings/conversations
 
 ## Prerequisites
 
@@ -149,7 +151,12 @@ USE_ASR_ENDPOINT=true
 
 # Point to WhisperX service
 ASR_BASE_URL=http://whisperx-asr-api:9000
+
+# Enable voice profile features (speaker embeddings)
+ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
+
+> **Important:** The `ASR_RETURN_SPEAKER_EMBEDDINGS=true` setting is required to enable voice profile features. This setting is only supported by WhisperX and should not be enabled when using the basic OpenAI Whisper ASR Webservice.
 
 Restart Speakr:
 
@@ -181,6 +188,7 @@ Update Speakr's `.env`:
 ```bash
 USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://GPU_MACHINE_IP:9000
+ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
 
 Replace `GPU_MACHINE_IP` with actual IP address.
@@ -392,10 +400,14 @@ Tested on RTX 3080 (10GB VRAM):
 | Transcription Quality | Excellent | Excellent |
 | Word Timestamps | Good | Excellent |
 | Speaker Diarization | Good | Excellent |
+| Voice Profiles | ❌ Not supported | ✅ 256-dim embeddings |
+| Speaker Recognition | ❌ Manual only | ✅ Automatic matching |
 | Setup Complexity | Low | Medium |
 | Resource Usage | Lower | Higher |
 | Active Development | Moderate | High |
 | Production Ready | Yes | Yes |
+
+> **Note:** To enable voice profile features with WhisperX, you must set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` in Speakr's `.env` file. This setting is disabled by default for compatibility with the basic ASR webservice.
 
 ## Best Practices
 
