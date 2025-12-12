@@ -78,7 +78,8 @@ export function useUpload(state, utils) {
                 fileObject.name.toLowerCase().endsWith('.mov') ||
                 fileObject.name.toLowerCase().endsWith('.avi') ||
                 fileObject.name.toLowerCase().endsWith('.mkv') ||
-                fileObject.name.toLowerCase().endsWith('.webm')
+                fileObject.name.toLowerCase().endsWith('.webm') ||
+                fileObject.name.toLowerCase().endsWith('.weba')
             );
 
             if (isAudioFile) {
