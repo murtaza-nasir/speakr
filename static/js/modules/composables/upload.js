@@ -240,7 +240,18 @@ export function useUpload(state, utils) {
                 processingProgress.value = 10;
 
                 const response = await fetch('/upload', { method: 'POST', body: formData });
-                const data = await response.json();
+
+                // Safely parse JSON response, handling HTML error pages
+                let data;
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    const text = await response.text();
+                    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+                    const h1Match = text.match(/<h1>([^<]+)<\/h1>/i);
+                    throw new Error(titleMatch?.[1] || h1Match?.[1] ||
+                        `Server error (${response.status}): Response was not JSON`);
+                }
+                data = await response.json();
 
                 if (!response.ok) {
                     let errorMsg = data.error || `Upload failed with status ${response.status}`;
@@ -357,6 +368,15 @@ export function useUpload(state, utils) {
                 const response = await fetch(`/recording/${recordingId}/status`);
                 if (!response.ok) throw new Error(`Status check failed with status ${response.status}`);
 
+                // Safely parse JSON response, handling HTML error pages
+                const statusContentType = response.headers.get('content-type') || '';
+                if (!statusContentType.includes('application/json')) {
+                    const text = await response.text();
+                    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+                    const h1Match = text.match(/<h1>([^<]+)<\/h1>/i);
+                    throw new Error(titleMatch?.[1] || h1Match?.[1] ||
+                        `Server error (${response.status}): Status response was not JSON`);
+                }
                 const statusData = await response.json();
                 const galleryIndex = recordings.value.findIndex(r => r.id === recordingId);
 

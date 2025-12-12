@@ -11,6 +11,26 @@ class APIError extends Error {
     }
 }
 
+/**
+ * Safely parse JSON response, handling HTML error pages gracefully
+ */
+async function safeJsonParse(response) {
+    const contentType = response.headers.get('content-type') || '';
+
+    // If response is not JSON, extract useful error from HTML
+    if (!contentType.includes('application/json')) {
+        const text = await response.text();
+        // Try to extract error message from HTML title or h1
+        const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+        const h1Match = text.match(/<h1>([^<]+)<\/h1>/i);
+        const errorMsg = titleMatch?.[1] || h1Match?.[1] ||
+            `Server returned non-JSON response (status ${response.status})`;
+        throw new APIError(errorMsg, response.status, { htmlResponse: true });
+    }
+
+    return response.json();
+}
+
 export async function apiRequest(url, options = {}) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -32,7 +52,7 @@ export async function apiRequest(url, options = {}) {
 
     try {
         const response = await fetch(url, mergedOptions);
-        const data = await response.json();
+        const data = await safeJsonParse(response);
 
         if (!response.ok) {
             throw new APIError(
