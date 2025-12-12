@@ -1035,7 +1035,9 @@
     "manageAllTags": "管理所有标签",
     "noAvailableTags": "没有可用标签",
     "noTags": "无标签",
+    "noMatchingTags": "没有匹配的标签",
     "removeTag": "删除标签",
+    "searchTags": "搜索...",
     "tagColor": "标签颜色",
     "tagName": "标签名称",
     "title": "标签"
@@ -1046,6 +1048,11 @@
     "done": "完成",
     "noTagsAssigned": "此录音未分配标签",
     "searchTags": "搜索标签..."
+  },
+  "speakers": {
+    "filterBySpeaker": "按发言人筛选",
+    "searchSpeakers": "搜索...",
+    "noMatchingSpeakers": "没有匹配的发言人"
   },
   "groups": {
     "title": "群组管理",

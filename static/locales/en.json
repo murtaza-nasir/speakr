@@ -930,7 +930,9 @@
     "manageAllTags": "Manage All Tags",
     "noAvailableTags": "No available tags",
     "noTags": "No tags",
+    "noMatchingTags": "No matching tags",
     "removeTag": "Remove Tag",
+    "searchTags": "Search...",
     "tagColor": "Tag Color",
     "tagName": "Tag Name",
     "title": "Tags"
@@ -941,6 +943,11 @@
     "done": "Done",
     "noTagsAssigned": "No tags assigned to this recording",
     "searchTags": "Search tags..."
+  },
+  "speakers": {
+    "filterBySpeaker": "Filter by speaker",
+    "searchSpeakers": "Search...",
+    "noMatchingSpeakers": "No matching speakers"
   },
   "groups": {
     "title": "Group Management",

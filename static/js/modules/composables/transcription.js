@@ -106,7 +106,7 @@ export function useTranscription(state, utils) {
         }
     };
 
-    const filterSpeakers = (index) => {
+    const filterSpeakerSuggestions = (index) => {
         const segment = editingSegments.value[index];
         if (segment) {
             const query = segment.speaker?.toLowerCase() || '';
@@ -128,7 +128,7 @@ export function useTranscription(state, utils) {
             });
 
             editingSegments.value[index].showSuggestions = true;
-            filterSpeakers(index);
+            filterSpeakerSuggestions(index);
             updateDropdownPosition(index);
         }
     };
@@ -413,7 +413,7 @@ export function useTranscription(state, utils) {
 
         // Segment management
         adjustTime,
-        filterSpeakers,
+        filterSpeakerSuggestions,
         openSpeakerSuggestions,
         closeSpeakerSuggestions,
         closeAllSpeakerSuggestions,

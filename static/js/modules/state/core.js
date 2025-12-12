@@ -30,6 +30,7 @@ export function createCoreState(ref, computed) {
     // Advanced filter state
     const showAdvancedFilters = ref(false);
     const filterTags = ref([]);
+    const filterSpeakers = ref([]);  // Array of speaker names for filtering
     const filterDateRange = ref({ start: '', end: '' });
     const filterDatePreset = ref('');
     const filterTextQuery = ref('');
@@ -48,6 +49,9 @@ export function createCoreState(ref, computed) {
     const availableTags = ref([]);
     const selectedTagIds = ref([]);
     const uploadTagSearchFilter = ref('');
+
+    // Speaker Selection
+    const availableSpeakers = ref([]);
 
     const selectedTags = computed(() => {
         return selectedTagIds.value.map(tagId =>
@@ -103,6 +107,7 @@ export function createCoreState(ref, computed) {
         selectedTagFilter,
         showAdvancedFilters,
         filterTags,
+        filterSpeakers,
         filterDateRange,
         filterDatePreset,
         filterTextQuery,
@@ -123,6 +128,9 @@ export function createCoreState(ref, computed) {
         uploadTagSearchFilter,
         selectedTags,
         filteredAvailableTagsForUpload,
-        filteredRecordings
+        filteredRecordings,
+
+        // Speakers
+        availableSpeakers
     };
 }

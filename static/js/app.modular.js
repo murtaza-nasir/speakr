@@ -85,6 +85,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Advanced filter state
             const showAdvancedFilters = ref(false);
             const filterTags = ref([]);
+            const filterSpeakers = ref([]);
+            const filterTagSearch = ref('');
+            const filterSpeakerSearch = ref('');
             const filterDateRange = ref({ start: '', end: '' });
             const filterDatePreset = ref('');
             const filterTextQuery = ref('');
@@ -407,7 +410,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isLoadingRecordings, globalError, csrfToken,
 
                 // Filters
-                showAdvancedFilters, filterTags, filterDateRange, filterDatePreset, filterTextQuery,
+                showAdvancedFilters, filterTags, filterSpeakers, filterTagSearch, filterSpeakerSearch,
+                filterDateRange, filterDatePreset, filterTextQuery,
                 showArchivedRecordings, showSharedWithMe, sortBy, selectedTagFilter,
 
                 // Pagination
@@ -997,6 +1001,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 );
             });
 
+            // Filtered tags for sidebar filter (searches by name)
+            const filteredTagsForFilter = computed(() => {
+                if (!filterTagSearch.value) return availableTags.value;
+                const search = filterTagSearch.value.toLowerCase();
+                return availableTags.value.filter(tag =>
+                    tag.name.toLowerCase().includes(search)
+                );
+            });
+
+            // Filtered speakers for sidebar filter (searches by name)
+            const filteredSpeakersForFilter = computed(() => {
+                if (!filterSpeakerSearch.value) return availableSpeakers.value;
+                const search = filterSpeakerSearch.value.toLowerCase();
+                return availableSpeakers.value.filter(speaker =>
+                    speaker.name.toLowerCase().includes(search)
+                );
+            });
+
             const selectedTags = computed(() => {
                 return selectedTagIds.value.map(id =>
                     availableTags.value.find(t => t.id === id)
@@ -1567,6 +1589,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingsComposable.applyAdvancedFilters();
             }, { deep: true });
 
+            watch(filterSpeakers, () => {
+                recordingsComposable.applyAdvancedFilters();
+            }, { deep: true });
+
             watch(filterDatePreset, () => {
                 recordingsComposable.applyAdvancedFilters();
             });
@@ -1582,7 +1608,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }, 300);
             });
 
-            watch(showArchivedRecordings, () => {
+            watch(showArchivedRecordings, (newValue, oldValue) => {
+                // Prevent unnecessary reloads when being set by the other watcher
+                if (newValue === oldValue) return;
+
                 // Reload recordings when switching between archived/normal view
                 if (showArchivedRecordings.value) {
                     showSharedWithMe.value = false;  // Can't show both at once
@@ -1590,7 +1619,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
-            watch(showSharedWithMe, () => {
+            watch(showSharedWithMe, (newValue, oldValue) => {
+                // Prevent unnecessary reloads when being set by the other watcher
+                if (newValue === oldValue) return;
+
                 // Reload recordings when switching to/from shared view
                 if (showSharedWithMe.value) {
                     showArchivedRecordings.value = false;  // Can't show both at once
@@ -1682,7 +1714,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Load initial data
                 await Promise.all([
                     recordingsComposable.loadRecordings(),
-                    recordingsComposable.loadTags()
+                    recordingsComposable.loadTags(),
+                    recordingsComposable.loadSpeakers()
                 ]);
 
                 // Load config
@@ -1823,6 +1856,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 processedTranscription,
                 groupedRecordings,
                 filteredAvailableTags,
+                filteredTagsForFilter,
+                filteredSpeakersForFilter,
                 selectedTags,
                 colorSchemes,
                 dropdownPositions,
