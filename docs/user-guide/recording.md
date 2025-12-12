@@ -20,6 +20,9 @@ The upload interface provides a simple drag-and-drop area at the top of the scre
 
 Speakr supports a [wide range of audio and video formats](../faq.md#what-audio-formats-does-speakr-support). Common audio formats like MP3, WAV, M4A, FLAC, AAC, and OGG work perfectly. You can also upload video files including MP4, MOV, and AVI, and Speakr will extract and process the audio track. Mobile recordings in formats like AMR, 3GP, and 3GPP are also supported. The default file size limit is 500MB, though this can be configured by your administrator in [system settings](../admin-guide/system-settings.md#maximum-file-size). For files over 25MB with OpenAI, see [chunking configuration](../troubleshooting.md#files-over-25mb-fail-with-openai).
 
+!!! info "Automatic Audio Compression"
+    Speakr automatically compresses lossless uploads (WAV, AIFF) to save storage space. A 500MB WAV file typically becomes ~50MB after compression. This happens transparently on upload - you don't need to pre-convert your files. Already-compressed formats like MP3 are kept as-is. See [audio compression settings](../admin-guide/system-settings.md#audio-compression) for configuration options.
+
 When you upload a file, it immediately appears in the upload queue with a progress bar showing the upload status. Once uploaded, you can add [tags](settings.md#tag-management-tab), set a custom title, and configure processing options before starting transcription. Tags can include [custom AI prompts](../admin-guide/prompts.md) for specialized processing.
 
 ## Recording Live Audio

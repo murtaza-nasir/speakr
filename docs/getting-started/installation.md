@@ -190,6 +190,35 @@ When chunking is enabled, Speakr automatically detects when a file exceeds the c
 
 This feature only applies when using the standard Whisper API method. If you're using an ASR endpoint, chunking is not needed as these services typically handle large files natively.
 
+#### Audio Compression
+
+Speakr can automatically compress lossless audio uploads to save storage space. This is particularly useful when users upload large WAV or AIFF files from professional recording equipment or phone apps that record in uncompressed formats.
+
+```bash
+AUDIO_COMPRESS_UPLOADS=true
+AUDIO_CODEC=mp3
+AUDIO_BITRATE=128k
+```
+
+When enabled (the default), lossless files are automatically converted on upload:
+
+| Setting | Options | Description |
+|---------|---------|-------------|
+| `AUDIO_COMPRESS_UPLOADS` | `true`/`false` | Enable automatic compression (default: `true`) |
+| `AUDIO_CODEC` | `mp3`, `flac`, `opus` | Target format (default: `mp3`) |
+| `AUDIO_BITRATE` | e.g., `64k`, `128k`, `192k` | Bitrate for lossy codecs (default: `128k`) |
+
+**Codec options:**
+
+- **mp3** - Lossy compression, excellent compatibility, smallest files (~90% reduction from WAV)
+- **flac** - Lossless compression, preserves full audio quality (~50-70% reduction from WAV)
+- **opus** - Modern lossy codec, efficient compression, good for speech
+
+Already-compressed formats (MP3, AAC, OGG, M4A, etc.) are never re-encoded to avoid quality degradation. Only truly lossless formats (WAV, AIFF) are compressed.
+
+!!! tip "Storage Savings Example"
+    A 500MB WAV recording compressed to MP3 at 128k becomes roughly 50MB - a 90% reduction. For lossless preservation, FLAC typically achieves 50-70% reduction while maintaining perfect audio quality.
+
 #### Inquire Mode for Semantic Search
 
 Inquire Mode transforms Speakr from a simple transcription tool into a knowledge base of all your recordings. When enabled, you can search across all your transcriptions using natural language questions:
