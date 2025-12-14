@@ -6,16 +6,16 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.6.3 - API Token Authentication"
-    **New Feature** - Programmatic API access for automation tools
+!!! info "Latest Release: v0.6.6 - Filter & Compress"
+    **New Features** - Audio compression and enhanced filtering
 
-    - **API Tokens** - Create personal access tokens for programmatic API access (n8n, Zapier, scripts)
-    - **Multiple Auth Methods** - Bearer token, X-API-Token header, API-Token header, or query parameter
-    - **Token Management** - Create, revoke, and track token usage from Account Settings
-    - **Flexible Expiration** - Set custom expiration periods or create non-expiring tokens
-    - **Secure Storage** - Tokens are hashed (SHA-256) and never stored in plaintext
+    - **Auto Compression** - Lossless uploads (WAV, AIFF) automatically compressed to save storage
+    - **Speaker Filtering** - Filter recordings by speaker name
+    - **Starred/Inbox Toggles** - Quick filter toggles in filter panel
+    - **Upcoming Group** - Future-dated recordings grouped separately
+    - **Format Support** - Added .weba support, FFmpeg fallback for unknown formats
 
-    ✅ Fully backward compatible with v0.6.x. No configuration changes required. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.6.3)
+    ✅ Fully backward compatible with v0.6.5. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.6.6)
 
 ## Quick Navigation
 
@@ -154,6 +154,16 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
       - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true
     ```
     This is caused by a PyTorch 2.6 change. See [troubleshooting](troubleshooting.md#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
+
+!!! info "Version 0.6.6 - Filter & Compress"
+    **New Features** - Audio compression and enhanced filtering
+
+    - **Auto Compression** - Lossless uploads automatically compressed (configurable codec/bitrate)
+    - **Speaker Filtering** - Filter recordings by speaker, starred/inbox toggles
+    - **Sorting Fix** - Sort toggle works correctly, added Upcoming group for future dates
+    - **Format Support** - .weba format, FFmpeg fallback for unknown formats
+
+    ✅ Fully backward compatible. Optional env vars: `AUDIO_COMPRESS_UPLOADS`, `AUDIO_CODEC`, `AUDIO_BITRATE`
 
 !!! info "Version 0.6.5 - Separate Chat Model Configuration"
     **New Feature** - Configure different AI models for chat vs background tasks
