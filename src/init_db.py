@@ -73,6 +73,10 @@ def initialize_database(app):
             app.logger.info("Added diarize column to user table")
         if add_column_if_not_exists(engine, 'user', 'ui_language', 'VARCHAR(10) DEFAULT "en"'):
             app.logger.info("Added ui_language column to user table")
+        if add_column_if_not_exists(engine, 'user', 'sso_provider', 'VARCHAR(100)'):
+            app.logger.info("Added sso_provider column to user table")
+        if add_column_if_not_exists(engine, 'user', 'sso_subject', 'VARCHAR(255)'):
+            app.logger.info("Added sso_subject column to user table")
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
@@ -373,6 +377,19 @@ def initialize_database(app):
                         app.logger.info("Created index ix_transcript_chunk_speaker_name on transcript_chunk (speaker_name)")
         except Exception as e:
             app.logger.warning(f"Could not create speaker_name indexes: {e}")
+
+        # Add unique index for SSO subject to prevent duplicate linking
+        try:
+            inspector = inspect(engine)
+            if 'user' in inspector.get_table_names():
+                existing_indexes = [idx['name'] for idx in inspector.get_indexes('user')]
+                if 'ix_user_sso_subject' not in existing_indexes:
+                    with engine.connect() as conn:
+                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON user (sso_subject)'))
+                        conn.commit()
+                        app.logger.info("Created unique index ix_user_sso_subject on user.sso_subject")
+        except Exception as e:
+            app.logger.warning(f"Could not create unique index on user.sso_subject: {e}")
 
         # Initialize default system settings
         if not SystemSetting.query.filter_by(key='transcript_length_limit').first():

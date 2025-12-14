@@ -16,7 +16,9 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
+    password = db.Column(db.String(60), nullable=True)
+    sso_provider = db.Column(db.String(100), nullable=True)
+    sso_subject = db.Column(db.String(255), unique=True, nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     can_share_publicly = db.Column(db.Boolean, default=True)  # Permission to create public share links
     recordings = db.relationship('Recording', backref='owner', lazy=True)

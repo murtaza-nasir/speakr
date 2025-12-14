@@ -8,7 +8,7 @@ and password changes.
 import os
 import re
 import mimetypes
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
@@ -20,6 +20,16 @@ import markdown
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
 from src.utils import password_check
+from src.auth.sso import (
+    init_sso_client,
+    is_sso_enabled,
+    get_sso_config,
+    get_sso_client,
+    create_or_update_sso_user,
+    is_domain_allowed,
+    link_sso_to_existing_user,
+    update_user_profile_from_claims,
+)
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -128,19 +138,136 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('recordings.index'))
 
+    sso_enabled = is_sso_enabled()
+    sso_config = get_sso_config()
+    if sso_enabled:
+        init_sso_client(current_app)
+
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
-            login_user(user, remember=form.remember.data)
-            next_page = request.args.get('next')
-            if not is_safe_url(next_page):
-                return redirect(url_for('recordings.index'))
-            return redirect(next_page) if next_page else redirect(url_for('recordings.index'))
+        if user and user.password:
+            if bcrypt.check_password_hash(user.password, form.password.data):
+                login_user(user, remember=form.remember.data)
+                next_page = request.args.get('next')
+                if not is_safe_url(next_page):
+                    return redirect(url_for('recordings.index'))
+                return redirect(next_page) if next_page else redirect(url_for('recordings.index'))
+            else:
+                flash('Login unsuccessful. Please check email and password.', 'danger')
+        elif user and not user.password:
+            flash('This account uses SSO login. Please sign in with SSO.', 'warning')
         else:
             flash('Login unsuccessful. Please check email and password.', 'danger')
 
-    return render_template('login.html', title='Login', form=form)
+    return render_template(
+        'login.html',
+        title='Login',
+        form=form,
+        sso_enabled=sso_enabled,
+        sso_provider_name=sso_config.get('provider_name', 'SSO')
+    )
+
+
+@auth_bp.route('/auth/sso/login')
+@rate_limit("10 per minute")
+def sso_login():
+    if not is_sso_enabled():
+        flash('SSO is not configured. Please contact the administrator.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    oauth = get_sso_client() or init_sso_client(current_app)
+    if not oauth:
+        flash('Failed to initialize SSO client. Check server logs.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    next_url = request.args.get('next')
+    if next_url and is_safe_url(next_url):
+        session['sso_next'] = next_url
+    else:
+        session.pop('sso_next', None)
+
+    return oauth.sso.authorize_redirect(redirect_uri=get_sso_config().get('redirect_uri'))
+
+
+@auth_bp.route('/auth/sso/callback')
+@rate_limit("20 per minute")
+def sso_callback():
+    if not is_sso_enabled():
+        flash('SSO is not configured. Please contact the administrator.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    oauth = get_sso_client() or init_sso_client(current_app)
+    if not oauth:
+        flash('Failed to initialize SSO client. Check server logs.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    try:
+        token = oauth.sso.authorize_access_token()
+        userinfo = token.get('userinfo') or oauth.sso.userinfo()
+    except Exception as e:
+        current_app.logger.warning(f"SSO callback error: {e}")
+        flash('SSO login failed. Please try again.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    subject = userinfo.get('sub')
+    if not subject:
+        flash('SSO response did not include a subject identifier.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    link_user_id = session.pop('sso_link_user_id', None)
+    next_url = session.pop('sso_next', None)
+    cfg = get_sso_config()
+
+    if link_user_id:
+        target_user = db.session.get(User, int(link_user_id))
+        if not target_user:
+            flash('Could not link account: user not found.', 'danger')
+            return redirect(url_for('auth.account'))
+
+        existing = User.query.filter_by(sso_subject=subject).first()
+        if existing and existing.id != target_user.id:
+            flash('This SSO account is already linked to another user.', 'danger')
+            return redirect(url_for('auth.account'))
+
+        update_user_profile_from_claims(target_user, userinfo)
+        target_user.sso_provider = cfg.get('provider_name', 'SSO')
+        target_user.sso_subject = subject
+        db.session.commit()
+        flash('SSO account linked successfully.', 'success')
+        return redirect(url_for('auth.account'))
+
+    try:
+        user = create_or_update_sso_user(userinfo)
+    except PermissionError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('auth.login'))
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('auth.login'))
+    except Exception as e:
+        current_app.logger.warning(f"SSO login error: {e}")
+        flash('Could not complete SSO login. Please try again.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    login_user(user, remember=True)
+
+    if next_url and is_safe_url(next_url):
+        return redirect(next_url)
+    return redirect(url_for('recordings.index'))
+
+
+@auth_bp.route('/auth/sso/link', methods=['POST'])
+@login_required
+def sso_link():
+    if not is_sso_enabled():
+        flash('SSO is not configured. Please contact the administrator.', 'danger')
+        return redirect(url_for('auth.account'))
+
+    session['sso_link_user_id'] = current_user.id
+    session['sso_next'] = url_for('auth.account')
+
+    return redirect(url_for('auth.sso_login'))
 
 
 @auth_bp.route('/logout')
@@ -238,6 +365,12 @@ def account():
                 'name': membership.group.name
             })
 
+    sso_config = get_sso_config()
+    sso_enabled = is_sso_enabled()
+    if sso_enabled:
+        init_sso_client(current_app)
+    sso_linked = bool(current_user.sso_subject)
+
     return render_template('account.html',
                            title='Account',
                            default_summary_prompt_text=default_summary_prompt_text,
@@ -247,7 +380,11 @@ def account():
                            user_admin_groups=user_admin_groups,
                            asr_diarize_locked=asr_diarize_locked,
                            asr_diarize_env_value=ASR_DIARIZE,
-                           is_team_admin=is_team_admin)
+                           is_team_admin=is_team_admin,
+                           sso_enabled=sso_enabled,
+                           sso_provider_name=sso_config.get('provider_name', 'SSO'),
+                           sso_linked=sso_linked,
+                           sso_subject=current_user.sso_subject)
 
 
 @auth_bp.route('/change_password', methods=['POST'])
