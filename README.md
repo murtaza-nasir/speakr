@@ -147,27 +147,26 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.6.5)
+## Latest Release (v0.6.6)
 
-**New Feature** - Separate Chat Model Configuration
+**New Features** - Audio compression and enhanced filtering
 
-- **Separate Chat Model** - Configure different AI models for chat vs background tasks (#143)
-- **Custom Datetime Picker** - New themed calendar and time selection modal
-- **Bug Fixes** - Audio chunking after refactor (#140), username display (#138)
+- **Auto Compression** - Lossless uploads (WAV, AIFF) automatically compressed to save storage
+- **Speaker Filtering** - Filter recordings by speaker name, starred/inbox toggles
+- **Sorting Fix** - Sort toggle works correctly, added Upcoming group for future dates
+- **Format Support** - .weba format, FFmpeg fallback for unknown formats
 
-Fully backward compatible. Optional `CHAT_MODEL_*` environment variables.
+Fully backward compatible. Optional env vars: `AUDIO_COMPRESS_UPLOADS`, `AUDIO_CODEC`, `AUDIO_BITRATE`
+
+### Previous Release (v0.6.5)
+
+- Separate Chat Model - Configure different AI models for chat vs background tasks
+- Custom Datetime Picker - New themed calendar and time selection modal
 
 ### Previous Release (v0.6.3)
 
 - API Token Authentication for programmatic access
 - Multiple auth methods: Bearer token, X-API-Token, query parameter
-- Token management UI with expiration settings
-
-### Previous Release (v0.6.2)
-
-- Standardized modal UX with backdrop click and consistent X button
-- Recording disclaimer markdown support
-- IndexedDB crash recovery and queue cleanup fixes
 
 ### v0.5.9 - Major Release
 
