@@ -67,7 +67,8 @@
                     'es': 'Español (Spanish)',
                     'fr': 'Français (French)',
                     'zh': '中文 (Chinese)',
-                    'de': 'Deutsch (German)'
+                    'de': 'Deutsch (German)',
+                    'ru': 'Русский (Russian)'
                 };
                 
                 Array.from(langSelect.options).forEach(option => {
@@ -518,6 +519,7 @@
                                             <option value="de" {% if current_user.ui_language == 'de' %}selected{% endif %}>Deutsch (German)</option>
                                             <option value="es" {% if current_user.ui_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
                                             <option value="fr" {% if current_user.ui_language == 'fr' %}selected{% endif %}>Français (French)</option>
+                                            <option value="ru" {% if current_user.ui_language == 'ru' %}selected{% endif %}>Русский (Russian)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
                                     </div>
