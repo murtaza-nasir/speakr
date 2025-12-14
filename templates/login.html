@@ -75,6 +75,19 @@
                     {% endif %}
                 {% endwith %}
                 
+                {% if sso_enabled %}
+                <div class="flex flex-col space-y-3 mb-6">
+                    <a href="{{ url_for('auth.sso_login') }}" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                        <i class="fas fa-cloud mr-2"></i> Sign in with {{ sso_provider_name }}
+                    </a>
+                    <div class="flex items-center text-xs text-[var(--text-muted)]">
+                        <span class="flex-grow border-t border-[var(--border-secondary)]"></span>
+                        <span class="mx-3 uppercase tracking-wide">or</span>
+                        <span class="flex-grow border-t border-[var(--border-secondary)]"></span>
+                    </div>
+                </div>
+                {% endif %}
+
                 <form method="POST" action="{{ url_for('auth.login') }}">
                     {{ form.hidden_tag() }}
                     
