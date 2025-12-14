@@ -77,6 +77,72 @@ def initialize_database(app):
             app.logger.info("Added sso_provider column to user table")
         if add_column_if_not_exists(engine, 'user', 'sso_subject', 'VARCHAR(255)'):
             app.logger.info("Added sso_subject column to user table")
+        
+        # Make password column nullable for SSO users
+        # SQLite doesn't support ALTER COLUMN, so we need to check and recreate if needed
+        try:
+            inspector = inspect(engine)
+            if 'user' in inspector.get_table_names():
+                # Check if password is NOT NULL by querying schema
+                with engine.connect() as conn:
+                    result = conn.execute(text("SELECT sql FROM sqlite_master WHERE type='table' AND name='user'"))
+                    schema = result.scalar()
+                    
+                    if schema and 'password VARCHAR(60) NOT NULL' in schema:
+                        app.logger.info("Migrating user table to make password nullable for SSO support...")
+                        
+                        # Create new table with nullable password
+                        conn.execute(text("""
+                            CREATE TABLE user_new (
+                                id INTEGER NOT NULL, 
+                                username VARCHAR(20) NOT NULL, 
+                                email VARCHAR(120) NOT NULL, 
+                                password VARCHAR(60), 
+                                is_admin BOOLEAN, 
+                                can_share_publicly BOOLEAN, 
+                                transcription_language VARCHAR(10), 
+                                output_language VARCHAR(50), 
+                                ui_language VARCHAR(10), 
+                                summary_prompt TEXT, 
+                                extract_events BOOLEAN, 
+                                name VARCHAR(100), 
+                                job_title VARCHAR(100), 
+                                company VARCHAR(100), 
+                                diarize BOOLEAN,
+                                sso_provider VARCHAR(100),
+                                sso_subject VARCHAR(255),
+                                PRIMARY KEY (id), 
+                                UNIQUE (username), 
+                                UNIQUE (email)
+                            )
+                        """))
+                        
+                        # Copy all data from old table to new table
+                        conn.execute(text("""
+                            INSERT INTO user_new 
+                            SELECT id, username, email, password, is_admin, can_share_publicly,
+                                   transcription_language, output_language, ui_language, 
+                                   summary_prompt, extract_events, name, job_title, company, 
+                                   diarize, sso_provider, sso_subject
+                            FROM user
+                        """))
+                        
+                        # Drop old table
+                        conn.execute(text("DROP TABLE user"))
+                        
+                        # Rename new table to user
+                        conn.execute(text("ALTER TABLE user_new RENAME TO user"))
+                        
+                        # Recreate the unique index on sso_subject
+                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON user (sso_subject)'))
+                        
+                        conn.commit()
+                        app.logger.info("Successfully made password column nullable for SSO support")
+                    else:
+                        app.logger.info("Password column is already nullable, skipping migration")
+        except Exception as e:
+            app.logger.warning(f"Could not migrate password column to nullable (may cause issues with SSO): {e}")
+        
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
