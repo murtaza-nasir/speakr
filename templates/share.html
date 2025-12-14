@@ -9,7 +9,7 @@
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
         <!-- All dependencies bundled locally for offline support -->
-<script src="{{ url_for('static', filename='vendor/js/vue.global.prod.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/axios.min.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
@@ -35,7 +35,7 @@
                 }
             }
         }
-        
+
         // Function to apply the theme based on localStorage and system preference
         function applyTheme() {
             // Guard against early execution
@@ -118,32 +118,32 @@
             <div class="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex-shrink-0">
                 <div class="max-w-4xl mx-auto">
                     <div class="flex">
-                        <button @click="activeTab = 'transcription'" 
+                        <button @click="activeTab = 'transcription'"
                                 :class="[
                                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                                    activeTab === 'transcription' 
-                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' 
+                                    activeTab === 'transcription'
+                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 ]">
                             <i class="fas fa-file-text mr-2"></i>Transcription
                         </button>
                         {% if recording.summary %}
-                        <button @click="activeTab = 'summary'" 
+                        <button @click="activeTab = 'summary'"
                                 :class="[
                                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                                    activeTab === 'summary' 
-                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' 
+                                    activeTab === 'summary'
+                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 ]">
                             <i class="fas fa-file-alt mr-2"></i>Summary
                         </button>
                         {% endif %}
                         {% if recording.notes %}
-                        <button @click="activeTab = 'notes'" 
+                        <button @click="activeTab = 'notes'"
                                 :class="[
                                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                                    activeTab === 'notes' 
-                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]' 
+                                    activeTab === 'notes'
+                                        ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
                                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                                 ]">
                             <i class="fas fa-sticky-note mr-2"></i>Notes
@@ -161,11 +161,11 @@
                         <!-- Transcription Controls -->
                         <div class="flex items-center justify-between mb-4 flex-shrink-0">
                             <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
-                                <button @click="transcriptView = 'simple'" 
+                                <button @click="transcriptView = 'simple'"
                                         :class="['toggle-button', transcriptView === 'simple' ? 'active' : '']">
                                     <i class="fas fa-list mr-1"></i>Simple
                                 </button>
-                                <button @click="transcriptView = 'bubble'" 
+                                <button @click="transcriptView = 'bubble'"
                                         :class="['toggle-button', transcriptView === 'bubble' ? 'active' : '']">
                                     <i class="fas fa-comments mr-1"></i>Bubble
                                 </button>
@@ -176,7 +176,7 @@
                         </div>
 
                         <!-- Speaker Legend (only for bubble view) -->
-                        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptView === 'bubble'" 
+                        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptView === 'bubble'"
                              :class="['speaker-legend', legendExpanded ? 'expanded' : '', 'flex-shrink-0', 'mb-4']">
                             <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                                 <div class="speaker-legend-title">
@@ -187,8 +187,8 @@
                                 <i class="fas fa-chevron-down speaker-legend-toggle"></i>
                             </div>
                             <div class="speaker-legend-content">
-                                <div v-for="(speaker, index) in processedTranscription.speakers" 
-                                     :key="index" 
+                                <div v-for="(speaker, index) in processedTranscription.speakers"
+                                     :key="index"
                                      :class="['speaker-legend-item', speaker.color]">
                                     <span class="speaker-name">${speaker.name}</span>
                                 </div>
@@ -199,9 +199,9 @@
                         <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick">
                             <!-- Simple View -->
                             <div v-if="transcriptView === 'simple'" class="transcription-simple-view">
-                                <div v-for="segment in processedTranscription.simpleSegments" 
-                                     :key="segment.startTime || Math.random()" 
-                                     class="speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2" 
+                                <div v-for="segment in processedTranscription.simpleSegments"
+                                     :key="segment.startTime || Math.random()"
+                                     class="speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2"
                                      :data-start-time="segment.startTime"
                                      @click="seekAudio(segment.startTime)"
                                      style="margin-bottom: 0.5rem !important;">
@@ -213,15 +213,15 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Bubble View -->
                             <div v-else-if="transcriptView === 'bubble'" class="transcription-with-speakers">
-                                <div v-for="(row, rowIndex) in processedTranscription.bubbleRows" 
-                                     :key="rowIndex" 
+                                <div v-for="(row, rowIndex) in processedTranscription.bubbleRows"
+                                     :key="rowIndex"
                                      :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                                    <div v-for="bubble in row.bubbles" 
-                                         :key="bubble.startTime || Math.random()" 
-                                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', 'cursor-pointer']" 
+                                    <div v-for="bubble in row.bubbles"
+                                         :key="bubble.startTime || Math.random()"
+                                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', 'cursor-pointer']"
                                          :data-start-time="bubble.startTime"
                                          @click="seekAudio(bubble.startTime)">
                                         <div class="speaker-bubble-content">
@@ -230,7 +230,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- Plain Text View (for non-JSON transcriptions) -->
                             <div v-if="!processedTranscription.isJson" class="whitespace-pre-wrap cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors">
                                 ${processedTranscription.content}
@@ -279,8 +279,8 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-xs">Built with</span>
-                    <a href="https://github.com/murtaza-nasir/speakr" 
-                       target="_blank" 
+                    <a href="https://github.com/murtaza-nasir/speakr"
+                       target="_blank"
                        rel="noopener noreferrer"
                        class="inline-flex items-center gap-1 text-[var(--text-accent)] hover:text-[var(--text-primary)] transition-colors font-medium">
                         <i class="fab fa-github text-sm"></i>
@@ -340,7 +340,7 @@
                                 bubbleRows: []
                             };
                         }
-                        
+
                         const speakers = [...new Set(transcriptionData.map(segment => segment.speaker).filter(Boolean))];
                         const speakerColors = {};
                         speakers.forEach((speaker, index) => {
@@ -464,13 +464,13 @@
                 function toggleDarkMode() {
                     const newDarkMode = !isDarkMode.value;
                     isDarkMode.value = newDarkMode;
-                    
+
                     if (newDarkMode) {
                         document.documentElement.classList.add('dark');
                     } else {
                         document.documentElement.classList.remove('dark');
                     }
-                    
+
                     localStorage.setItem('darkMode', newDarkMode.toString());
                 }
 
@@ -523,7 +523,7 @@
                 };
             }
         });
-        
+
         app.config.compilerOptions.delimiters = ['${', '}'];
         app.mount('#app');
 
