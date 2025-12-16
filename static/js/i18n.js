@@ -94,7 +94,8 @@ class I18n {
             { code: 'en', name: 'English', nativeName: 'English' },
             { code: 'es', name: 'Spanish', nativeName: 'Español' },
             { code: 'fr', name: 'French', nativeName: 'Français' },
-            { code: 'zh', name: 'Chinese', nativeName: '中文' }
+            { code: 'zh', name: 'Chinese', nativeName: '中文' },
+            { code: 'ru', name: 'Russian', nativeName: 'Русский' },
         ];
     }
 
