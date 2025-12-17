@@ -593,6 +593,38 @@
                                 </div>
                             </div>
                         </div>
+
+                        {% if sso_enabled %}
+                        <div class="mt-6">
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Single Sign-On</h3>
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="block text-sm font-medium text-[var(--text-muted)]">Provider</span>
+                                        <span class="block text-[var(--text-primary)]">{{ sso_provider_name }}</span>
+                                    </div>
+                                    {% if sso_linked %}
+                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">Linked</span>
+                                    {% else %}
+                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]">Not linked</span>
+                                    {% endif %}
+                                </div>
+
+                                {% if sso_linked %}
+                                <div class="text-xs text-[var(--text-muted)] break-all">
+                                    <span class="font-medium text-[var(--text-secondary)]">Subject:</span> {{ sso_subject }}
+                                </div>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('auth.sso_link') }}" class="mt-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                        <i class="fas fa-link mr-2"></i> Link {{ sso_provider_name }} account
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
                         
                         <div class="mt-6"> <!-- Added mt-6 for spacing, was mt-8 on Account Actions -->
                             <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.accountActions">Account Actions</h3>
