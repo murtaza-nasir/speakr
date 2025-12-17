@@ -10,7 +10,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
     **New Features** - Single Sign-On support and Russian localization
 
     - **SSO Authentication** - Sign in with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
-    - **Account Linking** - Link existing accounts to SSO from Account settings
+    - **Account Linking/Unlinking** - Link or unlink SSO from Account settings
     - **Auto-registration** - Optionally create accounts on first SSO login with domain filtering
     - **Russian Language** - Full Russian translation for the interface
 
