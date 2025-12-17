@@ -143,11 +143,16 @@ def login():
     if sso_enabled:
         init_sso_client(current_app)
 
+    password_login_disabled = sso_enabled and sso_config.get('disable_password_login', False)
+
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
         if user and user.password:
-            if bcrypt.check_password_hash(user.password, form.password.data):
+            # Check if password login is disabled for non-admins
+            if password_login_disabled and not user.is_admin:
+                flash('Password login is disabled. Please sign in with SSO.', 'warning')
+            elif bcrypt.check_password_hash(user.password, form.password.data):
                 login_user(user, remember=form.remember.data)
                 next_page = request.args.get('next')
                 if not is_safe_url(next_page):
@@ -165,7 +170,8 @@ def login():
         title='Login',
         form=form,
         sso_enabled=sso_enabled,
-        sso_provider_name=sso_config.get('provider_name', 'SSO')
+        sso_provider_name=sso_config.get('provider_name', 'SSO'),
+        password_login_disabled=password_login_disabled
     )
 
 
@@ -389,6 +395,8 @@ def account():
         init_sso_client(current_app)
     sso_linked = bool(current_user.sso_subject)
 
+    password_login_disabled = sso_enabled and sso_config.get('disable_password_login', False)
+
     return render_template('account.html',
                            title='Account',
                            default_summary_prompt_text=default_summary_prompt_text,
@@ -403,13 +411,21 @@ def account():
                            sso_provider_name=sso_config.get('provider_name', 'SSO'),
                            sso_linked=sso_linked,
                            sso_subject=current_user.sso_subject,
-                           has_password=bool(current_user.password))
+                           has_password=bool(current_user.password),
+                           password_login_disabled=password_login_disabled)
 
 
 @auth_bp.route('/change_password', methods=['POST'])
 @login_required
 @rate_limit("10 per minute")
 def change_password():
+    # Check if password management is disabled for non-admins
+    sso_config = get_sso_config()
+    password_login_disabled = is_sso_enabled() and sso_config.get('disable_password_login', False)
+    if password_login_disabled and not current_user.is_admin:
+        flash('Password management is disabled. Please use SSO to sign in.', 'warning')
+        return redirect(url_for('auth.account'))
+
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')

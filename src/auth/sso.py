@@ -29,6 +29,7 @@ def get_sso_config() -> Dict[str, Optional[str]]:
         "allowed_domains": os.environ.get("SSO_ALLOWED_DOMAINS"),
         "username_claim": os.environ.get("SSO_DEFAULT_USERNAME_CLAIM", "preferred_username"),
         "name_claim": os.environ.get("SSO_DEFAULT_NAME_CLAIM", "name"),
+        "disable_password_login": _str_to_bool(os.environ.get("SSO_DISABLE_PASSWORD_LOGIN", "false")),
     }
 
 
