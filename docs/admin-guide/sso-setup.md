@@ -92,10 +92,16 @@ For self-hosted deployments where you control both Speakr and the IdP, this is g
 - In **Account > Single Sign-On**, click **Link {PROVIDER} account** while logged in.
 - If the SSO subject is already linked to another user, the link is rejected.
 
+## Unlinking SSO
+
+Users can unlink their SSO account from **Account > Single Sign-On** by clicking **Unlink {PROVIDER} account**. This removes the SSO association while keeping the local account intact.
+
+**Important:** Users who created their account via SSO (and have no password set) must first set a password before unlinking. Otherwise they would be locked out of their account.
+
 ## Troubleshooting
 
 - **Login fails immediately**: verify `SSO_DISCOVERY_URL`, client credentials, and that the redirect URI matches exactly.
 - **User created without email**: some IdPs do not return `email`; user is created with a placeholder email based on `sub`.
 - **Domain rejected**: confirm `SSO_ALLOWED_DOMAINS` and that the IdP returns an `email` claim.
-- **Already linked**: ensure each SSO subject is unique; unlinking is not yet implemented.
+- **Already linked**: ensure each SSO subject is unique; users can unlink from Account settings to re-link to a different account.
 

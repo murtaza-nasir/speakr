@@ -614,6 +614,18 @@
                                 <div class="text-xs text-[var(--text-muted)] break-all">
                                     <span class="font-medium text-[var(--text-secondary)]">Subject:</span> {{ sso_subject }}
                                 </div>
+                                {% if has_password %}
+                                <form method="POST" action="{{ url_for('auth.sso_unlink') }}" class="mt-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" onclick="return confirm('Are you sure you want to unlink your SSO account? You will need to use your email and password to sign in.')" class="w-full inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                        <i class="fas fa-unlink mr-2"></i> Unlink {{ sso_provider_name }} account
+                                    </button>
+                                </form>
+                                {% else %}
+                                <div class="mt-2 text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-info-circle mr-1"></i> To unlink SSO, you must first set a password.
+                                </div>
+                                {% endif %}
                                 {% else %}
                                 <form method="POST" action="{{ url_for('auth.sso_link') }}" class="mt-2">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>

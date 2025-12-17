@@ -270,6 +270,24 @@ def sso_link():
     return redirect(url_for('auth.sso_login'))
 
 
+@auth_bp.route('/auth/sso/unlink', methods=['POST'])
+@login_required
+def sso_unlink():
+    if not current_user.sso_subject:
+        flash('Your account is not linked to SSO.', 'warning')
+        return redirect(url_for('auth.account'))
+
+    if not current_user.password:
+        flash('Cannot unlink SSO - you have no password set. Please set a password first.', 'danger')
+        return redirect(url_for('auth.account'))
+
+    current_user.sso_provider = None
+    current_user.sso_subject = None
+    db.session.commit()
+    flash('SSO account unlinked successfully.', 'success')
+    return redirect(url_for('auth.account'))
+
+
 @auth_bp.route('/logout')
 @csrf_exempt
 def logout():
@@ -384,7 +402,8 @@ def account():
                            sso_enabled=sso_enabled,
                            sso_provider_name=sso_config.get('provider_name', 'SSO'),
                            sso_linked=sso_linked,
-                           sso_subject=current_user.sso_subject)
+                           sso_subject=current_user.sso_subject,
+                           has_password=bool(current_user.password))
 
 
 @auth_bp.route('/change_password', methods=['POST'])
