@@ -621,7 +621,7 @@
                                         <i class="fas fa-unlink mr-2"></i> Unlink {{ sso_provider_name }} account
                                     </button>
                                 </form>
-                                {% else %}
+                                {% elif not password_login_disabled or current_user.is_admin %}
                                 <div class="mt-2 text-xs text-[var(--text-muted)]">
                                     <i class="fas fa-info-circle mr-1"></i> To unlink SSO, you must first set a password.
                                 </div>
@@ -644,9 +644,11 @@
                                 <a href="{{ url_for('recordings.index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-microphone mr-2"></i> <span data-i18n="account.goToRecordings">Go to Recordings</span>
                                 </a>
+                                {% if not password_login_disabled or current_user.is_admin %}
                                 <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-key mr-2"></i> <span data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</span>
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -3183,13 +3185,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         const changePasswordForm = document.getElementById('changePasswordForm');
         const newPasswordInput = document.getElementById('new_password');
         const confirmPasswordInput = document.getElementById('confirm_password');
-        
-        // Open modal
-        changePasswordBtn.addEventListener('click', () => {
-            changePasswordModal.classList.remove('hidden');
-            // Reset form
-            changePasswordForm.reset();
-        });
+
+        // Open modal (only if button exists)
+        if (changePasswordBtn) {
+            changePasswordBtn.addEventListener('click', () => {
+                changePasswordModal.classList.remove('hidden');
+                // Reset form
+                changePasswordForm.reset();
+            });
+        }
         
         // Close modal functions
         function closeModal() {

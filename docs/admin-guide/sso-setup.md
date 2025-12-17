@@ -24,6 +24,9 @@ SSO_REDIRECT_URI=https://speakr.example.com/auth/sso/callback
 SSO_AUTO_REGISTER=true
 SSO_ALLOWED_DOMAINS=example.com,company.org
 
+# Disable password login for regular users (optional)
+SSO_DISABLE_PASSWORD_LOGIN=false
+
 # Claim mapping (optional)
 SSO_DEFAULT_USERNAME_CLAIM=preferred_username
 SSO_DEFAULT_NAME_CLAIM=name
@@ -80,6 +83,16 @@ Restart Speakr after updating environment variables.
 - If `SSO_AUTO_REGISTER=true`, new users are created on first login when their email domain is allowed (or when allowlist is empty).
 - If `SSO_AUTO_REGISTER=false`, only existing users with a linked SSO subject can sign in.
 - Email domain allowlist is enforced only when an email is present.
+
+## Disabling password login
+
+Set `SSO_DISABLE_PASSWORD_LOGIN=true` to enforce SSO-only authentication for regular users. When enabled:
+
+- The login page shows only the SSO sign-in button
+- Regular users cannot log in with email/password
+- **Administrators can still use password login** as a fallback (hidden behind "Administrator login" link)
+
+This is useful for organizations that want to enforce SSO for all users while keeping emergency admin access available.
 
 ## Security note
 
