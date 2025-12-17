@@ -6,16 +6,15 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.6.6 - Filter & Compress"
-    **New Features** - Audio compression and enhanced filtering
+!!! info "Latest Release: v0.7.0 - SSO & Russian Language"
+    **New Features** - Single Sign-On support and Russian localization
 
-    - **Auto Compression** - Lossless uploads (WAV, AIFF) automatically compressed to save storage
-    - **Speaker Filtering** - Filter recordings by speaker name
-    - **Starred/Inbox Toggles** - Quick filter toggles in filter panel
-    - **Upcoming Group** - Future-dated recordings grouped separately
-    - **Format Support** - Added .weba support, FFmpeg fallback for unknown formats
+    - **SSO Authentication** - Sign in with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
+    - **Account Linking** - Link existing accounts to SSO from Account settings
+    - **Auto-registration** - Optionally create accounts on first SSO login with domain filtering
+    - **Russian Language** - Full Russian translation for the interface
 
-    ✅ Fully backward compatible with v0.6.5. [View full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.6.6)
+    *Contributed by [Dmitry Abramov](https://github.com/Daabramov)* | [SSO Setup Guide](admin-guide/sso-setup.md)
 
 ## Quick Navigation
 

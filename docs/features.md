@@ -183,6 +183,10 @@ Access Speakr from any device with interfaces that adapt to screen size. Desktop
 
 Run a single Speakr instance for your entire group with isolated user spaces. See [user management](admin-guide/user-management.md) for details. The [FAQ](faq.md#can-multiple-people-use-the-same-speakr-instance) explains the multi-user architecture. Each user maintains their own recordings, settings, and speaker libraries. Administrators manage users, monitor usage, and configure system-wide settings without accessing individual recordings.
 
+### Single Sign-On (SSO)
+
+Integrate with your existing identity provider using OpenID Connect. Speakr supports any OIDC-compliant provider including Keycloak, Azure AD/Entra ID, Google, Auth0, and self-hosted options like Pocket ID or Authentik. Users can link existing accounts to SSO or have accounts created automatically on first login. Domain filtering lets you restrict registration to specific email domains. See the [SSO Setup Guide](admin-guide/sso-setup.md) for configuration details.
+
 ### System Monitoring
 
 Track system health with comprehensive statistics and metrics. Monitor transcription queues, storage usage, and processing performance. Identify bottlenecks and optimize configuration based on actual usage patterns.
