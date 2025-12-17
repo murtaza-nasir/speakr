@@ -414,9 +414,16 @@ def change_password():
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
 
-    # Validate form data
-    if not current_password or not new_password or not confirm_password:
-        flash('All fields are required.', 'danger')
+    # Check if user has an existing password
+    has_existing_password = bool(current_user.password)
+
+    # Validate form data - current password only required if user has one
+    if has_existing_password and not current_password:
+        flash('Current password is required.', 'danger')
+        return redirect(url_for('auth.account'))
+
+    if not new_password or not confirm_password:
+        flash('New password and confirmation are required.', 'danger')
         return redirect(url_for('auth.account'))
 
     if new_password != confirm_password:
@@ -430,10 +437,11 @@ def change_password():
         flash(str(e), 'danger')
         return redirect(url_for('auth.account'))
 
-    # Verify current password
-    if not bcrypt.check_password_hash(current_user.password, current_password):
-        flash('Current password is incorrect.', 'danger')
-        return redirect(url_for('auth.account'))
+    # Verify current password only if user has one
+    if has_existing_password:
+        if not bcrypt.check_password_hash(current_user.password, current_password):
+            flash('Current password is incorrect.', 'danger')
+            return redirect(url_for('auth.account'))
 
     # Update password
     hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
