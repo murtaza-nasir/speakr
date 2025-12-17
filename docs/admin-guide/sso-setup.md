@@ -81,6 +81,12 @@ Restart Speakr after updating environment variables.
 - If `SSO_AUTO_REGISTER=false`, only existing users with a linked SSO subject can sign in.
 - Email domain allowlist is enforced only when an email is present.
 
+## Security note
+
+When a user logs in via SSO with an email that matches an existing Speakr account, the accounts are automatically linked. This is convenient for most setups but relies on trusting your IdP to provide accurate email information.
+
+For self-hosted deployments where you control both Speakr and the IdP, this is generally not a concern. If you're using an IdP where users can set unverified email addresses, be aware that this could allow account linking without email ownership verification. Consider using `SSO_ALLOWED_DOMAINS` to restrict which email domains can authenticate.
+
 ## Linking existing users
 
 - In **Account > Single Sign-On**, click **Link {PROVIDER} account** while logged in.

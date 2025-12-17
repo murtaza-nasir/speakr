@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.6.6-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.7.0-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -36,10 +36,11 @@ Speakr transforms your audio recordings into organized, searchable, and intellig
 - **Smart Recording & Upload** - Record directly in browser or upload existing audio files
 - **AI Transcription** - High-accuracy transcription with speaker identification
 - **Voice Profiles** - AI-powered speaker recognition with voice embeddings (requires WhisperX ASR service)
+- **Single Sign-On** - Authenticate with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
 - **Audio-Transcript Sync** - Click transcript to jump to audio, auto-highlight current text, follow mode for hands-free playback
 - **Interactive Chat** - Ask questions about your recordings and get AI-powered answers
 - **Inquire Mode** - Semantic search across all recordings using natural language
-- **Internationalization** - Full support for English, Spanish, French, German, and Chinese
+- **Internationalization** - Full support for English, Spanish, French, German, Chinese, and Russian
 - **Beautiful Themes** - Light and dark modes with customizable color schemes
 
 ### Collaboration & Sharing
@@ -147,16 +148,21 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.6.6)
+## Latest Release (v0.7.0)
 
-**New Features** - Audio compression and enhanced filtering
+**New Features** - Single Sign-On support and Russian localization
 
-- **Auto Compression** - Lossless uploads (WAV, AIFF) automatically compressed to save storage
+- **SSO Authentication** - Sign in with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
+- **Account Linking** - Link existing accounts to SSO from Account settings
+- **Auto-registration** - Optionally create accounts on first SSO login with domain filtering
+- **Russian Language** - Full Russian translation for the interface
+
+*Contributed by [Dmitry Abramov](https://github.com/Daabramov)* | [SSO Setup Guide](https://murtaza-nasir.github.io/speakr/admin-guide/sso-setup/)
+
+### Previous Release (v0.6.6)
+
+- **Auto Compression** - Lossless uploads automatically compressed to save storage
 - **Speaker Filtering** - Filter recordings by speaker name, starred/inbox toggles
-- **Sorting Fix** - Sort toggle works correctly, added Upcoming group for future dates
-- **Format Support** - .weba format, FFmpeg fallback for unknown formats
-
-Fully backward compatible. Optional env vars: `AUDIO_COMPRESS_UPLOADS`, `AUDIO_CODEC`, `AUDIO_BITRATE`
 
 ### Previous Release (v0.6.5)
 
@@ -226,6 +232,7 @@ Fully backward compatible. Optional env vars: `AUDIO_COMPRESS_UPLOADS`, `AUDIO_C
 - ✅ Group workspaces with shared recordings (v0.5.9)
 - ✅ PWA enhancements with offline support and background sync (v0.5.10)
 - ✅ Multi-user job queue with fair scheduling (v0.6.0)
+- ✅ SSO integration with OIDC providers (v0.7.0)
 
 ### Near-term
 - Bulk operations for recordings (mass delete, export, tagging)
@@ -235,7 +242,6 @@ Fully backward compatible. Optional env vars: `AUDIO_COMPRESS_UPLOADS`, `AUDIO_C
 ### Long-term
 - Plugin system for custom integrations
 - End-to-end encryption option
-- Enterprise SSO integration
 
 ### Reporting Issues
 
