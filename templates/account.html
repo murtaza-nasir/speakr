@@ -645,7 +645,7 @@
                                     <i class="fas fa-microphone mr-2"></i> <span data-i18n="account.goToRecordings">Go to Recordings</span>
                                 </a>
                                 <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-key mr-2"></i> <span data-i18n="account.changePassword">Change Password</span>
+                                    <i class="fas fa-key mr-2"></i> <span data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</span>
                                 </button>
                             </div>
                         </div>
@@ -1306,15 +1306,21 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <div id="changePasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.changePassword">Change Password</h3>
+                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</h3>
                 <button id="closeModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
             </div>
             <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% if has_password %}
                 <div class="mb-4">
                     <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current Password</label>
                     <input type="password" id="current_password" name="current_password" autocomplete="current-password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                 </div>
+                {% else %}
+                <div class="mb-4 p-3 bg-[var(--bg-tertiary)] rounded-md">
+                    <p class="text-sm text-[var(--text-muted)]"><i class="fas fa-info-circle mr-1"></i> You don't have a password set. Create one to enable local login.</p>
+                </div>
+                {% endif %}
                 <div class="mb-4">
                     <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New Password</label>
                     <input type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="8" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
@@ -1326,7 +1332,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button type="button" id="cancelBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]" data-i18n="account.changePassword">Change Password</button>
+                    <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</button>
                 </div>
             </form>
         </div>
