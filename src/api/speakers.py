@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
+from src.utils.ffmpeg_utils import extract_audio_segment, FFmpegError, FFmpegNotFoundError
 from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
@@ -424,7 +425,6 @@ def get_snippet_audio(recording_id):
     Returns:
         Audio file segment in the original format
     """
-    import subprocess
     import tempfile
     import os
     from pathlib import Path
@@ -453,18 +453,13 @@ def get_snippet_audio(recording_id):
             output_path = tmp_file.name
 
         try:
-            # Use FFmpeg to extract the audio segment
-            ffmpeg_cmd = [
-                'ffmpeg',
-                '-i', recording.audio_path,
-                '-ss', str(start_time),
-                '-t', str(duration),
-                '-c', 'copy',
-                '-y',
-                output_path
-            ]
-
-            subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+            # Use centralized FFmpeg utility to extract the audio segment
+            extract_audio_segment(
+                recording.audio_path,
+                output_path,
+                start_time,
+                duration
+            )
 
             # Send the file
             response = send_file(
@@ -484,7 +479,14 @@ def get_snippet_audio(recording_id):
 
             return response
 
-        except subprocess.CalledProcessError as e:
+        except FFmpegNotFoundError as e:
+            current_app.logger.error(f"FFmpeg not found: {e}")
+            try:
+                os.unlink(output_path)
+            except:
+                pass
+            return jsonify({'error': 'FFmpeg not found on server'}), 500
+        except FFmpegError as e:
             current_app.logger.error(f"FFmpeg error extracting snippet: {e}")
             try:
                 os.unlink(output_path)
