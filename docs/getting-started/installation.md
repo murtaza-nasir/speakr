@@ -262,6 +262,19 @@ mkdir -p auto-process
 chmod 755 auto-process
 ```
 
+#### Using PostgreSQL Instead of SQLite
+
+By default, Speakr uses SQLite for its database, which is perfect for most installations and requires no additional setup.
+However, if you need the scalability and concurrent access capabilities of PostgreSQL, Speakr fully supports it.
+
+**Configuration:**
+
+To use PostgreSQL, set the `SQLALCHEMY_DATABASE_URI` environment variable in your `.env` file:
+
+```bash
+SQLALCHEMY_DATABASE_URI=postgresql://username:password@hostname:5432/database_name
+```
+
 ### Step 7: Launch Speakr
 
 With everything configured, you're ready to start Speakr. The `-d` flag runs the container in detached mode, meaning it continues running in the background:
