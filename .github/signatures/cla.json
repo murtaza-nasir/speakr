@@ -1,1 +1,34 @@
-{"signedContributors":[]}
+{
+  "signedContributors": [
+    {
+      "name": "sakowicz",
+      "id": 13169301,
+      "comment_id": 2576389890,
+      "pullRequestNo": 159
+    },
+    {
+      "name": "JadedBlueEyes",
+      "id": 28905212,
+      "comment_id": 2564257891,
+      "pullRequestNo": 158
+    },
+    {
+      "name": "Daabramov",
+      "id": 31928832,
+      "comment_id": 2559166845,
+      "pullRequestNo": 153
+    },
+    {
+      "name": "AnimiVulpis",
+      "id": 1172267,
+      "comment_id": 2538974556,
+      "pullRequestNo": 145
+    },
+    {
+      "name": "CoffeeAnon",
+      "id": 17970383,
+      "comment_id": 2434867123,
+      "pullRequestNo": 113
+    }
+  ]
+}
