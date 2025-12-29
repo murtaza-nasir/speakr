@@ -184,7 +184,7 @@ class FairJobQueue:
                         next_user_id = user_ids[0]
 
                     # Get oldest queued job of our types for this user
-                    job = ProcessingJob.query.filter(
+                    candidate_job = ProcessingJob.query.filter(
                         ProcessingJob.user_id == next_user_id,
                         ProcessingJob.status == 'queued',
                         ProcessingJob.job_type.in_(job_types)
@@ -192,18 +192,36 @@ class FairJobQueue:
                         ProcessingJob.created_at
                     ).first()
 
-                    if job:
-                        # Claim the job
-                        job.status = 'processing'
-                        job.started_at = datetime.utcnow()
+                    if candidate_job:
+                        # Atomically claim the job - only succeeds if status is still 'queued'
+                        # This prevents race conditions when multiple workers try to claim the same job
+                        from sqlalchemy import update
+                        claim_time = datetime.utcnow()
+                        result = db.session.execute(
+                            update(ProcessingJob)
+                            .where(
+                                ProcessingJob.id == candidate_job.id,
+                                ProcessingJob.status == 'queued'  # Critical: only claim if still queued
+                            )
+                            .values(status='processing', started_at=claim_time)
+                        )
+
+                        if result.rowcount == 0:
+                            # Job was already claimed by another worker - this is expected with multiple workers
+                            logger.debug(f"[{queue_name.upper()}] Job {candidate_job.id} already claimed by another worker")
+                            db.session.rollback()
+                            return None
 
                         # Also update Recording.status to reflect active processing
                         from src.models import Recording
-                        recording = db.session.get(Recording, job.recording_id)
+                        recording = db.session.get(Recording, candidate_job.recording_id)
                         if recording and recording.status == 'QUEUED':
                             recording.status = 'PROCESSING'
 
                         db.session.commit()
+
+                        # Refresh the job object to get updated values
+                        db.session.refresh(candidate_job)
 
                         # Update last user ID for this queue
                         if queue_name == 'transcription':
@@ -211,9 +229,9 @@ class FairJobQueue:
                         else:
                             self._last_user_id_summary = next_user_id
 
-                        wait_time = (datetime.utcnow() - job.created_at).total_seconds()
-                        logger.info(f"[{queue_name.upper()}] Claimed job {job.id} (type={job.job_type}) for user {job.user_id}, recording {job.recording_id} (waited {wait_time:.1f}s)")
-                        return job
+                        wait_time = (claim_time - candidate_job.created_at).total_seconds()
+                        logger.info(f"[{queue_name.upper()}] Claimed job {candidate_job.id} (type={candidate_job.job_type}) for user {candidate_job.user_id}, recording {candidate_job.recording_id} (waited {wait_time:.1f}s)")
+                        return candidate_job
 
                     return None
 
