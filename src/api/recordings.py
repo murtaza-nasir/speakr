@@ -2628,7 +2628,11 @@ def get_status(recording_id):
 @recordings_bp.route('/audio/<int:recording_id>')
 @login_required
 def get_audio(recording_id):
-    """Serve audio file for a recording."""
+    """Serve audio file for a recording.
+
+    Query parameters:
+        download: If 'true', serves file as attachment for download
+    """
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording or not recording.audio_path:
@@ -2650,6 +2654,18 @@ def get_audio(recording_id):
         if not os.path.exists(recording.audio_path):
             current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
             return jsonify({'error': 'Audio file missing from server'}), 404
+
+        # Check if download is requested
+        download = request.args.get('download', 'false').lower() == 'true'
+        if download:
+            # Generate filename from recording title or use default
+            filename = recording.title or f'recording_{recording_id}'
+            # Sanitize filename and add extension
+            filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_')).strip()
+            ext = os.path.splitext(recording.audio_path)[1] or '.mp3'
+            filename = f"{filename}{ext}"
+            return send_file(recording.audio_path, as_attachment=True, download_name=filename)
+
         return send_file(recording.audio_path)
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
