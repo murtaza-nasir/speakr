@@ -9,12 +9,13 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 !!! info "Latest Release: v0.7.1 - Stability & Audio Improvements"
     **Bug Fixes & Improvements**
 
+    - **PostgreSQL Support** - Added `psycopg2-binary` driver for PostgreSQL database option (#159)
     - **Audio Download Button** - Explicit download button next to audio player, works on mobile (#155)
     - **Job Queue Race Condition Fix** - Fixed issue where multiple workers could claim the same job, causing "FFmpeg not found" errors (#150)
     - **Audio Conversion Pipeline Refactor** - Improved format detection using ffprobe, better codec support (#158)
     - **Codec Compatibility Check** - Unsupported audio codecs are now automatically converted before transcription
 
-    *Thanks to [JadedBlueEyes](https://github.com/JadedBlueEyes) for PR #158 and [Daabramov](https://github.com/Daabramov) for debugging #150*
+    *Thanks to [sakowicz](https://github.com/sakowicz) for PR #159, [JadedBlueEyes](https://github.com/JadedBlueEyes) for PR #158, and [Daabramov](https://github.com/Daabramov) for debugging #150*
 
 ## Quick Navigation
 
