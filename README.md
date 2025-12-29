@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.7.0-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.7.1-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -148,15 +148,22 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.7.0)
+## Latest Release (v0.7.1)
 
-**New Features** - Single Sign-On support and Russian localization
+**Stability & Audio Improvements**
+
+- **PostgreSQL Support** - Added `psycopg2-binary` driver for PostgreSQL database option
+- **Audio Download Button** - Explicit download button next to audio player, works on mobile
+- **Job Queue Race Condition Fix** - Fixed issue where multiple workers could claim the same job
+- **Audio Conversion Pipeline Refactor** - Improved format detection using ffprobe, better codec support
+
+*Thanks to [sakowicz](https://github.com/sakowicz), [JadedBlueEyes](https://github.com/JadedBlueEyes), and [Daabramov](https://github.com/Daabramov)*
+
+### Previous Release (v0.7.0)
 
 - **SSO Authentication** - Sign in with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
 - **Account Linking/Unlinking** - Link or unlink SSO from Account settings
-- **Auto-registration** - Optionally create accounts on first SSO login with domain filtering
-- **Enforce SSO-only** - Disable password login for regular users (admins retain fallback access)
-- **Russian Language** - Full Russian translation for the interface
+- **Enforce SSO-only** - Disable password login for regular users
 
 *Contributed by [Dmitry Abramov](https://github.com/Daabramov)* | [SSO Setup Guide](https://murtaza-nasir.github.io/speakr/admin-guide/sso-setup/)
 
