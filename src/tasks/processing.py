@@ -822,9 +822,10 @@ You must respond with valid JSON format only."""
 def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_original=True):
     """Extract audio from video containers using FFmpeg.
 
-    Behavior depends on AUDIO_COMPRESS_UPLOADS setting:
-    - If enabled: Re-encodes to specified format (mp3/flac/opus) with configured bitrate
-    - If disabled: Copies audio stream without re-encoding (fast, preserves quality)
+    Behavior depends on AUDIO_COMPRESS_UPLOADS setting AND codec support:
+    - If compression enabled: Re-encodes to specified format (mp3/flac/opus)
+    - If compression disabled AND codec is supported: Copies stream (fast, preserves quality)
+    - If compression disabled AND codec is NOT supported: Re-encodes to ensure compatibility
 
     Args:
         video_filepath: Path to input video file
@@ -838,8 +839,26 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
         FFmpegError: If audio extraction fails
         FFmpegNotFoundError: If FFmpeg is not installed
     """
+    from src.utils.audio_conversion import get_supported_codecs
+
     try:
-        # Determine whether to copy stream or re-encode based on compression settings
+        # Check if we can copy the stream (only if codec is supported)
+        can_copy_stream = False
+        if not AUDIO_COMPRESS_UPLOADS:
+            # Probe the video to check audio codec
+            try:
+                codec_info = get_codec_info(video_filepath, timeout=10)
+                audio_codec = codec_info.get('audio_codec')
+                supported_codecs = get_supported_codecs(needs_chunking=False)
+
+                if audio_codec and audio_codec in supported_codecs:
+                    can_copy_stream = True
+                    current_app.logger.info(f"Audio codec '{audio_codec}' is supported, can copy stream")
+                else:
+                    current_app.logger.info(f"Audio codec '{audio_codec}' not in supported codecs {supported_codecs}, will re-encode")
+            except FFProbeError as e:
+                current_app.logger.warning(f"Failed to probe video codec: {e}. Will re-encode to be safe.")
+
         if AUDIO_COMPRESS_UPLOADS:
             # Re-encode to configured codec
             current_app.logger.info(f"Extracting and compressing audio from video: {video_filepath} (codec: {AUDIO_CODEC})")
@@ -850,14 +869,24 @@ def extract_audio_from_video(video_filepath, output_format='mp3', cleanup_origin
                 cleanup_original=cleanup_original,
                 copy_stream=False
             )
-        else:
+        elif can_copy_stream:
             # Copy audio stream without re-encoding (fast, preserves quality)
             current_app.logger.info(f"Extracting audio from video (stream copy, no re-encoding): {video_filepath}")
             audio_filepath, mime_type = ffmpeg_extract_audio(
                 video_filepath,
-                output_format='copy',  # Will auto-detect format
+                output_format='copy',
                 cleanup_original=cleanup_original,
                 copy_stream=True
+            )
+        else:
+            # Codec not supported - must re-encode for compatibility
+            current_app.logger.info(f"Extracting and converting audio from video: {video_filepath} (codec: {AUDIO_CODEC})")
+            audio_filepath, mime_type = ffmpeg_extract_audio(
+                video_filepath,
+                output_format=AUDIO_CODEC,
+                bitrate=AUDIO_BITRATE,
+                cleanup_original=cleanup_original,
+                copy_stream=False
             )
 
         current_app.logger.info(f"Successfully extracted audio to {audio_filepath}")
