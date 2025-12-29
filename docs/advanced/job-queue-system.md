@@ -97,16 +97,35 @@ def _claim_next_job(self, job_types, queue_name):
 ```
 
 #### Race Condition Prevention
-SQLite doesn't support `FOR UPDATE SKIP LOCKED`, so we use a threading lock:
+SQLite doesn't support `FOR UPDATE SKIP LOCKED`, so we use an atomic UPDATE with a WHERE clause that checks the status is still 'queued'. This ensures only one worker can claim a job, even with multiple processes:
 
 ```python
-def __init__(self):
-    self._claim_lock = threading.Lock()
-
 def _claim_next_job(self, job_types, queue_name):
-    with self._claim_lock:
-        # ... claim logic
+    # Find candidate job
+    candidate_job = ProcessingJob.query.filter(
+        ProcessingJob.status == 'queued'
+    ).first()
+
+    if candidate_job:
+        # Atomic claim - only succeeds if status is still 'queued'
+        result = db.session.execute(
+            update(ProcessingJob)
+            .where(
+                ProcessingJob.id == candidate_job.id,
+                ProcessingJob.status == 'queued'  # Critical check
+            )
+            .values(status='processing', started_at=datetime.utcnow())
+        )
+
+        if result.rowcount == 0:
+            # Job was already claimed by another worker
+            return None
+
+        db.session.commit()
+        return candidate_job
 ```
+
+This prevents the race condition where multiple workers could claim the same job when running as separate processes (fixed in v0.7.1).
 
 #### Session Management
 Jobs are claimed in one database session context, then processed in another to avoid detached object issues:
@@ -371,7 +390,7 @@ if add_column_if_not_exists(engine, 'processing_job', 'is_new_upload', 'BOOLEAN 
 - `is_new_upload=false`: Recording marked as FAILED, can be retried
 
 ### Race Conditions
-- Threading lock prevents multiple workers claiming same job
+- Atomic UPDATE with WHERE clause prevents multiple workers claiming same job (v0.7.1+)
 - SQLite WAL mode enabled for better concurrency
 
 ## API Endpoints Summary
