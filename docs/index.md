@@ -6,16 +6,15 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.7.0 - SSO & Russian Language"
-    **New Features** - Single Sign-On support and Russian localization
+!!! info "Latest Release: v0.7.1 - Stability & Audio Improvements"
+    **Bug Fixes & Improvements**
 
-    - **SSO Authentication** - Sign in with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
-    - **Account Linking/Unlinking** - Link or unlink SSO from Account settings
-    - **Auto-registration** - Optionally create accounts on first SSO login with domain filtering
-    - **Enforce SSO-only** - Disable password login for regular users (admins retain fallback access)
-    - **Russian Language** - Full Russian translation for the interface
+    - **Audio Download Button** - Explicit download button next to audio player, works on mobile (#155)
+    - **Job Queue Race Condition Fix** - Fixed issue where multiple workers could claim the same job, causing "FFmpeg not found" errors (#150)
+    - **Audio Conversion Pipeline Refactor** - Improved format detection using ffprobe, better codec support (#158)
+    - **Codec Compatibility Check** - Unsupported audio codecs are now automatically converted before transcription
 
-    *Contributed by [Dmitry Abramov](https://github.com/Daabramov)* | [SSO Setup Guide](admin-guide/sso-setup.md)
+    *Thanks to [JadedBlueEyes](https://github.com/JadedBlueEyes) for PR #158 and [Daabramov](https://github.com/Daabramov) for debugging #150*
 
 ## Quick Navigation
 
