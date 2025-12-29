@@ -22,8 +22,9 @@ from email.utils import encode_rfc2231
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
-from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking, compress_lossless_audio
+from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE
+from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking
+from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
@@ -31,6 +32,8 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
+from src.utils.ffprobe import get_codec_info, FFProbeError
+from src.utils.audio_conversion import convert_if_needed
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -206,7 +209,7 @@ def download_summary_word(recording_id):
         from docx.shared import Inches
         import re
         from io import BytesIO
-        
+
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
@@ -216,10 +219,10 @@ def download_summary_word(recording_id):
 
         if not recording.summary:
             return jsonify({'error': 'No summary available for this recording'}), 400
-        
+
         # Create Word document
         doc = Document()
-        
+
         # Add title
         title_text = f'Summary: {recording.title or "Untitled Recording"}'
         title = doc.add_heading(title_text, 0)
@@ -261,12 +264,12 @@ def download_summary_word(recording_id):
 
         # Process markdown content using the helper function
         process_markdown_to_docx(doc, recording.summary)
-        
+
         # Save to BytesIO
         doc_stream = BytesIO()
         doc.save(doc_stream)
         doc_stream.seek(0)
-        
+
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
@@ -302,7 +305,7 @@ def download_summary_word(recording_id):
                 current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
                 response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
         return response
-        
+
     except Exception as e:
         current_app.logger.error(f"Error generating summary Word document: {e}")
         return jsonify({'error': 'Failed to generate Word document'}), 500
@@ -318,7 +321,7 @@ def download_chat_word(recording_id):
         from docx.shared import Inches
         import re
         from io import BytesIO
-        
+
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
@@ -330,14 +333,14 @@ def download_chat_word(recording_id):
         data = request.json
         if not data or 'messages' not in data:
             return jsonify({'error': 'No messages provided'}), 400
-        
+
         messages = data['messages']
         if not messages:
             return jsonify({'error': 'No messages to download'}), 400
-        
+
         # Create Word document
         doc = Document()
-        
+
         # Add title
         title_text = f'Chat Conversation: {recording.title or "Untitled Recording"}'
         title = doc.add_heading(title_text, 0)
@@ -350,7 +353,7 @@ def download_chat_word(recording_id):
                 run.font.name = 'Arial'
                 r = run._element
                 r.rPr.rFonts.set(qn('w:eastAsia'), 'Arial')
-        
+
         # Helper function to add paragraph with Unicode support
         def add_unicode_paragraph(doc, text):
             p = doc.add_paragraph(text)
@@ -368,13 +371,13 @@ def download_chat_word(recording_id):
         add_unicode_paragraph(doc, f'Recording Date: {recording.created_at.strftime("%Y-%m-%d %H:%M")}')
         add_unicode_paragraph(doc, f'Chat Export Date: {datetime.utcnow().strftime("%Y-%m-%d %H:%M")}')
         doc.add_paragraph('')  # Empty line
-        
+
         # Add chat messages
         for message in messages:
             role = message.get('role', 'unknown')
             content = message.get('content', '')
             thinking = message.get('thinking', '')
-            
+
             # Add role header
             if role == 'user':
                 p = doc.add_paragraph()
@@ -388,24 +391,24 @@ def download_chat_word(recording_id):
                 p = doc.add_paragraph()
                 run = p.add_run(f'{role.title()}: ')
                 run.bold = True
-            
+
             # Add thinking content if present
             if thinking and role == 'assistant':
                 p = doc.add_paragraph()
                 p.add_run('[Model Reasoning]\n').italic = True
                 p.add_run(thinking).italic = True
                 doc.add_paragraph('')  # Empty line
-            
+
             # Add message content with markdown formatting
             process_markdown_to_docx(doc, content)
-            
+
             doc.add_paragraph('')  # Empty line between messages
-        
+
         # Save to BytesIO
         doc_stream = BytesIO()
         doc.save(doc_stream)
         doc_stream.seek(0)
-        
+
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
@@ -442,7 +445,7 @@ def download_chat_word(recording_id):
                 current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
                 response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
         return response
-        
+
     except Exception as e:
         current_app.logger.error(f"Error generating chat Word document: {e}")
         return jsonify({'error': 'Failed to generate Word document'}), 500
@@ -458,7 +461,7 @@ def download_notes_word(recording_id):
         from docx.shared import Inches
         import re
         from io import BytesIO
-        
+
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
@@ -468,10 +471,10 @@ def download_notes_word(recording_id):
 
         if not recording.notes:
             return jsonify({'error': 'No notes available for this recording'}), 400
-        
+
         # Create Word document
         doc = Document()
-        
+
         # Add title
         title_text = f'Notes: {recording.title or "Untitled Recording"}'
         title = doc.add_heading(title_text, 0)
@@ -512,12 +515,12 @@ def download_notes_word(recording_id):
 
         # Process markdown content using the helper function
         process_markdown_to_docx(doc, recording.notes)
-        
+
         # Save to BytesIO
         doc_stream = BytesIO()
         doc.save(doc_stream)
         doc_stream.seek(0)
-        
+
         # Create safe filename
         safe_title = re.sub(r'[<>:"/\\|?*]', '', recording.title or 'Untitled')
         safe_title = re.sub(r'[-\s]+', '-', safe_title).strip('-')
@@ -553,7 +556,7 @@ def download_notes_word(recording_id):
                 current_app.logger.error(f"RFC2231 encoding failed: {e}, using fallback")
                 response.headers['Content-Disposition'] = f'attachment; filename="download-{recording_id}.docx"'
         return response
-        
+
     except Exception as e:
         current_app.logger.error(f"Error generating notes Word document: {e}")
         return jsonify({'error': 'Failed to generate Word document'}), 500
@@ -571,19 +574,19 @@ def generate_summary_endpoint(recording_id):
 
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to generate summary for this recording'}), 403
-            
+
         # Check if transcription exists
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             return jsonify({'error': 'No valid transcription available for summary generation'}), 400
-            
+
         # Check if already processing
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
             return jsonify({'error': 'Recording is already being processed'}), 400
-            
+
         # Check if OpenRouter client is available
         if client is None:
             return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
-            
+
         current_app.logger.info(f"Queueing summary generation for recording {recording_id}")
 
         # Queue summary generation job
@@ -598,7 +601,7 @@ def generate_summary_endpoint(recording_id):
             'success': True,
             'message': 'Summary generation queued'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error starting summary generation for recording {recording_id}: {e}")
@@ -651,9 +654,9 @@ def update_speakers(recording_id):
                         segment['speaker'] = new_name
                         if new_name not in speaker_names_used:
                             speaker_names_used.append(new_name)
-            
+
             recording.transcription = json.dumps(transcription_data)
-            
+
             # Update participants only from speakers that were actually given names (not default labels)
             final_speakers = set()
             for seg in transcription_data:
@@ -678,7 +681,7 @@ def update_speakers(recording_id):
                     transcription_text = re.sub(r'\[\s*' + re.escape(speaker_label) + r'\s*\]', f'[{new_name}]', transcription_text, flags=re.IGNORECASE)
                     if new_name not in new_participants:
                         new_participants.append(new_name)
-            
+
             recording.transcription = transcription_text
             if new_participants:
                 recording.participants = ', '.join(new_participants)
@@ -1149,15 +1152,15 @@ def reprocess_summary(recording_id):
 
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
-            
+
         # Check if transcription exists
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             return jsonify({'error': 'No valid transcription available for summary generation'}), 400
-            
+
         # Check if already processing
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
             return jsonify({'error': 'Recording is already being processed'}), 400
-            
+
         # Check if OpenRouter client is available
         if client is None:
             return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
@@ -1206,7 +1209,7 @@ def reprocess_summary(recording_id):
             'message': 'Summary reprocessing started',
             'recording': recording_dict
         })
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error reprocessing summary for recording {recording_id}: {e}")
@@ -1861,7 +1864,7 @@ def update_transcription(recording_id):
 
         # The incoming data could be a JSON string (from ASR edit) or plain text
         recording.transcription = new_transcription
-        
+
         # Optional: If the transcription changes, we might want to indicate that the summary is outdated.
         # For now, we'll just save the transcript. A "regenerate summary" button could be a good follow-up.
 
@@ -1956,7 +1959,7 @@ def upload_file():
 
         # Check size limit before saving - only enforce if chunking is disabled or using ASR endpoint
         max_content_length = current_app.config.get('MAX_CONTENT_LENGTH')
-        
+
         # Skip size check if chunking is enabled and using OpenAI Whisper API
         should_enforce_size_limit = True
         if ENABLE_CHUNKING and chunking_service and not USE_ASR_ENDPOINT:
@@ -1967,7 +1970,7 @@ def upload_file():
                 current_app.logger.info(f"Size-based chunking enabled ({limit_value}MB limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
             else:
                 current_app.logger.info(f"Duration-based chunking enabled ({limit_value}s limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
-        
+
         if should_enforce_size_limit and max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
 
@@ -1976,92 +1979,52 @@ def upload_file():
 
         # --- Convert files only when chunking is needed ---
         filename_lower = original_filename.lower()
-        
+
         # Check if chunking will be needed for this file
-        needs_chunking_for_processing = (chunking_service and 
-                                       ENABLE_CHUNKING and 
-                                       not USE_ASR_ENDPOINT and
-                                       chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT))
-        
-        # Define supported formats based on whether chunking is needed
-        if needs_chunking_for_processing:
-            # For chunking: only support formats that work well with chunking
-            supported_formats = ('.wav', '.mp3', '.flac')
-            convertible_formats = ('.amr', '.3gp', '.3gpp', '.m4a', '.aac', '.ogg', '.wma', '.webm', '.weba', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
-        else:
-            # For direct transcription: support WebM and other formats directly
-            supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.weba', '.m4a', '.aac', '.ogg')
-            convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
-        
-        # Special handling for problematic AAC files when using ASR endpoint
-        is_problematic_aac = (USE_ASR_ENDPOINT and 
-                             (filename_lower.endswith('.aac') or 
-                              'aac' in filename_lower.lower()))
-        
-        # Convert if file is not in supported formats OR is problematic AAC for ASR
-        # Also convert unknown formats proactively to avoid downstream failures
-        is_unknown_format = not filename_lower.endswith(supported_formats) and not filename_lower.endswith(convertible_formats)
-        should_convert = ((not filename_lower.endswith(supported_formats) and needs_chunking_for_processing) or
-                         is_problematic_aac or
-                         is_unknown_format)
+        needs_chunking_for_processing = bool(
+            chunking_service and
+            ENABLE_CHUNKING and
+            not USE_ASR_ENDPOINT and
+            chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT)
+        )
 
-        if should_convert:
-            if is_problematic_aac:
-                current_app.logger.info(f"Converting AAC-encoded file {filename_lower} to high-quality MP3 for ASR endpoint compatibility.")
-            elif is_unknown_format:
-                current_app.logger.info(f"Attempting to convert unknown format ({filename_lower}) to MP3 via FFmpeg.")
-            elif filename_lower.endswith(convertible_formats):
-                current_app.logger.info(f"Converting {filename_lower} format to high-quality MP3 for processing.")
+        # Probe once and use shared conversion utility
+        codec_info = None
+        try:
+            codec_info = get_codec_info(filepath, timeout=10)
+            current_app.logger.info(
+                f"Detected codec for {original_filename}: "
+                f"audio_codec={codec_info.get('audio_codec')}, "
+                f"has_video={codec_info.get('has_video', False)}"
+            )
+        except FFProbeError as e:
+            current_app.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
+            codec_info = None
+
+        # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
+        try:
+            result = convert_if_needed(
+                filepath,
+                original_filename=original_filename,
+                codec_info=codec_info,
+                needs_chunking=needs_chunking_for_processing,
+                is_asr_endpoint=USE_ASR_ENDPOINT,
+                delete_original=True
+            )
+            filepath = result.output_path
             
-            # Use compression settings if enabled, otherwise default to MP3 128k
-            codec = AUDIO_CODEC if AUDIO_COMPRESS_UPLOADS else 'mp3'
-            bitrate = AUDIO_BITRATE if AUDIO_COMPRESS_UPLOADS else '128k'
-
-            # Determine output extension based on codec
-            codec_extensions = {'mp3': '.mp3', 'flac': '.flac', 'opus': '.opus'}
-            output_ext = codec_extensions.get(codec, '.mp3')
-
-            base_filepath, _ = os.path.splitext(filepath)
-            temp_filepath = f"{base_filepath}_temp{output_ext}"
-            final_filepath = f"{base_filepath}{output_ext}"
-
-            try:
-                # Build FFmpeg command based on codec
-                if codec == 'flac':
-                    cmd = ['ffmpeg', '-i', filepath, '-y', '-acodec', 'flac', '-compression_level', '8', temp_filepath]
-                elif codec == 'opus':
-                    cmd = ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libopus', '-b:a', bitrate, temp_filepath]
-                else:  # mp3 (default)
-                    cmd = ['ffmpeg', '-i', filepath, '-y', '-acodec', 'libmp3lame', '-b:a', bitrate, '-ac', '1', temp_filepath]
-
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
-                current_app.logger.info(f"Successfully converted {filepath} to {temp_filepath} ({codec.upper()} {bitrate})")
-
-                # If the original file is not the same as the final file, remove it
-                if filepath.lower() != final_filepath.lower():
-                    os.remove(filepath)
-
-                # Rename the temporary file to the final filename
-                os.rename(temp_filepath, final_filepath)
-
-                filepath = final_filepath
-            except FileNotFoundError:
-                current_app.logger.error("ffmpeg command not found. Please ensure ffmpeg is installed and in the system's PATH.")
-                return jsonify({'error': 'Audio conversion tool (ffmpeg) not found on server.'}), 500
-            except subprocess.CalledProcessError as e:
-                current_app.logger.error(f"ffmpeg conversion failed for {filepath}: {e.stderr}")
-                return jsonify({'error': f'Failed to convert audio file: {e.stderr}'}), 500
-
-        # Compress lossless audio files (WAV, AIFF) if enabled (for files that weren't already converted above)
-        if AUDIO_COMPRESS_UPLOADS:
-            try:
-                new_filepath, new_mime = compress_lossless_audio(filepath, AUDIO_CODEC, AUDIO_BITRATE)
-                if new_filepath != filepath:
-                    filepath = new_filepath
-                    # MIME type will be updated below
-            except Exception as e:
-                current_app.logger.warning(f"Audio compression failed, continuing with original: {e}")
-                # Don't fail the upload if compression fails - just continue with original
+            # Log what happened
+            if result.was_converted:
+                current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
+            if result.was_compressed:
+                current_app.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+                
+        except FFmpegNotFoundError as e:
+            current_app.logger.error(f"FFmpeg not found: {e}")
+            return jsonify({'error': 'Audio conversion tool (FFmpeg) not found on server.'}), 500
+        except FFmpegError as e:
+            current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
+            return jsonify({'error': f'Failed to convert audio file: {str(e)}'}), 500
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
@@ -2072,7 +2035,7 @@ def upload_file():
 
         # Get notes from the form
         notes = request.form.get('notes')
-        
+
         # Get selected tags if provided (multiple tags support)
         selected_tags = []
         tag_index = 0
@@ -2098,12 +2061,12 @@ def upload_file():
                 tag = Tag.query.filter_by(id=single_tag_id).first()
                 if tag and (tag.user_id == current_user.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=current_user.id).first())):
                     selected_tags.append(tag)
-        
+
         # Get ASR advanced options if provided
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers') or None
         max_speakers = request.form.get('max_speakers') or None
-        
+
         # Convert to int if provided
         if min_speakers:
             try:
@@ -2115,9 +2078,9 @@ def upload_file():
                 max_speakers = int(max_speakers)
             except (ValueError, TypeError):
                 max_speakers = None
-        
+
         # Apply precedence hierarchy: user input > tag defaults > environment variables > auto-detect
-        
+
         # Apply tag defaults if tags are selected and values are not explicitly provided by user
         # Use first tag's defaults (highest priority)
         if selected_tags:
@@ -2128,7 +2091,7 @@ def upload_file():
                 min_speakers = first_tag.default_min_speakers
             if max_speakers is None and first_tag.default_max_speakers:
                 max_speakers = first_tag.default_max_speakers
-        
+
         # Apply environment variable defaults if still no values are set
         if min_speakers is None and ASR_MIN_SPEAKERS:
             try:
@@ -2157,7 +2120,7 @@ def upload_file():
         )
         db.session.add(recording)
         db.session.commit()
-        
+
         # Add tags to recording if selected (preserve order)
         for order, tag in enumerate(selected_tags, 1):
             new_association = RecordingTag(
@@ -2167,12 +2130,12 @@ def upload_file():
                 added_at=datetime.utcnow()
             )
             db.session.add(new_association)
-        
+
         if selected_tags:
             db.session.commit()
             tag_names = [tag.name for tag in selected_tags]
             current_app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: {', '.join(tag_names)}")
-        
+
         current_app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
         # --- Queue transcription job ---
@@ -2219,7 +2182,7 @@ def delete_recording(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording:
             return jsonify({'error': 'Recording not found'}), 404
-            
+
         # Check if the recording belongs to the current user
         if recording.user_id and recording.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to delete this recording'}), 403
@@ -3088,6 +3051,3 @@ def process_recording_chunks_endpoint(recording_id):
 
 
 # --- Inquire Mode API Endpoints ---
-
-
-

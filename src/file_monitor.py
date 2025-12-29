@@ -15,8 +15,10 @@ import logging
 from datetime import datetime
 from pathlib import Path
 import mimetypes
-import subprocess
 from werkzeug.utils import secure_filename
+from src.utils.ffprobe import get_codec_info, FFProbeError
+from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
+from src.utils.audio_conversion import convert_if_needed
 
 # Flask app components will be imported inside functions to avoid circular imports
 
@@ -44,9 +46,13 @@ class FileMonitor:
         self.logger.setLevel(logging.INFO)
         
         # Supported audio file extensions
-        self.supported_extensions = {
+        # We'll use ffprobe to detect audio files instead of extensions
+        # Keep a basic list for initial filtering to avoid probing every file
+        self.potential_audio_extensions = {
             '.wav', '.mp3', '.flac', '.amr', '.3gp', '.3gpp', 
-            '.m4a', '.aac', '.ogg', '.wma', '.webm', '.mp4', '.mov'
+            '.m4a', '.aac', '.ogg', '.wma', '.webm', '.mp4', '.mov',
+            '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi',
+            '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf'
         }
         
         # Cache for admin user and valid users
@@ -170,7 +176,7 @@ class FileMonitor:
             if file_path.name.startswith('.') or file_path.suffix == '.processing':
                 continue
             
-            if file_path.suffix.lower() not in self.supported_extensions:
+            if file_path.suffix.lower() not in self.potential_audio_extensions:
                 continue
 
             # Check if file is still being written (size stability check)
@@ -309,8 +315,38 @@ class FileMonitor:
                     # This should not happen if the lock is held, but good to log
                     self.logger.warning(f"Locked file {processing_path} was already deleted.")
                 
-                # Convert file if necessary (same logic as upload_file)
-                final_path = self._convert_file_if_needed(destination_path, original_filename)
+                # Probe once to get codec info, then pass through pipeline to avoid redundant calls
+                codec_info = None
+                try:
+                    codec_info = get_codec_info(str(destination_path), timeout=10)
+                    self.logger.info(f"Detected codec for {original_filename}: audio_codec={codec_info.get('audio_codec')}, has_video={codec_info.get('has_video', False)}")
+                except FFProbeError as e:
+                    self.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
+                
+                # Convert/compress file if necessary - convert_if_needed handles ALL conversion needs
+                try:
+                    result = convert_if_needed(
+                        str(destination_path),
+                        original_filename=original_filename,
+                        codec_info=codec_info,
+                        needs_chunking=False,
+                        is_asr_endpoint=False,
+                        delete_original=True  # Clean up original after conversion
+                    )
+                    final_path = Path(result.output_path)
+                    
+                    # Log what happened
+                    if result.was_converted:
+                        self.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
+                    if result.was_compressed:
+                        self.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+                        
+                except FFmpegNotFoundError as e:
+                    self.logger.error(f"FFmpeg not found: {e}")
+                    raise
+                except FFmpegError as e:
+                    self.logger.error(f"FFmpeg conversion failed: {e}")
+                    raise
                 
                 # Get file size and MIME type
                 file_size = final_path.stat().st_size
@@ -354,60 +390,7 @@ class FileMonitor:
                 # Re-raise the exception to be caught by the calling method, which will handle unlocking.
                 raise
                 
-    def _convert_file_if_needed(self, file_path, original_filename):
-        """
-        Convert audio file to supported format if needed.
-        Uses 32kbps MP3 for optimal size/quality balance.
-        
-        Args:
-            file_path (Path): Current file path
-            original_filename (str): Original filename for format detection
-            
-        Returns:
-            Path: Path to the final (possibly converted) file
-        """
-        filename_lower = original_filename.lower()
-        
-        # Support WebM and other formats directly when possible
-        supported_formats = ('.wav', '.mp3', '.flac', '.webm', '.weba', '.m4a', '.aac', '.ogg')
-        convertible_formats = ('.amr', '.3gp', '.3gpp', '.wma', '.mp4', '.mov', '.opus', '.caf', '.aiff', '.ts', '.mts', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mpeg', '.mpg', '.ogv', '.vob', '.asf')
-        
-        if filename_lower.endswith(supported_formats):
-            self.logger.info(f"File format {filename_lower} is supported, no conversion needed")
-            return file_path
-            
-        if not filename_lower.endswith(convertible_formats):
-            self.logger.warning(f"Unknown file format {filename_lower}, attempting conversion anyway")
-            
-        # Need to convert to high-quality MP3 for better transcription accuracy
-        self.logger.info(f"Converting {filename_lower} format to high-quality MP3")
-        
-        base_path = file_path.with_suffix('')
-        temp_mp3_path = base_path.with_suffix('.temp.mp3')
-        final_mp3_path = base_path.with_suffix('.mp3')
-        
-        try:
-            # Convert to high-quality MP3 (128kbps, 44.1kHz) for better transcription accuracy
-            subprocess.run([
-                'ffmpeg', '-i', str(file_path), '-y', 
-                '-acodec', 'libmp3lame', '-b:a', '128k', '-ar', '44100', '-ac', '1', 
-                str(temp_mp3_path)
-            ], check=True, capture_output=True, text=True)
-            
-            self.logger.info(f"Successfully converted {file_path} to {temp_mp3_path} (128kbps MP3)")
-            
-            # Remove original and rename temp file
-            file_path.unlink()
-            temp_mp3_path.rename(final_mp3_path)
-            
-            return final_mp3_path
-            
-        except FileNotFoundError:
-            self.logger.error("ffmpeg not found. Please ensure ffmpeg is installed.")
-            raise
-        except subprocess.CalledProcessError as e:
-            self.logger.error(f"ffmpeg conversion failed: {e.stderr}")
-            raise
+
 
 
 # Global file monitor instance
