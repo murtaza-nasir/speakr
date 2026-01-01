@@ -17,7 +17,7 @@ from typing import Optional, Tuple, Set, Dict, Any
 
 from src.utils.ffprobe import get_codec_info, is_lossless_audio, FFProbeError
 from src.utils.ffmpeg_utils import compress_audio, extract_audio_from_video, FFmpegError, FFmpegNotFoundError
-from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
+from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, AUDIO_UNSUPPORTED_CODECS
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +71,23 @@ def get_supported_codecs(needs_chunking: bool = False) -> Set[str]:
         needs_chunking: If True, return only codecs that work well with chunking
 
     Returns:
-        Set of supported codec names
+        Set of supported codec names (minus any excluded via AUDIO_UNSUPPORTED_CODECS)
     """
     if needs_chunking:
         # For chunking: only support codecs that work well with chunking
-        return {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac'}
+        base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac'}
     else:
         # For direct transcription: support more codecs including WebM/Opus
-        return {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'opus', 'vorbis', 'aac'}
+        base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'opus', 'vorbis', 'aac'}
+
+    # Remove any user-specified unsupported codecs
+    if AUDIO_UNSUPPORTED_CODECS:
+        excluded = base_codecs & AUDIO_UNSUPPORTED_CODECS
+        if excluded:
+            logger.info(f"Excluding codecs from supported list (via AUDIO_UNSUPPORTED_CODECS): {excluded}")
+        return base_codecs - AUDIO_UNSUPPORTED_CODECS
+
+    return base_codecs
 
 
 def convert_if_needed(

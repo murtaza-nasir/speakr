@@ -48,6 +48,12 @@ AUDIO_COMPRESS_UPLOADS = os.environ.get('AUDIO_COMPRESS_UPLOADS', 'true').lower(
 AUDIO_CODEC = os.environ.get('AUDIO_CODEC', 'mp3').lower()  # mp3, flac, opus
 AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')  # For lossy codecs
 
+# Unsupported codecs - comma-separated list of codecs to exclude from the default supported list
+# Useful when your transcription service doesn't support certain codecs (e.g., vllm doesn't support opus)
+# Example: AUDIO_UNSUPPORTED_CODECS=opus,vorbis
+_unsupported_codecs_str = os.environ.get('AUDIO_UNSUPPORTED_CODECS', '')
+AUDIO_UNSUPPORTED_CODECS = {c.strip().lower() for c in _unsupported_codecs_str.split(',') if c.strip()}
+
 # Create chunking service at module level so it can be imported by processing.py
 chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS) if ENABLE_CHUNKING else None
 
