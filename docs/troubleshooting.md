@@ -56,6 +56,27 @@ Language mismatches cause poor results too. If you've set a specific transcripti
 
 For recordings with multiple speakers, using the [ASR endpoint with speaker diarization](features.md#speaker-diarization) dramatically improves usability. Learn how to [identify speakers](user-guide/transcripts.md#speaker-identification) after transcription, even if the raw transcription accuracy is similar.
 
+### "Format Not Recognised" Errors
+
+If your transcription service returns "format not recognised" or similar codec errors, your service may not support certain audio formats that Speakr considers supported by default.
+
+This commonly occurs with:
+- **vLLM-hosted Whisper instances** that don't support Opus codec
+- **Self-hosted ASR services** with limited codec support
+- **WebM recordings** (which typically use Opus audio)
+
+**Solution:** Add unsupported codecs to your `.env` file:
+
+```bash
+# Exclude codecs your service doesn't support
+AUDIO_UNSUPPORTED_CODECS=opus
+
+# Multiple codecs can be excluded
+AUDIO_UNSUPPORTED_CODECS=opus,vorbis
+```
+
+Files using these codecs will be automatically converted to your target format (MP3 by default) before transcription. See the [audio compression settings](getting-started/installation.md#audio-compression) for more details.
+
 ### Chinese Transcription Issues
 
 For [Chinese language transcription](features.md#language-support), model selection is critical. See the [FAQ on language support](faq.md#can-speakr-transcribe-languages-other-than-english) for more details.

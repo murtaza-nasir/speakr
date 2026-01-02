@@ -216,6 +216,20 @@ When enabled (the default), lossless files are automatically converted on upload
 
 Already-compressed formats (MP3, AAC, OGG, M4A, etc.) are never re-encoded to avoid quality degradation. Only truly lossless formats (WAV, AIFF) are compressed.
 
+**Excluding unsupported codecs:**
+
+Some transcription services don't support certain audio codecs. For example, vLLM-hosted Whisper instances may not support Opus. If you encounter "format not recognised" errors, you can exclude specific codecs from Speakr's supported list, forcing them to be converted before transcription:
+
+```bash
+# Exclude a single codec
+AUDIO_UNSUPPORTED_CODECS=opus
+
+# Exclude multiple codecs (comma-separated)
+AUDIO_UNSUPPORTED_CODECS=opus,vorbis
+```
+
+Supported codecs by default: `pcm_s16le`, `pcm_s24le`, `pcm_f32le`, `mp3`, `flac`, `opus`, `vorbis`, `aac`. Any codec listed in `AUDIO_UNSUPPORTED_CODECS` will be automatically converted to your target format (set by `AUDIO_CODEC`) before being sent to the transcription service.
+
 !!! tip "Storage Savings Example"
     A 500MB WAV recording compressed to MP3 at 128k becomes roughly 50MB - a 90% reduction. For lossless preservation, FLAC typically achieves 50-70% reduction while maintaining perfect audio quality.
 
