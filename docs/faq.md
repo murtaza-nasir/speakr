@@ -236,6 +236,16 @@ The three codec options serve different needs:
 
 For most users, the default **mp3 at 128k** provides excellent quality for speech while maximizing storage savings. If you're archiving important recordings and want to preserve full audio fidelity, use **flac**. The **opus** codec is efficient for speech but has slightly less universal compatibility than MP3.
 
+### What if my transcription service doesn't support certain codecs?
+
+Some self-hosted transcription services (like vLLM-hosted Whisper) don't support all audio codecs. If you're getting "format not recognised" errors, you can exclude specific codecs from Speakr's supported list:
+
+```bash
+AUDIO_UNSUPPORTED_CODECS=opus,vorbis
+```
+
+Files using these codecs will be automatically converted to your target format before transcription. See the [troubleshooting guide](troubleshooting.md#format-not-recognised-errors) for more details.
+
 ---
 
 Return to [Home](index.md) →
