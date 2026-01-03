@@ -793,17 +793,20 @@ If you are a beginner, here is a small guide to configure an Apache reverse prox
 
 ###### For a Debian/Ubuntu machine
 
-- Install Apache if not already installed using this command: `sudo apt install apache2`, and then restart it to ensure configuration files are properly generated: `sudo systemctl restart apache2`
-- Create a new site configuration for Speakr in `/etc/apache2/sites-available/speakr.conf`. A configuration example is included above.
-- Fill the `ServerName` fields by replacing `yourdomain.com` with your actual domain. You can also modify other fields if you want to.
-- Remove these lines:
+Make sure Speakr is **not running** until you've finished, for safety reasons.
+
+1. Install Apache if not already installed using this command: `sudo apt install apache2`, and then restart it to ensure configuration files are properly generated: `sudo systemctl restart apache2`
+2. Create a new site configuration for Speakr in `/etc/apache2/sites-available/speakr.conf`. A configuration example is included above.
+3. Fill the `ServerName` fields by replacing `yourdomain.com` with your actual domain. You can also modify other fields if you want to.
+4. Remove these lines:
   ```apache
   SSLEngine on
   SSLCertificateFile /path/to/certificate.pem
   SSLCertificateKeyFile /path/to/private.key
   ```
-- Make sure to set up your domain records properly. You should set an `A` record type for the subdomain `speakr` poiting to the IP address of your server. Wait a few dozen minutes to hours ensure the records are properly updated.
-- [Install Certbot](https://certbot.eff.org/instructions) if not already done.
+5. Enable the site configuration with `sudo a2ensite speakr`
+6. Make sure to set up your domain records properly. You should set an `A` record type for the subdomain `speakr` poiting to the IP address of your server. Wait a few dozen minutes to hours ensure the records are properly updated.
+7. [Install Certbot](https://certbot.eff.org/instructions) if not already done.
   - For an Ubuntu machine, we'll follow the `Linux (snap)` method as it is easier. Run these commands to install:
     ```bash
     sudo snap install --classic certbot
@@ -811,10 +814,10 @@ If you are a beginner, here is a small guide to configure an Apache reverse prox
     sudo ln -s /snap/bin/certbot /usr/bin/certbot
     ```
   - For a Debian machine, either install `snapd`, or use the `Linux (pip)` method, which requires Python.
-- Restart Apache to apply all configurations: `sudo systemctl restart apache2`
-- Run certbot: `sudo certbot --apache`. If asked, select to only activate HTTPS for `speakr.yourdomain.com`.
-- Certbot should have added the SSL configuration, and will now automatically renew the certificate for you. Restart apache2 to apply the changes: `sudo systemctl restart apache2`
-- Done, you can now start Speakr, and you will be able to access it with `https://speakr.yourdomain.com` in your browser. *If you get an SSL certificate error, or if it doesn't work, something went wrong!*
+8. Restart Apache to apply all configurations: `sudo systemctl restart apache2`
+9. Run certbot: `sudo certbot --apache`. If asked, select to only activate HTTPS for `speakr.yourdomain.com`.
+10. Certbot should have added the SSL configuration, and will now automatically renew the certificate for you. Restart apache2 to apply the changes: `sudo systemctl restart apache2`
+11. Done, you can now start Speakr, and you will be able to access it with `https://speakr.yourdomain.com` in your browser. *If you get an SSL certificate error, or if it doesn't work, something went wrong!*
 
 ### Backup Strategy
 
