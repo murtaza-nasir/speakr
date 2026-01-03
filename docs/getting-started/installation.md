@@ -104,7 +104,7 @@ If you want speaker diarization to identify who's speaking in your recordings, y
    - **Required setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features
 
 2. **OpenAI Whisper ASR Webservice (Basic Diarization)** - For basic speaker diarization without voice profiles
-   - Repository: [ahmetoner/openai-whisper-asr-webservice](https://github.com/ahmetoner/openai-whisper-asr-webservice)
+   - Repository: [ahmetoner/whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice)
    - Uses `pyannote/speaker-diarization-3.1` model
    - Simpler setup, less resource intensive
    - **Supports:** Basic speaker identification (Speaker 1, Speaker 2, etc.)
@@ -343,7 +343,7 @@ If you need speaker diarization to identify different speakers in your recording
 
 **Setup Instructions:**
 
-Clone the WhisperX ASR Service repository:
+Clone the [WhisperX ASR Service repository](https://github.com/murtaza-nasir/whisperx-asr-service):
 ```bash
 git clone https://github.com/murtaza-nasir/whisperx-asr-service.git
 cd whisperx-asr-service
@@ -388,9 +388,11 @@ Visit the [ahmetoner/whisper-asr-webservice repository](https://github.com/ahmet
 
 Once you've chosen and set up your ASR service, you can deploy it alongside Speakr in several ways:
 
-**Same Machine - Combined Docker Compose (Recommended)**
+##### Option 1: Same Machine - Combined Docker Compose (Recommended)
 
-Example with WhisperX ASR Service (for voice profiles):
+###### For WhisperX ASR Service
+
+**Example with WhisperX ASR Service (for voice profiles):**
 
 ```yaml
 services:
@@ -420,7 +422,7 @@ services:
     networks:
       - speakr-network
 
-  speakr:
+  app:
     image: learnedmachine/speakr:latest
     container_name: speakr
     restart: unless-stopped
@@ -451,15 +453,85 @@ USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://whisperx-asr:9000
 ```
 
-> **Note for Mac users:** GPU passthrough doesn't work on macOS due to Docker's architecture. Use CPU mode by setting `DEVICE=cpu` and `COMPUTE_TYPE=float32` in the environment variables. The ASR service will use CPU processing, which is slower but fully functional.
+###### For OpenAI Whisper ASR Webservice
+
+**Example with OpenAI Whisper ASR Webservice (Basic Diarization Only):**
+
+```yaml
+services:
+  whisper-asr:
+    image: onerahmet/openai-whisper-asr-webservice:latest-gpu # or ":latest" for CPU
+    container_name: whisper-asr-webservice
+    ports:
+      - "9000:9000" # Exposed to the network
+    environment:
+      - ASR_MODEL=distil-large-v3 # English only. Use "large-v3-turbo" for multilingual.
+      - ASR_COMPUTE_TYPE=int8
+      - ASR_ENGINE=whisperx
+      - HF_TOKEN=your_huggingface_token_here
+      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true  # Required for PyTorch 2.6+
+      - ASR_MODEL_PATH=/data/whisper
+      - MODEL_IDLE_TIMEOUT=300
+    deploy: # Remove all of this for CPU
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    volumes:
+      - ./whisper-cache:/data/whisper
+    networks:
+      - speakr-network
+
+  app:
+    image: learnedmachine/speakr:latest
+    container_name: speakr
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+    depends_on:
+      - whisper-asr
+    networks:
+      - speakr-network
+
+networks:
+  speakr-network:
+    driver: bridge
+```
+
+The `whisper-cache` folder will contain the Whisper models. If not included, it will be re-downloaded every time it starts, which is really slow. If you do not wish to have this folder directly exposed, you can:
+- Change `- ./whisper-cache:/data/whisper`\
+  to\
+  `- whisper-cache:/data/whisper`
+- Add the following at the end of the file:
+  ```yaml
+  volumes:
+    whisper-cache:
+      driver: local
+  ```
+
+For maximum speed, it is possible to set `ASR_ENGINE=faster_whisper`, but this will disable diarization: Speakr won't be able to distinguish multiple speakers.
+
+###### Important notes
+
+> **Note for Mac users:** GPU passthrough doesn't work on macOS due to Docker's architecture. Use the CPU mode (check below).
+
+> **To use the CPU mode:** if you don't have a GPU or can't use it, use the CPU mode by setting `DEVICE=cpu` and `COMPUTE_TYPE=float32` in the environment variables, and remove the entire `deploy:` instruction. The ASR service will use CPU processing, which is slower but fully functional.
 
 **Important:** When running both services in the same Docker Compose file, use the service name (e.g., `whisperx-asr` or `whisper-asr`) in `ASR_BASE_URL`, not `localhost` or an IP address.
 
-#### Running Services in Separate Docker Compose Files
+##### Option 2: Running Services in Separate Docker Compose Files
 
 If you prefer to manage the services independently or are adding the ASR service to an existing Speakr installation, you can run them in separate Docker Compose files. This approach gives you more flexibility and works whether the services are on the same machine or different machines.
 
-##### Option 1: Same Machine with Shared Network
+###### Option 2.1: Same Machine with Shared Network
 
 If both services run on the same machine, you can use Docker's internal networking for communication:
 
@@ -528,7 +600,7 @@ In your `.env` file, use the container name:
 ASR_BASE_URL=http://whisper-asr-webservice:9000
 ```
 
-##### Option 2: Separate Machines
+###### Option 2.2: Separate Machines
 
 When running on different machines, you don't need the shared network. Each service runs independently and communicates over the network using IP addresses or hostnames.
 
@@ -601,6 +673,10 @@ Make sure port 9000 is accessible between the machines (check firewall rules if 
 
 For production deployments, running Speakr behind a reverse proxy is essential for security and enabling all features. The browser recording feature, particularly system audio capture, requires HTTPS to work due to browser security restrictions. A reverse proxy handles SSL termination, meaning it manages the HTTPS certificates while communicating with Speakr over HTTP internally.
 
+The WebSocket configuration is important for real-time features in Speakr. The timeout settings ensure large file uploads don't get interrupted. You can obtain free SSL certificates from Let's Encrypt using [Certbot](https://certbot.eff.org/), making HTTPS accessible for everyone.
+
+#### Nginx
+
 Here's a complete nginx configuration for Speakr:
 
 ```nginx
@@ -642,7 +718,103 @@ server {
 }
 ```
 
-The WebSocket configuration is important for real-time features in Speakr. The timeout settings ensure large file uploads don't get interrupted. You can obtain free SSL certificates from Let's Encrypt using Certbot, making HTTPS accessible for everyone.
+#### Apache
+
+Here's a complete Apache configuration for Speakr:
+
+```apache
+<VirtualHost *:443>
+        ServerName speakr.yourdomain.com
+
+        # Configure the SSL certificate here, or use something like certbot to handle this for you
+        SSLEngine on
+        SSLCertificateFile /path/to/certificate.pem
+        SSLCertificateKeyFile /path/to/private.key
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        # Security Headers
+        Header always set X-Frame-Options "SAMEORIGIN"
+        Header always set X-Content-Type-Options "nosniff"
+        Header always set X-XSS-Protection "1; mode=block"
+
+        # Proxy settings
+        ProxyPreserveHost On
+        ProxyRequests Off
+
+        # Handle WebSockets for real-time features
+        RewriteEngine On
+        RewriteCond %{HTTP:Upgrade} websocket [NC]
+        RewriteCond %{HTTP:Connection} upgrade [NC]
+        RewriteRule ^/?(.*) "ws://localhost:8899/$1" [P,L]
+
+        <Location />
+            ProxyPass http://localhost:8899/
+            ProxyPassReverse http://localhost:8899/
+
+            # Required for WebSocket upgrade
+            ProxyAddHeaders On
+            # Pass 'HTTPS' to Speakr so it knows it is HTTPS
+            RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
+        </Location>
+
+        # Timeout adjustments for large uploads
+        ProxyTimeout 300
+</VirtualHost>
+
+<VirtualHost *:80>
+        ServerName speakr.yourdomain.com
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        # Redirect to HTTPS
+        RewriteEngine On
+        RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
+</VirtualHost>
+```
+
+This configuration requires some Apache mods that might not be enabled by default. To enable them, run:
+
+```bash
+sudo a2enmod ssl proxy proxy_http proxy_wstunnel rewrite headers
+```
+
+##### Easy install guide for Apache
+
+If you are a beginner, here is a small guide to configure an Apache reverse proxy with a free SSL (HTTPS) certificate with Certbot. You can skip this section if you know how to do this.
+
+###### For a Debian/Ubuntu machine
+
+- Install Apache if not already installed using this command: `sudo apt install apache2`, and then restart it to ensure configuration files are properly generated: `sudo systemctl restart apache2`
+- Create a new site configuration for Speakr in `/etc/apache2/sites-available/speakr.conf`. A configuration example is included above.
+- Fill the `ServerName` fields by replacing `yourdomain.com` with your actual domain. You can also modify other fields if you want to.
+- Remove these lines:
+  ```apache
+  SSLEngine on
+  SSLCertificateFile /path/to/certificate.pem
+  SSLCertificateKeyFile /path/to/private.key
+  ```
+- Make sure to set up your domain records properly. You should set an `A` record type for the subdomain `speakr` poiting to the IP address of your server. Wait a few dozen minutes to hours ensure the records are properly updated.
+- [Install Certbot](https://certbot.eff.org/instructions) if not already done.
+  - For an Ubuntu machine, we'll follow the `Linux (snap)` method as it is easier. Run these commands to install:
+    ```bash
+    sudo snap install --classic certbot
+
+    sudo ln -s /snap/bin/certbot /usr/bin/certbot
+    ```
+  - For a Debian machine, either install `snapd`, or use the `Linux (pip)` method, which requires Python.
+- Restart Apache to apply all configurations: `sudo systemctl restart apache2`
+- Run certbot: `sudo certbot --apache`. If asked, select to only activate HTTPS for `speakr.yourdomain.com`.
+- Certbot should have added the SSL configuration, and will now automatically renew the certificate for you. Restart apache2 to apply the changes: `sudo systemctl restart apache2`
+- Done, you can now start Speakr, and you will be able to access it with `https://speakr.yourdomain.com` in your browser. *If you get an SSL certificate error, or if it doesn't work, something went wrong!*
 
 ### Backup Strategy
 
@@ -854,7 +1026,7 @@ The `--build` flag forces Docker to rebuild the image even if one exists. This i
 
 ## Performance Optimization
 
-For high-volume deployments or when processing many large files, optimization becomes important. Start with model selection if using ASR. The distil-large-v3 model offers an excellent balance of speed and accuracy. For English-only content, use the `.en` variants which are faster and more accurate for English.
+For high-volume deployments or when processing many large files, optimization becomes important. Start with model selection if using ASR. For English-only content, the `distil-large-v3` model is a lot faster while still being accurate, and the `.en` variants [might be more accurate than the base models](https://hub.zenoml.com/report/1123/Comparing%20OpenAI%20Whisper%20Transcription%20Models). For other languages, the `large-v3-turbo` model still performs really well, while using less memory and being faster than `large-v3`.
 
 Optimize Docker resource allocation for your workload:
 
