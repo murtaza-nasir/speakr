@@ -7,7 +7,7 @@
         <span v-text="t('help.audioDeletedMessage')"></span>
     </div>
     <!-- Custom Audio Player -->
-    <div v-else class="flex items-center gap-3">
+    <div v-else>
         <!-- Hidden audio element -->
         <audio ref="audioPlayerElement"
                :src="'/audio/' + selectedRecording.id"
@@ -22,42 +22,55 @@
                class="hidden">
         </audio>
 
-        <!-- Play/Pause Button -->
-        <button @click="toggleAudioPlayback"
-                class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all duration-200 flex-shrink-0 shadow-sm"
-                :title="audioIsPlaying ? 'Pause' : 'Play'">
-            <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
-        </button>
-
-        <!-- Progress Bar & Time (stacked on mobile) -->
-        <div class="flex-1 flex flex-col gap-1">
-            <!-- Progress Bar -->
-            <div class="w-full h-2 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
-                 @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); seekAudioByPercent(((e.clientX - rect.left) / rect.width) * 100); }">
-                <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100 relative"
-                     :style="{ width: audioProgressPercent + '%' }">
-                    <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-[var(--bg-accent)] rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"></div>
-                </div>
+        <!-- Progress Bar (draggable, touch support) -->
+        <div class="w-full h-4 rounded-full cursor-pointer relative mb-2 group flex items-center"
+             @mousedown="startProgressDrag"
+             @touchstart.prevent="startProgressDrag">
+            <!-- Track background -->
+            <div class="w-full h-2 rounded-full relative" style="background: rgba(128, 128, 128, 0.4);">
+                <!-- Progress fill -->
+                <div class="h-full bg-[var(--bg-accent)] rounded-full pointer-events-none"
+                     :style="{ width: audioProgressPercent + '%' }"></div>
+                <!-- Progress dot - stays within track bounds -->
+                <div class="absolute top-1/2 w-4 h-4 bg-[var(--bg-accent)] rounded-full shadow-md transition-transform group-hover:scale-110 pointer-events-none -translate-y-1/2"
+                     :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
+                     style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
             </div>
-            <!-- Time Display -->
-            <span class="text-xs text-[var(--text-muted)] font-mono">
-                ${ formatAudioTime(audioCurrentTime) } / ${ formatAudioTime(audioDuration) }
-            </span>
         </div>
 
-        <!-- Volume Button (simplified for mobile) -->
-        <button @click="toggleAudioMute"
-                class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-                :title="audioIsMuted ? 'Unmute' : 'Mute'">
-            <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-base"></i>
-        </button>
+        <!-- Controls Row -->
+        <div class="flex items-center gap-2">
+            <!-- Play/Pause Button -->
+            <button @click="toggleAudioPlayback"
+                    class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95"
+                    :title="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
+                <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
+            </button>
 
-        <!-- Download Button -->
-        <a :href="'/audio/' + selectedRecording.id + '?download=true'"
-           download
-           class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-           :title="t('buttons.downloadAudio') || 'Download audio'">
-            <i class="fas fa-download text-base"></i>
-        </a>
+            <!-- Time Display -->
+            <div class="flex items-baseline gap-1 flex-shrink-0">
+                <span class="text-sm font-semibold font-mono" :class="isDraggingProgress ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">${ formatAudioTime(displayCurrentTime) }</span>
+                <span class="text-xs text-[var(--text-muted)]">/</span>
+                <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
+            </div>
+
+            <!-- Spacer -->
+            <div class="flex-1"></div>
+
+            <!-- Volume Button -->
+            <button @click="toggleAudioMute"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+                    :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
+                <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
+            </button>
+
+            <!-- Download Button -->
+            <a :href="'/audio/' + selectedRecording.id + '?download=true'"
+               download
+               class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+               :title="t('buttons.downloadAudio') || 'Download audio'">
+                <i class="fas fa-download text-sm"></i>
+            </a>
+        </div>
     </div>
 </div>

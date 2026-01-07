@@ -1105,6 +1105,10 @@
     "followPlayerDisabled": "Automatisches Scrollen aktivieren - Transkript folgt der Audiowiedergabe",
     "followPlayerEnabled": "Automatisches Scrollen deaktivieren - Transkript bleibt an Ort und Stelle",
     "minimize": "Minimieren",
-    "expand": "Erweitern"
+    "expand": "Erweitern",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "mute": "Stumm",
+    "unmute": "Ton an"
   }
 }
