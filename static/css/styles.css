@@ -2826,7 +2826,9 @@ body {
     background-color: transparent;
 }
 
-.dark .audio-player-container audio::-webkit-media-controls-mute-button {
+/* Dark mode: use browser's native dark theme for audio controls */
+.dark audio {
+    color-scheme: dark;
 }
 
 /* Custom audio player wrapper for better control */

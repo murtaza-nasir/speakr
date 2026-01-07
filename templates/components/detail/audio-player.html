@@ -19,9 +19,10 @@
                 Your browser does not support the audio element.
             </audio>
             <a :href="'/audio/' + selectedRecording.id + '?download=true'"
-               class="p-2 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent-hover)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors flex-shrink-0"
+               download
+               class="h-[36px] w-[36px] flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-white transition-all duration-200 flex-shrink-0 border border-[var(--border-secondary)] hover:border-[var(--border-focus)]"
                :title="t('buttons.downloadAudio') || 'Download audio'">
-                <i class="fas fa-download"></i>
+                <i class="fas fa-download text-sm"></i>
             </a>
         </div>
     </div>
