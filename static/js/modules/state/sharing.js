@@ -28,6 +28,11 @@ export function createSharingState(ref, reactive) {
 
     // --- Audio Player State ---
     const playerVolume = ref(1.0);
+    const audioIsPlaying = ref(false);
+    const audioCurrentTime = ref(0);
+    const audioDuration = ref(0);
+    const audioIsMuted = ref(false);
+    const audioIsLoading = ref(false);
 
     return {
         // Public sharing
@@ -51,6 +56,11 @@ export function createSharingState(ref, reactive) {
         isLoadingAllUsers,
 
         // Audio player
-        playerVolume
+        playerVolume,
+        audioIsPlaying,
+        audioCurrentTime,
+        audioDuration,
+        audioIsMuted,
+        audioIsLoading
     };
 }

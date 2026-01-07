@@ -2831,6 +2831,59 @@ body {
     color-scheme: dark;
 }
 
+/* Custom volume slider styling - matches progress bar */
+.volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    height: 8px;
+}
+
+.volume-slider::-webkit-slider-runnable-track {
+    background: var(--bg-tertiary);
+    height: 8px;
+    border-radius: 4px;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bg-accent);
+    margin-top: -3px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-track {
+    background: var(--bg-tertiary);
+    height: 8px;
+    border-radius: 4px;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bg-accent);
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.volume-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.volume-slider:hover::-moz-range-thumb {
+    transform: scale(1.15);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
 /* Custom audio player wrapper for better control */
 .custom-audio-wrapper {
     position: relative;

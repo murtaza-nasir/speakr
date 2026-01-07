@@ -1,29 +1,63 @@
-<!-- Audio Player Component -->
-<div class="bg-[var(--bg-secondary)] p-4 border-b border-[var(--border-primary)] flex-shrink-0">
-    <div class="audio-player-container">
-        <!-- Show message if audio has been deleted -->
-        <div v-if="selectedRecording.audio_deleted_at"
-             class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-muted)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
-            <i class="fas fa-info-circle"></i>
-            <span v-text="t('help.audioDeletedMessage')"></span>
+<!-- Audio Player Component (Mobile) -->
+<div class="bg-[var(--bg-secondary)] px-4 py-3 border-b border-[var(--border-primary)] flex-shrink-0">
+    <!-- Show message if audio has been deleted -->
+    <div v-if="selectedRecording.audio_deleted_at"
+         class="text-[var(--text-muted)] text-sm flex items-center gap-2">
+        <i class="fas fa-info-circle"></i>
+        <span v-text="t('help.audioDeletedMessage')"></span>
+    </div>
+    <!-- Custom Audio Player -->
+    <div v-else class="flex items-center gap-3">
+        <!-- Hidden audio element -->
+        <audio ref="audioPlayerElement"
+               :src="'/audio/' + selectedRecording.id"
+               :volume="playerVolume"
+               @play="handleAudioPlayPause"
+               @pause="handleAudioPlayPause"
+               @timeupdate="handleCustomAudioTimeUpdate"
+               @loadedmetadata="handleAudioLoadedMetadata"
+               @ended="handleAudioEnded"
+               @waiting="handleAudioWaiting"
+               @canplay="handleAudioCanPlay"
+               class="hidden">
+        </audio>
+
+        <!-- Play/Pause Button -->
+        <button @click="toggleAudioPlayback"
+                class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all duration-200 flex-shrink-0 shadow-sm"
+                :title="audioIsPlaying ? 'Pause' : 'Play'">
+            <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
+        </button>
+
+        <!-- Progress Bar & Time (stacked on mobile) -->
+        <div class="flex-1 flex flex-col gap-1">
+            <!-- Progress Bar -->
+            <div class="w-full h-2 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
+                 @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); seekAudioByPercent(((e.clientX - rect.left) / rect.width) * 100); }">
+                <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100 relative"
+                     :style="{ width: audioProgressPercent + '%' }">
+                    <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-[var(--bg-accent)] rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"></div>
+                </div>
+            </div>
+            <!-- Time Display -->
+            <span class="text-xs text-[var(--text-muted)] font-mono">
+                ${ formatAudioTime(audioCurrentTime) } / ${ formatAudioTime(audioDuration) }
+            </span>
         </div>
-        <!-- Show audio player if audio is available -->
-        <div v-else class="flex items-center gap-2">
-            <audio ref="audioPlayerElement"
-                   controls
-                   :src="'/audio/' + selectedRecording.id"
-                   :volume="playerVolume"
-                   @volumechange="onPlayerVolumeChange"
-                   @timeupdate="handleAudioTimeUpdate"
-                   class="flex-1">
-                Your browser does not support the audio element.
-            </audio>
-            <a :href="'/audio/' + selectedRecording.id + '?download=true'"
-               download
-               class="h-[36px] w-[36px] flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-white transition-all duration-200 flex-shrink-0 border border-[var(--border-secondary)] hover:border-[var(--border-focus)]"
-               :title="t('buttons.downloadAudio') || 'Download audio'">
-                <i class="fas fa-download text-sm"></i>
-            </a>
-        </div>
+
+        <!-- Volume Button (simplified for mobile) -->
+        <button @click="toggleAudioMute"
+                class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+                :title="audioIsMuted ? 'Unmute' : 'Mute'">
+            <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-base"></i>
+        </button>
+
+        <!-- Download Button -->
+        <a :href="'/audio/' + selectedRecording.id + '?download=true'"
+           download
+           class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+           :title="t('buttons.downloadAudio') || 'Download audio'">
+            <i class="fas fa-download text-base"></i>
+        </a>
     </div>
 </div>
