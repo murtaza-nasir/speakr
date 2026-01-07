@@ -44,7 +44,7 @@
                 <!-- Play/Pause Button -->
                 <button @click="toggleAudioPlayback"
                         class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg hover:scale-105"
-                        :title="audioIsPlaying ? 'Pause' : 'Play'">
+                        :title="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
                     <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
                 </button>
 
@@ -62,7 +62,7 @@
                 <div class="hidden sm:flex items-center gap-1 flex-shrink-0">
                     <button @click="toggleAudioMute"
                             class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
-                            :title="audioIsMuted ? 'Unmute' : 'Mute'">
+                            :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
                         <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
                     </button>
                     <input type="range" min="0" max="1" step="0.05"

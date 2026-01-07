@@ -1074,6 +1074,10 @@
     "followPlayerDisabled": "Activer le défilement automatique - la transcription suit la lecture audio",
     "followPlayerEnabled": "Désactiver le défilement automatique - la transcription reste en place",
     "minimize": "Réduire",
-    "expand": "Développer"
+    "expand": "Développer",
+    "play": "Lecture",
+    "pause": "Pause",
+    "mute": "Muet",
+    "unmute": "Activer le son"
   }
 }

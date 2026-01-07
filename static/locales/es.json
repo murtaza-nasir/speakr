@@ -1074,6 +1074,10 @@
     "followPlayerDisabled": "Activar desplazamiento automático - la transcripción sigue la reproducción de audio",
     "followPlayerEnabled": "Desactivar desplazamiento automático - la transcripción permanece en su lugar",
     "minimize": "Minimizar",
-    "expand": "Expandir"
+    "expand": "Expandir",
+    "play": "Reproducir",
+    "pause": "Pausa",
+    "mute": "Silenciar",
+    "unmute": "Activar sonido"
   }
 }

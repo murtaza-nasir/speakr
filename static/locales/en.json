@@ -1100,6 +1100,10 @@
     "followPlayerDisabled": "Enable auto-scroll - transcript follows audio playback",
     "followPlayerEnabled": "Disable auto-scroll - transcript stays in place",
     "minimize": "Minimize",
-    "expand": "Expand"
+    "expand": "Expand",
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute"
   }
 }

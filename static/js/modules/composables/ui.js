@@ -885,13 +885,20 @@ export function useUI(state, utils, processedTranscription) {
     const isDraggingProgress = ref(false);
     const dragPreviewPercent = ref(0);
 
-    // Handle progress bar drag - only seeks on release for better performance
+    // Handle progress bar drag - supports both mouse and touch, only seeks on release
     const startProgressDrag = (event) => {
         const bar = event.currentTarget.querySelector('.h-2') || event.currentTarget;
         const rect = bar.getBoundingClientRect();
+        const isTouch = event.type === 'touchstart';
 
         const getPercent = (evt) => {
-            return Math.max(0, Math.min(100, ((evt.clientX - rect.left) / rect.width) * 100));
+            const clientX = isTouch ? evt.touches[0].clientX : evt.clientX;
+            return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+        };
+
+        const getPercentFromEnd = (evt) => {
+            const clientX = isTouch ? evt.changedTouches[0].clientX : evt.clientX;
+            return Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
         };
 
         // Start dragging - show preview
@@ -900,19 +907,20 @@ export function useUI(state, utils, processedTranscription) {
 
         const onMove = (evt) => {
             evt.preventDefault();
-            dragPreviewPercent.value = getPercent(evt);
+            const clientX = isTouch ? evt.touches[0].clientX : evt.clientX;
+            dragPreviewPercent.value = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
         };
 
         const onUp = (evt) => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
+            document.removeEventListener(isTouch ? 'touchmove' : 'mousemove', onMove);
+            document.removeEventListener(isTouch ? 'touchend' : 'mouseup', onUp);
             // Seek to final position on release
             seekAudioByPercent(dragPreviewPercent.value);
             isDraggingProgress.value = false;
         };
 
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+        document.addEventListener(isTouch ? 'touchmove' : 'mousemove', onMove, { passive: false });
+        document.addEventListener(isTouch ? 'touchend' : 'mouseup', onUp);
     };
 
     const handleAudioPlayPause = (event) => {
