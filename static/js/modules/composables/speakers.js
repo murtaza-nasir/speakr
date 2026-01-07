@@ -578,17 +578,54 @@ export function useSpeakers(state, utils, processedTranscription) {
         if (speakerId) {
             // Find all speaker groups for navigation (index-based, no DOM queries)
             speakerGroups.value = findSpeakerGroups(speakerId);
-            currentSpeakerGroupIndex.value = 0;
 
-            // Scroll to the first group using virtual scroll
             if (speakerGroups.value.length > 0) {
-                const firstGroup = speakerGroups.value[0];
-                if (firstGroup && typeof firstGroup.startIndex === 'number') {
-                    // Use the scrollToSegmentIndex function passed via utils
-                    if (utils.scrollToSegmentIndex) {
+                // Get the current visible range from the virtual scroll
+                const visibleRange = utils.getSpeakerModalVisibleRange ? utils.getSpeakerModalVisibleRange() : null;
+
+                if (visibleRange) {
+                    const { start: visibleStart, end: visibleEnd } = visibleRange;
+                    const visibleCenter = Math.floor((visibleStart + visibleEnd) / 2);
+
+                    // Check if any group is already visible
+                    const visibleGroupIndex = speakerGroups.value.findIndex(group =>
+                        group.startIndex >= visibleStart && group.startIndex < visibleEnd
+                    );
+
+                    if (visibleGroupIndex !== -1) {
+                        // A group is already visible, just set it as current (no scroll needed)
+                        currentSpeakerGroupIndex.value = visibleGroupIndex;
+                    } else {
+                        // No group visible - find the nearest group to the visible center
+                        let nearestIndex = 0;
+                        let nearestDistance = Infinity;
+
+                        speakerGroups.value.forEach((group, index) => {
+                            const distance = Math.abs(group.startIndex - visibleCenter);
+                            if (distance < nearestDistance) {
+                                nearestDistance = distance;
+                                nearestIndex = index;
+                            }
+                        });
+
+                        currentSpeakerGroupIndex.value = nearestIndex;
+
+                        // Scroll to the nearest group
+                        const nearestGroup = speakerGroups.value[nearestIndex];
+                        if (nearestGroup && typeof nearestGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
+                            utils.scrollToSegmentIndex(nearestGroup.startIndex);
+                        }
+                    }
+                } else {
+                    // Fallback: no visible range available, scroll to first group
+                    currentSpeakerGroupIndex.value = 0;
+                    const firstGroup = speakerGroups.value[0];
+                    if (firstGroup && typeof firstGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
                         utils.scrollToSegmentIndex(firstGroup.startIndex);
                     }
                 }
+            } else {
+                currentSpeakerGroupIndex.value = -1;
             }
         } else {
             speakerGroups.value = [];
