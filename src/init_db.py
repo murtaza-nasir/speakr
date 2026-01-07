@@ -455,7 +455,10 @@ def initialize_database(app):
                 existing_indexes = [idx['name'] for idx in inspector.get_indexes('user')]
                 if 'ix_user_sso_subject' not in existing_indexes:
                     with engine.connect() as conn:
-                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON user (sso_subject)'))
+                        if engine.name == 'mysql':
+                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON `user` (sso_subject)'))
+                        else:
+                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON "user" (sso_subject)'))
                         conn.commit()
                         app.logger.info("Created unique index ix_user_sso_subject on user.sso_subject")
         except Exception as e:
