@@ -175,10 +175,21 @@
                     </div>
                 </div>
 
-                <!-- Transcript Section -->
-                <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0" @click="seekAudioFromEvent">
+                <!-- Transcript Section (Virtual Scrolling for performance) -->
+                <div ref="speakerModalTranscriptRef"
+                     class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0"
+                     @click="seekAudioFromEvent"
+                     @scroll="onSpeakerModalScroll">
                     <div v-if="processedTranscription.isJson">
-                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="`seg-${index}-${segment.startTime}`" class="speaker-segment mb-1.5 sm:mb-2 group relative" :data-start-time="segment.startTime">
+                        <!-- Virtual scroll spacer (top) -->
+                        <div :style="{ height: speakerModalSpacerBefore + 'px' }"></div>
+
+                        <!-- Only render visible segments -->
+                        <div v-for="segment in speakerModalVisibleSegments"
+                             :key="getVirtualItemKey(segment, 'sm')"
+                             class="speaker-segment mb-1.5 sm:mb-2 group relative"
+                             :data-start-time="segment.startTime"
+                             :data-segment-index="segment._originalIndex">
                             <div class="flex items-start gap-1">
                                 <!-- Speaker tag on its own line on mobile -->
                                 <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId" class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24" :title="segment.speaker">${ segment.speaker }</span>
@@ -186,26 +197,29 @@
                                 <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-xs sm:text-sm leading-relaxed">${ segment.sentence }</span>
                                 <!-- Edit buttons - inline on mobile -->
                                 <span class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <button @click.stop="openSpeakerChangeDropdown(index)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
+                                    <button @click.stop="openSpeakerChangeDropdown(segment._originalIndex)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
                                         <i class="fas fa-user-edit text-[10px] sm:text-xs"></i>
                                     </button>
-                                    <button @click.stop="openEditTextModal(index)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
+                                    <button @click.stop="openEditTextModal(segment._originalIndex)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
                                         <i class="fas fa-edit text-[10px] sm:text-xs"></i>
                                     </button>
                                 </span>
                             </div>
 
                             <!-- Speaker Change Dropdown - compact on mobile -->
-                            <div v-if="editingSpeakerIndex === index" @click.stop class="mt-1 p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-primary)] shadow-lg">
+                            <div v-if="editingSpeakerIndex === segment._originalIndex" @click.stop class="mt-1 p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-primary)] shadow-lg">
                                 <p class="text-[10px] text-[var(--text-muted)] mb-1">Select speaker:</p>
                                 <div class="flex flex-wrap gap-1">
-                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(index, speaker)" class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-secondary)]">
+                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(segment._originalIndex, speaker)" class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-secondary)]">
                                         <div :class="speakerMap[speaker].color" class="w-2.5 h-2.5 rounded-full flex-shrink-0"></div>
                                         <span class="truncate max-w-[60px]">${ speakerMap[speaker].name || speaker }</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Virtual scroll spacer (bottom) -->
+                        <div :style="{ height: speakerModalSpacerAfter + 'px' }"></div>
                     </div>
                     <div v-else v-html="highlightedTranscript"></div>
                 </div>
