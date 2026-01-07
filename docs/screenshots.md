@@ -4,12 +4,12 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 ## Main Interface
 
-### Dashboard Views
+### Main Views
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Main view.png" alt="Main Dashboard" />
-    <p class="caption">Main dashboard with chat interface and token usage indicator</p>
+    <img src="../assets/images/screenshots/Main view.png" alt="Main Screen" />
+    <p class="caption">Main screen with chat interface and token usage indicator</p>
   </div>
 
   <div class="screenshot-item">
