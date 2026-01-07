@@ -991,11 +991,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setGlobalError
             });
 
-            // Speakers composable needs processedTranscription, so initialize it after
-            const speakersComposable = useSpeakers(state, utils, processedTranscription);
-
             // =========================================================================
             // VIRTUAL SCROLL SETUP (for performance with long transcriptions)
+            // Must be before speakers composable since it uses scrollToSegmentIndex
             // =========================================================================
             // Create a computed ref for the segments array
             const transcriptSegments = computed(() => processedTranscription.value.simpleSegments || []);
@@ -1024,6 +1022,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
                 }
             };
+
+            // Add scrollToSegmentIndex to utils for composables that need it
+            utils.scrollToSegmentIndex = scrollToSegmentIndex;
+
+            // Speakers composable needs processedTranscription and scrollToSegmentIndex
+            const speakersComposable = useSpeakers(state, utils, processedTranscription);
 
             const groupedRecordings = computed(() => {
                 const groups = {};
