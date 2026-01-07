@@ -1014,6 +1014,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 overscan: 5
             });
 
+            // Virtual scroll for ASR editor modal (uses editingSegments)
+            const asrEditorVirtualScroll = useVirtualScroll({
+                items: editingSegments,
+                itemHeight: 44,  // Table row height
+                containerRef: asrEditorRef,
+                overscan: 10
+            });
+
             // Helper to scroll to a segment by index (for speaker navigation)
             const scrollToSegmentIndex = (index) => {
                 if (showSpeakerModal.value) {
@@ -2021,6 +2029,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 mainTranscriptSpacerBefore: mainTranscriptVirtualScroll.spacerBefore,
                 mainTranscriptSpacerAfter: mainTranscriptVirtualScroll.spacerAfter,
                 onMainTranscriptScroll: mainTranscriptVirtualScroll.onScroll,
+                asrEditorVisibleSegments: asrEditorVirtualScroll.visibleItems,
+                asrEditorSpacerBefore: asrEditorVirtualScroll.spacerBefore,
+                asrEditorSpacerAfter: asrEditorVirtualScroll.spacerAfter,
+                onAsrEditorScroll: asrEditorVirtualScroll.onScroll,
                 scrollToSegmentIndex,
                 getVirtualItemKey,
 
