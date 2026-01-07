@@ -74,7 +74,7 @@
                     <!-- Virtual scroll spacer (top) -->
                     <tr v-if="asrEditorSpacerBefore > 0"><td colspan="5" :style="{ height: asrEditorSpacerBefore + 'px', padding: 0 }"></td></tr>
 
-                    <tr v-for="segment in asrEditorVisibleSegments" :key="`asr-${segment._originalIndex}-${segment.start_time}`" class="hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]">
+                    <tr v-for="segment in asrEditorVisibleSegments" :key="`asr-${segment._originalIndex}-${segment.start_time}`" :data-segment-index="segment._originalIndex" class="hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]">
                         <td class="border-r border-[var(--border-primary)] align-middle">
                             <div class="relative h-full">
                                 <div class="flex items-center h-full">

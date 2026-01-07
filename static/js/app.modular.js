@@ -1063,6 +1063,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Add scrollToSegmentIndex to utils for composables that need it
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
             utils.resetModalAudioState = resetModalAudioState;
+            utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
+            utils.resetSpeakerModalScroll = () => speakerModalVirtualScroll.reset();
 
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
             const speakersComposable = useSpeakers(state, utils, processedTranscription);

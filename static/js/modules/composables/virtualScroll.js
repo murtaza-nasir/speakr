@@ -140,6 +140,19 @@ export function useVirtualScroll(options) {
         scrollToIndex(targetIndex, 'smooth');
     };
 
+    // Reset scroll state (call when modal opens or items change completely)
+    const reset = () => {
+        scrollTop.value = 0;
+        isInitialized.value = false;
+        // Re-initialize after a tick to allow DOM to render
+        Vue.nextTick(() => {
+            if (containerRef.value) {
+                containerRef.value.scrollTop = 0;
+                initializeContainer();
+            }
+        });
+    };
+
     // Watch for containerRef changes and initialize
     watch(containerRef, (newRef) => {
         if (newRef) {
@@ -170,6 +183,9 @@ export function useVirtualScroll(options) {
         // Navigation
         scrollToIndex,
         scrollToIndexIfNeeded,
+
+        // Control
+        reset,
 
         // State (for debugging/testing)
         scrollTop,
