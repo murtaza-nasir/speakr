@@ -21,7 +21,7 @@ export function useUI(state, utils, processedTranscription) {
     const autoSaveDelay = 2000; // 2 seconds
 
     const { showToast, nextTick, t } = utils;
-    const { computed, watch } = Vue;
+    const { ref, computed, watch } = Vue;
 
     // isMobile computed
     const isMobile = computed(() => windowWidth.value < 768);
@@ -881,6 +881,40 @@ export function useUI(state, utils, processedTranscription) {
         audio.currentTime = time;
     };
 
+    // Progress bar drag state
+    const isDraggingProgress = ref(false);
+    const dragPreviewPercent = ref(0);
+
+    // Handle progress bar drag - only seeks on release for better performance
+    const startProgressDrag = (event) => {
+        const bar = event.currentTarget.querySelector('.h-2') || event.currentTarget;
+        const rect = bar.getBoundingClientRect();
+
+        const getPercent = (evt) => {
+            return Math.max(0, Math.min(100, ((evt.clientX - rect.left) / rect.width) * 100));
+        };
+
+        // Start dragging - show preview
+        isDraggingProgress.value = true;
+        dragPreviewPercent.value = getPercent(event);
+
+        const onMove = (evt) => {
+            evt.preventDefault();
+            dragPreviewPercent.value = getPercent(evt);
+        };
+
+        const onUp = (evt) => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            // Seek to final position on release
+            seekAudioByPercent(dragPreviewPercent.value);
+            isDraggingProgress.value = false;
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    };
+
     const handleAudioPlayPause = (event) => {
         audioIsPlaying.value = !event.target.paused;
     };
@@ -917,8 +951,20 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     const audioProgressPercent = computed(() => {
+        // Use preview position while dragging for smooth UI
+        if (isDraggingProgress.value) {
+            return dragPreviewPercent.value;
+        }
         if (!audioDuration.value) return 0;
         return (audioCurrentTime.value / audioDuration.value) * 100;
+    });
+
+    // Preview time display while dragging
+    const displayCurrentTime = computed(() => {
+        if (isDraggingProgress.value && audioDuration.value) {
+            return (dragPreviewPercent.value / 100) * audioDuration.value;
+        }
+        return audioCurrentTime.value;
     });
 
     // Reset audio player state (called when recording changes)
@@ -1671,6 +1717,7 @@ export function useUI(state, utils, processedTranscription) {
         setAudioVolume,
         seekAudioTo,
         seekAudioByPercent,
+        startProgressDrag,
         handleAudioPlayPause,
         handleAudioLoadedMetadata,
         handleAudioEnded,
@@ -1679,6 +1726,8 @@ export function useUI(state, utils, processedTranscription) {
         handleAudioCanPlay,
         formatAudioTime,
         audioProgressPercent,
+        displayCurrentTime,
+        isDraggingProgress,
         audioIsPlaying,
         audioCurrentTime,
         audioDuration,
