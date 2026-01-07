@@ -338,6 +338,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Audio Player State ---
             const playerVolume = ref(1.0);
+            const audioIsPlaying = ref(false);
+            const audioCurrentTime = ref(0);
+            const audioDuration = ref(0);
+            const audioIsMuted = ref(false);
+            const audioIsLoading = ref(false);
             const asrEditorAudio = ref(null);
 
             // --- Column Resizing State ---
@@ -491,7 +496,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef,
 
                 // Audio Player
-                playerVolume, asrEditorAudio,
+                playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,

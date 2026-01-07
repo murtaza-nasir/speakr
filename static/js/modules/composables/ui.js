@@ -11,6 +11,7 @@ export function useUI(state, utils, processedTranscription) {
         searchTipsExpanded, isMetadataExpanded, editingParticipants, editingMeetingDate,
         editingSummary, tempSummaryContent, summaryMarkdownEditorInstance,
         leftColumnWidth, rightColumnWidth, isResizing, playerVolume,
+        audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading,
         editingNotes, tempNotesContent, transcriptionViewMode,
         notesMarkdownEditor, markdownEditorInstance, autoSaveTimer, csrfToken,
         summaryMarkdownEditor, recordingNotesEditor, recordingMarkdownEditorInstance,
@@ -815,6 +816,115 @@ export function useUI(state, utils, processedTranscription) {
         localStorage.setItem('playerVolume', newVolume);
     };
 
+    // --- Custom Audio Player Controls ---
+    const getAudioElement = () => {
+        // Try to find audio in right column (desktop) or detail view (mobile)
+        return document.querySelector('#rightMainColumn audio') ||
+               document.querySelector('.detail-view audio') ||
+               document.querySelector('audio[ref="audioPlayerElement"]') ||
+               document.querySelector('audio');
+    };
+
+    const toggleAudioPlayback = () => {
+        const audio = getAudioElement();
+        if (!audio) return;
+
+        if (audio.paused) {
+            audio.play();
+        } else {
+            audio.pause();
+        }
+    };
+
+    const toggleAudioMute = () => {
+        const audio = getAudioElement();
+        if (!audio) return;
+
+        audio.muted = !audio.muted;
+        audioIsMuted.value = audio.muted;
+    };
+
+    const setAudioVolume = (volume) => {
+        const audio = getAudioElement();
+        if (!audio) return;
+
+        audio.volume = Math.max(0, Math.min(1, volume));
+        playerVolume.value = audio.volume;
+        localStorage.setItem('playerVolume', audio.volume);
+
+        if (audio.volume === 0) {
+            audio.muted = true;
+            audioIsMuted.value = true;
+        } else if (audio.muted) {
+            audio.muted = false;
+            audioIsMuted.value = false;
+        }
+    };
+
+    const seekAudioTo = (time) => {
+        const audio = getAudioElement();
+        if (!audio) return;
+
+        audio.currentTime = Math.max(0, Math.min(time, audio.duration || 0));
+    };
+
+    const seekAudioByPercent = (percent) => {
+        const audio = getAudioElement();
+        if (!audio || !audio.duration) return;
+
+        const time = (percent / 100) * audio.duration;
+        audio.currentTime = time;
+    };
+
+    const handleAudioPlayPause = (event) => {
+        audioIsPlaying.value = !event.target.paused;
+    };
+
+    const handleAudioLoadedMetadata = (event) => {
+        audioDuration.value = event.target.duration || 0;
+        audioIsLoading.value = false;
+    };
+
+    const handleAudioEnded = () => {
+        audioIsPlaying.value = false;
+        audioCurrentTime.value = 0;
+    };
+
+    const handleCustomAudioTimeUpdate = (event) => {
+        audioCurrentTime.value = event.target.currentTime;
+        // Also call the existing handler for segment tracking
+        handleAudioTimeUpdate(event);
+    };
+
+    const handleAudioWaiting = () => {
+        audioIsLoading.value = true;
+    };
+
+    const handleAudioCanPlay = () => {
+        audioIsLoading.value = false;
+    };
+
+    const formatAudioTime = (seconds) => {
+        if (!seconds || isNaN(seconds)) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const audioProgressPercent = computed(() => {
+        if (!audioDuration.value) return 0;
+        return (audioCurrentTime.value / audioDuration.value) * 100;
+    });
+
+    // Reset audio player state (called when recording changes)
+    const resetAudioPlayerState = () => {
+        audioIsPlaying.value = false;
+        audioCurrentTime.value = 0;
+        audioDuration.value = 0;
+        audioIsMuted.value = false;
+        audioIsLoading.value = false;
+    };
+
     // --- Active Segment Tracking ---
     const handleAudioTimeUpdate = (event) => {
         const transcription = processedTranscription.value;
@@ -1249,9 +1359,10 @@ export function useUI(state, utils, processedTranscription) {
             followPlayerMode.value = savedFollowMode === 'true';
         }
 
-        // Watch for recording changes to reset active segment
+        // Watch for recording changes to reset active segment and audio player state
         watch(selectedRecording, () => {
             currentPlayingSegmentIndex.value = null;
+            resetAudioPlayerState();
         });
 
         // Set up global click handler to close dropdowns when clicking outside
@@ -1549,6 +1660,25 @@ export function useUI(state, utils, processedTranscription) {
         handleAudioTimeUpdate,
         toggleFollowPlayerMode,
         scrollToActiveSegment,
+        // Custom audio player
+        toggleAudioPlayback,
+        toggleAudioMute,
+        setAudioVolume,
+        seekAudioTo,
+        seekAudioByPercent,
+        handleAudioPlayPause,
+        handleAudioLoadedMetadata,
+        handleAudioEnded,
+        handleCustomAudioTimeUpdate,
+        handleAudioWaiting,
+        handleAudioCanPlay,
+        formatAudioTime,
+        audioProgressPercent,
+        audioIsPlaying,
+        audioCurrentTime,
+        audioDuration,
+        audioIsMuted,
+        audioIsLoading,
         // Copy functions
         copyTranscription,
         copySummary,
