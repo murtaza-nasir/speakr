@@ -24,6 +24,22 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Current speaker highlight state
     let currentSpeakerId = null;
 
+    // Helper to get consistent speaker color based on ID
+    const getSpeakerColor = (speakerId) => {
+        // Extract number from SPEAKER_XX format
+        const match = speakerId?.match(/^SPEAKER_(\d+)$/);
+        if (match) {
+            const num = parseInt(match[1], 10);
+            return `speaker-color-${(num % 8) + 1}`;
+        }
+        // Fallback: hash the string for consistent color
+        let hash = 0;
+        for (let i = 0; i < (speakerId || '').length; i++) {
+            hash = speakerId.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return `speaker-color-${(Math.abs(hash) % 8) + 1}`;
+    };
+
     // Helper to pause outer audio player when opening modals with their own player
     const pauseOuterAudioPlayer = () => {
         // Find the audio player in the right panel (not in a modal)
@@ -68,12 +84,12 @@ export function useSpeakers(state, utils, processedTranscription) {
         // Set modalSpeakers for the template to use
         modalSpeakers.value = speakers;
 
-        // Initialize speaker map with the same order and colors as the transcript
-        speakerMap.value = speakers.reduce((acc, speaker, index) => {
+        // Initialize speaker map with ID-based colors for consistency
+        speakerMap.value = speakers.reduce((acc, speaker) => {
             acc[speaker] = {
                 name: '',
                 isMe: false,
-                color: `speaker-color-${(index % 8) + 1}` // Same color assignment as processedTranscription
+                color: getSpeakerColor(speaker) // ID-based color assignment
             };
             // Keep the original speaker ID for display
             speakerDisplayMap.value[speaker] = speaker;
@@ -860,12 +876,11 @@ export function useSpeakers(state, utils, processedTranscription) {
         // Add to modalSpeakers
         modalSpeakers.value.push(newSpeakerId);
 
-        // Add to speakerMap with next available color
-        const colorIndex = modalSpeakers.value.length - 1;
+        // Add to speakerMap with ID-based color
         speakerMap.value[newSpeakerId] = {
             name: name,
             isMe: newSpeakerIsMe.value,
-            color: `speaker-color-${(colorIndex % 8) + 1}`
+            color: getSpeakerColor(newSpeakerId)
         };
 
         // Add to speakerDisplayMap
