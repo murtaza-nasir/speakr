@@ -23,11 +23,19 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
 
     if column_name not in columns:
         with engine.connect() as conn:
+            # Quote identifiers to handle reserved keywords (e.g., "user" in PostgreSQL)
+            # MySQL uses backticks, PostgreSQL/SQLite use double quotes
             # Handle special case where column_type includes the column name
             if column_name in column_type:
-                conn.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {column_type}'))
+                if engine.name == 'mysql':
+                    conn.execute(text(f'ALTER TABLE `{table_name}` ADD COLUMN {column_type}'))
+                else:
+                    conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN {column_type}'))
             else:
-                conn.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}'))
+                if engine.name == 'mysql':
+                    conn.execute(text(f'ALTER TABLE `{table_name}` ADD COLUMN `{column_name}` {column_type}'))
+                else:
+                    conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{column_name}" {column_type}'))
             conn.commit()
         return True
     return False
@@ -72,7 +80,7 @@ def migrate_column_type(engine, table_name, column_name, new_type, transform_sql
             if temp_col in columns:
                 try:
                     # Try to drop it and start over
-                    conn.execute(text(f'ALTER TABLE {table_name} DROP COLUMN {temp_col}'))
+                    conn.execute(text(f'ALTER TABLE "{table_name}" DROP COLUMN "{temp_col}"'))
                     conn.commit()
                 except Exception:
                     # If we can't drop it, the migration may have partially completed
@@ -80,7 +88,7 @@ def migrate_column_type(engine, table_name, column_name, new_type, transform_sql
                     if column_name not in columns:
                         # Old column is gone, temp exists - just rename temp to complete migration
                         try:
-                            conn.execute(text(f'ALTER TABLE {table_name} RENAME COLUMN {temp_col} TO {column_name}'))
+                            conn.execute(text(f'ALTER TABLE "{table_name}" RENAME COLUMN "{temp_col}" TO "{column_name}"'))
                             conn.commit()
                             return True
                         except Exception as e:
@@ -90,25 +98,25 @@ def migrate_column_type(engine, table_name, column_name, new_type, transform_sql
                     return False
 
             # Add temporary column with new type
-            conn.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {temp_col} {new_type}'))
+            conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{temp_col}" {new_type}'))
 
             # Copy data with optional transformation
             if transform_sql:
-                conn.execute(text(f'UPDATE {table_name} SET {temp_col} = {transform_sql} WHERE {column_name} IS NOT NULL'))
+                conn.execute(text(f'UPDATE "{table_name}" SET "{temp_col}" = {transform_sql} WHERE "{column_name}" IS NOT NULL'))
             else:
-                conn.execute(text(f'UPDATE {table_name} SET {temp_col} = {column_name}'))
+                conn.execute(text(f'UPDATE "{table_name}" SET "{temp_col}" = "{column_name}"'))
 
             # Drop old column (SQLite 3.35.0+ only)
             try:
-                conn.execute(text(f'ALTER TABLE {table_name} DROP COLUMN {column_name}'))
+                conn.execute(text(f'ALTER TABLE "{table_name}" DROP COLUMN "{column_name}"'))
                 # Drop succeeded, now rename temp to original name
-                conn.execute(text(f'ALTER TABLE {table_name} RENAME COLUMN {temp_col} TO {column_name}'))
+                conn.execute(text(f'ALTER TABLE "{table_name}" RENAME COLUMN "{temp_col}" TO "{column_name}"'))
                 conn.commit()
             except Exception:
                 # Older SQLite - can't drop columns
                 # Rename temp column to original name (this will fail if original still exists)
                 try:
-                    conn.execute(text(f'ALTER TABLE {table_name} RENAME COLUMN {temp_col} TO {column_name}'))
+                    conn.execute(text(f'ALTER TABLE "{table_name}" RENAME COLUMN "{temp_col}" TO "{column_name}"'))
                     conn.commit()
                 except Exception:
                     # Can't rename because old column exists - this is OK for SQLite
@@ -123,18 +131,18 @@ def migrate_column_type(engine, table_name, column_name, new_type, transform_sql
         elif engine_name == 'postgresql':
             # PostgreSQL can alter column type directly
             if transform_sql:
-                conn.execute(text(f'ALTER TABLE {table_name} ALTER COLUMN {column_name} TYPE {new_type} USING {transform_sql}'))
+                conn.execute(text(f'ALTER TABLE "{table_name}" ALTER COLUMN "{column_name}" TYPE {new_type} USING {transform_sql}'))
             else:
-                conn.execute(text(f'ALTER TABLE {table_name} ALTER COLUMN {column_name} TYPE {new_type}'))
+                conn.execute(text(f'ALTER TABLE "{table_name}" ALTER COLUMN "{column_name}" TYPE {new_type}'))
             conn.commit()
 
         elif engine_name == 'mysql':
             # MySQL can modify column type
-            conn.execute(text(f'ALTER TABLE {table_name} MODIFY COLUMN {column_name} {new_type}'))
+            conn.execute(text(f'ALTER TABLE `{table_name}` MODIFY COLUMN `{column_name}` {new_type}'))
 
             # Apply transformation if provided
             if transform_sql:
-                conn.execute(text(f'UPDATE {table_name} SET {column_name} = {transform_sql} WHERE {column_name} IS NOT NULL'))
+                conn.execute(text(f'UPDATE `{table_name}` SET `{column_name}` = {transform_sql} WHERE `{column_name}` IS NOT NULL'))
             conn.commit()
 
         return True
