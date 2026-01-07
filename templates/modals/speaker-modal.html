@@ -136,41 +136,40 @@
                         <i class="fas fa-info-circle"></i>
                         <span v-text="t('help.audioDeletedMessage')"></span>
                     </div>
-                    <!-- Custom Audio Player -->
+                    <!-- Custom Audio Player (Independent from main player) -->
                     <div v-else class="flex items-center gap-2">
-                        <audio class="hidden speaker-modal-transcript"
-                               :key="selectedRecording.id"
+                        <audio ref="speakerModalAudioRef" class="hidden"
+                               :key="'speaker-modal-' + selectedRecording.id"
                                :src="'/audio/' + selectedRecording.id"
                                :volume="playerVolume"
-                               @play="handleAudioPlayPause"
-                               @pause="handleAudioPlayPause"
-                               @timeupdate="handleCustomAudioTimeUpdate"
-                               @loadedmetadata="handleAudioLoadedMetadata"
-                               @ended="handleAudioEnded"
-                               @volumechange="onPlayerVolumeChange">
+                               @play="handleModalAudioPlayPause"
+                               @pause="handleModalAudioPlayPause"
+                               @timeupdate="handleModalAudioTimeUpdate"
+                               @loadedmetadata="handleModalAudioLoadedMetadata"
+                               @ended="modalAudioIsPlaying = false">
                         </audio>
                         <!-- Play/Pause -->
-                        <button @click="toggleAudioPlayback"
+                        <button @click="$refs.speakerModalAudioRef?.paused ? $refs.speakerModalAudioRef.play() : $refs.speakerModalAudioRef.pause()"
                                 class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
-                                :title="audioIsPlaying ? 'Pause' : 'Play'">
-                            <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-xs" :style="!audioIsPlaying ? 'margin-left: 1px' : ''"></i>
+                                :title="modalAudioIsPlaying ? 'Pause' : 'Play'">
+                            <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-xs" :style="!modalAudioIsPlaying ? 'margin-left: 1px' : ''"></i>
                         </button>
                         <!-- Time -->
                         <div class="flex flex-col items-end flex-shrink-0 leading-none">
-                            <span class="text-xs text-[var(--text-primary)] font-mono">${ formatAudioTime(audioCurrentTime) }</span>
-                            <span class="text-[10px] text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
+                            <span class="text-xs text-[var(--text-primary)] font-mono">${ formatAudioTime(modalAudioCurrentTime) }</span>
+                            <span class="text-[10px] text-[var(--text-muted)] font-mono">${ formatAudioTime(modalAudioDuration) }</span>
                         </div>
                         <!-- Progress Bar -->
                         <div class="flex-1 h-1.5 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
-                             @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); seekAudioByPercent(((e.clientX - rect.left) / rect.width) * 100); }">
+                             @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width; if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.currentTime = pct * modalAudioDuration; }">
                             <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
-                                 :style="{ width: audioProgressPercent + '%' }">
+                                 :style="{ width: modalAudioProgressPercent + '%' }">
                             </div>
                         </div>
                         <!-- Volume -->
-                        <button @click="toggleAudioMute"
+                        <button @click="$refs.speakerModalAudioRef && ($refs.speakerModalAudioRef.muted = !$refs.speakerModalAudioRef.muted)"
                                 class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
-                            <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-xs"></i>
+                            <i :class="playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-xs"></i>
                         </button>
                     </div>
                 </div>

@@ -146,6 +146,10 @@ export function useSpeakers(state, utils, processedTranscription) {
         if (modalAudio) {
             modalAudio.pause();
         }
+        // Reset modal audio state (keep main player independent)
+        if (utils.resetModalAudioState) {
+            utils.resetModalAudioState();
+        }
 
         showSpeakerModal.value = false;
         highlightedSpeaker.value = null;

@@ -98,6 +98,10 @@ export function useTranscription(state, utils) {
         if (modalAudio) {
             modalAudio.pause();
         }
+        // Reset modal audio state (keep main player independent)
+        if (utils.resetModalAudioState) {
+            utils.resetModalAudioState();
+        }
 
         showAsrEditorModal.value = false;
         editingSegments.value = [];
