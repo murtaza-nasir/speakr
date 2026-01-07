@@ -26,6 +26,21 @@ Beyond the admin role, Speakr offers granular per-user permissions that control 
 
 Use this permission to control external information sharing on a per-user basis. You might grant public sharing to executives, sales groups, or marketing staff who regularly communicate with external stakeholders, while restricting it for users handling sensitive internal data.
 
+### Token Budget Management
+
+Control LLM costs by setting monthly token budgets for individual users. When creating or editing a user, you can specify a monthly token limit that restricts their AI usage.
+
+![User Token Budget](../assets/images/screenshots/admin-user-create-token-budget.png)
+
+**How Token Budgets Work**:
+
+- **Warning at 80%**: Users see a yellow warning indicator when they reach 80% of their monthly budget
+- **Blocked at 100%**: Once the budget is exhausted, AI operations (chat, summarization, etc.) are blocked until the next month
+- **Budget Reset**: Token counts reset automatically at the start of each calendar month
+- **No Limit**: Leave the budget field empty for unlimited usage
+
+Token budgets are set in increments of 10,000 tokens with a minimum of 100,000. The budget covers all AI operations including summarization, chat, title generation, and event extraction. View detailed token usage statistics in the [System Statistics](statistics.md#token-usage-statistics) section.
+
 ## Managing Existing Users
 
 Each user row includes action buttons that give you complete control over that account. The edit button opens a modal where you can update their username or email address. This is useful when people change names, switch email providers, or when you need to correct initial entry mistakes.

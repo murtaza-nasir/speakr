@@ -9,7 +9,19 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 <div class="screenshot-grid">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/Main view.png" alt="Main Dashboard" />
-    <p class="caption">Main dashboard with bubble chat interface</p>
+    <p class="caption">Main dashboard with chat interface and token usage indicator</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/main-view-token-usage.png" alt="Token Usage" />
+    <p class="caption">Token usage indicator showing monthly budget consumption</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/main-view-recipe-example.png" alt="Recipe Example" />
+    <p class="caption">Recipe transcription with family sharing enabled</p>
   </div>
 
   <div class="screenshot-item">
@@ -281,6 +293,13 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
     <p class="caption">Manage users and monitor system usage</p>
   </div>
 
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-user-create-token-budget.png" alt="User Token Budget" />
+    <p class="caption">Create user with monthly token budget setting</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/admin-user-groups.png" alt="User Groups" />
     <p class="caption">Manage user groups and permissions</p>

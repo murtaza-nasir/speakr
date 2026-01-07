@@ -34,6 +34,22 @@ System statistics are your crystal ball for infrastructure needs. Storage growth
 
 Use these insights proactively. If you see storage growing at 50GB monthly and you have 200GB free, you know you have about four months before needing intervention. This lead time lets you budget for upgrades, plan migrations, or implement retention policies before hitting critical limits.
 
+## Token Usage Statistics
+
+The Token Usage section provides visibility into LLM API consumption across your instance. Four summary cards show today's usage, monthly totals, estimated costs, and any users approaching their budget limits.
+
+**Daily and Monthly Charts**: Interactive charts display token consumption trends over the last 30 days and 12 months. These visualizations help identify usage patterns and predict future costs.
+
+**Per-User Breakdown**: A detailed table shows each user's monthly token consumption alongside their budget limit (if set). Progress bars indicate how much of their budget has been used:
+
+- Green: Under 80% of budget
+- Yellow: Between 80-100% (warning zone)
+- Red: At or over 100% (blocked)
+
+**Cost Tracking**: When using OpenRouter or other providers that return cost information, the statistics include estimated costs based on actual API responses. This helps with budgeting and identifying high-cost operations.
+
+Use token statistics to identify heavy users, validate budget allocations, and forecast API costs. If certain users consistently hit their limits, you may need to increase their budgets or investigate their usage patterns. See [Token Budget Management](user-management.md#token-budget-management) for setting individual user limits.
+
 ---
 
 Next: [System Settings](system-settings.md) →
