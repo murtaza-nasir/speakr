@@ -928,7 +928,11 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     const handleAudioLoadedMetadata = (event) => {
-        audioDuration.value = event.target.duration || 0;
+        const duration = event.target.duration;
+        // Duration might be Infinity for some formats until more data loads
+        if (duration && isFinite(duration) && duration > 0) {
+            audioDuration.value = duration;
+        }
         audioIsLoading.value = false;
     };
 
@@ -939,6 +943,15 @@ export function useUI(state, utils, processedTranscription) {
 
     const handleCustomAudioTimeUpdate = (event) => {
         audioCurrentTime.value = event.target.currentTime;
+
+        // Fallback: if duration wasn't set yet, try to get it now
+        if (!audioDuration.value || audioDuration.value === 0) {
+            const duration = event.target.duration;
+            if (duration && isFinite(duration) && duration > 0) {
+                audioDuration.value = duration;
+            }
+        }
+
         // Also call the existing handler for segment tracking
         handleAudioTimeUpdate(event);
     };
@@ -947,8 +960,16 @@ export function useUI(state, utils, processedTranscription) {
         audioIsLoading.value = true;
     };
 
-    const handleAudioCanPlay = () => {
+    const handleAudioCanPlay = (event) => {
         audioIsLoading.value = false;
+
+        // Fallback: try to get duration if not set yet
+        if (!audioDuration.value || audioDuration.value === 0) {
+            const duration = event.target.duration;
+            if (duration && isFinite(duration) && duration > 0) {
+                audioDuration.value = duration;
+            }
+        }
     };
 
     const formatAudioTime = (seconds) => {
