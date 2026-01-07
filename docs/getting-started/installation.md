@@ -104,7 +104,7 @@ If you want speaker diarization to identify who's speaking in your recordings, y
    - **Required setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features
 
 2. **OpenAI Whisper ASR Webservice (Basic Diarization)** - For basic speaker diarization without voice profiles
-   - Repository: [ahmetoner/openai-whisper-asr-webservice](https://github.com/ahmetoner/openai-whisper-asr-webservice)
+   - Repository: [ahmetoner/whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice)
    - Uses `pyannote/speaker-diarization-3.1` model
    - Simpler setup, less resource intensive
    - **Supports:** Basic speaker identification (Speaker 1, Speaker 2, etc.)
@@ -420,7 +420,7 @@ services:
     networks:
       - speakr-network
 
-  speakr:
+  app:
     image: learnedmachine/speakr:latest
     container_name: speakr
     restart: unless-stopped
@@ -644,6 +644,52 @@ server {
 
 The WebSocket configuration is important for real-time features in Speakr. The timeout settings ensure large file uploads don't get interrupted. You can obtain free SSL certificates from Let's Encrypt using Certbot, making HTTPS accessible for everyone.
 
+If you prefer Apache, here's an equivalent configuration:
+
+```apache
+<VirtualHost *:443>
+    ServerName speakr.yourdomain.com
+
+    SSLEngine on
+    SSLCertificateFile /path/to/certificate.pem
+    SSLCertificateKeyFile /path/to/private.key
+
+    # Security Headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Proxy settings
+    ProxyPreserveHost On
+    ProxyRequests Off
+
+    # Handle WebSockets for real-time features
+    RewriteEngine On
+    RewriteCond %{HTTP:Upgrade} websocket [NC]
+    RewriteCond %{HTTP:Connection} upgrade [NC]
+    RewriteRule ^/?(.*) "ws://localhost:8899/$1" [P,L]
+
+    <Location />
+        ProxyPass http://localhost:8899/
+        ProxyPassReverse http://localhost:8899/
+        RequestHeader set "X-Forwarded-Proto" expr=%{REQUEST_SCHEME}
+    </Location>
+
+    # Timeout for large uploads
+    ProxyTimeout 300
+</VirtualHost>
+
+<VirtualHost *:80>
+    ServerName speakr.yourdomain.com
+
+    # Redirect to HTTPS
+    RewriteEngine On
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [END,NE,R=permanent]
+</VirtualHost>
+```
+
+Apache requires these modules: `sudo a2enmod ssl proxy proxy_http proxy_wstunnel rewrite headers`
+
 ### Backup Strategy
 
 Regular backups are essential for production deployments. Your Speakr data consists of three critical components that need backing up: the SQLite database in the `instance` directory, the audio files and transcriptions in the `uploads` directory, and your configuration in the `.env` file.
@@ -854,7 +900,7 @@ The `--build` flag forces Docker to rebuild the image even if one exists. This i
 
 ## Performance Optimization
 
-For high-volume deployments or when processing many large files, optimization becomes important. Start with model selection if using ASR. The distil-large-v3 model offers an excellent balance of speed and accuracy. For English-only content, use the `.en` variants which are faster and more accurate for English.
+For high-volume deployments or when processing many large files, optimization becomes important. Start with model selection if using ASR. For English-only content, the `distil-large-v3` model offers an excellent balance of speed and accuracy. For multilingual content, use `large-v3-turbo` which performs well across languages while being faster and using less memory than the full `large-v3` model.
 
 Optimize Docker resource allocation for your workload:
 
