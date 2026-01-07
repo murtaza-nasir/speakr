@@ -27,6 +27,7 @@ from .system import SystemSetting
 from .audit import ShareAuditLog
 from .push_subscription import PushSubscription
 from .processing_job import ProcessingJob
+from .token_usage import TokenUsage
 
 # Export all models
 __all__ = [
@@ -57,4 +58,5 @@ __all__ = [
     'SystemSetting',
     'PushSubscription',
     'ProcessingJob',
+    'TokenUsage',
 ]

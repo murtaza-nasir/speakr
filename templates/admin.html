@@ -15,6 +15,7 @@
 <script src="{{ url_for('static', filename='vendor/js/tailwind.min.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
@@ -399,8 +400,124 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Token Usage Section -->
+                    <div class="mt-6">
+                        <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
+                            <i class="fas fa-coins mr-2"></i> Token Usage Statistics
+                        </h4>
+
+                        <!-- Token Usage Summary Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
+                                        <i class="fas fa-calendar-day text-xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-[var(--text-muted)]">Today's Tokens</p>
+                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">${ tokenStats.today?.tokens?.toLocaleString() || 0 }</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
+                                        <i class="fas fa-calendar-alt text-xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-[var(--text-muted)]">This Month</p>
+                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">${ tokenStats.current_month?.tokens?.toLocaleString() || 0 }</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
+                                        <i class="fas fa-dollar-sign text-xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-[var(--text-muted)]">Monthly Cost</p>
+                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.cost || 0).toFixed(4) }</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <div class="flex items-center">
+                                    <div class="p-3 rounded-full" :class="tokenStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
+                                        <i class="fas fa-exclamation-triangle text-xl"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <p class="text-sm font-medium text-[var(--text-muted)]">Budget Warnings</p>
+                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">
+                                            <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } blocked</span>
+                                            <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } warning</span>
+                                            <span v-else class="text-[var(--text-success-strong)]">None</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Token Usage Charts -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Daily Usage Chart -->
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Daily Token Usage (Last 30 Days)</h5>
+                                <div class="h-64">
+                                    <canvas id="dailyTokenChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Monthly Usage Chart -->
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Monthly Token Usage (Last 12 Months)</h5>
+                                <div class="h-64">
+                                    <canvas id="monthlyTokenChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Per-User Token Usage -->
+                        <div class="mt-6 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">User Token Usage (This Month)</h5>
+                            <div class="space-y-3 max-h-64 overflow-y-auto">
+                                <div v-for="user in tokenUserStats" :key="user.user_id" class="flex justify-between items-center p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <div class="flex items-center flex-1">
+                                        <i class="fas fa-user text-[var(--text-accent)] mr-2"></i>
+                                        <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
+                                    </div>
+                                    <div class="flex items-center space-x-4 flex-1">
+                                        <div class="flex-1">
+                                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
+                                                <div class="h-2 rounded-full"
+                                                    :class="{
+                                                        'bg-[var(--text-danger-strong)]': user.percentage >= 100,
+                                                        'bg-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
+                                                        'bg-[var(--text-success-strong)]': user.percentage < 80
+                                                    }"
+                                                    :style="{width: Math.min(user.percentage || 0, 100) + '%'}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-sm text-[var(--text-secondary)] text-right min-w-[120px]">
+                                            <span class="font-medium">${ user.current_usage?.toLocaleString() || 0 }</span>
+                                            <span v-if="user.monthly_budget" class="text-[var(--text-muted)]"> / ${ user.monthly_budget?.toLocaleString() }</span>
+                                            <span v-else class="text-[var(--text-muted)]"> (unlimited)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="tokenUserStats.length === 0" class="text-center text-sm text-[var(--text-muted)] p-2">
+                                    No token usage data available
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
+
                 <!-- System Settings Tab -->
                 <div v-show="activeTab === 'settings'">
                     <div class="flex justify-between items-center mb-4">
@@ -862,6 +979,11 @@ Summarization Instructions:
                             <span class="ml-3 text-sm text-[var(--text-secondary)]">${t('adminDashboard.adminUser')}</span>
                         </label>
                     </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monthly Token Budget</label>
+                        <input v-model.number="newUser.monthlyTokenBudget" type="number" min="5000" step="5000" placeholder="Leave empty for unlimited" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <p class="text-xs text-[var(--text-muted)] mt-1">Set a monthly token limit for AI features. Leave empty for unlimited.</p>
+                    </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" @click="showAddUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">${t('buttons.cancel')}</button>
                         <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.addUser')}</button>
@@ -869,7 +991,7 @@ Summarization Instructions:
                 </form>
             </div>
         </div>
-        
+
         <!-- Edit User Modal -->
         <div v-if="showEditUserModal" @click.self="showEditUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
@@ -897,6 +1019,20 @@ Summarization Instructions:
                             <span class="ml-3 text-sm text-[var(--text-secondary)]">${t('adminDashboard.adminUser')}</span>
                         </label>
                     </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monthly Token Budget</label>
+                        <input v-model.number="editingUser.monthly_token_budget" type="number" min="5000" step="5000" placeholder="Leave empty for unlimited" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <p class="text-xs text-[var(--text-muted)] mt-1">Set a monthly token limit for AI features. Leave empty for unlimited.</p>
+                        <div v-if="editingUser.monthly_token_budget && editingUser.current_token_usage !== undefined" class="mt-2">
+                            <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
+                                <span>Current usage: ${ editingUser.current_token_usage?.toLocaleString() || 0 } tokens</span>
+                                <span :class="{'text-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100}">${ editingUser.token_usage_percentage || 0 }%</span>
+                            </div>
+                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
+                                <div class="h-2 rounded-full" :class="{'bg-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'bg-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100, 'bg-[var(--text-success-strong)]': editingUser.token_usage_percentage < 80}" :style="{width: Math.min(editingUser.token_usage_percentage || 0, 100) + '%'}"></div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" @click="showEditUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
                         <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.updateUser')}</button>
@@ -904,7 +1040,7 @@ Summarization Instructions:
                 </form>
             </div>
         </div>
-        
+
         <!-- Delete User Confirmation Modal -->
         <div v-if="showDeleteUserModal" @click.self="showDeleteUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
@@ -1456,6 +1592,16 @@ Summarization Instructions:
                     failed_recordings: 0,
                     top_users: []
                 });
+                const tokenStats = ref({
+                    today: { tokens: 0, cost: 0 },
+                    current_month: { tokens: 0, cost: 0 },
+                    user_count_with_usage: 0,
+                    users_over_80_percent: 0,
+                    users_at_100_percent: 0
+                });
+                const tokenUserStats = ref([]);
+                const dailyTokenChart = ref(null);
+                const monthlyTokenChart = ref(null);
                 const settings = ref([]);
                 const isLoadingUsers = ref(true);
                 const isLoadingSettings = ref(false);
@@ -1472,7 +1618,8 @@ Summarization Instructions:
                     email: '',
                     password: '',
                     confirmPassword: '',
-                    isAdmin: false
+                    isAdmin: false,
+                    monthlyTokenBudget: null
                 });
                 const editingUser = ref(null);
                 const userToDelete = ref(null);
@@ -1593,7 +1740,7 @@ Summarization Instructions:
                             throw new Error('Rate limit exceeded. Please wait a moment and try again.');
                         }
                         if (!response.ok) throw new Error('Failed to load settings');
-                        
+
                         const data = await response.json();
                         settings.value = data;
                     } catch (error) {
@@ -1603,7 +1750,153 @@ Summarization Instructions:
                         isLoadingSettings.value = false;
                     }
                 };
-                
+
+                // Token Stats Functions
+                const loadTokenStats = async () => {
+                    try {
+                        // Load summary stats
+                        const statsResponse = await fetch('/admin/token-stats');
+                        if (statsResponse.ok) {
+                            tokenStats.value = await statsResponse.json();
+                        }
+
+                        // Load user stats
+                        const userStatsResponse = await fetch('/admin/token-stats/users');
+                        if (userStatsResponse.ok) {
+                            const data = await userStatsResponse.json();
+                            tokenUserStats.value = data.users || [];
+                        }
+
+                        // Load and render charts
+                        await loadTokenCharts();
+                    } catch (error) {
+                        console.error('Error loading token stats:', error);
+                    }
+                };
+
+                const loadTokenCharts = async () => {
+                    try {
+                        // Load daily stats
+                        const dailyResponse = await fetch('/admin/token-stats/daily?days=30');
+                        if (dailyResponse.ok) {
+                            const dailyData = await dailyResponse.json();
+                            renderDailyChart(dailyData.stats);
+                        }
+
+                        // Load monthly stats
+                        const monthlyResponse = await fetch('/admin/token-stats/monthly?months=12');
+                        if (monthlyResponse.ok) {
+                            const monthlyData = await monthlyResponse.json();
+                            renderMonthlyChart(monthlyData.stats);
+                        }
+                    } catch (error) {
+                        console.error('Error loading token charts:', error);
+                    }
+                };
+
+                const renderDailyChart = (data) => {
+                    const ctx = document.getElementById('dailyTokenChart');
+                    if (!ctx) return;
+
+                    // Destroy existing chart if any
+                    if (dailyTokenChart.value) {
+                        dailyTokenChart.value.destroy();
+                    }
+
+                    const labels = data.map(d => d.date);
+                    const tokens = data.map(d => d.total);
+
+                    // Detect dark mode
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const textColor = isDark ? '#9ca3af' : '#6b7280';
+                    const gridColor = isDark ? '#374151' : '#e5e7eb';
+
+                    dailyTokenChart.value = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Tokens',
+                                data: tokens,
+                                backgroundColor: isDark ? 'rgba(99, 102, 241, 0.7)' : 'rgba(79, 70, 229, 0.7)',
+                                borderColor: isDark ? 'rgba(99, 102, 241, 1)' : 'rgba(79, 70, 229, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { color: textColor, maxRotation: 45, minRotation: 45 },
+                                    grid: { color: gridColor }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: textColor },
+                                    grid: { color: gridColor }
+                                }
+                            }
+                        }
+                    });
+                };
+
+                const renderMonthlyChart = (data) => {
+                    const ctx = document.getElementById('monthlyTokenChart');
+                    if (!ctx) return;
+
+                    // Destroy existing chart if any
+                    if (monthlyTokenChart.value) {
+                        monthlyTokenChart.value.destroy();
+                    }
+
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const labels = data.map(d => `${monthNames[d.month - 1]} ${d.year}`);
+                    const tokens = data.map(d => d.tokens);
+
+                    // Detect dark mode
+                    const isDark = document.documentElement.classList.contains('dark');
+                    const textColor = isDark ? '#9ca3af' : '#6b7280';
+                    const gridColor = isDark ? '#374151' : '#e5e7eb';
+
+                    monthlyTokenChart.value = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Tokens',
+                                data: tokens,
+                                fill: true,
+                                backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(22, 163, 74, 0.2)',
+                                borderColor: isDark ? 'rgba(34, 197, 94, 1)' : 'rgba(22, 163, 74, 1)',
+                                borderWidth: 2,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { color: textColor },
+                                    grid: { color: gridColor }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: { color: textColor },
+                                    grid: { color: gridColor }
+                                }
+                            }
+                        }
+                    });
+                };
+
                 const showEditSettingModal = ref(false);
                 const editingSetting = ref(null);
                 const settingNewValue = ref('');
@@ -1785,7 +2078,8 @@ Summarization Instructions:
                                 username: newUser.value.username,
                                 email: newUser.value.email,
                                 password: newUser.value.password,
-                                is_admin: newUser.value.isAdmin
+                                is_admin: newUser.value.isAdmin,
+                                monthly_token_budget: newUser.value.monthlyTokenBudget || null
                             })
                         });
                         
@@ -1800,7 +2094,8 @@ Summarization Instructions:
                             email: '',
                             password: '',
                             confirmPassword: '',
-                            isAdmin: false
+                            isAdmin: false,
+                            monthlyTokenBudget: null
                         };
                         showAddUserModal.value = false;
                         
@@ -1824,9 +2119,10 @@ Summarization Instructions:
                         const payload = {
                             username: editingUser.value.username,
                             email: editingUser.value.email,
-                            is_admin: editingUser.value.is_admin
+                            is_admin: editingUser.value.is_admin,
+                            monthly_token_budget: editingUser.value.monthly_token_budget || null
                         };
-                        
+
                         // Only include password if it was changed
                         if (editingUser.value.password) {
                             payload.password = editingUser.value.password;
@@ -2598,6 +2894,7 @@ Summarization Instructions:
                     if (!isTeamAdminOnly.value) {
                         loadUsers();
                         loadStats();
+                        loadTokenStats();
 
                         // Load settings first, then default prompt can use that data
                         if (activeTab.value === 'settings' || activeTab.value === 'prompts') {
@@ -2695,6 +2992,8 @@ Summarization Instructions:
                     activeTab,
                     users,
                     stats,
+                    tokenStats,
+                    tokenUserStats,
                     settings,
                     isLoadingUsers,
                     isLoadingSettings,
@@ -2768,6 +3067,7 @@ Summarization Instructions:
                     loadUsers,
                     loadStats,
                     loadSettings,
+                    loadTokenStats,
                     editSetting,
                     saveSettingValue,
                     updateSetting,

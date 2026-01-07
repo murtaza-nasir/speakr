@@ -17,6 +17,7 @@ from src.utils import *
 from src.config.version import get_version
 from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
 from src.config.app_config import ASR_BASE_URL
+from src.services.token_tracking import token_tracker
 
 # Create blueprint
 system_bp = Blueprint('system', __name__)
@@ -78,6 +79,38 @@ def save_user_preferences():
         'message': 'Preferences saved successfully',
         'ui_language': current_user.ui_language
     })
+
+
+@system_bp.route('/api/user/token-budget', methods=['GET'])
+@login_required
+def get_user_token_budget():
+    """Get current user's token budget status."""
+    try:
+        user = current_user
+
+        # If user has no budget, return null to indicate unlimited
+        if not user.monthly_token_budget:
+            return jsonify({
+                'has_budget': False,
+                'budget': None,
+                'usage': 0,
+                'percentage': 0
+            })
+
+        # Get current usage
+        current_usage = token_tracker.get_monthly_usage(user.id)
+        percentage = (current_usage / user.monthly_token_budget) * 100
+
+        return jsonify({
+            'has_budget': True,
+            'budget': user.monthly_token_budget,
+            'usage': current_usage,
+            'percentage': round(percentage, 1)
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error getting token budget for user {current_user.id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 # --- System Info API Endpoint ---
 

@@ -17,7 +17,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks
-from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client
+from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
 # Create blueprint
 inquire_bp = Blueprint('inquire', __name__)
@@ -248,7 +248,9 @@ Examples:
                             {"role": "user", "content": router_prompt}
                         ],
                         temperature=0.1,
-                        max_tokens=10
+                        max_tokens=10,
+                        user_id=user_id,
+                        operation_type='query_routing'
                     )
 
                     raw_decision = router_response.choices[0].message.content
@@ -279,11 +281,13 @@ Use proper markdown formatting including headings (##), bold (**text**), bullet 
                             ],
                             temperature=0.7,
                             max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
-                            stream=True
+                            stream=True,
+                            user_id=user_id,
+                            operation_type='chat'
                         )
 
                         # Use helper function to process streaming with thinking tag support
-                        for response in process_streaming_with_thinking(stream):
+                        for response in process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', model_name=os.environ.get('LLM_MODEL')):
                             yield response
                         return
                         
@@ -325,7 +329,9 @@ Respond with only a JSON array of strings: ["term1", "term2", "term3", ...]"""
                             {"role": "user", "content": enrichment_prompt}
                         ],
                         temperature=0.3,
-                        max_tokens=200
+                        max_tokens=200,
+                        user_id=user_id,
+                        operation_type='query_enrichment'
                     )
 
                     raw_content = enrichment_response.choices[0].message.content
@@ -635,7 +641,9 @@ Order your response with notes from the most recent meetings first. Always use p
                     messages=messages,
                     temperature=0.7,
                     max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
-                    stream=True
+                    stream=True,
+                    user_id=user_id,
+                    operation_type='chat'
                 )
 
                 # Buffer content to detect full transcript requests
@@ -697,11 +705,13 @@ Order your response with notes from the most recent meetings first. Always use p
                                                 messages=updated_messages,
                                                 temperature=0.7,
                                                 max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
-                                                stream=True
+                                                stream=True,
+                                                user_id=user_id,
+                                                operation_type='chat'
                                             )
-                                            
+
                                             # Use helper function to process streaming with thinking tag support
-                                            for response in process_streaming_with_thinking(new_stream):
+                                            for response in process_streaming_with_thinking(new_stream, user_id=user_id, operation_type='chat', model_name=os.environ.get('CHAT_MODEL')):
                                                 yield response
                                             return
                                         else:
@@ -768,6 +778,9 @@ Order your response with notes from the most recent meetings first. Always use p
                 
                 yield f"data: {json.dumps({'end_of_stream': True})}\n\n"
 
+            except TokenBudgetExceeded as e:
+                app.logger.warning(f"Token budget exceeded for user {user_id}: {e}")
+                yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
                 app.logger.error(f"Error in enhanced chat generation: {e}")
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"

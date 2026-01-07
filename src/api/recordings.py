@@ -29,7 +29,7 @@ from src.services.speaker import update_speaker_usage, identify_unidentified_spe
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
 from src.services.document import process_markdown_to_docx
-from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking
+from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
@@ -982,7 +982,9 @@ JSON Response:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.2,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
+                user_id=current_user.id,
+                operation_type='speaker_identification'
             )
             response_content = completion.choices[0].message.content
             current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {response_content}")
@@ -2773,22 +2775,31 @@ Additional context and notes about the meeting:
             messages.extend(message_history)
         messages.append({"role": "user", "content": user_message})
 
+        # Capture context before generator starts (app context may not be available inside generator)
+        user_id = current_user.id
+        app = current_app._get_current_object()
+
         def generate():
             try:
-                # Enable streaming
+                # Enable streaming with user_id for budget enforcement
                 stream = call_chat_completion(
                     messages=messages,
                     temperature=0.7,
                     max_tokens=int(os.environ.get("CHAT_MAX_TOKENS", "2000")),
-                    stream=True
+                    stream=True,
+                    user_id=user_id,
+                    operation_type='chat'
                 )
 
                 # Use helper function to process streaming with thinking tag support
-                for response in process_streaming_with_thinking(stream):
+                for response in process_streaming_with_thinking(stream, user_id=user_id, operation_type='chat', app=app):
                     yield response
 
+            except TokenBudgetExceeded as e:
+                app.logger.warning(f"Token budget exceeded for user {user_id}: {e}")
+                yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
-                current_app.logger.error(f"Error during chat stream generation: {str(e)}")
+                app.logger.error(f"Error during chat stream generation: {str(e)}")
                 # Yield an error message in SSE format
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
 

@@ -261,7 +261,9 @@ Title:"""
                     {"role": "user", "content": prompt_text}
                 ],
                 temperature=0.7,
-                max_tokens=5000
+                max_tokens=5000,
+                user_id=recording.user_id,
+                operation_type='title_generation'
             )
 
             raw_response = completion.choices[0].message.content
@@ -499,7 +501,9 @@ Summarization Instructions:
                     {"role": "user", "content": prompt_text}
                 ],
                 temperature=0.5,
-                max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000"))
+                max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000")),
+                user_id=recording.user_id,
+                operation_type='summarization'
             )
 
             raw_response = completion.choices[0].message.content
@@ -742,7 +746,9 @@ You must respond with valid JSON format only."""
             ],
             temperature=0.2,
             response_format={"type": "json_object"},
-            max_tokens=3000
+            max_tokens=3000,
+            user_id=recording.user_id,
+            operation_type='event_extraction'
         )
 
         response_content = completion.choices[0].message.content

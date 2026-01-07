@@ -19,7 +19,7 @@ export function useSpeakers(state, utils, processedTranscription) {
         voiceSuggestions, loadingVoiceSuggestions
     } = state;
 
-    const { showToast, setGlobalError } = utils;
+    const { showToast, setGlobalError, onChatComplete } = utils;
 
     // Current speaker highlight state
     let currentSpeakerId = null;
@@ -401,6 +401,8 @@ export function useSpeakers(state, utils, processedTranscription) {
                     }
 
                     showToast('Summary updated!', 'fa-check-circle');
+                    // Refresh token budget after LLM operation
+                    if (onChatComplete) onChatComplete();
                 } else if (statusData.status === 'FAILED' || statusData.status === 'ERROR') {
                     // Stop polling if it failed
                     clearInterval(pollInterval);
@@ -764,6 +766,9 @@ export function useSpeakers(state, utils, processedTranscription) {
             } else {
                 showToast('No speakers could be identified from the context.', 'fa-info-circle');
             }
+
+            // Refresh token budget after LLM operation
+            if (onChatComplete) onChatComplete();
 
         } catch (error) {
             console.error('Auto Identify Speakers Error:', error);

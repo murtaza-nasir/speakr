@@ -12,6 +12,14 @@ from openai import OpenAI
 # Use standard logging instead of current_app.logger for context independence
 logger = logging.getLogger(__name__)
 
+
+class TokenBudgetExceeded(Exception):
+    """Raised when user exceeds their token budget."""
+    def __init__(self, message, usage_percentage=100):
+        self.message = message
+        self.usage_percentage = usage_percentage
+        super().__init__(message)
+
 from src.utils import safe_json_loads, extract_json_object
 
 # Configuration - use TEXT_MODEL_* variables for LLM
@@ -128,7 +136,8 @@ def is_using_openai_api():
 
 
 
-def call_llm_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None):
+def call_llm_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None,
+                        user_id=None, operation_type=None):
     """
     Centralized function for LLM API calls with proper error handling and logging.
 
@@ -138,6 +147,8 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         response_format: Optional response format dict (e.g., {"type": "json_object"})
         stream: Whether to stream the response
         max_tokens: Optional maximum tokens to generate
+        user_id: Optional user ID for token tracking and budget enforcement
+        operation_type: Optional operation type for token tracking (e.g., 'summarization', 'chat')
 
     Returns:
         OpenAI completion object or generator (if streaming)
@@ -148,6 +159,21 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
     if not TEXT_MODEL_API_KEY:
         raise ValueError("TEXT_MODEL_API_KEY not configured")
 
+    # Check budget before making the call
+    if user_id and operation_type:
+        try:
+            from src.services.token_tracking import token_tracker
+            can_proceed, usage_pct, msg = token_tracker.check_budget(user_id)
+            if not can_proceed:
+                raise TokenBudgetExceeded(msg, usage_pct)
+            if usage_pct >= 80:
+                logger.warning(f"User {user_id} at {usage_pct:.1f}% of token budget")
+        except TokenBudgetExceeded:
+            raise
+        except Exception as e:
+            # Log but don't block on budget check errors
+            logger.warning(f"Budget check failed for user {user_id}: {e}")
+
     try:
         # Check if we're using GPT-5 with OpenAI API
         using_gpt5 = is_gpt5_model(TEXT_MODEL_NAME) and is_using_openai_api()
@@ -157,6 +183,10 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
             "messages": messages,
             "stream": stream
         }
+
+        # Add stream_options to get usage in final chunk for streaming
+        if stream:
+            completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
             # GPT-5 models don't support temperature, top_p, or logprobs
@@ -186,6 +216,22 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
 
         response = client.chat.completions.create(**completion_args)
 
+        # Track usage for non-streaming calls
+        if user_id and operation_type and not stream and response.usage:
+            try:
+                from src.services.token_tracking import token_tracker
+                token_tracker.record_usage(
+                    user_id=user_id,
+                    operation_type=operation_type,
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    total_tokens=response.usage.total_tokens,
+                    model_name=TEXT_MODEL_NAME,
+                    cost=getattr(response.usage, 'cost', None)
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record token usage: {e}")
+
         # Debug log for empty responses
         if not stream and response.choices:
             content = response.choices[0].message.content
@@ -199,12 +245,15 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
 
         return response
 
+    except TokenBudgetExceeded:
+        raise
     except Exception as e:
         logger.error(f"LLM API call failed: {e}")
         raise
 
 
-def call_chat_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None):
+def call_chat_completion(messages, temperature=0.7, response_format=None, stream=False, max_tokens=None,
+                         user_id=None, operation_type=None):
     """
     Chat-specific LLM completion function. Uses dedicated chat model if configured,
     otherwise falls back to standard TEXT_MODEL configuration.
@@ -215,6 +264,8 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         response_format: Optional response format dict (e.g., {"type": "json_object"})
         stream: Whether to stream the response
         max_tokens: Optional maximum tokens to generate
+        user_id: Optional user ID for token tracking and budget enforcement
+        operation_type: Optional operation type for token tracking (e.g., 'chat')
 
     Returns:
         OpenAI completion object or generator (if streaming)
@@ -228,6 +279,21 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
     if not chat_config['api_key']:
         raise ValueError("Chat model API key not configured")
 
+    # Check budget before making the call
+    if user_id and operation_type:
+        try:
+            from src.services.token_tracking import token_tracker
+            can_proceed, usage_pct, msg = token_tracker.check_budget(user_id)
+            if not can_proceed:
+                raise TokenBudgetExceeded(msg, usage_pct)
+            if usage_pct >= 80:
+                logger.warning(f"User {user_id} at {usage_pct:.1f}% of token budget")
+        except TokenBudgetExceeded:
+            raise
+        except Exception as e:
+            # Log but don't block on budget check errors
+            logger.warning(f"Budget check failed for user {user_id}: {e}")
+
     try:
         model_name = chat_config['model_name']
         base_url = chat_config['base_url'] or ''
@@ -240,6 +306,10 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
             "messages": messages,
             "stream": stream
         }
+
+        # Add stream_options to get usage in final chunk for streaming
+        if stream:
+            completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
             logger.debug(f"Using GPT-5 chat model: {model_name}")
@@ -259,6 +329,22 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
         response = effective_client.chat.completions.create(**completion_args)
 
+        # Track usage for non-streaming calls
+        if user_id and operation_type and not stream and response.usage:
+            try:
+                from src.services.token_tracking import token_tracker
+                token_tracker.record_usage(
+                    user_id=user_id,
+                    operation_type=operation_type,
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    total_tokens=response.usage.total_tokens,
+                    model_name=model_name,
+                    cost=getattr(response.usage, 'cost', None)
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record token usage: {e}")
+
         # Debug log for empty responses
         if not stream and response.choices:
             content = response.choices[0].message.content
@@ -267,6 +353,8 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
         return response
 
+    except TokenBudgetExceeded:
+        raise
     except Exception as e:
         logger.error(f"Chat LLM API call failed: {e}")
         raise
@@ -297,18 +385,55 @@ def format_api_error_message(error_str):
     return f"[Summary generation failed: {error_str}]"
 
 
-def process_streaming_with_thinking(stream):
+def process_streaming_with_thinking(stream, user_id=None, operation_type=None, model_name=None, app=None):
     """
     Generator that processes a streaming response and separates thinking content.
     Yields SSE-formatted data with 'delta' for regular content and 'thinking' for thinking content.
+
+    Args:
+        stream: The streaming response from the LLM API
+        user_id: Optional user ID for token tracking
+        operation_type: Optional operation type for token tracking
+        model_name: Optional model name for token tracking
+        app: Optional Flask app instance for database context in generators
     """
     content_buffer = ""
     in_thinking = False
     thinking_buffer = ""
 
     for chunk in stream:
-        content = chunk.choices[0].delta.content
-        if content:
+        # Check for usage in final chunk (from stream_options={'include_usage': True})
+        if hasattr(chunk, 'usage') and chunk.usage and user_id and operation_type:
+            try:
+                from src.services.token_tracking import token_tracker
+                # Use app context if provided (needed for generators where context may be lost)
+                if app:
+                    with app.app_context():
+                        token_tracker.record_usage(
+                            user_id=user_id,
+                            operation_type=operation_type,
+                            prompt_tokens=chunk.usage.prompt_tokens,
+                            completion_tokens=chunk.usage.completion_tokens,
+                            total_tokens=chunk.usage.total_tokens,
+                            model_name=model_name or TEXT_MODEL_NAME,
+                            cost=getattr(chunk.usage, 'cost', None)
+                        )
+                else:
+                    token_tracker.record_usage(
+                        user_id=user_id,
+                        operation_type=operation_type,
+                        prompt_tokens=chunk.usage.prompt_tokens,
+                        completion_tokens=chunk.usage.completion_tokens,
+                        total_tokens=chunk.usage.total_tokens,
+                        model_name=model_name or TEXT_MODEL_NAME,
+                        cost=getattr(chunk.usage, 'cost', None)
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to record streaming token usage: {e}")
+
+        # Process content delta
+        if chunk.choices and chunk.choices[0].delta.content:
+            content = chunk.choices[0].delta.content
             content_buffer += content
 
             # Process the buffer to detect and handle thinking tags

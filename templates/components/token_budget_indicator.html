@@ -1,0 +1,17 @@
+<!-- Token Budget Indicator Component -->
+<!-- Only shows if user has a budget limit set -->
+<div v-if="tokenBudget && tokenBudget.has_budget"
+     class="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors cursor-default"
+     :title="'Token usage: ' + (tokenBudget.usage || 0).toLocaleString() + ' / ' + (tokenBudget.budget || 0).toLocaleString()">
+    <i class="fas fa-coins text-[10px]"
+       :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}"></i>
+    <span :style="tokenBudget.percentage >= 100 ? {color: '#ef4444'} : tokenBudget.percentage >= 80 ? {color: '#f59e0b'} : {}">${ tokenBudget.percentage }%</span>
+    <div class="w-12 h-1 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+        <div class="h-full rounded-full transition-all duration-300 bg-[var(--text-accent)]"
+             :style="{
+                 width: Math.min(tokenBudget.percentage, 100) + '%',
+                 backgroundColor: tokenBudget.percentage >= 100 ? '#ef4444' : tokenBudget.percentage >= 80 ? '#f59e0b' : null
+             }">
+        </div>
+    </div>
+</div>

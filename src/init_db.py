@@ -230,6 +230,10 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'user', 'can_share_publicly', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added can_share_publicly column to user table")
 
+        # Token budget for rate limiting
+        if add_column_if_not_exists(engine, 'user', 'monthly_token_budget', 'INTEGER'):
+            app.logger.info("Added monthly_token_budget column to user table")
+
         # Add source tracking columns to internal_share table
         if add_column_if_not_exists(engine, 'internal_share', 'source_type', 'VARCHAR(20) DEFAULT "manual"'):
             app.logger.info("Added source_type column to internal_share table")

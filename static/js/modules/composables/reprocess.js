@@ -15,7 +15,7 @@ export function useReprocess(state, utils) {
         currentlyProcessingFile, uploadQueue
     } = state;
 
-    const { showToast, setGlobalError } = utils;
+    const { showToast, setGlobalError, onChatComplete } = utils;
 
     // Store for active polling intervals
     const reprocessingPolls = new Map();
@@ -340,6 +340,8 @@ export function useReprocess(state, utils) {
 
                         if (statusData.status === 'COMPLETED') {
                             showToast('Processing completed!', 'fa-check-circle');
+                            // Refresh token budget after LLM operations complete
+                            if (onChatComplete) onChatComplete();
                         }
                     }
                 } else if (statusData.status === 'FAILED') {

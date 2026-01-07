@@ -116,6 +116,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSidebarCollapsed = ref(false);
             const searchTipsExpanded = ref(false);
             const isUserMenuOpen = ref(false);
+            const tokenBudget = ref({
+                has_budget: false,
+                budget: null,
+                usage: 0,
+                percentage: 0
+            });
             const isDarkMode = ref(false);
             const currentColorScheme = ref('blue');
             const showColorSchemeModal = ref(false);
@@ -439,7 +445,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isLoadingMore, searchDebounceTimer,
 
                 // UI
-                browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, isDarkMode,
+                browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, tokenBudget, isDarkMode,
                 currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, isMetadataExpanded,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
@@ -556,6 +562,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const setGlobalError = (message, duration = 5000) => {
                 // Use toast system for all errors instead of the old global error banner
                 showToast(message, 'fa-exclamation-circle', duration, 'error');
+            };
+
+            const loadTokenBudget = async () => {
+                try {
+                    const response = await fetch('/api/user/token-budget');
+                    if (response.ok) {
+                        tokenBudget.value = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Error loading token budget:', error);
+                }
             };
 
             // Helper function to calculate global segment index in bubble view
@@ -782,7 +799,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 t, tc, setGlobalError, showToast, formatFileSize, formatDisplayDate, formatShortDate,
                 formatStatus, getStatusClass, formatTime, formatDuration, formatEventDateTime,
                 getDateForSorting, isToday, isYesterday, isThisWeek, isLastWeek, isThisMonth, isLastMonth, isSameDay,
-                nextTick
+                nextTick,
+                onChatComplete: loadTokenBudget  // Refresh token budget after chat
             };
 
             // =========================================================================
@@ -1851,7 +1869,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await Promise.all([
                     recordingsComposable.loadRecordings(),
                     recordingsComposable.loadTags(),
-                    recordingsComposable.loadSpeakers()
+                    recordingsComposable.loadSpeakers(),
+                    loadTokenBudget()
                 ]);
 
                 // Load config
@@ -2046,6 +2065,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formatDateTime: formatEventDateTime, // Alias for recovery modal
                 setGlobalError,
                 showToast,
+                loadTokenBudget,
                 getContrastTextColor,
                 getBubbleGlobalIndex,
                 formatRecordingMode,
