@@ -19,6 +19,22 @@ import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtu
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 
+// Helper to get consistent speaker color based on ID
+const getSpeakerColor = (speakerId) => {
+    // Extract number from SPEAKER_XX format
+    const match = speakerId?.match(/^SPEAKER_(\d+)$/);
+    if (match) {
+        const num = parseInt(match[1], 10);
+        return `speaker-color-${(num % 8) + 1}`;
+    }
+    // Fallback: hash the string for consistent color
+    let hash = 0;
+    for (let i = 0; i < (speakerId || '').length; i++) {
+        hash = speakerId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return `speaker-color-${(Math.abs(hash) % 8) + 1}`;
+};
+
 // Wait for the DOM to be fully loaded before mounting the Vue app
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize i18n before creating Vue app (if not already initialized)
@@ -839,11 +855,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         };
                     }
 
-                    // Extract unique speakers
+                    // Extract unique speakers and assign ID-based colors
                     const speakers = [...new Set(transcriptionData.map(segment => segment.speaker).filter(Boolean))];
                     const speakerColors = {};
-                    speakers.forEach((speaker, index) => {
-                        speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
+                    speakers.forEach((speaker) => {
+                        speakerColors[speaker] = getSpeakerColor(speaker);
                     });
 
                     const simpleSegments = transcriptionData.map(segment => ({
