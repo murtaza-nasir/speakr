@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 import mimetypes
 from werkzeug.utils import secure_filename
-from src.utils.ffprobe import get_codec_info, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.audio_conversion import convert_if_needed
 
@@ -351,16 +351,25 @@ class FileMonitor:
                 # Get file size and MIME type
                 file_size = final_path.stat().st_size
                 mime_type, _ = mimetypes.guess_type(str(final_path))
-                
+
                 # Create database record
                 now = datetime.utcnow()
+
+                # Try to extract creation date from file metadata, fall back to current time
+                meeting_date = get_creation_date(str(final_path))
+                if meeting_date:
+                    self.logger.info(f"Using file metadata creation date: {meeting_date}")
+                else:
+                    meeting_date = now
+                    self.logger.debug("No metadata creation date found, using current time")
+
                 recording = Recording(
                     audio_path=str(final_path),
                     original_filename=original_filename,
                     title=f"Auto-processed - {original_filename}",
                     file_size=file_size,
                     status='PENDING',
-                    meeting_date=now,
+                    meeting_date=meeting_date,
                     user_id=user_id,
                     mime_type=mime_type,
                     is_inbox=True,  # Auto-processed files go to inbox

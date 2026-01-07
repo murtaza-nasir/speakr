@@ -204,6 +204,14 @@ export function useUpload(state, utils) {
             try {
                 const formData = new FormData();
                 formData.append('file', nextFileItem.file);
+
+                // Send file's lastModified timestamp for meeting_date
+                if (nextFileItem.file.lastModified) {
+                    const lastModified = nextFileItem.file.lastModified;
+                    formData.append('file_last_modified', lastModified.toString());
+                    console.log(`[Upload] File lastModified: ${lastModified} (${new Date(lastModified).toISOString()})`);
+                }
+
                 if (nextFileItem.notes) {
                     formData.append('notes', nextFileItem.notes);
                 }

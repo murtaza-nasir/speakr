@@ -8,6 +8,7 @@ structured information about their codecs, streams, and formats.
 import json
 import logging
 import subprocess
+from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 
 logger = logging.getLogger(__name__)
@@ -288,3 +289,142 @@ def get_duration(filename: str, timeout: Optional[int] = None, codec_info: Optio
     except FFProbeError as e:
         logger.warning(f"Failed to probe {filename}: {e}")
         return None
+
+
+def get_creation_date(filename: str, timeout: Optional[int] = None, use_file_mtime: bool = True) -> Optional[datetime]:
+    """
+    Extract the creation/recording date from a media file's metadata.
+
+    Checks various metadata tags commonly used by recorders and devices:
+    - creation_time (MP4, M4A, MOV)
+    - date (various formats)
+    - encoded_date (some encoders)
+
+    Falls back to file modification time if no metadata found and use_file_mtime is True.
+
+    Args:
+        filename: Path to the media file
+        timeout: Optional timeout in seconds
+        use_file_mtime: If True, fall back to file modification time when no metadata found
+
+    Returns:
+        datetime object if creation date found, None otherwise
+    """
+    import os
+
+    try:
+        probe_data = probe(filename, timeout=timeout)
+    except FFProbeError as e:
+        logger.warning(f"Failed to probe {filename} for creation date: {e}")
+        # Even if probe fails, we can still try file mtime
+        if use_file_mtime:
+            return _get_file_mtime(filename)
+        return None
+
+    # Tags to check for creation date (in order of preference)
+    date_tags = ['creation_time', 'date', 'encoded_date', 'date_recorded', 'recording_time']
+
+    # Check format-level tags first
+    if 'format' in probe_data and 'tags' in probe_data['format']:
+        tags = probe_data['format']['tags']
+        for tag in date_tags:
+            # Check both lowercase and original case
+            value = tags.get(tag) or tags.get(tag.upper())
+            if value:
+                parsed = _parse_date_string(value)
+                if parsed:
+                    logger.debug(f"Found creation date from format tag '{tag}': {parsed}")
+                    return parsed
+
+    # Check stream-level tags
+    if 'streams' in probe_data:
+        for stream in probe_data['streams']:
+            if 'tags' in stream:
+                tags = stream['tags']
+                for tag in date_tags:
+                    value = tags.get(tag) or tags.get(tag.upper())
+                    if value:
+                        parsed = _parse_date_string(value)
+                        if parsed:
+                            logger.debug(f"Found creation date from stream tag '{tag}': {parsed}")
+                            return parsed
+
+    # Fall back to file modification time
+    if use_file_mtime:
+        mtime = _get_file_mtime(filename)
+        if mtime:
+            logger.debug(f"Using file modification time as creation date: {mtime}")
+            return mtime
+
+    logger.debug(f"No creation date found for {filename}")
+    return None
+
+
+def _get_file_mtime(filename: str) -> Optional[datetime]:
+    """
+    Get the file's modification time as a datetime.
+
+    Args:
+        filename: Path to the file
+
+    Returns:
+        datetime object or None if unable to get mtime
+    """
+    import os
+
+    try:
+        stat_info = os.stat(filename)
+        return datetime.fromtimestamp(stat_info.st_mtime)
+    except (OSError, ValueError) as e:
+        logger.warning(f"Failed to get file mtime for {filename}: {e}")
+        return None
+
+
+def _parse_date_string(date_str: str) -> Optional[datetime]:
+    """
+    Parse various date string formats commonly found in media metadata.
+
+    Args:
+        date_str: Date string to parse
+
+    Returns:
+        datetime object if parsing successful, None otherwise
+    """
+    if not date_str:
+        return None
+
+    # Common formats in media files
+    formats = [
+        '%Y-%m-%dT%H:%M:%S.%fZ',      # ISO 8601 with microseconds and Z
+        '%Y-%m-%dT%H:%M:%SZ',          # ISO 8601 with Z
+        '%Y-%m-%dT%H:%M:%S.%f%z',      # ISO 8601 with microseconds and timezone
+        '%Y-%m-%dT%H:%M:%S%z',         # ISO 8601 with timezone
+        '%Y-%m-%dT%H:%M:%S.%f',        # ISO 8601 with microseconds
+        '%Y-%m-%dT%H:%M:%S',           # ISO 8601 basic
+        '%Y-%m-%d %H:%M:%S',           # Common datetime
+        '%Y/%m/%d %H:%M:%S',           # Alternate datetime
+        '%Y-%m-%d',                     # Date only
+        '%Y/%m/%d',                     # Alternate date only
+        '%d-%m-%Y %H:%M:%S',           # European format
+        '%d/%m/%Y %H:%M:%S',           # European format alternate
+    ]
+
+    # Clean up the string
+    date_str = date_str.strip()
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+
+    # Try fromisoformat as a fallback (handles many ISO variants)
+    try:
+        # Replace Z with +00:00 for fromisoformat compatibility
+        clean_str = date_str.replace('Z', '+00:00')
+        return datetime.fromisoformat(clean_str)
+    except ValueError:
+        pass
+
+    logger.debug(f"Could not parse date string: {date_str}")
+    return None
