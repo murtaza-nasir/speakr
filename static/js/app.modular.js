@@ -352,6 +352,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Dropdown Positioning ---
             const dropdownPositions = ref({});
+            // Single-ref dropdown tracking for ASR editor (performance optimization)
+            const openAsrDropdownIndex = ref(null);
 
             // --- App Configuration ---
             const useAsrEndpoint = ref(false);
@@ -503,6 +505,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Dropdown Positioning
                 dropdownPositions,
+                openAsrDropdownIndex,
 
                 // App Config
                 useAsrEndpoint, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
