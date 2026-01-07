@@ -1065,6 +1065,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             utils.resetModalAudioState = resetModalAudioState;
             utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
             utils.resetSpeakerModalScroll = () => speakerModalVirtualScroll.reset();
+            utils.getSpeakerModalVisibleRange = () => speakerModalVirtualScroll.visibleRange.value;
 
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
