@@ -523,72 +523,42 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     // =========================================
-    // Speaker Navigation
+    // Speaker Navigation (Index-Based for Virtual Scroll)
     // =========================================
 
+    /**
+     * Find speaker groups by analyzing segment data (not DOM).
+     * Returns groups with startIndex instead of startElement for virtual scroll compatibility.
+     */
     const findSpeakerGroups = (speakerId) => {
         if (!speakerId) return [];
 
+        // Get segments from processedTranscription
+        const segments = processedTranscription.value?.simpleSegments || [];
+        if (segments.length === 0) return [];
+
         const groups = [];
-        const modalTranscript = document.querySelector('div.speaker-modal-transcript');
-        const mainTranscript = document.querySelector('.transcription-simple-view, .transcription-with-speakers, .transcription-content');
-        const transcriptContainer = modalTranscript || mainTranscript;
+        let currentGroup = null;
+        let lastSpeakerId = null;
 
-        if (!transcriptContainer) return [];
+        segments.forEach((segment, index) => {
+            const segmentSpeakerId = segment.speakerId;
 
-        // For JSON-based transcripts with segments
-        const allSegments = transcriptContainer.querySelectorAll('.speaker-segment');
-        if (allSegments.length > 0) {
-            let currentGroup = null;
-            let lastSpeakerId = null;
-
-            allSegments.forEach(segment => {
-                const speakerTag = segment.querySelector('[data-speaker-id]');
-                const segmentSpeakerId = speakerTag?.dataset.speakerId;
-
-                if (segmentSpeakerId === speakerId) {
-                    // If this is a new group (not consecutive with previous)
-                    if (lastSpeakerId !== speakerId) {
-                        currentGroup = {
-                            startElement: segment,
-                            elements: [segment]
-                        };
-                        groups.push(currentGroup);
-                    } else if (currentGroup) {
-                        // Add to existing group
-                        currentGroup.elements.push(segment);
-                    }
+            if (segmentSpeakerId === speakerId) {
+                // If this is a new group (not consecutive with previous)
+                if (lastSpeakerId !== speakerId) {
+                    currentGroup = {
+                        startIndex: index,
+                        indices: [index]
+                    };
+                    groups.push(currentGroup);
+                } else if (currentGroup) {
+                    // Add to existing group
+                    currentGroup.indices.push(index);
                 }
-                lastSpeakerId = segmentSpeakerId;
-            });
-        } else {
-            // For plain text transcripts with speaker tags
-            const allTags = transcriptContainer.querySelectorAll('[data-speaker-id]');
-            let currentGroup = null;
-
-            allTags.forEach(tag => {
-                if (tag.dataset.speakerId === speakerId) {
-                    // Find the parent element that contains this speaker's content
-                    const parentSegment = tag.closest('.speaker-segment') || tag.parentElement;
-
-                    if (!currentGroup || !currentGroup.lastElement ||
-                        !parentSegment.previousElementSibling ||
-                        parentSegment.previousElementSibling !== currentGroup.lastElement) {
-                        // Start a new group
-                        currentGroup = {
-                            startElement: parentSegment,
-                            elements: [parentSegment],
-                            lastElement: parentSegment
-                        };
-                        groups.push(currentGroup);
-                    } else {
-                        // Continue the group
-                        currentGroup.elements.push(parentSegment);
-                        currentGroup.lastElement = parentSegment;
-                    }
-                }
-            });
-        }
+            }
+            lastSpeakerId = segmentSpeakerId;
+        });
 
         return groups;
     };
@@ -597,18 +567,19 @@ export function useSpeakers(state, utils, processedTranscription) {
         highlightedSpeaker.value = speakerId;
 
         if (speakerId) {
-            // Find all speaker groups for navigation
+            // Find all speaker groups for navigation (index-based, no DOM queries)
             speakerGroups.value = findSpeakerGroups(speakerId);
             currentSpeakerGroupIndex.value = 0;
 
-            // Scroll to the first group
+            // Scroll to the first group using virtual scroll
             if (speakerGroups.value.length > 0) {
-                nextTick(() => {
-                    const firstGroup = speakerGroups.value[0];
-                    if (firstGroup && firstGroup.startElement) {
-                        firstGroup.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const firstGroup = speakerGroups.value[0];
+                if (firstGroup && typeof firstGroup.startIndex === 'number') {
+                    // Use the scrollToSegmentIndex function passed via utils
+                    if (utils.scrollToSegmentIndex) {
+                        utils.scrollToSegmentIndex(firstGroup.startIndex);
                     }
-                });
+                }
             }
         } else {
             speakerGroups.value = [];
@@ -618,7 +589,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
     /**
      * Select a speaker for navigation from the dropdown.
-     * This ensures proper timing with Vue's reactivity and DOM updates.
+     * Uses index-based navigation compatible with virtual scrolling.
      */
     const selectSpeakerForNavigation = (speakerId) => {
         if (!speakerId) {
@@ -630,45 +601,46 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         highlightedSpeaker.value = speakerId;
 
-        // Wait for Vue to render, then find groups
-        // Use double nextTick to ensure transcript panel content is fully rendered
-        nextTick(() => {
-            nextTick(() => {
-                speakerGroups.value = findSpeakerGroups(speakerId);
-                currentSpeakerGroupIndex.value = 0;
+        // Find groups immediately (no DOM dependency)
+        speakerGroups.value = findSpeakerGroups(speakerId);
+        currentSpeakerGroupIndex.value = 0;
 
-                // Scroll to first occurrence
-                if (speakerGroups.value.length > 0) {
-                    const firstGroup = speakerGroups.value[0];
-                    if (firstGroup && firstGroup.startElement) {
-                        firstGroup.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+        // Scroll to first occurrence
+        if (speakerGroups.value.length > 0) {
+            const firstGroup = speakerGroups.value[0];
+            if (firstGroup && typeof firstGroup.startIndex === 'number') {
+                if (utils.scrollToSegmentIndex) {
+                    utils.scrollToSegmentIndex(firstGroup.startIndex);
                 }
-            });
-        });
+            }
+        }
     };
 
     const navigateToNextSpeakerGroup = () => {
         if (speakerGroups.value.length === 0) return;
 
-        // Don't reset the speaker groups, just update the index
+        // Update the index
         currentSpeakerGroupIndex.value = (currentSpeakerGroupIndex.value + 1) % speakerGroups.value.length;
         const group = speakerGroups.value[currentSpeakerGroupIndex.value];
-        if (group && group.startElement) {
-            group.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (group && typeof group.startIndex === 'number') {
+            if (utils.scrollToSegmentIndex) {
+                utils.scrollToSegmentIndex(group.startIndex);
+            }
         }
     };
 
     const navigateToPrevSpeakerGroup = () => {
         if (speakerGroups.value.length === 0) return;
 
-        // Don't reset the speaker groups, just update the index
+        // Update the index
         currentSpeakerGroupIndex.value = currentSpeakerGroupIndex.value <= 0
             ? speakerGroups.value.length - 1
             : currentSpeakerGroupIndex.value - 1;
         const group = speakerGroups.value[currentSpeakerGroupIndex.value];
-        if (group && group.startElement) {
-            group.startElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (group && typeof group.startIndex === 'number') {
+            if (utils.scrollToSegmentIndex) {
+                utils.scrollToSegmentIndex(group.startIndex);
+            }
         }
     };
 
