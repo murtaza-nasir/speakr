@@ -122,7 +122,7 @@ Export recordings in multiple formats for different purposes. Generate Word docu
 
 ### Real-Time Monitoring
 
-Track all your shared recordings from a central dashboard. See what's been shared, when, and with what permissions. Modify share settings without generating new links, or instantly revoke access when shares are no longer appropriate. View shared recordings alongside your own content with clear visual indicators showing ownership and group affiliation.
+Track all your shared recordings from a central location. See what's been shared, when, and with what permissions. Modify share settings without generating new links, or instantly revoke access when shares are no longer appropriate. View shared recordings alongside your own content with clear visual indicators showing ownership and group affiliation.
 
 ## API Access
 

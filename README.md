@@ -196,8 +196,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 <table align="center" border="0">
   <tr>
     <td align="center">
-      <img src="docs/assets/images/screenshots/Main view.png" alt="Main Dashboard" width="400"/>
-      <br><em>Main Dashboard with Chat</em>
+      <img src="docs/assets/images/screenshots/Main view.png" alt="Main Screen" width="400"/>
+      <br><em>Main Screen with Chat</em>
     </td>
     <td align="center">
       <img src="docs/assets/images/screenshots/Inquire mode.png" alt="Inquire Mode" width="400"/>

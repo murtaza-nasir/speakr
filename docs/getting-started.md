@@ -127,7 +127,7 @@ Once the container is running, open your web browser and navigate to:
 http://localhost:8899
 ```
 
-Log in using the admin credentials you configured in Step 4. You should now see the Speakr dashboard, ready for your first recording.
+Log in using the admin credentials you configured in Step 4. You should now see the Speakr main screen, ready for your first recording.
 
 ## Your First Recording
 
