@@ -10,16 +10,23 @@
                 <span v-text="t('help.audioDeletedMessage')"></span>
             </div>
             <!-- Show audio player if audio is available -->
-            <audio v-else
-                   ref="audioPlayerElement"
-                   controls
-                   :src="'/audio/' + selectedRecording.id"
-                   :volume="playerVolume"
-                   @volumechange="onPlayerVolumeChange"
-                   @timeupdate="handleAudioTimeUpdate"
-                   class="w-full">
-                Your browser does not support the audio element.
-            </audio>
+            <div v-else class="flex items-center gap-2">
+                <audio ref="audioPlayerElement"
+                       controls
+                       :src="'/audio/' + selectedRecording.id"
+                       :volume="playerVolume"
+                       @volumechange="onPlayerVolumeChange"
+                       @timeupdate="handleAudioTimeUpdate"
+                       class="flex-1">
+                    Your browser does not support the audio element.
+                </audio>
+                <a :href="'/audio/' + selectedRecording.id + '?download=true'"
+                   download
+                   class="h-[36px] w-[36px] flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-white transition-all duration-200 flex-shrink-0 border border-[var(--border-secondary)] hover:border-[var(--border-focus)]"
+                   :title="t('buttons.downloadAudio') || 'Download audio'">
+                    <i class="fas fa-download text-sm"></i>
+                </a>
+            </div>
         </div>
     </div>
 
