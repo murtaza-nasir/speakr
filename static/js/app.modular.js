@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isChatLoading = ref(false);
             const chatMessagesRef = ref(null);
 
-            // --- Audio Player State ---
+            // --- Audio Player State (Main Player) ---
             const playerVolume = ref(1.0);
             const audioIsPlaying = ref(false);
             const audioCurrentTime = ref(0);
@@ -345,6 +345,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const audioIsMuted = ref(false);
             const audioIsLoading = ref(false);
             const asrEditorAudio = ref(null);
+
+            // --- Modal Audio Player State (Independent from main) ---
+            const modalAudioCurrentTime = ref(0);
+            const modalAudioDuration = ref(0);
+            const modalAudioIsPlaying = ref(false);
 
             // --- Column Resizing State ---
             const leftColumnWidth = ref(60);
@@ -505,6 +510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,
+                modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,
@@ -562,6 +568,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 globalIndex += bubbleIndex;
                 return globalIndex;
+            };
+
+            // Modal audio handlers (independent from main player)
+            const handleModalAudioTimeUpdate = (event) => {
+                modalAudioCurrentTime.value = event.target.currentTime;
+            };
+            const handleModalAudioLoadedMetadata = (event) => {
+                const duration = event.target.duration;
+                if (duration && isFinite(duration) && duration > 0) {
+                    modalAudioDuration.value = duration;
+                }
+            };
+            const handleModalAudioPlayPause = (event) => {
+                modalAudioIsPlaying.value = !event.target.paused;
+            };
+            const modalAudioProgressPercent = computed(() => {
+                if (!modalAudioDuration.value) return 0;
+                return (modalAudioCurrentTime.value / modalAudioDuration.value) * 100;
+            });
+            const resetModalAudioState = () => {
+                modalAudioCurrentTime.value = 0;
+                modalAudioDuration.value = 0;
+                modalAudioIsPlaying.value = false;
             };
 
             const formatFileSize = (bytes) => {
@@ -1033,6 +1062,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Add scrollToSegmentIndex to utils for composables that need it
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
+            utils.resetModalAudioState = resetModalAudioState;
 
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
@@ -2016,6 +2046,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 getContrastTextColor,
                 getBubbleGlobalIndex,
                 formatRecordingMode,
+
+                // Modal audio (independent from main player)
+                modalAudioCurrentTime,
+                modalAudioDuration,
+                modalAudioIsPlaying,
+                modalAudioProgressPercent,
+                handleModalAudioTimeUpdate,
+                handleModalAudioLoadedMetadata,
+                handleModalAudioPlayPause,
+                resetModalAudioState,
 
                 // Virtual scroll
                 speakerModalTranscriptRef,

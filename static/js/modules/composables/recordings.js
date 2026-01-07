@@ -167,6 +167,11 @@ export function useRecordings(state, utils, reprocessComposable) {
             }
         }
 
+        // Reset modal audio state when switching recordings
+        if (utils.resetModalAudioState) {
+            utils.resetModalAudioState();
+        }
+
         selectedRecording.value = recording;
 
         if (recording && recording.id) {
