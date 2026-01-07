@@ -24,12 +24,25 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Current speaker highlight state
     let currentSpeakerId = null;
 
+    // Helper to pause outer audio player when opening modals with their own player
+    const pauseOuterAudioPlayer = () => {
+        // Find the audio player in the right panel (not in a modal)
+        const outerAudio = document.querySelector('#rightMainColumn audio') ||
+                          document.querySelector('.detail-view audio:not(.fixed audio)');
+        if (outerAudio && !outerAudio.paused) {
+            outerAudio.pause();
+        }
+    };
+
     // =========================================
     // Speaker Identification Modal
     // =========================================
 
     const openSpeakerModal = () => {
         if (!selectedRecording.value) return;
+
+        // Pause outer audio player to avoid conflicts with modal's player
+        pauseOuterAudioPlayer();
 
         // Clear any existing speaker map data first
         speakerMap.value = {};

@@ -56,8 +56,21 @@ export function useTranscription(state, utils) {
     // ASR Editor Modal
     // =========================================
 
+    // Helper to pause outer audio player when opening modals with their own player
+    const pauseOuterAudioPlayer = () => {
+        const outerAudio = document.querySelector('#rightMainColumn audio') ||
+                          document.querySelector('.detail-view audio:not(.fixed audio)');
+        if (outerAudio && !outerAudio.paused) {
+            outerAudio.pause();
+        }
+    };
+
     const openAsrEditorModal = async () => {
         if (!selectedRecording.value) return;
+
+        // Pause outer audio player to avoid conflicts with modal's player
+        pauseOuterAudioPlayer();
+
         try {
             const segments = JSON.parse(selectedRecording.value.transcription);
 
