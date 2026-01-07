@@ -177,7 +177,7 @@
                 <!-- Transcript Section (Virtual Scrolling for performance) -->
                 <div ref="speakerModalTranscriptRef"
                      class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0"
-                     @click="seekAudioFromEvent"
+                     @click="(e) => { const t = e.target.closest('[data-start-time]')?.dataset.startTime; if (t && $refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.currentTime = parseFloat(t); $refs.speakerModalAudioRef.play(); } }"
                      @scroll="onSpeakerModalScroll">
                     <div v-if="processedTranscription.isJson">
                         <!-- Virtual scroll spacer (top) -->
