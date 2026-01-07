@@ -32,6 +32,12 @@ export function createUIState(ref, computed) {
     const highlightedSpeaker = ref(null);
     const processingIndicatorMinimized = ref(false);
 
+    // --- Virtual Scroll State ---
+    // For transcript panel virtual scrolling (performance optimization for long transcriptions)
+    const transcriptScrollTop = ref(0);
+    const transcriptContainerHeight = ref(0);
+    const transcriptItemHeight = 48; // Estimated height per segment in pixels
+
     // --- Computed Properties ---
     const isMobileScreen = computed(() => {
         return windowWidth.value < 1024;
@@ -86,6 +92,11 @@ export function createUIState(ref, computed) {
         legendExpanded,
         highlightedSpeaker,
         processingIndicatorMinimized,
+
+        // Virtual Scroll
+        transcriptScrollTop,
+        transcriptContainerHeight,
+        transcriptItemHeight,
 
         // Computed
         isMobileScreen,
