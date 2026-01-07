@@ -86,6 +86,11 @@ export function useTranscription(state, utils) {
             }));
 
             showAsrEditorModal.value = true;
+
+            // Reset virtual scroll state for fresh modal render
+            if (utils.resetAsrEditorScroll) {
+                utils.resetAsrEditorScroll();
+            }
         } catch (e) {
             console.error("Could not parse transcription as JSON for ASR editor:", e);
             setGlobalError("This transcription is not in the correct format for the ASR editor.");
@@ -198,9 +203,10 @@ export function useTranscription(state, utils) {
 
     const updateDropdownPosition = (index) => {
         nextTick(() => {
-            const rows = document.querySelectorAll('.asr-editor-table tbody tr');
-            if (rows[index]) {
-                const cell = rows[index].querySelector('td:first-child');
+            // Find row by data attribute to work correctly with virtual scrolling
+            const row = document.querySelector(`.asr-editor-table tbody tr[data-segment-index="${index}"]`);
+            if (row) {
+                const cell = row.querySelector('td:first-child');
                 if (cell) {
                     const rect = cell.getBoundingClientRect();
                     const viewportHeight = window.innerHeight;

@@ -91,6 +91,11 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         showSpeakerModal.value = true;
 
+        // Reset virtual scroll state for fresh modal render
+        if (utils.resetSpeakerModalScroll) {
+            utils.resetSpeakerModalScroll();
+        }
+
         // Load voice-based suggestions if embeddings are available
         loadVoiceSuggestions();
     };
