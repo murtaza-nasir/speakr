@@ -100,7 +100,7 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 <div class="screenshot-grid">
   <div class="screenshot-item">
     <img src="../assets/images/screenshots/highlighted-transcript-following-simple-light.png" alt="Follow Mode Light Theme" />
-    <p class="caption">Auto-scroll follow mode in light theme - click any text to jump to that point in audio</p>
+    <p class="caption">Auto-scroll follow mode - click any text to jump to that point in audio</p>
   </div>
 
   <div class="screenshot-item">
