@@ -13,6 +13,7 @@ import { useSpeakers } from './modules/composables/speakers.js';
 import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
+import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtualScroll.js';
 
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
@@ -383,6 +384,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentSpeakerGroupIndex = ref(0);
             const speakerGroups = ref([]);
 
+            // --- Virtual Scroll Container Refs ---
+            const speakerModalTranscriptRef = ref(null);
+            const mainTranscriptRef = ref(null);
+            const asrEditorRef = ref(null);
+
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
             const isMobileDevice = computed(() => {
@@ -519,7 +525,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 reprocessingPolls,
 
                 // Speaker Groups
-                currentSpeakerGroupIndex, speakerGroups
+                currentSpeakerGroupIndex, speakerGroups,
+
+                // Virtual Scroll
+                speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef
             };
 
             // =========================================================================
@@ -984,6 +993,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Speakers composable needs processedTranscription, so initialize it after
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
+
+            // =========================================================================
+            // VIRTUAL SCROLL SETUP (for performance with long transcriptions)
+            // =========================================================================
+            // Create a computed ref for the segments array
+            const transcriptSegments = computed(() => processedTranscription.value.simpleSegments || []);
+
+            // Virtual scroll for speaker modal transcript (main performance bottleneck)
+            const speakerModalVirtualScroll = useVirtualScroll({
+                items: transcriptSegments,
+                itemHeight: 52,  // Approximate height of each segment row
+                containerRef: speakerModalTranscriptRef,
+                overscan: 8
+            });
+
+            // Virtual scroll for main transcription panel
+            const mainTranscriptVirtualScroll = useVirtualScroll({
+                items: transcriptSegments,
+                itemHeight: 48,
+                containerRef: mainTranscriptRef,
+                overscan: 5
+            });
+
+            // Helper to scroll to a segment by index (for speaker navigation)
+            const scrollToSegmentIndex = (index) => {
+                if (showSpeakerModal.value) {
+                    speakerModalVirtualScroll.scrollToIndex(index, 'smooth');
+                } else {
+                    mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
+                }
+            };
 
             const groupedRecordings = computed(() => {
                 const groups = {};
@@ -1964,6 +2004,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 getContrastTextColor,
                 getBubbleGlobalIndex,
                 formatRecordingMode,
+
+                // Virtual scroll
+                speakerModalTranscriptRef,
+                mainTranscriptRef,
+                asrEditorRef,
+                speakerModalVisibleSegments: speakerModalVirtualScroll.visibleItems,
+                speakerModalSpacerBefore: speakerModalVirtualScroll.spacerBefore,
+                speakerModalSpacerAfter: speakerModalVirtualScroll.spacerAfter,
+                onSpeakerModalScroll: speakerModalVirtualScroll.onScroll,
+                mainTranscriptVisibleSegments: mainTranscriptVirtualScroll.visibleItems,
+                mainTranscriptSpacerBefore: mainTranscriptVirtualScroll.spacerBefore,
+                mainTranscriptSpacerAfter: mainTranscriptVirtualScroll.spacerAfter,
+                onMainTranscriptScroll: mainTranscriptVirtualScroll.onScroll,
+                scrollToSegmentIndex,
+                getVirtualItemKey,
 
                 // Recording recovery
                 showRecoveryModal,
