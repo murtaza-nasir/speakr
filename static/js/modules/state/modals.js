@@ -95,6 +95,11 @@ export function createModalState(ref, reactive) {
     const dropdownPositions = ref({});
     const editSpeakerDropdownPositions = ref({});
 
+    // --- Single-ref dropdown tracking (performance optimization) ---
+    // Instead of each segment having showSuggestions property (O(n) to close all),
+    // track which dropdown is open with a single ref (O(1) operations)
+    const openAsrDropdownIndex = ref(null);
+
     return {
         // Modal visibility
         showEditModal,
@@ -180,6 +185,9 @@ export function createModalState(ref, reactive) {
 
         // Dropdown positions
         dropdownPositions,
-        editSpeakerDropdownPositions
+        editSpeakerDropdownPositions,
+
+        // Single-ref dropdown tracking
+        openAsrDropdownIndex
     };
 }

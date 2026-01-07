@@ -54,14 +54,14 @@
         <div v-if="selectedRecording.transcription">
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
                 <div v-if="processedTranscription.hasDialogue">
-                    <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="segment.startTime || Math.random()" :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">
+                    <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="`seg-${index}-${segment.startTime}`" :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">
                         <div v-if="segment.showSpeaker" :class="['speaker-tablet', segment.color]">${segment.speaker}</div>
                         <div class="speaker-text">${segment.sentence}</div>
                     </div>
                 </div>
                 <div v-else>
                     <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
-                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="segment.startTime || Math.random()" :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">${segment.sentence}</div>
+                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="`seg-${index}-${segment.startTime}`" :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" :data-start-time="segment.startTime" :data-segment-index="index">${segment.sentence}</div>
                     </div>
                     <div v-else class="whitespace-pre-wrap">${processedTranscription.content}</div>
                 </div>
@@ -69,7 +69,7 @@
             <div v-else-if="transcriptionViewMode === 'bubble'" class="transcription-with-speakers">
                 <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
                     <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                        <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="bubble.startTime || Math.random()" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
+                        <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="`bubble-${rowIndex}-${bubbleIndex}-${bubble.startTime}`" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
                             <div class="speaker-bubble-content">${bubble.sentence}</div>
                         </div>
                     </div>
