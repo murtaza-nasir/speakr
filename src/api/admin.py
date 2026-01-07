@@ -17,6 +17,7 @@ from src.models import *
 from src.utils import *
 from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
+from src.services.token_tracking import token_tracker
 from src.config.startup import get_file_monitor_functions
 
 # Create blueprint
@@ -130,7 +131,11 @@ def admin_get_users():
         # Get recordings count and storage used
         recordings_count = len(user.recordings)
         storage_used = sum(r.file_size for r in user.recordings if r.file_size) or 0
-        
+
+        # Get current month token usage
+        current_usage = token_tracker.get_monthly_usage(user.id)
+        usage_percentage = (current_usage / user.monthly_token_budget * 100) if user.monthly_token_budget else 0
+
         user_data.append({
             'id': user.id,
             'username': user.username,
@@ -138,7 +143,10 @@ def admin_get_users():
             'is_admin': user.is_admin,
             'can_share_publicly': user.can_share_publicly,
             'recordings_count': recordings_count,
-            'storage_used': storage_used
+            'storage_used': storage_used,
+            'monthly_token_budget': user.monthly_token_budget,
+            'current_token_usage': current_usage,
+            'token_usage_percentage': round(usage_percentage, 1)
         })
     
     return jsonify(user_data)
@@ -175,19 +183,23 @@ def admin_add_user():
         username=data['username'],
         email=data['email'],
         password=hashed_password,
-        is_admin=data.get('is_admin', False)
+        is_admin=data.get('is_admin', False),
+        monthly_token_budget=data.get('monthly_token_budget')
     )
-    
+
     db.session.add(new_user)
     db.session.commit()
-    
+
     return jsonify({
         'id': new_user.id,
         'username': new_user.username,
         'email': new_user.email,
         'is_admin': new_user.is_admin,
         'recordings_count': 0,
-        'storage_used': 0
+        'storage_used': 0,
+        'monthly_token_budget': new_user.monthly_token_budget,
+        'current_token_usage': 0,
+        'token_usage_percentage': 0
     }), 201
 
 
@@ -229,11 +241,23 @@ def admin_update_user(user_id):
     if 'can_share_publicly' in data:
         user.can_share_publicly = data['can_share_publicly']
 
+    if 'monthly_token_budget' in data:
+        # Allow setting to None (unlimited) or a positive integer
+        budget = data['monthly_token_budget']
+        if budget is None or budget == '' or budget == 0:
+            user.monthly_token_budget = None
+        else:
+            user.monthly_token_budget = int(budget)
+
     db.session.commit()
 
     # Get recordings count and storage used
     recordings_count = len(user.recordings)
     storage_used = sum(r.file_size for r in user.recordings if r.file_size) or 0
+
+    # Get current month token usage
+    current_usage = token_tracker.get_monthly_usage(user.id)
+    usage_percentage = (current_usage / user.monthly_token_budget * 100) if user.monthly_token_budget else 0
 
     return jsonify({
         'id': user.id,
@@ -242,7 +266,10 @@ def admin_update_user(user_id):
         'is_admin': user.is_admin,
         'can_share_publicly': user.can_share_publicly,
         'recordings_count': recordings_count,
-        'storage_used': storage_used
+        'storage_used': storage_used,
+        'monthly_token_budget': user.monthly_token_budget,
+        'current_token_usage': current_usage,
+        'token_usage_percentage': round(usage_percentage, 1)
     })
 
 
@@ -367,6 +394,111 @@ def admin_get_stats():
         'top_users': top_users,
         'total_queries': total_queries
     })
+
+
+# --- Token Usage Stats ---
+
+@admin_bp.route('/admin/token-stats', methods=['GET'])
+@login_required
+def admin_get_token_stats():
+    """Get overall token usage statistics."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        # Get today's usage
+        today_usage = token_tracker.get_today_usage()
+
+        # Get current month usage for all users
+        monthly_stats = token_tracker.get_monthly_stats(months=1)
+        current_month = monthly_stats[-1] if monthly_stats else {'tokens': 0, 'cost': 0}
+
+        # Get per-user stats for current month
+        user_stats = token_tracker.get_user_stats()
+
+        # Calculate totals
+        total_monthly_tokens = current_month.get('tokens', 0)
+        total_monthly_cost = current_month.get('cost', 0)
+
+        return jsonify({
+            'today': today_usage,
+            'current_month': {
+                'tokens': total_monthly_tokens,
+                'cost': total_monthly_cost
+            },
+            'user_count_with_usage': len([u for u in user_stats if u['current_usage'] > 0]),
+            'users_over_80_percent': len([u for u in user_stats if u['percentage'] >= 80]),
+            'users_at_100_percent': len([u for u in user_stats if u['percentage'] >= 100])
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting token stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/token-stats/daily', methods=['GET'])
+@login_required
+def admin_get_daily_token_stats():
+    """Get daily token usage for charts (last 30 days)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        days = request.args.get('days', 30, type=int)
+        user_id = request.args.get('user_id', type=int)
+
+        daily_stats = token_tracker.get_daily_stats(days=days, user_id=user_id)
+
+        return jsonify({
+            'stats': daily_stats,
+            'days': days
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting daily token stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/token-stats/monthly', methods=['GET'])
+@login_required
+def admin_get_monthly_token_stats():
+    """Get monthly token usage for charts (last 12 months)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        months = request.args.get('months', 12, type=int)
+
+        monthly_stats = token_tracker.get_monthly_stats(months=months)
+
+        return jsonify({
+            'stats': monthly_stats,
+            'months': months
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting monthly token stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/token-stats/users', methods=['GET'])
+@login_required
+def admin_get_user_token_stats():
+    """Get per-user token usage for current month."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        user_stats = token_tracker.get_user_stats()
+
+        return jsonify({
+            'users': user_stats
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting user token stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
 
 # --- Transcript Template Routes ---
 

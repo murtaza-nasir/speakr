@@ -18,7 +18,7 @@ export function useUpload(state, utils) {
 
     const { computed, nextTick } = Vue;
 
-    const { setGlobalError, showToast, formatFileSize } = utils;
+    const { setGlobalError, showToast, formatFileSize, onChatComplete } = utils;
 
     // Compute selected tags from IDs
     const selectedTags = computed(() => {
@@ -441,6 +441,8 @@ export function useUpload(state, utils) {
                         pollInterval.value = null;
                         resetCurrentFileProcessingState();
                         isProcessingActive.value = false;
+                        // Refresh token budget after LLM operations
+                        if (onChatComplete) onChatComplete();
 
                         startProcessingQueue();
                         return;
@@ -465,6 +467,8 @@ export function useUpload(state, utils) {
                             pollInterval.value = null;
                             resetCurrentFileProcessingState();
                             isProcessingActive.value = false;
+                            // Refresh token budget after LLM operations
+                            if (onChatComplete) onChatComplete();
                             startProcessingQueue();
                             return;
                         }
@@ -479,6 +483,8 @@ export function useUpload(state, utils) {
                         pollInterval.value = null;
                         resetCurrentFileProcessingState();
                         isProcessingActive.value = false;
+                        // Refresh token budget after LLM operations
+                        if (onChatComplete) onChatComplete();
                         startProcessingQueue();
                         return;
                     }

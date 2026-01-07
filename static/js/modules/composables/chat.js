@@ -9,7 +9,7 @@ export function useChat(state, utils) {
         isChatLoading, chatMessagesRef, selectedRecording, csrfToken
     } = state;
 
-    const { showToast, setGlobalError } = utils;
+    const { showToast, setGlobalError, onChatComplete } = utils;
 
     // Helper function to check if chat is scrolled to bottom (within bottom 5%)
     const isChatScrolledToBottom = () => {
@@ -158,6 +158,9 @@ export function useChat(state, utils) {
                                         return;
                                     }
                                     if (data.error) {
+                                        if (data.budget_exceeded) {
+                                            throw new Error('Monthly token budget exceeded. Please contact your administrator.');
+                                        }
                                         throw new Error(data.error);
                                     }
                                 } catch (e) {
@@ -188,6 +191,10 @@ export function useChat(state, utils) {
             await Vue.nextTick();
             if (isChatScrolledToBottom()) {
                 scrollChatToBottom();
+            }
+            // Refresh token budget after chat completion
+            if (onChatComplete) {
+                onChatComplete();
             }
         }
     };

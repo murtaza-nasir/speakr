@@ -32,6 +32,9 @@ class User(db.Model, UserMixin):
     company = db.Column(db.String(100), nullable=True)
     diarize = db.Column(db.Boolean, default=False)
 
+    # Token budget (None = unlimited)
+    monthly_token_budget = db.Column(db.Integer, nullable=True)
+
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 
