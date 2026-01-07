@@ -981,7 +981,7 @@ Summarization Instructions:
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monthly Token Budget</label>
-                        <input v-model.number="newUser.monthlyTokenBudget" type="number" min="5000" step="5000" placeholder="Leave empty for unlimited" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <input v-model.number="newUser.monthlyTokenBudget" type="number" min="100000" step="10000" placeholder="Leave empty for unlimited" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                         <p class="text-xs text-[var(--text-muted)] mt-1">Set a monthly token limit for AI features. Leave empty for unlimited.</p>
                     </div>
                     <div class="flex justify-end space-x-3">
@@ -1021,7 +1021,7 @@ Summarization Instructions:
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Monthly Token Budget</label>
-                        <input v-model.number="editingUser.monthly_token_budget" type="number" min="5000" step="5000" placeholder="Leave empty for unlimited" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <input v-model.number="editingUser.monthly_token_budget" type="number" min="100000" step="10000" placeholder="Leave empty for unlimited" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                         <p class="text-xs text-[var(--text-muted)] mt-1">Set a monthly token limit for AI features. Leave empty for unlimited.</p>
                         <div v-if="editingUser.monthly_token_budget && editingUser.current_token_usage !== undefined" class="mt-2">
                             <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
