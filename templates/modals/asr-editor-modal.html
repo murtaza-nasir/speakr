@@ -111,7 +111,7 @@
                         </td>
                         <td class="px-1 text-center align-middle">
                             <div class="flex items-center justify-center gap-1">
-                                <button @click="seekToSegmentTime(segment.start_time)" class="p-1.5 rounded hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" :title="t('help.playFromHere')">
+                                <button @click="$refs.asrEditorAudioRef && ($refs.asrEditorAudioRef.currentTime = segment.start_time, $refs.asrEditorAudioRef.play())" class="p-1.5 rounded hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" :title="t('help.playFromHere')">
                                     <i class="fas fa-play text-xs"></i>
                                 </button>
                                 <button @click="addSegmentBelow(segment._originalIndex)" class="p-1.5 rounded hover:bg-green-600/20 text-[var(--text-muted)] hover:text-green-500 transition-colors" :title="t('help.addSegmentBelow')">
