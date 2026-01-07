@@ -7,7 +7,7 @@ export function useTranscription(state, utils) {
     const {
         showTextEditorModal, showAsrEditorModal, selectedRecording,
         editingTranscriptionContent, editingSegments, availableSpeakers,
-        recordings, dropdownPositions
+        recordings, dropdownPositions, openAsrDropdownIndex
     } = state;
 
     const { showToast, setGlobalError, nextTick } = utils;
@@ -126,29 +126,31 @@ export function useTranscription(state, utils) {
         }
     };
 
+    // O(1) dropdown management using single ref instead of O(n) forEach
     const openSpeakerSuggestions = (index) => {
         if (editingSegments.value[index]) {
-            // Close other dropdowns
-            editingSegments.value.forEach((seg, i) => {
-                if (i !== index) seg.showSuggestions = false;
-            });
-
-            editingSegments.value[index].showSuggestions = true;
+            // Simply set the open index - O(1) instead of O(n) forEach
+            openAsrDropdownIndex.value = index;
             filterSpeakerSuggestions(index);
             updateDropdownPosition(index);
         }
     };
 
     const closeSpeakerSuggestions = (index) => {
-        if (editingSegments.value[index]) {
-            editingSegments.value[index].showSuggestions = false;
+        // Only close if this index is currently open
+        if (openAsrDropdownIndex.value === index) {
+            openAsrDropdownIndex.value = null;
         }
     };
 
     const closeAllSpeakerSuggestions = () => {
-        editingSegments.value.forEach(seg => {
-            seg.showSuggestions = false;
-        });
+        // O(1) instead of O(n) - just set to null
+        openAsrDropdownIndex.value = null;
+    };
+
+    // Helper to check if a dropdown is open (for template v-if)
+    const isDropdownOpen = (index) => {
+        return openAsrDropdownIndex.value === index;
     };
 
     const getDropdownPosition = (index) => {
@@ -423,6 +425,7 @@ export function useTranscription(state, utils) {
         openSpeakerSuggestions,
         closeSpeakerSuggestions,
         closeAllSpeakerSuggestions,
+        isDropdownOpen,
         getDropdownPosition,
         updateDropdownPosition,
         selectSpeaker,

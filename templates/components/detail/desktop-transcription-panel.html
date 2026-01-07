@@ -129,7 +129,7 @@
                  class="transcription-simple-view">
                 <div v-if="processedTranscription.hasDialogue">
                     <div v-for="(segment, index) in processedTranscription.simpleSegments"
-                         :key="segment.startTime || Math.random()"
+                         :key="`seg-${index}-${segment.startTime}`"
                          :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
                          @click="seekAudioFromEvent"
                          :data-start-time="segment.startTime"
@@ -146,7 +146,7 @@
                 <div v-else>
                     <div v-if="processedTranscription.simpleSegments && processedTranscription.simpleSegments.length > 0">
                         <div v-for="(segment, index) in processedTranscription.simpleSegments"
-                             :key="segment.startTime || Math.random()"
+                             :key="`seg-${index}-${segment.startTime}`"
                              :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
                              @click="seekAudioFromEvent"
                              :data-start-time="segment.startTime"
@@ -166,7 +166,7 @@
                 <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
                     <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
                         <div v-for="(bubble, bubbleIndex) in row.bubbles"
-                             :key="bubble.startTime || Math.random()"
+                             :key="`bubble-${rowIndex}-${bubbleIndex}-${bubble.startTime}`"
                              :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]"
                              @click="seekAudioFromEvent"
                              :data-start-time="bubble.startTime"

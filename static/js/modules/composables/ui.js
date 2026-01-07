@@ -985,6 +985,38 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     // --- Active Segment Tracking ---
+
+    // Binary search to find the segment containing the current time
+    // Returns the index of the last segment where startTime <= currentTime
+    // O(log n) instead of O(n) - critical for long transcriptions (4500+ segments)
+    const binarySearchSegment = (segments, currentTime) => {
+        if (segments.length === 0) return null;
+
+        let low = 0;
+        let high = segments.length - 1;
+        let result = null;
+
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const startTime = segments[mid].startTime || segments[mid].start_time;
+
+            if (startTime === undefined) {
+                // Skip segments without timing info
+                high = mid - 1;
+                continue;
+            }
+
+            if (startTime <= currentTime) {
+                result = mid;  // This segment is a candidate
+                low = mid + 1;  // Look for later segments that might also match
+            } else {
+                high = mid - 1;  // Current time is before this segment
+            }
+        }
+
+        return result;
+    };
+
     const handleAudioTimeUpdate = (event) => {
         const transcription = processedTranscription.value;
 
@@ -996,24 +1028,14 @@ export function useUI(state, utils, processedTranscription) {
         const currentTime = audioElement.currentTime;
 
         // Find the segment that contains the current time
-        let segments = transcription.simpleSegments || [];
+        const segments = transcription.simpleSegments || [];
 
         if (segments.length === 0) {
             return;
         }
 
-        // Find the active segment index using a more robust algorithm
-        let activeIndex = null;
-
-        for (let i = segments.length - 1; i >= 0; i--) {
-            const segment = segments[i];
-            const startTime = segment.startTime || segment.start_time;
-
-            if (startTime !== undefined && currentTime >= startTime) {
-                activeIndex = i;
-                break;
-            }
-        }
+        // Find the active segment index using binary search - O(log n)
+        const activeIndex = binarySearchSegment(segments, currentTime);
 
         // Only update if changed
         if (activeIndex !== currentPlayingSegmentIndex.value) {

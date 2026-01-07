@@ -178,7 +178,7 @@
                 <!-- Transcript Section -->
                 <div class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0" @click="seekAudioFromEvent">
                     <div v-if="processedTranscription.isJson">
-                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="index" class="speaker-segment mb-1.5 sm:mb-2 group relative" :data-start-time="segment.startTime">
+                        <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="`seg-${index}-${segment.startTime}`" class="speaker-segment mb-1.5 sm:mb-2 group relative" :data-start-time="segment.startTime">
                             <div class="flex items-start gap-1">
                                 <!-- Speaker tag on its own line on mobile -->
                                 <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId" class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24" :title="segment.speaker">${ segment.speaker }</span>
