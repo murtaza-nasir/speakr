@@ -32,7 +32,7 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
-from src.utils.ffprobe import get_codec_info, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 
 # Create blueprint
@@ -2036,6 +2036,9 @@ def upload_file():
         # Get notes from the form
         notes = request.form.get('notes')
 
+        # Get file's lastModified timestamp from client (milliseconds since epoch)
+        file_last_modified = request.form.get('file_last_modified')
+
         # Get selected tags if provided (multiple tags support)
         selected_tags = []
         tag_index = 0
@@ -2106,13 +2109,38 @@ def upload_file():
 
         # Create initial database entry
         now = datetime.utcnow()
+
+        # Determine meeting_date: prefer client-provided lastModified, then file metadata, then current time
+        meeting_date = None
+
+        # First try client-provided file lastModified (most reliable for uploads)
+        if file_last_modified:
+            try:
+                # JavaScript lastModified is in milliseconds since epoch
+                timestamp_ms = int(file_last_modified)
+                meeting_date = datetime.fromtimestamp(timestamp_ms / 1000)
+                current_app.logger.info(f"Using client file lastModified: {meeting_date}")
+            except (ValueError, TypeError, OSError) as e:
+                current_app.logger.warning(f"Could not parse file_last_modified '{file_last_modified}': {e}")
+
+        # Fall back to file metadata (creation_time, date tags, etc.)
+        if not meeting_date:
+            meeting_date = get_creation_date(filepath, use_file_mtime=False)
+            if meeting_date:
+                current_app.logger.info(f"Using file metadata creation date: {meeting_date}")
+
+        # Final fallback to current time
+        if not meeting_date:
+            meeting_date = now
+            current_app.logger.debug("No file date available, using current time")
+
         recording = Recording(
             audio_path=filepath,
             original_filename=original_filename,
             title=f"Recording - {original_filename}",
             file_size=final_file_size,
             status='PENDING',
-            meeting_date=now,
+            meeting_date=meeting_date,
             user_id=current_user.id,
             mime_type=mime_type,
             notes=notes,
