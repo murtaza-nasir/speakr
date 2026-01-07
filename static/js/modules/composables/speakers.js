@@ -128,6 +128,12 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     const closeSpeakerModal = () => {
+        // Pause any playing modal audio before closing
+        const modalAudio = document.querySelector('.fixed.z-50 audio');
+        if (modalAudio) {
+            modalAudio.pause();
+        }
+
         showSpeakerModal.value = false;
         highlightedSpeaker.value = null;
         // Clear the speaker map to prevent stale data from persisting

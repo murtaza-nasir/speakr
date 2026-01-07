@@ -107,9 +107,44 @@
                         <i class="fas fa-info-circle"></i>
                         <span>Audio file has been archived and is no longer available for playback.</span>
                     </div>
-                    <!-- Show audio player if audio is available -->
-                    <div v-else class="audio-player-container">
-                        <audio controls class="w-full" :src="'/share/audio/' + recording.public_id" ref="audioPlayer"></audio>
+                    <!-- Custom Audio Player -->
+                    <div v-else class="flex items-center gap-3">
+                        <audio ref="audioPlayer" class="hidden"
+                               :src="'/share/audio/' + recording.public_id"
+                               @play="handleAudioPlayPause"
+                               @pause="handleAudioPlayPause"
+                               @timeupdate="handleCustomAudioTimeUpdate"
+                               @loadedmetadata="handleAudioLoadedMetadata"
+                               @ended="handleAudioEnded">
+                        </audio>
+                        <!-- Play/Pause -->
+                        <button @click="toggleAudioPlayback"
+                                class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
+                                :title="audioIsPlaying ? 'Pause' : 'Play'">
+                            <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-sm" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
+                        </button>
+                        <!-- Time -->
+                        <div class="flex flex-col items-end flex-shrink-0 leading-none">
+                            <span class="text-sm text-[var(--text-primary)] font-mono">${ formatAudioTime(audioCurrentTime) }</span>
+                            <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div class="flex-1 h-2 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
+                             @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); seekAudioByPercent(((e.clientX - rect.left) / rect.width) * 100); }">
+                            <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
+                                 :style="{ width: audioProgressPercent + '%' }">
+                            </div>
+                        </div>
+                        <!-- Volume -->
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button @click="toggleAudioMute"
+                                    class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">
+                                <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
+                            </button>
+                            <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
+                                   @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                   class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -308,6 +343,80 @@
                 const audioPlayer = ref(null);
                 const legendExpanded = ref(false);
                 const isDarkMode = ref(document.documentElement.classList.contains('dark'));
+
+                // Custom audio player state
+                const audioIsPlaying = ref(false);
+                const audioCurrentTime = ref(0);
+                const audioDuration = ref(0);
+                const audioIsMuted = ref(false);
+                const playerVolume = ref(1.0);
+
+                // Computed property for progress percentage
+                const audioProgressPercent = computed(() => {
+                    if (!audioDuration.value) return 0;
+                    return (audioCurrentTime.value / audioDuration.value) * 100;
+                });
+
+                // Format time as m:ss or h:mm:ss
+                function formatAudioTime(seconds) {
+                    if (!seconds || isNaN(seconds)) return '0:00';
+                    const hours = Math.floor(seconds / 3600);
+                    const mins = Math.floor((seconds % 3600) / 60);
+                    const secs = Math.floor(seconds % 60);
+                    if (hours > 0) {
+                        return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    }
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+
+                // Audio event handlers
+                function handleAudioPlayPause(event) {
+                    audioIsPlaying.value = !event.target.paused;
+                }
+
+                function handleCustomAudioTimeUpdate(event) {
+                    audioCurrentTime.value = event.target.currentTime;
+                }
+
+                function handleAudioLoadedMetadata(event) {
+                    audioDuration.value = event.target.duration;
+                }
+
+                function handleAudioEnded() {
+                    audioIsPlaying.value = false;
+                }
+
+                // Audio control functions
+                function toggleAudioPlayback() {
+                    if (!audioPlayer.value) return;
+                    if (audioPlayer.value.paused) {
+                        audioPlayer.value.play();
+                    } else {
+                        audioPlayer.value.pause();
+                    }
+                }
+
+                function toggleAudioMute() {
+                    if (!audioPlayer.value) return;
+                    audioPlayer.value.muted = !audioPlayer.value.muted;
+                    audioIsMuted.value = audioPlayer.value.muted;
+                }
+
+                function setAudioVolume(value) {
+                    if (!audioPlayer.value) return;
+                    playerVolume.value = value;
+                    audioPlayer.value.volume = value;
+                    if (value > 0 && audioIsMuted.value) {
+                        audioPlayer.value.muted = false;
+                        audioIsMuted.value = false;
+                    }
+                }
+
+                function seekAudioByPercent(percent) {
+                    if (!audioPlayer.value || !audioDuration.value) return;
+                    const time = (percent / 100) * audioDuration.value;
+                    audioPlayer.value.currentTime = time;
+                }
 
                 const processedTranscription = computed(() => {
                     if (!recording.value?.transcription) {
@@ -519,7 +628,23 @@
                     copyTranscript,
                     copySummary,
                     copyNotes,
-                    toggleDarkMode
+                    toggleDarkMode,
+                    // Custom audio player
+                    audioIsPlaying,
+                    audioCurrentTime,
+                    audioDuration,
+                    audioIsMuted,
+                    playerVolume,
+                    audioProgressPercent,
+                    formatAudioTime,
+                    handleAudioPlayPause,
+                    handleCustomAudioTimeUpdate,
+                    handleAudioLoadedMetadata,
+                    handleAudioEnded,
+                    toggleAudioPlayback,
+                    toggleAudioMute,
+                    setAudioVolume,
+                    seekAudioByPercent
                 };
             }
         });

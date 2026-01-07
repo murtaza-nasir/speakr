@@ -80,6 +80,12 @@ export function useTranscription(state, utils) {
     };
 
     const closeAsrEditorModal = () => {
+        // Pause any playing modal audio before closing
+        const modalAudio = document.querySelector('.fixed.z-50 audio');
+        if (modalAudio) {
+            modalAudio.pause();
+        }
+
         showAsrEditorModal.value = false;
         editingSegments.value = [];
     };
