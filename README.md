@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.7.1-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.7.2-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -148,14 +148,22 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.7.1)
+## Latest Release (v0.7.2)
 
-**Stability & Audio Improvements**
+**Token Budgets, Performance & UX**
+
+- **Token Usage Tracking** - Track LLM token usage per user with detailed statistics and cost breakdowns
+- **Per-User Token Budgets** - Set monthly token limits per user with warnings at 80% and blocking at 100%
+- **Virtual Scrolling** - Performance optimization for handling 4500+ transcript segments smoothly
+- **Audio Player Improvements** - Drag-to-seek, independent modal players, improved theme support
+- **File Date Handling** - Uses original recording date from file metadata instead of upload time
+- **Codec Configuration** - Configure unsupported audio codecs with automatic conversion
+
+### Previous Release (v0.7.1)
 
 - **PostgreSQL Support** - Added `psycopg2-binary` driver for PostgreSQL database option
 - **Audio Download Button** - Explicit download button next to audio player, works on mobile
 - **Job Queue Race Condition Fix** - Fixed issue where multiple workers could claim the same job
-- **Audio Conversion Pipeline Refactor** - Improved format detection using ffprobe, better codec support
 
 *Thanks to [sakowicz](https://github.com/sakowicz), [JadedBlueEyes](https://github.com/JadedBlueEyes), and [Daabramov](https://github.com/Daabramov)*
 
@@ -166,21 +174,6 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - **Enforce SSO-only** - Disable password login for regular users
 
 *Contributed by [Dmitry Abramov](https://github.com/Daabramov)* | [SSO Setup Guide](https://murtaza-nasir.github.io/speakr/admin-guide/sso-setup/)
-
-### Previous Release (v0.6.6)
-
-- **Auto Compression** - Lossless uploads automatically compressed to save storage
-- **Speaker Filtering** - Filter recordings by speaker name, starred/inbox toggles
-
-### Previous Release (v0.6.5)
-
-- Separate Chat Model - Configure different AI models for chat vs background tasks
-- Custom Datetime Picker - New themed calendar and time selection modal
-
-### Previous Release (v0.6.3)
-
-- API Token Authentication for programmatic access
-- Multiple auth methods: Bearer token, X-API-Token, query parameter
 
 ### v0.5.9 - Major Release
 
@@ -241,6 +234,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - ✅ PWA enhancements with offline support and background sync (v0.5.10)
 - ✅ Multi-user job queue with fair scheduling (v0.6.0)
 - ✅ SSO integration with OIDC providers (v0.7.0)
+- ✅ Token usage tracking and per-user budgets (v0.7.2)
 
 ### Near-term
 - Bulk operations for recordings (mass delete, export, tagging)

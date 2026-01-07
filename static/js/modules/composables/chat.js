@@ -9,7 +9,7 @@ export function useChat(state, utils) {
         isChatLoading, chatMessagesRef, selectedRecording, csrfToken
     } = state;
 
-    const { showToast, setGlobalError, onChatComplete } = utils;
+    const { showToast, setGlobalError, onChatComplete, t } = utils;
 
     // Helper function to check if chat is scrolled to bottom (within bottom 5%)
     const isChatScrolledToBottom = () => {
@@ -159,7 +159,7 @@ export function useChat(state, utils) {
                                     }
                                     if (data.error) {
                                         if (data.budget_exceeded) {
-                                            throw new Error('Monthly token budget exceeded. Please contact your administrator.');
+                                            throw new Error(t('adminDashboard.tokenBudgetExceeded'));
                                         }
                                         throw new Error(data.error);
                                     }

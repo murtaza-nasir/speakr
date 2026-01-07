@@ -756,7 +756,7 @@
                                                 return;
                                             } else if (data.error) {
                                                 if (data.budget_exceeded) {
-                                                    throw new Error('Monthly token budget exceeded. Please contact your administrator for more tokens.');
+                                                    throw new Error(t('adminDashboard.tokenBudgetExceeded'));
                                                 }
                                                 throw new Error(data.error);
                                             }

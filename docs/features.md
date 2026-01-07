@@ -191,6 +191,14 @@ Integrate with your existing identity provider using OpenID Connect. Speakr supp
 
 Track system health with comprehensive statistics and metrics. Monitor transcription queues, storage usage, and processing performance. Identify bottlenecks and optimize configuration based on actual usage patterns.
 
+### Token Usage Tracking & Budgets
+
+Monitor and control LLM API consumption with per-user token tracking and budget enforcement. The system tracks all AI operations including summarization, chat, title generation, and event extraction.
+
+**Per-User Budgets**: Set monthly token limits for individual users to control costs. Users see their remaining budget in the interface and receive warnings at 80% consumption. Once a budget is exhausted, AI operations are blocked until the next month.
+
+**Admin Dashboard**: View detailed token statistics including daily trends, monthly totals, and per-user breakdowns. Cost tracking is available when using OpenRouter or other providers that return cost information. See the [admin guide](admin-guide/statistics.md#token-usage-statistics) for details.
+
 ### Flexible Configuration
 
 Configure every aspect of Speakr through [environment variables](getting-started.md#step-3-configure-your-transcription-service) and [admin settings](admin-guide/index.md). Check [system settings](admin-guide/system-settings.md) for global configuration options. Set API endpoints, adjust processing limits, enable or disable features, and customize the user experience. The system adapts to your infrastructure and requirements.
