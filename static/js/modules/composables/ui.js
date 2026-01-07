@@ -818,7 +818,12 @@ export function useUI(state, utils, processedTranscription) {
 
     // --- Custom Audio Player Controls ---
     const getAudioElement = () => {
-        // Try to find audio in right column (desktop) or detail view (mobile)
+        // First check for audio in visible modals (z-50 class) - these take priority
+        const modalAudio = document.querySelector('.fixed.z-50 audio');
+        if (modalAudio) {
+            return modalAudio;
+        }
+        // Fall back to main player in right column (desktop) or detail view (mobile)
         return document.querySelector('#rightMainColumn audio') ||
                document.querySelector('.detail-view audio') ||
                document.querySelector('audio[ref="audioPlayerElement"]') ||
@@ -1679,6 +1684,7 @@ export function useUI(state, utils, processedTranscription) {
         audioDuration,
         audioIsMuted,
         audioIsLoading,
+        resetAudioPlayerState,
         // Copy functions
         copyTranscription,
         copySummary,

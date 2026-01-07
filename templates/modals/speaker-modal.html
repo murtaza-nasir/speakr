@@ -130,16 +130,48 @@
                  :class="{ 'hidden lg:flex': speakerModalTab !== 'transcript', 'flex-1': speakerModalTab === 'transcript' }">
                 <!-- Audio Player Section -->
                 <div class="mb-2 sm:mb-4 flex-shrink-0">
-                    <div class="audio-player-container">
-                        <!-- Show message if audio has been deleted -->
-                        <div v-if="selectedRecording.audio_deleted_at"
-                             class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-3 py-2 rounded-md flex items-center gap-2 text-xs">
-                            <i class="fas fa-info-circle"></i>
-                            <span v-text="t('help.audioDeletedMessage')"></span>
-                        </div>
-                        <audio v-else controls class="w-full speaker-modal-transcript h-10" :key="selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
-                            Your browser does not support the audio element.
+                    <!-- Show message if audio has been deleted -->
+                    <div v-if="selectedRecording.audio_deleted_at"
+                         class="text-[var(--text-muted)] text-xs flex items-center gap-2">
+                        <i class="fas fa-info-circle"></i>
+                        <span v-text="t('help.audioDeletedMessage')"></span>
+                    </div>
+                    <!-- Custom Audio Player -->
+                    <div v-else class="flex items-center gap-2">
+                        <audio class="hidden speaker-modal-transcript"
+                               :key="selectedRecording.id"
+                               :src="'/audio/' + selectedRecording.id"
+                               :volume="playerVolume"
+                               @play="handleAudioPlayPause"
+                               @pause="handleAudioPlayPause"
+                               @timeupdate="handleCustomAudioTimeUpdate"
+                               @loadedmetadata="handleAudioLoadedMetadata"
+                               @ended="handleAudioEnded"
+                               @volumechange="onPlayerVolumeChange">
                         </audio>
+                        <!-- Play/Pause -->
+                        <button @click="toggleAudioPlayback"
+                                class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
+                                :title="audioIsPlaying ? 'Pause' : 'Play'">
+                            <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-xs" :style="!audioIsPlaying ? 'margin-left: 1px' : ''"></i>
+                        </button>
+                        <!-- Time -->
+                        <div class="flex flex-col items-end flex-shrink-0 leading-none">
+                            <span class="text-xs text-[var(--text-primary)] font-mono">${ formatAudioTime(audioCurrentTime) }</span>
+                            <span class="text-[10px] text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
+                        </div>
+                        <!-- Progress Bar -->
+                        <div class="flex-1 h-1.5 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
+                             @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); seekAudioByPercent(((e.clientX - rect.left) / rect.width) * 100); }">
+                            <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
+                                 :style="{ width: audioProgressPercent + '%' }">
+                            </div>
+                        </div>
+                        <!-- Volume -->
+                        <button @click="toggleAudioMute"
+                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
+                            <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-xs"></i>
+                        </button>
                     </div>
                 </div>
 

@@ -10,16 +10,53 @@
 
         <!-- Audio Player Section -->
         <div class="px-6 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
-            <div class="audio-player-container">
-                <!-- Show message if audio has been deleted -->
-                <div v-if="selectedRecording.audio_deleted_at"
-                     class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
-                    <i class="fas fa-info-circle"></i>
-                    <span v-text="t('help.audioDeletedMessage')"></span>
-                </div>
-                <audio v-else ref="asrEditorAudio" controls class="w-full" :key="'asr-editor-' + selectedRecording.id" :src="'/audio/' + selectedRecording.id" :volume="playerVolume" @volumechange="onPlayerVolumeChange">
-                    Your browser does not support the audio element.
+            <!-- Show message if audio has been deleted -->
+            <div v-if="selectedRecording.audio_deleted_at"
+                 class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+                <i class="fas fa-info-circle"></i>
+                <span v-text="t('help.audioDeletedMessage')"></span>
+            </div>
+            <!-- Custom Audio Player -->
+            <div v-else class="flex items-center gap-3">
+                <audio ref="asrEditorAudio" class="hidden"
+                       :key="'asr-editor-' + selectedRecording.id"
+                       :src="'/audio/' + selectedRecording.id"
+                       :volume="playerVolume"
+                       @play="handleAudioPlayPause"
+                       @pause="handleAudioPlayPause"
+                       @timeupdate="handleCustomAudioTimeUpdate"
+                       @loadedmetadata="handleAudioLoadedMetadata"
+                       @ended="handleAudioEnded"
+                       @volumechange="onPlayerVolumeChange">
                 </audio>
+                <!-- Play/Pause -->
+                <button @click="toggleAudioPlayback"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
+                        :title="audioIsPlaying ? 'Pause' : 'Play'">
+                    <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-sm" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
+                </button>
+                <!-- Time -->
+                <div class="flex flex-col items-end flex-shrink-0 leading-none">
+                    <span class="text-sm text-[var(--text-primary)] font-mono">${ formatAudioTime(audioCurrentTime) }</span>
+                    <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
+                </div>
+                <!-- Progress Bar -->
+                <div class="flex-1 h-2 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
+                     @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); seekAudioByPercent(((e.clientX - rect.left) / rect.width) * 100); }">
+                    <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
+                         :style="{ width: audioProgressPercent + '%' }">
+                    </div>
+                </div>
+                <!-- Volume -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button @click="toggleAudioMute"
+                            class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all">
+                        <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
+                    </button>
+                    <input type="range" min="0" max="1" step="0.05" :value="playerVolume"
+                           @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                           class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
+                </div>
             </div>
         </div>
 
