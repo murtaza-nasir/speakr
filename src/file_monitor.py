@@ -323,6 +323,17 @@ class FileMonitor:
                 except FFProbeError as e:
                     self.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
                 
+                # Get connector specs for codec restrictions
+                connector_specs = None
+                try:
+                    from src.services.transcription import get_registry
+                    registry = get_registry()
+                    connector = registry.get_active_connector()
+                    if connector:
+                        connector_specs = connector.specifications
+                except Exception as e:
+                    self.logger.warning(f"Could not get connector specs: {e}")
+
                 # Convert/compress file if necessary - convert_if_needed handles ALL conversion needs
                 try:
                     result = convert_if_needed(
@@ -331,7 +342,8 @@ class FileMonitor:
                         codec_info=codec_info,
                         needs_chunking=False,
                         is_asr_endpoint=False,
-                        delete_original=True  # Clean up original after conversion
+                        delete_original=True,  # Clean up original after conversion
+                        connector_specs=connector_specs  # Pass connector specs for codec restrictions
                     )
                     final_path = Path(result.output_path)
                     
