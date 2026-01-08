@@ -547,6 +547,7 @@ from src.api.templates import templates_bp, init_templates_helpers
 from src.api.events import events_bp, init_events_helpers
 from src.api.system import system_bp, init_system_helpers
 from src.api.push_notifications import push_bp
+from src.api.api_v1 import api_v1_bp, init_api_v1_helpers
 
 # Database initialization (extracted to src/init_db.py)
 from src.init_db import initialize_database
@@ -570,6 +571,7 @@ init_inquire_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, c
 init_templates_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_events_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_system_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
+init_api_v1_helpers(has_recording_access=has_recording_access, get_user_recording_status=get_user_recording_status, set_user_recording_status=set_user_recording_status, enrich_recording_dict_with_user_status=enrich_recording_dict_with_user_status, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
 
 # Register blueprints
 app.register_blueprint(auth_bp)
@@ -585,6 +587,7 @@ app.register_blueprint(templates_bp)
 app.register_blueprint(events_bp)
 app.register_blueprint(system_bp)
 app.register_blueprint(push_bp)
+app.register_blueprint(api_v1_bp)
 
 # File monitor and scheduler initialization functions below
 
