@@ -71,6 +71,239 @@ def format_bytes(bytes_value: int) -> str:
 
 
 # =============================================================================
+# OpenAPI Documentation
+# =============================================================================
+
+OPENAPI_SPEC = {
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Speakr API v1",
+        "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nAll endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter\n\nGenerate tokens in Settings > API Tokens.",
+        "version": "1.0.0"
+    },
+    "servers": [{"url": "/api/v1", "description": "API v1"}],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {"type": "http", "scheme": "bearer"},
+            "apiKeyHeader": {"type": "apiKey", "in": "header", "name": "X-API-Token"},
+            "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "token"}
+        },
+        "schemas": {
+            "Recording": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "title": {"type": "string"},
+                    "status": {"type": "string", "enum": ["PENDING", "PROCESSING", "SUMMARIZING", "COMPLETED", "FAILED"]},
+                    "created_at": {"type": "string", "format": "date-time"},
+                    "meeting_date": {"type": "string", "format": "date-time"},
+                    "file_size": {"type": "integer"},
+                    "participants": {"type": "string"},
+                    "is_inbox": {"type": "boolean"},
+                    "is_highlighted": {"type": "boolean"},
+                    "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}}
+                }
+            },
+            "Tag": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "color": {"type": "string"},
+                    "custom_prompt": {"type": "string"},
+                    "default_language": {"type": "string"},
+                    "default_min_speakers": {"type": "integer"},
+                    "default_max_speakers": {"type": "integer"}
+                }
+            },
+            "Speaker": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "use_count": {"type": "integer"},
+                    "has_voice_profile": {"type": "boolean"}
+                }
+            },
+            "Error": {
+                "type": "object",
+                "properties": {"error": {"type": "string"}}
+            }
+        }
+    },
+    "security": [{"bearerAuth": []}, {"apiKeyHeader": []}, {"apiKeyQuery": []}],
+    "paths": {
+        "/stats": {
+            "get": {
+                "tags": ["Stats"],
+                "summary": "Get system statistics",
+                "description": "Returns stats compatible with gethomepage.dev widgets",
+                "parameters": [{"name": "scope", "in": "query", "schema": {"type": "string", "enum": ["user", "all"], "default": "user"}, "description": "user=personal stats, all=global (admin only)"}],
+                "responses": {"200": {"description": "Stats object"}}
+            }
+        },
+        "/recordings": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "List recordings",
+                "parameters": [
+                    {"name": "page", "in": "query", "schema": {"type": "integer", "default": 1}},
+                    {"name": "per_page", "in": "query", "schema": {"type": "integer", "default": 25, "maximum": 100}},
+                    {"name": "status", "in": "query", "schema": {"type": "string", "enum": ["all", "pending", "processing", "completed", "failed"]}},
+                    {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size"]}},
+                    {"name": "sort_order", "in": "query", "schema": {"type": "string", "enum": ["asc", "desc"]}},
+                    {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
+                    {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Search query"}
+                ],
+                "responses": {"200": {"description": "Paginated list of recordings"}}
+            }
+        },
+        "/recordings/{id}": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "Get recording details",
+                "parameters": [
+                    {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "format", "in": "query", "schema": {"type": "string", "enum": ["full", "minimal"]}, "description": "minimal excludes large text fields"},
+                    {"name": "include", "in": "query", "schema": {"type": "string"}, "description": "Comma-separated: transcription,summary,notes"}
+                ],
+                "responses": {"200": {"description": "Recording details"}, "404": {"description": "Not found"}}
+            },
+            "patch": {
+                "tags": ["Recordings"],
+                "summary": "Update recording",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"title": {"type": "string"}, "participants": {"type": "string"}, "notes": {"type": "string"}, "summary": {"type": "string"}, "meeting_date": {"type": "string"}, "is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}}}}}},
+                "responses": {"200": {"description": "Updated recording"}}
+            },
+            "delete": {
+                "tags": ["Recordings"],
+                "summary": "Delete recording",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {"200": {"description": "Deleted"}, "403": {"description": "Permission denied"}}
+            }
+        },
+        "/recordings/{id}/transcript": {
+            "get": {
+                "tags": ["Recordings"],
+                "summary": "Get transcript",
+                "parameters": [
+                    {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                    {"name": "format", "in": "query", "schema": {"type": "string", "enum": ["json", "text", "srt", "vtt"], "default": "json"}}
+                ],
+                "responses": {"200": {"description": "Transcript in requested format"}}
+            }
+        },
+        "/recordings/{id}/summary": {
+            "get": {"tags": ["Recordings"], "summary": "Get summary", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Summary markdown"}}},
+            "put": {"tags": ["Recordings"], "summary": "Replace summary", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["summary"], "properties": {"summary": {"type": "string"}}}}}}, "responses": {"200": {"description": "Updated"}}}
+        },
+        "/recordings/{id}/notes": {
+            "get": {"tags": ["Recordings"], "summary": "Get notes", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Notes markdown"}}},
+            "put": {"tags": ["Recordings"], "summary": "Replace notes", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["notes"], "properties": {"notes": {"type": "string"}}}}}}, "responses": {"200": {"description": "Updated"}}}
+        },
+        "/recordings/{id}/status": {
+            "get": {"tags": ["Recordings"], "summary": "Get processing status", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Status with queue position"}}}
+        },
+        "/recordings/{id}/transcribe": {
+            "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Job queued"}}}
+        },
+        "/recordings/{id}/summarize": {
+            "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Job queued"}}}
+        },
+        "/recordings/{id}/chat": {
+            "post": {"tags": ["Chat"], "summary": "Chat about recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["message"], "properties": {"message": {"type": "string"}, "conversation_history": {"type": "array"}}}}}}, "responses": {"200": {"description": "Chat response"}}}
+        },
+        "/recordings/{id}/events": {
+            "get": {"tags": ["Events"], "summary": "Get calendar events", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "List of events"}}}
+        },
+        "/recordings/{id}/events/ics": {
+            "get": {"tags": ["Events"], "summary": "Download events as ICS", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "ICS file", "content": {"text/calendar": {}}}}}
+        },
+        "/recordings/{id}/audio": {
+            "get": {"tags": ["Audio"], "summary": "Download audio", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}, {"name": "download", "in": "query", "schema": {"type": "boolean"}}], "responses": {"200": {"description": "Audio file"}}}
+        },
+        "/recordings/{id}/tags": {
+            "post": {"tags": ["Tags"], "summary": "Add tags to recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"tag_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Tags added"}}}
+        },
+        "/recordings/{id}/tags/{tag_id}": {
+            "delete": {"tags": ["Tags"], "summary": "Remove tag from recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}, {"name": "tag_id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Tag removed"}}}
+        },
+        "/recordings/{id}/speakers": {
+            "get": {"tags": ["Speakers"], "summary": "Get speakers in recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Speakers with suggestions"}}}
+        },
+        "/recordings/batch": {
+            "patch": {"tags": ["Batch"], "summary": "Batch update recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids", "updates"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}, "updates": {"type": "object"}}}}}}, "responses": {"200": {"description": "Batch results"}}},
+            "delete": {"tags": ["Batch"], "summary": "Batch delete recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Batch results"}}}
+        },
+        "/recordings/batch/transcribe": {
+            "post": {"tags": ["Batch"], "summary": "Batch queue transcriptions", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Batch results"}}}
+        },
+        "/tags": {
+            "get": {"tags": ["Tags"], "summary": "List tags", "responses": {"200": {"description": "List of tags"}}},
+            "post": {"tags": ["Tags"], "summary": "Create tag", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Tag created"}}}
+        },
+        "/tags/{id}": {
+            "put": {"tags": ["Tags"], "summary": "Update tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Tag updated"}}},
+            "delete": {"tags": ["Tags"], "summary": "Delete tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Tag deleted"}}}
+        },
+        "/speakers": {
+            "get": {"tags": ["Speakers"], "summary": "List speakers", "responses": {"200": {"description": "List of speakers"}}},
+            "post": {"tags": ["Speakers"], "summary": "Create speaker", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}}}}, "responses": {"201": {"description": "Speaker created"}}}
+        },
+        "/speakers/{id}": {
+            "put": {"tags": ["Speakers"], "summary": "Update speaker", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}}}}}}, "responses": {"200": {"description": "Speaker updated"}}},
+            "delete": {"tags": ["Speakers"], "summary": "Delete speaker", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Speaker deleted"}}}
+        }
+    },
+    "tags": [
+        {"name": "Stats", "description": "System statistics for dashboards"},
+        {"name": "Recordings", "description": "Recording CRUD operations"},
+        {"name": "Processing", "description": "Transcription and summarization"},
+        {"name": "Chat", "description": "Chat with recordings"},
+        {"name": "Events", "description": "Calendar events"},
+        {"name": "Audio", "description": "Audio file operations"},
+        {"name": "Tags", "description": "Tag management"},
+        {"name": "Speakers", "description": "Speaker management"},
+        {"name": "Batch", "description": "Batch operations"}
+    ]
+}
+
+
+@api_v1_bp.route('/openapi.json', methods=['GET'])
+def get_openapi_spec():
+    """Return OpenAPI specification."""
+    return jsonify(OPENAPI_SPEC)
+
+
+@api_v1_bp.route('/docs', methods=['GET'])
+def get_docs():
+    """Serve Swagger UI documentation."""
+    from flask import Response
+    html = '''<!DOCTYPE html>
+<html>
+<head>
+    <title>Speakr API v1 Documentation</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+        SwaggerUIBundle({
+            url: "/api/v1/openapi.json",
+            dom_id: '#swagger-ui',
+            presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+            layout: "BaseLayout",
+            persistAuthorization: true
+        });
+    </script>
+</body>
+</html>'''
+    return Response(html, mimetype='text/html')
+
+
+# =============================================================================
 # Stats Endpoint (Homepage Widget Compatible)
 # =============================================================================
 
