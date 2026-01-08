@@ -158,14 +158,12 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 ## Latest Release (v0.8.0)
 
-**Connector Architecture & REST API**
+**Cloud Diarization & REST API**
 
-- **Connector-Based Transcription** - New modular architecture for transcription providers; custom connectors possible (adding new providers requires building from source)
-- **Simplified Configuration** - Fewer environment variables needed; auto-detects connector from settings
-- **OpenAI Diarization Support** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
+- **Speaker Diarization Without GPU** - Use OpenAI's `gpt-4o-transcribe-diarize` for speaker identification with just an API key. No self-hosted ASR container or GPU required.
 - **REST API v1** - Full-featured API for automation tools (n8n, Zapier, Make) and dashboard widgets
 - **Interactive API Docs** - Swagger UI at `/api/v1/docs` with try-it-out functionality
-- **Batch Operations** - Update, delete, or transcribe multiple recordings via API
+- **Connector Architecture** - Modular transcription providers with simplified configuration; custom connectors possible (requires building from source)
 
 > **Migration Note:** Existing configurations are fully backwards compatible. See the [Migration Guide](https://murtaza-nasir.github.io/speakr/admin-guide/migration-guide) for recommended updates.
 
