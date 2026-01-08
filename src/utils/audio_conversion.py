@@ -224,9 +224,18 @@ def convert_if_needed(
     
     # Handle audio files - check if conversion needed
     needs_conversion = False
+
+    # OpenAI Whisper API only accepts specific file extensions
+    # Even if codec is fine, extension must be in this list
+    openai_supported_extensions = {'.flac', '.m4a', '.mp3', '.mp4', '.mpeg', '.mpga', '.oga', '.ogg', '.wav', '.webm'}
+    file_ext = os.path.splitext(filepath)[1].lower()
+
     if audio_codec is None:
         needs_conversion = True
         logger.info(f"Unknown codec for {original_filename}, will attempt conversion")
+    elif file_ext not in openai_supported_extensions:
+        needs_conversion = True
+        logger.info(f"Converting {original_filename} - extension '{file_ext}' not supported by OpenAI API")
     elif is_asr_endpoint and audio_codec == 'aac':
         needs_conversion = True
         logger.info(f"Converting AAC-encoded file for ASR endpoint compatibility")
