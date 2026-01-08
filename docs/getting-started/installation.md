@@ -6,13 +6,13 @@ This comprehensive guide covers deploying Speakr for production use, including d
 
 Before diving into installation, it's helpful to understand how Speakr works. The application integrates with external APIs for two main purposes: transcription services that convert your audio to text, and text generation services that power features like summaries, titles, and interactive chat. Speakr is designed to be flexible, supporting both cloud-based services like OpenAI and self-hosted solutions running on your own infrastructure.
 
-Speakr uses a **connector-based architecture** for transcription services, providing a unified interface regardless of which provider you choose. Three connectors are available:
+Speakr uses a **connector-based architecture** for transcription services, providing a unified interface regardless of which provider you choose. Three connectors are currently available:
 
 1. **ASR Endpoint** (Recommended for best quality) - For self-hosted solutions like WhisperX that offer GPU-accelerated transcription with superior accuracy, voice profiles, and speaker diarization
 2. **OpenAI Transcribe** - Uses `gpt-4o-transcribe-diarize` for cloud-based speaker diarization without requiring additional containers
-3. **OpenAI Whisper** - Legacy whisper-1 model for basic transcription
+3. **OpenAI Whisper** - Legacy whisper-1 model for basic transcription using any legacy OpenAI compatible whisper API
 
-The connector is automatically selected based on your configuration. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
+The connector can be specified or inferred based on your configuration. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
 
 ## Prerequisites
 
