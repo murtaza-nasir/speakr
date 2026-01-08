@@ -625,7 +625,7 @@
     "uploadRecordingNotes": "Aufnahme und Notizen hochladen",
     "whatWillHappen": "Was wird passieren?",
     "whyNotWorking": "Warum funktioniert es nicht?",
-    "youHaveXSpeakers": "Sie haben {{count}} Sprecher, aber nur 8 eindeutige Farben sind verfügbar. Die Farben wiederholen sich nach dem 8. Sprecher.",
+    "youHaveXSpeakers": "Sie haben {{count}} Sprecher, aber nur 16 eindeutige Farben sind verfügbar. Die Farben wiederholen sich nach dem 16. Sprecher.",
     "speakers": "Sprecher",
     "publicLinkDesc": "Jeder mit diesem Link kann auf die Aufnahme zugreifen",
     "internalSharingDesc": "Mit bestimmten Benutzern in Ihrer Organisation teilen"

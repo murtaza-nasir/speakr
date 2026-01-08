@@ -8,7 +8,7 @@ export function useSpeakers(state, utils, processedTranscription) {
     const {
         showSpeakerModal, speakerModalTab, showAddSpeakerModal, showEditSpeakersModal,
         showEditTextModal, selectedRecording, recordings,
-        speakerMap, modalSpeakers, speakerDisplayMap, speakerSuggestions, loadingSuggestions,
+        speakerMap, speakerColorMap, modalSpeakers, speakerDisplayMap, speakerSuggestions, loadingSuggestions,
         activeSpeakerInput, regenerateSummaryAfterSpeakerUpdate,
         editingSpeakersList, databaseSpeakers, editingSpeakerSuggestions,
         editSpeakerDropdownPositions, newSpeakerName, newSpeakerIsMe,
@@ -24,20 +24,20 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Current speaker highlight state
     let currentSpeakerId = null;
 
-    // Helper to get consistent speaker color based on ID
+    // Number of speaker colors available in CSS (must match styles.css and app.modular.js)
+    const SPEAKER_COLOR_COUNT = 16;
+
+    // Get speaker color from the shared color map
+    // If speaker not in map, assign next available color
     const getSpeakerColor = (speakerId) => {
-        // Extract number from SPEAKER_XX format
-        const match = speakerId?.match(/^SPEAKER_(\d+)$/);
-        if (match) {
-            const num = parseInt(match[1], 10);
-            return `speaker-color-${(num % 8) + 1}`;
+        if (speakerColorMap.value[speakerId]) {
+            return speakerColorMap.value[speakerId];
         }
-        // Fallback: hash the string for consistent color
-        let hash = 0;
-        for (let i = 0; i < (speakerId || '').length; i++) {
-            hash = speakerId.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        return `speaker-color-${(Math.abs(hash) % 8) + 1}`;
+        // Assign next color to new speaker
+        const colorIndex = Object.keys(speakerColorMap.value).length;
+        const color = `speaker-color-${(colorIndex % SPEAKER_COLOR_COUNT) + 1}`;
+        speakerColorMap.value[speakerId] = color;
+        return color;
     };
 
     // Helper to pause outer audio player when opening modals with their own player
@@ -81,20 +81,21 @@ export function useSpeakers(state, utils, processedTranscription) {
             }
         }
 
-        // Set modalSpeakers for the template to use
-        modalSpeakers.value = speakers;
-
-        // Initialize speaker map with ID-based colors for consistency
-        speakerMap.value = speakers.reduce((acc, speaker) => {
-            acc[speaker] = {
+        // Initialize speaker map FIRST with colors from shared color map
+        // Clear existing map and rebuild it
+        speakerMap.value = {};
+        speakerDisplayMap.value = {};
+        speakers.forEach(speaker => {
+            speakerMap.value[speaker] = {
                 name: '',
                 isMe: false,
-                color: getSpeakerColor(speaker) // ID-based color assignment
+                color: getSpeakerColor(speaker)
             };
-            // Keep the original speaker ID for display
             speakerDisplayMap.value[speaker] = speaker;
-            return acc;
-        }, {});
+        });
+
+        // Set modalSpeakers AFTER speakerMap is populated (triggers render)
+        modalSpeakers.value = speakers;
 
         highlightedSpeaker.value = null;
         speakerSuggestions.value = {};
@@ -873,10 +874,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         const newSpeakerId = `SPEAKER_${String(nextNumber).padStart(2, '0')}`;
 
-        // Add to modalSpeakers
-        modalSpeakers.value.push(newSpeakerId);
-
-        // Add to speakerMap with ID-based color
+        // Add to speakerMap FIRST (before modalSpeakers) to avoid render race condition
         speakerMap.value[newSpeakerId] = {
             name: name,
             isMe: newSpeakerIsMe.value,
@@ -885,6 +883,9 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         // Add to speakerDisplayMap
         speakerDisplayMap.value[newSpeakerId] = newSpeakerId;
+
+        // Add to modalSpeakers LAST (triggers re-render, but speakerMap is already populated)
+        modalSpeakers.value.push(newSpeakerId);
 
         closeAddSpeakerModal();
         showToast('Speaker added successfully', 'fa-check-circle');

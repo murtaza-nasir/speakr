@@ -12,7 +12,8 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterStarred, filterInbox, sortBy,
         availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
-        isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL
+        isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
+        speakerColorMap
     } = state;
 
     const { setGlobalError, showToast } = utils;
@@ -170,6 +171,11 @@ export function useRecordings(state, utils, reprocessComposable) {
         // Reset modal audio state when switching recordings
         if (utils.resetModalAudioState) {
             utils.resetModalAudioState();
+        }
+
+        // Clear speaker color map when switching recordings - new colors will be assigned on first render
+        if (speakerColorMap) {
+            speakerColorMap.value = {};
         }
 
         selectedRecording.value = recording;

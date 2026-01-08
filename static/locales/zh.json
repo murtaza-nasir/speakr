@@ -695,7 +695,7 @@
     "uploadRecordingNotes": "上传录音和笔记",
     "whatWillHappen": "会发生什么？",
     "whyNotWorking": "为什么不工作？",
-    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有8种独特的颜色可用。颜色将在第8位发言人之后重复。",
+    "youHaveXSpeakers": "您有 {{count}} 位发言人，但只有16种独特的颜色可用。颜色将在第16位发言人之后重复。",
     "expandAll": "全部展开",
     "failedReprocess": "重新处理失败",
     "filterByTag": "按标签筛选",

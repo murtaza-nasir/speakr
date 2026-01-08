@@ -607,7 +607,7 @@
     "uploadRecordingNotes": "Upload Recording & Notes",
     "whatWillHappen": "What will happen?",
     "whyNotWorking": "Why isn't it working?",
-    "youHaveXSpeakers": "You have {{count}} speakers, but only 8 unique colors are available. Colors will repeat after the 8th speaker.",
+    "youHaveXSpeakers": "You have {{count}} speakers, but only 16 unique colors are available. Colors will repeat after the 16th speaker.",
     "speakers": "Speakers",
     "publicLinkDesc": "Anyone with this link can access the recording",
     "internalSharingDesc": "Share with specific users in your organization"
