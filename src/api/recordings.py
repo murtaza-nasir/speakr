@@ -579,6 +579,10 @@ def generate_summary_endpoint(recording_id):
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             return jsonify({'error': 'No valid transcription available for summary generation'}), 400
 
+        # Check if transcription is an error message (not actual content)
+        if is_transcription_error(recording.transcription):
+            return jsonify({'error': 'Cannot generate summary: transcription failed. Please reprocess the transcription first.'}), 400
+
         # Check if already processing
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
             return jsonify({'error': 'Recording is already being processed'}), 400
@@ -1158,6 +1162,10 @@ def reprocess_summary(recording_id):
         # Check if transcription exists
         if not recording.transcription or len(recording.transcription.strip()) < 10:
             return jsonify({'error': 'No valid transcription available for summary generation'}), 400
+
+        # Check if transcription is an error message (not actual content)
+        if is_transcription_error(recording.transcription):
+            return jsonify({'error': 'Cannot generate summary: transcription failed. Please reprocess the transcription first.'}), 400
 
         # Check if already processing
         if recording.status in ['PROCESSING', 'SUMMARIZING']:
@@ -2759,6 +2767,14 @@ def chat_with_transcription():
 
         if not has_recording_access(recording, current_user):
             return jsonify({'error': 'You do not have permission to chat with this recording'}), 403
+
+        # Check if transcription exists
+        if not recording.transcription or len(recording.transcription.strip()) < 10:
+            return jsonify({'error': 'No transcription available for this recording'}), 400
+
+        # Check if transcription is an error message (not actual content)
+        if is_transcription_error(recording.transcription):
+            return jsonify({'error': 'Cannot chat: transcription failed. Please reprocess the transcription first.'}), 400
 
         # Check if chat client is available
         if chat_client is None:

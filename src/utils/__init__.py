@@ -41,6 +41,13 @@ from .token_auth import (
     is_token_authenticated
 )
 
+from .error_formatting import (
+    is_transcription_error,
+    format_error_for_user,
+    format_error_for_storage,
+    parse_stored_error
+)
+
 __all__ = [
     # JSON parsing
     'auto_close_json',
@@ -63,4 +70,9 @@ __all__ = [
     'hash_token',
     'load_user_from_token',
     'is_token_authenticated',
+    # Error formatting
+    'is_transcription_error',
+    'format_error_for_user',
+    'format_error_for_storage',
+    'parse_stored_error',
 ]

@@ -5,6 +5,28 @@
 
 import * as FailedUploads from '../db/failed-uploads.js';
 
+// Parse error message and return friendly error info
+function getFriendlyError(errorMessage) {
+    if (!errorMessage) return { title: 'Processing Error', message: 'An error occurred' };
+    const lowerText = errorMessage.toLowerCase();
+    const patterns = [
+        { patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'], title: 'File Too Large', guidance: 'Enable chunking in settings or compress the file' },
+        { patterns: ['timed out', 'timeout', 'deadline exceeded'], title: 'Processing Timeout', guidance: 'Try splitting the audio into smaller parts' },
+        { patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'], title: 'Authentication Error', guidance: 'Check the API key in settings' },
+        { patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'], title: 'Rate Limit Exceeded', guidance: 'Wait a few minutes and try again' },
+        { patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'], title: 'Connection Error', guidance: 'Check network connection' },
+        { patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'], title: 'Service Unavailable', guidance: 'Try again in a few minutes' },
+        { patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt'], title: 'Invalid Audio Format', guidance: 'Convert to MP3 or WAV before uploading' },
+        { patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'], title: 'Audio Extraction Failed', guidance: 'Convert to standard audio format' },
+    ];
+    for (const pattern of patterns) {
+        for (const p of pattern.patterns) {
+            if (lowerText.includes(p)) return { title: pattern.title, guidance: pattern.guidance };
+        }
+    }
+    return { title: 'Processing Error', guidance: 'Try reprocessing the recording' };
+}
+
 export function useUpload(state, utils) {
     const {
         uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
@@ -288,7 +310,9 @@ export function useUpload(state, utils) {
                     recordings.value[failedRecordIndex].status = 'FAILED';
                     recordings.value[failedRecordIndex].transcription = `Upload/Processing failed: ${error.message}`;
                 } else {
-                    setGlobalError(`Failed to process "${nextFileItem.file.name}": ${error.message}`);
+                    // Show friendly error message in toast
+                    const friendlyErr = getFriendlyError(error.message);
+                    setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
                 }
 
                 // Store failed upload in IndexedDB for background sync retry
@@ -508,7 +532,9 @@ export function useUpload(state, utils) {
                         fileItem.error = 'Processing failed on server.';
                     }
 
-                    setGlobalError(`Processing failed for "${fileItem.displayName || fileItem.file.name}".`);
+                    // Show friendly error message in toast
+                    const friendlyErr = getFriendlyError(fileItem.error);
+                    setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
                     clearInterval(pollInterval.value);
                     pollInterval.value = null;
                     resetCurrentFileProcessingState();

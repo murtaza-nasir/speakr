@@ -35,6 +35,159 @@ const getSpeakerColor = (speakerId) => {
     return `speaker-color-${(Math.abs(hash) % 8) + 1}`;
 };
 
+// Parse transcription text to detect if it's an error message
+const parseTranscriptionError = (text) => {
+    if (!text) return null;
+
+    // Check for JSON-formatted error from backend
+    if (text.startsWith('ERROR_JSON:')) {
+        try {
+            const jsonStr = text.substring(11);
+            const data = JSON.parse(jsonStr);
+            return {
+                title: data.t || 'Error',
+                message: data.m || 'An error occurred',
+                guidance: data.g || '',
+                icon: data.i || 'fa-exclamation-circle',
+                type: data.y || 'unknown',
+                isKnown: data.k || false,
+                technical: data.d || ''
+            };
+        } catch (e) {
+            console.error('Failed to parse error JSON:', e);
+        }
+    }
+
+    // Check for legacy error format
+    const errorPrefixes = [
+        'Transcription failed:',
+        'Processing failed:',
+        'ASR processing failed:',
+        'Audio extraction failed:'
+    ];
+
+    for (const prefix of errorPrefixes) {
+        if (text.startsWith(prefix)) {
+            return parseUnformattedError(text);
+        }
+    }
+
+    return null;
+};
+
+// Parse unformatted error messages and make them user-friendly
+const parseUnformattedError = (text) => {
+    const lowerText = text.toLowerCase();
+
+    // Known error patterns
+    const patterns = [
+        {
+            patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
+            title: 'File Too Large',
+            message: 'The audio file exceeds the maximum size allowed by the transcription service.',
+            guidance: 'Try enabling audio chunking in your settings, or compress the audio file before uploading.',
+            icon: 'fa-file-audio',
+            type: 'size_limit'
+        },
+        {
+            patterns: ['timed out', 'timeout', 'deadline exceeded'],
+            title: 'Processing Timeout',
+            message: 'The transcription took too long to complete.',
+            guidance: 'This can happen with very long recordings. Try splitting the audio into smaller parts.',
+            icon: 'fa-clock',
+            type: 'timeout'
+        },
+        {
+            patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'],
+            title: 'Authentication Error',
+            message: 'The transcription service rejected the API credentials.',
+            guidance: 'Please check that the API key is correct and has not expired.',
+            icon: 'fa-key',
+            type: 'auth'
+        },
+        {
+            patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'],
+            title: 'Rate Limit Exceeded',
+            message: 'Too many requests were sent to the transcription service.',
+            guidance: 'Please wait a few minutes and try reprocessing.',
+            icon: 'fa-hourglass-half',
+            type: 'rate_limit'
+        },
+        {
+            patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'],
+            title: 'Connection Error',
+            message: 'Could not connect to the transcription service.',
+            guidance: 'Check your internet connection and ensure the service is available.',
+            icon: 'fa-wifi',
+            type: 'connection'
+        },
+        {
+            patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'],
+            title: 'Service Unavailable',
+            message: 'The transcription service is temporarily unavailable.',
+            guidance: 'This is usually temporary. Please try again in a few minutes.',
+            icon: 'fa-server',
+            type: 'service_error'
+        },
+        {
+            patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt', 'not valid audio'],
+            title: 'Invalid Audio Format',
+            message: 'The audio file format is not supported or the file may be corrupted.',
+            guidance: 'Try converting the audio to MP3 or WAV format before uploading.',
+            icon: 'fa-file-audio',
+            type: 'format'
+        },
+        {
+            patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'],
+            title: 'Audio Extraction Failed',
+            message: 'Could not extract audio from the uploaded file.',
+            guidance: 'Try converting the file to a standard audio format (MP3, WAV) before uploading.',
+            icon: 'fa-file-video',
+            type: 'extraction'
+        }
+    ];
+
+    // Check patterns
+    for (const pattern of patterns) {
+        for (const p of pattern.patterns) {
+            if (lowerText.includes(p)) {
+                return {
+                    title: pattern.title,
+                    message: pattern.message,
+                    guidance: pattern.guidance,
+                    icon: pattern.icon,
+                    type: pattern.type,
+                    isKnown: true,
+                    technical: text
+                };
+            }
+        }
+    }
+
+    // Unknown error - clean it up
+    let cleanMessage = text;
+    for (const prefix of ['Transcription failed:', 'Processing failed:', 'Error:', 'ASR processing failed:']) {
+        if (cleanMessage.startsWith(prefix)) {
+            cleanMessage = cleanMessage.substring(prefix.length).trim();
+        }
+    }
+
+    // Truncate if too long
+    if (cleanMessage.length > 200) {
+        cleanMessage = cleanMessage.substring(0, 200) + '...';
+    }
+
+    return {
+        title: 'Processing Error',
+        message: cleanMessage,
+        guidance: 'If this error persists, try reprocessing the recording.',
+        icon: 'fa-exclamation-circle',
+        type: 'unknown',
+        isKnown: false,
+        technical: text
+    };
+};
+
 // Wait for the DOM to be fully loaded before mounting the Vue app
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize i18n before creating Vue app (if not already initialized)
@@ -826,10 +979,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             const processedTranscription = computed(() => {
                 if (!selectedRecording.value?.transcription) {
-                    return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [] };
+                    return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [], isError: false };
                 }
 
                 const transcription = selectedRecording.value.transcription;
+
+                // Check for error message format
+                const errorInfo = parseTranscriptionError(transcription);
+                if (errorInfo) {
+                    return {
+                        hasDialogue: false,
+                        isJson: false,
+                        isError: true,
+                        error: errorInfo,
+                        content: '',
+                        speakers: [],
+                        simpleSegments: [],
+                        bubbleRows: []
+                    };
+                }
+
                 let transcriptionData;
 
                 try {
@@ -1502,6 +1671,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                              unifiedStatus === 'completed' ? 'Done' : 'Failed',
                             queuePosition: job.position,
                             errorMessage: job.error_message,
+                            friendlyError: job.error_message ? parseUnformattedError(job.error_message) : null,
                             completedAt: job.completed_at,
                             source: 'job'
                         });

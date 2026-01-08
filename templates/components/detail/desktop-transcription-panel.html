@@ -102,8 +102,83 @@
             <p class="text-[var(--text-muted)]" v-text="t('transcription.noTranscription')"></p>
         </div>
 
+        <!-- Error Display (when transcription is an error message) -->
+        <div v-if="processedTranscription.isError" class="error-display-container">
+            <div :class="[
+                'rounded-lg p-5 border',
+                processedTranscription.error.type === 'size_limit' ? 'bg-amber-500/10 border-amber-500/30' :
+                processedTranscription.error.type === 'timeout' ? 'bg-orange-500/10 border-orange-500/30' :
+                processedTranscription.error.type === 'auth' ? 'bg-red-500/10 border-red-500/30' :
+                processedTranscription.error.type === 'rate_limit' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                processedTranscription.error.type === 'connection' ? 'bg-blue-500/10 border-blue-500/30' :
+                processedTranscription.error.type === 'service_error' ? 'bg-purple-500/10 border-purple-500/30' :
+                'bg-gray-500/10 border-gray-500/30'
+            ]">
+                <div class="flex items-start gap-4">
+                    <div :class="[
+                        'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
+                        processedTranscription.error.type === 'size_limit' ? 'bg-amber-500/20' :
+                        processedTranscription.error.type === 'timeout' ? 'bg-orange-500/20' :
+                        processedTranscription.error.type === 'auth' ? 'bg-red-500/20' :
+                        processedTranscription.error.type === 'rate_limit' ? 'bg-yellow-500/20' :
+                        processedTranscription.error.type === 'connection' ? 'bg-blue-500/20' :
+                        processedTranscription.error.type === 'service_error' ? 'bg-purple-500/20' :
+                        'bg-gray-500/20'
+                    ]">
+                        <i :class="[
+                            'fas text-xl',
+                            processedTranscription.error.icon,
+                            processedTranscription.error.type === 'size_limit' ? 'text-amber-500' :
+                            processedTranscription.error.type === 'timeout' ? 'text-orange-500' :
+                            processedTranscription.error.type === 'auth' ? 'text-red-500' :
+                            processedTranscription.error.type === 'rate_limit' ? 'text-yellow-500' :
+                            processedTranscription.error.type === 'connection' ? 'text-blue-500' :
+                            processedTranscription.error.type === 'service_error' ? 'text-purple-500' :
+                            'text-gray-500'
+                        ]"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 :class="[
+                            'text-lg font-semibold mb-2',
+                            processedTranscription.error.type === 'size_limit' ? 'text-amber-600 dark:text-amber-400' :
+                            processedTranscription.error.type === 'timeout' ? 'text-orange-600 dark:text-orange-400' :
+                            processedTranscription.error.type === 'auth' ? 'text-red-600 dark:text-red-400' :
+                            processedTranscription.error.type === 'rate_limit' ? 'text-yellow-600 dark:text-yellow-400' :
+                            processedTranscription.error.type === 'connection' ? 'text-blue-600 dark:text-blue-400' :
+                            processedTranscription.error.type === 'service_error' ? 'text-purple-600 dark:text-purple-400' :
+                            'text-gray-600 dark:text-gray-400'
+                        ]">
+                            ${processedTranscription.error.title}
+                        </h3>
+                        <p class="text-[var(--text-primary)] mb-3">
+                            ${processedTranscription.error.message}
+                        </p>
+                        <div v-if="processedTranscription.error.guidance" class="flex items-start gap-2 text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)]/50 rounded-lg p-3">
+                            <i class="fas fa-lightbulb text-yellow-500 mt-0.5 flex-shrink-0"></i>
+                            <span>${processedTranscription.error.guidance}</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Action buttons -->
+                <div class="mt-4 flex items-center gap-3 pt-4 border-t border-[var(--border-secondary)]">
+                    <button @click="reprocessTranscription(selectedRecording.id)"
+                            v-if="selectedRecording.can_edit !== false"
+                            class="px-4 py-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white rounded-lg transition-colors flex items-center gap-2">
+                        <i class="fas fa-redo-alt"></i>
+                        <span>Reprocess</span>
+                    </button>
+                    <details class="text-xs w-full">
+                        <summary class="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-secondary)]">
+                            Technical details
+                        </summary>
+                        <pre v-if="processedTranscription.error.technical" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-lg text-[var(--text-muted)] text-xs max-h-32 overflow-auto whitespace-pre-wrap break-all w-full">${processedTranscription.error.technical}</pre>
+                    </details>
+                </div>
+            </div>
+        </div>
+
         <!-- Speaker Legend (for dialogue transcriptions in bubble view only) -->
-        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptionViewMode === 'bubble'"
+        <div v-if="!processedTranscription.isError && processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptionViewMode === 'bubble'"
              :class="['speaker-legend', legendExpanded ? 'expanded' : '']">
             <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                 <div class="speaker-legend-title">
@@ -122,8 +197,8 @@
             </div>
         </div>
 
-        <!-- Transcription Display -->
-        <div v-if="selectedRecording.transcription">
+        <!-- Transcription Display (hide if it's an error) -->
+        <div v-if="selectedRecording.transcription && !processedTranscription.isError">
             <!-- Simple View -->
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'"
                  class="transcription-simple-view">

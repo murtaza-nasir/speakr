@@ -27,6 +27,7 @@ from src.services.llm import is_using_openai_api, call_llm_completion, format_ap
 from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError
+from src.utils.error_formatting import format_error_for_storage
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 from src.config.app_config import (
@@ -996,6 +997,118 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
         raise
 
 
+def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language):
+    """
+    Transcribe a large audio file using chunking with the connector architecture.
+
+    This is used when the connector doesn't handle chunking internally (e.g., OpenAI Whisper)
+    and the file exceeds the configured chunk limit.
+
+    Args:
+        connector: The transcription connector to use
+        filepath: Path to the audio file
+        filename: Original filename for logging
+        mime_type: MIME type of the audio file
+        language: Optional language code
+
+    Returns:
+        Merged transcription text
+    """
+    import tempfile
+    from src.services.transcription import TranscriptionRequest
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            # Create chunks
+            current_app.logger.info(f"Creating chunks for large file: {filepath}")
+            chunks = chunking_service.create_chunks(filepath, temp_dir)
+
+            if not chunks:
+                raise ChunkProcessingError("No chunks were created from the audio file")
+
+            current_app.logger.info(f"Created {len(chunks)} chunks, processing each with connector...")
+
+            # Process each chunk
+            chunk_results = []
+
+            for i, chunk in enumerate(chunks):
+                max_retries = 3
+                retry_count = 0
+                success = False
+
+                while retry_count < max_retries and not success:
+                    try:
+                        retry_suffix = f" (retry {retry_count + 1}/{max_retries})" if retry_count > 0 else ""
+                        current_app.logger.info(f"Processing chunk {i+1}/{len(chunks)}: {chunk['filename']} ({chunk['size_mb']:.1f}MB){retry_suffix}")
+
+                        # Transcribe chunk using connector
+                        with open(chunk['path'], 'rb') as chunk_file:
+                            request = TranscriptionRequest(
+                                audio_file=chunk_file,
+                                filename=chunk['filename'],
+                                mime_type='audio/mpeg',  # Chunks are always MP3
+                                language=language,
+                                diarize=False  # Chunking doesn't support diarization
+                            )
+
+                            response = connector.transcribe(request)
+
+                        # Store chunk result
+                        chunk_result = {
+                            'index': chunk['index'],
+                            'start_time': chunk['start_time'],
+                            'end_time': chunk['end_time'],
+                            'duration': chunk['duration'],
+                            'size_mb': chunk['size_mb'],
+                            'transcription': response.text,
+                            'filename': chunk['filename']
+                        }
+                        chunk_results.append(chunk_result)
+                        current_app.logger.info(f"Chunk {i+1} transcribed successfully: {len(response.text)} characters")
+                        success = True
+
+                    except Exception as chunk_error:
+                        retry_count += 1
+                        error_msg = str(chunk_error)
+
+                        if retry_count < max_retries:
+                            wait_time = 15 if "timeout" not in error_msg.lower() else 30
+                            current_app.logger.warning(f"Chunk {i+1} failed (attempt {retry_count}/{max_retries}): {chunk_error}. Retrying in {wait_time}s...")
+                            time.sleep(wait_time)
+                        else:
+                            current_app.logger.error(f"Chunk {i+1} failed after {max_retries} attempts: {chunk_error}")
+                            chunk_result = {
+                                'index': chunk['index'],
+                                'start_time': chunk['start_time'],
+                                'end_time': chunk['end_time'],
+                                'transcription': f"[Chunk {i+1} transcription failed: {str(chunk_error)}]",
+                                'filename': chunk['filename']
+                            }
+                            chunk_results.append(chunk_result)
+
+                # Small delay between chunks
+                if i < len(chunks) - 1:
+                    time.sleep(2)
+
+            # Merge transcriptions
+            current_app.logger.info(f"Merging {len(chunk_results)} chunk transcriptions...")
+            merged_transcription = chunking_service.merge_transcriptions(chunk_results)
+
+            if not merged_transcription.strip():
+                raise ChunkProcessingError("Merged transcription is empty")
+
+            # Log statistics
+            chunking_service.log_processing_statistics(chunk_results)
+
+            return merged_transcription
+
+        except Exception as e:
+            current_app.logger.error(f"Chunking transcription failed for {filepath}: {e}")
+            if 'chunks' in locals():
+                chunking_service.cleanup_chunks(chunks)
+            raise ChunkProcessingError(f"Chunked transcription failed: {str(e)}")
+
+
 def transcribe_with_connector(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=None, min_speakers=None, max_speakers=None, tag_id=None):
     """
     Transcribe audio using the new connector-based architecture.
@@ -1078,7 +1191,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     recording.status = 'FAILED'
                     recording.error_msg = f"Audio extraction failed: {str(e)}"
                     db.session.commit()
-                    return
+                    raise  # Re-raise so job queue marks the job as failed
 
             # Determine if we should diarize
             if diarize is None:
@@ -1091,35 +1204,59 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 current_app.logger.warning(f"Diarization requested but connector '{connector_name}' doesn't support it")
                 should_diarize = False
 
-            # Build the transcription request
-            with open(actual_filepath, 'rb') as audio_file:
-                request = TranscriptionRequest(
-                    audio_file=audio_file,
-                    filename=actual_filename,
-                    mime_type=actual_content_type,
-                    language=language,
-                    diarize=should_diarize,
-                    min_speakers=min_speakers,
-                    max_speakers=max_speakers
+            # Check if chunking is needed for large files
+            # The chunking service respects this priority:
+            # 1. Connector handles internally (e.g., ASR endpoint) → no app-level chunking
+            # 2. User's ENABLE_CHUNKING=false → no chunking
+            # 3. User's CHUNK_LIMIT setting → use their settings
+            # 4. Connector defaults (max_file_size, recommended_chunk_seconds)
+            # 5. App default (20MB)
+            connector_specs = connector.specifications
+            should_chunk = (
+                chunking_service and
+                chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+            )
+
+            if should_chunk:
+                # Use chunking for large files
+                file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
+                current_app.logger.info(f"File {actual_filepath} is large ({file_size_mb:.1f}MB), using chunking for transcription")
+                transcription_text = transcribe_chunks_with_connector(
+                    connector, actual_filepath, actual_filename, actual_content_type, language
                 )
-
-                current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
-                response = connector.transcribe(request)
-
-            # Store the result
-            if response.segments and response.has_diarization():
-                # Store as JSON with segments (diarized format)
-                recording.transcription = response.to_storage_format()
-                current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
+                # Store as plain text (chunked transcription doesn't preserve diarization)
+                recording.transcription = transcription_text
+                current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
             else:
-                # Store as plain text
-                recording.transcription = response.text
-                current_app.logger.info(f"Transcription completed: {len(response.text)} characters")
+                # Build the transcription request for single file
+                with open(actual_filepath, 'rb') as audio_file:
+                    request = TranscriptionRequest(
+                        audio_file=audio_file,
+                        filename=actual_filename,
+                        mime_type=actual_content_type,
+                        language=language,
+                        diarize=should_diarize,
+                        min_speakers=min_speakers,
+                        max_speakers=max_speakers
+                    )
 
-            # Store speaker embeddings if available
-            if response.speaker_embeddings:
-                recording.speaker_embeddings = response.speaker_embeddings
-                current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
+                    current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
+                    response = connector.transcribe(request)
+
+                # Store the result
+                if response.segments and response.has_diarization():
+                    # Store as JSON with segments (diarized format)
+                    recording.transcription = response.to_storage_format()
+                    current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
+                else:
+                    # Store as plain text
+                    recording.transcription = response.text
+                    current_app.logger.info(f"Transcription completed: {len(response.text)} characters")
+
+                # Store speaker embeddings if available
+                if response.speaker_embeddings:
+                    recording.speaker_embeddings = response.speaker_embeddings
+                    current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
 
             # Calculate and save transcription duration
             transcription_end_time = time.time()
@@ -1162,11 +1299,14 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             recording = db.session.get(Recording, recording_id)
             if recording:
                 recording.status = 'FAILED'
-                recording.transcription = f"Transcription failed: {error_msg}"
+                recording.transcription = format_error_for_storage(error_msg)
 
                 end_time = datetime.utcnow()
                 recording.processing_time_seconds = (end_time - start_time).total_seconds()
                 db.session.commit()
+
+            # Re-raise so job queue marks the job as failed
+            raise
 
 
 def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
@@ -1227,7 +1367,7 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
                     recording.status = 'FAILED'
                     recording.error_msg = f"Audio extraction failed: {str(e)}"
                     db.session.commit()
-                    return
+                    raise  # Re-raise so job queue marks the job as failed
 
             # Keep track of converted filepath for retry logic
             converted_filepath = None
@@ -1497,9 +1637,11 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             recording = db.session.get(Recording, recording_id)
             if recording:
                 recording.status = 'FAILED'
-                recording.transcription = user_error_msg
+                recording.transcription = format_error_for_storage(user_error_msg)
                 db.session.commit()
 
+            # Re-raise so job queue marks the job as failed
+            raise
 
 
 def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None, tag_id=None):
@@ -1670,7 +1812,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
                 if recording.status not in ['COMPLETED', 'FAILED']: # Avoid overwriting final state
                     recording.status = 'FAILED'
                 if not recording.transcription: # If transcription itself failed
-                     recording.transcription = f"Processing failed: {str(e)}"
+                     recording.transcription = format_error_for_storage(str(e))
                 # Add error note to summary if appropriate stage was reached
                 if recording.status == 'SUMMARIZING' and not recording.summary:
                      recording.summary = f"[Processing failed during summarization: {str(e)}]"
@@ -1679,6 +1821,8 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
                 recording.processing_time_seconds = (end_time - start_time).total_seconds()
                 db.session.commit()
 
+            # Re-raise so job queue marks the job as failed
+            raise
 
 
 def transcribe_single_file(filepath, recording):
