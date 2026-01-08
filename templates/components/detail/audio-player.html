@@ -27,22 +27,22 @@
              @mousedown="startProgressDrag"
              @touchstart.prevent="startProgressDrag">
             <!-- Track background -->
-            <div class="w-full h-2 rounded-full relative" style="background: rgba(128, 128, 128, 0.4);">
+            <div class="w-full h-2 rounded-full relative bg-[var(--border-accent)] opacity-40">
                 <!-- Progress fill -->
-                <div class="h-full bg-[var(--bg-accent)] rounded-full pointer-events-none"
+                <div class="h-full bg-[var(--text-accent)] rounded-full pointer-events-none opacity-100"
                      :style="{ width: audioProgressPercent + '%' }"></div>
-                <!-- Progress dot - stays within track bounds -->
-                <div class="absolute top-1/2 w-4 h-4 bg-[var(--bg-accent)] rounded-full shadow-md transition-transform group-hover:scale-110 pointer-events-none -translate-y-1/2"
-                     :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
-                     style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
             </div>
+            <!-- Progress dot - stays within track bounds -->
+            <div class="absolute top-1/2 w-4 h-4 bg-[var(--text-accent)] rounded-full shadow-md transition-transform group-hover:scale-110 pointer-events-none -translate-y-1/2"
+                 :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
+                 style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
         </div>
 
         <!-- Controls Row -->
         <div class="flex items-center gap-2">
             <!-- Play/Pause Button -->
             <button @click="toggleAudioPlayback"
-                    class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95"
+                    class="w-10 h-10 flex items-center justify-center rounded-full player-play-button transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg active:scale-95"
                     :title="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
                 <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
             </button>
@@ -59,7 +59,7 @@
 
             <!-- Volume Button -->
             <button @click="toggleAudioMute"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
                     :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
                 <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
             </button>
@@ -67,7 +67,7 @@
             <!-- Download Button -->
             <a :href="'/audio/' + selectedRecording.id + '?download=true'"
                download
-               class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+               class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
                :title="t('buttons.downloadAudio') || 'Download audio'">
                 <i class="fas fa-download text-sm"></i>
             </a>

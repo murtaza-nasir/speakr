@@ -2831,7 +2831,7 @@ body {
     color-scheme: dark;
 }
 
-/* Custom volume slider styling - high contrast track */
+/* Custom volume slider styling - accent colored */
 .volume-slider {
     -webkit-appearance: none;
     appearance: none;
@@ -2841,13 +2841,15 @@ body {
 }
 
 .volume-slider::-webkit-slider-runnable-track {
-    background: rgba(128, 128, 128, 0.4);
+    background: var(--border-accent);
+    opacity: 0.5;
     height: 6px;
     border-radius: 3px;
 }
 
 .dark .volume-slider::-webkit-slider-runnable-track {
-    background: rgba(128, 128, 128, 0.5);
+    background: var(--border-accent);
+    opacity: 0.6;
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -2856,7 +2858,7 @@ body {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--bg-accent);
+    background: var(--text-accent);
     margin-top: -3px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     cursor: pointer;
@@ -2864,20 +2866,22 @@ body {
 }
 
 .volume-slider::-moz-range-track {
-    background: rgba(128, 128, 128, 0.4);
+    background: var(--border-accent);
+    opacity: 0.5;
     height: 6px;
     border-radius: 3px;
 }
 
 .dark .volume-slider::-moz-range-track {
-    background: rgba(128, 128, 128, 0.5);
+    background: var(--border-accent);
+    opacity: 0.6;
 }
 
 .volume-slider::-moz-range-thumb {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: var(--bg-accent);
+    background: var(--text-accent);
     border: none;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     cursor: pointer;
@@ -2892,6 +2896,25 @@ body {
 .volume-slider:hover::-moz-range-thumb {
     transform: scale(1.2);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+}
+
+/* Player play button - accent colored with proper contrast */
+.player-play-button {
+    background-color: var(--text-accent);
+    color: white;
+}
+
+.player-play-button:hover {
+    filter: brightness(1.1);
+}
+
+.dark .player-play-button {
+    background-color: var(--text-accent);
+    color: var(--bg-primary);
+}
+
+.dark .player-play-button:hover {
+    filter: brightness(1.15);
 }
 
 /* Custom audio player wrapper for better control */
