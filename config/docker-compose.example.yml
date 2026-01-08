@@ -13,16 +13,18 @@ services:
     # 1. Copy this file to your project root:
     #    cp config/docker-compose.example.yml docker-compose.yml
     #
-    # 2. Choose your transcription method and copy the corresponding .env file:
+    # 2. Copy the unified transcription config (RECOMMENDED):
+    #    cp config/env.transcription.example .env
     #
-    #    For standard Whisper API (no speaker diarization):
-    #    cp config/env.whisper.example .env
+    #    This supports all providers with auto-detection:
+    #    - OpenAI GPT-4o with diarization (set TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize)
+    #    - Self-hosted ASR/WhisperX (set ASR_BASE_URL=http://your-asr:9000)
+    #    - Legacy Whisper (set TRANSCRIPTION_MODEL=whisper-1)
     #
-    #    For WhisperX ASR with voice profiles (recommended for speaker features):
-    #    cp config/env.whisperx.example .env
-    #
-    #    For basic ASR with diarization (no voice profiles):
-    #    cp config/env.asr.example .env
+    #    Legacy config files (still supported):
+    #    - config/env.whisper.example    - Standard Whisper API
+    #    - config/env.whisperx.example   - WhisperX with voice profiles
+    #    - config/env.asr.example        - Basic ASR with diarization
     #
     # 3. Edit the .env file to add your API keys and settings.
     #
