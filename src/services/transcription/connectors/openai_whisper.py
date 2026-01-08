@@ -34,10 +34,13 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
     PROVIDER_NAME = "openai_whisper"
 
     # OpenAI Whisper has a 25MB file limit and doesn't handle chunking internally
+    # Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm, flac, ogg, oga
+    # NOT supported: opus (used by WhatsApp voice notes, Discord)
     SPECIFICATIONS = ConnectorSpecifications(
         max_file_size_bytes=25 * 1024 * 1024,  # 25MB
         handles_chunking_internally=False,
         recommended_chunk_seconds=600,  # 10 minutes
+        unsupported_codecs=frozenset({'opus'}),  # OpenAI API doesn't support opus
     )
 
     def __init__(self, config: Dict[str, Any]):
