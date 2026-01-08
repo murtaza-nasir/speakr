@@ -134,17 +134,18 @@ class ConnectorRegistry:
             transcription_model = os.environ.get('TRANSCRIPTION_MODEL', '').lower()
             whisper_model = os.environ.get('WHISPER_MODEL', '').lower()
 
-            # Priority 2: ASR endpoint - check ASR_BASE_URL directly (smarter than flag)
-            if asr_base_url:
-                connector_name = 'asr_endpoint'
-                logger.info("Auto-detected ASR endpoint from ASR_BASE_URL")
-            elif use_asr_flag:
-                # Backwards compat: USE_ASR_ENDPOINT flag still works
-                connector_name = 'asr_endpoint'
+            # Deprecation warning for legacy USE_ASR_ENDPOINT flag
+            if use_asr_flag:
                 logger.warning(
                     "USE_ASR_ENDPOINT=true is deprecated. "
                     "Set ASR_BASE_URL instead for auto-detection, or use TRANSCRIPTION_CONNECTOR=asr_endpoint"
                 )
+
+            # Priority 2: ASR endpoint - check ASR_BASE_URL or legacy flag
+            if asr_base_url or use_asr_flag:
+                connector_name = 'asr_endpoint'
+                if asr_base_url:
+                    logger.info("Auto-detected ASR endpoint from ASR_BASE_URL")
             # Priority 3: Model-based detection
             elif transcription_model and 'gpt-4o' in transcription_model:
                 connector_name = 'openai_transcribe'

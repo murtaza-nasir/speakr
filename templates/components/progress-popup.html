@@ -106,9 +106,28 @@
                 </div>
                 <div v-for="item in failedProgressItems"
                      :key="item.id"
-                     class="px-2 py-1.5 bg-red-500/10 border-l-2 border-red-500 rounded-md mb-1">
+                     :class="[
+                         'px-2 py-1.5 rounded-md mb-1 border-l-2',
+                         item.friendlyError?.type === 'size_limit' ? 'bg-amber-500/10 border-amber-500' :
+                         item.friendlyError?.type === 'timeout' ? 'bg-orange-500/10 border-orange-500' :
+                         item.friendlyError?.type === 'auth' ? 'bg-red-500/10 border-red-500' :
+                         item.friendlyError?.type === 'rate_limit' ? 'bg-yellow-500/10 border-yellow-500' :
+                         item.friendlyError?.type === 'connection' ? 'bg-blue-500/10 border-blue-500' :
+                         item.friendlyError?.type === 'service_error' ? 'bg-purple-500/10 border-purple-500' :
+                         'bg-red-500/10 border-red-500'
+                     ]">
                     <div class="flex items-center gap-2">
-                        <i class="fas fa-exclamation-circle text-xs text-red-500"></i>
+                        <i :class="[
+                            'fas text-xs',
+                            item.friendlyError?.icon || 'fa-exclamation-circle',
+                            item.friendlyError?.type === 'size_limit' ? 'text-amber-500' :
+                            item.friendlyError?.type === 'timeout' ? 'text-orange-500' :
+                            item.friendlyError?.type === 'auth' ? 'text-red-500' :
+                            item.friendlyError?.type === 'rate_limit' ? 'text-yellow-500' :
+                            item.friendlyError?.type === 'connection' ? 'text-blue-500' :
+                            item.friendlyError?.type === 'service_error' ? 'text-purple-500' :
+                            'text-red-500'
+                        ]"></i>
                         <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
                         <div class="flex items-center gap-1">
                             <button v-if="item.jobId" @click.stop="retryProgressItem(item)"
@@ -123,7 +142,22 @@
                             </button>
                         </div>
                     </div>
-                    <span v-if="item.errorMessage" class="text-[10px] text-red-400 block truncate mt-0.5">${item.errorMessage}</span>
+                    <!-- Friendly error title and message -->
+                    <div v-if="item.friendlyError" class="mt-0.5">
+                        <span :class="[
+                            'text-[10px] font-medium',
+                            item.friendlyError.type === 'size_limit' ? 'text-amber-500' :
+                            item.friendlyError.type === 'timeout' ? 'text-orange-500' :
+                            item.friendlyError.type === 'auth' ? 'text-red-500' :
+                            item.friendlyError.type === 'rate_limit' ? 'text-yellow-500' :
+                            item.friendlyError.type === 'connection' ? 'text-blue-500' :
+                            item.friendlyError.type === 'service_error' ? 'text-purple-500' :
+                            'text-red-400'
+                        ]">${item.friendlyError.title}</span>
+                        <span v-if="item.friendlyError.guidance" class="text-[10px] text-[var(--text-muted)] block truncate">${item.friendlyError.guidance}</span>
+                    </div>
+                    <!-- Fallback to raw error message if no friendly error -->
+                    <span v-else-if="item.errorMessage" class="text-[10px] text-red-400 block truncate mt-0.5">${item.errorMessage}</span>
                 </div>
             </div>
 

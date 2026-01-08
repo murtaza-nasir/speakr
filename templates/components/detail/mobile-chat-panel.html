@@ -46,10 +46,14 @@
     </div>
     <div class="border-t border-[var(--border-primary)] p-4 bg-[var(--bg-tertiary)]">
         <div class="flex gap-2">
-            <textarea v-model="chatInput" @keydown="handleChatKeydown" :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED'" :placeholder="t('chat.placeholder')" class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" rows="2"></textarea>
-            <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED'" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <textarea v-model="chatInput" @keydown="handleChatKeydown" :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError" :placeholder="t('chat.placeholder')" class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" rows="2"></textarea>
+            <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
+        <p v-if="processedTranscription.isError" class="text-xs text-amber-500 mt-2">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            Cannot chat: transcription failed
+        </p>
     </div>
 </div>

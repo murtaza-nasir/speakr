@@ -240,6 +240,52 @@ class FairJobQueue:
                     db.session.rollback()
                     return None
 
+    def _is_permanent_error(self, error_str: str) -> bool:
+        """
+        Detect if an error is permanent and should not be retried.
+
+        Permanent errors include:
+        - 413: File too large (user needs to enable chunking or compress file)
+        - 401/403: Authentication/authorization errors (credentials issue)
+        - 402: Payment required (billing issue)
+        - 404: Resource not found (model doesn't exist)
+        - Invalid format errors (file needs to be converted)
+        """
+        error_lower = error_str.lower()
+
+        # HTTP status codes that indicate permanent errors
+        permanent_codes = ['413', '401', '402', '403']
+        for code in permanent_codes:
+            if f'error code: {code}' in error_lower or f'status {code}' in error_lower:
+                return True
+
+        # Specific error patterns that are permanent
+        permanent_patterns = [
+            'maximum content size limit',
+            'file too large',
+            'payload too large',
+            'invalid api key',
+            'incorrect api key',
+            'authentication failed',
+            'unauthorized',
+            'permission denied',
+            'access denied',
+            'billing',
+            'payment required',
+            'quota exceeded',
+            'insufficient funds',
+            'model.*not found',
+            'invalid model',
+            'unsupported.*format',
+            'invalid.*file.*format',
+        ]
+
+        for pattern in permanent_patterns:
+            if pattern in error_lower:
+                return True
+
+        return False
+
     def _process_job(self, job):
         """Process a single job by dispatching to the appropriate task function."""
         job_id = job.id
@@ -289,15 +335,20 @@ class FairJobQueue:
                     logger.info(f"Job {job_id} completed successfully")
 
             except Exception as e:
+                error_str = str(e)
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
+
+                # Check if this is a permanent error that shouldn't be retried
+                is_permanent_error = self._is_permanent_error(error_str)
 
                 # Re-fetch job to update it
                 job = db.session.get(ProcessingJob, job_id)
                 if job:
-                    job.error_message = str(e)
+                    job.error_message = error_str
                     job.retry_count += 1
 
-                    if job.retry_count < MAX_RETRIES:
+                    # Only retry if: not a permanent error AND under retry limit
+                    if not is_permanent_error and job.retry_count < MAX_RETRIES:
                         # Re-queue for retry
                         job.status = 'queued'
                         job.started_at = None
@@ -307,8 +358,15 @@ class FairJobQueue:
                         job.completed_at = datetime.utcnow()
                         recording = db.session.get(Recording, recording_id)
 
-                        if is_new_upload and recording:
-                            # For failed new uploads, delete the recording and file
+                        if is_permanent_error:
+                            logger.info(f"Job {job_id} failed with permanent error (no retry): {error_str[:100]}")
+
+                        # For permanent errors (like file too large), keep the recording so user can fix settings
+                        # Only delete recordings for transient errors that failed after all retries
+                        should_delete = is_new_upload and recording and not is_permanent_error
+
+                        if should_delete:
+                            # For failed new uploads with transient errors, delete the recording and file
                             logger.info(f"Deleting failed new upload: recording {recording_id}")
                             try:
                                 # Delete the audio file
@@ -322,11 +380,16 @@ class FairJobQueue:
                             except Exception as delete_err:
                                 logger.error(f"Error deleting failed upload recording: {delete_err}")
                         elif recording:
-                            # For reprocessing failures, just mark as failed
+                            # Keep the recording with FAILED status so user can see the error and fix settings
                             recording.status = 'FAILED'
-                            recording.error_message = str(e)
+                            # Format the error for nice display
+                            from src.utils.error_formatting import format_error_for_storage
+                            recording.transcription = format_error_for_storage(error_str)
 
-                        logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+                        if is_permanent_error:
+                            logger.error(f"Job {job_id} failed permanently (non-retryable error)")
+                        else:
+                            logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
 
                     db.session.commit()
 

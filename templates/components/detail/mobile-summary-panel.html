@@ -23,8 +23,19 @@
             <div v-else-if="!selectedRecording.summary" class="text-center py-8">
                 <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
                 <p class="text-[var(--text-muted)] mb-4" v-text="t('summary.noSummary')"></p>
+                <!-- Show message if transcription is an error -->
+                <p v-if="processedTranscription.isError" class="text-sm text-amber-500 mb-2">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Cannot generate summary: transcription failed
+                </p>
                 <button @click="generateSummary"
-                        class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                        :disabled="processedTranscription.isError"
+                        :class="[
+                            'px-6 py-3 font-medium rounded-lg shadow-lg transition-all duration-200',
+                            processedTranscription.isError
+                                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105'
+                        ]">
                     <i class="fas fa-magic mr-2"></i>Generate Summary
                 </button>
             </div>
