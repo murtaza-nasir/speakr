@@ -39,12 +39,15 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
     # - 25MB file size limit
     # - 1400 second max duration for diarize model
     # - chunking_strategy="auto" handles files >30s internally
+    # Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm, flac, ogg, oga
+    # NOT supported: opus (used by WhatsApp voice notes, Discord)
     SPECIFICATIONS = ConnectorSpecifications(
         max_file_size_bytes=25 * 1024 * 1024,  # 25MB
         max_duration_seconds=1400,  # ~23.3 minutes max for diarize model
         min_duration_for_chunking=30,  # >30s needs chunking_strategy param
         handles_chunking_internally=True,  # Uses chunking_strategy="auto"
         requires_chunking_param=True,  # Must send chunking_strategy for >30s
+        unsupported_codecs=frozenset({'opus'}),  # OpenAI API doesn't support opus
     )
 
     # Models and their capabilities
