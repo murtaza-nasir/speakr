@@ -41,6 +41,11 @@ All endpoints require authentication. See [API Tokens](api-tokens.md) for detail
 | `GET /api/v1/docs` | Interactive Swagger UI |
 | `GET /api/v1/openapi.json` | OpenAPI 3.0 specification |
 
+<div style="max-width: 90%; margin: 1.5em auto;">
+  <img src="../../assets/images/screenshots/api-swagger-ui.png" alt="Swagger UI Documentation" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">Interactive API documentation with Swagger UI at /api/v1/docs</p>
+</div>
+
 ---
 
 ## Stats

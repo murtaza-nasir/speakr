@@ -6,16 +6,17 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.7.1 - Stability & Audio Improvements"
-    **Bug Fixes & Improvements**
+!!! info "Latest Release: v0.8.0 - Connector Architecture & REST API"
+    **Modular Transcription & Full API Access**
 
-    - **PostgreSQL Support** - Added `psycopg2-binary` driver for PostgreSQL database option (#159)
-    - **Audio Download Button** - Explicit download button next to audio player, works on mobile (#155)
-    - **Job Queue Race Condition Fix** - Fixed issue where multiple workers could claim the same job, causing "FFmpeg not found" errors (#150)
-    - **Audio Conversion Pipeline Refactor** - Improved format detection using ffprobe, better codec support (#158)
-    - **Codec Compatibility Check** - Unsupported audio codecs are now automatically converted before transcription
+    - **Connector-Based Transcription** - New modular architecture with auto-detection for transcription providers
+    - **Simplified Configuration** - Fewer env vars needed; just set `ASR_BASE_URL` or `TRANSCRIPTION_MODEL`
+    - **OpenAI Diarization** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
+    - **REST API v1** - Complete API for automation tools (n8n, Zapier, Make) and dashboard widgets
+    - **Interactive Swagger UI** - Browse and test all endpoints at `/api/v1/docs`
+    - **Batch Operations** - Update, delete, or transcribe multiple recordings via API
 
-    *Thanks to [sakowicz](https://github.com/sakowicz) for PR #159, [JadedBlueEyes](https://github.com/JadedBlueEyes) for PR #158, and [Daabramov](https://github.com/Daabramov) for debugging #150*
+    **Migration:** Existing configs are backwards compatible. See the [Migration Guide](admin-guide/migration-guide.md) for recommended updates and the [API Reference](user-guide/api-reference.md) for API documentation.
 
 ## Quick Navigation
 
@@ -122,11 +123,12 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   </div>
 
   <div class="feature-card">
-    <h4>🔑 API Access</h4>
+    <h4>🔑 REST API</h4>
     <ul>
+      <li><a href="user-guide/api-reference">Full REST API v1</a></li>
       <li><a href="user-guide/api-tokens">Personal access tokens</a></li>
-      <li>Automation tool integration</li>
-      <li>Secure token management</li>
+      <li>Interactive <a href="user-guide/api-reference#openapi-specification">Swagger UI docs</a></li>
+      <li>n8n, Zapier, Make integration</li>
     </ul>
   </div>
 </div>
