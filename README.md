@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.7.2-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.0-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -36,6 +36,7 @@ Speakr transforms your audio recordings into organized, searchable, and intellig
 - **Smart Recording & Upload** - Record directly in browser or upload existing audio files
 - **AI Transcription** - High-accuracy transcription with speaker identification
 - **Voice Profiles** - AI-powered speaker recognition with voice embeddings (requires WhisperX ASR service)
+- **REST API v1** - Complete API with Swagger UI for automation tools (n8n, Zapier, Make) and dashboard widgets
 - **Single Sign-On** - Authenticate with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
 - **Audio-Transcript Sync** - Click transcript to jump to audio, auto-highlight current text, follow mode for hands-free playback
 - **Interactive Chat** - Ask questions about your recordings and get AI-powered answers
@@ -148,7 +149,20 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.7.2)
+## Latest Release (v0.8.0)
+
+**Connector Architecture & REST API**
+
+- **Connector-Based Transcription** - New modular architecture for transcription providers with auto-detection
+- **Simplified Configuration** - Fewer environment variables needed; auto-detects connector from settings
+- **OpenAI Diarization Support** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
+- **REST API v1** - Full-featured API for automation tools (n8n, Zapier, Make) and dashboard widgets
+- **Interactive API Docs** - Swagger UI at `/api/v1/docs` with try-it-out functionality
+- **Batch Operations** - Update, delete, or transcribe multiple recordings via API
+
+> **Migration Note:** Existing configurations are fully backwards compatible. See the [Migration Guide](https://murtaza-nasir.github.io/speakr/admin-guide/migration-guide) for recommended updates.
+
+### Previous Release (v0.7.2)
 
 **Token Budgets, Performance & UX**
 
@@ -235,9 +249,10 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - ✅ Multi-user job queue with fair scheduling (v0.6.0)
 - ✅ SSO integration with OIDC providers (v0.7.0)
 - ✅ Token usage tracking and per-user budgets (v0.7.2)
+- ✅ Connector-based transcription architecture with auto-detection (v0.8.0)
+- ✅ Comprehensive REST API with Swagger UI documentation (v0.8.0)
 
 ### Near-term
-- Bulk operations for recordings (mass delete, export, tagging)
 - Quick language switching for transcription
 - Automated workflow triggers
 

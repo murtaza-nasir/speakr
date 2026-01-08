@@ -176,6 +176,7 @@ nav:
     - System Settings: admin-guide/system-settings.md
     - Default Prompts: admin-guide/prompts.md
     - Vector Store: admin-guide/vector-store.md
+    - Migration Guide: admin-guide/migration-guide.md
   
   - Troubleshooting: troubleshooting.md
   - FAQ: faq.md
