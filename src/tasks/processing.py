@@ -1296,16 +1296,11 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             error_type = type(e).__name__
             current_app.logger.error(f"Connector transcription FAILED for recording {recording_id}: [{error_type}] {error_msg}", exc_info=True)
 
-            recording = db.session.get(Recording, recording_id)
-            if recording:
-                recording.status = 'FAILED'
-                recording.transcription = format_error_for_storage(error_msg)
+            # Don't set recording.status = 'FAILED' here - let the job queue handle it
+            # The job queue will decide whether to retry or permanently fail,
+            # and only set FAILED status when all retries are exhausted
 
-                end_time = datetime.utcnow()
-                recording.processing_time_seconds = (end_time - start_time).total_seconds()
-                db.session.commit()
-
-            # Re-raise so job queue marks the job as failed
+            # Re-raise so job queue marks the job as failed (and potentially retries)
             raise
 
 
@@ -1630,17 +1625,12 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             if "timed out" in error_msg.lower() or "timeout" in error_msg.lower() or "Timeout" in error_type:
                 asr_timeout = SystemSetting.get_setting('asr_timeout_seconds', 1800)
                 current_app.logger.error(f"Timeout details - configured ASR timeout: {asr_timeout}s. Error: {error_msg}")
-                user_error_msg = f"ASR processing timed out. Error: {error_msg}"
-            else:
-                user_error_msg = f"ASR processing failed: {error_msg}"
 
-            recording = db.session.get(Recording, recording_id)
-            if recording:
-                recording.status = 'FAILED'
-                recording.transcription = format_error_for_storage(user_error_msg)
-                db.session.commit()
+            # Don't set recording.status = 'FAILED' here - let the job queue handle it
+            # The job queue will decide whether to retry or permanently fail,
+            # and only set FAILED status when all retries are exhausted
 
-            # Re-raise so job queue marks the job as failed
+            # Re-raise so job queue marks the job as failed (and potentially retries)
             raise
 
 
