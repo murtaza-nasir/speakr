@@ -588,6 +588,7 @@ app.register_blueprint(events_bp)
 app.register_blueprint(system_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(api_v1_bp)
+csrf.exempt(api_v1_bp)  # API v1 uses token auth, not CSRF
 
 # File monitor and scheduler initialization functions below
 
