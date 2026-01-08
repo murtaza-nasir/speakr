@@ -115,11 +115,12 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             }
 
             # Configure timeout: generous values for large file uploads
+            # Write timeout needs to be high too - large files take time to upload
             timeout = httpx.Timeout(
                 None,
                 connect=60.0,
                 read=float(self.timeout),
-                write=300.0,
+                write=float(self.timeout),
                 pool=None
             )
 
