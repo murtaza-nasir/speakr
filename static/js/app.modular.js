@@ -385,6 +385,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- App Configuration ---
             const useAsrEndpoint = ref(false);
+            const connectorSupportsDiarization = ref(false);  // Connector capability for diarization UI
+            const connectorSupportsSpeakerCount = ref(false);  // Connector capability for min/max speakers
             const currentUserName = ref('');
             const canDeleteRecordings = ref(true);
             const enableInternalSharing = ref(false);
@@ -542,7 +544,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAsrDropdownIndex,
 
                 // App Config
-                useAsrEndpoint, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -1861,6 +1863,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const appElement = document.getElementById('app');
                 if (appElement) {
                     useAsrEndpoint.value = appElement.dataset.useAsrEndpoint === 'True';
+                    connectorSupportsDiarization.value = appElement.dataset.connectorSupportsDiarization === 'True';
+                    connectorSupportsSpeakerCount.value = appElement.dataset.connectorSupportsSpeakerCount === 'True';
                     currentUserName.value = appElement.dataset.currentUserName || '';
                 }
 

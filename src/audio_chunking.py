@@ -13,14 +13,186 @@ import tempfile
 import logging
 import math
 import re
-from typing import List, Dict, Any, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional, Tuple, TYPE_CHECKING
 from datetime import datetime
 import mimetypes
 
 from src.utils.ffmpeg_utils import convert_to_mp3, FFmpegError, FFmpegNotFoundError
 
+if TYPE_CHECKING:
+    from src.services.transcription.base import ConnectorSpecifications
+
 # Configure logging
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class EffectiveChunkingConfig:
+    """Effective chunking configuration after resolving connector specs and ENV settings."""
+    enabled: bool
+    mode: str  # 'size' or 'duration'
+    limit_value: float  # MB for size, seconds for duration
+    overlap_seconds: int
+    source: str  # 'disabled', 'connector_internal', 'env', 'connector_default', 'app_default'
+
+
+def get_effective_chunking_config(
+    connector_specs: Optional['ConnectorSpecifications'] = None
+) -> EffectiveChunkingConfig:
+    """
+    Determine effective chunking configuration based on connector specs and ENV settings.
+
+    Priority order:
+    1. If connector handles_chunking_internally=True → no app-level chunking
+    2. If ENABLE_CHUNKING=false → no chunking
+    3. If CHUNK_LIMIT or CHUNK_SIZE_MB is explicitly set → use ENV settings
+    4. If connector has specs → use connector defaults (max_file_size or recommended_chunk_seconds)
+    5. Fallback: 20MB size-based chunking
+
+    Args:
+        connector_specs: Optional ConnectorSpecifications from the active connector
+
+    Returns:
+        EffectiveChunkingConfig with resolved settings
+    """
+    overlap_seconds = int(os.environ.get('CHUNK_OVERLAP_SECONDS', '3'))
+
+    # Priority 1: Connector handles chunking internally
+    if connector_specs and connector_specs.handles_chunking_internally:
+        logger.debug("Chunking: Connector handles chunking internally, no app-level chunking needed")
+        return EffectiveChunkingConfig(
+            enabled=False,
+            mode='none',
+            limit_value=0,
+            overlap_seconds=overlap_seconds,
+            source='connector_internal'
+        )
+
+    # Priority 2: User explicitly disabled chunking
+    enable_chunking_env = os.environ.get('ENABLE_CHUNKING', '').lower()
+    if enable_chunking_env == 'false':
+        logger.debug("Chunking: Disabled via ENABLE_CHUNKING=false")
+        return EffectiveChunkingConfig(
+            enabled=False,
+            mode='none',
+            limit_value=0,
+            overlap_seconds=overlap_seconds,
+            source='disabled'
+        )
+
+    # Priority 3: User has set CHUNK_LIMIT or CHUNK_SIZE_MB explicitly
+    chunk_limit = os.environ.get('CHUNK_LIMIT', '').strip()
+    chunk_size_mb_env = os.environ.get('CHUNK_SIZE_MB', '').strip()
+
+    if chunk_limit:
+        # Parse CHUNK_LIMIT (20MB, 600s, 10m)
+        chunk_limit_upper = chunk_limit.upper()
+
+        if chunk_limit_upper.endswith('MB'):
+            try:
+                size_mb = float(re.sub(r'[^0-9.]', '', chunk_limit_upper))
+                logger.debug(f"Chunking: Using ENV CHUNK_LIMIT={size_mb}MB")
+                return EffectiveChunkingConfig(
+                    enabled=True,
+                    mode='size',
+                    limit_value=size_mb,
+                    overlap_seconds=overlap_seconds,
+                    source='env'
+                )
+            except ValueError:
+                logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+
+        elif chunk_limit_upper.endswith('S'):
+            try:
+                seconds = float(re.sub(r'[^0-9.]', '', chunk_limit_upper))
+                logger.debug(f"Chunking: Using ENV CHUNK_LIMIT={seconds}s")
+                return EffectiveChunkingConfig(
+                    enabled=True,
+                    mode='duration',
+                    limit_value=seconds,
+                    overlap_seconds=overlap_seconds,
+                    source='env'
+                )
+            except ValueError:
+                logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+
+        elif chunk_limit_upper.endswith('M') and not chunk_limit_upper.endswith('MB'):
+            try:
+                minutes = float(re.sub(r'[^0-9.]', '', chunk_limit_upper))
+                logger.debug(f"Chunking: Using ENV CHUNK_LIMIT={minutes}m ({minutes * 60}s)")
+                return EffectiveChunkingConfig(
+                    enabled=True,
+                    mode='duration',
+                    limit_value=minutes * 60,
+                    overlap_seconds=overlap_seconds,
+                    source='env'
+                )
+            except ValueError:
+                logger.warning(f"Invalid CHUNK_LIMIT format: {chunk_limit}")
+
+    elif chunk_size_mb_env:
+        # Legacy CHUNK_SIZE_MB
+        try:
+            size_mb = float(chunk_size_mb_env)
+            logger.debug(f"Chunking: Using legacy ENV CHUNK_SIZE_MB={size_mb}MB")
+            return EffectiveChunkingConfig(
+                enabled=True,
+                mode='size',
+                limit_value=size_mb,
+                overlap_seconds=overlap_seconds,
+                source='env'
+            )
+        except ValueError:
+            logger.warning(f"Invalid CHUNK_SIZE_MB format: {chunk_size_mb_env}")
+
+    # Priority 4: Use connector specifications
+    if connector_specs:
+        # Prefer max_file_size_bytes if set
+        if connector_specs.max_file_size_bytes:
+            size_mb = connector_specs.max_file_size_bytes / (1024 * 1024)
+            # Use 80% of max to leave safety margin
+            safe_size_mb = size_mb * 0.8
+            logger.debug(f"Chunking: Using connector max_file_size ({size_mb}MB, safe: {safe_size_mb}MB)")
+            return EffectiveChunkingConfig(
+                enabled=True,
+                mode='size',
+                limit_value=safe_size_mb,
+                overlap_seconds=overlap_seconds,
+                source='connector_default'
+            )
+
+        # Fall back to recommended_chunk_seconds
+        if connector_specs.recommended_chunk_seconds:
+            logger.debug(f"Chunking: Using connector recommended_chunk_seconds={connector_specs.recommended_chunk_seconds}s")
+            return EffectiveChunkingConfig(
+                enabled=True,
+                mode='duration',
+                limit_value=connector_specs.recommended_chunk_seconds,
+                overlap_seconds=overlap_seconds,
+                source='connector_default'
+            )
+
+    # Priority 5: App defaults (only if ENABLE_CHUNKING wasn't explicitly 'false')
+    # If ENABLE_CHUNKING is not set or is 'true', use defaults
+    if enable_chunking_env != 'false':
+        logger.debug("Chunking: Using app defaults (20MB size-based)")
+        return EffectiveChunkingConfig(
+            enabled=True,
+            mode='size',
+            limit_value=20.0,
+            overlap_seconds=overlap_seconds,
+            source='app_default'
+        )
+
+    # Final fallback: disabled
+    return EffectiveChunkingConfig(
+        enabled=False,
+        mode='none',
+        limit_value=0,
+        overlap_seconds=overlap_seconds,
+        source='disabled'
+    )
 
 class AudioChunkingService:
     """Service for chunking large audio files and processing them with OpenAI Whisper API."""
@@ -40,49 +212,99 @@ class AudioChunkingService:
         self.max_chunk_duration_seconds = max_chunk_duration_seconds
         self.chunk_stats = []  # Track processing statistics
         
-    def needs_chunking(self, file_path: str, use_asr_endpoint: bool = False) -> bool:
+    def needs_chunking(
+        self,
+        file_path: str,
+        use_asr_endpoint: bool = False,
+        connector_specs: Optional['ConnectorSpecifications'] = None
+    ) -> bool:
         """
-        Check if a file needs to be chunked based on size and endpoint being used.
-        
+        Check if a file needs to be chunked based on connector specs, ENV settings, and file size.
+
+        Priority order for chunking configuration:
+        1. If connector handles_chunking_internally=True → no app-level chunking
+        2. If ENABLE_CHUNKING=false → no chunking
+        3. If CHUNK_LIMIT or CHUNK_SIZE_MB is explicitly set → use ENV settings
+        4. If connector has specs → use connector defaults
+        5. Fallback: 20MB size-based chunking
+
         NOTE: For duration-based limits, this may return True even if chunking isn't needed,
         because we need to convert the file first to check duration. The actual chunking
         decision is made after conversion in calculate_optimal_chunking().
-        
+
         Args:
             file_path: Path to the audio file
-            use_asr_endpoint: Whether ASR endpoint is being used (no chunking needed)
-            
+            use_asr_endpoint: DEPRECATED - use connector_specs instead
+            connector_specs: Optional ConnectorSpecifications from the active connector
+
         Returns:
             True if file might need chunking, False otherwise
         """
-        if use_asr_endpoint:
+        # Get effective chunking configuration
+        chunking_config = get_effective_chunking_config(connector_specs)
+
+        # If chunking is disabled (by connector or user), return False
+        if not chunking_config.enabled:
+            logger.info(f"Chunking disabled (source: {chunking_config.source})")
             return False
-            
+
+        # Legacy fallback: if no connector_specs provided, check use_asr_endpoint
+        if connector_specs is None and use_asr_endpoint:
+            logger.info("Chunking: ASR endpoint detected (legacy), no chunking needed")
+            return False
+
         try:
             file_size = os.path.getsize(file_path)
-            mode, limit_value = self.parse_chunk_limit()
-            
-            if mode == 'size':
+
+            if chunking_config.mode == 'size':
                 # For size-based limits, we can determine immediately
-                chunk_size_bytes = limit_value * 1024 * 1024
+                chunk_size_bytes = chunking_config.limit_value * 1024 * 1024
                 needs_it = file_size > chunk_size_bytes
-                logger.info(f"Size check: {file_size/1024/1024:.1f}MB vs limit {limit_value}MB - needs chunking: {needs_it}")
+                logger.info(f"Chunking check (size, source={chunking_config.source}): "
+                           f"{file_size/1024/1024:.1f}MB vs limit {chunking_config.limit_value}MB - needs chunking: {needs_it}")
                 return needs_it
-            else:
+            elif chunking_config.mode == 'duration':
                 # For duration-based limits, we need to check the actual duration
                 # Try to get duration without conversion first (fast check)
                 duration = self.get_audio_duration(file_path)
                 if duration:
-                    needs_it = duration > limit_value
-                    logger.info(f"Duration check: {duration:.1f}s vs limit {limit_value}s - needs chunking: {needs_it}")
+                    needs_it = duration > chunking_config.limit_value
+                    logger.info(f"Chunking check (duration, source={chunking_config.source}): "
+                               f"{duration:.1f}s vs limit {chunking_config.limit_value}s - needs chunking: {needs_it}")
                     return needs_it
                 else:
                     # Can't determine duration without conversion, assume might need chunking
-                    logger.info(f"Duration-based limit set ({limit_value}s) but can't check duration yet - will check after conversion")
+                    logger.info(f"Duration-based limit set ({chunking_config.limit_value}s) but can't check duration yet - will check after conversion")
                     return True  # Proceed to conversion and check
+            else:
+                # Mode is 'none', shouldn't reach here but handle gracefully
+                return False
+
         except OSError:
             logger.error(f"Could not get file size for {file_path}")
             return False
+
+    def needs_chunking_with_config(
+        self,
+        file_path: str,
+        connector_specs: Optional['ConnectorSpecifications'] = None
+    ) -> Tuple[bool, EffectiveChunkingConfig]:
+        """
+        Check if a file needs chunking and return the effective configuration.
+
+        This is useful when you need both the decision and the configuration
+        for subsequent processing.
+
+        Args:
+            file_path: Path to the audio file
+            connector_specs: Optional ConnectorSpecifications from the active connector
+
+        Returns:
+            Tuple of (needs_chunking, EffectiveChunkingConfig)
+        """
+        chunking_config = get_effective_chunking_config(connector_specs)
+        needs_it = self.needs_chunking(file_path, connector_specs=connector_specs)
+        return needs_it, chunking_config
     
     def get_audio_duration(self, file_path: str) -> Optional[float]:
         """

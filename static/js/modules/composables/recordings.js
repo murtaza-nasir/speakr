@@ -11,7 +11,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, sortBy,
         availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
-        useAsrEndpoint, globalError, uploadQueue, isProcessingActive, currentView,
+        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL
     } = state;
 
@@ -370,7 +370,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         ).filter(Boolean);
 
         const firstTag = selectedTags[0];
-        if (firstTag && useAsrEndpoint.value) {
+        if (firstTag && connectorSupportsDiarization.value) {
             if (firstTag.default_language) {
                 uploadLanguage.value = firstTag.default_language;
             }

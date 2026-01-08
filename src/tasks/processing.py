@@ -29,7 +29,11 @@ from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, 
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
-from src.config.app_config import ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS, transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING
+from src.config.app_config import (
+    ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS,
+    transcription_api_key, transcription_base_url, chunking_service, ENABLE_CHUNKING,
+    USE_NEW_TRANSCRIPTION_ARCHITECTURE
+)
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
 
 # Configuration for internal sharing
@@ -176,8 +180,8 @@ def clean_llm_response(text):
 
 # Configuration from environment
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
-ASR_ENDPOINT = os.environ.get('ASR_ENDPOINT', '')
-ASR_API_KEY = os.environ.get('ASR_API_KEY', '')
+# Note: ASR_ENDPOINT and ASR_API_KEY were removed - they were dead code
+# ASR configuration is now handled via the connector architecture
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 
 # chunking_service, ENABLE_CHUNKING, transcription_api_key, and transcription_base_url
@@ -992,6 +996,179 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
         raise
 
 
+def transcribe_with_connector(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=None, min_speakers=None, max_speakers=None, tag_id=None):
+    """
+    Transcribe audio using the new connector-based architecture.
+
+    This function uses the transcription connector system which supports:
+    - OpenAI Whisper (whisper-1)
+    - OpenAI GPT-4o Transcribe (gpt-4o-transcribe, gpt-4o-mini-transcribe)
+    - OpenAI GPT-4o Transcribe Diarize (gpt-4o-transcribe-diarize) - with speaker labels
+    - Custom ASR endpoints (whisper-asr-webservice, WhisperX, etc.)
+
+    Args:
+        app_context: Flask app context
+        recording_id: ID of the recording to process
+        filepath: Path to the audio file
+        original_filename: Original filename for logging
+        start_time: Processing start time
+        mime_type: MIME type of the audio file
+        language: Optional language code override
+        diarize: Whether to enable diarization (None = use connector default)
+        min_speakers: Optional minimum speakers
+        max_speakers: Optional maximum speakers
+        tag_id: Optional tag ID to apply custom prompt from
+    """
+    from src.services.transcription import (
+        get_connector, TranscriptionRequest, TranscriptionCapability
+    )
+
+    with app_context:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            current_app.logger.error(f"Error: Recording {recording_id} not found for transcription.")
+            return
+
+        try:
+            current_app.logger.info(f"Starting connector-based transcription for recording {recording_id}...")
+            recording.status = 'PROCESSING'
+            transcription_start_time = time.time()
+            db.session.commit()
+
+            # Get the active transcription connector
+            connector = get_connector()
+            connector_name = connector.PROVIDER_NAME
+            current_app.logger.info(f"Using transcription connector: {connector_name}")
+
+            # Handle video extraction (keep existing logic)
+            actual_filepath = filepath
+            actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
+            actual_filename = original_filename
+
+            # Use codec detection to check if file is a video
+            try:
+                is_video = is_video_file(filepath, timeout=10)
+                if is_video:
+                    current_app.logger.info(f"Video detected for {original_filename}")
+            except FFProbeError as e:
+                current_app.logger.warning(f"Failed to probe {original_filename}: {e}. Falling back to MIME type detection.")
+                video_mime_types = [
+                    'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm',
+                    'video/avi', 'video/x-ms-wmv', 'video/3gpp'
+                ]
+                is_video = (
+                    actual_content_type.startswith('video/') or
+                    actual_content_type in video_mime_types
+                )
+
+            if is_video:
+                current_app.logger.info(f"Video container detected, extracting audio...")
+                try:
+                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath)
+                    actual_filepath = audio_filepath
+                    actual_content_type = audio_mime_type
+                    actual_filename = os.path.basename(audio_filepath)
+
+                    recording.audio_path = audio_filepath
+                    recording.mime_type = audio_mime_type
+                    db.session.commit()
+                    current_app.logger.info(f"Audio extracted: {audio_filepath}")
+                except Exception as e:
+                    current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                    recording.status = 'FAILED'
+                    recording.error_msg = f"Audio extraction failed: {str(e)}"
+                    db.session.commit()
+                    return
+
+            # Determine if we should diarize
+            if diarize is None:
+                # Use connector's default diarization setting
+                should_diarize = connector.supports_diarization
+            else:
+                should_diarize = diarize and connector.supports_diarization
+
+            if should_diarize and not connector.supports_diarization:
+                current_app.logger.warning(f"Diarization requested but connector '{connector_name}' doesn't support it")
+                should_diarize = False
+
+            # Build the transcription request
+            with open(actual_filepath, 'rb') as audio_file:
+                request = TranscriptionRequest(
+                    audio_file=audio_file,
+                    filename=actual_filename,
+                    mime_type=actual_content_type,
+                    language=language,
+                    diarize=should_diarize,
+                    min_speakers=min_speakers,
+                    max_speakers=max_speakers
+                )
+
+                current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
+                response = connector.transcribe(request)
+
+            # Store the result
+            if response.segments and response.has_diarization():
+                # Store as JSON with segments (diarized format)
+                recording.transcription = response.to_storage_format()
+                current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
+            else:
+                # Store as plain text
+                recording.transcription = response.text
+                current_app.logger.info(f"Transcription completed: {len(response.text)} characters")
+
+            # Store speaker embeddings if available
+            if response.speaker_embeddings:
+                recording.speaker_embeddings = response.speaker_embeddings
+                current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
+
+            # Calculate and save transcription duration
+            transcription_end_time = time.time()
+            recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
+            db.session.commit()
+            current_app.logger.info(f"Transcription completed in {recording.transcription_duration_seconds}s")
+
+            # Check if auto-summarization is disabled
+            disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)
+            will_auto_summarize = not disable_auto_summarization
+
+            # Generate title immediately
+            generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
+
+            if disable_auto_summarization:
+                current_app.logger.info(f"Auto-summarization disabled, skipping summary for recording {recording_id}")
+                recording = db.session.get(Recording, recording_id)
+                if recording:
+                    recording.status = 'COMPLETED'
+                    recording.completed_at = datetime.utcnow()
+                    db.session.commit()
+
+                    # Apply auto-shares for group tags after processing completes
+                    apply_team_tag_auto_shares(recording_id)
+
+                    # Export transcription-only if auto-export is enabled
+                    if ENABLE_AUTO_EXPORT:
+                        export_recording(recording_id)
+            else:
+                # Auto-generate summary for all recordings
+                current_app.logger.info(f"Auto-generating summary for recording {recording_id}")
+                generate_summary_only_task(app_context, recording_id)
+
+        except Exception as e:
+            db.session.rollback()
+            error_msg = str(e)
+            error_type = type(e).__name__
+            current_app.logger.error(f"Connector transcription FAILED for recording {recording_id}: [{error_type}] {error_msg}", exc_info=True)
+
+            recording = db.session.get(Recording, recording_id)
+            if recording:
+                recording.status = 'FAILED'
+                recording.transcription = f"Transcription failed: {error_msg}"
+
+                end_time = datetime.utcnow()
+                recording.processing_time_seconds = (end_time - start_time).total_seconds()
+                db.session.commit()
+
+
 def transcribe_audio_asr(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=False, min_speakers=None, max_speakers=None, tag_id=None):
     """Transcribes audio using the ASR webservice."""
     with app_context:
@@ -1339,6 +1516,42 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
         max_speakers: Optional maximum speakers override (from upload form)
         tag_id: Optional tag ID to apply custom prompt from
     """
+    # Use new connector-based architecture if enabled
+    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+        with app_context:
+            recording = db.session.get(Recording, recording_id)
+            # Determine diarization setting based on connector capabilities
+            # The connector will handle this, but we pass the user's preference
+            diarize_setting = None  # Let connector decide based on its capabilities
+
+            # Use language from upload form if provided, otherwise use user's default
+            if language:
+                user_transcription_language = language
+            else:
+                user_transcription_language = recording.owner.transcription_language if recording and recording.owner else None
+
+            mime_type = recording.mime_type if recording else None
+
+        transcribe_with_connector(
+            app_context, recording_id, filepath, filename_for_asr, start_time,
+            mime_type=mime_type,
+            language=user_transcription_language,
+            diarize=diarize_setting,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            tag_id=tag_id
+        )
+
+        # After transcription completes, calculate processing time
+        with app_context:
+            recording = db.session.get(Recording, recording_id)
+            if recording and recording.status in ['COMPLETED', 'FAILED']:
+                end_time = datetime.utcnow()
+                recording.processing_time_seconds = (end_time - start_time).total_seconds()
+                db.session.commit()
+        return
+
+    # Legacy path: use old implementation for backwards compatibility
     if USE_ASR_ENDPOINT:
         with app_context:
             recording = db.session.get(Recording, recording_id)
@@ -1391,11 +1604,24 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             db.session.commit()
 
             # Check if chunking is needed for large files
-            needs_chunking = (chunking_service and
-                            ENABLE_CHUNKING and
-                            chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT))
+            # Get connector specifications for smart chunking decisions
+            connector_specs = None
+            if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+                try:
+                    from src.services.transcription import get_registry
+                    registry = get_registry()
+                    connector = registry.get_active_connector()
+                    if connector:
+                        connector_specs = connector.specifications
+                except Exception as e:
+                    current_app.logger.warning(f"Could not get connector specs for chunking: {e}")
 
-            if needs_chunking:
+            # Use connector-aware chunking (respects connector.handles_chunking_internally,
+            # user ENV settings, and connector defaults in that priority order)
+            should_chunk = (chunking_service and
+                           chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT, connector_specs))
+
+            if should_chunk:
                 current_app.logger.info(f"File {filepath} is large ({os.path.getsize(filepath)/1024/1024:.1f}MB), using chunking for transcription")
                 transcription_text = transcribe_with_chunking(app_context, recording_id, filepath, filename_for_asr)
             else:

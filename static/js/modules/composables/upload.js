@@ -12,7 +12,7 @@ export function useUpload(state, utils) {
         maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit,
         recordings, selectedRecording, totalRecordings, globalError,
         selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
-        useAsrEndpoint, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
+        useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
         dragover, availableTags, uploadTagSearchFilter
     } = state;
 
@@ -223,8 +223,8 @@ export function useUpload(state, utils) {
                     formData.append(`tag_ids[${index}]`, tagId);
                 });
 
-                // Add ASR advanced options if ASR endpoint is enabled
-                if (useAsrEndpoint.value) {
+                // Add diarization options if connector supports it
+                if (connectorSupportsDiarization.value) {
                     const asrOpts = nextFileItem.asrOptions || {};
                     const language = asrOpts.language || uploadLanguage.value;
                     const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
@@ -592,7 +592,7 @@ export function useUpload(state, utils) {
         ).filter(Boolean);
 
         const firstTag = selectedTagsObjects[0];
-        if (firstTag && useAsrEndpoint.value) {
+        if (firstTag && connectorSupportsDiarization.value) {
             if (firstTag.default_language) {
                 uploadLanguage.value = firstTag.default_language;
             }

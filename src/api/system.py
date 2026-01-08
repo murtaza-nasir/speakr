@@ -16,8 +16,9 @@ from src.models import *
 from src.utils import *
 from src.config.version import get_version
 from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
-from src.config.app_config import ASR_BASE_URL
+from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE
 from src.services.token_tracking import token_tracker
+from src.services.transcription import TranscriptionCapability
 
 # Create blueprint
 system_bp = Blueprint('system', __name__)
@@ -121,14 +122,36 @@ def get_system_info():
     try:
         # Use the same version detection logic as startup
         version = get_version()
-        
+
+        # Get transcription connector info
+        transcription_info = {
+            'connector': 'unknown',
+            'supports_diarization': USE_ASR_ENDPOINT,  # Backwards compatible default
+            'supports_speaker_embeddings': False,
+        }
+
+        if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+            try:
+                from src.services.transcription import get_registry
+                registry = get_registry()
+                connector = registry.get_active_connector()
+                if connector:
+                    transcription_info = {
+                        'connector': registry.get_active_connector_name(),
+                        'supports_diarization': connector.supports_diarization,
+                        'supports_speaker_embeddings': connector.supports(TranscriptionCapability.SPEAKER_EMBEDDINGS),
+                    }
+            except Exception as e:
+                current_app.logger.warning(f"Could not get connector info: {e}")
+
         return jsonify({
             'version': version,
             'llm_endpoint': TEXT_MODEL_BASE_URL,
             'llm_model': TEXT_MODEL_NAME,
             'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
-            'asr_enabled': USE_ASR_ENDPOINT,
-            'asr_endpoint': ASR_BASE_URL if USE_ASR_ENDPOINT else None
+            'asr_enabled': USE_ASR_ENDPOINT,  # Backwards compat
+            'asr_endpoint': ASR_BASE_URL if USE_ASR_ENDPOINT else None,
+            'transcription': transcription_info,
         })
     except Exception as e:
         current_app.logger.error(f"Error getting system info: {e}")
@@ -143,7 +166,7 @@ def get_config():
     try:
         # Get configurable file size limit
         max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)
-        
+
         # Get chunking configuration (supports both legacy and new formats)
         chunking_info = {}
         if ENABLE_CHUNKING and chunking_service:
@@ -174,10 +197,27 @@ def get_config():
         # Calculate if archive toggle should be shown (only when audio-only deletion mode is active)
         enable_archive_toggle = ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only'
 
+        # Get connector capabilities (new architecture)
+        # Defaults to USE_ASR_ENDPOINT for backwards compatibility
+        connector_supports_diarization = USE_ASR_ENDPOINT
+        connector_supports_speaker_count = USE_ASR_ENDPOINT  # ASR endpoint supports min/max speakers
+        if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+            try:
+                from src.services.transcription import get_registry
+                registry = get_registry()
+                connector = registry.get_active_connector()
+                if connector:
+                    connector_supports_diarization = connector.supports_diarization
+                    connector_supports_speaker_count = connector.supports_speaker_count_control
+            except Exception as e:
+                current_app.logger.warning(f"Could not get connector capabilities: {e}")
+
         return jsonify({
             'max_file_size_mb': max_file_size_mb,
             'recording_disclaimer': SystemSetting.get_setting('recording_disclaimer', ''),
-            'use_asr_endpoint': USE_ASR_ENDPOINT,
+            'use_asr_endpoint': USE_ASR_ENDPOINT,  # Backwards compat
+            'connector_supports_diarization': connector_supports_diarization,  # Connector capability
+            'connector_supports_speaker_count': connector_supports_speaker_count,  # Min/max speakers
             'enable_internal_sharing': ENABLE_INTERNAL_SHARING,
             'enable_archive_toggle': enable_archive_toggle,
             'show_usernames_in_ui': SHOW_USERNAMES_IN_UI,

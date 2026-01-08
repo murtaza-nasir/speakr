@@ -46,6 +46,8 @@
     </div>
     <div id="app" v-cloak
          data-use-asr-endpoint="{{ use_asr_endpoint }}"
+         data-connector-supports-diarization="{{ connector_supports_diarization }}"
+         data-connector-supports-speaker-count="{{ connector_supports_speaker_count }}"
          data-enable-archive-toggle="{{ enable_archive_toggle }}"
          data-enable-internal-sharing="{{ enable_internal_sharing }}"
          data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}"
