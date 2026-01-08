@@ -63,8 +63,8 @@ export function useSharing(state, utils) {
             hash = hash & hash; // Convert to 32bit integer
         }
 
-        // Map to color classes 1-8
-        const colorNum = (Math.abs(hash) % 8) + 1;
+        // Map to color classes 1-16
+        const colorNum = (Math.abs(hash) % 16) + 1;
         return `speaker-color-${colorNum}`;
     };
 

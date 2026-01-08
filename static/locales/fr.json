@@ -617,7 +617,7 @@
     "uploadRecordingNotes": "Télécharger l'Enregistrement et les Notes",
     "whatWillHappen": "Que va-t-il se passer?",
     "whyNotWorking": "Pourquoi ça ne marche pas?",
-    "youHaveXSpeakers": "Vous avez {{count}} locuteurs, mais seulement 8 couleurs uniques sont disponibles. Les couleurs se répéteront après le 8ème locuteur.",
+    "youHaveXSpeakers": "Vous avez {{count}} locuteurs, mais seulement 16 couleurs uniques sont disponibles. Les couleurs se répéteront après le 16ème locuteur.",
     "speakers": "Orateurs",
     "publicLinkDesc": "Toute personne disposant de ce lien peut accéder à l'enregistrement",
     "internalSharingDesc": "Partager avec des utilisateurs spécifiques de votre organisation",

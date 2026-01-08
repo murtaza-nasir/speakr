@@ -623,7 +623,7 @@
     "uploadRecordingNotes": "Subir Grabación y Notas",
     "whatWillHappen": "¿Qué pasará?",
     "whyNotWorking": "¿Por qué no funciona?",
-    "youHaveXSpeakers": "Tiene {{count}} oradores, pero solo hay 8 colores únicos disponibles. Los colores se repetirán después del octavo orador.",
+    "youHaveXSpeakers": "Tiene {{count}} oradores, pero solo hay 16 colores únicos disponibles. Los colores se repetirán después del decimosexto orador.",
     "speakers": "Hablantes",
     "publicLinkDesc": "Cualquiera con este enlace puede acceder a la grabación",
     "internalSharingDesc": "Compartir con usuarios específicos de su organización",

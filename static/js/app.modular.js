@@ -19,21 +19,8 @@ import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtu
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 
-// Helper to get consistent speaker color based on ID
-const getSpeakerColor = (speakerId) => {
-    // Extract number from SPEAKER_XX format
-    const match = speakerId?.match(/^SPEAKER_(\d+)$/);
-    if (match) {
-        const num = parseInt(match[1], 10);
-        return `speaker-color-${(num % 8) + 1}`;
-    }
-    // Fallback: hash the string for consistent color
-    let hash = 0;
-    for (let i = 0; i < (speakerId || '').length; i++) {
-        hash = speakerId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return `speaker-color-${(Math.abs(hash) % 8) + 1}`;
-};
+// Number of speaker colors available in CSS (must match styles.css)
+const SPEAKER_COLOR_COUNT = 16;
 
 // Parse transcription text to detect if it's an error message
 const parseTranscriptionError = (text) => {
@@ -442,6 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const summaryReprocessSelectedTagId = ref('');
             const summaryReprocessCustomPrompt = ref('');
             const speakerMap = ref({});
+            const speakerColorMap = ref({}); // Stable mapping of speaker ID → color class
             const modalSpeakers = ref([]);
             const speakerDisplayMap = ref({});
             const regenerateSummaryAfterSpeakerUpdate = ref(true);
@@ -657,7 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 shareToDelete, showShareDeleteModal, recordingToDelete, recordingToReset,
                 reprocessType, reprocessRecording, isAutoIdentifying, asrReprocessOptions,
                 summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
-                speakerMap, modalSpeakers, speakerDisplayMap, regenerateSummaryAfterSpeakerUpdate, speakerSuggestions,
+                speakerMap, speakerColorMap, modalSpeakers, speakerDisplayMap, regenerateSummaryAfterSpeakerUpdate, speakerSuggestions,
                 loadingSuggestions, activeSpeakerInput, voiceSuggestions, loadingVoiceSuggestions,
 
                 // DateTime Picker
@@ -1026,11 +1014,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                         };
                     }
 
-                    // Extract unique speakers and assign ID-based colors
+                    // Extract unique speakers in order of first appearance
                     const speakers = [...new Set(transcriptionData.map(segment => segment.speaker).filter(Boolean))];
+
+                    // Build stable color map: assign colors 1, 2, 3... based on order of first appearance
+                    // This map is stored and reused - colors never change once assigned
                     const speakerColors = {};
-                    speakers.forEach((speaker) => {
-                        speakerColors[speaker] = getSpeakerColor(speaker);
+                    speakers.forEach((speaker, index) => {
+                        // Use existing color if already mapped, otherwise assign next color
+                        if (speakerColorMap.value[speaker]) {
+                            speakerColors[speaker] = speakerColorMap.value[speaker];
+                        } else {
+                            const colorIndex = Object.keys(speakerColorMap.value).length;
+                            speakerColors[speaker] = `speaker-color-${(colorIndex % SPEAKER_COLOR_COUNT) + 1}`;
+                            speakerColorMap.value[speaker] = speakerColors[speaker];
+                        }
                     });
 
                     const simpleSegments = transcriptionData.map(segment => ({
@@ -1108,8 +1106,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const speakerList = Array.from(speakers);
                     const speakerColors = {};
-                    speakerList.forEach((speaker, index) => {
-                        speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
+                    speakerList.forEach((speaker) => {
+                        // Use existing color if already mapped, otherwise assign next color
+                        if (speakerColorMap.value[speaker]) {
+                            speakerColors[speaker] = speakerColorMap.value[speaker];
+                        } else {
+                            const colorIndex = Object.keys(speakerColorMap.value).length;
+                            speakerColors[speaker] = `speaker-color-${(colorIndex % SPEAKER_COLOR_COUNT) + 1}`;
+                            speakerColorMap.value[speaker] = speakerColors[speaker];
+                        }
                     });
 
                     const segments = [];
