@@ -27,6 +27,7 @@ from src.models import Recording, User, Tag, RecordingTag, Speaker, Event
 from src.models.processing_job import ProcessingJob
 from src.models.token_usage import TokenUsage
 from src.services.token_tracking import TokenTracker
+from src.file_exporter import format_transcription_with_template
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -639,7 +640,10 @@ def get_recording(recording_id):
     # Include large text fields based on params
     if format_type != 'minimal':
         if 'transcription' in include_fields:
-            response['transcription'] = recording.transcription
+            # Format transcription using user's default template
+            response['transcription'] = format_transcription_with_template(
+                recording.transcription, current_user
+            ) if recording.transcription else None
         if 'summary' in include_fields:
             response['summary'] = recording.summary
         if 'notes' in include_fields:
@@ -688,22 +692,12 @@ def get_transcript(recording_id):
             })
 
     elif format_type == 'text':
-        try:
-            segments = json.loads(recording.transcription)
-            text_lines = []
-            for seg in segments:
-                speaker = seg.get('speaker', 'Unknown')
-                text = seg.get('sentence') or seg.get('text', '')
-                text_lines.append(f"{speaker}: {text}")
-            return jsonify({
-                'format': 'text',
-                'content': '\n\n'.join(text_lines)
-            })
-        except (json.JSONDecodeError, TypeError):
-            return jsonify({
-                'format': 'text',
-                'content': recording.transcription
-            })
+        # Use user's default template for text format
+        formatted = format_transcription_with_template(recording.transcription, current_user)
+        return jsonify({
+            'format': 'text',
+            'content': formatted
+        })
 
     elif format_type in ['srt', 'vtt']:
         try:
