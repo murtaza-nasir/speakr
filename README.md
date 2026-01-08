@@ -109,35 +109,42 @@ mkdir speakr && cd speakr
 # Download docker-compose configuration:
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/docker-compose.example.yml -O docker-compose.yml
 
-# Choose your transcription method and download the corresponding .env file:
+# Download the environment template:
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.transcription.example -O .env
 
-# Option 1: Standard Whisper API (no speaker diarization):
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
-
-# Option 2: WhisperX ASR with voice profiles (recommended for speaker features):
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisperx.example -O .env
-
-# Option 3: Basic ASR with diarization (no voice profiles):
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
-
-# Configure your service endpoints and API keys
-nano .env  # Set API endpoints (Local/OpenAI/OpenRouter/etc) and add your API keys
-
-# Launch Speakr
+# Configure your API keys and launch
+nano .env
 docker compose up -d
 
 # Access at http://localhost:8899
 ```
 
-**Note:** ASR option requires running an additional ASR service container alongside Speakr:
-- **For voice profiles & speaker embeddings:** Use [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) and set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` in your `.env`
-- **For basic speaker diarization:** Use [OpenAI Whisper ASR Webservice](https://github.com/ahmetoner/whisper-asr-webservice) (speaker embeddings not supported)
+### Transcription Options
 
-> **⚠️ PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container's environment in docker-compose.yml. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
+Speakr uses a **connector-based architecture** that auto-detects your transcription provider:
 
-See [installation guide](https://murtaza-nasir.github.io/speakr/getting-started/installation#running-asr-service-for-speaker-diarization) for complete setup instructions.
+| Option | Setup | Speaker Diarization | Voice Profiles |
+|--------|-------|---------------------|----------------|
+| **OpenAI Transcribe** | Just API key | ✅ `gpt-4o-transcribe-diarize` | ❌ |
+| **WhisperX ASR** | GPU container | ✅ Best quality | ✅ |
+| **Legacy Whisper** | Just API key | ❌ | ❌ |
 
-**[View Full Installation Guide →](https://murtaza-nasir.github.io/speakr/getting-started)**
+**Simplest setup (OpenAI with diarization):**
+```bash
+TRANSCRIPTION_API_KEY=sk-your-openai-key
+TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
+```
+
+**Best quality (Self-hosted WhisperX):**
+```bash
+ASR_BASE_URL=http://whisperx-asr:9000
+ASR_RETURN_SPEAKER_EMBEDDINGS=true  # Enable voice profiles
+```
+Requires [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) container with GPU.
+
+> **⚠️ PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
+
+**[View Full Installation Guide →](https://murtaza-nasir.github.io/speakr/getting-started/installation)**
 
 ## Documentation
 
@@ -153,7 +160,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 **Connector Architecture & REST API**
 
-- **Connector-Based Transcription** - New modular architecture for transcription providers with auto-detection
+- **Connector-Based Transcription** - New modular architecture for transcription providers; custom connectors possible (adding new providers requires building from source)
 - **Simplified Configuration** - Fewer environment variables needed; auto-detects connector from settings
 - **OpenAI Diarization Support** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
 - **REST API v1** - Full-featured API for automation tools (n8n, Zapier, Make) and dashboard widgets
