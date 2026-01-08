@@ -245,6 +245,7 @@ class FairJobQueue:
         Detect if an error is permanent and should not be retried.
 
         Permanent errors include:
+        - 400: Bad request (invalid format, invalid parameters)
         - 413: File too large (user needs to enable chunking or compress file)
         - 401/403: Authentication/authorization errors (credentials issue)
         - 402: Payment required (billing issue)
@@ -254,12 +255,12 @@ class FairJobQueue:
         error_lower = error_str.lower()
 
         # HTTP status codes that indicate permanent errors
-        permanent_codes = ['413', '401', '402', '403']
+        permanent_codes = ['400', '413', '401', '402', '403', '404']
         for code in permanent_codes:
             if f'error code: {code}' in error_lower or f'status {code}' in error_lower:
                 return True
 
-        # Specific error patterns that are permanent
+        # Specific error patterns that are permanent (simple substring matching)
         permanent_patterns = [
             'maximum content size limit',
             'file too large',
@@ -274,10 +275,12 @@ class FairJobQueue:
             'payment required',
             'quota exceeded',
             'insufficient funds',
-            'model.*not found',
+            'model not found',
             'invalid model',
-            'unsupported.*format',
-            'invalid.*file.*format',
+            'unsupported format',
+            'invalid file format',
+            'invalid_request_error',
+            'bad request',
         ]
 
         for pattern in permanent_patterns:
