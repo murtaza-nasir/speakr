@@ -2049,7 +2049,8 @@ def upload_file():
                 codec_info=codec_info,
                 needs_chunking=needs_chunking_for_processing,
                 is_asr_endpoint=USE_ASR_ENDPOINT,
-                delete_original=True
+                delete_original=True,
+                connector_specs=connector_specs  # Pass connector specs for codec restrictions
             )
             filepath = result.output_path
             
