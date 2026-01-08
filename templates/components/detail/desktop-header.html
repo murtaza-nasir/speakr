@@ -73,7 +73,7 @@
                         :title="t('buttons.resetStuckProcessing')">
                     <i class="fas fa-undo"></i>
                 </button>
-                <button @click="openSpeakerModal" v-if="selectedRecording.transcription && useAsrEndpoint"
+                <button @click="openSpeakerModal" v-if="processedTranscription.hasDialogue"
                         class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                         :title="t('buttons.identifySpeakers')">
                     <i class="fas fa-user-tag"></i>

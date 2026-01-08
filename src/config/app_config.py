@@ -22,6 +22,19 @@ transcription_base_url = os.environ.get("TRANSCRIPTION_BASE_URL", "")
 if transcription_base_url:
     transcription_base_url = transcription_base_url.split('#')[0].strip()
 
+# New transcription connector configuration
+# TRANSCRIPTION_CONNECTOR: explicit connector name (openai_whisper, openai_transcribe, asr_endpoint)
+# TRANSCRIPTION_MODEL: model to use (e.g., gpt-4o-transcribe-diarize for diarization)
+TRANSCRIPTION_CONNECTOR = os.environ.get('TRANSCRIPTION_CONNECTOR', '').lower().strip()
+TRANSCRIPTION_MODEL = os.environ.get('TRANSCRIPTION_MODEL', '')
+if TRANSCRIPTION_MODEL:
+    TRANSCRIPTION_MODEL = TRANSCRIPTION_MODEL.split('#')[0].strip()
+
+# Feature flag for new transcription architecture (default: enabled)
+USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get(
+    'USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true'
+).lower() == 'true'
+
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ASR_BASE_URL = os.environ.get('ASR_BASE_URL')
 if ASR_BASE_URL:
@@ -81,6 +94,37 @@ def initialize_config(app):
 
     app.logger.info(f"=== Speakr {version} Starting Up ===")
 
+    # Initialize transcription connector
+    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+        try:
+            from src.services.transcription import get_registry
+            registry = get_registry()
+            connector = registry.initialize_from_env()
+            connector_name = registry.get_active_connector_name()
+            capabilities = [c.name for c in connector.get_capabilities()]
+            app.logger.info(f"Transcription connector initialized: {connector_name}")
+            app.logger.info(f"Connector capabilities: {capabilities}")
+
+            # Log diarization support prominently
+            if connector.supports_diarization:
+                app.logger.info("Speaker diarization: ENABLED")
+            else:
+                app.logger.info("Speaker diarization: NOT AVAILABLE (connector does not support it)")
+
+        except Exception as e:
+            app.logger.error(f"Failed to initialize transcription connector: {e}")
+            app.logger.error("Falling back to legacy transcription configuration validation")
+            # Fall through to legacy validation
+            _validate_legacy_transcription_config(app)
+    else:
+        # Legacy configuration validation
+        _validate_legacy_transcription_config(app)
+
+    return client, chunking_service, version
+
+
+def _validate_legacy_transcription_config(app):
+    """Validate legacy transcription configuration (backwards compatibility)."""
     if USE_ASR_ENDPOINT:
         if not ASR_BASE_URL:
             app.logger.error("ERROR: ASR enabled but ASR_BASE_URL not configured!")
@@ -91,5 +135,3 @@ def initialize_config(app):
             app.logger.error("ERROR: No transcription service configured!")
             sys.exit(1)
         app.logger.info(f"Using Whisper API: {transcription_base_url}")
-
-    return client, chunking_service, version

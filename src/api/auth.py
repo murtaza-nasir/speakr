@@ -369,8 +369,21 @@ def account():
     asr_diarize_locked = 'ASR_DIARIZE' in os.environ
     ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'false').lower() == 'true'
     USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
+    USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get('USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true').lower() == 'true'
     ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
     ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+
+    # Get connector diarization support (new architecture)
+    connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
+    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+        try:
+            from src.services.transcription import get_registry
+            registry = get_registry()
+            connector = registry.get_active_connector()
+            if connector:
+                connector_supports_diarization = connector.supports_diarization
+        except Exception as e:
+            current_app.logger.warning(f"Could not get connector diarization support: {e}")
 
     # Check if user is a team admin and get their admin groups
     admin_memberships = GroupMembership.query.filter_by(
@@ -401,6 +414,7 @@ def account():
                            title='Account',
                            default_summary_prompt_text=default_summary_prompt_text,
                            use_asr_endpoint=USE_ASR_ENDPOINT,
+                           connector_supports_diarization=connector_supports_diarization,
                            enable_auto_deletion=ENABLE_AUTO_DELETION,
                            enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                            user_admin_groups=user_admin_groups,

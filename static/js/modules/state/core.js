@@ -39,6 +39,8 @@ export function createCoreState(ref, computed) {
 
     // --- App Configuration ---
     const useAsrEndpoint = ref(false);
+    const connectorSupportsDiarization = ref(false);  // Connector capability for diarization UI
+    const connectorSupportsSpeakerCount = ref(false);  // Connector capability for min/max speakers
     const currentUserName = ref('');
     const canDeleteRecordings = ref(true);
     const enableInternalSharing = ref(false);
@@ -116,6 +118,8 @@ export function createCoreState(ref, computed) {
 
         // App Configuration
         useAsrEndpoint,
+        connectorSupportsDiarization,
+        connectorSupportsSpeakerCount,
         currentUserName,
         canDeleteRecordings,
         enableInternalSharing,

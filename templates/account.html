@@ -1744,10 +1744,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </div>
                 </div>
 
-                {% if use_asr_endpoint %}
+                {% if connector_supports_diarization %}
                 <div class="border-t border-[var(--border-primary)] pt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="editTagModal.asrDefaultSettings">ASR Default Settings</h4>
-                    <p class="text-xs text-[var(--text-light)] mb-3" data-i18n="editTagModal.asrSettingsDescription">These settings will be applied by default when using this tag with ASR transcription</p>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="editTagModal.asrDefaultSettings">Diarization Default Settings</h4>
+                    <p class="text-xs text-[var(--text-light)] mb-3" data-i18n="editTagModal.asrSettingsDescription">These settings will be applied by default when using this tag with diarization-enabled transcription</p>
                     
                     <div class="space-y-3">
                         <div>

@@ -22,7 +22,7 @@ from email.utils import encode_rfc2231
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE
+from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
 from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
@@ -1268,8 +1268,25 @@ def index():
     # Calculate if archive toggle should be shown (only when audio-only deletion mode is active)
     enable_archive_toggle = ENABLE_AUTO_DELETION and DELETION_MODE == 'audio_only'
 
+    # Get connector capabilities (new architecture)
+    # Defaults to USE_ASR_ENDPOINT for backwards compatibility
+    connector_supports_diarization = USE_ASR_ENDPOINT
+    connector_supports_speaker_count = USE_ASR_ENDPOINT  # ASR endpoint supports min/max speakers
+    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+        try:
+            from src.services.transcription import get_registry
+            registry = get_registry()
+            connector = registry.get_active_connector()
+            if connector:
+                connector_supports_diarization = connector.supports_diarization
+                connector_supports_speaker_count = connector.supports_speaker_count_control
+        except Exception as e:
+            current_app.logger.warning(f"Could not get connector capabilities: {e}")
+
     return render_template('index.html',
-                         use_asr_endpoint=USE_ASR_ENDPOINT,
+                         use_asr_endpoint=USE_ASR_ENDPOINT,  # Backwards compat
+                         connector_supports_diarization=connector_supports_diarization,
+                         connector_supports_speaker_count=connector_supports_speaker_count,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
                          enable_archive_toggle=enable_archive_toggle,
                          enable_internal_sharing=ENABLE_INTERNAL_SHARING,
@@ -1959,19 +1976,34 @@ def upload_file():
         original_file_size = file.tell()
         file.seek(0)
 
-        # Check size limit before saving - only enforce if chunking is disabled or using ASR endpoint
+        # Check size limit before saving - only enforce if chunking is disabled or connector handles it
         max_content_length = current_app.config.get('MAX_CONTENT_LENGTH')
 
-        # Skip size check if chunking is enabled and using OpenAI Whisper API
+        # Get connector specifications for chunking decisions
+        connector_specs = None
+        if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+            try:
+                from src.services.transcription import get_registry
+                registry = get_registry()
+                connector = registry.get_active_connector()
+                if connector:
+                    connector_specs = connector.specifications
+            except Exception as e:
+                current_app.logger.warning(f"Could not get connector specs for upload: {e}")
+
+        # Skip size check if chunking is enabled (app-level or connector handles internally)
         should_enforce_size_limit = True
-        if ENABLE_CHUNKING and chunking_service and not USE_ASR_ENDPOINT:
-            should_enforce_size_limit = False
-            # Get chunking mode for better logging
-            mode, limit_value = chunking_service.parse_chunk_limit()
-            if mode == 'size':
-                current_app.logger.info(f"Size-based chunking enabled ({limit_value}MB limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
-            else:
-                current_app.logger.info(f"Duration-based chunking enabled ({limit_value}s limit) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+        if chunking_service:
+            from src.audio_chunking import get_effective_chunking_config
+            chunking_config = get_effective_chunking_config(connector_specs)
+            if chunking_config.enabled or chunking_config.source == 'connector_internal':
+                should_enforce_size_limit = False
+                if chunking_config.source == 'connector_internal':
+                    current_app.logger.info(f"Connector handles chunking internally - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+                elif chunking_config.mode == 'size':
+                    current_app.logger.info(f"Size-based chunking enabled ({chunking_config.limit_value}MB, source={chunking_config.source}) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
+                else:
+                    current_app.logger.info(f"Duration-based chunking enabled ({chunking_config.limit_value}s, source={chunking_config.source}) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
 
         if should_enforce_size_limit and max_content_length and original_file_size > max_content_length:
             raise RequestEntityTooLarge()
@@ -1982,12 +2014,10 @@ def upload_file():
         # --- Convert files only when chunking is needed ---
         filename_lower = original_filename.lower()
 
-        # Check if chunking will be needed for this file
+        # Check if chunking will be needed for this file (uses connector-aware logic)
         needs_chunking_for_processing = bool(
             chunking_service and
-            ENABLE_CHUNKING and
-            not USE_ASR_ENDPOINT and
-            chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT)
+            chunking_service.needs_chunking(filepath, USE_ASR_ENDPOINT, connector_specs)
         )
 
         # Probe once and use shared conversion utility

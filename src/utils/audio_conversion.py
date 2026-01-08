@@ -63,24 +63,35 @@ class ConversionResult:
         return self.final_size / (1024 * 1024)
 
 
-def get_supported_codecs(needs_chunking: bool = False) -> Set[str]:
+def get_supported_codecs(needs_chunking: bool = False, connector_specs: Optional[Any] = None) -> Set[str]:
     """
     Get the set of supported audio codecs.
 
     Args:
         needs_chunking: If True, return only codecs that work well with chunking
+        connector_specs: Optional ConnectorSpecifications with provider-specific codec restrictions
 
     Returns:
-        Set of supported codec names (minus any excluded via AUDIO_UNSUPPORTED_CODECS)
+        Set of supported codec names (minus any excluded via env var or connector specs)
     """
-    if needs_chunking:
+    # If connector defines explicit supported codecs, use those
+    if connector_specs and connector_specs.supported_codecs:
+        base_codecs = set(connector_specs.supported_codecs)
+    elif needs_chunking:
         # For chunking: only support codecs that work well with chunking
         base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac'}
     else:
         # For direct transcription: support more codecs including WebM/Opus
         base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'opus', 'vorbis', 'aac'}
 
-    # Remove any user-specified unsupported codecs
+    # Remove connector-specific unsupported codecs
+    if connector_specs and connector_specs.unsupported_codecs:
+        excluded = base_codecs & set(connector_specs.unsupported_codecs)
+        if excluded:
+            logger.info(f"Excluding codecs from supported list (via connector specs): {excluded}")
+        base_codecs = base_codecs - set(connector_specs.unsupported_codecs)
+
+    # Remove any global user-specified unsupported codecs (env var still applies)
     if AUDIO_UNSUPPORTED_CODECS:
         excluded = base_codecs & AUDIO_UNSUPPORTED_CODECS
         if excluded:
@@ -96,7 +107,8 @@ def convert_if_needed(
     codec_info: Optional[Dict[str, Any]] = None,
     needs_chunking: bool = False,
     is_asr_endpoint: bool = False,
-    delete_original: bool = True
+    delete_original: bool = True,
+    connector_specs: Optional[Any] = None
 ) -> ConversionResult:
     """
     Handle ALL audio conversion needs in one place.
@@ -116,6 +128,7 @@ def convert_if_needed(
         needs_chunking: Whether chunking will be used (affects supported codecs)
         is_asr_endpoint: Whether using ASR endpoint (affects AAC handling)
         delete_original: Whether to delete original file after successful conversion
+        connector_specs: Optional ConnectorSpecifications with provider-specific codec restrictions
 
     Returns:
         ConversionResult with output path, mime type, and conversion stats
@@ -147,8 +160,8 @@ def convert_if_needed(
     audio_codec = original_codec
     has_video = codec_info.get('has_video', False) if codec_info else False
 
-    # Get supported codecs based on processing mode
-    supported_codecs = get_supported_codecs(needs_chunking)
+    # Get supported codecs based on processing mode and connector specs
+    supported_codecs = get_supported_codecs(needs_chunking, connector_specs)
 
     # Handle video files - extract audio
     if has_video:

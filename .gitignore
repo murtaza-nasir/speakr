@@ -7,7 +7,7 @@ uploads/
 __pycache__/
 *.pyc
 *.log
-.env
+*.env
 .migrate/
 project_files.md
 *.md

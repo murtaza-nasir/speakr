@@ -189,15 +189,15 @@
                         <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
                         Selected tags include custom summary prompts
                     </p>
-                    <p v-if="selectedTags.length > 0 && useAsrEndpoint && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
+                    <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
                        class="text-xs text-[var(--text-muted)] mt-1">
                         <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
                         First tag's ASR settings will be applied: ${selectedTags[0].name}
                     </p>
                 </div>
 
-                <!-- Advanced Options for ASR (collapsible) -->
-                <div v-if="useAsrEndpoint">
+                <!-- Advanced Options for diarization-enabled connectors (collapsible) -->
+                <div v-if="connectorSupportsDiarization">
                     <button @click="showAdvancedOptions = !showAdvancedOptions"
                             class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
                         <span class="flex items-center gap-2 text-[var(--text-secondary)]">
@@ -218,7 +218,8 @@
                             </select>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3">
+                        <!-- Speaker Settings - only show for connectors that support min/max speakers -->
+                        <div v-if="connectorSupportsSpeakerCount" class="grid grid-cols-2 gap-3">
                             <div>
                                 <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
                                 </label>
