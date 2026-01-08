@@ -6,7 +6,13 @@ This comprehensive guide covers deploying Speakr for production use, including d
 
 Before diving into installation, it's helpful to understand how Speakr works. The application integrates with external APIs for two main purposes: transcription services that convert your audio to text, and text generation services that power features like summaries, titles, and interactive chat. Speakr is designed to be flexible, supporting both cloud-based services like OpenAI and self-hosted solutions running on your own infrastructure.
 
-Speakr uses specific API endpoint formats for these integrations. For transcription, it supports the standard OpenAI Whisper API format using the `/audio/transcriptions` endpoint, which is implemented by OpenAI, OpenRouter, and many self-hosted solutions. Alternatively, for advanced features like speaker diarization, Speakr can connect to ASR webservices that provide an `/asr` endpoint. **Note: Using the ASR endpoint option requires running an additional Docker container** (`onerahmet/openai-whisper-asr-webservice`) alongside Speakr - full setup instructions are provided in the [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) section below. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
+Speakr uses a **connector-based architecture** for transcription services, providing a unified interface regardless of which provider you choose. Three connectors are available:
+
+1. **ASR Endpoint** (Recommended for best quality) - For self-hosted solutions like WhisperX that offer GPU-accelerated transcription with superior accuracy, voice profiles, and speaker diarization
+2. **OpenAI Transcribe** - Uses `gpt-4o-transcribe-diarize` for cloud-based speaker diarization without requiring additional containers
+3. **OpenAI Whisper** - Legacy whisper-1 model for basic transcription
+
+The connector is automatically selected based on your configuration. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
 
 ## Prerequisites
 
@@ -60,15 +66,29 @@ The restart policy `unless-stopped` ensures Speakr automatically starts after sy
 
 The environment configuration is where you tell Speakr which AI services to use and how to connect to them. Download the appropriate environment template based on your transcription service choice. This template contains all the configuration variables with helpful comments explaining each setting.
 
-#### For OpenAI Whisper API
+#### For OpenAI with Speaker Diarization (Cloud-Based)
 
-If you're using OpenAI's Whisper API or any compatible service, download the Whisper environment template:
+If you don't want to self-host a transcription service, the easiest way to get speaker diarization is using OpenAI's `gpt-4o-transcribe-diarize` model. This requires only an OpenAI API key—no additional containers needed.
+
+Download the unified transcription configuration template:
 
 ```bash
-wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.transcription.example -O .env
 ```
 
-Now edit the `.env` file to add your API keys and customize the settings. The configuration is organized into logical sections. First, configure the text generation model that powers summaries, titles, and chat features. OpenRouter is recommended here because it provides access to multiple AI models at competitive prices, but you can use any OpenAI-compatible service:
+Configure your transcription service with just two key settings:
+
+```bash
+TRANSCRIPTION_API_KEY=sk-your-openai-key-here
+TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
+```
+
+The connector automatically detects that you want the OpenAI Transcribe connector based on the model name. Other available models:
+- `gpt-4o-transcribe` - High quality without diarization
+- `gpt-4o-mini-transcribe` - Cost-effective option
+- `whisper-1` - Legacy model (uses Whisper connector)
+
+Now configure the text generation model that powers summaries, titles, and chat features. OpenRouter is recommended here because it provides access to multiple AI models at competitive prices, but you can use any OpenAI-compatible service:
 
 ```bash
 TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
@@ -80,30 +100,41 @@ If you prefer to use OpenAI directly for text generation, simply change the base
 
 > **Tip:** For advanced model configuration options—including GPT-5 support, separate chat model settings for different service tiers, and cost optimization strategies—see the [Model Configuration](../admin-guide/model-configuration.md) guide.
 
-Next, configure the transcription service. This is what converts your audio files into text:
+#### For Legacy OpenAI Whisper API
+
+If you prefer the legacy Whisper API (without diarization), you can still use the legacy configuration:
+
+```bash
+wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.whisper.example -O .env
+```
+
+Configure the transcription service:
 
 ```bash
 TRANSCRIPTION_BASE_URL=https://api.openai.com/v1
 TRANSCRIPTION_API_KEY=sk-your-openai-key-here
-WHISPER_MODEL=whisper-1
+TRANSCRIPTION_MODEL=whisper-1
 ```
 
-#### For Custom ASR Endpoint with Speaker Diarization
+> **Note:** The `WHISPER_MODEL` variable is deprecated. Use `TRANSCRIPTION_MODEL` instead.
 
-If you want speaker diarization to identify who's speaking in your recordings, you'll need to use an ASR webservice endpoint. **This requires running an additional Docker container** alongside Speakr, but provides powerful features for meeting transcriptions and multi-speaker recordings.
+#### For Self-Hosted ASR Endpoint (Recommended for Best Quality)
+
+For the best transcription and diarization quality, self-hosting an ASR service is recommended. Based on testing, the WhisperX ASR Service with the latest pyannote models provides significantly better transcription accuracy and speaker diarization than cloud-based alternatives, especially when using large models like `large-v3`. **This requires running an additional Docker container** alongside Speakr, but provides powerful features including voice profiles that remember speakers across recordings.
 
 **ASR Service Options:**
 
-1. **WhisperX ASR Service (Recommended for Voice Profiles)** - Required for AI-powered voice profile features using speaker embeddings
+1. **WhisperX ASR Service (Recommended)** - Best transcription quality with voice profile support
    - Repository: [murtaza-nasir/whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service)
    - Uses `pyannote/speaker-diarization-community-1` model with exclusive diarization
+   - **Superior transcription and diarization quality** with large models (large-v3, distil-large-v3)
    - Supports 256-dimensional speaker embeddings for voice profile identification
    - Better timestamp alignment between speakers and words
    - **Required for:** Voice profiles, automatic speaker recognition, speaker embeddings
    - **Environment file:** `config/env.whisperx.example`
    - **Required setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features
 
-2. **OpenAI Whisper ASR Webservice (Basic Diarization)** - For basic speaker diarization without voice profiles
+2. **OpenAI Whisper ASR Webservice** - For basic speaker diarization without voice profiles
    - Repository: [ahmetoner/whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice)
    - Uses `pyannote/speaker-diarization-3.1` model
    - Simpler setup, less resource intensive
@@ -124,17 +155,17 @@ wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.wh
 wget https://raw.githubusercontent.com/murtaza-nasir/speakr/master/config/env.asr.example -O .env
 ```
 
-The ASR configuration enables the custom endpoint and tells Speakr where to find it:
+The ASR configuration tells Speakr where to find your ASR service. Simply set the base URL and Speakr will automatically detect ASR mode:
 
 ```bash
-USE_ASR_ENDPOINT=true
-
 # For WhisperX ASR Service:
 ASR_BASE_URL=http://whisperx-asr:9000
 
 # OR for basic ASR Webservice:
 ASR_BASE_URL=http://whisper-asr:9000
 ```
+
+> **Note:** The `USE_ASR_ENDPOINT=true` setting is deprecated. Just setting `ASR_BASE_URL` automatically enables ASR mode.
 
 The ASR_BASE_URL depends on your deployment architecture:
 - **Same Docker Compose stack:** Use the service name (e.g., `http://whisperx-asr:9000` or `http://whisper-asr:9000`) - Docker's internal networking
@@ -178,7 +209,17 @@ Setting `ALLOW_REGISTRATION=false` means only the admin can create new user acco
 
 #### Large File Handling
 
-One of Speakr's most useful features is automatic handling of large audio files. Many transcription APIs have file size limits, with OpenAI's 25MB limit being a common constraint. Rather than forcing you to manually split files, Speakr handles this automatically through intelligent chunking:
+Speakr automatically handles large audio files through intelligent chunking. The behavior depends on which transcription connector you're using:
+
+**Connector-Aware Chunking:**
+
+| Connector | Chunking Behavior |
+|-----------|-------------------|
+| **ASR Endpoint** | Handled internally by the ASR service—no app-level chunking needed |
+| **OpenAI Transcribe** | Handled internally using `chunking_strategy=auto`—no app-level chunking needed |
+| **OpenAI Whisper** | App-level chunking for files >25MB using your configured settings |
+
+For the OpenAI Whisper connector, you can customize chunking behavior:
 
 ```bash
 ENABLE_CHUNKING=true
@@ -186,9 +227,9 @@ CHUNK_LIMIT=20MB
 CHUNK_OVERLAP_SECONDS=3
 ```
 
-When chunking is enabled, Speakr automatically detects when a file exceeds the configured limit and splits it into smaller pieces. Each chunk is processed separately, and the transcriptions are seamlessly merged back together. The overlap setting ensures that no words are lost at chunk boundaries, which is especially important for continuous speech. The chunk limit can be specified as a file size like `20MB` or as a duration like `20m` for 20 minutes, depending on your API's limitations.
+When chunking is enabled, Speakr automatically detects when a file exceeds the configured limit and splits it into smaller pieces. Each chunk is processed separately, and the transcriptions are seamlessly merged back together. The overlap setting ensures that no words are lost at chunk boundaries, which is especially important for continuous speech. The chunk limit can be specified as a file size like `20MB` or as a duration like `20m` for 20 minutes.
 
-This feature only applies when using the standard Whisper API method. If you're using an ASR endpoint, chunking is not needed as these services typically handle large files natively.
+> **Note:** These chunking settings are ignored when using ASR Endpoint or OpenAI Transcribe connectors, as those services handle large files internally.
 
 #### Audio Compression
 
@@ -447,7 +488,6 @@ volumes:
 
 In Speakr's `.env` file:
 ```bash
-USE_ASR_ENDPOINT=true
 ASR_BASE_URL=http://whisperx-asr:9000
 ```
 
