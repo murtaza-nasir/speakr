@@ -171,6 +171,34 @@ class ConnectorRegistry:
             logger.error(f"Failed to initialize connector '{connector_name}': {e}")
             raise ConfigurationError(f"Failed to initialize connector '{connector_name}': {e}") from e
 
+    def _get_asr_timeout(self) -> int:
+        """
+        Get ASR timeout with fallback chain: ENV -> Admin UI -> default.
+
+        Priority:
+        1. ASR_TIMEOUT environment variable
+        2. asr_timeout_seconds environment variable (legacy)
+        3. SystemSetting from Admin UI (database)
+        4. Default: 1800 seconds (30 minutes)
+        """
+        # Check environment variables first
+        env_timeout = os.environ.get('ASR_TIMEOUT') or os.environ.get('asr_timeout_seconds')
+        if env_timeout:
+            return int(env_timeout)
+
+        # Fall back to Admin UI setting (SystemSetting in database)
+        try:
+            from src.models import SystemSetting
+            db_timeout = SystemSetting.get_setting('asr_timeout_seconds', None)
+            if db_timeout is not None:
+                return int(db_timeout)
+        except Exception as e:
+            # May fail if no app context or during initialization
+            logger.debug(f"Could not read ASR timeout from database: {e}")
+
+        # Default: 30 minutes
+        return 1800
+
     def _build_config_from_env(self, connector_name: str) -> Dict[str, Any]:
         """
         Build connector config from environment variables.
@@ -188,7 +216,7 @@ class ConnectorRegistry:
 
             return {
                 'base_url': base_url,
-                'timeout': int(os.environ.get('ASR_TIMEOUT', os.environ.get('asr_timeout_seconds', '1800'))),
+                'timeout': self._get_asr_timeout(),
                 'diarize': os.environ.get('ASR_DIARIZE', 'true').lower() == 'true',
                 'return_speaker_embeddings': os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
             }
