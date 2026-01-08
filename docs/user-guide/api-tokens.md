@@ -37,7 +37,7 @@ The most secure and standard method:
 
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     https://your-speakr-instance.com/api/recordings
+     https://your-speakr-instance.com/api/v1/recordings
 ```
 
 ### X-API-Token Header
@@ -46,7 +46,7 @@ Alternative header format:
 
 ```bash
 curl -H "X-API-Token: YOUR_TOKEN_HERE" \
-     https://your-speakr-instance.com/api/recordings
+     https://your-speakr-instance.com/api/v1/recordings
 ```
 
 ### API-Token Header
@@ -55,7 +55,7 @@ Another alternative:
 
 ```bash
 curl -H "API-Token: YOUR_TOKEN_HERE" \
-     https://your-speakr-instance.com/api/recordings
+     https://your-speakr-instance.com/api/v1/recordings
 ```
 
 ### Query Parameter
@@ -63,26 +63,35 @@ curl -H "API-Token: YOUR_TOKEN_HERE" \
 For simple integrations (less secure - token visible in logs):
 
 ```bash
-curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"
+curl "https://your-speakr-instance.com/api/v1/recordings?token=YOUR_TOKEN_HERE"
 ```
 
 ## Available API Endpoints
 
-Once authenticated, you can access the same data available through the web interface:
+Speakr provides a comprehensive REST API with endpoints for recordings, tags, speakers, processing operations, and more.
+
+!!! tip "Full API Documentation"
+    See the complete [API Reference](api-reference.md) for all endpoints, parameters, and examples. You can also access interactive documentation at `/api/v1/docs` on your instance.
+
+**Quick reference of common endpoints:**
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/recordings` | GET | List your recordings with pagination |
-| `/api/recordings/<id>` | GET | Get a specific recording's details |
-| `/api/recordings/<id>/transcript` | GET | Get the transcript text |
-| `/api/recordings/<id>/summary` | GET | Get the AI-generated summary |
-| `/api/tags` | GET | List your tags |
+| `/api/v1/stats` | GET | Dashboard statistics (gethomepage.dev compatible) |
+| `/api/v1/recordings` | GET | List recordings with filtering and pagination |
+| `/api/v1/recordings/<id>` | GET | Get recording details |
+| `/api/v1/recordings/<id>/transcript` | GET | Get transcript (json, text, srt, vtt) |
+| `/api/v1/recordings/<id>/summary` | GET | Get AI-generated summary |
+| `/api/v1/recordings/<id>/transcribe` | POST | Queue transcription |
+| `/api/v1/recordings/<id>/summarize` | POST | Queue summarization |
+| `/api/v1/tags` | GET | List your tags |
+| `/api/v1/speakers` | GET | List your speakers |
 
 ### Example: List Recordings
 
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-     "https://your-speakr-instance.com/api/recordings?page=1&per_page=25"
+     "https://your-speakr-instance.com/api/v1/recordings?page=1&per_page=25"
 ```
 
 Response:
@@ -170,7 +179,7 @@ BASE_URL = "https://your-speakr-instance.com"
 headers = {"Authorization": f"Bearer {TOKEN}"}
 
 # List recordings
-response = requests.get(f"{BASE_URL}/api/recordings", headers=headers)
+response = requests.get(f"{BASE_URL}/api/v1/recordings", headers=headers)
 recordings = response.json()["recordings"]
 
 for recording in recordings:
@@ -186,7 +195,7 @@ BASE_URL="https://your-speakr-instance.com"
 
 # Get all recordings
 curl -s -H "Authorization: Bearer $TOKEN" \
-     "$BASE_URL/api/recordings" | jq '.recordings[].title'
+     "$BASE_URL/api/v1/recordings" | jq '.recordings[].title'
 ```
 
 ## Troubleshooting

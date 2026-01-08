@@ -166,6 +166,8 @@ nav:
     - Inquire Mode: user-guide/inquire-mode.md
     - Sharing Recordings: user-guide/sharing.md
     - Account Settings: user-guide/settings.md
+    - API Tokens: user-guide/api-tokens.md
+    - API Reference: user-guide/api-reference.md
     
   - Admin Guide:
     - admin-guide/index.md

@@ -78,7 +78,7 @@ def format_bytes(bytes_value: int) -> str:
 OPENAPI_SPEC = {
     "openapi": "3.0.3",
     "info": {
-        "title": "Speakr API v1",
+        "title": "Speakr API",
         "description": "REST API for Speakr - Audio transcription and note-taking application.\n\n## Authentication\nAll endpoints require token authentication via one of:\n- `Authorization: Bearer <token>`\n- `X-API-Token: <token>`\n- `API-Token: <token>`\n- `?token=<token>` query parameter\n\nGenerate tokens in Settings > API Tokens.",
         "version": "1.0.0"
     },
