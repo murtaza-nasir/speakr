@@ -998,12 +998,93 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
         raise
 
 
-def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language):
+def merge_diarized_chunks(chunk_results):
+    """
+    Merge diarized transcription chunks while preserving speaker labels AND segments.
+
+    Since we use known_speaker_references, speaker labels (A, B, C, D) should be
+    consistent across chunks. This function:
+    1. Concatenates the diarized text from each chunk
+    2. Merges all segments with adjusted timestamps based on chunk start_time
+
+    Args:
+        chunk_results: List of chunk results with 'transcription', 'segments', 'start_time'
+
+    Returns:
+        Tuple of (merged_text, merged_segments, all_speakers)
+    """
+    from src.services.transcription import TranscriptionSegment
+
+    if not chunk_results:
+        return "", [], []
+
+    # Sort chunks by start time to ensure correct order
+    sorted_chunks = sorted(chunk_results, key=lambda x: x.get('start_time', 0))
+
+    merged_parts = []
+    merged_segments = []
+    all_speakers = set()
+
+    for chunk in sorted_chunks:
+        chunk_text = chunk.get('transcription', '').strip()
+        if chunk_text:
+            merged_parts.append(chunk_text)
+
+        # Merge segments with adjusted timestamps
+        chunk_start_offset = chunk.get('start_time', 0)
+        chunk_segments = chunk.get('segments') or []
+
+        for seg in chunk_segments:
+            # Handle both TranscriptionSegment objects and dicts
+            if hasattr(seg, 'speaker'):
+                speaker = seg.speaker
+                text = seg.text
+                start_time = seg.start_time
+                end_time = seg.end_time
+            else:
+                speaker = seg.get('speaker', 'Unknown')
+                text = seg.get('text', '')
+                start_time = seg.get('start_time') or seg.get('start')
+                end_time = seg.get('end_time') or seg.get('end')
+
+            # Skip empty segments
+            if not text or not text.strip():
+                continue
+
+            all_speakers.add(speaker)
+
+            # Adjust timestamps by chunk offset
+            adjusted_start = (start_time or 0) + chunk_start_offset
+            adjusted_end = (end_time or 0) + chunk_start_offset
+
+            merged_segments.append(TranscriptionSegment(
+                text=text,
+                speaker=speaker,
+                start_time=adjusted_start,
+                end_time=adjusted_end
+            ))
+
+        # Track speakers from chunk metadata too
+        if chunk.get('speakers'):
+            for s in chunk['speakers']:
+                all_speakers.add(s)
+
+    merged_text = '\n'.join(merged_parts)
+    return merged_text, merged_segments, sorted(list(all_speakers))
+
+
+def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language, diarize=False):
     """
     Transcribe a large audio file using chunking with the connector architecture.
 
     This is used when the connector doesn't handle chunking internally (e.g., OpenAI Whisper)
     and the file exceeds the configured chunk limit.
+
+    For diarization-enabled connectors (gpt-4o-transcribe-diarize), this function:
+    1. Processes the first chunk with diarization enabled
+    2. Extracts speaker audio samples from the diarized response
+    3. Passes those samples as known_speaker_references to subsequent chunks
+    This maintains consistent speaker labels (A, B, C, D) across all chunks.
 
     Args:
         connector: The transcription connector to use
@@ -1011,15 +1092,26 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
         filename: Original filename for logging
         mime_type: MIME type of the audio file
         language: Optional language code
+        diarize: Whether diarization was requested (for connectors that support it)
 
     Returns:
-        Merged transcription text
+        Merged transcription text (with speaker labels if diarization enabled)
     """
     import tempfile
     from src.services.transcription import TranscriptionRequest
+    from src.audio_chunking import extract_speaker_samples, samples_to_data_urls
 
     # Get connector specs for proper chunking (respects hard limits like max_duration_seconds)
     connector_specs = connector.specifications
+
+    # Check if connector supports diarization (property, not method - no parentheses)
+    supports_diarization = connector.supports_diarization
+    use_diarization = diarize and supports_diarization
+
+    if use_diarization:
+        current_app.logger.info("Diarization enabled - will use known_speaker_references for consistent speaker labels across chunks")
+    elif diarize and not supports_diarization:
+        current_app.logger.warning("Diarization requested but connector doesn't support it - transcribing without diarization")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -1034,6 +1126,8 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
 
             # Process each chunk
             chunk_results = []
+            known_speaker_names = None
+            known_speaker_refs = None  # Dict of speaker label -> data URL
 
             for i, chunk in enumerate(chunks):
                 max_retries = 3
@@ -1047,15 +1141,54 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
 
                         # Transcribe chunk using connector
                         with open(chunk['path'], 'rb') as chunk_file:
-                            request = TranscriptionRequest(
-                                audio_file=chunk_file,
-                                filename=chunk['filename'],
-                                mime_type='audio/mpeg',  # Chunks are always MP3
-                                language=language,
-                                diarize=False  # Chunking doesn't support diarization
-                            )
+                            # For diarization: first chunk gets diarize=True, subsequent chunks
+                            # get diarize=True + known_speaker_references
+                            if use_diarization:
+                                request = TranscriptionRequest(
+                                    audio_file=chunk_file,
+                                    filename=chunk['filename'],
+                                    mime_type='audio/mpeg',  # Chunks are always MP3
+                                    language=language,
+                                    diarize=True,
+                                    known_speaker_names=known_speaker_names,
+                                    known_speaker_references=known_speaker_refs
+                                )
+                            else:
+                                request = TranscriptionRequest(
+                                    audio_file=chunk_file,
+                                    filename=chunk['filename'],
+                                    mime_type='audio/mpeg',
+                                    language=language,
+                                    diarize=False
+                                )
 
                             response = connector.transcribe(request)
+
+                        # For the first diarized chunk, extract speaker samples for subsequent chunks
+                        if use_diarization and i == 0 and response.segments:
+                            current_app.logger.info(f"First chunk diarized with {len(response.speakers or [])} speakers, extracting samples...")
+
+                            # Extract speaker samples from the first chunk
+                            speaker_samples = extract_speaker_samples(
+                                audio_path=chunk['path'],
+                                segments=[{
+                                    'speaker': seg.speaker,
+                                    'start_time': seg.start_time,
+                                    'end_time': seg.end_time
+                                } for seg in response.segments],
+                                output_dir=temp_dir,
+                                min_duration=2.0,
+                                max_duration=10.0,
+                                max_speakers=4
+                            )
+
+                            if speaker_samples:
+                                # Convert to data URLs for the API
+                                known_speaker_refs = samples_to_data_urls(speaker_samples)
+                                known_speaker_names = list(known_speaker_refs.keys())
+                                current_app.logger.info(f"Extracted speaker references for {len(known_speaker_names)} speakers: {known_speaker_names}")
+                            else:
+                                current_app.logger.warning("Could not extract speaker samples from first chunk")
 
                         # Store chunk result
                         chunk_result = {
@@ -1065,7 +1198,9 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                             'duration': chunk['duration'],
                             'size_mb': chunk['size_mb'],
                             'transcription': response.text,
-                            'filename': chunk['filename']
+                            'filename': chunk['filename'],
+                            'segments': response.segments if use_diarization else None,
+                            'speakers': response.speakers if use_diarization else None
                         }
                         chunk_results.append(chunk_result)
                         current_app.logger.info(f"Chunk {i+1} transcribed successfully: {len(response.text)} characters")
@@ -1096,15 +1231,38 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
 
             # Merge transcriptions
             current_app.logger.info(f"Merging {len(chunk_results)} chunk transcriptions...")
-            merged_transcription = chunking_service.merge_transcriptions(chunk_results)
 
-            if not merged_transcription.strip():
-                raise ChunkProcessingError("Merged transcription is empty")
+            if use_diarization:
+                # For diarized chunks, merge text AND segments with adjusted timestamps
+                merged_text, merged_segments, all_speakers = merge_diarized_chunks(chunk_results)
 
-            # Log statistics
-            chunking_service.log_processing_statistics(chunk_results)
+                if not merged_text.strip():
+                    raise ChunkProcessingError("Merged transcription is empty")
 
-            return merged_transcription
+                # Log statistics
+                chunking_service.log_processing_statistics(chunk_results)
+
+                current_app.logger.info(f"Merged diarization: {len(merged_segments)} segments, {len(all_speakers)} speakers: {all_speakers}")
+
+                # Return a TranscriptionResponse so segments are preserved
+                from src.services.transcription import TranscriptionResponse
+                return TranscriptionResponse(
+                    text=merged_text,
+                    segments=merged_segments,
+                    speakers=all_speakers,
+                    provider=connector.PROVIDER_NAME,
+                    model=getattr(connector, 'model', 'unknown')
+                )
+            else:
+                merged_transcription = chunking_service.merge_transcriptions(chunk_results)
+
+                if not merged_transcription.strip():
+                    raise ChunkProcessingError("Merged transcription is empty")
+
+                # Log statistics
+                chunking_service.log_processing_statistics(chunk_results)
+
+                return merged_transcription
 
         except Exception as e:
             current_app.logger.error(f"Chunking transcription failed for {filepath}: {e}")
@@ -1276,12 +1434,21 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         # Use chunking for large files
                         file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
                         current_app.logger.info(f"File {actual_filepath} is large ({file_size_mb:.1f}MB), using chunking for transcription")
-                        transcription_text = transcribe_chunks_with_connector(
-                            connector, actual_filepath, actual_filename, actual_content_type, language
+                        chunk_result = transcribe_chunks_with_connector(
+                            connector, actual_filepath, actual_filename, actual_content_type, language,
+                            diarize=should_diarize  # Pass diarization setting for speaker reference tracking
                         )
-                        # Store as plain text (chunked transcription doesn't preserve diarization)
-                        recording.transcription = transcription_text
-                        current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
+
+                        # Handle result based on type (TranscriptionResponse for diarized, string for plain)
+                        if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
+                            # Diarized response - store with segments for click-to-seek and speaker identification
+                            recording.transcription = chunk_result.to_storage_format()
+                            current_app.logger.info(f"Chunked diarized transcription completed: {len(chunk_result.text)} characters, {len(chunk_result.segments)} segments")
+                        else:
+                            # Plain text response
+                            transcription_text = chunk_result.text if hasattr(chunk_result, 'text') else chunk_result
+                            recording.transcription = transcription_text
+                            current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
                     else:
                         # Build the transcription request for single file
                         with open(actual_filepath, 'rb') as audio_file:

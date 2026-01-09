@@ -180,9 +180,26 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                     params["response_format"] = "diarized_json"
                     logger.info("Using diarized_json response format for speaker diarization")
 
-                    # Optional: known speaker support (for future implementation)
-                    # if request.known_speaker_names:
-                    #     params["known_speaker_names"] = request.known_speaker_names
+                    # Known speaker support for maintaining speaker identity across chunks
+                    # known_speaker_names is a list of speaker labels (e.g., ["A", "B"])
+                    # known_speaker_references is a dict mapping label to data URL
+                    if request.known_speaker_names and request.known_speaker_references:
+                        # OpenAI expects lists for both parameters
+                        speaker_names = []
+                        speaker_refs = []
+
+                        for name in request.known_speaker_names:
+                            if name in request.known_speaker_references:
+                                speaker_names.append(name)
+                                speaker_refs.append(request.known_speaker_references[name])
+
+                        if speaker_names:
+                            # Use extra_body to pass the known speaker parameters
+                            params["extra_body"] = {
+                                "known_speaker_names": speaker_names,
+                                "known_speaker_references": speaker_refs
+                            }
+                            logger.info(f"Using known speaker references for {len(speaker_names)} speakers: {speaker_names}")
             else:
                 # Non-diarization models
                 if request.prompt:
@@ -248,6 +265,10 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                 start = getattr(seg, 'start', None)
                 end = getattr(seg, 'end', None)
 
+            # Skip empty segments
+            if not text or not text.strip():
+                continue
+
             speakers.add(speaker)
             full_text_parts.append(f"[{speaker}]: {text}")
 
@@ -258,13 +279,9 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                 end_time=end
             ))
 
-        # Get the full text if available
-        if hasattr(response, 'text'):
-            full_text = response.text
-        elif isinstance(response, dict) and 'text' in response:
-            full_text = response['text']
-        else:
-            full_text = '\n'.join(full_text_parts)
+        # Always use our formatted text with speaker labels for diarized responses
+        # OpenAI's response.text is plain text WITHOUT speaker labels
+        full_text = '\n'.join(full_text_parts)
 
         logger.info(f"Parsed {len(segments)} segments with {len(speakers)} unique speakers: {sorted(speakers)}")
 

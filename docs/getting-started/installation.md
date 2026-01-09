@@ -88,6 +88,8 @@ The connector automatically detects that you want the OpenAI Transcribe connecto
 - `gpt-4o-mini-transcribe` - Cost-effective option
 - `whisper-1` - Legacy model (uses Whisper connector)
 
+> **Note:** For longer files (over ~23 minutes) using `gpt-4o-transcribe-diarize`, speaker tracking across chunks supports up to 4 speakers. Recordings with more speakers may have inconsistent labels across sections.
+
 Now configure the text generation model that powers summaries, titles, and chat features. OpenRouter is recommended here because it provides access to multiple AI models at competitive prices, but you can use any OpenAI-compatible service:
 
 ```bash

@@ -70,7 +70,7 @@ Choose ONE of the following options:
 TRANSCRIPTION_API_KEY=sk-your_openai_api_key
 TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
 ```
-This provides high-quality transcription with automatic speaker identification - no GPU or self-hosted service required.
+This provides high-quality transcription with automatic speaker identification - no GPU or self-hosted service required. Note: For longer files (over ~23 minutes), speaker tracking across chunks supports up to 4 speakers.
 
 **Option B: Self-hosted ASR/WhisperX (Best for privacy)**
 ```bash
