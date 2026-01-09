@@ -28,6 +28,7 @@ from .audit import ShareAuditLog
 from .push_subscription import PushSubscription
 from .processing_job import ProcessingJob
 from .token_usage import TokenUsage
+from .transcription_usage import TranscriptionUsage
 
 # Export all models
 __all__ = [
@@ -59,4 +60,5 @@ __all__ = [
     'PushSubscription',
     'ProcessingJob',
     'TokenUsage',
+    'TranscriptionUsage',
 ]

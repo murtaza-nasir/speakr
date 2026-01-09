@@ -50,6 +50,30 @@ The Token Usage section provides visibility into LLM API consumption across your
 
 Use token statistics to identify heavy users, validate budget allocations, and forecast API costs. If certain users consistently hit their limits, you may need to increase their budgets or investigate their usage patterns. See [Token Budget Management](user-management.md#token-budget-management) for setting individual user limits.
 
+## Transcription Usage Statistics
+
+The Transcription Usage section provides visibility into speech-to-text API consumption across your instance. This is separate from token usage and tracks audio transcription specifically.
+
+**Summary Cards**: Four cards at the top show:
+- **Today's Minutes**: Transcription minutes used today across all users
+- **This Month**: Total minutes transcribed in the current calendar month
+- **Monthly Cost**: Estimated costs based on connector pricing (OpenAI Whisper/Transcribe charges, $0 for self-hosted ASR)
+- **Budget Warnings**: Count of users approaching (80%+) or exceeding (100%) their transcription budgets
+
+**Per-User Breakdown**: A detailed list shows each user's monthly transcription usage alongside their budget limit (if set). Progress bars indicate budget consumption:
+
+- Green: Under 80% of budget
+- Yellow: Between 80-100% (warning zone)
+- Red: At or over 100% (blocked from new transcriptions)
+
+**Cost Estimation**: The system calculates estimated costs based on the transcription connector used:
+- OpenAI Whisper API: $0.006 per minute
+- OpenAI Transcribe (gpt-4o-transcribe): $0.006 per minute
+- OpenAI Transcribe (gpt-4o-mini-transcribe): $0.003 per minute
+- Self-hosted ASR endpoints: $0 (no external API costs)
+
+Use transcription statistics to monitor usage patterns, identify heavy users, and validate budget allocations. Organizations using cloud transcription services can forecast costs accurately, while those with self-hosted ASR can track capacity utilization. See [Transcription Budget Management](user-management.md#transcription-budget-management) for setting individual user limits.
+
 ---
 
 Next: [System Settings](system-settings.md) →

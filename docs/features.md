@@ -201,6 +201,16 @@ Monitor and control LLM API consumption with per-user token tracking and budget 
 
 **Admin Dashboard**: View detailed token statistics including daily trends, monthly totals, and per-user breakdowns. Cost tracking is available when using OpenRouter or other providers that return cost information. See the [admin guide](admin-guide/statistics.md#token-usage-statistics) for details.
 
+### Transcription Usage Tracking & Budgets
+
+Monitor and control speech-to-text API consumption separately from LLM tokens. The system tracks all transcription operations across different connectors (OpenAI Whisper, OpenAI Transcribe, and self-hosted ASR).
+
+**Per-User Budgets**: Set monthly transcription limits (in minutes) for individual users. Users receive warnings at 80% consumption, and new transcriptions are blocked when the budget is exhausted until the next month.
+
+**Cost Estimation**: The system calculates estimated transcription costs based on the connector used - $0.006/minute for OpenAI Whisper, $0.003-$0.006/minute for OpenAI Transcribe models, and $0 for self-hosted ASR endpoints. This helps organizations forecast costs and identify heavy users.
+
+**Admin Dashboard**: View transcription statistics including today's usage, monthly totals, estimated costs, and per-user breakdowns with budget status indicators. See the [admin guide](admin-guide/statistics.md#transcription-usage-statistics) for details.
+
 ### Flexible Configuration
 
 Configure every aspect of Speakr through [environment variables](getting-started.md#step-3-configure-your-transcription-service) and [admin settings](admin-guide/index.md). Check [system settings](admin-guide/system-settings.md) for global configuration options. Set API endpoints, adjust processing limits, enable or disable features, and customize the user experience. The system adapts to your infrastructure and requirements.

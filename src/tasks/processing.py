@@ -37,6 +37,7 @@ from src.config.app_config import (
     USE_NEW_TRANSCRIPTION_ARCHITECTURE
 )
 from src.file_exporter import export_recording, ENABLE_AUTO_EXPORT
+from src.services.transcription_tracking import transcription_tracker
 
 # Configuration for internal sharing
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
@@ -1315,6 +1316,18 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             connector_name = connector.PROVIDER_NAME
             current_app.logger.info(f"Using transcription connector: {connector_name}")
 
+            # Check transcription budget before processing
+            can_proceed, usage_pct, budget_msg = transcription_tracker.check_budget(recording.user_id)
+            if not can_proceed:
+                current_app.logger.warning(f"User {recording.user_id} exceeded transcription budget: {budget_msg}")
+                recording.status = 'FAILED'
+                recording.error_msg = budget_msg
+                db.session.commit()
+                return
+            elif budget_msg:
+                # Log warning but continue
+                current_app.logger.warning(budget_msg)
+
             # Handle video extraction (keep existing logic)
             actual_filepath = filepath
             actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
@@ -1541,6 +1554,29 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
             db.session.commit()
             current_app.logger.info(f"Transcription completed in {recording.transcription_duration_seconds}s")
+
+            # Record transcription usage for billing/budgeting
+            try:
+                # Get actual audio duration (not processing time)
+                audio_duration = None
+                if chunking_service:
+                    audio_duration = chunking_service.get_audio_duration(filepath)
+
+                if audio_duration and audio_duration > 0:
+                    # Get model name from connector if available
+                    model_name = getattr(connector, 'model', None) or connector_name
+                    transcription_tracker.record_usage(
+                        user_id=recording.user_id,
+                        connector_type=connector_name,
+                        audio_duration_seconds=int(audio_duration),
+                        model_name=model_name
+                    )
+                    current_app.logger.info(f"Recorded transcription usage: {int(audio_duration)}s for user {recording.user_id}")
+                else:
+                    current_app.logger.warning(f"Could not determine audio duration for usage tracking")
+            except Exception as usage_err:
+                # Don't fail transcription if usage tracking fails
+                current_app.logger.warning(f"Failed to record transcription usage: {usage_err}")
 
             # Check if auto-summarization is disabled
             disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)
@@ -1882,6 +1918,23 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             db.session.commit()
             current_app.logger.info(f"ASR transcription completed for recording {recording_id} in {recording.transcription_duration_seconds}s.")
 
+            # Record transcription usage for billing/budgeting (legacy ASR)
+            try:
+                audio_duration = None
+                if chunking_service:
+                    audio_duration = chunking_service.get_audio_duration(filepath)
+
+                if audio_duration and audio_duration > 0:
+                    transcription_tracker.record_usage(
+                        user_id=recording.user_id,
+                        connector_type='asr_endpoint',
+                        audio_duration_seconds=int(audio_duration),
+                        model_name='asr-endpoint'
+                    )
+                    current_app.logger.info(f"Recorded ASR transcription usage: {int(audio_duration)}s for user {recording.user_id}")
+            except Exception as usage_err:
+                current_app.logger.warning(f"Failed to record ASR transcription usage: {usage_err}")
+
             # Check if auto-summarization is disabled
             disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)
             will_auto_summarize = not disable_auto_summarization
@@ -2061,6 +2114,23 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
             db.session.commit()
             current_app.logger.info(f"Transcription completed for recording {recording_id} in {recording.transcription_duration_seconds}s. Text length: {len(recording.transcription)}")
+
+            # Record transcription usage for billing/budgeting (legacy Whisper API)
+            try:
+                audio_duration = None
+                if chunking_service:
+                    audio_duration = chunking_service.get_audio_duration(filepath)
+
+                if audio_duration and audio_duration > 0:
+                    transcription_tracker.record_usage(
+                        user_id=recording.user_id,
+                        connector_type='openai_whisper',
+                        audio_duration_seconds=int(audio_duration),
+                        model_name='whisper-1'
+                    )
+                    current_app.logger.info(f"Recorded Whisper transcription usage: {int(audio_duration)}s for user {recording.user_id}")
+            except Exception as usage_err:
+                current_app.logger.warning(f"Failed to record Whisper transcription usage: {usage_err}")
 
             # Check if auto-summarization is disabled
             disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)

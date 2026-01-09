@@ -407,56 +407,98 @@
                             <i class="fas fa-coins mr-2"></i> Token Usage Statistics
                         </h4>
 
-                        <!-- Token Usage Summary Cards -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <!-- Token Stats and Per-User Usage Side by Side -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Token Usage Summary Cards (2x2 grid) -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <div class="flex items-center">
-                                    <div class="p-3 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
-                                        <i class="fas fa-calendar-day text-xl"></i>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Usage Summary</h5>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
+                                                <i class="fas fa-calendar-day"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">Today</p>
+                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ tokenStats.today?.tokens?.toLocaleString() || 0 }</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-[var(--text-muted)]">Today's Tokens</p>
-                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">${ tokenStats.today?.tokens?.toLocaleString() || 0 }</p>
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">This Month</p>
+                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ tokenStats.current_month?.tokens?.toLocaleString() || 0 }</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
+                                                <i class="fas fa-dollar-sign"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">Monthly Cost</p>
+                                                <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.cost || 0).toFixed(4) }</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full" :class="tokenStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">Warnings</p>
+                                                <p class="text-lg font-semibold">
+                                                    <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } blocked</span>
+                                                    <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } warning</span>
+                                                    <span v-else class="text-[var(--text-success-strong)]">None</span>
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- Per-User Token Usage -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <div class="flex items-center">
-                                    <div class="p-3 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
-                                        <i class="fas fa-calendar-alt text-xl"></i>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">User Token Usage (This Month)</h5>
+                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                    <div v-for="user in tokenUserStats" :key="user.user_id" class="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-user text-[var(--text-accent)] mr-2 text-xs"></i>
+                                                <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
+                                            </div>
+                                            <div class="text-sm text-right">
+                                                <span class="font-semibold" :class="{
+                                                    'text-[var(--text-danger-strong)]': user.percentage >= 100,
+                                                    'text-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
+                                                    'text-[var(--text-primary)]': !user.monthly_budget || user.percentage < 80
+                                                }">${ user.current_usage?.toLocaleString() || 0 }</span>
+                                                <span v-if="user.monthly_budget" class="text-[var(--text-muted)] text-xs"> / ${ user.monthly_budget?.toLocaleString() }</span>
+                                                <span v-else class="text-[var(--text-muted)] text-xs ml-1">(unlimited)</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="user.monthly_budget" class="mt-1.5">
+                                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-1">
+                                                <div class="h-1 rounded-full transition-all"
+                                                    :class="{
+                                                        'bg-[var(--text-danger-strong)]': user.percentage >= 100,
+                                                        'bg-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
+                                                        'bg-[var(--text-success-strong)]': user.percentage < 80
+                                                    }"
+                                                    :style="{width: Math.min(user.percentage || 0, 100) + '%'}">
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-[var(--text-muted)]">This Month</p>
-                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">${ tokenStats.current_month?.tokens?.toLocaleString() || 0 }</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <div class="flex items-center">
-                                    <div class="p-3 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
-                                        <i class="fas fa-dollar-sign text-xl"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-[var(--text-muted)]">Monthly Cost</p>
-                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.cost || 0).toFixed(4) }</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <div class="flex items-center">
-                                    <div class="p-3 rounded-full" :class="tokenStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
-                                        <i class="fas fa-exclamation-triangle text-xl"></i>
-                                    </div>
-                                    <div class="ml-4">
-                                        <p class="text-sm font-medium text-[var(--text-muted)]">Budget Warnings</p>
-                                        <p class="text-2xl font-semibold text-[var(--text-primary)]">
-                                            <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } blocked</span>
-                                            <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } warning</span>
-                                            <span v-else class="text-[var(--text-success-strong)]">None</span>
-                                        </p>
+                                    <div v-if="tokenUserStats.length === 0" class="text-center text-sm text-[var(--text-muted)] p-4">
+                                        No token usage data available
                                     </div>
                                 </div>
                             </div>
@@ -480,20 +522,94 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Per-User Token Usage -->
-                        <div class="mt-6 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">User Token Usage (This Month)</h5>
-                            <div class="space-y-3 max-h-64 overflow-y-auto">
-                                <div v-for="user in tokenUserStats" :key="user.user_id" class="flex justify-between items-center p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                    <div class="flex items-center flex-1">
-                                        <i class="fas fa-user text-[var(--text-accent)] mr-2"></i>
-                                        <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
+                    <!-- Transcription Usage Section -->
+                    <div class="mt-8">
+                        <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
+                            <i class="fas fa-microphone mr-2"></i>${t('adminDashboard.transcriptionUsage')}
+                        </h4>
+
+                        <!-- Transcription Stats and Per-User Usage Side by Side -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- Transcription Usage Summary Cards (2x2 grid) -->
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Usage Summary</h5>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
+                                                <i class="fas fa-calendar-day"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.todaysMinutes')}</p>
+                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ transcriptionStats.today?.minutes || 0 }</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="flex items-center space-x-4 flex-1">
-                                        <div class="flex-1">
-                                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
-                                                <div class="h-2 rounded-full"
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.thisMonth')}</p>
+                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ transcriptionStats.current_month?.minutes || 0 } min</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
+                                                <i class="fas fa-dollar-sign"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.monthlyCost')}</p>
+                                                <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (transcriptionStats.current_month?.cost || 0).toFixed(4) }</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex items-center">
+                                            <div class="p-2 rounded-full" :class="transcriptionStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                            </div>
+                                            <div class="ml-3">
+                                                <p class="text-xs text-[var(--text-muted)]">${t('adminDashboard.budgetWarnings')}</p>
+                                                <p class="text-lg font-semibold">
+                                                    <span v-if="transcriptionStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ transcriptionStats.users_at_100_percent } ${t('adminDashboard.blocked')}</span>
+                                                    <span v-else-if="transcriptionStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ transcriptionStats.users_over_80_percent } ${t('adminDashboard.warning')}</span>
+                                                    <span v-else class="text-[var(--text-success-strong)]">${t('adminDashboard.none')}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Per-User Transcription Usage -->
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.userTranscriptionUsage')}</h5>
+                                <div class="space-y-2 max-h-48 overflow-y-auto">
+                                    <div v-for="user in transcriptionUserStats" :key="user.user_id" class="p-2 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <div class="flex justify-between items-center">
+                                            <div class="flex items-center">
+                                                <i class="fas fa-user text-[var(--text-accent)] mr-2 text-xs"></i>
+                                                <span class="text-sm font-medium text-[var(--text-primary)]">${ user.username }</span>
+                                            </div>
+                                            <div class="text-sm text-right">
+                                                <span class="font-semibold" :class="{
+                                                    'text-[var(--text-danger-strong)]': user.percentage >= 100,
+                                                    'text-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
+                                                    'text-[var(--text-primary)]': !user.monthly_budget_minutes || user.percentage < 80
+                                                }">${ user.current_usage_minutes || 0 } min</span>
+                                                <span v-if="user.monthly_budget_minutes" class="text-[var(--text-muted)] text-xs"> / ${ user.monthly_budget_minutes } min</span>
+                                                <span v-else class="text-[var(--text-muted)] text-xs ml-1">(unlimited)</span>
+                                            </div>
+                                        </div>
+                                        <div v-if="user.monthly_budget_minutes" class="mt-1.5">
+                                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-1">
+                                                <div class="h-1 rounded-full transition-all"
                                                     :class="{
                                                         'bg-[var(--text-danger-strong)]': user.percentage >= 100,
                                                         'bg-[var(--text-warn-strong)]': user.percentage >= 80 && user.percentage < 100,
@@ -503,15 +619,10 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="text-sm text-[var(--text-secondary)] text-right min-w-[120px]">
-                                            <span class="font-medium">${ user.current_usage?.toLocaleString() || 0 }</span>
-                                            <span v-if="user.monthly_budget" class="text-[var(--text-muted)]"> / ${ user.monthly_budget?.toLocaleString() }</span>
-                                            <span v-else class="text-[var(--text-muted)]"> (unlimited)</span>
-                                        </div>
                                     </div>
-                                </div>
-                                <div v-if="tokenUserStats.length === 0" class="text-center text-sm text-[var(--text-muted)] p-2">
-                                    No token usage data available
+                                    <div v-if="transcriptionUserStats.length === 0" class="text-center text-sm text-[var(--text-muted)] p-4">
+                                        ${t('adminDashboard.noTranscriptionData')}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -984,6 +1095,11 @@ Summarization Instructions:
                         <input v-model.number="newUser.monthlyTokenBudget" type="number" min="100000" step="10000" :placeholder="t('adminDashboard.tokenBudgetPlaceholder')" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                         <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.tokenBudgetHelp')}</p>
                     </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.monthlyTranscriptionBudget')}</label>
+                        <input v-model.number="newUser.monthlyTranscriptionBudgetMinutes" type="number" min="10" step="10" :placeholder="t('adminDashboard.transcriptionBudgetPlaceholder')" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.transcriptionBudgetHelp')}</p>
+                    </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" @click="showAddUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">${t('buttons.cancel')}</button>
                         <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.addUser')}</button>
@@ -1030,6 +1146,20 @@ Summarization Instructions:
                             </div>
                             <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
                                 <div class="h-2 rounded-full" :class="{'bg-[var(--text-danger-strong)]': editingUser.token_usage_percentage >= 100, 'bg-[var(--text-warn-strong)]': editingUser.token_usage_percentage >= 80 && editingUser.token_usage_percentage < 100, 'bg-[var(--text-success-strong)]': editingUser.token_usage_percentage < 80}" :style="{width: Math.min(editingUser.token_usage_percentage || 0, 100) + '%'}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.monthlyTranscriptionBudget')}</label>
+                        <input v-model.number="editingUser.monthly_transcription_budget_minutes" type="number" min="10" step="10" :placeholder="t('adminDashboard.transcriptionBudgetPlaceholder')" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.transcriptionBudgetHelp')}</p>
+                        <div v-if="editingUser.monthly_transcription_budget && editingUser.current_transcription_usage !== undefined" class="mt-2">
+                            <div class="flex justify-between text-xs text-[var(--text-muted)] mb-1">
+                                <span>${t('adminDashboard.currentUsageMinutes')}: ${ editingUser.current_transcription_usage_minutes || 0 } ${t('adminDashboard.minutes')}</span>
+                                <span :class="{'text-[var(--text-danger-strong)]': editingUser.transcription_usage_percentage >= 100, 'text-[var(--text-warn-strong)]': editingUser.transcription_usage_percentage >= 80 && editingUser.transcription_usage_percentage < 100}">${ editingUser.transcription_usage_percentage || 0 }%</span>
+                            </div>
+                            <div class="w-full bg-[var(--bg-tertiary)] rounded-full h-2">
+                                <div class="h-2 rounded-full" :class="{'bg-[var(--text-danger-strong)]': editingUser.transcription_usage_percentage >= 100, 'bg-[var(--text-warn-strong)]': editingUser.transcription_usage_percentage >= 80 && editingUser.transcription_usage_percentage < 100, 'bg-[var(--text-success-strong)]': editingUser.transcription_usage_percentage < 80}" :style="{width: Math.min(editingUser.transcription_usage_percentage || 0, 100) + '%'}"></div>
                             </div>
                         </div>
                     </div>
@@ -1600,6 +1730,14 @@ Summarization Instructions:
                     users_at_100_percent: 0
                 });
                 const tokenUserStats = ref([]);
+                const transcriptionStats = ref({
+                    today: { seconds: 0, minutes: 0, cost: 0 },
+                    current_month: { seconds: 0, minutes: 0, cost: 0 },
+                    user_count_with_usage: 0,
+                    users_over_80_percent: 0,
+                    users_at_100_percent: 0
+                });
+                const transcriptionUserStats = ref([]);
                 const dailyTokenChart = ref(null);
                 const monthlyTokenChart = ref(null);
                 const settings = ref([]);
@@ -1619,7 +1757,8 @@ Summarization Instructions:
                     password: '',
                     confirmPassword: '',
                     isAdmin: false,
-                    monthlyTokenBudget: null
+                    monthlyTokenBudget: null,
+                    monthlyTranscriptionBudgetMinutes: null
                 });
                 const editingUser = ref(null);
                 const userToDelete = ref(null);
@@ -1791,6 +1930,26 @@ Summarization Instructions:
                         }
                     } catch (error) {
                         console.error('Error loading token charts:', error);
+                    }
+                };
+
+                // Transcription Stats Functions
+                const loadTranscriptionStats = async () => {
+                    try {
+                        // Load summary stats
+                        const statsResponse = await fetch('/admin/transcription-stats');
+                        if (statsResponse.ok) {
+                            transcriptionStats.value = await statsResponse.json();
+                        }
+
+                        // Load user stats
+                        const userStatsResponse = await fetch('/admin/transcription-stats/users');
+                        if (userStatsResponse.ok) {
+                            const data = await userStatsResponse.json();
+                            transcriptionUserStats.value = data.users || [];
+                        }
+                    } catch (error) {
+                        console.error('Error loading transcription stats:', error);
                     }
                 };
 
@@ -2079,7 +2238,8 @@ Summarization Instructions:
                                 email: newUser.value.email,
                                 password: newUser.value.password,
                                 is_admin: newUser.value.isAdmin,
-                                monthly_token_budget: newUser.value.monthlyTokenBudget || null
+                                monthly_token_budget: newUser.value.monthlyTokenBudget || null,
+                                monthly_transcription_budget: newUser.value.monthlyTranscriptionBudgetMinutes ? newUser.value.monthlyTranscriptionBudgetMinutes * 60 : null
                             })
                         });
                         
@@ -2095,7 +2255,8 @@ Summarization Instructions:
                             password: '',
                             confirmPassword: '',
                             isAdmin: false,
-                            monthlyTokenBudget: null
+                            monthlyTokenBudget: null,
+                            monthlyTranscriptionBudgetMinutes: null
                         };
                         showAddUserModal.value = false;
                         
@@ -2116,11 +2277,17 @@ Summarization Instructions:
                 
                 const updateUser = async () => {
                     try {
+                        // Convert transcription budget from minutes to seconds
+                        const transcriptionBudgetSeconds = editingUser.value.monthly_transcription_budget_minutes
+                            ? editingUser.value.monthly_transcription_budget_minutes * 60
+                            : null;
+
                         const payload = {
                             username: editingUser.value.username,
                             email: editingUser.value.email,
                             is_admin: editingUser.value.is_admin,
-                            monthly_token_budget: editingUser.value.monthly_token_budget || null
+                            monthly_token_budget: editingUser.value.monthly_token_budget || null,
+                            monthly_transcription_budget: transcriptionBudgetSeconds
                         };
 
                         // Only include password if it was changed
@@ -2895,6 +3062,7 @@ Summarization Instructions:
                         loadUsers();
                         loadStats();
                         loadTokenStats();
+                        loadTranscriptionStats();
 
                         // Load settings first, then default prompt can use that data
                         if (activeTab.value === 'settings' || activeTab.value === 'prompts') {
@@ -2994,6 +3162,8 @@ Summarization Instructions:
                     stats,
                     tokenStats,
                     tokenUserStats,
+                    transcriptionStats,
+                    transcriptionUserStats,
                     settings,
                     isLoadingUsers,
                     isLoadingSettings,
@@ -3068,6 +3238,7 @@ Summarization Instructions:
                     loadStats,
                     loadSettings,
                     loadTokenStats,
+                    loadTranscriptionStats,
                     editSetting,
                     saveSettingValue,
                     updateSetting,

@@ -88,6 +88,14 @@ GET /api/v1/stats
     "budget": 1000000,
     "percentage": 45.0
   },
+  "transcription": {
+    "used_this_month_seconds": 3600,
+    "used_this_month_minutes": 60,
+    "budget_seconds": 36000,
+    "budget_minutes": 600,
+    "percentage": 10.0,
+    "estimated_cost": 0.36
+  },
   "activity": {
     "recordings_today": 3,
     "last_transcription": "2024-01-15T14:30:00Z"
@@ -110,6 +118,9 @@ GET /api/v1/stats
               label: Storage
             - field: tokens.percentage
               label: Token Usage
+              format: percent
+            - field: transcription.percentage
+              label: Transcription
               format: percent
             - field: activity.recordings_today
               label: Today

@@ -26,7 +26,9 @@ from src.database import db
 from src.models import Recording, User, Tag, RecordingTag, Speaker, Event
 from src.models.processing_job import ProcessingJob
 from src.models.token_usage import TokenUsage
+from src.models.transcription_usage import TranscriptionUsage
 from src.services.token_tracking import TokenTracker
+from src.services.transcription_tracking import transcription_tracker
 from src.file_exporter import format_transcription_with_template
 
 # Create blueprint with /api/v1 prefix
@@ -323,6 +325,7 @@ def get_stats():
         "storage": {"used_bytes": N, "used_human": "X.X GB"},
         "queue": {"jobs_queued": N, "jobs_processing": N},
         "tokens": {"used_this_month": N, "budget": N, "percentage": N},
+        "transcription": {"used_this_month_seconds": N, "used_this_month_minutes": N, "budget_seconds": N, "budget_minutes": N, "percentage": N, "estimated_cost": N},
         "activity": {"recordings_today": N, "last_transcription": "ISO datetime"}
     }
     """
@@ -394,6 +397,45 @@ def get_stats():
             'percentage': None
         }
 
+    # Transcription usage
+    transcription_data = {}
+    if user_id_for_tokens:
+        # Single user stats
+        monthly_transcription = transcription_tracker.get_monthly_usage(user_id_for_tokens)
+        monthly_cost = transcription_tracker.get_monthly_cost(user_id_for_tokens)
+        user = db.session.get(User, user_id_for_tokens)
+        transcription_budget = user.monthly_transcription_budget if user else None
+
+        transcription_data = {
+            'used_this_month_seconds': monthly_transcription,
+            'used_this_month_minutes': monthly_transcription // 60,
+            'budget_seconds': transcription_budget,
+            'budget_minutes': transcription_budget // 60 if transcription_budget else None,
+            'percentage': round((monthly_transcription / transcription_budget * 100), 1) if transcription_budget else None,
+            'estimated_cost': round(monthly_cost, 4)
+        }
+    else:
+        # Aggregate all users (admin scope)
+        current_year = date.today().year
+        current_month = date.today().month
+        total_seconds = db.session.query(func.sum(TranscriptionUsage.audio_duration_seconds)).filter(
+            extract('year', TranscriptionUsage.date) == current_year,
+            extract('month', TranscriptionUsage.date) == current_month
+        ).scalar() or 0
+        total_cost = db.session.query(func.sum(TranscriptionUsage.estimated_cost)).filter(
+            extract('year', TranscriptionUsage.date) == current_year,
+            extract('month', TranscriptionUsage.date) == current_month
+        ).scalar() or 0
+
+        transcription_data = {
+            'used_this_month_seconds': total_seconds,
+            'used_this_month_minutes': total_seconds // 60,
+            'budget_seconds': None,
+            'budget_minutes': None,
+            'percentage': None,
+            'estimated_cost': round(total_cost, 4)
+        }
+
     # Recent activity
     today_start = datetime.combine(date.today(), datetime.min.time())
     recordings_today = Recording.query.filter(
@@ -428,6 +470,7 @@ def get_stats():
             'jobs_processing': jobs_processing
         },
         'tokens': tokens_data,
+        'transcription': transcription_data,
         'activity': {
             'recordings_today': recordings_today,
             'last_transcription': last_transcription
