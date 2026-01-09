@@ -978,6 +978,214 @@ class AudioChunkingService:
             except Exception as e:
                 logger.warning(f"Error cleaning up temporary MP3 file: {e}")
 
+def get_audio_duration_ffprobe(file_path: str) -> Optional[float]:
+    """Get actual audio duration using ffprobe."""
+    try:
+        result = subprocess.run([
+            'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1', file_path
+        ], capture_output=True, text=True, check=True)
+        return float(result.stdout.strip())
+    except Exception:
+        return None
+
+
+def extract_speaker_samples(
+    audio_path: str,
+    segments: List[Dict[str, Any]],
+    output_dir: str,
+    min_duration: float = 1.5,  # OpenAI minimum is 1.2s, use 1.5s for safety
+    max_duration: float = 9.0,  # OpenAI maximum is 10.0s, use 9.0s for safety
+    max_speakers: int = 4
+) -> Dict[str, str]:
+    """
+    Extract audio samples for each unique speaker from diarized segments.
+
+    This is used to maintain speaker identity across chunks when processing
+    long audio files with the gpt-4o-transcribe-diarize model.
+
+    Args:
+        audio_path: Path to the source audio file (should be the converted chunk MP3)
+        segments: List of diarized segments with speaker, start_time, end_time
+        output_dir: Directory to store extracted speaker samples
+        min_duration: Minimum duration for a speaker sample (OpenAI requires 1.2-10s)
+        max_duration: Maximum duration for a speaker sample
+        max_speakers: Maximum number of speakers to extract (OpenAI supports up to 4)
+
+    Returns:
+        Dict mapping speaker label (e.g., "A", "B") to path of extracted audio sample
+    """
+    # OpenAI's actual limits
+    OPENAI_MIN_DURATION = 1.2
+    OPENAI_MAX_DURATION = 10.0
+
+    # Group segments by speaker
+    speaker_segments: Dict[str, List[Dict]] = {}
+    for seg in segments:
+        # Handle both dict and object segments
+        if isinstance(seg, dict):
+            speaker = seg.get('speaker', 'Unknown')
+            start = seg.get('start_time') or seg.get('start')
+            end = seg.get('end_time') or seg.get('end')
+        else:
+            speaker = getattr(seg, 'speaker', 'Unknown')
+            start = getattr(seg, 'start_time', None) or getattr(seg, 'start', None)
+            end = getattr(seg, 'end_time', None) or getattr(seg, 'end', None)
+
+        if speaker == 'Unknown' or start is None or end is None:
+            continue
+
+        if speaker not in speaker_segments:
+            speaker_segments[speaker] = []
+        speaker_segments[speaker].append({'start': start, 'end': end})
+
+    if not speaker_segments:
+        logger.warning("No valid speaker segments found for sample extraction")
+        return {}
+
+    # Sort speakers to get consistent ordering (A, B, C, D...)
+    sorted_speakers = sorted(speaker_segments.keys())[:max_speakers]
+    logger.info(f"Extracting samples for {len(sorted_speakers)} speakers: {sorted_speakers}")
+
+    speaker_samples = {}
+
+    for speaker in sorted_speakers:
+        segs = speaker_segments[speaker]
+
+        # Find the best segment for this speaker (ideally 1.5-9 seconds)
+        best_segment = None
+        best_duration = 0
+
+        for seg in segs:
+            duration = seg['end'] - seg['start']
+
+            # Prefer segments in the ideal range
+            if min_duration <= duration <= max_duration:
+                if duration > best_duration:
+                    best_segment = seg
+                    best_duration = duration
+
+        # If no segment in ideal range, try to find one we can trim
+        if not best_segment:
+            for seg in segs:
+                duration = seg['end'] - seg['start']
+                if duration >= min_duration:
+                    # Trim to max_duration if needed
+                    best_segment = {
+                        'start': seg['start'],
+                        'end': min(seg['end'], seg['start'] + max_duration)
+                    }
+                    best_duration = best_segment['end'] - best_segment['start']
+                    break
+
+        # Still no segment? Try combining multiple short segments
+        if not best_segment and len(segs) > 1:
+            # Sort by start time and try to find consecutive segments
+            sorted_segs = sorted(segs, key=lambda x: x['start'])
+            combined_start = sorted_segs[0]['start']
+            combined_end = sorted_segs[0]['end']
+
+            for i in range(1, len(sorted_segs)):
+                # If segments are close (within 1 second), combine them
+                if sorted_segs[i]['start'] - combined_end < 1.0:
+                    combined_end = sorted_segs[i]['end']
+                    if combined_end - combined_start >= min_duration:
+                        break
+
+            combined_duration = combined_end - combined_start
+            if combined_duration >= min_duration:
+                best_segment = {
+                    'start': combined_start,
+                    'end': min(combined_end, combined_start + max_duration)
+                }
+                best_duration = best_segment['end'] - best_segment['start']
+
+        if not best_segment:
+            logger.warning(f"Could not find suitable segment for speaker {speaker}")
+            continue
+
+        # Extract the audio sample using ffmpeg
+        sample_filename = f"speaker_{speaker}_sample.mp3"
+        sample_path = os.path.join(output_dir, sample_filename)
+
+        try:
+            cmd = [
+                'ffmpeg', '-i', audio_path,
+                '-ss', str(best_segment['start']),
+                '-t', str(best_duration),
+                '-acodec', 'libmp3lame',
+                '-b:a', '128k',
+                '-y',
+                sample_path
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error(f"Failed to extract sample for speaker {speaker}: {result.stderr}")
+                continue
+
+            if os.path.exists(sample_path) and os.path.getsize(sample_path) > 0:
+                # Verify actual duration meets OpenAI requirements
+                actual_duration = get_audio_duration_ffprobe(sample_path)
+                if actual_duration:
+                    logger.info(f"Speaker {speaker} sample: expected {best_duration:.2f}s, actual {actual_duration:.2f}s")
+
+                    if actual_duration < OPENAI_MIN_DURATION:
+                        logger.warning(f"Sample for speaker {speaker} too short ({actual_duration:.2f}s < {OPENAI_MIN_DURATION}s), skipping")
+                        os.remove(sample_path)
+                        continue
+                    elif actual_duration > OPENAI_MAX_DURATION:
+                        logger.warning(f"Sample for speaker {speaker} too long ({actual_duration:.2f}s > {OPENAI_MAX_DURATION}s), skipping")
+                        os.remove(sample_path)
+                        continue
+
+                speaker_samples[speaker] = sample_path
+                logger.info(f"Extracted {actual_duration:.1f}s sample for speaker {speaker} "
+                           f"(from {best_segment['start']:.1f}s to {best_segment['end']:.1f}s)")
+            else:
+                logger.warning(f"Sample file not created for speaker {speaker}")
+
+        except Exception as e:
+            logger.error(f"Error extracting sample for speaker {speaker}: {e}")
+
+    return speaker_samples
+
+
+def samples_to_data_urls(speaker_samples: Dict[str, str]) -> Dict[str, str]:
+    """
+    Convert speaker sample file paths to base64-encoded data URLs.
+
+    OpenAI's known_speaker_references requires audio samples as data URLs
+    when using multipart form data.
+
+    Args:
+        speaker_samples: Dict mapping speaker label to file path
+
+    Returns:
+        Dict mapping speaker label to data URL
+    """
+    import base64
+
+    data_urls = {}
+
+    for speaker, path in speaker_samples.items():
+        try:
+            with open(path, 'rb') as f:
+                audio_data = f.read()
+
+            # Encode as base64 data URL
+            b64_data = base64.b64encode(audio_data).decode('utf-8')
+            data_url = f"data:audio/mpeg;base64,{b64_data}"
+            data_urls[speaker] = data_url
+
+            logger.debug(f"Converted speaker {speaker} sample to data URL ({len(b64_data)} bytes)")
+
+        except Exception as e:
+            logger.error(f"Error converting speaker {speaker} sample to data URL: {e}")
+
+    return data_urls
+
+
 class ChunkProcessingError(Exception):
     """Exception raised when chunk processing fails."""
     pass

@@ -67,7 +67,8 @@ class TranscriptionRequest:
     min_speakers: Optional[int] = None
     max_speakers: Optional[int] = None
     known_speaker_names: Optional[List[str]] = None
-    known_speaker_references: Optional[Dict[str, BinaryIO]] = None
+    # known_speaker_references: Dict mapping speaker label to either BinaryIO or data URL string
+    known_speaker_references: Optional[Dict[str, Any]] = None
 
     # Advanced options
     prompt: Optional[str] = None

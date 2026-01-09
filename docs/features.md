@@ -12,6 +12,8 @@ Speakr supports multiple transcription engines to match your needs and budget. U
 
 When using the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration), Speakr automatically identifies different speakers in your recordings. If you encounter issues, check the [troubleshooting guide](troubleshooting.md#speaker-identification-not-working). Each speaker gets a unique label that you can later customize with actual names. The system remembers these speaker profiles, building a library that improves identification accuracy over time. Manage your speaker library in [account settings](user-guide/settings.md). This feature transforms multi-person meetings from walls of text into organized conversations.
 
+**Cloud Diarization with OpenAI**: When using OpenAI's `gpt-4o-transcribe-diarize` model, speaker diarization is also available with speakers labeled as A, B, C, etc. For longer files (over ~23 minutes) that require chunking, the system maintains speaker identity across chunks using audio reference samples. This technique supports **up to 4 speakers** - recordings with more speakers may have inconsistent labels across different sections of the transcript.
+
 ### Interactive Audio Synchronization
 
 Speakr provides seamless bidirectional synchronization between audio playback and transcript text for recordings with speaker diarization. Click any part of the transcript to jump directly to that moment in the audio, making it easy to review specific sections. As the audio plays, the system automatically highlights the currently spoken text in real-time with smooth visual feedback. Enable auto-scroll follow mode to keep the active segment centered in view, allowing you to follow along effortlessly during playback.
