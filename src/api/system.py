@@ -146,13 +146,17 @@ def get_system_info():
             except Exception as e:
                 current_app.logger.warning(f"Could not get connector info: {e}")
 
+        # Determine ASR status from connector (new arch) or env var (legacy)
+        is_asr_connector = transcription_info.get('connector') == 'asr_endpoint'
+        asr_enabled = is_asr_connector or USE_ASR_ENDPOINT
+
         return jsonify({
             'version': version,
             'llm_endpoint': TEXT_MODEL_BASE_URL,
             'llm_model': TEXT_MODEL_NAME,
             'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
-            'asr_enabled': USE_ASR_ENDPOINT,  # Backwards compat
-            'asr_endpoint': ASR_BASE_URL if USE_ASR_ENDPOINT else None,
+            'asr_enabled': asr_enabled,
+            'asr_endpoint': ASR_BASE_URL if asr_enabled else None,
             'transcription': transcription_info,
         })
     except Exception as e:
@@ -203,6 +207,7 @@ def get_config():
         # Defaults to USE_ASR_ENDPOINT for backwards compatibility
         connector_supports_diarization = USE_ASR_ENDPOINT
         connector_supports_speaker_count = USE_ASR_ENDPOINT  # ASR endpoint supports min/max speakers
+        is_asr_connector = False
         if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
             try:
                 from src.services.transcription import get_registry
@@ -211,13 +216,17 @@ def get_config():
                 if connector:
                     connector_supports_diarization = connector.supports_diarization
                     connector_supports_speaker_count = connector.supports_speaker_count_control
+                    is_asr_connector = registry.get_active_connector_name() == 'asr_endpoint'
             except Exception as e:
                 current_app.logger.warning(f"Could not get connector capabilities: {e}")
+
+        # Derive ASR status from connector or legacy env var
+        asr_enabled = is_asr_connector or USE_ASR_ENDPOINT
 
         return jsonify({
             'max_file_size_mb': max_file_size_mb,
             'recording_disclaimer': SystemSetting.get_setting('recording_disclaimer', ''),
-            'use_asr_endpoint': USE_ASR_ENDPOINT,  # Backwards compat
+            'use_asr_endpoint': asr_enabled,  # Derived from connector or legacy env var
             'connector_supports_diarization': connector_supports_diarization,  # Connector capability
             'connector_supports_speaker_count': connector_supports_speaker_count,  # Min/max speakers
             'enable_internal_sharing': ENABLE_INTERNAL_SHARING,
