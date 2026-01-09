@@ -36,36 +36,49 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
     PROVIDER_NAME = "openai_transcribe"
 
     # GPT-4o Transcribe models have specific constraints
-    # - 25MB file size limit
-    # - 1400 second max duration for diarize model
-    # - chunking_strategy="auto" handles files >30s internally
+    # - 25MB file size limit (all models)
+    # - Duration limits vary by model:
+    #   - gpt-4o-transcribe / gpt-4o-mini-transcribe: 1500 seconds (25 min)
+    #   - gpt-4o-transcribe-diarize: 1400 seconds (~23 min)
+    # - chunking_strategy="auto" handles files internally up to the duration limit
     # Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm, flac, ogg, oga
     # NOT supported: opus (used by WhatsApp voice notes, Discord)
+
+    # Default specifications (will be overridden per-model in __init__)
     SPECIFICATIONS = ConnectorSpecifications(
         max_file_size_bytes=25 * 1024 * 1024,  # 25MB
-        max_duration_seconds=1400,  # ~23.3 minutes max for diarize model
+        max_duration_seconds=1400,  # Default to most restrictive (diarize model)
         min_duration_for_chunking=30,  # >30s needs chunking_strategy param
-        handles_chunking_internally=True,  # Uses chunking_strategy="auto"
+        handles_chunking_internally=False,  # App must chunk files > max_duration_seconds
         requires_chunking_param=True,  # Must send chunking_strategy for >30s
+        recommended_chunk_seconds=1200,  # 20 minutes - safe margin
         unsupported_codecs=frozenset({'opus'}),  # OpenAI API doesn't support opus
     )
 
-    # Models and their capabilities
+    # Models and their capabilities with duration limits
     MODELS = {
         'gpt-4o-transcribe': {
             'supports_diarization': False,
+            'max_duration_seconds': 1500,  # 25 minutes
+            'recommended_chunk_seconds': 1200,  # 20 minutes
             'description': 'High quality transcription'
         },
         'gpt-4o-mini-transcribe': {
             'supports_diarization': False,
+            'max_duration_seconds': 1500,  # 25 minutes
+            'recommended_chunk_seconds': 1200,  # 20 minutes
             'description': 'Cost-effective transcription'
         },
         'gpt-4o-mini-transcribe-2025-12-15': {
             'supports_diarization': False,
+            'max_duration_seconds': 1500,  # 25 minutes
+            'recommended_chunk_seconds': 1200,  # 20 minutes
             'description': 'Cost-effective transcription (dated version)'
         },
         'gpt-4o-transcribe-diarize': {
             'supports_diarization': True,
+            'max_duration_seconds': 1400,  # ~23 minutes (more restrictive)
+            'recommended_chunk_seconds': 1200,  # 20 minutes
             'description': 'Speaker diarization with labels A, B, C, D'
         }
     }
@@ -83,6 +96,19 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
         """
         # Store model before calling super().__init__ since _validate_config needs it
         self.model = config.get('model', 'gpt-4o-transcribe')
+
+        # Set model-specific specifications (override class defaults)
+        # Use SPECIFICATIONS (uppercase) to shadow the class attribute
+        model_info = self.MODELS.get(self.model, {})
+        self.SPECIFICATIONS = ConnectorSpecifications(
+            max_file_size_bytes=25 * 1024 * 1024,  # 25MB (same for all)
+            max_duration_seconds=model_info.get('max_duration_seconds', 1400),
+            min_duration_for_chunking=30,
+            handles_chunking_internally=False,
+            requires_chunking_param=True,
+            recommended_chunk_seconds=model_info.get('recommended_chunk_seconds', 1200),
+            unsupported_codecs=frozenset({'opus'}),
+        )
 
         super().__init__(config)
 

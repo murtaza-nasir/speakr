@@ -519,12 +519,24 @@ export function useUpload(state, utils) {
                     processingProgress.value = 100;
                     fileItem.status = 'failed';
 
-                    // Fetch full data to get error details
+                    // Fetch full data to get error details and update UI
                     try {
                         const failedResponse = await fetch(`/api/recordings/${recordingId}`);
                         if (failedResponse.ok) {
                             const failedData = await failedResponse.json();
                             fileItem.error = failedData.error_message || 'Processing failed on server.';
+
+                            // Update recordings list so error shows in detail view
+                            const galleryIndex = recordings.value.findIndex(r => r.id === recordingId);
+                            if (galleryIndex !== -1) {
+                                recordings.value[galleryIndex] = failedData;
+                            }
+
+                            // Update selectedRecording to show error in transcription panel
+                            if (selectedRecording.value?.id === recordingId) {
+                                selectedRecording.value = failedData;
+                                await nextTick();
+                            }
                         } else {
                             fileItem.error = 'Processing failed on server.';
                         }
