@@ -6,17 +6,13 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.0 - Connector Architecture & REST API"
-    **Modular Transcription & Full API Access**
+!!! info "Latest Release: v0.8.1 - Bug Fixes"
+    **Minor improvements and fixes**
 
-    - **Connector-Based Transcription** - New modular architecture with auto-detection for transcription providers
-    - **Simplified Configuration** - Fewer env vars needed; just set `ASR_BASE_URL` or `TRANSCRIPTION_MODEL`
-    - **OpenAI Diarization** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
-    - **REST API v1** - Complete API for automation tools (n8n, Zapier, Make) and dashboard widgets
-    - **Interactive Swagger UI** - Browse and test all endpoints at `/api/v1/docs`
-    - **Batch Operations** - Update, delete, or transcribe multiple recordings via API
+    - **Diarization for Long Files** - Fixed speaker diarization for chunked files with OpenAI's `gpt-4o-transcribe-diarize`
+    - **Empty Segment Filtering** - Removed empty transcript segments from diarized output
 
-    **Migration:** Existing configs are backwards compatible. See the [Migration Guide](admin-guide/migration-guide.md) for recommended updates and the [API Reference](user-guide/api-reference.md) for API documentation.
+    See [v0.8.0 release notes](#version-080) for the full connector architecture and REST API features.
 
 ## Quick Navigation
 
@@ -148,6 +144,13 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.8.0 - Connector Architecture & REST API"
+    - **Connector-Based Transcription** - Modular architecture with auto-detection for transcription providers
+    - **OpenAI Diarization** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
+    - **REST API v1** - Complete API for automation tools with Swagger UI at `/api/v1/docs`
+
+    See the [Migration Guide](admin-guide/migration-guide.md) and [API Reference](user-guide/api-reference.md).
 
 !!! warning "PyTorch 2.6 Compatibility Issue with WhisperX ASR"
     If you're using the WhisperX ASR service and encounter a "Weights only load failed" error after a recent update, add this environment variable to your ASR container in docker-compose.yml:

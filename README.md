@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.0-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.1-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -160,16 +160,20 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.0)
+## Latest Release (v0.8.1)
+
+**Bug Fixes**
+
+- **Diarization for Long Files** - Fixed speaker diarization for chunked files with OpenAI's `gpt-4o-transcribe-diarize`
+- **Empty Segment Filtering** - Removed empty transcript segments from diarized output
+
+### Previous Release (v0.8.0)
 
 **Cloud Diarization & REST API**
 
-- **Speaker Diarization Without GPU** - Use OpenAI's `gpt-4o-transcribe-diarize` for speaker identification with just an API key. No self-hosted ASR container or GPU required.
+- **Speaker Diarization Without GPU** - Use OpenAI's `gpt-4o-transcribe-diarize` for speaker identification with just an API key
 - **REST API v1** - Full-featured API for automation tools (n8n, Zapier, Make) and dashboard widgets
-- **Interactive API Docs** - Swagger UI at `/api/v1/docs` with try-it-out functionality
-- **Connector Architecture** - Modular transcription providers with simplified configuration; custom connectors possible (requires building from source)
-
-> **Migration Note:** Existing configurations are fully backwards compatible. See the [Migration Guide](https://murtaza-nasir.github.io/speakr/admin-guide/migration-guide) for recommended updates.
+- **Connector Architecture** - Modular transcription providers with simplified configuration
 
 ### Previous Release (v0.7.2)
 
