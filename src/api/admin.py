@@ -18,6 +18,7 @@ from src.utils import *
 from src.services.retention import is_recording_exempt_from_deletion, get_retention_days_for_recording, process_auto_deletion
 from src.services.embeddings import EMBEDDINGS_AVAILABLE, process_recording_chunks
 from src.services.token_tracking import token_tracker
+from src.services.transcription_tracking import transcription_tracker
 from src.config.startup import get_file_monitor_functions
 
 # Create blueprint
@@ -136,6 +137,10 @@ def admin_get_users():
         current_usage = token_tracker.get_monthly_usage(user.id)
         usage_percentage = (current_usage / user.monthly_token_budget * 100) if user.monthly_token_budget else 0
 
+        # Get current month transcription usage
+        current_transcription_usage = transcription_tracker.get_monthly_usage(user.id)
+        transcription_usage_percentage = (current_transcription_usage / user.monthly_transcription_budget * 100) if user.monthly_transcription_budget else 0
+
         user_data.append({
             'id': user.id,
             'username': user.username,
@@ -146,7 +151,12 @@ def admin_get_users():
             'storage_used': storage_used,
             'monthly_token_budget': user.monthly_token_budget,
             'current_token_usage': current_usage,
-            'token_usage_percentage': round(usage_percentage, 1)
+            'token_usage_percentage': round(usage_percentage, 1),
+            'monthly_transcription_budget': user.monthly_transcription_budget,
+            'monthly_transcription_budget_minutes': (user.monthly_transcription_budget // 60) if user.monthly_transcription_budget else None,
+            'current_transcription_usage': current_transcription_usage,
+            'current_transcription_usage_minutes': current_transcription_usage // 60,
+            'transcription_usage_percentage': round(transcription_usage_percentage, 1)
         })
     
     return jsonify(user_data)
@@ -184,7 +194,8 @@ def admin_add_user():
         email=data['email'],
         password=hashed_password,
         is_admin=data.get('is_admin', False),
-        monthly_token_budget=data.get('monthly_token_budget')
+        monthly_token_budget=data.get('monthly_token_budget'),
+        monthly_transcription_budget=data.get('monthly_transcription_budget')
     )
 
     db.session.add(new_user)
@@ -199,7 +210,12 @@ def admin_add_user():
         'storage_used': 0,
         'monthly_token_budget': new_user.monthly_token_budget,
         'current_token_usage': 0,
-        'token_usage_percentage': 0
+        'token_usage_percentage': 0,
+        'monthly_transcription_budget': new_user.monthly_transcription_budget,
+        'monthly_transcription_budget_minutes': (new_user.monthly_transcription_budget // 60) if new_user.monthly_transcription_budget else None,
+        'current_transcription_usage': 0,
+        'current_transcription_usage_minutes': 0,
+        'transcription_usage_percentage': 0
     }), 201
 
 
@@ -249,6 +265,14 @@ def admin_update_user(user_id):
         else:
             user.monthly_token_budget = int(budget)
 
+    if 'monthly_transcription_budget' in data:
+        # Allow setting to None (unlimited) or a positive integer (in seconds)
+        budget = data['monthly_transcription_budget']
+        if budget is None or budget == '' or budget == 0:
+            user.monthly_transcription_budget = None
+        else:
+            user.monthly_transcription_budget = int(budget)
+
     db.session.commit()
 
     # Get recordings count and storage used
@@ -258,6 +282,10 @@ def admin_update_user(user_id):
     # Get current month token usage
     current_usage = token_tracker.get_monthly_usage(user.id)
     usage_percentage = (current_usage / user.monthly_token_budget * 100) if user.monthly_token_budget else 0
+
+    # Get current month transcription usage
+    current_transcription_usage = transcription_tracker.get_monthly_usage(user.id)
+    transcription_usage_percentage = (current_transcription_usage / user.monthly_transcription_budget * 100) if user.monthly_transcription_budget else 0
 
     return jsonify({
         'id': user.id,
@@ -269,7 +297,12 @@ def admin_update_user(user_id):
         'storage_used': storage_used,
         'monthly_token_budget': user.monthly_token_budget,
         'current_token_usage': current_usage,
-        'token_usage_percentage': round(usage_percentage, 1)
+        'token_usage_percentage': round(usage_percentage, 1),
+        'monthly_transcription_budget': user.monthly_transcription_budget,
+        'monthly_transcription_budget_minutes': (user.monthly_transcription_budget // 60) if user.monthly_transcription_budget else None,
+        'current_transcription_usage': current_transcription_usage,
+        'current_transcription_usage_minutes': current_transcription_usage // 60,
+        'transcription_usage_percentage': round(transcription_usage_percentage, 1)
     })
 
 
@@ -497,6 +530,112 @@ def admin_get_user_token_stats():
 
     except Exception as e:
         current_app.logger.error(f"Error getting user token stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# --- Transcription Usage Stats ---
+
+
+@admin_bp.route('/admin/transcription-stats', methods=['GET'])
+@login_required
+def admin_get_transcription_stats():
+    """Get overall transcription usage statistics."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        # Get today's usage
+        today_usage = transcription_tracker.get_today_usage()
+
+        # Get current month usage for all users
+        monthly_stats = transcription_tracker.get_monthly_stats(months=1)
+        current_month = monthly_stats[-1] if monthly_stats else {'seconds': 0, 'minutes': 0, 'cost': 0}
+
+        # Get per-user stats for current month
+        user_stats = transcription_tracker.get_user_stats()
+
+        # Calculate totals
+        total_monthly_seconds = current_month.get('seconds', 0)
+        total_monthly_cost = current_month.get('cost', 0)
+
+        return jsonify({
+            'today': today_usage,
+            'current_month': {
+                'seconds': total_monthly_seconds,
+                'minutes': total_monthly_seconds // 60,
+                'cost': total_monthly_cost
+            },
+            'user_count_with_usage': len([u for u in user_stats if u['current_usage_seconds'] > 0]),
+            'users_over_80_percent': len([u for u in user_stats if u['percentage'] >= 80]),
+            'users_at_100_percent': len([u for u in user_stats if u['percentage'] >= 100])
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting transcription stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/transcription-stats/daily', methods=['GET'])
+@login_required
+def admin_get_daily_transcription_stats():
+    """Get daily transcription usage for charts (last 30 days)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        days = request.args.get('days', 30, type=int)
+        user_id = request.args.get('user_id', type=int)
+
+        daily_stats = transcription_tracker.get_daily_stats(days=days, user_id=user_id)
+
+        return jsonify({
+            'stats': daily_stats,
+            'days': days
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting daily transcription stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/transcription-stats/monthly', methods=['GET'])
+@login_required
+def admin_get_monthly_transcription_stats():
+    """Get monthly transcription usage for charts (last 12 months)."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        months = request.args.get('months', 12, type=int)
+
+        monthly_stats = transcription_tracker.get_monthly_stats(months=months)
+
+        return jsonify({
+            'stats': monthly_stats,
+            'months': months
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting monthly transcription stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/transcription-stats/users', methods=['GET'])
+@login_required
+def admin_get_user_transcription_stats():
+    """Get per-user transcription usage for current month."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        user_stats = transcription_tracker.get_user_stats()
+
+        return jsonify({
+            'users': user_stats
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error getting user transcription stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 

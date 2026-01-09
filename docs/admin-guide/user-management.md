@@ -41,6 +41,24 @@ Control LLM costs by setting monthly token budgets for individual users. When cr
 
 Token budgets are set in increments of 10,000 tokens with a minimum of 100,000. The budget covers all AI operations including summarization, chat, title generation, and event extraction. View detailed token usage statistics in the [System Statistics](statistics.md#token-usage-statistics) section.
 
+### Transcription Budget Management
+
+Control transcription costs by setting monthly transcription budgets for individual users. When creating or editing a user, you can specify a monthly limit (in minutes) that restricts their speech-to-text usage.
+
+**How Transcription Budgets Work**:
+
+- **Warning at 80%**: Users see a yellow warning indicator when they reach 80% of their monthly transcription budget
+- **Blocked at 100%**: Once the budget is exhausted, new transcriptions are blocked until the next month
+- **Budget Reset**: Transcription minutes reset automatically at the start of each calendar month
+- **No Limit**: Leave the budget field empty for unlimited transcription usage
+
+Transcription budgets are set in minutes with a minimum of 10 minutes. The budget covers all transcription operations regardless of which connector is used (OpenAI Whisper, OpenAI Transcribe, or self-hosted ASR). View detailed transcription usage statistics in the [System Statistics](statistics.md#transcription-usage-statistics) section.
+
+**Cost Tracking**: The system tracks estimated costs based on the transcription connector used:
+- **OpenAI Whisper**: $0.006 per minute
+- **OpenAI Transcribe**: $0.003-$0.006 per minute depending on model
+- **Self-hosted ASR**: $0 (no external API costs)
+
 ## Managing Existing Users
 
 Each user row includes action buttons that give you complete control over that account. The edit button opens a modal where you can update their username or email address. This is useful when people change names, switch email providers, or when you need to correct initial entry mistakes.

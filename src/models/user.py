@@ -35,6 +35,9 @@ class User(db.Model, UserMixin):
     # Token budget (None = unlimited)
     monthly_token_budget = db.Column(db.Integer, nullable=True)
 
+    # Transcription budget in seconds (None = unlimited)
+    monthly_transcription_budget = db.Column(db.Integer, nullable=True)
+
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 

@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.1-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.2-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -160,7 +160,16 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.1)
+## Latest Release (v0.8.2)
+
+**Transcription Usage Tracking**
+
+- **Per-User Budgets** - Set monthly transcription limits (in minutes) with 80% warning and 100% blocking
+- **Usage Dashboard** - Track minutes, costs, and per-user breakdowns in Admin panel
+- **Cost Estimation** - Automatic pricing for OpenAI Whisper/Transcribe and self-hosted ASR
+- **REST API** - `/api/v1/stats` now includes transcription usage and budget data
+
+### Previous Release (v0.8.1)
 
 **Bug Fixes**
 

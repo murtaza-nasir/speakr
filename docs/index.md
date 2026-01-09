@@ -145,6 +145,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.8.2 - Transcription Usage Tracking"
+    - **Transcription Budget Management** - Set monthly transcription limits (in minutes) per user with 80% warnings and 100% blocking
+    - **Usage Statistics** - Track transcription minutes and estimated costs across all connectors (OpenAI Whisper, OpenAI Transcribe, self-hosted ASR)
+    - **Admin Dashboard Improvements** - Redesigned stats layout with summary cards and per-user tables side by side
+    - **REST API Stats** - Added transcription usage data to `/api/v1/stats` endpoint
+
+    Fully backwards compatible with v0.8.x.
+
 !!! info "Version 0.8.0 - Connector Architecture & REST API"
     - **Connector-Based Transcription** - Modular architecture with auto-detection for transcription providers
     - **OpenAI Diarization** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
