@@ -126,6 +126,7 @@ def get_system_info():
         # Get transcription connector info
         transcription_info = {
             'connector': 'unknown',
+            'model': None,
             'supports_diarization': USE_ASR_ENDPOINT,  # Backwards compatible default
             'supports_speaker_embeddings': False,
         }
@@ -138,6 +139,7 @@ def get_system_info():
                 if connector:
                     transcription_info = {
                         'connector': registry.get_active_connector_name(),
+                        'model': getattr(connector, 'model', None),  # Model name if available
                         'supports_diarization': connector.supports_diarization,
                         'supports_speaker_embeddings': connector.supports(TranscriptionCapability.SPEAKER_EMBEDDINGS),
                     }

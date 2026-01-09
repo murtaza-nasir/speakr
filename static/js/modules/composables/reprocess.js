@@ -346,6 +346,29 @@ export function useReprocess(state, utils) {
                     }
                 } else if (statusData.status === 'FAILED') {
                     stopReprocessingPoll(recordingId);
+
+                    // Fetch full recording data to get error details for display
+                    try {
+                        const failedResponse = await fetch(`/api/recordings/${recordingId}`);
+                        if (failedResponse.ok) {
+                            const failedData = await failedResponse.json();
+
+                            // Update in recordings list
+                            const currentIndex = recordings.value.findIndex(r => r.id === recordingId);
+                            if (currentIndex !== -1) {
+                                recordings.value[currentIndex] = failedData;
+                            }
+
+                            // Update selectedRecording to show error in transcription panel
+                            if (selectedRecording.value?.id === recordingId) {
+                                selectedRecording.value = failedData;
+                                await nextTick();
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch error details:', err);
+                    }
+
                     showToast('Processing failed', 'fa-exclamation-circle');
                 }
             } catch (error) {

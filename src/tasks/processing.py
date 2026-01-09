@@ -27,6 +27,7 @@ from src.services.llm import is_using_openai_api, call_llm_completion, format_ap
 from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError
+from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
 from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
@@ -1017,11 +1018,14 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
     import tempfile
     from src.services.transcription import TranscriptionRequest
 
+    # Get connector specs for proper chunking (respects hard limits like max_duration_seconds)
+    connector_specs = connector.specifications
+
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
-            # Create chunks
+            # Create chunks (passes connector_specs for duration-based chunking if needed)
             current_app.logger.info(f"Creating chunks for large file: {filepath}")
-            chunks = chunking_service.create_chunks(filepath, temp_dir)
+            chunks = chunking_service.create_chunks(filepath, temp_dir, connector_specs)
 
             if not chunks:
                 raise ChunkProcessingError("No chunks were created from the audio file")
@@ -1193,6 +1197,45 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     db.session.commit()
                     raise  # Re-raise so job queue marks the job as failed
 
+            # Validate and convert audio format if needed using unified conversion utility
+            # This respects:
+            # - connector_specs.unsupported_codecs (e.g., opus for OpenAI)
+            # - AUDIO_UNSUPPORTED_CODECS environment variable (user-specified exclusions)
+            # - AUDIO_COMPRESS_UPLOADS setting (lossless compression)
+            connector_specs = connector.specifications
+            converted_filepath = None  # Track converted file for cleanup and retry
+
+            try:
+                # Check if chunking will be needed (affects which codecs are supported)
+                needs_chunking_check = (
+                    chunking_service and
+                    chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+                )
+
+                conversion_result = convert_if_needed(
+                    filepath=actual_filepath,
+                    original_filename=actual_filename,
+                    needs_chunking=needs_chunking_check,
+                    is_asr_endpoint=False,  # Using connector architecture
+                    delete_original=False,  # Keep original, we may need it for retry
+                    connector_specs=connector_specs
+                )
+
+                if conversion_result.was_converted:
+                    current_app.logger.info(
+                        f"Audio converted: {conversion_result.original_codec} → {conversion_result.final_codec}, "
+                        f"size: {conversion_result.original_size_mb:.1f}MB → {conversion_result.final_size_mb:.1f}MB"
+                    )
+                    converted_filepath = conversion_result.output_path
+                    actual_filepath = converted_filepath
+                    actual_content_type = conversion_result.mime_type
+                    actual_filename = os.path.basename(converted_filepath)
+            except (FFmpegError, FFmpegNotFoundError) as conv_error:
+                current_app.logger.error(f"Audio conversion failed: {conv_error}")
+                raise  # Let the job fail - can't process this file
+            except Exception as e:
+                current_app.logger.warning(f"Could not validate/convert audio: {e}, proceeding with original file")
+
             # Determine if we should diarize
             if diarize is None:
                 # Use connector's default diarization setting
@@ -1211,52 +1254,120 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # 3. User's CHUNK_LIMIT setting → use their settings
             # 4. Connector defaults (max_file_size, recommended_chunk_seconds)
             # 5. App default (20MB)
-            connector_specs = connector.specifications
-            should_chunk = (
-                chunking_service and
-                chunking_service.needs_chunking(actual_filepath, False, connector_specs)
-            )
+            current_app.logger.info(f"Chunking service available: {chunking_service is not None}")
+            current_app.logger.info(f"Connector specs: max_duration={connector_specs.max_duration_seconds}s, "
+                                   f"handles_internally={connector_specs.handles_chunking_internally}, "
+                                   f"recommended_chunk={connector_specs.recommended_chunk_seconds}s")
 
-            if should_chunk:
-                # Use chunking for large files
-                file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
-                current_app.logger.info(f"File {actual_filepath} is large ({file_size_mb:.1f}MB), using chunking for transcription")
-                transcription_text = transcribe_chunks_with_connector(
-                    connector, actual_filepath, actual_filename, actual_content_type, language
-                )
-                # Store as plain text (chunked transcription doesn't preserve diarization)
-                recording.transcription = transcription_text
-                current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
+            if chunking_service:
+                should_chunk = chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+                current_app.logger.info(f"Chunking decision: should_chunk={should_chunk}")
             else:
-                # Build the transcription request for single file
-                with open(actual_filepath, 'rb') as audio_file:
-                    request = TranscriptionRequest(
-                        audio_file=audio_file,
-                        filename=actual_filename,
-                        mime_type=actual_content_type,
-                        language=language,
-                        diarize=should_diarize,
-                        min_speakers=min_speakers,
-                        max_speakers=max_speakers
-                    )
+                should_chunk = False
+                current_app.logger.warning("Chunking service is disabled (ENABLE_CHUNKING=false or service not initialized)")
 
-                    current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
-                    response = connector.transcribe(request)
+            # Retry loop for handling format/codec errors with MP3 conversion
+            max_attempts = 2
+            last_error = None
 
-                # Store the result
-                if response.segments and response.has_diarization():
-                    # Store as JSON with segments (diarized format)
-                    recording.transcription = response.to_storage_format()
-                    current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
-                else:
-                    # Store as plain text
-                    recording.transcription = response.text
-                    current_app.logger.info(f"Transcription completed: {len(response.text)} characters")
+            for attempt in range(max_attempts):
+                try:
+                    if should_chunk:
+                        # Use chunking for large files
+                        file_size_mb = os.path.getsize(actual_filepath) / (1024 * 1024)
+                        current_app.logger.info(f"File {actual_filepath} is large ({file_size_mb:.1f}MB), using chunking for transcription")
+                        transcription_text = transcribe_chunks_with_connector(
+                            connector, actual_filepath, actual_filename, actual_content_type, language
+                        )
+                        # Store as plain text (chunked transcription doesn't preserve diarization)
+                        recording.transcription = transcription_text
+                        current_app.logger.info(f"Chunked transcription completed: {len(transcription_text)} characters")
+                    else:
+                        # Build the transcription request for single file
+                        with open(actual_filepath, 'rb') as audio_file:
+                            request = TranscriptionRequest(
+                                audio_file=audio_file,
+                                filename=actual_filename,
+                                mime_type=actual_content_type,
+                                language=language,
+                                diarize=should_diarize,
+                                min_speakers=min_speakers,
+                                max_speakers=max_speakers
+                            )
 
-                # Store speaker embeddings if available
-                if response.speaker_embeddings:
-                    recording.speaker_embeddings = response.speaker_embeddings
-                    current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
+                            current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
+                            response = connector.transcribe(request)
+
+                        # Store the result
+                        if response.segments and response.has_diarization():
+                            # Store as JSON with segments (diarized format)
+                            recording.transcription = response.to_storage_format()
+                            current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
+                        else:
+                            # Store as plain text
+                            recording.transcription = response.text
+                            current_app.logger.info(f"Transcription completed: {len(response.text)} characters")
+
+                        # Store speaker embeddings if available
+                        if response.speaker_embeddings:
+                            recording.speaker_embeddings = response.speaker_embeddings
+                            current_app.logger.info(f"Stored speaker embeddings for speakers: {list(response.speaker_embeddings.keys())}")
+
+                    # If we reach here, transcription succeeded
+                    break
+
+                except Exception as e:
+                    last_error = e
+                    error_msg = str(e).lower()
+
+                    # Check if this is a format/codec error that might be fixed by MP3 conversion
+                    is_format_error = any(phrase in error_msg for phrase in [
+                        'corrupted', 'unsupported', 'invalid', 'format', 'codec',
+                        'could not find codec', 'audio file', 'decode'
+                    ])
+
+                    # Only retry with MP3 conversion on first attempt for format errors
+                    if attempt == 0 and is_format_error and not converted_filepath:
+                        current_app.logger.warning(f"Transcription failed with possible format error: {e}")
+                        current_app.logger.info(f"Attempting MP3 conversion and retry...")
+
+                        # Check if file is already MP3
+                        try:
+                            codec_info = get_codec_info(actual_filepath, timeout=10)
+                            audio_codec = codec_info.get('audio_codec', '').lower()
+                            needs_conversion = audio_codec != 'mp3'
+                        except FFProbeError:
+                            needs_conversion = not actual_filename.lower().endswith('.mp3')
+
+                        if needs_conversion:
+                            try:
+                                converted_filepath = convert_to_mp3(actual_filepath)
+                                current_app.logger.info(f"Successfully converted to MP3: {converted_filepath}")
+                                actual_filepath = converted_filepath
+                                actual_content_type = 'audio/mpeg'
+                                actual_filename = os.path.basename(converted_filepath)
+                                # Recalculate if chunking is needed after conversion
+                                should_chunk = (
+                                    chunking_service and
+                                    chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+                                )
+                                continue  # Retry with converted file
+                            except (FFmpegError, FFmpegNotFoundError) as conv_error:
+                                current_app.logger.error(f"Failed to convert to MP3: {conv_error}")
+                                # Fall through to raise original error
+                        else:
+                            current_app.logger.warning(f"File is already MP3 but still getting format error")
+
+                    # Not a format error or already retried - propagate the error
+                    raise
+
+            # Clean up converted file if we created one and transcription succeeded
+            if converted_filepath and os.path.exists(converted_filepath):
+                try:
+                    os.remove(converted_filepath)
+                    current_app.logger.debug(f"Cleaned up converted file: {converted_filepath}")
+                except OSError:
+                    pass  # Best effort cleanup
 
             # Calculate and save transcription duration
             transcription_end_time = time.time()
@@ -1295,6 +1406,22 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             error_msg = str(e)
             error_type = type(e).__name__
             current_app.logger.error(f"Connector transcription FAILED for recording {recording_id}: [{error_type}] {error_msg}", exc_info=True)
+
+            # Handle timeout errors specifically - log the configured timeout for debugging
+            if "timed out" in error_msg.lower() or "timeout" in error_msg.lower() or "Timeout" in error_type:
+                try:
+                    from src.services.transcription import get_registry
+                    registry = get_registry()
+                    # Get timeout from connector config if available
+                    connector_timeout = getattr(registry.get_active_connector(), 'timeout', None)
+                    if connector_timeout:
+                        current_app.logger.error(f"Timeout details - configured connector timeout: {connector_timeout}s")
+                    else:
+                        # Fall back to database/env setting
+                        asr_timeout = SystemSetting.get_setting('asr_timeout_seconds', 1800)
+                        current_app.logger.error(f"Timeout details - configured timeout: {asr_timeout}s")
+                except Exception:
+                    pass  # Don't fail the error handling if we can't get timeout info
 
             # Don't set recording.status = 'FAILED' here - let the job queue handle it
             # The job queue will decide whether to retry or permanently fail,

@@ -68,7 +68,10 @@ _unsupported_codecs_str = os.environ.get('AUDIO_UNSUPPORTED_CODECS', '')
 AUDIO_UNSUPPORTED_CODECS = {c.strip().lower() for c in _unsupported_codecs_str.split(',') if c.strip()}
 
 # Create chunking service at module level so it can be imported by processing.py
-chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS) if ENABLE_CHUNKING else None
+# Always initialize the service - the needs_chunking() method will check ENABLE_CHUNKING
+# and return False when appropriate. This allows connectors with hard limits (e.g.,
+# max_duration_seconds) to still enforce chunking even when ENABLE_CHUNKING=false.
+chunking_service = AudioChunkingService(CHUNK_SIZE_MB, CHUNK_OVERLAP_SECONDS)
 
 
 def initialize_config(app):

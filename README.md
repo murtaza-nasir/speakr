@@ -119,6 +119,10 @@ docker compose up -d
 # Access at http://localhost:8899
 ```
 
+**Required API Keys:**
+- `TRANSCRIPTION_API_KEY` - For speech-to-text (OpenAI) or `ASR_BASE_URL` for self-hosted
+- `TEXT_MODEL_API_KEY` - For summaries, titles, and chat (OpenRouter or OpenAI)
+
 ### Transcription Options
 
 Speakr uses a **connector-based architecture** that auto-detects your transcription provider:
