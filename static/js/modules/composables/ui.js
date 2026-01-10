@@ -779,20 +779,19 @@ export function useUI(state, utils, processedTranscription) {
             audioPlayer = document.querySelector('.main-content-area audio');
         }
 
-        if (audioPlayer) {
+        if (!audioPlayer) {
+            audioPlayer = document.querySelector('audio');
+        }
+
+        if (audioPlayer && isFinite(time)) {
             const wasPlaying = !audioPlayer.paused;
-            audioPlayer.currentTime = time;
-            if (wasPlaying) {
-                audioPlayer.play();
-            }
-        } else {
-            const oldPlayer = document.querySelector('audio');
-            if (oldPlayer) {
-                const wasPlaying = !oldPlayer.paused;
-                oldPlayer.currentTime = time;
+            try {
+                audioPlayer.currentTime = time;
                 if (wasPlaying) {
-                    oldPlayer.play();
+                    audioPlayer.play().catch(e => console.warn('Play after seek failed:', e));
                 }
+            } catch (e) {
+                console.warn('Seek failed:', e);
             }
         }
     };
@@ -868,17 +867,29 @@ export function useUI(state, utils, processedTranscription) {
 
     const seekAudioTo = (time) => {
         const audio = getAudioElement();
-        if (!audio) return;
+        if (!audio || !isFinite(time)) return;
 
-        audio.currentTime = Math.max(0, Math.min(time, audio.duration || 0));
+        // Use our tracked duration (server-side) as fallback if browser duration is broken
+        const maxTime = audioDuration.value || (isFinite(audio.duration) ? audio.duration : time);
+        try {
+            audio.currentTime = Math.max(0, Math.min(time, maxTime));
+        } catch (e) {
+            console.warn('Seek failed:', e);
+        }
     };
 
     const seekAudioByPercent = (percent) => {
         const audio = getAudioElement();
-        if (!audio || !audio.duration) return;
+        // Use our tracked duration (server-side) which works for WebM files without duration metadata
+        const dur = audioDuration.value || audio?.duration;
+        if (!audio || !dur || !isFinite(dur)) return;
 
-        const time = (percent / 100) * audio.duration;
-        audio.currentTime = time;
+        const time = (percent / 100) * dur;
+        try {
+            audio.currentTime = time;
+        } catch (e) {
+            console.warn('Seek by percent failed:', e);
+        }
     };
 
     // Progress bar drag state
@@ -929,9 +940,12 @@ export function useUI(state, utils, processedTranscription) {
 
     const handleAudioLoadedMetadata = (event) => {
         const duration = event.target.duration;
-        // Duration might be Infinity for some formats until more data loads
-        if (duration && isFinite(duration) && duration > 0) {
-            audioDuration.value = duration;
+        // Only set browser duration if we don't already have a server-side duration
+        // Server-side duration (from ffprobe) is more reliable for formats like WebM
+        if (!audioDuration.value || audioDuration.value === 0) {
+            if (duration && isFinite(duration) && duration > 0) {
+                audioDuration.value = duration;
+            }
         }
         audioIsLoading.value = false;
     };
@@ -964,6 +978,18 @@ export function useUI(state, utils, processedTranscription) {
         audioIsLoading.value = false;
 
         // Fallback: try to get duration if not set yet
+        if (!audioDuration.value || audioDuration.value === 0) {
+            const duration = event.target.duration;
+            if (duration && isFinite(duration) && duration > 0) {
+                audioDuration.value = duration;
+            }
+        }
+    };
+
+    const handleAudioDurationChange = (event) => {
+        // WebM and some other formats may initially report Infinity duration
+        // This handler catches when the actual duration becomes available
+        // Only set if we don't already have a server-side duration
         if (!audioDuration.value || audioDuration.value === 0) {
             const duration = event.target.duration;
             if (duration && isFinite(duration) && duration > 0) {
@@ -1462,9 +1488,13 @@ export function useUI(state, utils, processedTranscription) {
         }
 
         // Watch for recording changes to reset active segment and audio player state
-        watch(selectedRecording, () => {
+        watch(selectedRecording, (newRecording) => {
             currentPlayingSegmentIndex.value = null;
             resetAudioPlayerState();
+            // Use server-side duration if available (more reliable than browser metadata)
+            if (newRecording && newRecording.audio_duration) {
+                audioDuration.value = newRecording.audio_duration;
+            }
         });
 
         // Set up global click handler to close dropdowns when clicking outside
@@ -1775,6 +1805,7 @@ export function useUI(state, utils, processedTranscription) {
         handleCustomAudioTimeUpdate,
         handleAudioWaiting,
         handleAudioCanPlay,
+        handleAudioDurationChange,
         formatAudioTime,
         audioProgressPercent,
         displayCurrentTime,

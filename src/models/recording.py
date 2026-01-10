@@ -4,10 +4,14 @@ Recording and TranscriptChunk database models.
 This module defines models for audio recordings and their chunked transcriptions.
 """
 
+import logging
+import os
 from datetime import datetime
 from sqlalchemy import func
 from src.database import db
 from src.utils import local_datetime_filter, md_to_html
+
+logger = logging.getLogger(__name__)
 
 
 class Recording(db.Model):
@@ -124,6 +128,28 @@ class Recording(db.Model):
             ).first()
             return state.personal_notes if state else None
 
+    def get_audio_duration(self):
+        """
+        Get the audio duration in seconds using ffprobe.
+
+        Returns:
+            Float duration in seconds, or None if unavailable
+        """
+        if self.audio_deleted_at is not None:
+            return None
+
+        if not self.audio_path or not os.path.exists(self.audio_path):
+            return None
+
+        try:
+            from src.utils.ffprobe import get_duration
+            # Allow longer timeout for packet scanning fallback on files without duration metadata
+            duration = get_duration(self.audio_path, timeout=30)
+            return duration
+        except Exception as e:
+            logger.warning(f"Failed to get duration for recording {self.id}: {e}")
+            return None
+
     def to_list_dict(self, viewer_user=None):
         """
         Lightweight dict for list views - excludes expensive HTML conversions.
@@ -216,6 +242,7 @@ class Recording(db.Model):
             'mime_type': self.mime_type,
             'audio_deleted_at': local_datetime_filter(self.audio_deleted_at),
             'audio_available': self.audio_deleted_at is None,
+            'audio_duration': self.get_audio_duration(),
             'deletion_exempt': self.deletion_exempt,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'events': [event.to_dict() for event in self.events] if self.events else [],

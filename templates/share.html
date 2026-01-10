@@ -115,6 +115,7 @@
                                @pause="handleAudioPlayPause"
                                @timeupdate="handleCustomAudioTimeUpdate"
                                @loadedmetadata="handleAudioLoadedMetadata"
+                               @durationchange="handleAudioDurationChange"
                                @ended="handleAudioEnded">
                         </audio>
                         <!-- Play/Pause -->
@@ -347,7 +348,8 @@
                 // Custom audio player state
                 const audioIsPlaying = ref(false);
                 const audioCurrentTime = ref(0);
-                const audioDuration = ref(0);
+                // Use server-side duration if available (more reliable for formats like WebM)
+                const audioDuration = ref(recordingData.audio_duration || 0);
                 const audioIsMuted = ref(false);
                 const playerVolume = ref(1.0);
 
@@ -379,7 +381,23 @@
                 }
 
                 function handleAudioLoadedMetadata(event) {
-                    audioDuration.value = event.target.duration;
+                    // Only set browser duration if we don't already have a server-side duration
+                    if (!audioDuration.value || audioDuration.value === 0) {
+                        const duration = event.target.duration;
+                        if (duration && isFinite(duration) && duration > 0) {
+                            audioDuration.value = duration;
+                        }
+                    }
+                }
+
+                function handleAudioDurationChange(event) {
+                    // Only set browser duration if we don't already have a server-side duration
+                    if (!audioDuration.value || audioDuration.value === 0) {
+                        const duration = event.target.duration;
+                        if (duration && isFinite(duration) && duration > 0) {
+                            audioDuration.value = duration;
+                        }
+                    }
                 }
 
                 function handleAudioEnded() {
@@ -413,7 +431,7 @@
                 }
 
                 function seekAudioByPercent(percent) {
-                    if (!audioPlayer.value || !audioDuration.value) return;
+                    if (!audioPlayer.value || !audioDuration.value || !isFinite(audioDuration.value)) return;
                     const time = (percent / 100) * audioDuration.value;
                     audioPlayer.value.currentTime = time;
                 }
@@ -640,6 +658,7 @@
                     handleAudioPlayPause,
                     handleCustomAudioTimeUpdate,
                     handleAudioLoadedMetadata,
+                    handleAudioDurationChange,
                     handleAudioEnded,
                     toggleAudioPlayback,
                     toggleAudioMute,

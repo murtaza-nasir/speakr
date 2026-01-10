@@ -274,6 +274,10 @@ def get_duration(filename: str, timeout: Optional[int] = None, codec_info: Optio
     """
     Get the duration of a media file in seconds.
 
+    Uses multiple methods to determine duration:
+    1. Format-level duration (fastest, works for most files)
+    2. Packet timestamps fallback (for files without duration metadata like some WebM)
+
     Args:
         filename: Path to the media file
         timeout: Optional timeout in seconds
@@ -285,9 +289,74 @@ def get_duration(filename: str, timeout: Optional[int] = None, codec_info: Optio
     try:
         if codec_info is None:
             codec_info = get_codec_info(filename, timeout=timeout)
-        return codec_info['duration']
+
+        # Try format-level duration first
+        if codec_info['duration'] is not None:
+            return codec_info['duration']
+
+        # Fallback: scan packets to find the last timestamp
+        # This works for WebM and other files without duration metadata
+        return _get_duration_from_packets(filename, timeout=timeout)
     except FFProbeError as e:
         logger.warning(f"Failed to probe {filename}: {e}")
+        return None
+
+
+def _get_duration_from_packets(filename: str, timeout: Optional[int] = None) -> Optional[float]:
+    """
+    Get duration by scanning packet timestamps (fallback for files without duration metadata).
+
+    This is slower than format-level duration but works for WebM and similar files
+    that don't store duration in the container metadata.
+
+    Args:
+        filename: Path to the media file
+        timeout: Optional timeout in seconds
+
+    Returns:
+        Duration in seconds, or None if unable to determine
+    """
+    try:
+        args = [
+            'ffprobe', '-v', 'error',
+            '-show_entries', 'packet=pts_time',
+            '-select_streams', 'a:0',  # First audio stream
+            '-of', 'csv=p=0',
+            filename
+        ]
+
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        communicate_kwargs = {}
+        if timeout is not None:
+            communicate_kwargs['timeout'] = timeout
+        out, err = p.communicate(**communicate_kwargs)
+
+        if p.returncode != 0:
+            logger.debug(f"Packet scan failed for {filename}")
+            return None
+
+        # Parse the output to find the last timestamp
+        lines = out.decode('utf-8').strip().split('\n')
+        last_valid_time = None
+        for line in reversed(lines):
+            line = line.strip()
+            if line and line != 'N/A':
+                try:
+                    last_valid_time = float(line)
+                    break
+                except ValueError:
+                    continue
+
+        if last_valid_time is not None:
+            logger.debug(f"Got duration from packets for {filename}: {last_valid_time}")
+            return last_valid_time
+
+        return None
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Packet scan timed out for {filename}")
+        return None
+    except Exception as e:
+        logger.warning(f"Error scanning packets for {filename}: {e}")
         return None
 
 
