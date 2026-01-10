@@ -130,6 +130,55 @@ GET /api/v1/stats
 
 ## Recordings
 
+### Upload Recording
+
+```http
+POST /api/v1/recordings/upload
+```
+
+Upload a recording as multipart form-data and immediately queue transcription.
+
+**Form Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | yes | Audio file to upload |
+| `notes` | string | no | Optional notes |
+| `file_last_modified` | string | no | Client file lastModified (ms epoch) |
+| `language` | string | no | Language hint (ISO 639-1) |
+| `min_speakers` | integer | no | Min speaker count |
+| `max_speakers` | integer | no | Max speaker count |
+| `tag_ids[0]`, `tag_ids[1]`, ... | integer | no | Tag IDs (multi) |
+| `tag_id` | integer | no | Single tag ID (legacy) |
+
+**Response:**
+
+```json
+// 202 Accepted
+{
+  "id": 123,
+  "title": "Recording - meeting.mp3",
+  "status": "PENDING",
+  "created_at": "2024-01-15T10:00:00Z",
+  "meeting_date": "2024-01-15T09:00:00Z",
+  "file_size": 15728640,
+  "original_filename": "meeting.mp3",
+  "mime_type": "audio/mpeg",
+  "notes": "Quick test upload"
+}
+```
+
+**Example:**
+
+```bash
+curl -X POST \
+  -H "X-API-Token: YOUR_TOKEN" \
+  -F "file=@/path/to/audio.mp3" \
+  -F "notes=Quick test upload" \
+  -F "language=en" \
+  https://speakr.example.com/api/v1/recordings/upload
+```
+
 ### List Recordings
 
 ```http
