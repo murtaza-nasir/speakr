@@ -81,8 +81,12 @@ def get_supported_codecs(needs_chunking: bool = False, connector_specs: Optional
         # For chunking: only support codecs that work well with chunking
         base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac'}
     else:
-        # For direct transcription: support more codecs including WebM/Opus
-        base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'opus', 'vorbis', 'aac'}
+        # For direct transcription: support common seekable formats
+        # Note: opus/vorbis excluded as INPUT codecs because WebM containers from
+        # MediaRecorder often lack seek cues, making browser audio players unable to seek.
+        # However, opus is still valid as an OUTPUT format (AUDIO_CODEC=opus) since
+        # ffmpeg creates proper .opus files with duration metadata.
+        base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'aac'}
 
     # Remove connector-specific unsupported codecs
     if connector_specs and connector_specs.unsupported_codecs:

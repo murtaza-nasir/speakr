@@ -55,7 +55,8 @@ def view_shared_recording(public_id):
         'notes_raw': recording.notes if share.share_notes else None,
         'meeting_date': f"{recording.meeting_date.isoformat()}T00:00:00" if recording.meeting_date else None,
         'mime_type': recording.mime_type,
-        'audio_deleted_at': recording.audio_deleted_at.isoformat() if recording.audio_deleted_at else None
+        'audio_deleted_at': recording.audio_deleted_at.isoformat() if recording.audio_deleted_at else None,
+        'audio_duration': recording.get_audio_duration()
     }
 
     return render_template('share.html', recording=recording_data)
