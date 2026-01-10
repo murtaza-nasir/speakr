@@ -3100,6 +3100,52 @@ def remove_tag_from_recording(recording_id, tag_id):
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
+@recordings_bp.route('/api/recordings/<int:recording_id>/tags/reorder', methods=['PUT'])
+@login_required
+def reorder_recording_tags(recording_id):
+    """Reorder tags on a recording. Updates the order field for each RecordingTag."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        # Check if user has edit access to this recording
+        if not has_recording_access(recording, current_user, require_edit=True):
+            return jsonify({'error': 'You do not have permission to modify this recording'}), 403
+
+        data = request.get_json()
+        if not data or 'tag_ids' not in data:
+            return jsonify({'error': 'Missing tag_ids in request body'}), 400
+
+        tag_ids = data.get('tag_ids', [])
+        if not isinstance(tag_ids, list):
+            return jsonify({'error': 'tag_ids must be a list'}), 400
+
+        # Update order for each tag
+        for order, tag_id in enumerate(tag_ids, 1):
+            recording_tag = RecordingTag.query.filter_by(
+                recording_id=recording_id,
+                tag_id=tag_id
+            ).first()
+            if recording_tag:
+                recording_tag.order = order
+
+        db.session.commit()
+
+        # Return updated recording
+        recording_dict = recording.to_dict(viewer_user=current_user)
+        enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
+        return jsonify({
+            'success': True,
+            'recording': recording_dict
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error reordering tags on recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
+
+
 # --- Auto-deletion and Chunks Processing ---
 
 @recordings_bp.route('/api/recordings/<int:recording_id>/toggle_deletion_exempt', methods=['POST'])
