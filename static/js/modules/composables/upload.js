@@ -38,7 +38,7 @@ export function useUpload(state, utils) {
         dragover, availableTags, uploadTagSearchFilter
     } = state;
 
-    const { computed, nextTick } = Vue;
+    const { computed, nextTick, ref } = Vue;
 
     const { setGlobalError, showToast, formatFileSize, onChatComplete } = utils;
 
@@ -48,6 +48,78 @@ export function useUpload(state, utils) {
             availableTags.value.find(t => t.id === id)
         ).filter(Boolean);
     });
+
+    // --- Tag Drag-and-Drop State ---
+    const draggedTagIndex = ref(null);
+    const dragOverTagIndex = ref(null);
+
+    // Reorder selectedTagIds array
+    const reorderSelectedTags = (fromIndex, toIndex) => {
+        const tagIds = [...selectedTagIds.value];
+        const [removed] = tagIds.splice(fromIndex, 1);
+        tagIds.splice(toIndex, 0, removed);
+        selectedTagIds.value = tagIds;
+        applyTagDefaults(); // Re-apply defaults since first tag may have changed
+    };
+
+    // === MOUSE DRAG HANDLERS ===
+    const handleTagDragStart = (index, event) => {
+        draggedTagIndex.value = index;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', index.toString());
+    };
+
+    const handleTagDragOver = (index, event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        dragOverTagIndex.value = index;
+    };
+
+    const handleTagDrop = (targetIndex, event) => {
+        event.preventDefault();
+        if (draggedTagIndex.value !== null && draggedTagIndex.value !== targetIndex) {
+            reorderSelectedTags(draggedTagIndex.value, targetIndex);
+        }
+        draggedTagIndex.value = null;
+        dragOverTagIndex.value = null;
+    };
+
+    const handleTagDragEnd = () => {
+        draggedTagIndex.value = null;
+        dragOverTagIndex.value = null;
+    };
+
+    // === TOUCH HANDLERS (Mobile) ===
+    let touchStartIndex = null;
+
+    const handleTagTouchStart = (index, event) => {
+        touchStartIndex = index;
+        draggedTagIndex.value = index;
+    };
+
+    const handleTagTouchMove = (event) => {
+        if (touchStartIndex === null) return;
+        event.preventDefault();
+
+        const touch = event.touches[0];
+        const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        const tagElement = elementBelow?.closest('[data-tag-index]');
+
+        if (tagElement) {
+            const targetIndex = parseInt(tagElement.dataset.tagIndex);
+            dragOverTagIndex.value = targetIndex;
+        }
+    };
+
+    const handleTagTouchEnd = () => {
+        if (touchStartIndex !== null && dragOverTagIndex.value !== null &&
+            touchStartIndex !== dragOverTagIndex.value) {
+            reorderSelectedTags(touchStartIndex, dragOverTagIndex.value);
+        }
+        touchStartIndex = null;
+        draggedTagIndex.value = null;
+        dragOverTagIndex.value = null;
+    };
 
     // Handle drag events
     const handleDragOver = (e) => {
@@ -671,6 +743,16 @@ export function useUpload(state, utils) {
         addTagToSelection,
         removeTagFromSelection,
         applyTagDefaults,
-        filteredAvailableTagsForUpload
+        filteredAvailableTagsForUpload,
+        // Tag drag-and-drop
+        draggedTagIndex,
+        dragOverTagIndex,
+        handleTagDragStart,
+        handleTagDragOver,
+        handleTagDrop,
+        handleTagDragEnd,
+        handleTagTouchStart,
+        handleTagTouchMove,
+        handleTagTouchEnd
     };
 }

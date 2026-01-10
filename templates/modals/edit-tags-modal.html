@@ -10,22 +10,41 @@
             </div>
         </div>
         <div class="p-6 overflow-y-auto flex-1">
-            <!-- Current Tags -->
+            <!-- Current Tags with Drag Reorder -->
             <div class="mb-4">
                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" v-text="t('tags.currentTags')"></label>
-                <div v-if="selectedRecording && getRecordingTags(selectedRecording).length > 0" class="flex flex-wrap gap-2">
-                    <span v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id"
-                          class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium cursor-help"
+                <div v-if="editingRecording && editingRecording.tags && editingRecording.tags.length > 0"
+                     class="flex flex-wrap gap-2"
+                     @touchmove="handleModalTagTouchMove">
+                    <span v-for="(tag, index) in editingRecording.tags" :key="tag.id"
+                          :data-modal-tag-index="index"
+                          draggable="true"
+                          @dragstart="handleModalTagDragStart(index, $event)"
+                          @dragover="handleModalTagDragOver(index, $event)"
+                          @drop="handleModalTagDrop(index, $event)"
+                          @dragend="handleModalTagDragEnd"
+                          @touchstart="handleModalTagTouchStart(index, $event)"
+                          @touchend="handleModalTagTouchEnd"
+                          :class="[
+                              'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-all duration-150',
+                              modalDraggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
+                              modalDragOverTagIndex === index && modalDraggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
+                          ]"
                           :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                          :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                          :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
+                        <span class="opacity-75 mr-1 text-xs">${index + 1}.</span>
                         <i v-if="tag.group_id" class="fas fa-users mr-1.5 text-xs"></i>
                         <span v-if="tag.group_id" class="opacity-75">${ tag.group_name }: </span>${ tag.name }
-                        <button @click="removeTagFromRecording(tag.id)" class="ml-2 hover:opacity-80">
+                        <button @click.stop="removeTagFromRecording(tag.id)" class="ml-2 hover:opacity-80">
                             <i class="fas fa-times text-xs"></i>
                         </button>
                     </span>
                 </div>
                 <p v-else class="text-sm text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
+                <p v-if="editingRecording && editingRecording.tags && editingRecording.tags.length > 1" class="text-xs text-[var(--text-muted)] mt-2">
+                    <i class="fas fa-grip-vertical mr-1" style="font-size: 10px;"></i>
+                    Drag to reorder &bull; First tag's defaults are applied
+                </p>
             </div>
 
             <!-- Add Tags -->

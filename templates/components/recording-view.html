@@ -102,25 +102,42 @@
                         Select Tags (optional, in priority order)
                     </label>
 
-                    <!-- Selected Tags Display - Compact -->
+                    <!-- Selected Tags Display - Compact with Drag Reorder -->
                     <div v-if="selectedTags.length > 0" class="mb-2">
-                        <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto">
+                        <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto"
+                             @touchmove="handleTagTouchMove">
                             <div class="flex flex-wrap gap-1">
                                 <span v-for="(tag, index) in selectedTags" :key="tag.id"
-                                      class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium cursor-help"
+                                      :data-tag-index="index"
+                                      draggable="true"
+                                      @dragstart="handleTagDragStart(index, $event)"
+                                      @dragover="handleTagDragOver(index, $event)"
+                                      @drop="handleTagDrop(index, $event)"
+                                      @dragend="handleTagDragEnd"
+                                      @touchstart="handleTagTouchStart(index, $event)"
+                                      @touchend="handleTagTouchEnd"
+                                      :class="[
+                                          'inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium transition-all duration-150',
+                                          draggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
+                                          dragOverTagIndex === index && draggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
+                                      ]"
                                       :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                                      :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                                      :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
                                     <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
                                     <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
                                     <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>
                                     <span>${tag.name}</span>
-                                    <button @click="removeTagFromSelection(tag.id)"
+                                    <button @click.stop="removeTagFromSelection(tag.id)"
                                             class="ml-1 hover:opacity-100 opacity-70">
                                         <i class="fas fa-times" style="font-size: 9px;"></i>
                                     </button>
                                 </span>
                             </div>
                         </div>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
+                            <i class="fas fa-grip-vertical mr-0.5" style="font-size: 9px;"></i>
+                            Drag to reorder &bull; First tag's defaults applied
+                        </p>
                     </div>
 
                     <!-- Tag Selection Container - Compact -->
