@@ -81,12 +81,11 @@ def get_supported_codecs(needs_chunking: bool = False, connector_specs: Optional
         # For chunking: only support codecs that work well with chunking
         base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac'}
     else:
-        # For direct transcription: support common seekable formats
-        # Note: opus/vorbis excluded as INPUT codecs because WebM containers from
-        # MediaRecorder often lack seek cues, making browser audio players unable to seek.
-        # However, opus is still valid as an OUTPUT format (AUDIO_CODEC=opus) since
-        # ffmpeg creates proper .opus files with duration metadata.
-        base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'aac'}
+        # For direct transcription: support common formats
+        # Note: WebM containers are handled separately (by extension check in convert_if_needed)
+        # because MediaRecorder WebM files often lack seek cues, but the opus/vorbis codecs
+        # themselves are fine in proper containers (.opus, .ogg)
+        base_codecs = {'pcm_s16le', 'pcm_s24le', 'pcm_f32le', 'mp3', 'flac', 'aac', 'opus', 'vorbis'}
 
     # Remove connector-specific unsupported codecs
     if connector_specs and connector_specs.unsupported_codecs:
@@ -228,18 +227,19 @@ def convert_if_needed(
     
     # Handle audio files - check if conversion needed
     needs_conversion = False
-
-    # OpenAI Whisper API only accepts specific file extensions
-    # Even if codec is fine, extension must be in this list
-    openai_supported_extensions = {'.flac', '.m4a', '.mp3', '.mp4', '.mpeg', '.mpga', '.oga', '.ogg', '.wav', '.webm'}
     file_ext = os.path.splitext(filepath)[1].lower()
+
+    # Note: Connector-specific codec restrictions are handled via connector_specs.unsupported_codecs
+    # which is already applied in get_supported_codecs() above
 
     if audio_codec is None:
         needs_conversion = True
         logger.info(f"Unknown codec for {original_filename}, will attempt conversion")
-    elif file_ext not in openai_supported_extensions:
+    elif file_ext == '.webm':
+        # WebM containers from MediaRecorder often lack seek cues, making browser
+        # audio players unable to seek. Force conversion to a seekable format.
         needs_conversion = True
-        logger.info(f"Converting {original_filename} - extension '{file_ext}' not supported by OpenAI API")
+        logger.info(f"Converting {original_filename} - WebM container lacks seek support")
     elif is_asr_endpoint and audio_codec == 'aac':
         needs_conversion = True
         logger.info(f"Converting AAC-encoded file for ASR endpoint compatibility")
