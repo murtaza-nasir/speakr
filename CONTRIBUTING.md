@@ -14,9 +14,9 @@ There are many ways to contribute to Speakr:
 
 ## Code Contributions
 
-We welcome code contributions! However, due to the dual-licensing nature of Speakr (AGPLv3 and Commercial), we require all code contributors to sign a Contributor License Agreement (CLA).
+We welcome code contributions! However, due to the dual-licensing nature of Speakr (AGPLv3 and Commercial), all code contributions are subject to our Contributor License Agreement (CLA).
 
-### Why We Require a CLA
+### Contributor License Agreement (CLA)
 
 Speakr is dual-licensed under:
 1. **AGPLv3** - Open source license for the community
@@ -30,15 +30,11 @@ The CLA allows us to:
 
 **Important**: You retain copyright ownership of your contribution. The CLA simply grants us permission to use it.
 
-### How to Sign the CLA
+### Accepting the CLA
 
-When you submit your first pull request, our CLA bot will automatically comment with instructions. You'll be asked to:
+**By submitting a pull request to this repository, you agree to the terms of our [Contributor License Agreement](CLA.md).**
 
-1. Review the [CLA document](CLA.md)
-2. Sign by commenting on the PR: `I have read the CLA Document and I hereby sign the CLA`
-3. Our bot will verify and mark your signature
-
-This is a one-time process. Once you've signed, all your future contributions to Speakr are covered.
+Please review the [CLA document](CLA.md) before submitting your contribution. When you open a PR, our bot will post a reminder about the CLA terms.
 
 ### Contribution Process
 
@@ -49,8 +45,7 @@ This is a one-time process. Once you've signed, all your future contributions to
 5. **Commit** with clear, descriptive messages (see our commit policy below)
 6. **Push** to your fork: `git push origin feature/my-awesome-feature`
 7. **Open a Pull Request** with a clear description of your changes
-8. **Sign the CLA** when prompted by the bot
-9. **Respond to feedback** from maintainers
+8. **Respond to feedback** from maintainers
 
 ### Coding Standards
 
@@ -112,15 +107,15 @@ python src/app.py --debug
 
 ## What Happens After You Submit a PR?
 
-1. **CLA Check**: Our bot checks if you've signed the CLA
+1. **CLA Reminder**: Our bot posts a reminder about the CLA terms (by submitting, you've accepted them)
 2. **Automated Tests**: CI/CD pipeline runs (if configured)
 3. **Code Review**: Maintainers review your code
 4. **Feedback**: You may be asked to make changes
-5. **Merge**: Once approved and CLA is signed, we merge your PR!
+5. **Merge**: Once approved, we merge your PR!
 
-## Alternative Ways to Help (No CLA Required)
+## Other Ways to Help
 
-If you cannot or prefer not to sign a CLA, you can still help:
+There are many ways to contribute without code:
 
 - **Bug Reports**: Detailed bug reports are incredibly valuable
 - **Feature Requests**: Share your ideas and use cases
@@ -133,7 +128,6 @@ If you cannot or prefer not to sign a CLA, you can still help:
 
 - **General Questions**: [GitHub Discussions](https://github.com/murtaza-nasir/speakr/discussions)
 - **Bug Reports**: [GitHub Issues](https://github.com/murtaza-nasir/speakr/issues)
-- **CLA Questions**: Open an issue tagged `cla-question`
 
 ## Code of Conduct
 
