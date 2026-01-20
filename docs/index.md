@@ -145,13 +145,18 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.8.2 - Transcription Usage Tracking"
-    - **Transcription Budget Management** - Set monthly transcription limits (in minutes) per user with 80% warnings and 100% blocking
-    - **Usage Statistics** - Track transcription minutes and estimated costs across all connectors (OpenAI Whisper, OpenAI Transcribe, self-hosted ASR)
-    - **Admin Dashboard Improvements** - Redesigned stats layout with summary cards and per-user tables side by side
-    - **REST API Stats** - Added transcription usage data to `/api/v1/stats` endpoint
+!!! info "Version 0.8.3 - Naming Templates"
+    - **Custom Title Formatting** - Create templates with variables (`{{ai_title}}`, `{{filename}}`, `{{date}}`) and regex patterns to extract data from filenames
+    - **Tag or User Default** - Assign templates to tags or set a user-wide default; templates without `{{ai_title}}` skip the AI call to save tokens
+    - **API v1 Upload** - New `/api/v1/upload` endpoint for programmatic recording uploads
+    - **Improvements** - Tag drag-and-drop reordering, registration domain restriction, event delete button, WebM seeking fix
 
     Fully backwards compatible with v0.8.x.
+
+!!! info "Version 0.8.2 - Transcription Usage Tracking"
+    - **Transcription Budget Management** - Set monthly transcription limits (in minutes) per user with 80% warnings and 100% blocking
+    - **Usage Statistics** - Track transcription minutes and estimated costs across all connectors
+    - **Admin Dashboard Improvements** - Redesigned stats layout with summary cards and per-user tables
 
 !!! info "Version 0.8.0 - Connector Architecture & REST API"
     - **Connector-Based Transcription** - Modular architecture with auto-detection for transcription providers
