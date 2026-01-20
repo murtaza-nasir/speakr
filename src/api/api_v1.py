@@ -30,6 +30,7 @@ from src.models.transcription_usage import TranscriptionUsage
 from src.services.token_tracking import TokenTracker
 from src.services.transcription_tracking import transcription_tracker
 from src.file_exporter import format_transcription_with_template
+from src.api.recordings import upload_file as _upload_file_ui
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -241,6 +242,34 @@ OPENAPI_SPEC = {
         },
         "/recordings/batch/transcribe": {
             "post": {"tags": ["Batch"], "summary": "Batch queue transcriptions", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Batch results"}}}
+        },
+        "/recordings/upload": {
+            "post": {
+                "tags": ["Recordings"],
+                "summary": "Upload a recording (multipart form-data) and queue transcription",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["file"],
+                                "properties": {
+                                    "file": {"type": "string", "format": "binary"},
+                                    "notes": {"type": "string"},
+                                    "file_last_modified": {"type": "string"},
+                                    "language": {"type": "string"},
+                                    "min_speakers": {"type": "integer"},
+                                    "max_speakers": {"type": "integer"},
+                                    "tag_id": {"type": "integer"},
+                                    "tag_ids[0]": {"type": "integer"},
+                                    "tag_ids[1]": {"type": "integer"}
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {"202": {"description": "Upload accepted and queued"}}
+            }
         },
         "/tags": {
             "get": {"tags": ["Tags"], "summary": "List tags", "responses": {"200": {"description": "List of tags"}}},
@@ -1933,3 +1962,22 @@ def batch_transcribe_recordings():
         'failed': len(results) - success_count,
         'results': results
     })
+
+
+@api_v1_bp.route('/recordings/upload', methods=['POST'])
+@login_required
+def upload_recording():
+    """
+    Upload a recording and queue transcription (API).
+
+    Multipart form-data fields:
+      - file (required)
+      - notes (optional)
+      - file_last_modified (optional, ms epoch)
+      - language (optional)
+      - min_speakers (optional)
+      - max_speakers (optional)
+      - tag_ids[0], tag_ids[1], ... (optional)
+      - tag_id (optional, legacy)
+    """
+    return _upload_file_ui()
