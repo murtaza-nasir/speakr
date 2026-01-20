@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.2-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.3-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -160,14 +160,24 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.2)
+## Latest Release (v0.8.3)
+
+**Naming Templates**
+
+- **Custom Title Formatting** - Create templates with variables like `{{ai_title}}`, `{{filename}}`, `{{date}}` and custom regex patterns
+- **Tag-Based or User Default** - Assign templates to tags or set a user-wide default
+- **Token Savings** - Templates without `{{ai_title}}` skip the AI call entirely
+- **API v1 Upload** - New `/api/v1/upload` endpoint for programmatic recording uploads
+
+**Improvements** - Tag drag-and-drop reordering, registration domain restriction, event delete button, WebM seeking fix
+
+### Previous Release (v0.8.2)
 
 **Transcription Usage Tracking**
 
 - **Per-User Budgets** - Set monthly transcription limits (in minutes) with 80% warning and 100% blocking
 - **Usage Dashboard** - Track minutes, costs, and per-user breakdowns in Admin panel
 - **Cost Estimation** - Automatic pricing for OpenAI Whisper/Transcribe and self-hosted ASR
-- **REST API** - `/api/v1/stats` now includes transcription usage and budget data
 
 ### Previous Release (v0.8.1)
 
@@ -183,13 +193,6 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - **Speaker Diarization Without GPU** - Use OpenAI's `gpt-4o-transcribe-diarize` for speaker identification with just an API key
 - **REST API v1** - Full-featured API for automation tools (n8n, Zapier, Make) and dashboard widgets
 - **Connector Architecture** - Modular transcription providers with simplified configuration
-
-### Previous Release (v0.7.2)
-
-**Token Budgets, Performance & UX**
-
-- **Token Usage Tracking** - Track LLM token usage per user with detailed statistics and cost breakdowns
-- **Per-User Token Budgets** - Set monthly token limits per user with warnings at 80% and blocking at 100%
 - **Virtual Scrolling** - Performance optimization for handling 4500+ transcript segments smoothly
 - **Audio Player Improvements** - Drag-to-seek, independent modal players, improved theme support
 - **File Date Handling** - Uses original recording date from file metadata instead of upload time
