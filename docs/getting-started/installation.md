@@ -201,11 +201,12 @@ Next, configure how the application behaves. These settings control user access 
 
 ```bash
 ALLOW_REGISTRATION=false
+REGISTRATION_ALLOWED_DOMAINS=
 TIMEZONE="America/New_York"
 LOG_LEVEL="INFO"
 ```
 
-Setting `ALLOW_REGISTRATION=false` means only the admin can create new user accounts, which is recommended for private installations where you want to control access. If you're running Speakr for a group or family, this prevents random people from creating accounts. The timezone setting affects how dates and times are displayed throughout the interface, so set it to your local timezone for convenience. The log level controls how much information Speakr writes to its logs. Use `INFO` during initial setup and testing to see what's happening, then switch to `ERROR` for production to reduce log volume and improve performance.
+Setting `ALLOW_REGISTRATION=false` means only the admin can create new user accounts, which is recommended for private installations where you want to control access. If you're running Speakr for a group or family, this prevents random people from creating accounts. If you enable registration and want to restrict it to specific email domains (e.g., for corporate use), set `REGISTRATION_ALLOWED_DOMAINS` to a comma-separated list of domains like `company.com,subsidiary.org`. Leave it empty to allow all domains. The timezone setting affects how dates and times are displayed throughout the interface, so set it to your local timezone for convenience. The log level controls how much information Speakr writes to its logs. Use `INFO` during initial setup and testing to see what's happening, then switch to `ERROR` for production to reduce log volume and improve performance.
 
 ### Step 5: Configure Advanced Features
 

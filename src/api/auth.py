@@ -105,6 +105,31 @@ def is_safe_url(target):
     return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
 
 
+def is_registration_domain_allowed(email: str) -> bool:
+    """Check if email domain is allowed for registration.
+
+    Returns True if no domain restrictions are configured or if the
+    email domain is in the allowed list.
+    """
+    if not email:
+        return False
+
+    domains_env = os.environ.get('REGISTRATION_ALLOWED_DOMAINS', '')
+    if not domains_env or not domains_env.strip():
+        return True  # No restriction configured
+
+    allowed = [d.strip().lower() for d in domains_env.split(',') if d.strip()]
+    if not allowed:
+        return True  # Empty after parsing
+
+    parts = email.lower().rsplit('@', 1)
+    if len(parts) != 2:
+        return False  # Invalid email format
+
+    domain = parts[1]
+    return domain in allowed
+
+
 # --- Routes ---
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -122,6 +147,11 @@ def register():
 
     form = RegistrationForm()
     if form.validate_on_submit():
+        # Check if email domain is allowed
+        if not is_registration_domain_allowed(form.email.data):
+            flash('Registration is restricted. Please contact the administrator.', 'danger')
+            return render_template('register.html', title='Register', form=form)
+
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
