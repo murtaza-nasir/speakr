@@ -198,6 +198,14 @@ By default, only the admin can create new users. Learn more about [user manageme
 ALLOW_REGISTRATION=true
 ```
 
+To restrict registration to specific email domains (e.g., for company use), set:
+
+```bash
+REGISTRATION_ALLOWED_DOMAINS=company.com,subsidiary.org
+```
+
+Leave empty to allow all domains.
+
 ### Configure Your Timezone
 
 Set your local timezone for accurate timestamp display:
