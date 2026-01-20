@@ -582,6 +582,14 @@ def extract_events_from_transcript(recording_id, transcript_text, summary_text):
 
         current_app.logger.info(f"Extracting events for recording {recording_id}")
 
+        # Delete existing events for this recording before extracting new ones
+        existing_events = Event.query.filter_by(recording_id=recording_id).all()
+        if existing_events:
+            current_app.logger.info(f"Clearing {len(existing_events)} existing events for recording {recording_id}")
+            for event in existing_events:
+                db.session.delete(event)
+            db.session.commit()
+
         # Get user language preference
         user_output_language = None
         if recording.owner:

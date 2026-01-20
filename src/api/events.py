@@ -147,3 +147,27 @@ def download_all_events_ics(recording_id):
         return jsonify({'error': str(e)}), 500
 
 
+@events_bp.route('/api/event/<int:event_id>', methods=['DELETE'])
+@login_required
+def delete_event(event_id):
+    """Delete a single event."""
+    try:
+        event = db.session.get(Event, event_id)
+        if not event:
+            return jsonify({'error': 'Event not found'}), 404
+
+        # Check permissions through recording access
+        if not has_recording_access(event.recording, current_user):
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        db.session.delete(event)
+        db.session.commit()
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        current_app.logger.error(f"Error deleting event {event_id}: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
