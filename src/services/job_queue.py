@@ -364,25 +364,9 @@ class FairJobQueue:
                         if is_permanent_error:
                             logger.info(f"Job {job_id} failed with permanent error (no retry): {error_str[:100]}")
 
-                        # For permanent errors (like file too large), keep the recording so user can fix settings
-                        # Only delete recordings for transient errors that failed after all retries
-                        should_delete = is_new_upload and recording and not is_permanent_error
-
-                        if should_delete:
-                            # For failed new uploads with transient errors, delete the recording and file
-                            logger.info(f"Deleting failed new upload: recording {recording_id}")
-                            try:
-                                # Delete the audio file
-                                if recording.audio_path and os.path.exists(recording.audio_path):
-                                    os.remove(recording.audio_path)
-                                    logger.info(f"Deleted audio file: {recording.audio_path}")
-                                # Delete ALL processing jobs for this recording (required due to NOT NULL constraint)
-                                ProcessingJob.query.filter_by(recording_id=recording_id).delete()
-                                # Delete the recording from database
-                                db.session.delete(recording)
-                            except Exception as delete_err:
-                                logger.error(f"Error deleting failed upload recording: {delete_err}")
-                        elif recording:
+                        # Always keep recordings with FAILED status so users can see the error
+                        # and reprocess later (e.g., when ASR server recovers)
+                        if recording:
                             # Keep the recording with FAILED status so user can see the error and fix settings
                             recording.status = 'FAILED'
                             # Format the error for nice display
