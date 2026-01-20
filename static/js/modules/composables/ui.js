@@ -714,6 +714,44 @@ export function useUI(state, utils, processedTranscription) {
         }
     };
 
+    const deleteEvent = async (event) => {
+        if (!event || !event.id) {
+            showToast('Invalid event data', 'fa-exclamation-circle');
+            return;
+        }
+
+        // Confirm deletion
+        if (!confirm(t('events.confirmDelete', { title: event.title }) || `Delete event "${event.title}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/event/${event.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                showToast(error.error || t('events.deleteFailed') || 'Failed to delete event', 'fa-exclamation-circle');
+                return;
+            }
+
+            // Remove event from local state
+            if (selectedRecording.value && selectedRecording.value.events) {
+                selectedRecording.value.events = selectedRecording.value.events.filter(e => e.id !== event.id);
+            }
+
+            showToast(t('events.deleted') || 'Event deleted', 'fa-check-circle');
+        } catch (error) {
+            console.error('Delete event failed:', error);
+            showToast(t('events.deleteFailed') || 'Failed to delete event', 'fa-exclamation-circle');
+        }
+    };
+
     const formatEventDateTime = (dateTimeStr) => {
         if (!dateTimeStr) return '';
         try {
@@ -1780,6 +1818,7 @@ export function useUI(state, utils, processedTranscription) {
         downloadNotes,
         downloadEventICS,
         downloadICS,
+        deleteEvent,
         formatEventDateTime,
         // View mode
         toggleTranscriptionViewMode,
