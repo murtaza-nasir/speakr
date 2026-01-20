@@ -1077,7 +1077,11 @@
     "start": "Start",
     "end": "End",
     "location": "Location",
-    "attendees": "Attendees"
+    "attendees": "Attendees",
+    "delete": "Delete",
+    "confirmDelete": "Delete event \"{title}\"?",
+    "deleted": "Event deleted",
+    "deleteFailed": "Failed to delete event"
   },
   "pwa": {
     "installApp": "Install App",

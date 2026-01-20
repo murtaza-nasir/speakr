@@ -13,12 +13,19 @@
                         ${ event.description }
                     </p>
                 </div>
-                <button @click="downloadEventICS(event)"
-                        class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-1.5"
-                        :title="t('events.addToCalendar')">
-                    <i class="fas fa-download"></i>
-                    <span v-text="t('events.addToCalendar')"></span>
-                </button>
+                <div class="flex items-center gap-2">
+                    <button @click="downloadEventICS(event)"
+                            class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm flex items-center gap-1.5"
+                            :title="t('events.addToCalendar')">
+                        <i class="fas fa-download"></i>
+                        <span v-text="t('events.addToCalendar')"></span>
+                    </button>
+                    <button @click="deleteEvent(event)"
+                            class="p-1.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                            :title="t('events.delete')">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="space-y-2 text-sm">
