@@ -461,6 +461,9 @@
                         <a href="#" id="tab-templates" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-file-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.transcriptTemplates">Templates</span>
                         </a>
+                        <a href="#" id="tab-naming-templates" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-heading mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.namingTemplates">Naming</span>
+                        </a>
                         <a href="#" id="tab-tokens" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-key mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.apiTokens">API Tokens</span>
                         </a>
@@ -976,6 +979,133 @@
                                 <i class="fas fa-question-circle mr-1"></i>
                                 <span data-i18n="transcriptTemplates.viewGuide">View Template Guide</span>
                             </a>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Naming Templates Tab Content -->
+                    <div id="content-naming-templates" class="hidden tab-content pt-6">
+                    <div class="space-y-6">
+                        <!-- Naming Templates Header -->
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="namingTemplates.title">Naming Templates</h2>
+                                <p class="text-[var(--text-secondary)]" data-i18n="namingTemplates.description">Define how recording titles are generated from filenames and transcription content.</p>
+                            </div>
+                            <button id="createNamingTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <i class="fas fa-plus mr-2"></i>
+                                <span data-i18n="namingTemplates.createNew">Create Template</span>
+                            </button>
+                        </div>
+
+                        <!-- Naming Templates Grid -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Naming Templates List (Left) -->
+                            <div class="lg:col-span-1">
+                                <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                    <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.availableTemplates">Available Templates</h3>
+                                    <div id="namingTemplatesList" class="space-y-2">
+                                        <!-- Templates will be populated here -->
+                                    </div>
+                                    <button id="createDefaultNamingTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
+                                        <i class="fas fa-magic mr-2"></i>
+                                        <span data-i18n="namingTemplates.createDefaults">Create Default Templates</span>
+                                    </button>
+                                </div>
+
+                                <!-- User Default Selection -->
+                                <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                    <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.userDefault">Default Template</h3>
+                                    <select id="userDefaultNamingTemplate" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                        <option value="" data-i18n="namingTemplates.noDefault">No default (AI title only)</option>
+                                    </select>
+                                    <p class="mt-2 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.userDefaultHint">Applied when no tag has a naming template set.</p>
+                                </div>
+                            </div>
+
+                            <!-- Naming Template Editor (Right) -->
+                            <div class="lg:col-span-2">
+                                <div id="namingTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
+                                    <form id="namingTemplateForm" class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.templateName">Template Name</label>
+                                            <input type="text" id="namingTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.descriptionLabel">Description</label>
+                                            <input type="text" id="namingTemplateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.template">Template</label>
+                                            <input type="text" id="namingTemplateContent" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required placeholder="{{date}} - {{ai_title}}">
+
+                                            <!-- Available Variables -->
+                                            <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
+                                                <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="namingTemplates.availableVars">Built-in Variables:</p>
+                                                <div class="flex flex-wrap gap-2 mb-2">
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="AI-generated title from transcription">{{ai_title}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Original filename without extension">{{filename}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date (YYYY-MM-DD)">{{date}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date and time">{{datetime}}</code>
+                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Time only (HH:MM)">{{time}}</code>
+                                                </div>
+                                                <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.customVarsHint">Define regex patterns below to extract custom variables from filenames.</p>
+                                            </div>
+                                        </div>
+
+                                        <!-- Regex Patterns -->
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.regexPatterns">Regex Patterns (Optional)</label>
+                                            <div id="regexPatternsContainer" class="space-y-2">
+                                                <!-- Regex patterns will be added here dynamically -->
+                                            </div>
+                                            <button type="button" id="addRegexPatternBtn" class="mt-2 text-sm text-[var(--text-accent)] hover:text-[var(--text-primary)]">
+                                                <i class="fas fa-plus mr-1"></i>
+                                                <span data-i18n="namingTemplates.addPattern">Add Pattern</span>
+                                            </button>
+                                            <p class="mt-1 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.regexHint">Extract data from filenames. Use capture groups () to specify the match. Example: (\d{10}) for phone numbers.</p>
+                                        </div>
+
+                                        <!-- Test Section -->
+                                        <div class="border-t border-[var(--border-primary)] pt-4 mt-4">
+                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.testTemplate">Test Template</label>
+                                            <div class="flex gap-2">
+                                                <input type="text" id="testFilename" class="flex-1 px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" placeholder="sample-file-name.mp3">
+                                                <button type="button" id="testNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)]">
+                                                    <i class="fas fa-play mr-1"></i>
+                                                    <span data-i18n="namingTemplates.test">Test</span>
+                                                </button>
+                                            </div>
+                                            <div id="testResult" class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded-md hidden">
+                                                <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.result">Result:</p>
+                                                <p id="testResultText" class="text-sm text-[var(--text-primary)] font-medium"></p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex gap-3">
+                                            <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                <i class="fas fa-save mr-2"></i>
+                                                <span data-i18n="namingTemplates.save">Save</span>
+                                            </button>
+                                            <button type="button" id="cancelNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
+                                                <span data-i18n="namingTemplates.cancel">Cancel</span>
+                                            </button>
+                                            <button type="button" id="deleteNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
+                                                <i class="fas fa-trash mr-2"></i>
+                                                <span data-i18n="namingTemplates.delete">Delete</span>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- Empty State -->
+                                <div id="namingTemplateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
+                                    <i class="fas fa-heading text-4xl text-[var(--text-muted)] mb-4"></i>
+                                    <p class="text-[var(--text-muted)]" data-i18n="namingTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1664,6 +1794,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.leaveBlankPrompt">Leave blank to use your default summary prompt</p>
                 </div>
 
+                <!-- Naming Template Selection -->
+                <div>
+                    <label for="tagNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.namingTemplate">Naming Template</label>
+                    <select id="tagNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="" data-i18n="editTagModal.noNamingTemplate">No template (use user default or AI title)</option>
+                        <!-- Naming template options will be populated dynamically -->
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.namingTemplateHint">Select a naming template to automatically format titles for recordings with this tag</p>
+                </div>
+
                 <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
                 <div id="tagGroupSelectionSection" class="hidden">
                     <label for="tagGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
@@ -2089,6 +2229,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabShares = document.getElementById('tab-shares');
             const tabTags = document.getElementById('tab-tags');
             const tabTemplates = document.getElementById('tab-templates');
+            const tabNamingTemplates = document.getElementById('tab-naming-templates');
             const tabTokens = document.getElementById('tab-tokens');
             const tabAbout = document.getElementById('tab-about');
             const contentAccount = document.getElementById('content-account');
@@ -2097,6 +2238,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const contentSpeakers = document.getElementById('content-speakers');
             const contentTags = document.getElementById('content-tags');
             const contentTemplates = document.getElementById('content-templates');
+            const contentNamingTemplates = document.getElementById('content-naming-templates');
             const contentTokens = document.getElementById('content-tokens');
             const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
@@ -2112,6 +2254,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
                 { tab: tabTags, content: contentTags, name: 'tags' },
                 { tab: tabTemplates, content: contentTemplates, name: 'templates' },
+                { tab: tabNamingTemplates, content: contentNamingTemplates, name: 'naming-templates' },
                 { tab: tabTokens, content: contentTokens, name: 'tokens' },
                 { tab: tabAbout, content: contentAbout, name: 'about' }
             ];
@@ -2140,6 +2283,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadTags();
                 } else if (targetName === 'templates') {
                     loadTemplates();
+                } else if (targetName === 'naming-templates') {
+                    loadNamingTemplates();
                 } else if (targetName === 'tokens') {
                     loadTokensTab();
                 } else if (targetName === 'about') {
@@ -2169,6 +2314,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             function showTemplatesTab() {
                 switchToTab('templates');
+            }
+
+            function showNamingTemplatesTab() {
+                switchToTab('naming-templates');
             }
 
             function showTokensTab() {
@@ -2207,6 +2356,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             tabTemplates.addEventListener('click', (e) => {
                 e.preventDefault();
                 showTemplatesTab();
+            });
+
+            tabNamingTemplates.addEventListener('click', (e) => {
+                e.preventDefault();
+                showNamingTemplatesTab();
             });
 
             tabTokens.addEventListener('click', (e) => {
@@ -3931,6 +4085,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (document.getElementById('tagMaxSpeakers')) {
                     document.getElementById('tagMaxSpeakers').value = tag.default_max_speakers || '';
                 }
+
+                // Populate naming template
+                if (document.getElementById('tagNamingTemplate')) {
+                    document.getElementById('tagNamingTemplate').value = tag.naming_template_id || '';
+                }
             } else {
                 // Create mode
                 isEditingTag = false;
@@ -3966,9 +4125,54 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (protectCheck) {
                     protectCheck.checked = false;
                 }
+
+                // Reset naming template
+                if (document.getElementById('tagNamingTemplate')) {
+                    document.getElementById('tagNamingTemplate').value = '';
+                }
             }
 
+            // Load naming templates for dropdown
+            loadNamingTemplatesForTagModal();
+
             tagModal.classList.remove('hidden');
+        }
+
+        // Load naming templates for the tag modal dropdown
+        async function loadNamingTemplatesForTagModal() {
+            const select = document.getElementById('tagNamingTemplate');
+            if (!select) return;
+
+            try {
+                const response = await fetch('/api/naming-templates');
+                if (!response.ok) return;
+
+                const templates = await response.json();
+
+                // Preserve current selection
+                const currentValue = select.value;
+
+                // Clear all options except the first one
+                select.innerHTML = '<option value="">No template (use user default or AI title)</option>';
+
+                // Add template options
+                templates.forEach(template => {
+                    const option = document.createElement('option');
+                    option.value = template.id;
+                    option.textContent = template.name;
+                    if (template.description) {
+                        option.title = template.description;
+                    }
+                    select.appendChild(option);
+                });
+
+                // Restore selection
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            } catch (error) {
+                console.error('Error loading naming templates for tag modal:', error);
+            }
         }
 
         // Edit tag
@@ -4027,10 +4231,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 retentionDays = retentionInput ? parseInt(retentionInput) : null;
             }
 
+            const namingTemplateId = formData.get('naming_template_id');
             const tagData = {
                 name: formData.get('name'),
                 color: formData.get('color'),
                 custom_prompt: formData.get('custom_prompt') || null,
+                naming_template_id: namingTemplateId ? parseInt(namingTemplateId) : null,
                 default_language: formData.get('default_language') || null,
                 default_min_speakers: formData.get('default_min_speakers') ? parseInt(formData.get('default_min_speakers')) : null,
                 default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null,
@@ -4765,6 +4971,383 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } catch (error) {
                 console.error('Error creating default templates:', error);
                 showToast('Failed to create default templates', 'error');
+            }
+        });
+
+        // ============================================
+        // Naming Templates Management
+        // ============================================
+        let namingTemplates = [];
+        let currentNamingTemplate = null;
+        let isEditingNamingTemplate = false;
+        let userDefaultNamingTemplateId = null;
+
+        async function loadNamingTemplates() {
+            try {
+                const [templatesRes, defaultRes] = await Promise.all([
+                    fetch('/api/naming-templates'),
+                    fetch('/api/naming-templates/default')
+                ]);
+
+                if (!templatesRes.ok) {
+                    throw new Error('Failed to load naming templates');
+                }
+
+                namingTemplates = await templatesRes.json();
+
+                if (defaultRes.ok) {
+                    const defaultData = await defaultRes.json();
+                    userDefaultNamingTemplateId = defaultData.default_naming_template_id;
+                }
+
+                // Show/hide create defaults button
+                if (namingTemplates.length === 0) {
+                    document.getElementById('createDefaultNamingTemplatesBtn').style.display = 'block';
+                } else {
+                    document.getElementById('createDefaultNamingTemplatesBtn').style.display = 'none';
+                }
+
+                renderNamingTemplatesList();
+                updateUserDefaultSelect();
+            } catch (error) {
+                console.error('Error loading naming templates:', error);
+                showToast('Failed to load naming templates', 'error');
+            }
+        }
+
+        function renderNamingTemplatesList() {
+            const list = document.getElementById('namingTemplatesList');
+            list.innerHTML = '';
+
+            if (namingTemplates.length === 0) {
+                list.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">No templates yet</p>';
+                return;
+            }
+
+            namingTemplates.forEach(template => {
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-[var(--bg-primary)] rounded-md hover:bg-[var(--bg-tertiary)] cursor-pointer transition-colors border border-[var(--border-primary)]';
+                if (userDefaultNamingTemplateId === template.id) {
+                    item.className += ' ring-2 ring-[var(--ring-focus)]';
+                }
+
+                const nameEl = document.createElement('h4');
+                nameEl.className = 'text-sm font-medium text-[var(--text-primary)]';
+                nameEl.textContent = template.name;
+
+                const templateEl = document.createElement('p');
+                templateEl.className = 'text-xs text-[var(--text-muted)] mt-1 font-mono';
+                templateEl.textContent = template.template;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex items-start justify-between';
+                const inner = document.createElement('div');
+                inner.className = 'flex-1';
+                inner.appendChild(nameEl);
+                inner.appendChild(templateEl);
+
+                if (template.description) {
+                    const descEl = document.createElement('p');
+                    descEl.className = 'text-xs text-[var(--text-muted)] mt-1';
+                    descEl.textContent = template.description;
+                    inner.appendChild(descEl);
+                }
+
+                if (userDefaultNamingTemplateId === template.id) {
+                    const defaultEl = document.createElement('span');
+                    defaultEl.className = 'text-xs text-[var(--text-accent)] mt-1';
+                    defaultEl.innerHTML = '<i class="fas fa-star mr-1"></i>Default';
+                    inner.appendChild(defaultEl);
+                }
+
+                wrapper.appendChild(inner);
+                item.appendChild(wrapper);
+
+                item.addEventListener('click', () => selectNamingTemplate(template));
+                list.appendChild(item);
+            });
+        }
+
+        function updateUserDefaultSelect() {
+            const select = document.getElementById('userDefaultNamingTemplate');
+            select.innerHTML = '<option value="">No default (AI title only)</option>';
+
+            namingTemplates.forEach(template => {
+                const option = document.createElement('option');
+                option.value = template.id;
+                option.textContent = template.name;
+                if (userDefaultNamingTemplateId === template.id) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+
+        document.getElementById('userDefaultNamingTemplate')?.addEventListener('change', async (e) => {
+            const templateId = e.target.value ? parseInt(e.target.value) : null;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch('/api/naming-templates/default', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ template_id: templateId })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update default template');
+                }
+
+                userDefaultNamingTemplateId = templateId;
+                renderNamingTemplatesList();
+                showToast('Default naming template updated', 'success');
+            } catch (error) {
+                console.error('Error updating default template:', error);
+                showToast('Failed to update default template', 'error');
+            }
+        });
+
+        function selectNamingTemplate(template) {
+            currentNamingTemplate = template;
+            isEditingNamingTemplate = true;
+
+            document.getElementById('namingTemplateEditor').classList.remove('hidden');
+            document.getElementById('namingTemplateEmptyState').classList.add('hidden');
+
+            document.getElementById('namingTemplateName').value = template.name;
+            document.getElementById('namingTemplateDescription').value = template.description || '';
+            document.getElementById('namingTemplateContent').value = template.template;
+
+            // Populate regex patterns
+            renderRegexPatterns(template.regex_patterns || {});
+
+            document.getElementById('deleteNamingTemplateBtn').classList.remove('hidden');
+        }
+
+        function createNewNamingTemplate() {
+            currentNamingTemplate = null;
+            isEditingNamingTemplate = false;
+
+            document.getElementById('namingTemplateEditor').classList.remove('hidden');
+            document.getElementById('namingTemplateEmptyState').classList.add('hidden');
+
+            document.getElementById('namingTemplateForm').reset();
+            renderRegexPatterns({});
+
+            document.getElementById('deleteNamingTemplateBtn').classList.add('hidden');
+        }
+
+        function renderRegexPatterns(patterns) {
+            const container = document.getElementById('regexPatternsContainer');
+            container.innerHTML = '';
+
+            Object.entries(patterns).forEach(([varName, pattern]) => {
+                addRegexPatternRow(varName, pattern);
+            });
+        }
+
+        function addRegexPatternRow(varName = '', pattern = '') {
+            const container = document.getElementById('regexPatternsContainer');
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 items-center';
+
+            const varInput = document.createElement('input');
+            varInput.type = 'text';
+            varInput.placeholder = 'Variable name';
+            varInput.value = varName;
+            varInput.className = 'flex-1 px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md regex-var-name';
+
+            const patternInput = document.createElement('input');
+            patternInput.type = 'text';
+            patternInput.placeholder = 'Regex pattern';
+            patternInput.value = pattern;
+            patternInput.className = 'flex-2 px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md regex-pattern font-mono';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'text-[var(--text-danger)] hover:text-[var(--text-danger-hover)] remove-regex-btn';
+            removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+            removeBtn.addEventListener('click', () => row.remove());
+
+            row.appendChild(varInput);
+            row.appendChild(patternInput);
+            row.appendChild(removeBtn);
+            container.appendChild(row);
+        }
+
+        document.getElementById('addRegexPatternBtn')?.addEventListener('click', () => addRegexPatternRow());
+
+        document.getElementById('createNamingTemplateBtn')?.addEventListener('click', createNewNamingTemplate);
+
+        document.getElementById('cancelNamingTemplateBtn')?.addEventListener('click', () => {
+            document.getElementById('namingTemplateEditor').classList.add('hidden');
+            document.getElementById('namingTemplateEmptyState').classList.remove('hidden');
+            currentNamingTemplate = null;
+            isEditingNamingTemplate = false;
+        });
+
+        document.getElementById('namingTemplateForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Collect regex patterns
+            const regexPatterns = {};
+            document.querySelectorAll('#regexPatternsContainer > div').forEach(row => {
+                const varName = row.querySelector('.regex-var-name').value.trim();
+                const pattern = row.querySelector('.regex-pattern').value.trim();
+                if (varName && pattern) {
+                    regexPatterns[varName] = pattern;
+                }
+            });
+
+            const templateData = {
+                name: document.getElementById('namingTemplateName').value,
+                description: document.getElementById('namingTemplateDescription').value,
+                template: document.getElementById('namingTemplateContent').value,
+                regex_patterns: regexPatterns
+            };
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const url = isEditingNamingTemplate ? `/api/naming-templates/${currentNamingTemplate.id}` : '/api/naming-templates';
+                const method = isEditingNamingTemplate ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(templateData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save naming template');
+                }
+
+                const savedTemplate = await response.json();
+
+                if (isEditingNamingTemplate) {
+                    const index = namingTemplates.findIndex(t => t.id === savedTemplate.id);
+                    if (index !== -1) {
+                        namingTemplates[index] = savedTemplate;
+                    }
+                } else {
+                    namingTemplates.push(savedTemplate);
+                }
+
+                renderNamingTemplatesList();
+                updateUserDefaultSelect();
+                showToast(isEditingNamingTemplate ? 'Naming template updated' : 'Naming template created', 'success');
+
+                document.getElementById('namingTemplateEditor').classList.add('hidden');
+                document.getElementById('namingTemplateEmptyState').classList.remove('hidden');
+                currentNamingTemplate = null;
+                isEditingNamingTemplate = false;
+            } catch (error) {
+                console.error('Error saving naming template:', error);
+                showToast(error.message || 'Failed to save naming template', 'error');
+            }
+        });
+
+        document.getElementById('deleteNamingTemplateBtn')?.addEventListener('click', async () => {
+            if (!currentNamingTemplate || !confirm('Are you sure you want to delete this naming template?')) {
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch(`/api/naming-templates/${currentNamingTemplate.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to delete naming template');
+                }
+
+                namingTemplates = namingTemplates.filter(t => t.id !== currentNamingTemplate.id);
+
+                if (userDefaultNamingTemplateId === currentNamingTemplate.id) {
+                    userDefaultNamingTemplateId = null;
+                }
+
+                renderNamingTemplatesList();
+                updateUserDefaultSelect();
+
+                document.getElementById('namingTemplateEditor').classList.add('hidden');
+                document.getElementById('namingTemplateEmptyState').classList.remove('hidden');
+                currentNamingTemplate = null;
+                isEditingNamingTemplate = false;
+
+                showToast('Naming template deleted', 'success');
+            } catch (error) {
+                console.error('Error deleting naming template:', error);
+                showToast(error.message || 'Failed to delete naming template', 'error');
+            }
+        });
+
+        document.getElementById('createDefaultNamingTemplatesBtn')?.addEventListener('click', async () => {
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch('/api/naming-templates/create-defaults', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create default naming templates');
+                }
+
+                const result = await response.json();
+                namingTemplates = result.templates;
+                renderNamingTemplatesList();
+                updateUserDefaultSelect();
+                showToast('Default naming templates created', 'success');
+            } catch (error) {
+                console.error('Error creating default naming templates:', error);
+                showToast('Failed to create default naming templates', 'error');
+            }
+        });
+
+        document.getElementById('testNamingTemplateBtn')?.addEventListener('click', async () => {
+            const templateId = currentNamingTemplate?.id;
+            const testFilename = document.getElementById('testFilename').value || 'sample-file.mp3';
+
+            if (!templateId) {
+                showToast('Save the template first to test it', 'info');
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch(`/api/naming-templates/${templateId}/test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ filename: testFilename, ai_title: 'Sample AI Title' })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to test template');
+                }
+
+                const result = await response.json();
+                document.getElementById('testResult').classList.remove('hidden');
+                document.getElementById('testResultText').textContent = result.result;
+            } catch (error) {
+                console.error('Error testing template:', error);
+                showToast('Failed to test template', 'error');
             }
         });
 

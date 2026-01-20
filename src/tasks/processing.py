@@ -21,7 +21,7 @@ from flask import current_app
 from openai import OpenAI
 
 from src.database import db
-from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User
+from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User, NamingTemplate
 from src.services.embeddings import process_recording_chunks
 from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy
 from src.utils import extract_json_object, safe_json_loads
@@ -208,97 +208,63 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             current_app.logger.error(f"Error: Recording {recording_id} not found for title generation.")
             return
 
-        if client is None:
-            current_app.logger.warning(f"Skipping title generation for {recording_id}: OpenRouter client not configured.")
-            # Only mark as completed if auto-summarization won't happen next
-            if not will_auto_summarize:
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
-                db.session.commit()
-            return
+        # Resolve naming template: first tag with template → user default → None
+        naming_template = None
+        for tag in recording.tags:
+            if tag.naming_template_id:
+                naming_template = tag.naming_template
+                current_app.logger.info(f"Using naming template '{naming_template.name}' from tag '{tag.name}' for recording {recording_id}")
+                break
 
-        if not recording.transcription or len(recording.transcription.strip()) < 10:
-            current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping title generation.")
-            # Only mark as completed if auto-summarization won't happen next
-            if not will_auto_summarize:
-                recording.status = 'COMPLETED'
-                recording.completed_at = datetime.utcnow()
-                db.session.commit()
-            return
+        if not naming_template and recording.owner and recording.owner.default_naming_template_id:
+            naming_template = recording.owner.default_naming_template
+            if naming_template:
+                current_app.logger.info(f"Using user's default naming template '{naming_template.name}' for recording {recording_id}")
 
-        # Get configurable transcript length limit and format transcription for LLM
-        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-        if transcript_limit == -1:
-            raw_transcription = recording.transcription
+        # Check if we need to generate AI title
+        needs_ai_title = naming_template is None or naming_template.needs_ai_title()
+
+        # Early exit conditions
+        if not needs_ai_title:
+            # Template doesn't need AI - we can skip LLM call entirely
+            current_app.logger.info(f"Naming template doesn't require AI title for recording {recording_id}, skipping LLM call")
+            ai_title = None
+        elif client is None:
+            current_app.logger.warning(f"Skipping AI title generation for {recording_id}: OpenRouter client not configured.")
+            ai_title = None
+        elif not recording.transcription or len(recording.transcription.strip()) < 10:
+            current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping AI title generation.")
+            ai_title = None
         else:
-            raw_transcription = recording.transcription[:transcript_limit]
+            # Generate AI title via LLM
+            ai_title = _generate_ai_title(recording)
 
-        # Convert ASR JSON to clean text format
-        transcript_text = format_transcription_for_llm(raw_transcription)
-
-
-        # Get user language preference
-        user_output_language = None
-        if recording.owner:
-            user_output_language = recording.owner.output_language
-
-        language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
-
-        prompt_text = f"""Create a short title for this conversation:
-
-{transcript_text}
-
-Requirements:
-- Maximum 8 words
-- No phrases like "Discussion about" or "Meeting on"
-- Just the main topic
-
-{language_directive}
-
-Title:"""
-
-        system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
-        if user_output_language:
-            system_message_content += f" Ensure your response is in {user_output_language}."
-
-        try:
-            completion = call_llm_completion(
-                messages=[
-                    {"role": "system", "content": system_message_content},
-                    {"role": "user", "content": prompt_text}
-                ],
-                temperature=0.7,
-                max_tokens=5000,
-                user_id=recording.user_id,
-                operation_type='title_generation'
+        # Apply naming template if we have one
+        final_title = None
+        if naming_template:
+            final_title = naming_template.apply(
+                original_filename=recording.original_filename,
+                meeting_date=recording.meeting_date,
+                ai_title=ai_title
             )
+            if final_title:
+                current_app.logger.info(f"Applied naming template for recording {recording_id}: '{final_title}'")
 
-            raw_response = completion.choices[0].message.content
-            reasoning = getattr(completion.choices[0].message, 'reasoning', None)
+        # Fallback chain: template result → AI title → filename
+        if not final_title:
+            if ai_title:
+                final_title = ai_title
+            elif recording.original_filename:
+                # Use filename without extension as last resort
+                import os
+                final_title = os.path.splitext(recording.original_filename)[0]
+                current_app.logger.info(f"Using filename as title for recording {recording_id}: '{final_title}'")
 
-            # Use reasoning content if main content is empty (fallback for reasoning models)
-            if not raw_response and reasoning:
-                current_app.logger.info(f"Title generation for recording {recording_id}: Using reasoning field as fallback")
-                # Try to extract a title from the reasoning field
-                lines = reasoning.strip().split('\n')
-                # Look for the last line that might be the title
-                for line in reversed(lines):
-                    line = line.strip()
-                    if line and not line.startswith('I') and len(line.split()) <= 8:
-                        raw_response = line
-                        break
-
-            title = clean_llm_response(raw_response) if raw_response else ""
-
-            if title:
-                recording.title = title
-                current_app.logger.info(f"Title generated for recording {recording_id}: {title}")
-            else:
-                current_app.logger.warning(f"Empty title generated for recording {recording_id}")
-
-        except Exception as e:
-            current_app.logger.error(f"Error generating title for recording {recording_id}: {str(e)}")
-            current_app.logger.error(f"Exception details:", exc_info=True)
+        if final_title:
+            recording.title = final_title
+            current_app.logger.info(f"Title set for recording {recording_id}: {final_title}")
+        else:
+            current_app.logger.warning(f"Could not generate title for recording {recording_id}")
 
         # Only set status to COMPLETED if auto-summarization won't happen next
         # If auto-summarization is enabled, the summary task will set COMPLETED
@@ -318,6 +284,91 @@ Title:"""
             # Just commit the title without changing status
             db.session.commit()
             current_app.logger.info(f"Title generation complete, leaving status unchanged (auto-summarization will follow) for recording {recording_id}")
+
+
+def _generate_ai_title(recording):
+    """Generate an AI title for a recording using LLM.
+
+    Args:
+        recording: Recording model instance
+
+    Returns:
+        Generated title string, or None if generation fails
+    """
+    # Get configurable transcript length limit and format transcription for LLM
+    transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+    if transcript_limit == -1:
+        raw_transcription = recording.transcription
+    else:
+        raw_transcription = recording.transcription[:transcript_limit]
+
+    # Convert ASR JSON to clean text format
+    transcript_text = format_transcription_for_llm(raw_transcription)
+
+    # Get user language preference
+    user_output_language = None
+    if recording.owner:
+        user_output_language = recording.owner.output_language
+
+    language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
+
+    prompt_text = f"""Create a short title for this conversation:
+
+{transcript_text}
+
+Requirements:
+- Maximum 8 words
+- No phrases like "Discussion about" or "Meeting on"
+- Just the main topic
+
+{language_directive}
+
+Title:"""
+
+    system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
+    if user_output_language:
+        system_message_content += f" Ensure your response is in {user_output_language}."
+
+    try:
+        completion = call_llm_completion(
+            messages=[
+                {"role": "system", "content": system_message_content},
+                {"role": "user", "content": prompt_text}
+            ],
+            temperature=0.7,
+            max_tokens=5000,
+            user_id=recording.user_id,
+            operation_type='title_generation'
+        )
+
+        raw_response = completion.choices[0].message.content
+        reasoning = getattr(completion.choices[0].message, 'reasoning', None)
+
+        # Use reasoning content if main content is empty (fallback for reasoning models)
+        if not raw_response and reasoning:
+            current_app.logger.info(f"Title generation for recording {recording.id}: Using reasoning field as fallback")
+            # Try to extract a title from the reasoning field
+            lines = reasoning.strip().split('\n')
+            # Look for the last line that might be the title
+            for line in reversed(lines):
+                line = line.strip()
+                if line and not line.startswith('I') and len(line.split()) <= 8:
+                    raw_response = line
+                    break
+
+        title = clean_llm_response(raw_response) if raw_response else None
+
+        if title:
+            current_app.logger.info(f"AI title generated for recording {recording.id}: {title}")
+        else:
+            current_app.logger.warning(f"Empty AI title generated for recording {recording.id}")
+
+        return title
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating AI title for recording {recording.id}: {str(e)}")
+        current_app.logger.error(f"Exception details:", exc_info=True)
+        return None
 
 
 def generate_summary_only_task(app_context, recording_id, custom_prompt_override=None, user_id=None):
