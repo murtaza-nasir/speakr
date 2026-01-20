@@ -22,6 +22,7 @@ from .sharing import Share, InternalShare, SharedRecordingState
 from .organization import Group, GroupMembership, Tag, RecordingTag
 from .events import Event
 from .templates import TranscriptTemplate
+from .naming_template import NamingTemplate
 from .inquire import InquireSession
 from .system import SystemSetting
 from .audit import ShareAuditLog
@@ -55,6 +56,7 @@ __all__ = [
     # Other models
     'Event',
     'TranscriptTemplate',
+    'NamingTemplate',
     'InquireSession',
     'SystemSetting',
     'PushSubscription',

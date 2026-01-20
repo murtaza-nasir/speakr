@@ -103,12 +103,16 @@ class Tag(db.Model):
     auto_share_on_apply = db.Column(db.Boolean, default=True)  # Auto-share recording with group when this tag is applied
     share_with_group_lead = db.Column(db.Boolean, default=True)  # Share with group admins when this tag is applied
 
+    # Naming template for recordings with this tag
+    naming_template_id = db.Column(db.Integer, db.ForeignKey('naming_template.id', ondelete='SET NULL'), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     user = db.relationship('User', backref=db.backref('tags', lazy=True, cascade='all, delete-orphan'))
     group = db.relationship('Group', backref=db.backref('tags', lazy=True))
+    naming_template = db.relationship('NamingTemplate', foreign_keys=[naming_template_id])
     # Use association object for many-to-many with order tracking
     recording_associations = db.relationship('RecordingTag', back_populates='tag', cascade='all, delete-orphan')
 
@@ -137,6 +141,8 @@ class Tag(db.Model):
             'retention_days': self.retention_days,
             'auto_share_on_apply': self.auto_share_on_apply,
             'share_with_group_lead': self.share_with_group_lead,
+            'naming_template_id': self.naming_template_id,
+            'naming_template_name': self.naming_template.name if self.naming_template else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'recording_count': len(self.recording_associations)
         }

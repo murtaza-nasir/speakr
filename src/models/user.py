@@ -32,6 +32,10 @@ class User(db.Model, UserMixin):
     company = db.Column(db.String(100), nullable=True)
     diarize = db.Column(db.Boolean, default=False)
 
+    # Default naming template for title generation
+    default_naming_template_id = db.Column(db.Integer, db.ForeignKey('naming_template.id', ondelete='SET NULL'), nullable=True)
+    default_naming_template = db.relationship('NamingTemplate', foreign_keys=[default_naming_template_id])
+
     # Token budget (None = unlimited)
     monthly_token_budget = db.Column(db.Integer, nullable=True)
 

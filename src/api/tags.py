@@ -123,6 +123,14 @@ def create_tag():
         # -1 indicates infinite retention (protected from auto-deletion)
         protect_from_deletion = True if ENABLE_AUTO_DELETION else False
 
+    # Validate naming_template_id if provided
+    naming_template_id = data.get('naming_template_id')
+    if naming_template_id:
+        from src.models import NamingTemplate
+        template = NamingTemplate.query.filter_by(id=naming_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Naming template not found'}), 404
+
     tag = Tag(
         name=data['name'],
         user_id=current_user.id,
@@ -135,7 +143,8 @@ def create_tag():
         protect_from_deletion=protect_from_deletion,
         retention_days=retention_days,
         auto_share_on_apply=data.get('auto_share_on_apply', True) if group_id else True,
-        share_with_group_lead=data.get('share_with_group_lead', True) if group_id else True
+        share_with_group_lead=data.get('share_with_group_lead', True) if group_id else True,
+        naming_template_id=naming_template_id
     )
 
     db.session.add(tag)
@@ -235,6 +244,14 @@ def update_tag(tag_id):
         # Only applicable to group tags
         if tag.group_id:
             tag.share_with_group_lead = bool(data['share_with_group_lead'])
+    if 'naming_template_id' in data:
+        naming_template_id = data['naming_template_id']
+        if naming_template_id:
+            from src.models import NamingTemplate
+            template = NamingTemplate.query.filter_by(id=naming_template_id, user_id=current_user.id).first()
+            if not template:
+                return jsonify({'error': 'Naming template not found'}), 404
+        tag.naming_template_id = naming_template_id if naming_template_id else None
 
     tag.updated_at = datetime.utcnow()
 
