@@ -12,6 +12,7 @@ WhisperX is an advanced ASR (Automatic Speech Recognition) service that provides
 ## Overview
 
 **WhisperX Benefits:**
+
 - ✅ Better speaker diarization accuracy (Pyannote.audio 4.0)
 - ✅ More precise word-level timestamps
 - ✅ Improved multi-speaker handling
@@ -21,6 +22,7 @@ WhisperX is an advanced ASR (Automatic Speech Recognition) service that provides
 - ✅ Production-ready Docker deployment
 
 **vs. Standard Whisper ASR:**
+
 - Standard: Simple, lightweight, good for single speakers, no voice profiles
 - WhisperX: Advanced diarization, voice profiles, better for meetings/conversations
 
@@ -29,11 +31,13 @@ WhisperX is an advanced ASR (Automatic Speech Recognition) service that provides
 ### Hardware Requirements
 
 **Minimum:**
+
 - NVIDIA GPU with 8GB+ VRAM (RTX 3060, RTX 2080, etc.)
 - 16GB RAM
 - 50GB free disk space
 
 **Recommended:**
+
 - NVIDIA GPU with 16GB+ VRAM (RTX 3080, RTX 4080, A100)
 - 32GB RAM
 - 100GB SSD storage
@@ -78,6 +82,7 @@ You must accept agreements for **all three models** used by the diarization pipe
    - [https://huggingface.co/pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
 
 For each model:
+
 - Click the **"Agree and access repository"** button
 - Fill out form (Company/university: your organization, Use case: "Meeting note taker")
 - Submit (approval is instant)
@@ -272,6 +277,7 @@ nvidia-smi -l 1
 ### Performance Metrics
 
 Monitor in Speakr's admin interface:
+
 - Transcription times
 - Error rates
 - Model usage statistics
@@ -286,6 +292,7 @@ docker compose logs whisperx-asr
 ```
 
 **Common issues:**
+
 - GPU not accessible: Verify `nvidia-smi` works
 - Invalid HF_TOKEN: Check token and model agreements
 - Port conflict: Change port in `docker-compose.yml`
@@ -298,6 +305,7 @@ curl http://ASR_BASE_URL/health
 ```
 
 **Solutions:**
+
 - Verify firewall rules
 - Check network connectivity
 - Ensure service is running
@@ -306,6 +314,7 @@ curl http://ASR_BASE_URL/health
 ### Slow Processing
 
 **Solutions:**
+
 - Increase `BATCH_SIZE` (if GPU has memory)
 - Use smaller model (`small` instead of `large-v3`)
 - Disable diarization for faster processing
@@ -316,6 +325,7 @@ curl http://ASR_BASE_URL/health
 **Error:** `CUDA out of memory`
 
 **Solutions:**
+
 1. Reduce `BATCH_SIZE`: Set to `8` or `4`
 2. Use smaller model
 3. Use `COMPUTE_TYPE=int8`
@@ -324,11 +334,13 @@ curl http://ASR_BASE_URL/health
 ### Speaker Diarization Fails
 
 **Check:**
+
 1. HF_TOKEN is set correctly in `.env`
 2. Accepted pyannote model agreements
 3. Service has internet access (for first-time model download)
 
 **Solutions:**
+
 - Regenerate HF token
 - Accept model agreements again
 - Check logs for specific errors
@@ -362,25 +374,6 @@ docker compose down -v
 docker compose up -d
 ```
 
-## Security Considerations
-
-### For Production
-
-1. **Use HTTPS:** Deploy behind reverse proxy with SSL
-2. **Firewall Rules:** Restrict access to Speakr machine only
-3. **API Authentication:** Add API key validation
-4. **Secrets Management:** Use Docker secrets for HF_TOKEN
-5. **Regular Updates:** Keep service updated monthly
-
-### Example Firewall Rule
-
-Only allow from Speakr machine:
-
-```bash
-sudo ufw allow from SPEAKR_IP to any port 9000
-sudo ufw deny 9000/tcp
-```
-
 ## Performance Benchmarks
 
 Tested on RTX 3080 (10GB VRAM):
@@ -408,16 +401,6 @@ Tested on RTX 3080 (10GB VRAM):
 | Production Ready | Yes | Yes |
 
 > **Note:** To enable voice profile features with WhisperX, you must set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` in Speakr's `.env` file. This setting is disabled by default for compatibility with the basic ASR webservice.
-
-## Best Practices
-
-1. **Start with small model** to verify setup
-2. **Monitor GPU memory** during first runs
-3. **Use model caching** via Docker volumes
-4. **Set appropriate speaker counts** for better diarization
-5. **Regular backups** of cache volume
-6. **Monitor logs** for errors
-7. **Update monthly** for latest improvements
 
 ## Getting Help
 
