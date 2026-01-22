@@ -206,6 +206,27 @@ REGISTRATION_ALLOWED_DOMAINS=company.com,subsidiary.org
 
 Leave empty to allow all domains.
 
+### Enable Email Verification & Password Reset
+
+Speakr supports email verification for new registrations and password reset functionality. This works with both open registration and domain-restricted registration. Configure SMTP settings to enable:
+
+```bash
+# Enable email features
+ENABLE_EMAIL_VERIFICATION=true
+REQUIRE_EMAIL_VERIFICATION=true  # Block login until email is verified
+
+# SMTP Configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password  # Use App Password for Gmail
+SMTP_USE_TLS=true
+SMTP_FROM_ADDRESS=noreply@yourdomain.com
+SMTP_FROM_NAME=Speakr
+```
+
+When enabled, new users receive a verification email after registration. Password reset is available from the login page via "Forgot password?" link. See the [Email Setup Guide](admin-guide/email-setup.md) for detailed configuration including provider-specific examples for Gmail, SendGrid, Mailgun, and more.
+
 ### Configure Your Timezone
 
 Set your local timezone for accurate timestamp display:
