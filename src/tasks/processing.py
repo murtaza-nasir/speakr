@@ -2063,9 +2063,12 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             diarize_setting = None  # Let connector decide based on its capabilities
 
             # Use language from upload form if provided, otherwise use user's default
-            if language:
-                user_transcription_language = language
+            # language='' (empty string) means auto-detect, language=None means use default
+            if language is not None:
+                # Explicit language selection (including empty string for auto-detect)
+                user_transcription_language = language if language else None  # '' becomes None for connector
             else:
+                # No language specified - use user's default
                 user_transcription_language = recording.owner.transcription_language if recording and recording.owner else None
 
             mime_type = recording.mime_type if recording else None

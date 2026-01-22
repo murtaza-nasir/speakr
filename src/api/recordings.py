@@ -1066,56 +1066,61 @@ def reprocess_transcription(recording_id):
         start_time = datetime.utcnow()
         app_context = current_app._get_current_object().app_context()
 
-        # Decide which transcription method to use
-        if USE_ASR_ENDPOINT:
-            language = data.get('language') or (recording.owner.transcription_language if recording.owner else None)
-            min_speakers = data.get('min_speakers') or None
-            max_speakers = data.get('max_speakers') or None
-
-            # Convert to int if provided
-            if min_speakers:
-                try:
-                    min_speakers = int(min_speakers)
-                except (ValueError, TypeError):
-                    min_speakers = None
-            if max_speakers:
-                try:
-                    max_speakers = int(max_speakers)
-                except (ValueError, TypeError):
-                    max_speakers = None
-
-            # Apply tag defaults if no user input provided
-            if (min_speakers is None or max_speakers is None) and recording.tags:
-                for tag_association in sorted(recording.tag_associations, key=lambda x: x.order):
-                    tag = tag_association.tag
-                    if min_speakers is None and tag.default_min_speakers:
-                        min_speakers = tag.default_min_speakers
-                    if max_speakers is None and tag.default_max_speakers:
-                        max_speakers = tag.default_max_speakers
-                    if min_speakers is not None and max_speakers is not None:
-                        break
-
-            # Apply environment variable defaults
-            if min_speakers is None and ASR_MIN_SPEAKERS:
-                try:
-                    min_speakers = int(ASR_MIN_SPEAKERS)
-                except (ValueError, TypeError):
-                    min_speakers = None
-            if max_speakers is None and ASR_MAX_SPEAKERS:
-                try:
-                    max_speakers = int(ASR_MAX_SPEAKERS)
-                except (ValueError, TypeError):
-                    max_speakers = None
-
-            # Enqueue the job using new fair queue API
-            job_params = {
-                'language': language,
-                'min_speakers': min_speakers,
-                'max_speakers': max_speakers
-            }
+        # Build job parameters - language handling:
+        # - If 'language' key exists with a value (e.g., 'es'), use that language
+        # - If 'language' key exists but is empty string, keep as empty string (signals auto-detect)
+        # - If 'language' key doesn't exist at all, fall back to user's default (backwards compat)
+        if 'language' in data:
+            # User explicitly chose a language (or auto-detect with empty string)
+            language = data.get('language')  # Could be 'es', '', or None
         else:
-            # Standard Whisper API - no special params needed
-            job_params = {}
+            # Language not provided - use user's default (backwards compatibility)
+            language = recording.owner.transcription_language if recording.owner else None
+
+        min_speakers = data.get('min_speakers') or None
+        max_speakers = data.get('max_speakers') or None
+
+        # Convert to int if provided
+        if min_speakers:
+            try:
+                min_speakers = int(min_speakers)
+            except (ValueError, TypeError):
+                min_speakers = None
+        if max_speakers:
+            try:
+                max_speakers = int(max_speakers)
+            except (ValueError, TypeError):
+                max_speakers = None
+
+        # Apply tag defaults if no user input provided (for connectors that support speaker count)
+        if (min_speakers is None or max_speakers is None) and recording.tags:
+            for tag_association in sorted(recording.tag_associations, key=lambda x: x.order):
+                tag = tag_association.tag
+                if min_speakers is None and tag.default_min_speakers:
+                    min_speakers = tag.default_min_speakers
+                if max_speakers is None and tag.default_max_speakers:
+                    max_speakers = tag.default_max_speakers
+                if min_speakers is not None and max_speakers is not None:
+                    break
+
+        # Apply environment variable defaults
+        if min_speakers is None and ASR_MIN_SPEAKERS:
+            try:
+                min_speakers = int(ASR_MIN_SPEAKERS)
+            except (ValueError, TypeError):
+                min_speakers = None
+        if max_speakers is None and ASR_MAX_SPEAKERS:
+            try:
+                max_speakers = int(ASR_MAX_SPEAKERS)
+            except (ValueError, TypeError):
+                max_speakers = None
+
+        # Enqueue the job with all parameters
+        job_params = {
+            'language': language,
+            'min_speakers': min_speakers,
+            'max_speakers': max_speakers
+        }
 
         job_id = job_queue.enqueue(
             user_id=current_user.id,
