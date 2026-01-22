@@ -60,6 +60,20 @@ Welcome to the Speakr Admin Guide! As an administrator, you control the heart of
     <p>Configure automated data lifecycle management with flexible retention policies and smart deletion rules.</p>
     <a href="retention" class="card-link">Manage Retention →</a>
   </div>
+
+  <div class="guide-card">
+    <div class="card-icon">📧</div>
+    <h3>Email Setup</h3>
+    <p>Configure email verification for new registrations and enable password reset functionality.</p>
+    <a href="email-setup" class="card-link">Setup Email →</a>
+  </div>
+
+  <div class="guide-card">
+    <div class="card-icon">🔐</div>
+    <h3>SSO Setup</h3>
+    <p>Integrate with identity providers like Keycloak, Azure AD, Google, or Auth0 using OpenID Connect.</p>
+    <a href="sso-setup" class="card-link">Configure SSO →</a>
+  </div>
 </div>
 
 ## Quick Actions

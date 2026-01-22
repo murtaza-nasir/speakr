@@ -189,6 +189,10 @@ Run a single Speakr instance for your entire group with isolated user spaces. Se
 
 Integrate with your existing identity provider using OpenID Connect. Speakr supports any OIDC-compliant provider including Keycloak, Azure AD/Entra ID, Google, Auth0, and self-hosted options like Pocket ID or Authentik. Users can link existing accounts to SSO or have accounts created automatically on first login. Domain filtering lets you restrict registration to specific email domains. See the [SSO Setup Guide](admin-guide/sso-setup.md) for configuration details.
 
+### Email Verification & Password Reset
+
+Secure your instance with email verification for new registrations and enable self-service password recovery. When email verification is enabled, new users must confirm their email address before gaining access—works with both open registration and domain-restricted setups. Users can reset forgotten passwords through a secure, time-limited email link from the login page. Configure any SMTP provider including Gmail, SendGrid, Mailgun, or Amazon SES. Existing users are automatically grandfathered as verified when enabling this feature. See the [Email Setup Guide](admin-guide/email-setup.md) for configuration details.
+
 ### System Monitoring
 
 Track system health with comprehensive statistics and metrics. Monitor transcription queues, storage usage, and processing performance. Identify bottlenecks and optimize configuration based on actual usage patterns.
