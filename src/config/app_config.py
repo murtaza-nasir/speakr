@@ -67,6 +67,18 @@ AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')  # For lossy codecs
 _unsupported_codecs_str = os.environ.get('AUDIO_UNSUPPORTED_CODECS', '')
 AUDIO_UNSUPPORTED_CODECS = {c.strip().lower() for c in _unsupported_codecs_str.split(',') if c.strip()}
 
+# Email verification configuration
+ENABLE_EMAIL_VERIFICATION = os.environ.get('ENABLE_EMAIL_VERIFICATION', 'false').lower() == 'true'
+REQUIRE_EMAIL_VERIFICATION = os.environ.get('REQUIRE_EMAIL_VERIFICATION', 'false').lower() == 'true'
+SMTP_HOST = os.environ.get('SMTP_HOST', '')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true'
+SMTP_USE_SSL = os.environ.get('SMTP_USE_SSL', 'false').lower() == 'true'
+SMTP_FROM_ADDRESS = os.environ.get('SMTP_FROM_ADDRESS', 'noreply@yourdomain.com')
+SMTP_FROM_NAME = os.environ.get('SMTP_FROM_NAME', 'Speakr')
+
 # Create chunking service at module level so it can be imported by processing.py
 # Always initialize the service - the needs_chunking() method will check ENABLE_CHUNKING
 # and return False when appropriate. This allows connectors with hard limits (e.g.,
