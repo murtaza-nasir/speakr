@@ -138,8 +138,9 @@ export function useReprocess(state, utils) {
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const requestBody = {};
-            if (language) requestBody.language = language;
+            const requestBody = {
+                language: language || ''  // Always send language - empty string means auto-detect
+            };
             if (minSpeakers && minSpeakers !== '') requestBody.min_speakers = parseInt(minSpeakers);
             if (maxSpeakers && maxSpeakers !== '') requestBody.max_speakers = parseInt(maxSpeakers);
 
