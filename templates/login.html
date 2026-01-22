@@ -126,7 +126,7 @@
                         {% endif %}
                     </div>
 
-                    <div class="mb-6">
+                    <div class="mb-4">
                         {{ form.password.label(class="block text-sm font-medium text-[var(--text-secondary)] mb-1") }}
                         {% if form.password.errors %}
                             {{ form.password(class="mt-1 block w-full rounded-md border-[var(--border-danger)] shadow-sm focus:border-[var(--border-focus)] focus:ring-[var(--ring-focus)] focus:ring-opacity-50 bg-[var(--bg-input)] text-[var(--text-primary)]") }}
@@ -140,9 +140,12 @@
                         {% endif %}
                     </div>
 
-                    <div class="flex items-center mb-6">
-                        {{ form.remember(class="h-4 w-4 text-[var(--text-accent)] focus:ring-[var(--ring-focus)] border-[var(--border-secondary)] rounded") }}
-                        {{ form.remember.label(class="ml-2 block text-sm text-[var(--text-secondary)]") }}
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center">
+                            {{ form.remember(class="h-4 w-4 text-[var(--text-accent)] focus:ring-[var(--ring-focus)] border-[var(--border-secondary)] rounded") }}
+                            {{ form.remember.label(class="ml-2 block text-sm text-[var(--text-secondary)]") }}
+                        </div>
+                        <a href="{{ url_for('auth.forgot_password') }}" class="text-sm text-[var(--text-accent)] hover:underline">Forgot password?</a>
                     </div>
 
                     <div class="flex flex-col space-y-4">

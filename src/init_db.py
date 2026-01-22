@@ -241,6 +241,46 @@ def initialize_database(app):
         # Naming templates feature
         if add_column_if_not_exists(engine, 'user', 'default_naming_template_id', 'INTEGER'):
             app.logger.info("Added default_naming_template_id column to user table")
+
+        # Email verification fields
+        email_verified_added = add_column_if_not_exists(engine, 'user', 'email_verified', 'BOOLEAN DEFAULT 0')
+        if email_verified_added:
+            app.logger.info("Added email_verified column to user table")
+            # Set all existing users to email_verified=True (grandfathered)
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text('UPDATE user SET email_verified = 1 WHERE email_verified = 0 OR email_verified IS NULL'))
+                    conn.commit()
+                    app.logger.info("Set email_verified=True for all existing users (grandfathered)")
+            except Exception as e:
+                app.logger.warning(f"Could not update existing users email_verified status: {e}")
+
+        if add_column_if_not_exists(engine, 'user', 'email_verification_token', 'VARCHAR(200)'):
+            app.logger.info("Added email_verification_token column to user table")
+        if add_column_if_not_exists(engine, 'user', 'email_verification_sent_at', 'DATETIME'):
+            app.logger.info("Added email_verification_sent_at column to user table")
+        if add_column_if_not_exists(engine, 'user', 'password_reset_token', 'VARCHAR(200)'):
+            app.logger.info("Added password_reset_token column to user table")
+        if add_column_if_not_exists(engine, 'user', 'password_reset_sent_at', 'DATETIME'):
+            app.logger.info("Added password_reset_sent_at column to user table")
+
+        # Create indexes for token lookups (for faster token verification)
+        try:
+            inspector = inspect(engine)
+            if 'user' in inspector.get_table_names():
+                existing_indexes = [idx['name'] for idx in inspector.get_indexes('user')]
+                if 'ix_user_email_verification_token' not in existing_indexes:
+                    with engine.connect() as conn:
+                        conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_email_verification_token ON user (email_verification_token)'))
+                        conn.commit()
+                        app.logger.info("Created index ix_user_email_verification_token on user.email_verification_token")
+                if 'ix_user_password_reset_token' not in existing_indexes:
+                    with engine.connect() as conn:
+                        conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_password_reset_token ON user (password_reset_token)'))
+                        conn.commit()
+                        app.logger.info("Created index ix_user_password_reset_token on user.password_reset_token")
+        except Exception as e:
+            app.logger.warning(f"Could not create token indexes: {e}")
         if add_column_if_not_exists(engine, 'tag', 'naming_template_id', 'INTEGER'):
             app.logger.info("Added naming_template_id column to tag table")
 

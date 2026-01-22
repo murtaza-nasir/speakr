@@ -42,6 +42,15 @@ class User(db.Model, UserMixin):
     # Transcription budget in seconds (None = unlimited)
     monthly_transcription_budget = db.Column(db.Integer, nullable=True)
 
+    # Email verification fields
+    email_verified = db.Column(db.Boolean, default=False)
+    email_verification_token = db.Column(db.String(200), nullable=True, index=True)
+    email_verification_sent_at = db.Column(db.DateTime, nullable=True)
+
+    # Password reset fields
+    password_reset_token = db.Column(db.String(200), nullable=True, index=True)
+    password_reset_sent_at = db.Column(db.DateTime, nullable=True)
+
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 

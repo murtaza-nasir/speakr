@@ -30,6 +30,17 @@ from src.auth.sso import (
     link_sso_to_existing_user,
     update_user_profile_from_claims,
 )
+from src.services.email import (
+    is_email_verification_enabled,
+    is_email_verification_required,
+    is_smtp_configured,
+    send_verification_email,
+    send_password_reset_email,
+    verify_email_token,
+    verify_reset_token,
+    can_resend_verification,
+    can_resend_password_reset,
+)
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -153,9 +164,33 @@ def register():
             return render_template('register.html', title='Register', form=form)
 
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        user = User(username=form.username.data, email=form.email.data, password=hashed_password)
+
+        # Set email_verified based on whether verification is enabled
+        # If verification is enabled, new users start unverified
+        # If disabled, new users are considered verified by default
+        email_verified = not is_email_verification_enabled()
+
+        user = User(
+            username=form.username.data,
+            email=form.email.data,
+            password=hashed_password,
+            email_verified=email_verified
+        )
         db.session.add(user)
         db.session.commit()
+
+        # Send verification email if enabled
+        if is_email_verification_enabled() and is_smtp_configured():
+            if send_verification_email(user):
+                return render_template('auth/check_email.html',
+                                     title='Check Your Email',
+                                     email=user.email,
+                                     action='verification')
+            else:
+                # Email failed to send, but account was created
+                flash('Your account has been created, but we could not send a verification email. Please contact support.', 'warning')
+                return redirect(url_for('auth.login'))
+
         flash('Your account has been created! You can now log in.', 'success')
         return redirect(url_for('auth.login'))
 
@@ -183,6 +218,16 @@ def login():
             if password_login_disabled and not user.is_admin:
                 flash('Password login is disabled. Please sign in with SSO.', 'warning')
             elif bcrypt.check_password_hash(user.password, form.password.data):
+                # Check email verification if required
+                if is_email_verification_required() and not user.email_verified:
+                    # Store user email in session for resend functionality
+                    session['unverified_email'] = user.email
+                    return render_template('auth/check_email.html',
+                                         title='Email Verification Required',
+                                         email=user.email,
+                                         action='verification_required',
+                                         show_resend=True)
+
                 login_user(user, remember=form.remember.data)
                 next_page = request.args.get('next')
                 if not is_safe_url(next_page):
@@ -329,6 +374,183 @@ def sso_unlink():
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
+
+# --- Email Verification Routes ---
+
+@auth_bp.route('/verify-email/<token>')
+def verify_email(token):
+    """Verify email address using token from email link."""
+    user_id = verify_email_token(token)
+
+    if user_id is None:
+        flash('The verification link is invalid or has expired.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    if user.email_verified:
+        flash('Your email has already been verified.', 'info')
+        return redirect(url_for('auth.login'))
+
+    # Verify the email
+    user.email_verified = True
+    user.email_verification_token = None  # Clear the token
+    db.session.commit()
+
+    return render_template('auth/verify_success.html', title='Email Verified')
+
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+@rate_limit("3 per minute")
+def resend_verification():
+    """Resend verification email."""
+    if not is_email_verification_enabled():
+        flash('Email verification is not enabled.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    if not is_smtp_configured():
+        flash('Email service is not configured.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    # Get email from session (set during failed login) or form
+    email = session.get('unverified_email') or request.form.get('email')
+
+    if not email:
+        flash('Email address is required.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        # Don't reveal if user exists
+        flash('If an account exists with this email, a verification link has been sent.', 'info')
+        return redirect(url_for('auth.login'))
+
+    if user.email_verified:
+        flash('Your email has already been verified.', 'info')
+        return redirect(url_for('auth.login'))
+
+    # Check cooldown
+    can_resend, remaining = can_resend_verification(user)
+    if not can_resend:
+        flash(f'Please wait {remaining} seconds before requesting another verification email.', 'warning')
+        return render_template('auth/check_email.html',
+                             title='Check Your Email',
+                             email=email,
+                             action='verification_required',
+                             show_resend=True)
+
+    if send_verification_email(user):
+        flash('A new verification email has been sent.', 'success')
+    else:
+        flash('Failed to send verification email. Please try again later.', 'danger')
+
+    return render_template('auth/check_email.html',
+                         title='Check Your Email',
+                         email=email,
+                         action='verification',
+                         show_resend=True)
+
+
+# --- Password Reset Routes ---
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+@rate_limit("5 per minute")
+def forgot_password():
+    """Show and handle forgot password form."""
+    if current_user.is_authenticated:
+        return redirect(url_for('recordings.index'))
+
+    if not is_smtp_configured():
+        flash('Password reset is not available. Please contact the administrator.', 'warning')
+        return redirect(url_for('auth.login'))
+
+    if request.method == 'POST':
+        email = request.form.get('email')
+
+        if not email:
+            flash('Email address is required.', 'danger')
+            return render_template('auth/forgot_password.html', title='Forgot Password')
+
+        user = User.query.filter_by(email=email).first()
+
+        # Always show the same message to prevent email enumeration
+        if user:
+            # Check if user has a password (not SSO-only)
+            if user.password:
+                # Check cooldown
+                can_resend, remaining = can_resend_password_reset(user)
+                if not can_resend:
+                    flash(f'Please wait {remaining} seconds before requesting another reset email.', 'warning')
+                else:
+                    send_password_reset_email(user)
+
+        flash('If an account exists with this email, a password reset link has been sent.', 'info')
+        return render_template('auth/check_email.html',
+                             title='Check Your Email',
+                             email=email,
+                             action='password_reset')
+
+    return render_template('auth/forgot_password.html', title='Forgot Password')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+@rate_limit("10 per minute")
+def reset_password(token):
+    """Handle password reset form."""
+    if current_user.is_authenticated:
+        return redirect(url_for('recordings.index'))
+
+    user_id = verify_reset_token(token)
+
+    if user_id is None:
+        flash('The password reset link is invalid or has expired.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not password or not confirm_password:
+            flash('Both password fields are required.', 'danger')
+            return render_template('auth/reset_password.html', title='Reset Password', token=token)
+
+        if password != confirm_password:
+            flash('Passwords do not match.', 'danger')
+            return render_template('auth/reset_password.html', title='Reset Password', token=token)
+
+        # Validate password
+        try:
+            password_check(None, type('obj', (object,), {'data': password}))
+        except ValidationError as e:
+            flash(str(e), 'danger')
+            return render_template('auth/reset_password.html', title='Reset Password', token=token)
+
+        # Update password
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        user.password = hashed_password
+        user.password_reset_token = None  # Clear the token
+        user.password_reset_sent_at = None
+
+        # Also verify email if not already verified
+        if not user.email_verified:
+            user.email_verified = True
+
+        db.session.commit()
+
+        flash('Your password has been reset. You can now log in with your new password.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', title='Reset Password', token=token)
 
 
 @auth_bp.route('/account', methods=['GET', 'POST'])
