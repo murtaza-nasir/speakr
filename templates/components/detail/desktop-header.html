@@ -41,53 +41,69 @@
 
             <!-- Action Buttons -->
             <div class="flex items-center gap-2 ml-4">
-                <button @click="toggleInbox(selectedRecording)"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
-                        :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
-                    <i class="fas fa-inbox"></i>
-                </button>
-                <button @click="toggleHighlight(selectedRecording)"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
-                        :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
-                    <i class="fas fa-star"></i>
-                </button>
-                <button @click="editRecordingTags(selectedRecording)"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :title="t('buttons.editTags')">
-                    <i class="fas fa-tags"></i>
-                </button>
-                <button @click="confirmReprocess('transcription', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
-                    <i class="fas fa-redo-alt"></i>
-                </button>
-                <button @click="confirmReprocess('summary', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :title="t('buttons.reprocessSummary')">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-                <button @click="confirmReset(selectedRecording)" v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500"
-                        :title="t('buttons.resetStuckProcessing')">
-                    <i class="fas fa-undo"></i>
-                </button>
-                <button @click="openSpeakerModal" v-if="processedTranscription.hasDialogue"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :title="t('buttons.identifySpeakers')">
-                    <i class="fas fa-user-tag"></i>
-                </button>
-                <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
-                        @click="openUnifiedShareModal(selectedRecording)"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
-                        :title="t('buttons.shareRecording')">
-                    <i class="fas fa-share-alt"></i>
-                </button>
-                <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false" @click="confirmDelete(selectedRecording)"
-                        class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <!-- Incognito recordings have limited actions -->
+                <template v-if="!selectedRecording.incognito">
+                    <button @click="toggleInbox(selectedRecording)"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
+                            :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                        <i class="fas fa-inbox"></i>
+                    </button>
+                    <button @click="toggleHighlight(selectedRecording)"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
+                            :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                        <i class="fas fa-star"></i>
+                    </button>
+                    <button @click="editRecordingTags(selectedRecording)"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :title="t('buttons.editTags')">
+                        <i class="fas fa-tags"></i>
+                    </button>
+                    <button @click="confirmReprocess('transcription', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                        <i class="fas fa-redo-alt"></i>
+                    </button>
+                    <button @click="confirmReprocess('summary', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :title="t('buttons.reprocessSummary')">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button @click="confirmReset(selectedRecording)" v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors text-orange-500"
+                            :title="t('buttons.resetStuckProcessing')">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button @click="openSpeakerModal" v-if="processedTranscription.hasDialogue"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :title="t('buttons.identifySpeakers')">
+                        <i class="fas fa-user-tag"></i>
+                    </button>
+                    <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
+                            @click="openUnifiedShareModal(selectedRecording)"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :title="t('buttons.shareRecording')">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false" @click="confirmDelete(selectedRecording)"
+                            class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </template>
+
+                <!-- Incognito mode: only show discard button -->
+                <template v-else>
+                    <span class="text-xs text-amber-600 dark:text-amber-400 mr-2">
+                        <i class="fas fa-user-secret mr-1"></i>
+                        Incognito
+                    </span>
+                    <button @click="clearIncognitoRecordingWithConfirm"
+                            class="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition-colors"
+                            title="Discard incognito recording">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </template>
             </div>
         </div>
 

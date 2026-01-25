@@ -32,6 +32,7 @@ ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').low
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
+ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 
 # Import chunking service (will be set from app)
 chunking_service = None
@@ -234,6 +235,7 @@ def get_config():
             'show_usernames_in_ui': SHOW_USERNAMES_IN_UI,
             'can_delete_recordings': can_delete,
             'users_can_delete_enabled': USERS_CAN_DELETE,
+            'enable_incognito_mode': ENABLE_INCOGNITO_MODE,
             **chunking_info
         })
     except Exception as e:

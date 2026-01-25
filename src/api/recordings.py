@@ -28,6 +28,9 @@ from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
+
+# Incognito mode - disabled by default, enable via environment variable
+ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
@@ -2244,6 +2247,264 @@ def upload_file():
         db.session.rollback()
         current_app.logger.error(f"Error during file upload: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
+
+
+@recordings_bp.route('/api/recordings/incognito', methods=['POST'])
+@login_required
+def upload_incognito():
+    """
+    Process audio in incognito mode - no database storage.
+    Returns transcript/summary directly in response.
+
+    This endpoint is designed for HIPAA-friendly transcription where
+    audio data is processed but never persisted to the database.
+    Results are returned directly and only stored client-side in sessionStorage.
+    """
+    # Check if incognito mode is enabled
+    if not ENABLE_INCOGNITO_MODE:
+        return jsonify({'error': 'Incognito mode is not enabled on this server'}), 403
+
+    import tempfile
+    from datetime import datetime
+    from src.tasks.processing import transcribe_incognito, generate_incognito_summary
+
+    temp_filepath = None
+
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+
+        original_filename = file.filename
+        safe_filename = secure_filename(original_filename)
+
+        # Get file size
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+
+        # Check size limit
+        max_content_length = current_app.config.get('MAX_CONTENT_LENGTH')
+        if max_content_length and file_size > max_content_length:
+            max_size_mb = max_content_length / (1024 * 1024)
+            return jsonify({
+                'error': f'File too large. Maximum size is {max_size_mb:.0f} MB.',
+                'max_size_mb': max_size_mb
+            }), 413
+
+        # Save to temp file - use secure temp directory
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f'_{safe_filename}') as tmp:
+            temp_filepath = tmp.name
+            file.save(temp_filepath)
+            current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
+
+        # Get optional parameters
+        language = request.form.get('language', '') or None
+        min_speakers = request.form.get('min_speakers')
+        max_speakers = request.form.get('max_speakers')
+        auto_summarize = request.form.get('auto_summarize', 'false').lower() == 'true'
+
+        # Convert to int if provided
+        if min_speakers:
+            try:
+                min_speakers = int(min_speakers)
+            except (ValueError, TypeError):
+                min_speakers = None
+        if max_speakers:
+            try:
+                max_speakers = int(max_speakers)
+            except (ValueError, TypeError):
+                max_speakers = None
+
+        # Log only metadata - NEVER log content for HIPAA compliance
+        current_app.logger.info(f"[Incognito] Processing request from user {current_user.id}: "
+                               f"filename={original_filename}, size={file_size/1024/1024:.2f}MB, "
+                               f"language={language}, auto_summarize={auto_summarize}")
+
+        # Perform transcription synchronously (no database operations)
+        result = transcribe_incognito(
+            filepath=temp_filepath,
+            original_filename=original_filename,
+            language=language,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            user=current_user
+        )
+
+        if result.get('error'):
+            current_app.logger.error(f"[Incognito] Transcription failed: {result['error']}")
+            return jsonify({
+                'incognito': True,
+                'error': result['error']
+            }), 500
+
+        # Optionally generate summary
+        summary = None
+        if auto_summarize and result.get('transcription'):
+            current_app.logger.info(f"[Incognito] Auto-summarize requested, generating summary...")
+            summary = generate_incognito_summary(result['transcription'], current_user)
+
+        # Build response
+        # Render markdown to HTML for summary display
+        summary_html = None
+        if summary:
+            summary_html = md_to_html(summary)
+
+        response_data = {
+            'incognito': True,
+            'transcription': result.get('transcription'),
+            'summary': summary,
+            'summary_html': summary_html,
+            'title': result.get('title', 'Incognito Recording'),
+            'audio_duration_seconds': result.get('audio_duration_seconds'),
+            'processing_time_seconds': result.get('processing_time_seconds'),
+            'created_at': datetime.utcnow().isoformat() + 'Z',
+            'original_filename': original_filename,
+            'file_size': file_size
+        }
+
+        current_app.logger.info(f"[Incognito] Request completed successfully for user {current_user.id}")
+
+        return jsonify(response_data), 200
+
+    except RequestEntityTooLarge:
+        max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
+        current_app.logger.warning(f"[Incognito] Upload failed: File too large (>{max_size_mb}MB)")
+        return jsonify({
+            'incognito': True,
+            'error': f'File too large. Maximum size is {max_size_mb:.0f} MB.',
+            'max_size_mb': max_size_mb
+        }), 413
+
+    except Exception as e:
+        current_app.logger.error(f"[Incognito] Error during processing: {e}", exc_info=True)
+        return jsonify({
+            'incognito': True,
+            'error': 'An unexpected error occurred during processing.'
+        }), 500
+
+    finally:
+        # CRITICAL: Always delete temp file for HIPAA compliance
+        if temp_filepath and os.path.exists(temp_filepath):
+            try:
+                os.remove(temp_filepath)
+                current_app.logger.info(f"[Incognito] Temp file deleted: {temp_filepath}")
+            except Exception as cleanup_error:
+                current_app.logger.error(f"[Incognito] Failed to delete temp file {temp_filepath}: {cleanup_error}")
+
+
+@recordings_bp.route('/api/recordings/incognito/chat', methods=['POST'])
+@login_required
+def chat_incognito():
+    """
+    Chat with an incognito recording's transcription.
+    Since incognito recordings don't exist in the database, the transcription
+    is passed directly in the request.
+    """
+    # Check if incognito mode is enabled
+    if not ENABLE_INCOGNITO_MODE:
+        return jsonify({'error': 'Incognito mode is not enabled on this server'}), 403
+
+    from src.tasks.processing import format_transcription_for_llm
+
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        transcription = data.get('transcription')
+        user_message = data.get('message')
+        message_history = data.get('message_history', [])
+        participants = data.get('participants', '')
+        notes = data.get('notes', '')
+
+        if not transcription:
+            return jsonify({'error': 'No transcription provided'}), 400
+        if not user_message:
+            return jsonify({'error': 'No message provided'}), 400
+
+        # Check if chat client is available
+        if chat_client is None:
+            return jsonify({'error': 'Chat service is not available (chat client not configured)'}), 503
+
+        # Prepare the system prompt with the transcription
+        user_chat_output_language = current_user.output_language if current_user.is_authenticated else None
+
+        language_instruction = ""
+        if user_chat_output_language:
+            language_instruction = f"Please provide all your responses in {user_chat_output_language}."
+
+        user_name = current_user.name if current_user.is_authenticated and current_user.name else "User"
+        user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
+        user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
+
+        formatted_transcription = format_transcription_for_llm(transcription)
+
+        # Get configurable transcript length limit for chat
+        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        if transcript_limit == -1:
+            chat_transcript = formatted_transcription
+        else:
+            chat_transcript = formatted_transcription[:transcript_limit]
+
+        system_prompt = f"""You are a professional meeting and audio transcription analyst assisting {user_name}, who is a(n) {user_title} at {user_company}. {language_instruction} Analyze the following meeting information and respond to the specific request.
+
+Following are the meeting participants and their roles:
+{participants or "No specific participants information provided."}
+
+Following is the meeting transcript:
+<<start transcript>>
+{chat_transcript or "No transcript available."}
+<<end transcript>>
+
+Additional context and notes about the meeting:
+{notes or "none"}
+
+Note: This is an incognito recording - no data is stored on the server.
+"""
+
+        # Prepare messages array with system prompt and conversation history
+        messages = [{"role": "system", "content": system_prompt}]
+        if message_history:
+            messages.extend(message_history)
+        messages.append({"role": "user", "content": user_message})
+
+        # Get model info
+        chat_model = os.environ.get('TEXT_MODEL_NAME', os.environ.get('OPENAI_CHAT_MODEL', 'gpt-4o-mini'))
+        user_id = current_user.id
+
+        current_app.logger.info(f"[Incognito Chat] User {user_id} sending message")
+
+        def generate():
+            """Stream the chat response."""
+            try:
+                response = chat_client.chat.completions.create(
+                    model=chat_model,
+                    messages=messages,
+                    temperature=0.7,
+                    stream=True
+                )
+
+                for chunk in response:
+                    if chunk.choices and len(chunk.choices) > 0:
+                        delta = chunk.choices[0].delta
+                        if hasattr(delta, 'content') and delta.content:
+                            yield f"data: {json.dumps({'content': delta.content})}\n\n"
+
+                yield "data: [DONE]\n\n"
+
+            except Exception as e:
+                current_app.logger.error(f"[Incognito Chat] Error during streaming: {e}")
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return Response(generate(), mimetype='text/event-stream')
+
+    except Exception as e:
+        current_app.logger.error(f"[Incognito Chat] Error: {e}", exc_info=True)
+        return jsonify({'error': 'An error occurred during chat'}), 500
 
 
 # Status Endpoint

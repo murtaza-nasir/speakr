@@ -4,6 +4,7 @@
  */
 
 import * as FailedUploads from '../db/failed-uploads.js';
+import * as IncognitoStorage from '../db/incognito-storage.js';
 
 // Parse error message and return friendly error info
 function getFriendlyError(errorMessage) {
@@ -35,7 +36,11 @@ export function useUpload(state, utils) {
         recordings, selectedRecording, totalRecordings, globalError,
         selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
-        dragover, availableTags, uploadTagSearchFilter
+        dragover, availableTags, uploadTagSearchFilter,
+        // Incognito mode state
+        incognitoMode, incognitoRecording, incognitoProcessing,
+        // View state
+        currentView
     } = state;
 
     const { computed, nextTick, ref } = Vue;
@@ -726,6 +731,182 @@ export function useUpload(state, utils) {
         );
     });
 
+    // === INCOGNITO MODE FUNCTIONS ===
+
+    /**
+     * Upload and process a file in incognito mode.
+     * The file is processed synchronously and no data is saved to the database.
+     * Results are stored only in sessionStorage.
+     */
+    const startIncognitoUpload = async () => {
+        const pendingFiles = uploadQueue.value.filter(item => item.status === 'queued');
+        if (pendingFiles.length === 0) {
+            return;
+        }
+
+        // Only process the first file for incognito mode
+        const fileItem = pendingFiles[0];
+
+        // Check if incognito mode state is available
+        if (!incognitoMode || !incognitoProcessing || !incognitoRecording) {
+            console.warn('[Incognito] Incognito state not available, falling back to normal upload');
+            startUpload();
+            return;
+        }
+
+        incognitoProcessing.value = true;
+        processingMessage.value = 'Processing in incognito mode...';
+        processingProgress.value = 10;
+        progressPopupMinimized.value = false;
+        progressPopupClosed.value = false;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', fileItem.file);
+
+            // Add ASR options
+            const asrOpts = fileItem.asrOptions || {};
+            const language = asrOpts.language || uploadLanguage.value;
+            const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
+            const maxSpeakers = asrOpts.max_speakers || uploadMaxSpeakers.value;
+
+            if (language) {
+                formData.append('language', language);
+            }
+            if (minSpeakers && minSpeakers !== '') {
+                formData.append('min_speakers', minSpeakers.toString());
+            }
+            if (maxSpeakers && maxSpeakers !== '') {
+                formData.append('max_speakers', maxSpeakers.toString());
+            }
+
+            // Request auto-summarization
+            formData.append('auto_summarize', 'true');
+
+            processingMessage.value = 'Uploading file for incognito processing...';
+            processingProgress.value = 20;
+
+            console.log('[Incognito] Uploading file:', fileItem.file.name);
+
+            const response = await fetch('/api/recordings/incognito', {
+                method: 'POST',
+                body: formData
+            });
+
+            processingProgress.value = 50;
+
+            // Parse response
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+                throw new Error(titleMatch?.[1] || `Server error (${response.status})`);
+            }
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Processing failed with status ${response.status}`);
+            }
+
+            processingProgress.value = 80;
+            processingMessage.value = 'Processing complete!';
+
+            // Store result in sessionStorage
+            const incognitoData = {
+                id: 'incognito',
+                incognito: true,
+                title: data.title || 'Incognito Recording',
+                transcription: data.transcription,
+                summary: data.summary,
+                summary_html: data.summary_html,
+                created_at: data.created_at,
+                original_filename: data.original_filename,
+                file_size: data.file_size,
+                audio_duration_seconds: data.audio_duration_seconds,
+                processing_time_seconds: data.processing_time_seconds,
+                status: 'COMPLETED'
+            };
+
+            IncognitoStorage.saveIncognitoRecording(incognitoData);
+            incognitoRecording.value = incognitoData;
+
+            // Remove the processed file from queue
+            const index = uploadQueue.value.findIndex(item => item.clientId === fileItem.clientId);
+            if (index !== -1) {
+                uploadQueue.value.splice(index, 1);
+            }
+
+            processingProgress.value = 100;
+            processingMessage.value = 'Incognito recording ready!';
+
+            // Auto-select the incognito recording and switch to detail view
+            selectedRecording.value = incognitoData;
+            currentView.value = 'detail';
+
+            // Show toast
+            showToast('Incognito recording processed - data will be lost when tab closes', 'fa-user-secret');
+
+            console.log('[Incognito] Processing complete');
+
+        } catch (error) {
+            console.error('[Incognito] Processing failed:', error);
+            const friendlyErr = getFriendlyError(error.message);
+            setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
+            fileItem.status = 'failed';
+            fileItem.error = error.message;
+        } finally {
+            incognitoProcessing.value = false;
+            processingProgress.value = 0;
+            processingMessage.value = '';
+        }
+    };
+
+    /**
+     * Clear the incognito recording with confirmation
+     */
+    const clearIncognitoRecordingWithConfirm = () => {
+        if (incognitoRecording && incognitoRecording.value) {
+            if (confirm('This will permanently discard your incognito recording. Continue?')) {
+                IncognitoStorage.clearIncognitoRecording();
+                incognitoRecording.value = null;
+                // If the incognito recording was selected, clear selection
+                if (selectedRecording.value?.id === 'incognito') {
+                    selectedRecording.value = null;
+                }
+                showToast('Incognito recording discarded', 'fa-trash');
+            }
+        }
+    };
+
+    /**
+     * Select the incognito recording for viewing
+     */
+    const selectIncognitoRecording = () => {
+        if (incognitoRecording && incognitoRecording.value) {
+            selectedRecording.value = incognitoRecording.value;
+            currentView.value = 'detail';
+        }
+    };
+
+    /**
+     * Load incognito recording from sessionStorage on app init
+     */
+    const loadIncognitoRecording = () => {
+        const stored = IncognitoStorage.getIncognitoRecording();
+        if (stored && incognitoRecording) {
+            incognitoRecording.value = stored;
+            console.log('[Incognito] Loaded recording from sessionStorage');
+        }
+    };
+
+    /**
+     * Check if there's an incognito recording (for navigation guards)
+     */
+    const hasIncognitoRecording = () => {
+        return IncognitoStorage.hasIncognitoRecording();
+    };
+
     return {
         handleDragOver,
         handleDragLeave,
@@ -753,6 +934,12 @@ export function useUpload(state, utils) {
         handleTagDragEnd,
         handleTagTouchStart,
         handleTagTouchMove,
-        handleTagTouchEnd
+        handleTagTouchEnd,
+        // Incognito mode
+        startIncognitoUpload,
+        clearIncognitoRecordingWithConfirm,
+        selectIncognitoRecording,
+        loadIncognitoRecording,
+        hasIncognitoRecording
     };
 }

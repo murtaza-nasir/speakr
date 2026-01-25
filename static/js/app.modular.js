@@ -356,6 +356,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentMediaMetadata = ref(null);
             const isMediaSessionActive = ref(false);
 
+            // --- Incognito Mode State ---
+            const enableIncognitoMode = ref(false);  // Server config
+            const incognitoMode = ref(false);
+            const incognitoRecording = ref(null);
+            const incognitoProcessing = ref(false);
+
             // --- Recording Size Monitoring ---
             const estimatedFileSize = ref(0);
             const fileSizeWarningShown = ref(false);
@@ -636,6 +642,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 deferredInstallPrompt, showInstallButton, isPWAInstalled,
                 notificationPermission, pushSubscription, appBadgeCount,
                 currentMediaMetadata, isMediaSessionActive,
+
+                // Incognito Mode
+                enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
 
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
@@ -2088,6 +2097,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableInternalSharing.value = config.enable_internal_sharing === true;
                         enableArchiveToggle.value = config.enable_archive_toggle === true;
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
+                        enableIncognitoMode.value = config.enable_incognito_mode === true;
                     }
                 } catch (error) {
                     console.error('Failed to load config:', error);
@@ -2095,6 +2105,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Initialize UI settings from localStorage
                 uiComposable.initializeUI();
+
+                // Load incognito recording from sessionStorage if exists (only if feature is enabled)
+                if (enableIncognitoMode.value) {
+                    uploadComposable.loadIncognitoRecording();
+                }
 
                 // Initialize audio capabilities
                 await audioComposable.initializeAudio();
@@ -2129,12 +2144,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Visibility change handler for wake lock
                 document.addEventListener('visibilitychange', audioComposable.handleVisibilityChange);
 
-                // Prevent data loss on tab close/refresh during recording
+                // Prevent data loss on tab close/refresh during recording or incognito mode
                 window.addEventListener('beforeunload', (e) => {
+                    // Check for unsaved recording
                     if (audioComposable.hasUnsavedRecording()) {
                         e.preventDefault();
                         e.returnValue = ''; // Chrome requires this
                         return 'You have an unsaved recording. Are you sure you want to leave?';
+                    }
+                    // Check for incognito recording that would be lost
+                    if (uploadComposable.hasIncognitoRecording()) {
+                        e.preventDefault();
+                        e.returnValue = ''; // Chrome requires this
+                        return 'You have an incognito recording that will be lost. Are you sure you want to leave?';
                     }
                 });
             });

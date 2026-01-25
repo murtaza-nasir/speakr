@@ -402,6 +402,24 @@ export function useTranscription(state, utils) {
     const saveNotes = async (notes) => {
         if (!selectedRecording.value) return;
 
+        // Handle incognito recordings - save to sessionStorage only
+        if (selectedRecording.value.incognito) {
+            selectedRecording.value.notes = notes;
+            // Update sessionStorage
+            try {
+                const stored = sessionStorage.getItem('speakr_incognito_recording');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    data.notes = notes;
+                    sessionStorage.setItem('speakr_incognito_recording', JSON.stringify(data));
+                }
+            } catch (e) {
+                console.error('[Incognito] Failed to save notes to sessionStorage:', e);
+            }
+            showToast('Notes saved (in browser only)', 'fa-check-circle');
+            return;
+        }
+
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             const response = await fetch(`/api/recordings/${selectedRecording.value.id}`, {

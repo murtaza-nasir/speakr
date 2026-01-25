@@ -2568,3 +2568,293 @@ def transcribe_with_chunking(app_context, recording_id, filepath, filename_for_a
         finally:
             # Cleanup is handled by tempfile.TemporaryDirectory context manager
             pass
+
+
+def transcribe_incognito(filepath, original_filename, language=None, min_speakers=None, max_speakers=None, user=None):
+    """
+    Perform transcription without any database operations.
+    Used for Incognito Mode where no data is persisted.
+
+    Args:
+        filepath: Path to the audio file
+        original_filename: Original filename for logging/processing
+        language: Optional language code for transcription
+        min_speakers: Optional minimum speakers for diarization
+        max_speakers: Optional maximum speakers for diarization
+        user: Optional user object for language/diarization preferences
+
+    Returns:
+        dict with transcription, title, processing_time, etc.
+    """
+    import time
+    import mimetypes
+    from src.services.transcription import get_registry, TranscriptionRequest
+
+    start_time = time.time()
+    result = {
+        'transcription': None,
+        'title': 'Incognito Recording',
+        'processing_time_seconds': 0,
+        'audio_duration_seconds': None,
+        'error': None
+    }
+
+    try:
+        # Get the active connector
+        registry = get_registry()
+        connector = registry.get_active_connector()
+
+        if not connector:
+            raise Exception("No transcription connector available")
+
+        connector_specs = connector.specifications
+        connector_name = type(connector).__name__
+        current_app.logger.info(f"[Incognito] Using transcription connector: {connector_name}")
+
+        # Determine mime type
+        mime_type = mimetypes.guess_type(original_filename)[0] or 'audio/mpeg'
+
+        # Handle video extraction if needed
+        actual_filepath = filepath
+        actual_filename = original_filename
+        actual_content_type = mime_type
+
+        # Check if file is video and needs audio extraction
+        try:
+            is_video = is_video_file(filepath, timeout=10)
+            if is_video:
+                current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
+                audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                actual_filepath = audio_filepath
+                actual_content_type = audio_mime_type
+                actual_filename = os.path.basename(audio_filepath)
+        except FFProbeError as e:
+            current_app.logger.warning(f"[Incognito] Failed to probe file: {e}")
+            # Check by extension
+            video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.m4v']
+            if any(original_filename.lower().endswith(ext) for ext in video_extensions):
+                audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                actual_filepath = audio_filepath
+                actual_content_type = audio_mime_type
+                actual_filename = os.path.basename(audio_filepath)
+
+        # Convert audio format if needed
+        try:
+            needs_chunking_check = (
+                chunking_service and
+                chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+            )
+
+            conversion_result = convert_if_needed(
+                filepath=actual_filepath,
+                original_filename=actual_filename,
+                needs_chunking=needs_chunking_check,
+                is_asr_endpoint=False,
+                delete_original=False,
+                connector_specs=connector_specs
+            )
+
+            if conversion_result.was_converted:
+                current_app.logger.info(f"[Incognito] Audio converted: {conversion_result.original_codec} -> {conversion_result.final_codec}")
+                actual_filepath = conversion_result.output_path
+                actual_content_type = conversion_result.mime_type
+                actual_filename = os.path.basename(conversion_result.output_path)
+        except Exception as e:
+            current_app.logger.warning(f"[Incognito] Audio conversion check failed: {e}, proceeding with original")
+
+        # Get audio duration if chunking service is available
+        if chunking_service:
+            try:
+                result['audio_duration_seconds'] = int(chunking_service.get_audio_duration(actual_filepath))
+            except Exception as e:
+                current_app.logger.warning(f"[Incognito] Could not get audio duration: {e}")
+
+        # Determine diarization settings
+        should_diarize = connector.supports_diarization
+
+        # Use user's language preference if not explicitly provided
+        if language is None and user:
+            language = user.transcription_language
+
+        # Check if chunking is needed
+        should_chunk = (chunking_service and
+                       chunking_service.needs_chunking(actual_filepath, False, connector_specs))
+
+        current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
+
+        if should_chunk:
+            # Use chunking for large files
+            chunk_result = transcribe_chunks_with_connector(
+                connector, actual_filepath, actual_filename, actual_content_type, language,
+                diarize=should_diarize
+            )
+
+            if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
+                result['transcription'] = chunk_result.to_storage_format()
+            else:
+                result['transcription'] = chunk_result.text if hasattr(chunk_result, 'text') else chunk_result
+        else:
+            # Single file transcription
+            with open(actual_filepath, 'rb') as audio_file:
+                request = TranscriptionRequest(
+                    audio_file=audio_file,
+                    filename=actual_filename,
+                    mime_type=actual_content_type,
+                    language=language,
+                    diarize=should_diarize,
+                    min_speakers=min_speakers,
+                    max_speakers=max_speakers
+                )
+
+                response = connector.transcribe(request)
+
+            if response.segments and response.has_diarization():
+                result['transcription'] = response.to_storage_format()
+            else:
+                result['transcription'] = response.text
+
+        result['processing_time_seconds'] = int(time.time() - start_time)
+        current_app.logger.info(f"[Incognito] Transcription completed in {result['processing_time_seconds']}s")
+
+        # Generate a title if we have transcription
+        if result['transcription'] and len(result['transcription']) > 10:
+            result['title'] = _generate_incognito_title(result['transcription'], user)
+
+        return result
+
+    except Exception as e:
+        current_app.logger.error(f"[Incognito] Transcription failed: {str(e)}", exc_info=True)
+        result['error'] = str(e)
+        result['processing_time_seconds'] = int(time.time() - start_time)
+        return result
+
+
+def _generate_incognito_title(transcription_text, user=None):
+    """Generate a title for incognito recording without database storage."""
+    if not client:
+        return "Incognito Recording"
+
+    try:
+        # Get formatted text for LLM
+        formatted_text = format_transcription_for_llm(transcription_text)
+        # Limit text for title generation
+        limited_text = formatted_text[:5000]
+
+        # Get user language preference
+        user_output_language = user.output_language if user else None
+        language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
+
+        prompt_text = f"""Create a short title for this conversation:
+
+{limited_text}
+
+Requirements:
+- Maximum 8 words
+- No phrases like "Discussion about" or "Meeting on"
+- Just the main topic
+
+{language_directive}
+
+Title:"""
+
+        system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
+        if user_output_language:
+            system_message_content += f" Ensure your response is in {user_output_language}."
+
+        # Use call_llm_completion without user_id tracking for incognito
+        completion = client.chat.completions.create(
+            model=TEXT_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_message_content},
+                {"role": "user", "content": prompt_text}
+            ],
+            temperature=0.7,
+            max_tokens=100
+        )
+
+        raw_response = completion.choices[0].message.content
+        title = clean_llm_response(raw_response) if raw_response else None
+
+        if title and len(title.strip()) > 0:
+            return title.strip()
+
+    except Exception as e:
+        current_app.logger.warning(f"[Incognito] Title generation failed: {e}")
+
+    return "Incognito Recording"
+
+
+def generate_incognito_summary(transcription_text, user=None):
+    """Generate a summary for incognito recording without database storage."""
+    if not client:
+        return None
+
+    try:
+        # Get formatted text for LLM
+        formatted_text = format_transcription_for_llm(transcription_text)
+
+        # Get configurable transcript length limit
+        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        if transcript_limit == -1:
+            transcript_text = formatted_text
+        else:
+            transcript_text = formatted_text[:transcript_limit]
+
+        # Get user preferences
+        user_output_language = user.output_language if user else None
+        user_summary_prompt = user.summary_prompt if user else None
+
+        language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}." if user_output_language else ""
+
+        # Determine summarization instructions
+        if user_summary_prompt:
+            summarization_instructions = user_summary_prompt
+        else:
+            admin_default_prompt = SystemSetting.get_setting('admin_default_summary_prompt', None)
+            if admin_default_prompt:
+                summarization_instructions = admin_default_prompt
+            else:
+                summarization_instructions = """Generate a comprehensive summary that includes the following sections:
+- **Key Issues Discussed**: A bulleted list of the main topics
+- **Key Decisions Made**: A bulleted list of any decisions reached
+- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+
+        # Build messages
+        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format."
+        if user_output_language:
+            system_message_content += f" You MUST generate the entire summary in {user_output_language}."
+
+        prompt_text = f"""Transcription:
+\"\"\"
+{transcript_text}
+\"\"\"
+
+Summarization Instructions:
+{summarization_instructions}
+
+{language_directive}"""
+
+        current_app.logger.info(f"[Incognito] Generating summary...")
+
+        # Use client directly without user tracking for incognito
+        completion = client.chat.completions.create(
+            model=TEXT_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_message_content},
+                {"role": "user", "content": prompt_text}
+            ],
+            temperature=0.5,
+            max_tokens=int(os.environ.get("SUMMARY_MAX_TOKENS", "3000"))
+        )
+
+        raw_response = completion.choices[0].message.content
+        summary = clean_llm_response(raw_response) if raw_response else None
+
+        if summary:
+            current_app.logger.info(f"[Incognito] Summary generated: {len(summary)} characters")
+            return summary
+
+    except Exception as e:
+        current_app.logger.warning(f"[Incognito] Summary generation failed: {e}")
+
+    return None

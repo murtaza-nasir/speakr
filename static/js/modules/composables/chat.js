@@ -68,15 +68,35 @@ export function useChat(state, utils) {
                 .slice(0, -1)
                 .map(msg => ({ role: msg.role, content: msg.content }));
 
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recording_id: selectedRecording.value.id,
-                    message: message,
-                    message_history: messageHistory
-                })
-            });
+            // Check if this is an incognito recording
+            const isIncognito = selectedRecording.value.incognito === true;
+            let response;
+
+            if (isIncognito) {
+                // Use incognito chat endpoint - pass transcription directly
+                response = await fetch('/api/recordings/incognito/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transcription: selectedRecording.value.transcription,
+                        participants: selectedRecording.value.participants || '',
+                        notes: selectedRecording.value.notes || '',
+                        message: message,
+                        message_history: messageHistory
+                    })
+                });
+            } else {
+                // Use regular chat endpoint
+                response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        recording_id: selectedRecording.value.id,
+                        message: message,
+                        message_history: messageHistory
+                    })
+                });
+            }
 
             if (!response.ok) {
                 const errorData = await response.json();
@@ -100,6 +120,10 @@ export function useChat(state, utils) {
                     for (const line of lines) {
                         if (line.startsWith('data: ')) {
                             const jsonStr = line.substring(6);
+                            // Handle [DONE] marker from incognito endpoint
+                            if (jsonStr === '[DONE]') {
+                                return;
+                            }
                             if (jsonStr) {
                                 try {
                                     const data = JSON.parse(jsonStr);
@@ -130,7 +154,9 @@ export function useChat(state, utils) {
                                             scrollChatToBottom();
                                         }
                                     }
-                                    if (data.delta) {
+                                    // Handle both 'delta' (regular) and 'content' (incognito) formats
+                                    const textContent = data.delta || data.content;
+                                    if (textContent) {
                                         const shouldScroll = isChatScrolledToBottom();
 
                                         if (isFirstChunk) {
@@ -146,7 +172,7 @@ export function useChat(state, utils) {
                                             isFirstChunk = false;
                                         }
 
-                                        assistantMessage.content += data.delta;
+                                        assistantMessage.content += textContent;
                                         assistantMessage.html = marked.parse(assistantMessage.content);
 
                                         if (shouldScroll) {
