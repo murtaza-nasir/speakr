@@ -1132,6 +1132,7 @@
     "play": "Abspielen",
     "pause": "Pause",
     "mute": "Stumm",
-    "unmute": "Ton an"
+    "unmute": "Ton an",
+    "playbackSpeed": "Wiedergabegeschwindigkeit"
   }
 }

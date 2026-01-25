@@ -1101,6 +1101,7 @@
     "play": "Reproducir",
     "pause": "Pausa",
     "mute": "Silenciar",
-    "unmute": "Activar sonido"
+    "unmute": "Activar sonido",
+    "playbackSpeed": "Velocidad de reproducción"
   }
 }

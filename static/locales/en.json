@@ -1160,6 +1160,7 @@
     "play": "Play",
     "pause": "Pause",
     "mute": "Mute",
-    "unmute": "Unmute"
+    "unmute": "Unmute",
+    "playbackSpeed": "Playback speed"
   }
 }

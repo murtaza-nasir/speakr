@@ -508,11 +508,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const audioIsMuted = ref(false);
             const audioIsLoading = ref(false);
             const asrEditorAudio = ref(null);
+            const playbackRate = ref(1.0);
+            const showSpeedMenu = ref(false);
+            const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
+            const speedMenuPosition = ref({});
 
             // --- Modal Audio Player State (Independent from main) ---
             const modalAudioCurrentTime = ref(0);
             const modalAudioDuration = ref(0);
             const modalAudioIsPlaying = ref(false);
+            const modalPlaybackRate = ref(1.0);
 
             // --- Column Resizing State ---
             const leftColumnWidth = ref(60);
@@ -675,7 +680,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,
-                modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying,
+                modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying, modalPlaybackRate,
+                playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,

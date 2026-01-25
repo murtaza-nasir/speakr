@@ -1101,6 +1101,7 @@
     "play": "Lecture",
     "pause": "Pause",
     "mute": "Muet",
-    "unmute": "Activer le son"
+    "unmute": "Activer le son",
+    "playbackSpeed": "Vitesse de lecture"
   }
 }

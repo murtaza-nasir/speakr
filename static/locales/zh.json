@@ -1285,6 +1285,7 @@
     "play": "播放",
     "pause": "暂停",
     "mute": "静音",
-    "unmute": "取消静音"
+    "unmute": "取消静音",
+    "playbackSpeed": "播放速度"
   }
 }

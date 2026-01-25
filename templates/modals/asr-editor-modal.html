@@ -56,6 +56,12 @@
                            @input="(e) => { if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.volume = parseFloat(e.target.value); }"
                            class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
                 </div>
+                <!-- Speed Control (compact - tap to cycle) -->
+                <button @click="cycleModalPlaybackRate(); if ($refs.asrEditorAudioRef) $refs.asrEditorAudioRef.playbackRate = modalPlaybackRate"
+                        class="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+                        title="Playback speed (tap to change)">
+                    <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
+                </button>
             </div>
         </div>
 
