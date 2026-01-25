@@ -171,6 +171,12 @@
                                 class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
                             <i :class="playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-xs"></i>
                         </button>
+                        <!-- Speed Control (compact - tap to cycle) -->
+                        <button @click="cycleModalPlaybackRate(); if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.playbackRate = modalPlaybackRate"
+                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
+                                title="Playback speed (tap to change)">
+                            <span class="text-[10px] font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
+                        </button>
                     </div>
                 </div>
 

@@ -15,7 +15,8 @@ export function useUI(state, utils, processedTranscription) {
         editingNotes, tempNotesContent, transcriptionViewMode,
         notesMarkdownEditor, markdownEditorInstance, autoSaveTimer, csrfToken,
         summaryMarkdownEditor, recordingNotesEditor, recordingMarkdownEditorInstance,
-        recordingNotes, showDownloadMenu, currentPlayingSegmentIndex, followPlayerMode
+        recordingNotes, showDownloadMenu, currentPlayingSegmentIndex, followPlayerMode,
+        playbackRate, showSpeedMenu, playbackSpeeds, modalPlaybackRate, speedMenuPosition
     } = state;
 
     const autoSaveDelay = 2000; // 2 seconds
@@ -986,6 +987,11 @@ export function useUI(state, utils, processedTranscription) {
             }
         }
         audioIsLoading.value = false;
+
+        // Apply saved playback rate when audio loads
+        if (playbackRate.value !== 1) {
+            event.target.playbackRate = playbackRate.value;
+        }
     };
 
     const handleAudioEnded = () => {
@@ -1041,6 +1047,90 @@ export function useUI(state, utils, processedTranscription) {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // --- Playback Speed Control ---
+    const formatPlaybackRate = (rate) => {
+        if (rate === 1) return '1x';
+        if (rate === Math.floor(rate)) return `${rate}x`;
+        return `${rate}x`;
+    };
+
+    const setPlaybackRate = (rate) => {
+        playbackRate.value = rate;
+        localStorage.setItem('playbackRate', rate);
+
+        // Apply to all audio elements
+        const audioElements = document.querySelectorAll('audio');
+        audioElements.forEach(audio => {
+            audio.playbackRate = rate;
+        });
+    };
+
+    const cyclePlaybackRate = () => {
+        const currentIndex = playbackSpeeds.indexOf(playbackRate.value);
+        const nextIndex = (currentIndex + 1) % playbackSpeeds.length;
+        setPlaybackRate(playbackSpeeds[nextIndex]);
+    };
+
+    const cycleModalPlaybackRate = () => {
+        const currentIndex = playbackSpeeds.indexOf(modalPlaybackRate.value);
+        const nextIndex = (currentIndex + 1) % playbackSpeeds.length;
+        modalPlaybackRate.value = playbackSpeeds[nextIndex];
+
+        // Apply to modal audio elements
+        const modalAudio = document.querySelector('.speaker-modal-transcript')?.closest('.fixed')?.querySelector('audio') ||
+                          document.querySelector('[ref="speakerModalAudioRef"]') ||
+                          document.querySelector('[ref="asrEditorAudioRef"]');
+        if (modalAudio) {
+            modalAudio.playbackRate = modalPlaybackRate.value;
+        }
+    };
+
+    const initializePlaybackRate = () => {
+        const savedRate = localStorage.getItem('playbackRate');
+        if (savedRate) {
+            const rate = parseFloat(savedRate);
+            if (playbackSpeeds.includes(rate)) {
+                playbackRate.value = rate;
+            }
+        }
+    };
+
+    const updateSpeedMenuPosition = (buttonEl) => {
+        if (!buttonEl) return;
+        const rect = buttonEl.getBoundingClientRect();
+        const menuWidth = 52;
+        const menuMaxHeight = 160;
+        const gap = 4;
+        const safeZone = 60; // Account for header/navbar
+
+        // Check available space above and below
+        const spaceAbove = rect.top - safeZone;
+        const spaceBelow = window.innerHeight - rect.bottom - 8;
+
+        // Decide direction: prefer above, but use below if not enough space
+        const showBelow = spaceAbove < menuMaxHeight && spaceBelow > spaceAbove;
+
+        const right = window.innerWidth - rect.right;
+
+        if (showBelow) {
+            // Position below the button
+            speedMenuPosition.value = {
+                right: `${Math.max(8, right)}px`,
+                top: `${rect.bottom + gap}px`,
+                bottom: 'auto',
+                maxHeight: `${Math.min(menuMaxHeight, spaceBelow)}px`
+            };
+        } else {
+            // Position above the button
+            speedMenuPosition.value = {
+                right: `${Math.max(8, right)}px`,
+                bottom: `${window.innerHeight - rect.top + gap}px`,
+                top: 'auto',
+                maxHeight: `${Math.min(menuMaxHeight, spaceAbove)}px`
+            };
+        }
     };
 
     const audioProgressPercent = computed(() => {
@@ -1525,6 +1615,9 @@ export function useUI(state, utils, processedTranscription) {
             followPlayerMode.value = savedFollowMode === 'true';
         }
 
+        // Load saved playback rate
+        initializePlaybackRate();
+
         // Watch for recording changes to reset active segment and audio player state
         watch(selectedRecording, (newRecording) => {
             currentPlayingSegmentIndex.value = null;
@@ -1584,6 +1677,16 @@ export function useUI(state, utils, processedTranscription) {
 
                 if (!languageButton && !languageDropdown) {
                     state.showLanguageMenu.value = false;
+                }
+            }
+
+            // Close speed menu if clicking outside
+            if (showSpeedMenu.value) {
+                const speedButton = target.closest('[data-speed-toggle]');
+                const speedDropdown = target.closest('[data-speed-dropdown]');
+
+                if (!speedButton && !speedDropdown) {
+                    showSpeedMenu.value = false;
                 }
             }
         });
@@ -1855,6 +1958,12 @@ export function useUI(state, utils, processedTranscription) {
         audioIsMuted,
         audioIsLoading,
         resetAudioPlayerState,
+        // Playback speed
+        formatPlaybackRate,
+        setPlaybackRate,
+        cyclePlaybackRate,
+        cycleModalPlaybackRate,
+        updateSpeedMenuPosition,
         // Copy functions
         copyTranscription,
         copySummary,

@@ -3029,6 +3029,23 @@ body {
     filter: brightness(1.15);
 }
 
+/* Playback Speed Control Dropdown */
+.speed-dropdown {
+    animation: speedDropdownFade 0.12s ease-out;
+    width: 52px;
+}
+
+@keyframes speedDropdownFade {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
 /* Custom audio player wrapper for better control */
 .custom-audio-wrapper {
     position: relative;

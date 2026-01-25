@@ -55,6 +55,33 @@
                 <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
             </div>
 
+            <!-- Playback Speed Control -->
+            <div class="relative flex-shrink-0">
+                <button ref="speedButtonMobile"
+                        @click="showSpeedMenu = !showSpeedMenu; $nextTick(() => updateSpeedMenuPosition($refs.speedButtonMobile))"
+                        data-speed-toggle
+                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all"
+                        :title="t('tooltips.playbackSpeed') || 'Playback speed'">
+                    <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
+                </button>
+                <!-- Dropdown menu (teleported to body, fixed positioning) -->
+                <Teleport to="body">
+                    <div v-if="showSpeedMenu" @click.stop
+                         data-speed-dropdown
+                         class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-md shadow-xl z-[9999] speed-dropdown overflow-y-auto backdrop-blur-sm"
+                         :style="speedMenuPosition">
+                        <div class="py-0.5">
+                            <button v-for="speed in playbackSpeeds" :key="speed"
+                                    @mousedown.prevent="setPlaybackRate(speed); showSpeedMenu = false"
+                                    class="w-full px-2 py-0.5 text-[11px] font-mono text-left hover:bg-[var(--bg-accent-light)] transition-colors"
+                                    :class="speed === playbackRate ? 'text-[var(--text-accent)] font-semibold bg-[var(--bg-accent-light)]' : 'text-[var(--text-primary)]'">
+                                ${ speed }x
+                            </button>
+                        </div>
+                    </div>
+                </Teleport>
+            </div>
+
             <!-- Spacer -->
             <div class="flex-1"></div>
 
