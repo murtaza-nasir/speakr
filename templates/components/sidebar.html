@@ -464,5 +464,55 @@
                 </div>
             </div>
         </div>
+
     </div>
 </aside>
+
+<!-- Vertical Floating Bulk Action Bar - To the right of sidebar -->
+<transition name="slide-right">
+    <div v-if="selectionMode && selectedCount > 0 && !isSidebarCollapsed"
+         class="fixed top-1/2 -translate-y-1/2 left-80 z-50 flex flex-col gap-1 p-2 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-r-xl shadow-lg">
+        <!-- Selection count badge -->
+        <div class="text-center text-xs font-medium text-[var(--text-accent)] py-1 border-b border-[var(--border-primary)] mb-1">
+            ${ selectedCount }
+        </div>
+
+        <button @click="openBulkTagModal('add')"
+                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
+                title="Add or remove tags">
+            <i class="fas fa-tags text-[var(--text-muted)]"></i>
+        </button>
+
+        <button @click="bulkToggleInbox()"
+                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
+                title="Toggle inbox status">
+            <i class="fas fa-inbox text-blue-500"></i>
+        </button>
+
+        <button @click="bulkToggleHighlight()"
+                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
+                title="Toggle highlight">
+            <i class="fas fa-star text-amber-500"></i>
+        </button>
+
+        <button @click="openBulkReprocessModal"
+                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
+                title="Reprocess">
+            <i class="fas fa-redo text-[var(--text-muted)]"></i>
+        </button>
+
+        <div class="border-t border-[var(--border-primary)] my-1"></div>
+
+        <button @click="openBulkDeleteModal"
+                class="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                title="Delete selected">
+            <i class="fas fa-trash"></i>
+        </button>
+
+        <button @click="exitSelectionMode"
+                class="w-10 h-10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                title="Exit selection mode">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</transition>
