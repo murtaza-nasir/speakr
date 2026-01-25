@@ -14,6 +14,8 @@ import { useChat } from './modules/composables/chat.js';
 import { useTags } from './modules/composables/tags.js';
 import { usePWA } from './modules/composables/pwa.js';
 import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtualScroll.js';
+import { useBulkSelection } from './modules/composables/bulk-selection.js';
+import { useBulkOperations } from './modules/composables/bulk-operations.js';
 
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
@@ -362,6 +364,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const incognitoRecording = ref(null);
             const incognitoProcessing = ref(false);
 
+            // --- Bulk Selection State ---
+            const selectionMode = ref(false);
+            const selectedRecordingIds = ref(new Set());
+            const bulkActionInProgress = ref(false);
+
             // --- Recording Size Monitoring ---
             const estimatedFileSize = ref(0);
             const fileSizeWarningShown = ref(false);
@@ -645,6 +652,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Incognito Mode
                 enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
+
+                // Bulk Selection
+                selectionMode, selectedRecordingIds, bulkActionInProgress,
 
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
@@ -1243,6 +1253,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tagSearchFilter,
                 showToast,
                 setGlobalError
+            });
+
+            // Bulk selection composable
+            const bulkSelectionComposable = useBulkSelection({
+                selectionMode,
+                selectedRecordingIds,
+                recordings,
+                selectedRecording,
+                currentView
+            });
+
+            // Bulk operations composable (needs selection composable methods)
+            const bulkOperationsComposable = useBulkOperations({
+                selectedRecordingIds,
+                selectedRecordings: bulkSelectionComposable.selectedRecordings,
+                recordings,
+                selectedRecording,
+                bulkActionInProgress,
+                availableTags,
+                showToast,
+                setGlobalError,
+                exitSelectionMode: bulkSelectionComposable.exitSelectionMode,
+                startReprocessingPoll: reprocessComposable.startReprocessingPoll
             });
 
             // =========================================================================
@@ -2159,6 +2192,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return 'You have an incognito recording that will be lost. Are you sure you want to leave?';
                     }
                 });
+
+                // Initialize bulk selection keyboard listeners
+                bulkSelectionComposable.initSelectionKeyboardListeners();
             });
 
             // =========================================================================
@@ -2340,7 +2376,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...speakersComposable,
                 ...chatComposable,
                 ...tagsComposable,
-                ...pwaComposable
+                ...pwaComposable,
+                ...bulkSelectionComposable,
+                ...bulkOperationsComposable
             };
         },
         delimiters: ['${', '}']

@@ -3418,6 +3418,298 @@ def reorder_recording_tags(recording_id):
         return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 
+# --- Bulk Operations ---
+
+@recordings_bp.route('/api/recordings/bulk', methods=['DELETE'])
+@login_required
+def bulk_delete_recordings():
+    """Delete multiple recordings at once."""
+    try:
+        data = request.get_json()
+        if not data or 'recording_ids' not in data:
+            return jsonify({'error': 'Missing recording_ids'}), 400
+
+        recording_ids = data.get('recording_ids', [])
+        if not isinstance(recording_ids, list) or len(recording_ids) == 0:
+            return jsonify({'error': 'recording_ids must be a non-empty list'}), 400
+
+        # Limit bulk operations to prevent abuse
+        if len(recording_ids) > 100:
+            return jsonify({'error': 'Cannot delete more than 100 recordings at once'}), 400
+
+        # Check deletion permissions
+        if not USERS_CAN_DELETE and not current_user.is_admin:
+            return jsonify({'error': 'Only administrators can delete recordings'}), 403
+
+        deleted_ids = []
+        errors = []
+
+        for recording_id in recording_ids:
+            try:
+                recording = db.session.get(Recording, recording_id)
+                if not recording:
+                    errors.append(f"Recording {recording_id} not found")
+                    continue
+
+                # Check ownership
+                if recording.user_id and recording.user_id != current_user.id:
+                    errors.append(f"No permission for recording {recording_id}")
+                    continue
+
+                # Delete audio file
+                if recording.audio_path and os.path.exists(recording.audio_path):
+                    try:
+                        os.remove(recording.audio_path)
+                    except Exception as e:
+                        current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
+
+                # Delete associated processing jobs
+                from src.models import ProcessingJob
+                ProcessingJob.query.filter_by(recording_id=recording_id).delete()
+
+                # Delete the recording
+                db.session.delete(recording)
+                deleted_ids.append(recording_id)
+
+            except Exception as e:
+                current_app.logger.error(f"Error deleting recording {recording_id}: {e}")
+                errors.append(f"Error with recording {recording_id}")
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'deleted_ids': deleted_ids,
+            'deleted_count': len(deleted_ids),
+            'errors': errors if errors else None
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in bulk delete: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+
+@recordings_bp.route('/api/recordings/bulk-tags', methods=['POST'])
+@login_required
+def bulk_update_tags():
+    """Add or remove a tag from multiple recordings."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing request body'}), 400
+
+        recording_ids = data.get('recording_ids', [])
+        tag_id = data.get('tag_id')
+        action = data.get('action', 'add')  # 'add' or 'remove'
+
+        if not recording_ids or not tag_id:
+            return jsonify({'error': 'Missing recording_ids or tag_id'}), 400
+
+        if action not in ['add', 'remove']:
+            return jsonify({'error': 'Action must be "add" or "remove"'}), 400
+
+        if len(recording_ids) > 100:
+            return jsonify({'error': 'Cannot update more than 100 recordings at once'}), 400
+
+        # Verify tag exists and user has access
+        tag = db.session.get(Tag, tag_id)
+        if not tag:
+            return jsonify({'error': 'Tag not found'}), 404
+
+        if tag.user_id != current_user.id and not tag.group_id:
+            return jsonify({'error': 'No permission to use this tag'}), 403
+
+        affected_ids = []
+
+        for recording_id in recording_ids:
+            try:
+                recording = db.session.get(Recording, recording_id)
+                if not recording:
+                    continue
+
+                # Check ownership or edit access
+                if not has_recording_access(recording, current_user, require_edit=True):
+                    continue
+
+                if action == 'add':
+                    # Check if tag already exists
+                    existing = RecordingTag.query.filter_by(
+                        recording_id=recording_id,
+                        tag_id=tag_id
+                    ).first()
+
+                    if not existing:
+                        # Get max order for this recording
+                        max_order = db.session.query(db.func.max(RecordingTag.order)).filter_by(
+                            recording_id=recording_id
+                        ).scalar() or 0
+
+                        new_tag = RecordingTag(
+                            recording_id=recording_id,
+                            tag_id=tag_id,
+                            order=max_order + 1
+                        )
+                        db.session.add(new_tag)
+                        affected_ids.append(recording_id)
+
+                else:  # remove
+                    recording_tag = RecordingTag.query.filter_by(
+                        recording_id=recording_id,
+                        tag_id=tag_id
+                    ).first()
+
+                    if recording_tag:
+                        db.session.delete(recording_tag)
+                        affected_ids.append(recording_id)
+
+            except Exception as e:
+                current_app.logger.error(f"Error updating tag for recording {recording_id}: {e}")
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'affected_ids': affected_ids,
+            'affected_count': len(affected_ids)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in bulk tag update: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+
+@recordings_bp.route('/api/recordings/bulk-reprocess', methods=['POST'])
+@login_required
+def bulk_reprocess():
+    """Queue multiple recordings for reprocessing."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing request body'}), 400
+
+        recording_ids = data.get('recording_ids', [])
+        reprocess_type = data.get('type', 'summary')  # 'transcription' or 'summary'
+
+        if not recording_ids:
+            return jsonify({'error': 'Missing recording_ids'}), 400
+
+        if reprocess_type not in ['transcription', 'summary']:
+            return jsonify({'error': 'Type must be "transcription" or "summary"'}), 400
+
+        if len(recording_ids) > 50:
+            return jsonify({'error': 'Cannot reprocess more than 50 recordings at once'}), 400
+
+        queued_ids = []
+
+        for recording_id in recording_ids:
+            try:
+                recording = db.session.get(Recording, recording_id)
+                if not recording:
+                    continue
+
+                # Check ownership
+                if recording.user_id != current_user.id:
+                    continue
+
+                # Only reprocess completed or failed recordings
+                if recording.status not in ['COMPLETED', 'FAILED']:
+                    continue
+
+                # For transcription reprocess, need audio file
+                if reprocess_type == 'transcription':
+                    if not recording.audio_path or not os.path.exists(recording.audio_path):
+                        continue
+                    job_type = 'reprocess_transcription'
+                else:
+                    # For summary, need transcription
+                    if not recording.transcription:
+                        continue
+                    job_type = 'reprocess_summary'
+
+                # Queue the job
+                job_queue.enqueue(
+                    user_id=current_user.id,
+                    recording_id=recording.id,
+                    job_type=job_type,
+                    params={'user_id': current_user.id}
+                )
+
+                queued_ids.append(recording_id)
+
+            except Exception as e:
+                current_app.logger.error(f"Error queueing reprocess for recording {recording_id}: {e}")
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'queued_ids': queued_ids,
+            'queued_count': len(queued_ids)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in bulk reprocess: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+
+@recordings_bp.route('/api/recordings/bulk-toggle', methods=['POST'])
+@login_required
+def bulk_toggle():
+    """Toggle inbox or highlight for multiple recordings."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Missing request body'}), 400
+
+        recording_ids = data.get('recording_ids', [])
+        field = data.get('field')  # 'inbox' or 'highlight'
+        value = data.get('value')  # True or False
+
+        if not recording_ids or field is None or value is None:
+            return jsonify({'error': 'Missing recording_ids, field, or value'}), 400
+
+        if field not in ['inbox', 'highlight']:
+            return jsonify({'error': 'Field must be "inbox" or "highlight"'}), 400
+
+        if len(recording_ids) > 100:
+            return jsonify({'error': 'Cannot update more than 100 recordings at once'}), 400
+
+        affected_ids = []
+
+        for recording_id in recording_ids:
+            try:
+                recording = db.session.get(Recording, recording_id)
+                if not recording:
+                    continue
+
+                # Use set_user_recording_status which handles both owners and shared users
+                if field == 'inbox':
+                    set_user_recording_status(recording, current_user, is_inbox=value)
+                else:
+                    set_user_recording_status(recording, current_user, is_highlighted=value)
+
+                affected_ids.append(recording_id)
+
+            except Exception as e:
+                current_app.logger.error(f"Error toggling {field} for recording {recording_id}: {e}")
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'affected_ids': affected_ids,
+            'affected_count': len(affected_ids)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in bulk toggle: {e}", exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+
 # --- Auto-deletion and Chunks Processing ---
 
 @recordings_bp.route('/api/recordings/<int:recording_id>/toggle_deletion_exempt', methods=['POST'])
