@@ -2832,6 +2832,10 @@ Additional context and notes about the meeting:
         app = current_app._get_current_object()
 
         def generate():
+            # Push app context for entire generator execution
+            # This is needed because call_chat_completion checks budget which requires db access
+            ctx = app.app_context()
+            ctx.push()
             try:
                 # Enable streaming with user_id for budget enforcement
                 stream = call_chat_completion(
@@ -2854,6 +2858,8 @@ Additional context and notes about the meeting:
                 app.logger.error(f"Error during chat stream generation: {str(e)}")
                 # Yield an error message in SSE format
                 yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            finally:
+                ctx.pop()
 
         return Response(generate(), mimetype='text/event-stream')
 
