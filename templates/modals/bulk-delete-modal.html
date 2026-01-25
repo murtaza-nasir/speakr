@@ -1,0 +1,48 @@
+<!-- Bulk Delete Confirmation Modal -->
+<div v-if="showBulkDeleteModal" @click.self="closeBulkDeleteModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                        <i class="fas fa-exclamation-triangle text-xl text-red-600 dark:text-red-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)]">Delete ${ selectedCount } Recording${ selectedCount !== 1 ? 's' : '' }</h3>
+                        <p class="text-sm text-[var(--text-muted)]">This action cannot be undone</p>
+                    </div>
+                </div>
+                <button @click="closeBulkDeleteModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="bg-[var(--bg-tertiary)] rounded-lg p-4 mb-6">
+                <p class="text-sm text-[var(--text-secondary)] mb-3">
+                    You are about to permanently delete:
+                </p>
+                <ul class="space-y-1 max-h-32 overflow-y-auto">
+                    <li v-for="recording in selectedRecordings.slice(0, 5)" :key="recording.id" class="text-sm text-[var(--text-primary)] flex items-center gap-2">
+                        <i class="fas fa-file-audio text-[var(--text-muted)] text-xs"></i>
+                        <span class="truncate">${ recording.title || 'Untitled' }</span>
+                    </li>
+                    <li v-if="selectedRecordings.length > 5" class="text-sm text-[var(--text-muted)] italic">
+                        ...and ${ selectedRecordings.length - 5 } more
+                    </li>
+                </ul>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button @click="closeBulkDeleteModal"
+                        class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button @click="executeBulkDelete"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2">
+                    <i class="fas fa-trash"></i>
+                    Delete All
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,89 @@
+<!-- Bulk Reprocess Modal -->
+<div v-if="showBulkReprocessModal" @click.self="closeBulkReprocessModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+        <div class="p-6 border-b border-[var(--border-primary)]">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-sync-alt text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-[var(--text-primary)]">Bulk Reprocess</h3>
+                        <p class="text-sm text-[var(--text-muted)]">${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } selected</p>
+                    </div>
+                </div>
+                <button @click="closeBulkReprocessModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <!-- Reprocess Type Selection -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-3">What do you want to reprocess?</label>
+                <div class="space-y-2">
+                    <label class="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-secondary)] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
+                           :class="{ 'border-[var(--border-accent)] bg-[var(--bg-accent)]': bulkReprocessType === 'summary' }">
+                        <input type="radio" v-model="bulkReprocessType" value="summary" class="mt-1">
+                        <div>
+                            <span class="font-medium text-[var(--text-primary)]">Summary Only</span>
+                            <p class="text-sm text-[var(--text-muted)] mt-0.5">
+                                Regenerate title and summary from existing transcription. Faster option.
+                            </p>
+                        </div>
+                    </label>
+                    <label class="flex items-start gap-3 p-3 rounded-lg border border-[var(--border-secondary)] cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors"
+                           :class="{ 'border-[var(--border-accent)] bg-[var(--bg-accent)]': bulkReprocessType === 'transcription' }">
+                        <input type="radio" v-model="bulkReprocessType" value="transcription" class="mt-1">
+                        <div>
+                            <span class="font-medium text-[var(--text-primary)]">Full Transcription</span>
+                            <p class="text-sm text-[var(--text-muted)] mt-0.5">
+                                Re-transcribe audio and regenerate everything. Takes longer.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Warning -->
+            <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg mb-6">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                    <div class="text-sm">
+                        <p class="font-medium text-amber-800 dark:text-amber-200">Note</p>
+                        <p class="text-amber-700 dark:text-amber-300 mt-0.5" v-if="bulkReprocessType === 'summary'">
+                            This will overwrite any manual edits to titles and summaries.
+                        </p>
+                        <p class="text-amber-700 dark:text-amber-300 mt-0.5" v-else>
+                            This will overwrite all transcriptions, titles, and summaries. Manual edits will be lost.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recording count info -->
+            <div class="text-sm text-[var(--text-muted)] mb-4">
+                <i class="fas fa-info-circle mr-1"></i>
+                <span v-if="bulkReprocessType === 'summary'">
+                    ${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } will be queued for summary regeneration.
+                </span>
+                <span v-else>
+                    ${ selectedCount } recording${ selectedCount !== 1 ? 's' : '' } will be queued for full reprocessing.
+                </span>
+            </div>
+        </div>
+
+        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end gap-3">
+            <button @click="closeBulkReprocessModal"
+                    class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                Cancel
+            </button>
+            <button @click="executeBulkReprocess"
+                    class="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-lg transition-colors flex items-center gap-2">
+                <i class="fas fa-sync-alt"></i>
+                Start Reprocessing
+            </button>
+        </div>
+    </div>
+</div>

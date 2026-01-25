@@ -1774,6 +1774,54 @@ body {
     }
 }
 
+/* Selection checkbox - used for bulk selection in sidebar */
+.selection-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-secondary);
+    border-radius: 0.25rem;
+    background-color: var(--bg-input);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.selection-checkbox:hover {
+    border-color: var(--border-accent);
+}
+
+.selection-checkbox:checked {
+    background-color: var(--bg-button);
+    border-color: var(--bg-button);
+    animation: checkboxPop 0.2s ease-out;
+}
+
+.selection-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 9px;
+    border: solid var(--text-button);
+    border-width: 0 2.5px 2.5px 0;
+    transform: translate(-50%, -60%) rotate(45deg);
+    animation: checkmarkDraw 0.2s ease-out;
+}
+
+/* Vue transition for slide-up (bulk action bar) */
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: transform 0.3s ease;
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+    transform: translateY(100%);
+}
+
 .follow-player-control .follow-icon {
     font-size: 11px;
     flex-shrink: 0;

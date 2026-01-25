@@ -28,3 +28,5 @@ export { useSpeakers } from './speakers.js';
 export { useChat } from './chat.js';
 export { usePWA } from './pwa.js';
 export { useTokens } from './tokens.js';
+export { useBulkSelection } from './bulk-selection.js';
+export { useBulkOperations } from './bulk-operations.js';

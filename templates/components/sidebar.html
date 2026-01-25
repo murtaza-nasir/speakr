@@ -18,7 +18,21 @@
                         <i class="fas fa-search"></i>
                     </a>
                     {% endif %}
-                    <button @click="switchToUploadView"
+                    <!-- Selection Mode Toggle -->
+                    <button v-if="!selectionMode && recordings.length > 0"
+                            @click="enterSelectionMode"
+                            class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm"
+                            title="Select multiple">
+                        <i class="fas fa-list-check"></i>
+                    </button>
+                    <button v-if="selectionMode"
+                            @click="exitSelectionMode"
+                            class="px-2 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:opacity-80 transition-opacity text-sm"
+                            title="Exit selection mode">
+                        <i class="fas fa-times mr-1"></i>Done
+                    </button>
+                    <button v-if="!selectionMode"
+                            @click="switchToUploadView"
                             class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
                         <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
                     </button>
@@ -303,6 +317,19 @@
             </div>
 
             <div v-if="recordings.length > 0" class="space-y-2">
+                <!-- Selection Mode Controls -->
+                <div v-if="selectionMode" class="flex items-center justify-between px-1 py-2 mb-2 border-b border-[var(--border-primary)]">
+                    <div class="flex items-center gap-3">
+                        <button @click="allVisibleSelected ? clearSelection() : selectAll()"
+                                class="text-xs text-[var(--text-accent)] hover:underline">
+                            ${ allVisibleSelected ? 'Clear all' : 'Select all' }
+                        </button>
+                        <span class="text-xs text-[var(--text-muted)]">
+                            ${ selectedCount } selected
+                        </span>
+                    </div>
+                </div>
+
                 <div v-for="group in groupedRecordings" :key="group.title" class="mb-6">
                     <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
                         ${group.title}
@@ -310,18 +337,27 @@
                     <div class="space-y-1">
                         <div v-for="recording in group.items"
                              :key="recording.id"
-                             @click="selectRecording(recording)"
+                             @click="selectionMode ? toggleSelection(recording.id) : selectRecording(recording)"
                              :class="[
                                  'p-3 rounded-lg cursor-pointer transition-all duration-200 border-2',
-                                 selectedRecording?.id === recording.id
+                                 selectionMode && isSelected(recording.id)
                                      ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
-                                     : recording.is_shared
-                                         ? 'bg-[var(--bg-secondary)] border-[var(--bg-tertiary)] hover:bg-[var(--bg-accent-hover)]'
-                                         : 'bg-[var(--bg-tertiary)] border-transparent hover:bg-[var(--bg-accent-hover)]'
+                                     : selectedRecording?.id === recording.id && !selectionMode
+                                         ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
+                                         : recording.is_shared
+                                             ? 'bg-[var(--bg-secondary)] border-[var(--bg-tertiary)] hover:bg-[var(--bg-accent-hover)]'
+                                             : 'bg-[var(--bg-tertiary)] border-transparent hover:bg-[var(--bg-accent-hover)]'
                              ]">
                             <!-- Title and Status Row -->
                             <div class="flex items-center justify-between mb-1">
-                                <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                                <!-- Checkbox for selection mode -->
+                                <div v-if="selectionMode" @click.stop="toggleSelection(recording.id)" class="flex-shrink-0 mr-2">
+                                    <input type="checkbox"
+                                           :checked="isSelected(recording.id)"
+                                           class="selection-checkbox"
+                                           @click.stop="toggleSelection(recording.id)">
+                                </div>
+                                <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id && !selectionMode ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
                                     ${ recording.title || t('common.untitled') }
                                 </h4>
                                 <div class="flex items-center gap-0.5 flex-shrink-0">

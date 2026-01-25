@@ -1,0 +1,85 @@
+<!-- Bulk Action Bar - Fixed at bottom when in selection mode -->
+<transition name="slide-up">
+    <div v-if="selectionMode && selectedCount > 0"
+         class="fixed bottom-0 left-0 right-0 bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] shadow-lg z-50 transform transition-transform duration-300"
+         :class="{ 'translate-y-full': bulkActionInProgress }">
+        <div class="max-w-4xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between gap-4">
+                <!-- Selection info -->
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium text-[var(--text-primary)]">
+                        ${ selectedCount } selected
+                    </span>
+                    <button @click="selectAll"
+                            v-if="!allVisibleSelected"
+                            class="text-xs text-[var(--text-accent)] hover:underline">
+                        Select all
+                    </button>
+                    <button @click="clearSelection"
+                            class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                        Clear
+                    </button>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex items-center gap-2">
+                    <!-- Tags -->
+                    <button @click="openBulkTagModal('add')"
+                            class="px-3 py-2 text-sm bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors flex items-center gap-2"
+                            title="Add or remove tags">
+                        <i class="fas fa-tags text-[var(--text-muted)]"></i>
+                        <span class="hidden sm:inline">Tags</span>
+                    </button>
+
+                    <!-- Inbox Toggle -->
+                    <button @click="bulkToggleInbox()"
+                            class="px-3 py-2 text-sm bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors flex items-center gap-2"
+                            title="Toggle inbox status">
+                        <i class="fas fa-inbox text-blue-500"></i>
+                        <span class="hidden sm:inline">Inbox</span>
+                    </button>
+
+                    <!-- Star Toggle -->
+                    <button @click="bulkToggleHighlight()"
+                            class="px-3 py-2 text-sm bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors flex items-center gap-2"
+                            title="Toggle highlight">
+                        <i class="fas fa-star text-amber-500"></i>
+                        <span class="hidden sm:inline">Star</span>
+                    </button>
+
+                    <!-- Reprocess -->
+                    <button @click="openBulkReprocessModal"
+                            class="px-3 py-2 text-sm bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors flex items-center gap-2"
+                            title="Reprocess transcription or summary">
+                        <i class="fas fa-redo text-[var(--text-muted)]"></i>
+                        <span class="hidden sm:inline">Reprocess</span>
+                    </button>
+
+                    <!-- Delete -->
+                    <button @click="openBulkDeleteModal"
+                            class="px-3 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                            title="Delete selected recordings">
+                        <i class="fas fa-trash"></i>
+                        <span class="hidden sm:inline">Delete</span>
+                    </button>
+
+                    <!-- Close selection mode -->
+                    <button @click="exitSelectionMode"
+                            class="px-2 py-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors ml-2"
+                            title="Exit selection mode">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div v-if="bulkActionInProgress"
+             class="absolute inset-0 bg-[var(--bg-secondary)] bg-opacity-80 flex items-center justify-center">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-spinner fa-spin text-lg text-[var(--text-accent)]"></i>
+                <span class="text-sm text-[var(--text-secondary)]">Processing...</span>
+            </div>
+        </div>
+    </div>
+</transition>
