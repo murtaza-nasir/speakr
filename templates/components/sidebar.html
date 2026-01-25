@@ -247,6 +247,48 @@
                     loadMoreRecordings();
                 }
              }">
+
+            <!-- Incognito Recording (styled like a regular recording item with a subtle indicator) -->
+            <div v-if="enableIncognitoMode && incognitoRecording"
+                 @click="selectIncognitoRecording"
+                 :class="[
+                     'group mb-3 p-3 rounded-lg cursor-pointer transition-all duration-200',
+                     selectedRecording?.id === 'incognito'
+                         ? 'bg-[var(--bg-accent)] border-l-4 border-[var(--border-accent)]'
+                         : 'bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] border-l-4 border-transparent hover:border-[var(--border-secondary)]'
+                 ]">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-medium text-sm text-[var(--text-primary)] truncate">
+                                ${ incognitoRecording.title || 'Incognito Recording' }
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <!-- Incognito pill badge (matches tag style with contrasting border) -->
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-violet-500/15 dark:bg-violet-500/25 text-violet-700 dark:text-violet-300 ring-1 ring-violet-400/50 dark:ring-violet-500/50">
+                                <i class="fas fa-user-secret mr-1" style="font-size: 9px;"></i>
+                                Incognito
+                            </span>
+                            <!-- Duration pill -->
+                            <span v-if="incognitoRecording.audio_duration_seconds" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] text-[var(--text-muted)] bg-[var(--bg-tertiary)]">
+                                <i class="fas fa-clock mr-1" style="font-size: 8px;"></i>
+                                ${ Math.floor(incognitoRecording.audio_duration_seconds / 60) }:${ String(incognitoRecording.audio_duration_seconds % 60).padStart(2, '0') }
+                            </span>
+                        </div>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-1.5 opacity-70">
+                            <i class="fas fa-eye-slash mr-1"></i>
+                            Session only
+                        </p>
+                    </div>
+                    <button @click.stop="clearIncognitoRecordingWithConfirm"
+                            class="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
+                            title="Discard">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
             <div v-if="isLoadingRecordings && recordings.length === 0" class="text-center py-8">
                 <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
                 <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.loadingRecordings')"></p>

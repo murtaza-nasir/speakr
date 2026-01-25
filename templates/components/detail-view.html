@@ -1,5 +1,27 @@
 <!-- Detail View Container -->
 <div v-if="currentView === 'detail' && selectedRecording" class="flex-1 flex flex-col overflow-hidden">
+    <!-- Incognito Mode Indicator Bar -->
+    <div v-if="selectedRecording.incognito" class="bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-violet-500/10 border-b border-violet-300/30 dark:border-violet-500/30 px-4 py-2 flex-shrink-0">
+        <div class="flex items-center justify-between gap-4 max-w-4xl mx-auto">
+            <div class="flex items-center gap-3">
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                    <i class="fas fa-user-secret text-white text-xs"></i>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-sm font-medium text-violet-700 dark:text-violet-300">Incognito</span>
+                    <span class="text-xs text-violet-600/80 dark:text-violet-400/80">
+                        &bull; Session only &bull; Not saved to account
+                    </span>
+                </div>
+            </div>
+            <button @click="clearIncognitoRecordingWithConfirm"
+                    class="flex-shrink-0 px-2.5 py-1 text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                    title="Discard this recording">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
     <!-- Mobile View -->
     <div v-if="isMobile" class="flex flex-col h-full overflow-hidden">
         {% include 'components/detail/mobile-header.html' %}

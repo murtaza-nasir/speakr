@@ -3,6 +3,8 @@
  * Handles loading, selecting, filtering, and managing recordings
  */
 
+import * as IncognitoStorage from '../db/incognito-storage.js';
+
 export function useRecordings(state, utils, reprocessComposable) {
     const {
         recordings, selectedRecording, isLoadingRecordings, isLoadingMore,
@@ -13,7 +15,9 @@ export function useRecordings(state, utils, reprocessComposable) {
         availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
-        speakerColorMap
+        speakerColorMap,
+        // Incognito mode
+        incognitoRecording
     } = state;
 
     const { setGlobalError, showToast } = utils;
@@ -166,6 +170,18 @@ export function useRecordings(state, utils, reprocessComposable) {
             if (!confirm('You have an unsaved recording. Are you sure you want to leave?')) {
                 return;
             }
+        }
+
+        // Check if switching away from incognito recording to a regular recording
+        if (incognitoRecording && incognitoRecording.value &&
+            selectedRecording.value?.id === 'incognito' &&
+            recording?.id !== 'incognito') {
+            if (!confirm('Switching to another recording will discard your incognito recording. Continue?')) {
+                return;
+            }
+            // Clear incognito recording
+            IncognitoStorage.clearIncognitoRecording();
+            incognitoRecording.value = null;
         }
 
         // Reset modal audio state when switching recordings

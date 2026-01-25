@@ -47,6 +47,12 @@ export function createCoreState(ref, computed) {
     const enableArchiveToggle = ref(false);
     const showUsernamesInUI = ref(false);
 
+    // --- Incognito Mode State ---
+    const enableIncognitoMode = ref(false);  // Server config - whether feature is available
+    const incognitoMode = ref(false);  // User toggle - whether to use incognito for current upload
+    const incognitoRecording = ref(null);
+    const incognitoProcessing = ref(false);
+
     // Tag Selection
     const availableTags = ref([]);
     const selectedTagIds = ref([]);
@@ -135,6 +141,12 @@ export function createCoreState(ref, computed) {
         filteredRecordings,
 
         // Speakers
-        availableSpeakers
+        availableSpeakers,
+
+        // Incognito Mode
+        enableIncognitoMode,
+        incognitoMode,
+        incognitoRecording,
+        incognitoProcessing
     };
 }
