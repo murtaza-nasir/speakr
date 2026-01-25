@@ -6,13 +6,14 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.1 - Bug Fixes"
-    **Minor improvements and fixes**
+!!! info "Latest Release: v0.8.5 - Bulk Operations & Privacy Features"
+    **Multi-select, incognito mode, and playback speed control**
 
-    - **Diarization for Long Files** - Fixed speaker diarization for chunked files with OpenAI's `gpt-4o-transcribe-diarize`
-    - **Empty Segment Filtering** - Removed empty transcript segments from diarized output
+    - **Multi-Select Mode** - Select multiple recordings in sidebar for batch operations (delete, tag, reprocess, toggle inbox/highlight)
+    - **Incognito Mode** - Session-only transcription processing with no database storage (enable with `ENABLE_INCOGNITO_MODE=true`)
+    - **Playback Speed Control** - Adjustable 0.5x to 3x speed on all audio players with persistent preference
 
-    See [v0.8.0 release notes](#version-080) for the full connector architecture and REST API features.
+    See the [v0.8.0 release notes](#version-080) for the full connector architecture and REST API features.
 
 ## Quick Navigation
 

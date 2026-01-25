@@ -54,6 +54,19 @@ Search across all your recordings using natural language questions instead of ke
 
 ## Organization and Management
 
+### Bulk Operations
+
+Select multiple recordings in the sidebar to perform batch operations efficiently. Enter multi-select mode by clicking the checkbox icon or using keyboard shortcuts, then select individual recordings or use Ctrl/Cmd+A to select all visible recordings.
+
+**Available bulk actions:**
+
+- **Delete** - Remove multiple recordings at once with confirmation
+- **Add/Remove Tags** - Apply or remove tags from all selected recordings
+- **Reprocess** - Regenerate transcriptions or summaries for multiple recordings
+- **Toggle Inbox/Highlight** - Mark recordings as inbox items or toggle highlight status
+
+The floating action bar appears when recordings are selected, showing the count and available operations. Press Escape to exit multi-select mode or click outside the selection area.
+
 ### Tagging System
 
 Organize recordings with a flexible [tagging system](user-guide/settings.md#tag-management-tab) that goes beyond simple labels. Tags can include [custom AI prompts](admin-guide/prompts.md) for specialized processing. Each tag can carry [custom AI prompts](admin-guide/prompts.md) and transcription settings, enabling automatic specialized processing based on content type, automatically applying specialized processing to tagged recordings. Tags use colors for visual organization and stack intelligently when multiple tags apply to the same recording.
@@ -174,6 +187,14 @@ Install Speakr as a progressive web app for a native-like experience on any devi
 ### Dark Mode
 
 Reduce eye strain with a full dark mode implementation that affects every interface element. The theme preference persists across sessions and devices, automatically applying your choice whenever you log in.
+
+### Playback Speed Control
+
+Adjust audio playback speed from 0.5x to 3x on all audio players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.
+
+### Incognito Mode
+
+Process transcriptions without saving anything to the database. When incognito mode is enabled (`ENABLE_INCOGNITO_MODE=true`), users can upload and transcribe audio files with the assurance that the audio is deleted immediately after processing and no record is stored in the database. Close the tab and it's gone - perfect for sensitive content that shouldn't persist.
 
 ### Responsive Design
 
