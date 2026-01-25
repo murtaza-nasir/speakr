@@ -14,7 +14,6 @@ export function useBulkOperations({
     availableTags,
     showToast,
     setGlobalError,
-    exitSelectionMode,
     startReprocessingPoll
 }) {
     // Modal state
@@ -79,10 +78,11 @@ export function useBulkOperations({
                 selectedRecording.value = null;
             }
 
+            // Remove deleted IDs from selection
+            deletedIds.forEach(id => selectedRecordingIds.value.delete(id));
+
             const count = deletedIds.size;
             showToast(`${count} recording${count !== 1 ? 's' : ''} deleted`, 'fa-trash', 3000, 'success');
-
-            exitSelectionMode();
         } catch (error) {
             console.error('Bulk delete error:', error);
             setGlobalError(`Failed to delete recordings: ${error.message}`);
@@ -181,8 +181,6 @@ export function useBulkOperations({
             const count = data.affected_ids?.length || ids.length;
             const actionText = action === 'add' ? 'added to' : 'removed from';
             showToast(`Tag ${actionText} ${count} recording${count !== 1 ? 's' : ''}`, 'fa-tags', 3000, 'success');
-
-            exitSelectionMode();
         } catch (error) {
             console.error('Bulk tag error:', error);
             setGlobalError(`Failed to ${action} tag: ${error.message}`);
@@ -251,8 +249,6 @@ export function useBulkOperations({
             const count = queuedIds.size;
             const typeText = bulkReprocessType.value === 'transcription' ? 'Transcription' : 'Summary';
             showToast(`${typeText} reprocessing queued for ${count} recording${count !== 1 ? 's' : ''}`, 'fa-sync-alt', 3000, 'success');
-
-            exitSelectionMode();
         } catch (error) {
             console.error('Bulk reprocess error:', error);
             setGlobalError(`Failed to queue reprocessing: ${error.message}`);
@@ -312,8 +308,6 @@ export function useBulkOperations({
             const count = affectedIds.size;
             const actionText = value ? 'added to' : 'removed from';
             showToast(`${count} recording${count !== 1 ? 's' : ''} ${actionText} inbox`, 'fa-inbox', 3000, 'success');
-
-            exitSelectionMode();
         } catch (error) {
             console.error('Bulk toggle inbox error:', error);
             setGlobalError(`Failed to update inbox status: ${error.message}`);
@@ -369,8 +363,6 @@ export function useBulkOperations({
             const count = affectedIds.size;
             const actionText = value ? 'highlighted' : 'unhighlighted';
             showToast(`${count} recording${count !== 1 ? 's' : ''} ${actionText}`, 'fa-star', 3000, 'success');
-
-            exitSelectionMode();
         } catch (error) {
             console.error('Bulk toggle highlight error:', error);
             setGlobalError(`Failed to update highlight status: ${error.message}`);
