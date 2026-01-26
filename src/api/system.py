@@ -33,6 +33,7 @@ USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
+INCOGNITO_MODE_DEFAULT = os.environ.get('INCOGNITO_MODE_DEFAULT', 'false').lower() == 'true'
 
 # Import chunking service (will be set from app)
 chunking_service = None
@@ -236,6 +237,7 @@ def get_config():
             'can_delete_recordings': can_delete,
             'users_can_delete_enabled': USERS_CAN_DELETE,
             'enable_incognito_mode': ENABLE_INCOGNITO_MODE,
+            'incognito_mode_default': INCOGNITO_MODE_DEFAULT,
             **chunking_info
         })
     except Exception as e:
