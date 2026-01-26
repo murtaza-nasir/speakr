@@ -2149,6 +2149,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableArchiveToggle.value = config.enable_archive_toggle === true;
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
+                        // Set default incognito mode state if feature enabled and default is true
+                        if (config.enable_incognito_mode && config.incognito_mode_default) {
+                            incognitoMode.value = true;
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to load config:', error);
