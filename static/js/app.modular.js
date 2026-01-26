@@ -2035,6 +2035,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Destroy editor when leaving recording view
                     uiComposable.destroyRecordingNotesEditor();
                 }
+
+                // Clear incognito data when navigating away from detail view
+                // This ensures incognito data doesn't linger when user goes to upload/recording view
+                if (oldView === 'detail' && newView !== 'detail') {
+                    if (uploadComposable.hasIncognitoRecording()) {
+                        console.log('[Incognito] Clearing data on view change from detail');
+                        sessionStorage.removeItem('speakr_incognito_recording');
+                        incognitoRecording.value = null;
+                    }
+                }
             });
 
             // Watch for mobile tab changes to reinitialize editors if still in edit mode
@@ -2116,6 +2126,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     loadTokenBudget()
                 ]);
 
+                // Clean up orphaned incognito data if we're not viewing incognito recording
+                // This can happen if user navigated away without the cleanup triggering
+                if (uploadComposable.hasIncognitoRecording() && selectedRecording.value?.id !== 'incognito') {
+                    console.log('[App] Cleaning up orphaned incognito data from sessionStorage');
+                    sessionStorage.removeItem('speakr_incognito_recording');
+                    incognitoRecording.value = null;
+                }
+
                 // Load config
                 try {
                     const response = await fetch('/api/config');
@@ -2186,7 +2204,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return 'You have an unsaved recording. Are you sure you want to leave?';
                     }
                     // Check for incognito recording that would be lost
-                    if (uploadComposable.hasIncognitoRecording()) {
+                    // Only warn if we're currently viewing the incognito recording
+                    // (if user navigated away, they've implicitly abandoned it or already been warned)
+                    if (uploadComposable.hasIncognitoRecording() && selectedRecording.value?.id === 'incognito') {
                         e.preventDefault();
                         e.returnValue = ''; // Chrome requires this
                         return 'You have an incognito recording that will be lost. Are you sure you want to leave?';
