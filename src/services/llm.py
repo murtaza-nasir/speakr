@@ -40,6 +40,9 @@ CHAT_MODEL_NAME = os.environ.get("CHAT_MODEL_NAME")
 CHAT_GPT5_REASONING_EFFORT = os.environ.get("CHAT_GPT5_REASONING_EFFORT")
 CHAT_GPT5_VERBOSITY = os.environ.get("CHAT_GPT5_VERBOSITY")
 
+# Streaming options - disable for LLM servers that don't support OpenAI's stream_options
+ENABLE_STREAM_OPTIONS = os.environ.get("ENABLE_STREAM_OPTIONS", "true").lower() == "true"
+
 
 def get_chat_config():
     """
@@ -185,7 +188,8 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         }
 
         # Add stream_options to get usage in final chunk for streaming
-        if stream:
+        # Some LLM servers don't support this OpenAI-specific option
+        if stream and ENABLE_STREAM_OPTIONS:
             completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
@@ -308,7 +312,8 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         }
 
         # Add stream_options to get usage in final chunk for streaming
-        if stream:
+        # Some LLM servers don't support this OpenAI-specific option
+        if stream and ENABLE_STREAM_OPTIONS:
             completion_args["stream_options"] = {"include_usage": True}
 
         if using_gpt5:
