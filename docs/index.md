@@ -6,12 +6,12 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.5 - Bulk Operations & Privacy Features"
-    **Multi-select, incognito mode, and playback speed control**
+!!! info "Latest Release: v0.8.5.1 - Incognito Mode Enhancements"
+    **In-app recording support, default incognito option, and LLM compatibility fixes**
 
-    - **Multi-Select Mode** - Select multiple recordings in sidebar for batch operations (delete, tag, reprocess, toggle inbox/highlight)
-    - **Incognito Mode** - Session-only transcription processing with no database storage (enable with `ENABLE_INCOGNITO_MODE=true`)
-    - **Playback Speed Control** - Adjustable 0.5x to 3x speed on all audio players with persistent preference
+    - **Incognito Mode for In-App Recordings** - The incognito toggle now works for microphone recordings, not just uploads
+    - **Default Incognito Mode** - New `INCOGNITO_MODE_DEFAULT=true` option to start with incognito enabled
+    - **LLM Streaming Compatibility** - New `ENABLE_STREAM_OPTIONS=false` for LLM servers with limited OpenAI API support
 
     See the [v0.8.0 release notes](#version-080) for the full connector architecture and REST API features.
 

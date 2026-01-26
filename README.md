@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.5-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.5.1-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -160,15 +160,21 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.5)
+## Latest Release (v0.8.5.1)
+
+**Incognito Mode Enhancements & Compatibility Fixes**
+
+- **Incognito Mode for In-App Recordings** - The incognito toggle now works for microphone recordings, not just uploads
+- **Default Incognito Mode** - New `INCOGNITO_MODE_DEFAULT=true` option to start with incognito enabled by default
+- **LLM Streaming Compatibility** - New `ENABLE_STREAM_OPTIONS=false` option for LLM servers that don't support OpenAI's stream_options parameter
+
+### Previous Release (v0.8.5)
 
 **Bulk Operations & Privacy Features**
 
 - **Multi-Select Mode** - Select multiple recordings in sidebar for batch operations (delete, tag, reprocess, toggle inbox/highlight)
 - **Incognito Mode** - Session-only transcription processing with no database storage (enable with `ENABLE_INCOGNITO_MODE=true`)
 - **Playback Speed Control** - Adjustable 0.5x to 3x speed on all audio players with persistent preference
-
-**Bug Fixes** - Fixed app context error in chat streaming generator
 
 ### Previous Release (v0.8.4)
 
