@@ -4,6 +4,7 @@
  */
 
 import * as RecordingDB from '../db/recording-persistence.js';
+import * as IncognitoStorage from '../db/incognito-storage.js';
 
 export function useAudio(state, utils) {
     const {
@@ -15,7 +16,10 @@ export function useAudio(state, utils) {
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
-        progressPopupMinimized, progressPopupClosed
+        progressPopupMinimized, progressPopupClosed,
+        // Incognito mode
+        enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
+        processingMessage, processingProgress, selectedRecording
     } = state;
 
     const { showToast, setGlobalError, formatFileSize, startUploadQueue } = utils;
@@ -543,6 +547,128 @@ export function useAudio(state, utils) {
         }
     };
 
+    // Upload recorded audio in incognito mode
+    const uploadRecordedAudioIncognito = async () => {
+        if (!audioBlobURL.value) {
+            setGlobalError("No recorded audio to upload.");
+            return;
+        }
+
+        // Check if incognito state is available
+        if (!incognitoProcessing || !incognitoRecording) {
+            console.warn('[Incognito] Incognito state not available, falling back to normal upload');
+            uploadRecordedAudio();
+            return;
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const recordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+
+        incognitoProcessing.value = true;
+        processingMessage.value = 'Processing recording in incognito mode...';
+        processingProgress.value = 10;
+        progressPopupMinimized.value = false;
+        progressPopupClosed.value = false;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', recordedFile);
+
+            // Add ASR options
+            if (asrLanguage.value) {
+                formData.append('language', asrLanguage.value);
+            }
+            if (asrMinSpeakers.value && asrMinSpeakers.value !== '') {
+                formData.append('min_speakers', asrMinSpeakers.value.toString());
+            }
+            if (asrMaxSpeakers.value && asrMaxSpeakers.value !== '') {
+                formData.append('max_speakers', asrMaxSpeakers.value.toString());
+            }
+
+            // Request auto-summarization
+            formData.append('auto_summarize', 'true');
+
+            processingMessage.value = 'Uploading recording for incognito processing...';
+            processingProgress.value = 20;
+
+            console.log('[Incognito] Uploading recorded audio');
+
+            const response = await fetch('/api/recordings/incognito', {
+                method: 'POST',
+                body: formData
+            });
+
+            processingProgress.value = 50;
+
+            // Parse response
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+                throw new Error(titleMatch?.[1] || `Server error (${response.status})`);
+            }
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Processing failed with status ${response.status}`);
+            }
+
+            processingProgress.value = 80;
+            processingMessage.value = 'Processing complete!';
+
+            // Store result in sessionStorage
+            const incognitoData = {
+                id: 'incognito',
+                incognito: true,
+                title: data.title || 'Incognito Recording',
+                transcription: data.transcription,
+                summary: data.summary,
+                summary_html: data.summary_html,
+                created_at: data.created_at,
+                original_filename: data.original_filename,
+                file_size: data.file_size,
+                audio_duration_seconds: data.audio_duration_seconds,
+                processing_time_seconds: data.processing_time_seconds,
+                status: 'COMPLETED'
+            };
+
+            IncognitoStorage.saveIncognitoRecording(incognitoData);
+            incognitoRecording.value = incognitoData;
+
+            // Clear IndexedDB session
+            try {
+                await RecordingDB.clearRecordingSession();
+            } catch (dbError) {
+                console.warn('[Recording] Failed to clear IndexedDB session:', dbError);
+            }
+
+            // Clear recording state
+            discardRecording();
+
+            processingProgress.value = 100;
+            processingMessage.value = 'Incognito recording ready!';
+
+            // Auto-select the incognito recording and switch to detail view
+            selectedRecording.value = incognitoData;
+            currentView.value = 'detail';
+
+            // Reset incognito mode toggle
+            incognitoMode.value = false;
+
+            // Show toast
+            showToast('Incognito recording processed - data will be lost when tab closes', 'fa-user-secret');
+
+            console.log('[Incognito] Recording processing complete');
+
+        } catch (error) {
+            console.error('[Incognito] Recording processing failed:', error);
+            setGlobalError(`Incognito processing failed: ${error.message}`);
+        } finally {
+            incognitoProcessing.value = false;
+        }
+    };
+
     // Discard recording
     const discardRecording = async () => {
         if (audioBlobURL.value) {
@@ -731,6 +857,7 @@ export function useAudio(state, utils) {
         stopRecording,
         discardRecording,
         uploadRecordedAudio,
+        uploadRecordedAudioIncognito,
         acceptRecordingDisclaimer,
         cancelRecordingDisclaimer,
         updateFileSizeEstimate,

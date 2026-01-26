@@ -256,13 +256,66 @@
                     </div>
                 </div>
 
+                <!-- Incognito Mode Toggle (only shown if feature is enabled) -->
+                <div v-if="enableIncognitoMode" class="mb-3">
+                    <button @click="incognitoMode = !incognitoMode"
+                            :class="[
+                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all duration-200',
+                                incognitoMode
+                                    ? 'bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-400/50 dark:border-violet-500/50'
+                                    : 'bg-[var(--bg-tertiary)] border-[var(--border-secondary)] hover:border-[var(--border-focus)]'
+                            ]">
+                        <div class="flex items-center gap-3">
+                            <div :class="[
+                                'w-8 h-8 rounded-full flex items-center justify-center transition-all',
+                                incognitoMode
+                                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
+                            ]">
+                                <i class="fas fa-user-secret text-sm"></i>
+                            </div>
+                            <div class="text-left">
+                                <span :class="['text-sm font-medium', incognitoMode ? 'text-violet-700 dark:text-violet-300' : 'text-[var(--text-secondary)]']">
+                                    Incognito Mode
+                                </span>
+                                <p v-if="!incognitoMode" class="text-[10px] text-[var(--text-muted)]">
+                                    Process without saving
+                                </p>
+                                <p v-else class="text-[10px] text-violet-600 dark:text-violet-400">
+                                    Session only &bull; Not saved to account
+                                </p>
+                            </div>
+                        </div>
+                        <div :class="[
+                            'w-10 h-5 rounded-full relative transition-all duration-200',
+                            incognitoMode ? 'bg-gradient-to-r from-violet-500 to-purple-500' : 'bg-[var(--bg-secondary)]'
+                        ]">
+                            <div :class="[
+                                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200',
+                                incognitoMode ? 'left-5' : 'left-0.5'
+                            ]"></div>
+                        </div>
+                    </button>
+                </div>
+
                 <!-- Upload/Discard Buttons -->
                 <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button @click="uploadRecordedAudio"
-                        class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
-                    <i class="fas fa-upload"></i>
-                    <span v-text="t('help.uploadRecordingNotes')"></span>
-                </button>
+                    <!-- Normal Upload Button -->
+                    <button v-if="!incognitoMode || !enableIncognitoMode"
+                            @click="uploadRecordedAudio"
+                            class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
+                        <i class="fas fa-upload"></i>
+                        <span v-text="t('help.uploadRecordingNotes')"></span>
+                    </button>
+                    <!-- Incognito Upload Button -->
+                    <button v-else
+                            @click="uploadRecordedAudioIncognito"
+                            :disabled="incognitoProcessing"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-sm">
+                        <i :class="incognitoProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-user-secret'"></i>
+                        <span v-if="incognitoProcessing">Processing...</span>
+                        <span v-else>Process in Incognito</span>
+                    </button>
                     <button @click="discardRecording"
                             class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
                         <i class="fas fa-trash"></i>
