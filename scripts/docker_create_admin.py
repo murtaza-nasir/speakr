@@ -50,9 +50,10 @@ def create_admin_user_from_env():
         print("Error: Username must be at least 3 characters long.")
         sys.exit(1)
     
-    # Validate email
+    # Validate email (skip DNS/MX check if SKIP_EMAIL_DOMAIN_CHECK=true)
+    skip_domain_check = os.environ.get('SKIP_EMAIL_DOMAIN_CHECK', 'false').lower() == 'true'
     try:
-        validate_email(email)
+        validate_email(email, check_deliverability=not skip_domain_check)
     except EmailNotValidError as e:
         print(f"Error: Invalid email: {str(e)}")
         sys.exit(1)
