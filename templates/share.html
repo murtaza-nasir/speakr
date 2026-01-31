@@ -216,7 +216,7 @@
                     <div v-show="activeTab === 'transcription'" class="w-full flex-1 flex flex-col overflow-hidden">
                         <!-- Transcription Controls -->
                         <div class="flex items-center justify-between mb-4 flex-shrink-0">
-                            <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
+                            <div v-if="hasDialogue" class="view-mode-toggle">
                                 <button @click="transcriptView = 'simple'"
                                         :class="['toggle-button', transcriptView === 'simple' ? 'active' : '']">
                                     <i class="fas fa-list mr-1"></i>Simple
@@ -232,65 +232,64 @@
                         </div>
 
                         <!-- Speaker Legend (only for bubble view) -->
-                        <div v-if="processedTranscription.hasDialogue && processedTranscription.speakers.length > 0 && transcriptView === 'bubble'"
+                        {% if transcript.has_speakers and transcript.speakers %}
+                        <div v-show="transcriptView === 'bubble'"
                              :class="['speaker-legend', legendExpanded ? 'expanded' : '', 'flex-shrink-0', 'mb-4']">
                             <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
                                 <div class="speaker-legend-title">
                                     <i class="fas fa-users"></i>
                                     Speakers
-                                    <span class="speaker-count-indicator">(${processedTranscription.speakers.length})</span>
+                                    <span class="speaker-count-indicator">({{ transcript.speakers|length }})</span>
                                 </div>
                                 <i class="fas fa-chevron-down speaker-legend-toggle"></i>
                             </div>
                             <div class="speaker-legend-content">
-                                <div v-for="(speaker, index) in processedTranscription.speakers"
-                                     :key="index"
-                                     :class="['speaker-legend-item', speaker.color]">
-                                    <span class="speaker-name">${speaker.name}</span>
+                                {% for speaker in transcript.speakers %}
+                                <div class="speaker-legend-item {{ speaker.color }}">
+                                    <span class="speaker-name">{{ speaker.name }}</span>
                                 </div>
+                                {% endfor %}
                             </div>
                         </div>
+                        {% endif %}
 
-                        <!-- Transcription Content - Scrollable Box -->
+                        <!-- Transcription Content - Scrollable Box (Server-rendered for accessibility) -->
                         <div class="w-full flex-1 overflow-y-auto transcription-box" @click="handleTranscriptClick">
-                            <!-- Simple View -->
-                            <div v-if="transcriptView === 'simple'" class="transcription-simple-view">
-                                <div v-for="segment in processedTranscription.simpleSegments"
-                                     :key="segment.startTime || Math.random()"
-                                     class="speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2"
-                                     :data-start-time="segment.startTime"
-                                     @click="seekAudio(segment.startTime)"
+                            {% if transcript.is_json and transcript.segments %}
+                            <!-- Simple View (server-rendered) -->
+                            <div v-show="transcriptView === 'simple'" class="transcription-simple-view">
+                                {% for segment in transcript.segments %}
+                                <div class="speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2"
+                                     data-start-time="{{ segment.start_time }}"
                                      style="margin-bottom: 0.5rem !important;">
-                                    <div v-if="segment.showSpeaker" :class="['speaker-tablet', segment.color]">
-                                        ${segment.speaker}
-                                    </div>
-                                    <div class="speaker-text">
-                                        ${segment.sentence}
-                                    </div>
+                                    {% if segment.show_speaker and segment.speaker %}
+                                    <div class="speaker-tablet {{ segment.color }}">{{ segment.speaker }}</div>
+                                    {% endif %}
+                                    <div class="speaker-text">{{ segment.text }}</div>
                                 </div>
+                                {% endfor %}
                             </div>
 
-                            <!-- Bubble View -->
-                            <div v-else-if="transcriptView === 'bubble'" class="transcription-with-speakers">
-                                <div v-for="(row, rowIndex) in processedTranscription.bubbleRows"
-                                     :key="rowIndex"
-                                     :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
-                                    <div v-for="bubble in row.bubbles"
-                                         :key="bubble.startTime || Math.random()"
-                                         :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', 'cursor-pointer']"
-                                         :data-start-time="bubble.startTime"
-                                         @click="seekAudio(bubble.startTime)">
-                                        <div class="speaker-bubble-content">
-                                            ${bubble.sentence}
-                                        </div>
+                            <!-- Bubble View (server-rendered) -->
+                            <div v-show="transcriptView === 'bubble'" class="transcription-with-speakers">
+                                {% set ns = namespace(last_speaker=None) %}
+                                {% for segment in transcript.segments %}
+                                {% if segment.speaker != ns.last_speaker %}
+                                {% if not loop.first %}</div>{% endif %}
+                                <div class="bubble-row {% if segment.speaker and 'me' in segment.speaker|lower %}speaker-me{% endif %}">
+                                {% endif %}
+                                    <div class="speaker-bubble {{ segment.color }} {% if segment.speaker and 'me' in segment.speaker|lower %}speaker-me{% endif %} cursor-pointer"
+                                         data-start-time="{{ segment.start_time }}">
+                                        <div class="speaker-bubble-content">{{ segment.text }}</div>
                                     </div>
-                                </div>
+                                {% set ns.last_speaker = segment.speaker %}
+                                {% endfor %}
+                                {% if transcript.segments %}</div>{% endif %}
                             </div>
-
+                            {% else %}
                             <!-- Plain Text View (for non-JSON transcriptions) -->
-                            <div v-if="!processedTranscription.isJson" class="whitespace-pre-wrap cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors">
-                                ${processedTranscription.content}
-                            </div>
+                            <div class="whitespace-pre-wrap cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors">{{ transcript.plain_text }}</div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -364,6 +363,10 @@
                 const audioPlayer = ref(null);
                 const legendExpanded = ref(false);
                 const isDarkMode = ref(document.documentElement.classList.contains('dark'));
+
+                // Server-rendered transcript info (avoids duplicate JSON parsing)
+                const hasDialogue = ref({{ 'true' if transcript.has_speakers else 'false' }});
+                const plainTextTranscript = {{ transcript.plain_text|tojson|safe }};
 
                 // Custom audio player state
                 const audioIsPlaying = ref(false);
@@ -488,96 +491,8 @@
                     }
                 }
 
-                const processedTranscription = computed(() => {
-                    if (!recording.value?.transcription) {
-                        return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [] };
-                    }
-
-                    const transcription = recording.value.transcription;
-                    let transcriptionData;
-
-                    try {
-                        transcriptionData = JSON.parse(transcription);
-                    } catch (e) {
-                        transcriptionData = null;
-                    }
-
-                    if (transcriptionData && Array.isArray(transcriptionData)) {
-                        const wasDiarized = transcriptionData.some(segment => segment.speaker);
-
-                        if (!wasDiarized) {
-                            const segments = transcriptionData.map(segment => ({
-                                sentence: segment.sentence,
-                                startTime: segment.start_time,
-                            }));
-                            return {
-                                hasDialogue: false,
-                                isJson: true,
-                                content: segments.map(s => s.sentence).join('\n'),
-                                simpleSegments: segments,
-                                speakers: [],
-                                bubbleRows: []
-                            };
-                        }
-
-                        const speakers = [...new Set(transcriptionData.map(segment => segment.speaker).filter(Boolean))];
-                        const speakerColors = {};
-                        speakers.forEach((speaker, index) => {
-                            speakerColors[speaker] = `speaker-color-${(index % 8) + 1}`;
-                        });
-
-                        const simpleSegments = transcriptionData.map(segment => ({
-                            speakerId: segment.speaker,
-                            speaker: segment.speaker,
-                            sentence: segment.sentence,
-                            startTime: segment.start_time || segment.startTime,
-                            endTime: segment.end_time || segment.endTime,
-                            color: speakerColors[segment.speaker] || 'speaker-color-1'
-                        }));
-
-                        const processedSimpleSegments = [];
-                        let lastSpeaker = null;
-                        simpleSegments.forEach(segment => {
-                            processedSimpleSegments.push({
-                                ...segment,
-                                showSpeaker: segment.speaker !== lastSpeaker
-                            });
-                            lastSpeaker = segment.speaker;
-                        });
-
-                        const bubbleRows = [];
-                        let lastBubbleSpeaker = null;
-                        simpleSegments.forEach(segment => {
-                            if (bubbleRows.length === 0 || segment.speaker !== lastBubbleSpeaker) {
-                                bubbleRows.push({
-                                    speaker: segment.speaker,
-                                    color: segment.color,
-                                    isMe: segment.speaker && (typeof segment.speaker === 'string') && segment.speaker.toLowerCase().includes('me'),
-                                    bubbles: []
-                                });
-                                lastBubbleSpeaker = segment.speaker;
-                            }
-                            bubbleRows[bubbleRows.length - 1].bubbles.push({
-                                sentence: segment.sentence,
-                                startTime: segment.startTime || segment.start_time,
-                                color: segment.color
-                            });
-                        });
-
-                        return {
-                            hasDialogue: true,
-                            isJson: true,
-                            segments: simpleSegments,
-                            simpleSegments: processedSimpleSegments,
-                            bubbleRows: bubbleRows,
-                            speakers: speakers.map(speaker => ({
-                                name: speaker,
-                                color: speakerColors[speaker]
-                            }))
-                        };
-                    }
-                    return { hasDialogue: false, content: transcription, speakers: [], simpleSegments: [], bubbleRows: [] };
-                });
+                // Note: Transcript content is now server-rendered for accessibility (Claude, screen readers, etc.)
+                // The processedTranscription computed property has been removed - content comes from Jinja2 templates
 
                 function seekAudio(startTime) {
                     if (recording.value.audio_deleted_at) return;
@@ -598,12 +513,8 @@
 
                 function copyTranscript(event) {
                     const button = event?.currentTarget;
-                    let textToCopy = '';
-                    if (processedTranscription.value.isJson) {
-                        textToCopy = processedTranscription.value.segments.map(s => `[${s.speaker}]: ${s.sentence}`).join('\n');
-                    } else {
-                        textToCopy = recording.value.transcription;
-                    }
+                    // Use server-provided plain text (already formatted with speaker labels if diarized)
+                    const textToCopy = plainTextTranscript || recording.value.transcription;
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         animateCopyButton(button);
                         showToast('Transcription copied to clipboard!');
@@ -690,7 +601,7 @@
                     activeTab,
                     transcriptView,
                     audioPlayer,
-                    processedTranscription,
+                    hasDialogue,
                     legendExpanded,
                     isDarkMode,
                     seekAudio,
