@@ -261,6 +261,8 @@
                                 {% for segment in transcript.segments %}
                                 <div class="speaker-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors mb-2"
                                      data-start-time="{{ segment.start_time }}"
+                                     data-end-time="{{ segment.end_time }}"
+                                     data-segment-index="{{ loop.index0 }}"
                                      style="margin-bottom: 0.5rem !important;">
                                     {% if segment.show_speaker and segment.speaker %}
                                     <div class="speaker-tablet {{ segment.color }}">{{ segment.speaker }}</div>
@@ -279,7 +281,9 @@
                                 <div class="bubble-row {% if segment.speaker and 'me' in segment.speaker|lower %}speaker-me{% endif %}">
                                 {% endif %}
                                     <div class="speaker-bubble {{ segment.color }} {% if segment.speaker and 'me' in segment.speaker|lower %}speaker-me{% endif %} cursor-pointer"
-                                         data-start-time="{{ segment.start_time }}">
+                                         data-start-time="{{ segment.start_time }}"
+                                         data-end-time="{{ segment.end_time }}"
+                                         data-segment-index="{{ loop.index0 }}">
                                         <div class="speaker-bubble-content">{{ segment.text }}</div>
                                     </div>
                                 {% set ns.last_speaker = segment.speaker %}
@@ -367,6 +371,7 @@
                 // Server-rendered transcript info (avoids duplicate JSON parsing)
                 const hasDialogue = ref({{ 'true' if transcript.has_speakers else 'false' }});
                 const plainTextTranscript = {{ transcript.plain_text|tojson|safe }};
+                const currentPlayingSegmentIndex = ref(-1);
 
                 // Custom audio player state
                 const audioIsPlaying = ref(false);
@@ -406,6 +411,32 @@
 
                 function handleCustomAudioTimeUpdate(event) {
                     audioCurrentTime.value = event.target.currentTime;
+                    updateHighlightedSegment(event.target.currentTime);
+                }
+
+                function updateHighlightedSegment(currentTime) {
+                    // Find all segments and determine which one is currently playing
+                    const segments = document.querySelectorAll('[data-segment-index]');
+                    let newIndex = -1;
+
+                    segments.forEach((el) => {
+                        const startTime = parseFloat(el.dataset.startTime) || 0;
+                        const endTime = parseFloat(el.dataset.endTime) || Infinity;
+                        const index = parseInt(el.dataset.segmentIndex);
+
+                        if (currentTime >= startTime && currentTime < endTime) {
+                            newIndex = index;
+                        }
+
+                        // Update highlight class
+                        if (currentTime >= startTime && currentTime < endTime) {
+                            el.classList.add('active-playing-segment');
+                        } else {
+                            el.classList.remove('active-playing-segment');
+                        }
+                    });
+
+                    currentPlayingSegmentIndex.value = newIndex;
                 }
 
                 function handleAudioLoadedMetadata(event) {
@@ -504,8 +535,10 @@
 
                 function handleTranscriptClick(event) {
                     if (recording.value.audio_deleted_at) return;
-                    const startTime = event.target.dataset.startTime;
-                    if (startTime && audioPlayer.value) {
+                    // Use closest() to find the segment element even when clicking on child elements
+                    const segmentEl = event.target.closest('[data-start-time]');
+                    if (segmentEl && audioPlayer.value) {
+                        const startTime = segmentEl.dataset.startTime;
                         audioPlayer.value.currentTime = parseFloat(startTime);
                         audioPlayer.value.play();
                     }
