@@ -264,6 +264,16 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'user', 'password_reset_sent_at', 'DATETIME'):
             app.logger.info("Added password_reset_sent_at column to user table")
 
+        # Auto speaker labelling settings
+        if add_column_if_not_exists(engine, 'user', 'auto_speaker_labelling', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added auto_speaker_labelling column to user table")
+        if add_column_if_not_exists(engine, 'user', 'auto_speaker_labelling_threshold', 'VARCHAR(10) DEFAULT "medium"'):
+            app.logger.info("Added auto_speaker_labelling_threshold column to user table")
+
+        # Auto summarization setting (per-user, default enabled)
+        if add_column_if_not_exists(engine, 'user', 'auto_summarization', 'BOOLEAN DEFAULT 1'):
+            app.logger.info("Added auto_summarization column to user table")
+
         # Create indexes for token lookups (for faster token verification)
         try:
             inspector = inspect(engine)

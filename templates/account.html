@@ -659,7 +659,23 @@
                 </div>
 
                     <div id="content-prompts" class="hidden tab-content pt-6">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
+                    <!-- Header with Auto-summarization toggle -->
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
+                        {% if not admin_disabled_auto_summarization %}
+                        <div class="flex items-center gap-3" title="Automatically generate summaries after transcription completes">
+                            <span class="text-sm text-[var(--text-secondary)]">Auto-summarize</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="autoSummarizationToggle" class="sr-only peer" {% if auto_summarization %}checked{% endif %}>
+                                <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
+                            </label>
+                        </div>
+                        {% else %}
+                        <div class="text-sm text-[var(--text-muted)] italic" title="Auto-summarization has been disabled by the administrator">
+                            <i class="fas fa-lock mr-1"></i> Auto-summarization disabled by admin
+                        </div>
+                        {% endif %}
+                    </div>
 
                     <form id="customPromptsForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -757,35 +773,52 @@
                 </div>
 
                     <div id="content-speakers" class="hidden tab-content pt-6 flex flex-col h-full">
-                    <!-- Header -->
-                    <div class="flex-shrink-0 mb-4">
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-2" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
-                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
+                    <!-- Header with Auto-label toggle -->
+                    <div class="flex-shrink-0 mb-4 flex items-center justify-between">
+                        <div>
+                            <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-1" data-i18n="accountTabs.speakersManagement">Speakers Management</h2>
+                            <p class="text-sm text-[var(--text-secondary)] hidden sm:block" data-i18n="speakersManagement.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</p>
+                        </div>
+                        {% if speaker_embeddings_enabled %}
+                        <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="Automatically label speakers in new recordings when voice profiles match">
+                            <span class="text-sm text-[var(--text-secondary)] hidden sm:inline">Auto-label</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="autoSpeakerLabellingToggle" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
+                                <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
+                            </label>
+                            <select id="autoSpeakerLabellingThreshold" class="text-sm bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded-md px-2 py-1 text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" {% if not auto_speaker_labelling %}disabled{% endif %}>
+                                <option value="high" {% if auto_speaker_labelling_threshold == 'high' %}selected{% endif %}>High</option>
+                                <option value="medium" {% if auto_speaker_labelling_threshold == 'medium' %}selected{% endif %}>Medium</option>
+                                <option value="low" {% if auto_speaker_labelling_threshold == 'low' %}selected{% endif %}>Low</option>
+                            </select>
+                        </div>
+                        {% endif %}
                     </div>
 
                     <!-- Top toolbar with bulk actions -->
-                    <div class="flex-shrink-0 flex justify-between items-center py-3 px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mb-3">
-                        <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0 flex flex-wrap justify-between items-center gap-2 py-2 sm:py-3 px-3 sm:px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mb-3">
+                        <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
-                                <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
-                                <span>Select All</span>
+                                <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                <span class="hidden sm:inline">Select All</span>
+                                <span class="sm:hidden">All</span>
                             </label>
                             <span class="text-sm text-[var(--text-muted)]">
-                                <span id="speakersTabCountTop" class="speakers-count">0</span> <span data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
+                                <span id="speakersTabCountTop" class="speakers-count">0</span> <span class="hidden sm:inline" data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
                             </span>
                         </div>
-                        <div class="flex space-x-2">
-                            <button class="bulk-delete-btn px-3 py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
-                                <i class="fas fa-trash mr-1"></i>
-                                <span>Delete</span>
+                        <div class="flex space-x-1 sm:space-x-2">
+                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
+                                <i class="fas fa-trash"></i>
+                                <span class="hidden sm:inline ml-1">Delete</span>
                             </button>
-                            <button class="bulk-clear-btn px-3 py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
-                                <i class="fas fa-waveform-lines mr-1"></i>
-                                <span>Clear Profiles</span>
+                            <button class="bulk-clear-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Clear Profiles">
+                                <i class="fas fa-eraser"></i>
+                                <span class="hidden sm:inline ml-1">Clear</span>
                             </button>
-                            <button class="bulk-merge-btn px-3 py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
-                                <i class="fas fa-object-group mr-1"></i>
-                                <span>Merge</span>
+                            <button class="bulk-merge-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Merge">
+                                <i class="fas fa-object-group"></i>
+                                <span class="hidden sm:inline ml-1">Merge</span>
                             </button>
                         </div>
                     </div>
@@ -818,28 +851,29 @@
                     </div>
 
                     <!-- Bottom toolbar with bulk actions -->
-                    <div class="flex-shrink-0 flex justify-between items-center py-3 px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mt-3">
-                        <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0 flex flex-wrap justify-between items-center gap-2 py-2 sm:py-3 px-3 sm:px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mt-3">
+                        <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
-                                <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
-                                <span>Select All</span>
+                                <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                <span class="hidden sm:inline">Select All</span>
+                                <span class="sm:hidden">All</span>
                             </label>
                             <span class="text-sm text-[var(--text-muted)]">
-                                <span id="speakersTabCountBottom" class="speakers-count">0</span> <span data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
+                                <span id="speakersTabCountBottom" class="speakers-count">0</span> <span class="hidden sm:inline" data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
                             </span>
                         </div>
-                        <div class="flex space-x-2">
-                            <button class="bulk-delete-btn px-3 py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
-                                <i class="fas fa-trash mr-1"></i>
-                                <span>Delete</span>
+                        <div class="flex space-x-1 sm:space-x-2">
+                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
+                                <i class="fas fa-trash"></i>
+                                <span class="hidden sm:inline ml-1">Delete</span>
                             </button>
-                            <button class="bulk-clear-btn px-3 py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
-                                <i class="fas fa-waveform-lines mr-1"></i>
-                                <span>Clear Profiles</span>
+                            <button class="bulk-clear-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-orange-600 dark:bg-orange-500 text-white rounded-md hover:bg-orange-700 dark:hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Clear Profiles">
+                                <i class="fas fa-eraser"></i>
+                                <span class="hidden sm:inline ml-1">Clear</span>
                             </button>
-                            <button class="bulk-merge-btn px-3 py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled>
-                                <i class="fas fa-object-group mr-1"></i>
-                                <span>Merge</span>
+                            <button class="bulk-merge-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Merge">
+                                <i class="fas fa-object-group"></i>
+                                <span class="hidden sm:inline ml-1">Merge</span>
                             </button>
                         </div>
                     </div>
@@ -1609,7 +1643,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="bg-gradient-to-r from-orange-500 to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
                 <div class="flex items-center">
                     <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-                        <i class="fas fa-waveform-lines text-white text-lg"></i>
+                        <i class="fas fa-eraser text-white text-lg"></i>
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Clear Voice Profiles</h3>
@@ -1662,7 +1696,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     Cancel
                 </button>
                 <button id="confirmClearVoiceProfilesBtn" class="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all duration-200 flex items-center shadow-lg font-medium">
-                    <i class="fas fa-waveform-lines mr-2"></i>
+                    <i class="fas fa-eraser mr-2"></i>
                     Clear Profiles
                 </button>
             </div>
@@ -2024,6 +2058,79 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 await initializeI18n();
             } catch (error) {
                 console.error('Error initializing i18n:', error);
+            }
+
+            // Setup auto speaker labelling toggle and dropdown
+            const autoLabelToggle = document.getElementById('autoSpeakerLabellingToggle');
+            const autoLabelThreshold = document.getElementById('autoSpeakerLabellingThreshold');
+
+            async function updateAutoSpeakerLabelling() {
+                const enabled = autoLabelToggle ? autoLabelToggle.checked : false;
+                const threshold = autoLabelThreshold ? autoLabelThreshold.value : 'medium';
+
+                // Enable/disable dropdown based on toggle
+                if (autoLabelThreshold) {
+                    autoLabelThreshold.disabled = !enabled;
+                }
+
+                const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                try {
+                    const response = await fetch('/api/user/auto-speaker-labelling', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            enabled: enabled,
+                            threshold: threshold
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.error('Failed to update auto speaker labelling settings');
+                    }
+                } catch (error) {
+                    console.error('Error updating auto speaker labelling:', error);
+                }
+            }
+
+            if (autoLabelToggle) {
+                autoLabelToggle.addEventListener('change', updateAutoSpeakerLabelling);
+            }
+            if (autoLabelThreshold) {
+                autoLabelThreshold.addEventListener('change', updateAutoSpeakerLabelling);
+            }
+
+            // Setup auto summarization toggle
+            const autoSummarizationToggle = document.getElementById('autoSummarizationToggle');
+
+            async function updateAutoSummarization() {
+                if (!autoSummarizationToggle) return;
+
+                const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                try {
+                    const response = await fetch('/api/user/auto-summarization', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            enabled: autoSummarizationToggle.checked
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.error('Failed to update auto summarization setting');
+                    }
+                } catch (error) {
+                    console.error('Error updating auto summarization:', error);
+                }
+            }
+
+            if (autoSummarizationToggle) {
+                autoSummarizationToggle.addEventListener('change', updateAutoSummarization);
             }
 
             // Setup merge modal event listeners
@@ -2486,7 +2593,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             ${hasVoiceProfile ? `
                             <div class="flex items-center justify-between gap-2 mb-2 px-2 py-1 bg-[var(--bg-secondary)] rounded">
                                 <div class="flex items-center gap-1.5 min-w-0">
-                                    <i class="fas fa-waveform-lines text-blue-500 text-[10px] flex-shrink-0"></i>
+                                    <i class="fas fa-eraser text-blue-500 text-[10px] flex-shrink-0"></i>
                                     <span class="text-[10px] text-[var(--text-muted)] truncate">${speaker.embedding_count} sample${speaker.embedding_count !== 1 ? 's' : ''}</span>
                                 </div>
                                 ${confidenceBadge}

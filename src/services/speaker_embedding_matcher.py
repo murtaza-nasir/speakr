@@ -12,6 +12,7 @@ It provides functions to:
 Uses 256-dimensional embeddings from WhisperX diarization.
 """
 
+import json
 import numpy as np
 from datetime import datetime
 from sklearn.metrics.pairwise import cosine_similarity
@@ -251,3 +252,199 @@ def _get_confidence_level(score):
         return 'medium'
     else:
         return 'high'
+
+
+# Threshold mapping for auto-labelling
+AUTO_LABEL_THRESHOLDS = {
+    'low': 0.3,      # Aggressive, may have more false positives
+    'medium': 0.6,   # Default, balanced approach
+    'high': 0.8      # Only auto-label well-established speakers
+}
+
+# Base similarity threshold for finding matches (70%)
+BASE_SIMILARITY_THRESHOLD = 0.70
+
+# Ambiguity threshold: if top 2 matches are within 5% similarity, skip
+AMBIGUITY_MARGIN = 0.05
+
+
+def apply_auto_speaker_labels(recording, user):
+    """
+    Automatically label speakers in a recording based on voice profile matching.
+
+    This function matches speaker embeddings from the recording against the user's
+    saved speaker profiles and returns a mapping of generic labels to speaker names.
+
+    Args:
+        recording: Recording model instance with speaker_embeddings
+        user: User model instance with auto_speaker_labelling settings
+
+    Returns:
+        dict: Mapping of {SPEAKER_XX: speaker_name} for matched speakers,
+              or empty dict if auto-labelling is disabled or no matches found
+    """
+    # Check if user has auto-labelling enabled
+    if not user.auto_speaker_labelling:
+        return {}
+
+    # Check if recording has speaker embeddings
+    if not recording.speaker_embeddings:
+        return {}
+
+    # Get the user's threshold setting
+    threshold_setting = user.auto_speaker_labelling_threshold or 'medium'
+    confidence_threshold = AUTO_LABEL_THRESHOLDS.get(threshold_setting, AUTO_LABEL_THRESHOLDS['medium'])
+
+    speaker_map = {}
+    embeddings = recording.speaker_embeddings
+
+    for speaker_label, embedding_data in embeddings.items():
+        # embedding_data should be a list of floats (256 dimensions)
+        if not embedding_data or not isinstance(embedding_data, list):
+            continue
+
+        # Find matching speakers with base similarity threshold
+        matches = find_matching_speakers(
+            target_embedding=embedding_data,
+            user_id=user.id,
+            threshold=BASE_SIMILARITY_THRESHOLD
+        )
+
+        if not matches:
+            continue
+
+        # Check if the best match exceeds the user's confidence threshold
+        best_match = matches[0]
+        best_similarity = best_match['similarity'] / 100.0  # Convert from percentage
+
+        if best_similarity < confidence_threshold:
+            continue
+
+        # Check for ambiguity: if top 2 matches are within 5% similarity, skip
+        if len(matches) >= 2:
+            second_similarity = matches[1]['similarity'] / 100.0
+            if (best_similarity - second_similarity) <= AMBIGUITY_MARGIN:
+                # Ambiguous - top 2 matches too close
+                continue
+
+        # We have a clear winner - add to speaker map
+        speaker_map[speaker_label] = best_match['name']
+
+    return speaker_map
+
+
+def apply_speaker_names_to_transcription(recording, speaker_map):
+    """
+    Apply speaker name mappings to a recording's transcription.
+
+    This function updates the transcription JSON by replacing generic speaker
+    labels (SPEAKER_00, SPEAKER_01, etc.) with actual speaker names, and
+    updates the recording's participants list.
+
+    Args:
+        recording: Recording model instance with transcription
+        speaker_map: Dict mapping {SPEAKER_XX: speaker_name}
+
+    Returns:
+        bool: True if changes were made, False otherwise
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    if not speaker_map or not recording.transcription:
+        logger.warning(f"Auto-label: No speaker_map or transcription (map={bool(speaker_map)}, trans={bool(recording.transcription)})")
+        return False
+
+    try:
+        # Parse transcription as JSON array: [{speaker, sentence, start_time, end_time}, ...]
+        segments = json.loads(recording.transcription)
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning(f"Auto-label: Failed to parse transcription as JSON: {e}")
+        return False
+
+    if not isinstance(segments, list) or not segments:
+        logger.warning(f"Auto-label: Transcription not in expected array format")
+        return False
+
+    # Track which speakers were renamed
+    renamed_speakers = set()
+
+    # Update speaker labels in segments
+    for segment in segments:
+        if 'speaker' in segment and segment['speaker'] in speaker_map:
+            segment['speaker'] = speaker_map[segment['speaker']]
+            renamed_speakers.add(segment['speaker'])
+
+    if not renamed_speakers:
+        logger.warning(f"Auto-label: No speakers matched in segments")
+        return False
+
+    logger.info(f"Auto-label: Applied names to {len(renamed_speakers)} speakers: {renamed_speakers}")
+
+    # Update participants field
+    all_speakers = set(s.get('speaker') for s in segments if 'speaker' in s)
+    if all_speakers:
+        recording.participants = ', '.join(sorted(all_speakers))
+
+    # Save updated transcription
+    recording.transcription = json.dumps(segments)
+    db.session.commit()
+
+    return True
+
+
+def update_speaker_profiles_from_recording(recording, speaker_map, user):
+    """
+    Update speaker voice profiles with new embeddings from a recording.
+
+    For each successfully matched speaker, this function updates their
+    average embedding and increments their usage count.
+
+    Args:
+        recording: Recording model instance with speaker_embeddings
+        speaker_map: Dict mapping {SPEAKER_XX: speaker_name} that was applied
+        user: User model instance
+
+    Returns:
+        int: Number of speaker profiles updated
+    """
+    if not speaker_map or not recording.speaker_embeddings:
+        return 0
+
+    updated_count = 0
+    embeddings = recording.speaker_embeddings
+
+    for speaker_label, speaker_name in speaker_map.items():
+        if speaker_label not in embeddings:
+            continue
+
+        embedding_data = embeddings[speaker_label]
+        if not embedding_data or not isinstance(embedding_data, list):
+            continue
+
+        # Find the speaker profile
+        speaker = Speaker.query.filter_by(
+            user_id=user.id,
+            name=speaker_name
+        ).first()
+
+        if not speaker:
+            continue
+
+        try:
+            # Update the speaker's embedding with the new sample
+            update_speaker_embedding(speaker, embedding_data, recording.id)
+
+            # Update usage tracking
+            speaker.use_count = (speaker.use_count or 0) + 1
+            speaker.last_used = datetime.utcnow()
+
+            updated_count += 1
+        except Exception:
+            # Skip if embedding update fails
+            continue
+
+    if updated_count > 0:
+        db.session.commit()
+
+    return updated_count
