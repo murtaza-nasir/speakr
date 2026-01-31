@@ -624,6 +624,7 @@ def account():
     USE_NEW_TRANSCRIPTION_ARCHITECTURE = os.environ.get('USE_NEW_TRANSCRIPTION_ARCHITECTURE', 'true').lower() == 'true'
     ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
     ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+    ASR_RETURN_SPEAKER_EMBEDDINGS = os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
 
     # Get connector diarization support (new architecture)
     connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
@@ -662,6 +663,10 @@ def account():
 
     password_login_disabled = sso_enabled and sso_config.get('disable_password_login', False)
 
+    # Check if admin has globally disabled auto-summarization
+    admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
+    admin_disabled_auto_summarization = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
+
     return render_template('account.html',
                            title='Account',
                            default_summary_prompt_text=default_summary_prompt_text,
@@ -678,7 +683,61 @@ def account():
                            sso_linked=sso_linked,
                            sso_subject=current_user.sso_subject,
                            has_password=bool(current_user.password),
-                           password_login_disabled=password_login_disabled)
+                           password_login_disabled=password_login_disabled,
+                           speaker_embeddings_enabled=ASR_RETURN_SPEAKER_EMBEDDINGS,
+                           auto_speaker_labelling=current_user.auto_speaker_labelling,
+                           auto_speaker_labelling_threshold=current_user.auto_speaker_labelling_threshold or 'medium',
+                           admin_disabled_auto_summarization=admin_disabled_auto_summarization,
+                           auto_summarization=current_user.auto_summarization if current_user.auto_summarization is not None else True)
+
+
+@auth_bp.route('/api/user/auto-speaker-labelling', methods=['POST'])
+@login_required
+def update_auto_speaker_labelling():
+    """Update user's auto speaker labelling settings."""
+    data = request.get_json()
+
+    if data is None:
+        return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
+
+    # Update enabled state
+    if 'enabled' in data:
+        current_user.auto_speaker_labelling = bool(data['enabled'])
+
+    # Update threshold (validate value)
+    if 'threshold' in data:
+        threshold = data['threshold']
+        if threshold in ('low', 'medium', 'high'):
+            current_user.auto_speaker_labelling_threshold = threshold
+        else:
+            return jsonify({'success': False, 'error': 'Invalid threshold value'}), 400
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'auto_speaker_labelling': current_user.auto_speaker_labelling,
+        'auto_speaker_labelling_threshold': current_user.auto_speaker_labelling_threshold
+    })
+
+
+@auth_bp.route('/api/user/auto-summarization', methods=['POST'])
+@login_required
+def update_auto_summarization():
+    """Update user's auto summarization setting."""
+    data = request.get_json()
+
+    if data is None:
+        return jsonify({'success': False, 'error': 'Invalid JSON'}), 400
+
+    if 'enabled' in data:
+        current_user.auto_summarization = bool(data['enabled'])
+        db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'auto_summarization': current_user.auto_summarization
+    })
 
 
 @auth_bp.route('/change_password', methods=['POST'])

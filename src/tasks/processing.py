@@ -1637,15 +1637,50 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 # Don't fail transcription if usage tracking fails
                 current_app.logger.warning(f"Failed to record transcription usage: {usage_err}")
 
-            # Check if auto-summarization is disabled
-            disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)
-            will_auto_summarize = not disable_auto_summarization
+            # Apply auto speaker labelling if enabled and embeddings available
+            if recording.speaker_embeddings:
+                try:
+                    from src.services.speaker_embedding_matcher import (
+                        apply_auto_speaker_labels,
+                        apply_speaker_names_to_transcription,
+                        update_speaker_profiles_from_recording
+                    )
+
+                    user = User.query.get(recording.user_id)
+                    if user and user.auto_speaker_labelling:
+                        current_app.logger.info(f"Applying auto speaker labelling for recording {recording.id}")
+                        speaker_map = apply_auto_speaker_labels(recording, user)
+
+                        if speaker_map:
+                            current_app.logger.info(f"Auto-matched speakers: {speaker_map}")
+                            # Apply names to transcription
+                            if apply_speaker_names_to_transcription(recording, speaker_map):
+                                current_app.logger.info(f"Applied speaker names to transcription")
+                                # Update speaker profiles with new embeddings
+                                updated_count = update_speaker_profiles_from_recording(recording, speaker_map, user)
+                                if updated_count > 0:
+                                    current_app.logger.info(f"Updated {updated_count} speaker profiles with new embeddings")
+                            else:
+                                current_app.logger.warning(f"Failed to apply speaker names to transcription for recording {recording.id}")
+                        else:
+                            current_app.logger.info(f"No speakers matched for auto-labelling")
+                except Exception as auto_label_err:
+                    # Don't fail transcription if auto-labelling fails
+                    current_app.logger.warning(f"Failed to apply auto speaker labelling: {auto_label_err}")
+
+            # Check if auto-summarization is disabled (admin setting or user preference)
+            admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
+            admin_disabled = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
+            user = User.query.get(recording.user_id)
+            user_disabled = user and user.auto_summarization is False
+            will_auto_summarize = not admin_disabled and not user_disabled
 
             # Generate title immediately
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 
-            if disable_auto_summarization:
-                current_app.logger.info(f"Auto-summarization disabled, skipping summary for recording {recording_id}")
+            if not will_auto_summarize:
+                reason = "admin setting" if admin_disabled else "user preference"
+                current_app.logger.info(f"Auto-summarization disabled ({reason}), skipping summary for recording {recording_id}")
                 recording = db.session.get(Recording, recording_id)
                 if recording:
                     recording.status = 'COMPLETED'
@@ -1971,6 +2006,32 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             # Commit the transcription data
             db.session.commit()
 
+            # Apply auto speaker labelling if enabled and embeddings available
+            if recording.speaker_embeddings:
+                try:
+                    from src.services.speaker_embedding_matcher import (
+                        apply_auto_speaker_labels,
+                        apply_speaker_names_to_transcription,
+                        update_speaker_profiles_from_recording
+                    )
+                    user = User.query.get(recording.user_id)
+                    if user and user.auto_speaker_labelling:
+                        current_app.logger.info(f"Applying auto speaker labelling for recording {recording.id}")
+                        speaker_map = apply_auto_speaker_labels(recording, user)
+                        if speaker_map:
+                            current_app.logger.info(f"Auto-matched speakers: {speaker_map}")
+                            if apply_speaker_names_to_transcription(recording, speaker_map):
+                                current_app.logger.info(f"Applied speaker names to transcription")
+                                updated_count = update_speaker_profiles_from_recording(recording, speaker_map, user)
+                                if updated_count > 0:
+                                    current_app.logger.info(f"Updated {updated_count} speaker profiles with new embeddings")
+                            else:
+                                current_app.logger.warning(f"Failed to apply speaker names to transcription for recording {recording.id}")
+                        else:
+                            current_app.logger.info(f"No speakers matched for auto-labelling")
+                except Exception as auto_label_err:
+                    current_app.logger.warning(f"Failed to apply auto speaker labelling: {auto_label_err}")
+
             # Calculate and save transcription duration
             transcription_end_time = time.time()
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
@@ -1994,15 +2055,19 @@ def transcribe_audio_asr(app_context, recording_id, filepath, original_filename,
             except Exception as usage_err:
                 current_app.logger.warning(f"Failed to record ASR transcription usage: {usage_err}")
 
-            # Check if auto-summarization is disabled
-            disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)
-            will_auto_summarize = not disable_auto_summarization
+            # Check if auto-summarization is disabled (admin setting or user preference)
+            admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
+            admin_disabled = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
+            user = User.query.get(recording.user_id)
+            user_disabled = user and user.auto_summarization is False
+            will_auto_summarize = not admin_disabled and not user_disabled
 
             # Generate title immediately (pass flag so it knows whether to set COMPLETED)
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 
-            if disable_auto_summarization:
-                current_app.logger.info(f"Auto-summarization disabled, skipping summary for recording {recording_id}")
+            if not will_auto_summarize:
+                reason = "admin setting" if admin_disabled else "user preference"
+                current_app.logger.info(f"Auto-summarization disabled ({reason}), skipping summary for recording {recording_id}")
                 recording = db.session.get(Recording, recording_id)
                 if recording:
                     recording.status = 'COMPLETED'
@@ -2194,15 +2259,19 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
             except Exception as usage_err:
                 current_app.logger.warning(f"Failed to record Whisper transcription usage: {usage_err}")
 
-            # Check if auto-summarization is disabled
-            disable_auto_summarization = SystemSetting.get_setting('disable_auto_summarization', False)
-            will_auto_summarize = not disable_auto_summarization
+            # Check if auto-summarization is disabled (admin setting or user preference)
+            admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
+            admin_disabled = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
+            user = User.query.get(recording.user_id)
+            user_disabled = user and user.auto_summarization is False
+            will_auto_summarize = not admin_disabled and not user_disabled
 
             # Generate title immediately (pass flag so it knows whether to set COMPLETED)
             generate_title_task(app_context, recording_id, will_auto_summarize=will_auto_summarize)
 
-            if disable_auto_summarization:
-                current_app.logger.info(f"Auto-summarization disabled, skipping summary for recording {recording_id}")
+            if not will_auto_summarize:
+                reason = "admin setting" if admin_disabled else "user preference"
+                current_app.logger.info(f"Auto-summarization disabled ({reason}), skipping summary for recording {recording_id}")
                 recording.status = 'COMPLETED'
                 recording.completed_at = datetime.utcnow()
                 db.session.commit()

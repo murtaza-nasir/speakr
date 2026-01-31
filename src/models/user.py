@@ -51,6 +51,13 @@ class User(db.Model, UserMixin):
     password_reset_token = db.Column(db.String(200), nullable=True, index=True)
     password_reset_sent_at = db.Column(db.DateTime, nullable=True)
 
+    # Auto speaker labelling settings
+    auto_speaker_labelling = db.Column(db.Boolean, default=False)  # Enable auto-labelling when voice confidence exceeds threshold
+    auto_speaker_labelling_threshold = db.Column(db.String(10), nullable=True, default='medium')  # 'low', 'medium', 'high'
+
+    # Auto summarization setting (user can disable if admin hasn't globally disabled)
+    auto_summarization = db.Column(db.Boolean, default=True)
+
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 
