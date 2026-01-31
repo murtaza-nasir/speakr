@@ -23,7 +23,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
-from src.tasks.processing import format_transcription_for_llm, transcribe_with_chunking
+from src.tasks.processing import format_transcription_for_llm
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
 from src.services.speaker_embedding_matcher import update_speaker_embedding
