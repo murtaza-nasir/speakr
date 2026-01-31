@@ -4651,11 +4651,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         // Check if folders feature is enabled and show/hide the tab
         async function checkFoldersEnabled() {
             try {
-                const response = await fetch('/api/admin/settings');
+                const response = await fetch('/api/config');
                 if (response.ok) {
-                    const settings = await response.json();
-                    const foldersSetting = settings.find(s => s.key === 'enable_folders');
-                    foldersEnabled = foldersSetting && foldersSetting.value === 'true';
+                    const config = await response.json();
+                    foldersEnabled = config.enable_folders === true;
 
                     if (foldersEnabled && tabFolders) {
                         tabFolders.style.display = '';

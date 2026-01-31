@@ -44,10 +44,10 @@ def init_folders_helpers(**kwargs):
 @login_required
 def get_folders():
     """Get all folders for the current user, including group folders they have access to."""
-    # Check if folders feature is enabled
+    # Check if folders feature is enabled - return empty array if not
     folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
     if folders_enabled != 'true':
-        return jsonify({'error': 'Folders feature is not enabled'}), 403
+        return jsonify([])
 
     # Get user's personal folders
     user_folders = Folder.query.filter_by(user_id=current_user.id, group_id=None).order_by(Folder.name).all()
