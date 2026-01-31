@@ -12,7 +12,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, sortBy,
-        availableTags, availableSpeakers, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+        availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
         speakerColorMap,
@@ -148,6 +148,20 @@ export function useRecordings(state, utils, reprocessComposable) {
         } catch (error) {
             console.warn('Error loading tags:', error);
             availableTags.value = [];
+        }
+    };
+
+    const loadFolders = async () => {
+        try {
+            const response = await fetch('/api/folders');
+            if (response.ok) {
+                availableFolders.value = await response.json();
+            } else {
+                availableFolders.value = [];
+            }
+        } catch (error) {
+            console.warn('Error loading folders:', error);
+            availableFolders.value = [];
         }
     };
 
@@ -433,6 +447,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         performSearch,
         debouncedSearch,
         loadTags,
+        loadFolders,
         loadSpeakers,
         selectRecording,
         hasUnsavedRecording,

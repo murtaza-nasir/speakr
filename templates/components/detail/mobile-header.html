@@ -40,8 +40,8 @@
                 <p class="text-sm text-[var(--text-muted)] truncate">
                     ${selectedRecording.participants || t('help.noParticipants')}
                 </p>
-                <!-- Tags and Share Status -->
-                <div v-if="getRecordingTags(selectedRecording).length > 0 || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0" class="flex flex-wrap gap-1 mt-2">
+                <!-- Tags, Folder, and Share Status -->
+                <div v-if="getRecordingTags(selectedRecording).length > 0 || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || (foldersEnabled && selectedRecording.folder)" class="flex flex-wrap gap-1 mt-2">
                     <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id"
                             @click.stop="filterByTag(tag)"
                             class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
@@ -51,6 +51,14 @@
                         <i v-else class="fas fa-tag mr-1" style="vertical-align: middle; line-height: 0;"></i>
                         <span v-text="tag.name"></span>
                     </button>
+                    <!-- Folder Badge -->
+                    <span v-if="foldersEnabled && selectedRecording.folder"
+                          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                          :style="{ backgroundColor: selectedRecording.folder.color || '#10B981', color: getContrastTextColor(selectedRecording.folder.color || '#10B981') }"
+                          :title="selectedRecording.folder.group_id ? ('Group Folder: ' + selectedRecording.folder.group_name) : ('Folder: ' + selectedRecording.folder.name)">
+                        <i class="fas fa-folder mr-1" style="vertical-align: middle; line-height: 0;"></i>
+                        <span v-text="selectedRecording.folder.name"></span>
+                    </span>
                     <span v-if="selectedRecording.is_shared" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500 text-white">
                         <i class="fas fa-arrow-down mr-1"></i>Shared
                     </span>
@@ -82,6 +90,19 @@
                     <span :title="'Owner: ' + (selectedRecording.owner_username || t('sharing.unknown'))">
                         ${selectedRecording.owner_username || t('sharing.unknown')}
                     </span>
+                </div>
+                <!-- Folder Assignment (mobile) -->
+                <div v-if="foldersEnabled && selectedRecording.can_edit !== false && !selectedRecording.incognito" class="flex items-center gap-2" @click.stop>
+                    <i class="fas fa-folder text-[var(--text-accent)]"></i>
+                    <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
+                            :value="selectedRecording.folder_id || ''"
+                            class="bg-transparent border-none text-sm text-[var(--text-muted)] cursor-pointer focus:outline-none appearance-none pr-4"
+                            style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0 center;">
+                        <option value="">No Folder</option>
+                        <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                            ${ folder.name }
+                        </option>
+                    </select>
                 </div>
                 <template v-if="activeRecordingMetadata" v-for="(item, index) in activeRecordingMetadata" :key="index">
                     <span v-if="!item.isTagItem" class="flex items-center gap-1.5">

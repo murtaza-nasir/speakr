@@ -30,3 +30,4 @@ export { usePWA } from './pwa.js';
 export { useTokens } from './tokens.js';
 export { useBulkSelection } from './bulk-selection.js';
 export { useBulkOperations } from './bulk-operations.js';
+export { useFolders } from './folders.js';

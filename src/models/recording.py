@@ -49,7 +49,11 @@ class Recording(db.Model):
     # Speaker embeddings from diarization (JSON dict mapping speaker IDs to 256-dimensional vectors)
     speaker_embeddings = db.Column(db.JSON, nullable=True)
 
+    # Folder relationship (one-to-many: a recording belongs to at most one folder)
+    folder_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True, index=True)
+
     # Relationships
+    folder = db.relationship('Folder', back_populates='recordings')
     tag_associations = db.relationship('RecordingTag', back_populates='recording', cascade='all, delete-orphan', order_by='RecordingTag.order')
 
     @property
@@ -188,6 +192,8 @@ class Recording(db.Model):
             'audio_deleted_at': local_datetime_filter(self.audio_deleted_at),
             'audio_available': self.audio_deleted_at is None,
             'deletion_exempt': self.deletion_exempt,
+            'folder_id': self.folder_id,
+            'folder': self.folder.to_dict() if self.folder else None,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count
@@ -244,6 +250,8 @@ class Recording(db.Model):
             'audio_available': self.audio_deleted_at is None,
             'audio_duration': self.get_audio_duration(),
             'deletion_exempt': self.deletion_exempt,
+            'folder_id': self.folder_id,
+            'folder': self.folder.to_dict() if self.folder else None,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'events': [event.to_dict() for event in self.events] if self.events else [],
             'shared_with_count': shared_with_count,

@@ -16,6 +16,7 @@ import { usePWA } from './modules/composables/pwa.js';
 import { useVirtualScroll, getVirtualItemKey } from './modules/composables/virtualScroll.js';
 import { useBulkSelection } from './modules/composables/bulk-selection.js';
 import { useBulkOperations } from './modules/composables/bulk-operations.js';
+import { useFolders } from './modules/composables/folders.js';
 
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
@@ -388,6 +389,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const selectedTagIds = ref([]);
             const uploadTagSearchFilter = ref('');
 
+            // Folder Selection
+            const availableFolders = ref([]);
+            const selectedFolderId = ref(null);
+            const foldersEnabled = ref(false);
+            const filterFolder = ref('');
+
             // --- Modal State ---
             const showEditModal = ref(false);
             const showDeleteModal = ref(false);
@@ -634,6 +641,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
+                availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
                 // Audio Recording
                 isRecording, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
@@ -1255,6 +1263,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setGlobalError
             });
 
+            // Folders composable
+            const foldersComposable = useFolders({
+                recordings,
+                availableFolders,
+                selectedRecording,
+                showToast,
+                setGlobalError
+            });
+
             // Bulk selection composable
             const bulkSelectionComposable = useBulkSelection({
                 selectionMode,
@@ -1272,6 +1289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 selectedRecording,
                 bulkActionInProgress,
                 availableTags,
+                availableFolders,
                 showToast,
                 setGlobalError,
                 exitSelectionMode: bulkSelectionComposable.exitSelectionMode,
@@ -2122,6 +2140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await Promise.all([
                     recordingsComposable.loadRecordings(),
                     recordingsComposable.loadTags(),
+                    recordingsComposable.loadFolders(),
                     recordingsComposable.loadSpeakers(),
                     loadTokenBudget()
                 ]);
@@ -2149,6 +2168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableArchiveToggle.value = config.enable_archive_toggle === true;
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
+                        foldersEnabled.value = config.enable_folders === true;
                         // Set default incognito mode state if feature enabled and default is true
                         if (config.enable_incognito_mode && config.incognito_mode_default) {
                             incognitoMode.value = true;
@@ -2400,6 +2420,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ...speakersComposable,
                 ...chatComposable,
                 ...tagsComposable,
+                ...foldersComposable,
                 ...pwaComposable,
                 ...bulkSelectionComposable,
                 ...bulkOperationsComposable

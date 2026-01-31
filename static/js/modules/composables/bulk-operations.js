@@ -12,6 +12,7 @@ export function useBulkOperations({
     selectedRecording,
     bulkActionInProgress,
     availableTags,
+    availableFolders,
     showToast,
     setGlobalError,
     startReprocessingPoll
@@ -20,6 +21,7 @@ export function useBulkOperations({
     const showBulkDeleteModal = ref(false);
     const showBulkTagModal = ref(false);
     const showBulkReprocessModal = ref(false);
+    const showBulkFolderModal = ref(false);
     const bulkTagAction = ref('add'); // 'add' or 'remove'
     const bulkTagSelectedId = ref('');
     const bulkReprocessType = ref('summary'); // 'transcription' or 'summary'
@@ -371,11 +373,79 @@ export function useBulkOperations({
         }
     };
 
+    // =========================================
+    // Bulk Folder Assignment
+    // =========================================
+
+    const bulkAssignFolder = async (folderId) => {
+        const ids = getSelectedIds();
+        if (ids.length === 0) return;
+
+        bulkActionInProgress.value = true;
+        showBulkFolderModal.value = false;
+
+        try {
+            const response = await fetch('/api/recordings/bulk/folder', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    recording_ids: ids,
+                    folder_id: folderId
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to update folders');
+            }
+
+            // Update local state
+            const folder = folderId ? availableFolders.value.find(f => f.id === folderId) : null;
+            recordings.value.forEach(recording => {
+                if (ids.includes(recording.id)) {
+                    recording.folder_id = folderId;
+                    recording.folder = folder;
+                }
+            });
+
+            // Update selected recording if affected
+            if (selectedRecording.value && ids.includes(selectedRecording.value.id)) {
+                selectedRecording.value.folder_id = folderId;
+                selectedRecording.value.folder = folder;
+            }
+
+            // Update folder recording counts
+            if (availableFolders.value) {
+                availableFolders.value.forEach(f => {
+                    const count = recordings.value.filter(r => r.folder_id === f.id).length;
+                    f.recording_count = count;
+                });
+            }
+
+            const count = data.updated_count || ids.length;
+            if (folderId) {
+                showToast(`${count} recording${count !== 1 ? 's' : ''} moved to "${folder?.name || 'folder'}"`, 'fa-folder', 3000, 'success');
+            } else {
+                showToast(`${count} recording${count !== 1 ? 's' : ''} removed from folder`, 'fa-folder-minus', 3000, 'success');
+            }
+        } catch (error) {
+            console.error('Bulk folder assignment error:', error);
+            setGlobalError(`Failed to update folders: ${error.message}`);
+        } finally {
+            bulkActionInProgress.value = false;
+        }
+    };
+
     return {
         // Modal state
         showBulkDeleteModal,
         showBulkTagModal,
         showBulkReprocessModal,
+        showBulkFolderModal,
         bulkTagAction,
         bulkTagSelectedId,
         bulkReprocessType,
@@ -397,6 +467,9 @@ export function useBulkOperations({
 
         // Bulk Toggle
         bulkToggleInbox,
-        bulkToggleHighlight
+        bulkToggleHighlight,
+
+        // Bulk Folder
+        bulkAssignFolder
     };
 }

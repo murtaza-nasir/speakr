@@ -539,6 +539,7 @@ from src.api.tokens import tokens_bp, init_tokens_helpers
 from src.api.shares import shares_bp, init_shares_helpers
 from src.api.recordings import recordings_bp, init_recordings_helpers
 from src.api.tags import tags_bp, init_tags_helpers
+from src.api.folders import folders_bp, init_folders_helpers
 from src.api.groups import groups_bp, init_groups_helpers
 from src.api.admin import admin_bp, init_admin_helpers
 from src.api.speakers import speakers_bp, init_speakers_helpers
@@ -565,6 +566,7 @@ init_tokens_helpers(bcrypt, csrf, limiter)
 init_shares_helpers(has_recording_access)
 init_recordings_helpers(has_recording_access=has_recording_access, get_user_recording_status=get_user_recording_status, set_user_recording_status=set_user_recording_status, enrich_recording_dict_with_user_status=enrich_recording_dict_with_user_status, bcrypt=bcrypt, csrf=csrf, limiter=limiter, chunking_service=chunking_service)
 init_tags_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
+init_folders_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_groups_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_admin_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
 init_speakers_helpers(has_recording_access=has_recording_access, bcrypt=bcrypt, csrf=csrf, limiter=limiter)
@@ -580,6 +582,7 @@ app.register_blueprint(tokens_bp)
 app.register_blueprint(shares_bp)
 app.register_blueprint(recordings_bp)
 app.register_blueprint(tags_bp)
+app.register_blueprint(folders_bp)
 app.register_blueprint(groups_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(speakers_bp)

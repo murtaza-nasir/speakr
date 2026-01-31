@@ -457,6 +457,13 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         else:
             tag_custom_prompt = None
 
+        # Get folder custom prompt (if recording has a folder)
+        # Folder prompt has lower priority than tag prompts (tags override folders)
+        folder_custom_prompt = None
+        if recording.folder and recording.folder.custom_prompt and recording.folder.custom_prompt.strip():
+            folder_custom_prompt = recording.folder.custom_prompt.strip()
+            current_app.logger.info(f"Found custom prompt from folder '{recording.folder.name}' for recording {recording_id}")
+
         if recording.owner:
             user_summary_prompt = recording.owner.summary_prompt
             user_output_language = recording.owner.output_language
@@ -474,7 +481,7 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}. The entire response must be in {user_output_language}." if user_output_language else ""
 
         # Determine which summarization instructions to use
-        # Priority order: custom_prompt_override > tag custom prompt > user summary prompt > admin default prompt > hardcoded fallback
+        # Priority order: custom_prompt_override > tag custom prompt > folder custom prompt > user summary prompt > admin default prompt > hardcoded fallback
         summarization_instructions = ""
         if custom_prompt_override:
             current_app.logger.info(f"Using custom prompt override for recording {recording_id} (length: {len(custom_prompt_override)})")
@@ -482,6 +489,9 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         elif tag_custom_prompt:
             current_app.logger.info(f"Using tag custom prompt for recording {recording_id}")
             summarization_instructions = tag_custom_prompt
+        elif folder_custom_prompt:
+            current_app.logger.info(f"Using folder custom prompt for recording {recording_id}")
+            summarization_instructions = folder_custom_prompt
         elif user_summary_prompt:
             current_app.logger.info(f"Using user custom prompt for recording {recording_id}")
             summarization_instructions = user_summary_prompt
@@ -503,6 +513,10 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         current_date = datetime.now().strftime("%B %d, %Y")
         context_parts = []
         context_parts.append(f"Current date: {current_date}")
+
+        # Add folder information if recording is in a folder
+        if recording.folder:
+            context_parts.append(f"Folder: {recording.folder.name}")
 
         # Add selected tags information (only visible tags)
         if viewer_user:

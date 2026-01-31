@@ -11,6 +11,7 @@ export function useFilters() {
     const searchQuery = ref('');
     const showAdvancedFilters = ref(false);
     const filterTags = ref([]);
+    const filterFolder = ref('');  // '' = all, 'none' = no folder, or folder id
     const filterDateRange = ref({ start: '', end: '' });
     const filterDatePreset = ref('');
     const filterTextQuery = ref('');
@@ -53,8 +54,13 @@ export function useFilters() {
         selectedTagFilter.value = null;
     };
 
+    const clearFolderFilter = () => {
+        filterFolder.value = '';
+    };
+
     const clearAllFilters = () => {
         filterTags.value = [];
+        filterFolder.value = '';
         filterDateRange.value = { start: '', end: '' };
         filterDatePreset.value = '';
         filterTextQuery.value = '';
@@ -82,6 +88,7 @@ export function useFilters() {
 
     const hasActiveFilters = computed(() => {
         return filterTags.value.length > 0 ||
+               filterFolder.value ||
                filterDateRange.value.start ||
                filterDateRange.value.end ||
                filterTextQuery.value ||
@@ -93,6 +100,7 @@ export function useFilters() {
         searchQuery,
         showAdvancedFilters,
         filterTags,
+        filterFolder,
         filterDateRange,
         filterDatePreset,
         filterTextQuery,
@@ -111,6 +119,7 @@ export function useFilters() {
         clearDateFilter,
         toggleTagFilter,
         clearTagFilters,
+        clearFolderFilter,
         clearAllFilters,
         toggleArchivedView,
         toggleSharedView,

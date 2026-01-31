@@ -19,7 +19,7 @@ from .api_token import APIToken
 from .speaker_snippet import SpeakerSnippet
 from .recording import Recording, TranscriptChunk
 from .sharing import Share, InternalShare, SharedRecordingState
-from .organization import Group, GroupMembership, Tag, RecordingTag
+from .organization import Group, GroupMembership, Tag, RecordingTag, Folder
 from .events import Event
 from .templates import TranscriptTemplate
 from .naming_template import NamingTemplate
@@ -53,6 +53,7 @@ __all__ = [
     'GroupMembership',
     'Tag',
     'RecordingTag',
+    'Folder',
     # Other models
     'Event',
     'TranscriptTemplate',
