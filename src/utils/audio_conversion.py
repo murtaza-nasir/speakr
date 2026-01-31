@@ -168,6 +168,16 @@ def convert_if_needed(
 
     # Handle video files - extract audio
     if has_video:
+        # Determine target codec for video extraction - fall back to mp3 if AUDIO_CODEC is unsupported
+        video_target_codec = AUDIO_CODEC
+        if connector_specs and connector_specs.unsupported_codecs:
+            if AUDIO_CODEC in connector_specs.unsupported_codecs:
+                video_target_codec = 'mp3'
+                logger.warning(
+                    f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
+                    f"falling back to mp3 for video extraction from {original_filename}"
+                )
+
         # Check if we can remux (copy) instead of transcode
         can_remux = False
         if audio_codec and audio_codec in supported_codecs:
@@ -177,7 +187,7 @@ def convert_if_needed(
                 can_remux = not is_lossless or not AUDIO_COMPRESS_UPLOADS
             except Exception as e:
                 logger.warning(f"Could not determine if audio is lossless: {e}. Will transcode.")
-        
+
         try:
             if can_remux:
                 logger.info(f"Extracting audio from video (remux, no transcoding): {original_filename}")
@@ -189,15 +199,15 @@ def convert_if_needed(
                 )
                 final_codec = audio_codec
             else:
-                logger.info(f"Extracting and converting audio from video to {AUDIO_CODEC.upper()}: {original_filename}")
+                logger.info(f"Extracting and converting audio from video to {video_target_codec.upper()}: {original_filename}")
                 output_filepath, mime_type = extract_audio_from_video(
                     filepath,
-                    output_format=AUDIO_CODEC,
+                    output_format=video_target_codec,
                     bitrate=AUDIO_BITRATE,
                     cleanup_original=delete_original,
                     copy_stream=False
                 )
-                final_codec = AUDIO_CODEC
+                final_codec = video_target_codec
             
             final_size = os.path.getsize(output_filepath)
             reduction = ((original_size - final_size) / original_size * 100) if original_size > 0 else 0
@@ -248,12 +258,22 @@ def convert_if_needed(
         logger.info(f"Converting {original_filename} (codec: {audio_codec}) - unsupported for processing")
     
     if needs_conversion:
-        logger.info(f"Converting {original_filename} to {AUDIO_CODEC.upper()}")
-        
+        # Determine target codec - fall back to mp3 if AUDIO_CODEC is unsupported by connector
+        target_codec = AUDIO_CODEC
+        if connector_specs and connector_specs.unsupported_codecs:
+            if AUDIO_CODEC in connector_specs.unsupported_codecs:
+                target_codec = 'mp3'
+                logger.warning(
+                    f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
+                    f"falling back to mp3 for {original_filename}"
+                )
+
+        logger.info(f"Converting {original_filename} to {target_codec.upper()}")
+
         try:
             output_filepath, mime_type, _ = compress_audio(
                 filepath,
-                codec=AUDIO_CODEC,
+                codec=target_codec,
                 bitrate=AUDIO_BITRATE,
                 delete_original=delete_original,
                 codec_info=codec_info
@@ -276,7 +296,7 @@ def convert_if_needed(
                 original_size=original_size,
                 final_size=final_size,
                 original_codec=original_codec,
-                final_codec=AUDIO_CODEC
+                final_codec=target_codec
             )
         except FFmpegNotFoundError:
             logger.error("FFmpeg not found")
@@ -289,12 +309,22 @@ def convert_if_needed(
     logger.info(f"Codec {audio_codec} is supported, no conversion needed")
 
     if AUDIO_COMPRESS_UPLOADS:
+        # Determine target codec for compression - fall back to mp3 if AUDIO_CODEC is unsupported
+        compress_target_codec = AUDIO_CODEC
+        if connector_specs and connector_specs.unsupported_codecs:
+            if AUDIO_CODEC in connector_specs.unsupported_codecs:
+                compress_target_codec = 'mp3'
+                logger.warning(
+                    f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
+                    f"falling back to mp3 for lossless compression of {original_filename}"
+                )
+
         try:
             # Check if file is lossless
             if is_lossless_audio(filepath, codec_info=codec_info):
                 # Skip if already in target codec (e.g., FLAC to FLAC)
-                if audio_codec == AUDIO_CODEC:
-                    logger.info(f"File already in target codec {AUDIO_CODEC}, no compression needed")
+                if audio_codec == compress_target_codec:
+                    logger.info(f"File already in target codec {compress_target_codec}, no compression needed")
                     return ConversionResult(
                         output_path=filepath,
                         mime_type=_guess_mime_type(filepath),
@@ -306,12 +336,12 @@ def convert_if_needed(
                         final_codec=audio_codec
                     )
 
-                logger.info(f"Compressing lossless audio ({audio_codec}) to {AUDIO_CODEC.upper()}")
+                logger.info(f"Compressing lossless audio ({audio_codec}) to {compress_target_codec.upper()}")
 
                 # Perform compression
                 compressed_path, mime_type, _ = compress_audio(
                     filepath,
-                    codec=AUDIO_CODEC,
+                    codec=compress_target_codec,
                     bitrate=AUDIO_BITRATE,
                     delete_original=delete_original,
                     codec_info=codec_info
@@ -334,7 +364,7 @@ def convert_if_needed(
                     original_size=original_size,
                     final_size=final_size,
                     original_codec=original_codec,
-                    final_codec=AUDIO_CODEC
+                    final_codec=compress_target_codec
                 )
         except Exception as e:
             logger.warning(f"Failed to compress lossless audio: {e}. Continuing with original.")
