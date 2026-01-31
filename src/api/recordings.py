@@ -2498,13 +2498,73 @@ Note: This is an incognito recording - no data is stored on the server.
 
             except Exception as e:
                 current_app.logger.error(f"[Incognito Chat] Error during streaming: {e}")
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                # Provide more helpful error message for connection issues
+                error_msg = str(e).lower()
+                if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
+                    yield f"data: {json.dumps({'error': 'Could not connect to LLM server. Please check that your LLM service is running.'})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
         return Response(generate(), mimetype='text/event-stream')
 
     except Exception as e:
         current_app.logger.error(f"[Incognito Chat] Error: {e}", exc_info=True)
+        # Provide more helpful error message for connection issues
+        error_msg = str(e).lower()
+        if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
+            return jsonify({'error': 'Could not connect to LLM server. Please check that your LLM service is running.'}), 503
         return jsonify({'error': 'An error occurred during chat'}), 500
+
+
+@recordings_bp.route('/api/recordings/incognito/summary', methods=['POST'])
+@login_required
+def generate_incognito_summary_endpoint():
+    """
+    Generate summary for an incognito recording on demand.
+    Since incognito recordings don't exist in the database, the transcription
+    is passed directly in the request.
+    """
+    # Check if incognito mode is enabled
+    if not ENABLE_INCOGNITO_MODE:
+        return jsonify({'error': 'Incognito mode is not enabled on this server'}), 403
+
+    from src.tasks.processing import generate_incognito_summary
+    from src.utils import md_to_html
+
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        transcription = data.get('transcription')
+        if not transcription:
+            return jsonify({'error': 'No transcription provided'}), 400
+
+        # Check if LLM client is available
+        if client is None:
+            return jsonify({'error': 'Summary service is not available (LLM client not configured)'}), 503
+
+        current_app.logger.info(f"[Incognito Summary] User {current_user.id} requesting summary generation")
+
+        # Generate summary using existing function
+        summary = generate_incognito_summary(transcription, current_user)
+
+        if summary:
+            summary_html = md_to_html(summary)
+            return jsonify({
+                'summary': summary,
+                'summary_html': summary_html
+            })
+        else:
+            return jsonify({'error': 'Failed to generate summary. Please check that your LLM service is running.'}), 503
+
+    except Exception as e:
+        current_app.logger.error(f"[Incognito Summary] Error: {e}", exc_info=True)
+        # Provide more helpful error message for connection issues
+        error_msg = str(e).lower()
+        if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
+            return jsonify({'error': 'Could not connect to LLM server. Please check that your LLM service is running.'}), 503
+        return jsonify({'error': f'Failed to generate summary: {str(e)}'}), 500
 
 
 # Status Endpoint
@@ -3117,8 +3177,12 @@ Additional context and notes about the meeting:
                 yield f"data: {json.dumps({'error': str(e), 'budget_exceeded': True})}\n\n"
             except Exception as e:
                 app.logger.error(f"Error during chat stream generation: {str(e)}")
-                # Yield an error message in SSE format
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                # Provide more helpful error message for connection issues
+                error_msg = str(e).lower()
+                if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
+                    yield f"data: {json.dumps({'error': 'Could not connect to LLM server. Please check that your LLM service is running.'})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
             finally:
                 ctx.pop()
 
@@ -3126,6 +3190,9 @@ Additional context and notes about the meeting:
 
     except Exception as e:
         current_app.logger.error(f"Error in chat endpoint: {str(e)}")
+        error_msg = str(e).lower()
+        if 'connection' in error_msg or 'connect' in error_msg or 'refused' in error_msg:
+            return jsonify({'error': 'Could not connect to LLM server. Please check that your LLM service is running.'}), 503
         return jsonify({'error': str(e)}), 500
 
 

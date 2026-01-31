@@ -3,6 +3,8 @@
  * Handles reprocessing transcription and summary
  */
 
+import * as IncognitoStorage from '../db/incognito-storage.js';
+
 export function useReprocess(state, utils) {
     const { nextTick } = Vue;
 
@@ -238,6 +240,39 @@ export function useReprocess(state, utils) {
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            // Check if this is an incognito recording
+            if (selectedRecording.value.incognito === true) {
+                // Use incognito summary endpoint - generate synchronously
+                const response = await fetch('/api/recordings/incognito/summary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        transcription: selectedRecording.value.transcription
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Failed to generate summary');
+
+                // Update the incognito recording with the new summary
+                selectedRecording.value.summary = data.summary;
+                selectedRecording.value.summary_html = data.summary_html;
+
+                // Update sessionStorage
+                IncognitoStorage.updateIncognitoRecording({
+                    summary: data.summary,
+                    summary_html: data.summary_html
+                });
+
+                showToast('Summary generated', 'fa-file-alt');
+                return;
+            }
+
+            // Regular recording - use existing flow
             const response = await fetch(`/recording/${selectedRecording.value.id}/generate_summary`, {
                 method: 'POST',
                 headers: {
