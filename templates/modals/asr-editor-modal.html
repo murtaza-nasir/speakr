@@ -16,6 +16,12 @@
                 <i class="fas fa-info-circle"></i>
                 <span v-text="t('help.audioDeletedMessage')"></span>
             </div>
+            <!-- Show message for incognito recordings -->
+            <div v-else-if="selectedRecording.incognito"
+                 class="bg-[var(--bg-tertiary)] border border-[var(--border-primary)] text-[var(--text-secondary)] px-4 py-3 rounded-lg flex items-center gap-2 text-sm">
+                <i class="fas fa-user-secret"></i>
+                <span>Audio not stored in incognito mode</span>
+            </div>
             <!-- Custom Audio Player (Independent from main player) -->
             <div v-else class="flex items-center gap-3">
                 <audio ref="asrEditorAudioRef" class="hidden"
