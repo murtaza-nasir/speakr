@@ -136,9 +136,9 @@
                                     title="Playback speed">
                                 <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
                             </button>
-                            <!-- Dropdown menu (opens upward) -->
+                            <!-- Dropdown menu (opens downward) -->
                             <div v-if="showSpeedMenu" @click.stop
-                                 class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-md shadow-xl z-50 speed-dropdown backdrop-blur-sm">
+                                 class="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-md shadow-xl z-50 speed-dropdown backdrop-blur-sm">
                                 <div class="py-0.5 max-h-40 overflow-y-auto">
                                     <button v-for="speed in playbackSpeeds" :key="speed"
                                             @mousedown.prevent="setPlaybackRate(speed); showSpeedMenu = false"
