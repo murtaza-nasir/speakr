@@ -48,12 +48,13 @@ def create_admin_user():
             break
     
     # Get email
+    skip_domain_check = os.environ.get('SKIP_EMAIL_DOMAIN_CHECK', 'false').lower() == 'true'
     while True:
         email = input("Enter email address: ").strip()
         try:
-            # Validate email
-            validate_email(email)
-            
+            # Validate email (skip DNS/MX check if SKIP_EMAIL_DOMAIN_CHECK=true)
+            validate_email(email, check_deliverability=not skip_domain_check)
+
             # Check if email already exists
             with app.app_context():
                 existing_email = db.session.query(User).filter_by(email=email).first()
