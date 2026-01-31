@@ -9,6 +9,7 @@ This blueprint handles:
 
 import os
 import re
+import json
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, send_file, current_app
 from flask_login import login_required, current_user
 
@@ -34,6 +35,85 @@ def init_shares_helpers(_has_recording_access):
     has_recording_access = _has_recording_access
 
 
+def process_transcription_for_template(transcription_str):
+    """
+    Process transcription JSON into a format ready for server-side rendering.
+
+    Returns a dict with:
+    - is_json: bool - whether transcription is valid JSON
+    - has_speakers: bool - whether diarization data exists
+    - segments: list - processed segments with speaker info and colors
+    - speakers: list - unique speakers with colors
+    - plain_text: str - plain text version for non-JSON or fallback
+    """
+    if not transcription_str:
+        return {'is_json': False, 'has_speakers': False, 'segments': [], 'speakers': [], 'plain_text': ''}
+
+    try:
+        data = json.loads(transcription_str)
+    except (json.JSONDecodeError, TypeError):
+        # Plain text transcription
+        return {
+            'is_json': False,
+            'has_speakers': False,
+            'segments': [],
+            'speakers': [],
+            'plain_text': transcription_str
+        }
+
+    if not isinstance(data, list):
+        return {
+            'is_json': False,
+            'has_speakers': False,
+            'segments': [],
+            'speakers': [],
+            'plain_text': transcription_str
+        }
+
+    # Check if diarized (has speaker info)
+    has_speakers = any(seg.get('speaker') for seg in data)
+
+    # Get unique speakers and assign colors
+    speakers = []
+    speaker_colors = {}
+    if has_speakers:
+        unique_speakers = list(dict.fromkeys(seg.get('speaker') for seg in data if seg.get('speaker')))
+        for i, speaker in enumerate(unique_speakers):
+            color = f'speaker-color-{(i % 8) + 1}'
+            speaker_colors[speaker] = color
+            speakers.append({'name': speaker, 'color': color})
+
+    # Process segments
+    segments = []
+    last_speaker = None
+    for seg in data:
+        speaker = seg.get('speaker', '')
+        segment = {
+            'text': seg.get('sentence', ''),
+            'speaker': speaker,
+            'start_time': seg.get('start_time') or seg.get('startTime', ''),
+            'end_time': seg.get('end_time') or seg.get('endTime', ''),
+            'color': speaker_colors.get(speaker, 'speaker-color-1'),
+            'show_speaker': speaker != last_speaker
+        }
+        segments.append(segment)
+        last_speaker = speaker
+
+    # Build plain text version
+    if has_speakers:
+        plain_text = '\n'.join(f"[{seg['speaker']}]: {seg['text']}" for seg in segments)
+    else:
+        plain_text = '\n'.join(seg['text'] for seg in segments)
+
+    return {
+        'is_json': True,
+        'has_speakers': has_speakers,
+        'segments': segments,
+        'speakers': speakers,
+        'plain_text': plain_text
+    }
+
+
 # --- Public Sharing Routes ---
 
 @shares_bp.route('/share/<string:public_id>', methods=['GET'])
@@ -41,6 +121,9 @@ def view_shared_recording(public_id):
     """View a publicly shared recording."""
     share = Share.query.filter_by(public_id=public_id).first_or_404()
     recording = share.recording
+
+    # Process transcription for server-side rendering
+    processed_transcript = process_transcription_for_template(recording.transcription)
 
     # Create a limited dictionary for the public view
     recording_data = {
@@ -59,7 +142,7 @@ def view_shared_recording(public_id):
         'audio_duration': recording.get_audio_duration()
     }
 
-    return render_template('share.html', recording=recording_data)
+    return render_template('share.html', recording=recording_data, transcript=processed_transcript)
 
 
 @shares_bp.route('/share/audio/<string:public_id>')
