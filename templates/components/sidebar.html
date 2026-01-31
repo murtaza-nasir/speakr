@@ -47,16 +47,16 @@
                             class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
                         <span class="flex items-center">
                             <i class="fas fa-filter mr-2 text-[var(--text-muted)]"></i>
-                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox"
+                            <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox && !filterFolder"
                                   v-text="t('sidebar.searchRecordings')">
                             </span>
                             <span v-else class="text-[var(--text-accent)]">
-                                Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) })
+                                Active filters (${ (filterFolder ? 1 : 0) + (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) })
                             </span>
                         </span>
                         <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)]', showAdvancedFilters ? 'rotate-180' : '']"></i>
                     </button>
-                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox"
+                    <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox || filterFolder"
                             @click="clearAllFilters"
                             class="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                             :title="t('buttons.clearAllFilters')">
@@ -106,6 +106,28 @@
                             <i class="fas fa-inbox" style="font-size: 10px;"></i>
                             <span v-text="t('sidebar.inbox')"></span>
                         </button>
+                    </div>
+
+                    <!-- Folder Filter (only shown if folders are enabled) -->
+                    <div v-if="foldersEnabled" class="bg-[var(--bg-secondary)] rounded-lg p-2.5 border border-[var(--border-primary)]">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <label class="text-xs font-medium text-[var(--text-muted)] whitespace-nowrap">
+                                <i class="fas fa-folder mr-1"></i> Filter by Folder
+                            </label>
+                        </div>
+                        <div class="relative">
+                            <select v-model="filterFolder"
+                                    class="w-full px-2 py-1.5 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] appearance-none cursor-pointer"
+                                    :style="filterFolder ? { borderColor: (availableFolders.find(f => f.id === filterFolder) || {}).color || '' } : {}">
+                                <option value="">All Folders</option>
+                                <option value="none">No Folder</option>
+                                <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                                    ${ folder.name } (${ folder.recording_count || 0 })
+                                </option>
+                            </select>
+                            <i class="fas fa-chevron-down absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" style="font-size: 10px;"></i>
+                        </div>
+                        <p v-if="availableFolders.length === 0" class="text-xs text-[var(--text-muted)] italic mt-1">No folders created</p>
                     </div>
 
                     <!-- Tag Filter -->
@@ -483,6 +505,13 @@
             <i class="fas fa-tags text-[var(--text-muted)]"></i>
         </button>
 
+        <button v-if="foldersEnabled"
+                @click="showBulkFolderModal = true"
+                class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
+                title="Move to folder">
+            <i class="fas fa-folder text-emerald-500"></i>
+        </button>
+
         <button @click="bulkToggleInbox()"
                 class="w-10 h-10 flex items-center justify-center bg-[var(--bg-tertiary)] hover:bg-[var(--bg-input)] rounded-lg transition-colors border border-[var(--border-secondary)]"
                 title="Toggle inbox status">
@@ -516,3 +545,61 @@
         </button>
     </div>
 </transition>
+
+<!-- Bulk Folder Assignment Modal -->
+<div v-if="showBulkFolderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]" @click.self="showBulkFolderModal = false">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
+        <div class="p-4 border-b border-[var(--border-primary)]">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+                    <i class="fas fa-folder mr-2 text-emerald-500"></i>
+                    Move to Folder
+                </h3>
+                <button @click="showBulkFolderModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="text-sm text-[var(--text-muted)] mt-1">
+                ${ selectedCount } recording(s) selected
+            </p>
+        </div>
+        <div class="p-4 max-h-64 overflow-y-auto">
+            <!-- No Folder Option -->
+            <button @click="bulkAssignFolder(null)"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--bg-tertiary)] transition-colors mb-2 border border-[var(--border-secondary)]">
+                <i class="fas fa-folder-minus text-[var(--text-muted)]"></i>
+                <span class="text-sm text-[var(--text-secondary)]">Remove from folder</span>
+            </button>
+
+            <!-- Divider -->
+            <div v-if="availableFolders.length > 0" class="border-t border-[var(--border-primary)] my-2"></div>
+
+            <!-- Folder Options -->
+            <button v-for="folder in availableFolders"
+                    :key="folder.id"
+                    @click="bulkAssignFolder(folder.id)"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--bg-tertiary)] transition-colors mb-1"
+                    :style="{ borderLeft: '3px solid ' + (folder.color || '#10B981') }">
+                <i class="fas fa-folder" :style="{ color: folder.color || '#10B981' }"></i>
+                <div class="flex-1 min-w-0">
+                    <span class="text-sm text-[var(--text-primary)] block truncate">${ folder.name }</span>
+                    <span v-if="folder.group_name" class="text-xs text-[var(--text-muted)]">
+                        <i class="fas fa-users mr-1" style="font-size: 9px;"></i>${ folder.group_name }
+                    </span>
+                </div>
+                <span class="text-xs text-[var(--text-muted)]">${ folder.recording_count || 0 }</span>
+            </button>
+
+            <!-- Empty State -->
+            <p v-if="availableFolders.length === 0" class="text-sm text-[var(--text-muted)] text-center py-4">
+                No folders created. Create folders in your account settings.
+            </p>
+        </div>
+        <div class="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+            <button @click="showBulkFolderModal = false"
+                    class="w-full px-4 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>

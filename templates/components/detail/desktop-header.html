@@ -147,6 +147,29 @@
                     <i v-if="tag.group_id" class="fas fa-users mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
                     ${tag.name}
                 </span>
+
+                <!-- Folder (only shown if folders are enabled) -->
+                <span v-if="foldersEnabled && selectedRecording.folder"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full cursor-help"
+                      :style="{ backgroundColor: selectedRecording.folder.color || '#10B981', color: getContrastTextColor(selectedRecording.folder.color || '#10B981') }"
+                      :title="selectedRecording.folder.group_id ? ('Group Folder: ' + selectedRecording.folder.group_name) : ('Folder: ' + selectedRecording.folder.name)">
+                    <i class="fas fa-folder mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
+                    ${selectedRecording.folder.name}
+                </span>
+            </div>
+
+            <!-- Folder Assignment (only if folders enabled and recording can be edited) -->
+            <div v-if="foldersEnabled && selectedRecording.can_edit !== false && !selectedRecording.incognito" class="relative flex items-center gap-2">
+                <i class="fas fa-folder text-[var(--text-accent)]"></i>
+                <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
+                        :value="selectedRecording.folder_id || ''"
+                        class="bg-transparent border-none text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-accent)] focus:outline-none appearance-none pr-5"
+                        style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0 center;">
+                    <option value="">No Folder</option>
+                    <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                        ${ folder.name }
+                    </option>
+                </select>
             </div>
 
             <!-- Participants -->

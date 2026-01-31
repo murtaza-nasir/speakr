@@ -58,6 +58,12 @@ export function createCoreState(ref, computed) {
     const selectedTagIds = ref([]);
     const uploadTagSearchFilter = ref('');
 
+    // Folder Selection
+    const availableFolders = ref([]);
+    const selectedFolderId = ref(null);
+    const foldersEnabled = ref(false);
+    const filterFolder = ref('');  // '' = all, 'none' = no folder, or folder id
+
     // Speaker Selection
     const availableSpeakers = ref([]);
 
@@ -139,6 +145,12 @@ export function createCoreState(ref, computed) {
         selectedTags,
         filteredAvailableTagsForUpload,
         filteredRecordings,
+
+        // Folders
+        availableFolders,
+        selectedFolderId,
+        foldersEnabled,
+        filterFolder,
 
         // Speakers
         availableSpeakers,

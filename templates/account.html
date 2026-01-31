@@ -455,6 +455,9 @@
                         <a href="#" id="tab-speakers" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-users mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.speakersManagement">Speakers</span>
                         </a>
+                        <a href="#" id="tab-folders" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]" style="display: none;">
+                            <i class="fas fa-folder mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.folderManagement">Folders</span>
+                        </a>
                         <a href="#" id="tab-tags" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-tags mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.tagManagement">Tags</span>
                         </a>
@@ -879,9 +882,47 @@
                     </div>
                 </div>
 
+                    <!-- Folders Tab Content -->
+                    <div id="content-folders" class="hidden tab-content pt-6">
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.folderManagement">Folder Management</h2>
+
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-[var(--text-secondary)]">Organize your recordings into folders. Unlike tags, a recording can only belong to one folder. Folder prompts are applied before user prompts but after tag prompts.</p>
+                            <button id="createFolderBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                <i class="fas fa-plus mr-2"></i> <span data-i18n="folderManagement.createFolder">Create Folder</span>
+                            </button>
+                        </div>
+
+                        <!-- Loading state -->
+                        <div id="foldersLoading" class="text-center py-8 hidden">
+                            <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
+                            <p class="text-[var(--text-muted)] mt-2">Loading folders...</p>
+                        </div>
+
+                        <!-- Error state -->
+                        <div id="foldersError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            <span id="foldersErrorMessage">Failed to load folders</span>
+                        </div>
+
+                        <!-- Empty state -->
+                        <div id="foldersEmpty" class="text-center py-12 hidden">
+                            <i class="fas fa-folder text-4xl text-[var(--text-light)] mb-4"></i>
+                            <p class="text-[var(--text-muted)] text-lg mb-2">No folders created yet</p>
+                            <p class="text-sm text-[var(--text-light)]">Create your first folder to organize your recordings</p>
+                        </div>
+
+                        <!-- Folders grid -->
+                        <div id="foldersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Folders will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
                     <div id="content-tags" class="hidden tab-content pt-6">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
-                    
+
                     <div class="mb-6">
                         <div class="flex justify-between items-center mb-4">
                             <p class="text-[var(--text-secondary)]" data-i18n="tagManagement.description">Organize your recordings with custom tags. Each tag can have its own summary prompt and default ASR settings.</p>
@@ -889,26 +930,26 @@
                                 <i class="fas fa-plus mr-2"></i> <span data-i18n="tagManagement.createTag">Create Tag</span>
                             </button>
                         </div>
-                        
+
                         <!-- Loading state -->
                         <div id="tagsLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
                             <p class="text-[var(--text-muted)] mt-2">Loading tags...</p>
                         </div>
-                        
+
                         <!-- Error state -->
                         <div id="tagsError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
                             <span id="tagsErrorMessage">Failed to load tags</span>
                         </div>
-                        
+
                         <!-- Empty state -->
                         <div id="tagsEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-tags text-4xl text-[var(--text-light)] mb-4"></i>
                             <p class="text-[var(--text-muted)] text-lg mb-2">No tags created yet</p>
                             <p class="text-sm text-[var(--text-light)]">Create your first tag to organize your recordings</p>
                         </div>
-                        
+
                         <!-- Tags grid -->
                         <div id="tagsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <!-- Tags will be populated here -->
@@ -1958,6 +1999,167 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         </div>
     </div>
 
+    <!-- Create/Edit Folder Modal -->
+    <div id="folderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="folderModalTitle" class="text-xl font-semibold text-[var(--text-primary)]">Create Folder</h3>
+                <button id="closeFolderModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+            </div>
+
+            <form id="folderForm" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" id="folderId" name="folder_id">
+
+                <div>
+                    <label for="folderName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Folder Name *</label>
+                    <input type="text" id="folderName" name="name" required maxlength="50" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Office Calls, Interviews">
+                </div>
+
+                <div>
+                    <label for="folderColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="color" id="folderColor" name="color" value="#10B981" class="w-12 h-10 rounded border border-[var(--border-secondary)]">
+                        <span class="text-sm text-[var(--text-muted)]">Choose a color for easy identification</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="folderCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Custom Summary Prompt</label>
+                    <textarea id="folderCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings in this folder"></textarea>
+                    <p class="text-xs text-[var(--text-light)] mt-1">Leave blank to use your default summary prompt. Note: Tag prompts take priority over folder prompts.</p>
+                </div>
+
+                <!-- Naming Template Selection -->
+                <div>
+                    <label for="folderNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Naming Template</label>
+                    <select id="folderNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="">No template (use user default or AI title)</option>
+                        <!-- Naming template options will be populated dynamically -->
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1">Select a naming template to automatically format titles for recordings in this folder</p>
+                </div>
+
+                <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
+                <div id="folderGroupSelectionSection" class="hidden">
+                    <label for="folderGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
+                    <select id="folderGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="">Personal Folder (Not Associated with a Group)</option>
+                        <!-- Group options will be populated dynamically -->
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1">
+                        Assign this folder to a group to enable auto-sharing when recordings are moved to it
+                    </p>
+                </div>
+
+                <!-- Group-Specific Settings (only shown when a group is selected) -->
+                <div id="folderGroupSettingsSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                        <i class="fas fa-users mr-2"></i>Group Sharing Settings
+                    </h4>
+
+                    <div class="space-y-3">
+                        <div class="flex items-start space-x-3">
+                            <input type="checkbox" id="folderAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                            <div class="flex-1">
+                                <label for="folderAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                    <i class="fas fa-share-alt mr-1"></i>
+                                    Auto-share recordings with all group members when moved to this folder
+                                </label>
+                                <p class="text-xs text-[var(--text-light)] mt-1">
+                                    All group members will automatically get access to recordings in this folder
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3">
+                            <input type="checkbox" id="folderShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                            <div class="flex-1">
+                                <label for="folderShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                    <i class="fas fa-user-shield mr-1"></i>
+                                    Share recordings with group admins only when moved to this folder
+                                </label>
+                                <p class="text-xs text-[var(--text-light)] mt-1">
+                                    Only group admins will get access (not all members)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-[var(--text-light)] italic mt-3">
+                        Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                    </p>
+                </div>
+
+                <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
+                <div id="folderRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                        <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion Settings
+                    </h4>
+
+                    <div class="space-y-3">
+                        <!-- Retention Period Override -->
+                        <div id="folderRetentionDaysContainer">
+                            <label for="folderRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                                Retention Period (days)
+                            </label>
+                            <input type="number" id="folderRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
+                            <p class="text-xs text-[var(--text-light)] mt-1">
+                                Leave empty to use global retention period. Set a custom value to override for recordings in this folder.
+                            </p>
+                        </div>
+
+                        <!-- Deletion Protection Checkbox -->
+                        <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                            <input type="checkbox" id="folderProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                            <div class="flex-1">
+                                <label for="folderProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                    <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
+                                    Protect from Auto-Deletion (Infinite Retention)
+                                </label>
+                                <p class="text-xs text-[var(--text-light)] mt-1">
+                                    Recordings in this folder will never be automatically deleted. When enabled, retention period is set to infinite.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if connector_supports_diarization %}
+                <div class="border-t border-[var(--border-primary)] pt-4">
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Diarization Default Settings</h4>
+                    <p class="text-xs text-[var(--text-light)] mb-3">These settings will be applied by default when uploading to this folder (tag settings take priority)</p>
+
+                    <div class="space-y-3">
+                        <div>
+                            <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Default Language</label>
+                            <input type="text" id="folderLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="folderMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Min Speakers</label>
+                                <input type="number" id="folderMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            </div>
+
+                            <div>
+                                <label for="folderMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Max Speakers</label>
+                                <input type="number" id="folderMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
+                    <button type="button" id="cancelFolderBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
+                    <button type="submit" id="saveFolderBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                        <i class="fas fa-save mr-2"></i> <span>Save Folder</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Create API Token Modal -->
     <div id="createTokenModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
@@ -2334,6 +2536,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabAccount = document.getElementById('tab-account');
             const tabPrompts = document.getElementById('tab-prompts');
             const tabShares = document.getElementById('tab-shares');
+            const tabFolders = document.getElementById('tab-folders');
             const tabTags = document.getElementById('tab-tags');
             const tabTemplates = document.getElementById('tab-templates');
             const tabNamingTemplates = document.getElementById('tab-naming-templates');
@@ -2343,6 +2546,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const contentPrompts = document.getElementById('content-prompts');
             const contentShares = document.getElementById('content-shares');
             const contentSpeakers = document.getElementById('content-speakers');
+            const contentFolders = document.getElementById('content-folders');
             const contentTags = document.getElementById('content-tags');
             const contentTemplates = document.getElementById('content-templates');
             const contentNamingTemplates = document.getElementById('content-naming-templates');
@@ -2359,6 +2563,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
+                { tab: tabFolders, content: contentFolders, name: 'folders' },
                 { tab: tabTags, content: contentTags, name: 'tags' },
                 { tab: tabTemplates, content: contentTemplates, name: 'templates' },
                 { tab: tabNamingTemplates, content: contentNamingTemplates, name: 'naming-templates' },
@@ -2386,6 +2591,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadSpeakersTab();
                 } else if (targetName === 'shares') {
                     loadShares();
+                } else if (targetName === 'folders') {
+                    loadFolders();
                 } else if (targetName === 'tags') {
                     loadTags();
                 } else if (targetName === 'templates') {
@@ -2417,6 +2624,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             function showTagsTab() {
                 switchToTab('tags');
+            }
+
+            function showFoldersTab() {
+                switchToTab('folders');
             }
 
             function showTemplatesTab() {
@@ -2459,6 +2670,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 e.preventDefault();
                 showTagsTab();
             });
+
+            if (tabFolders) {
+                tabFolders.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showFoldersTab();
+                });
+            }
 
             tabTemplates.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -4409,25 +4627,614 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 showToast(`Failed to save tag: ${error.message}`, 'error');
             }
         });
-        
+
+        // ========== FOLDERS MANAGEMENT ==========
+        let folders = [];
+        let isEditingFolder = false;
+        let foldersEnabled = false;
+
+        // Folder management elements
+        const createFolderBtn = document.getElementById('createFolderBtn');
+        const folderModal = document.getElementById('folderModal');
+        const closeFolderModalBtn = document.getElementById('closeFolderModalBtn');
+        const cancelFolderBtn = document.getElementById('cancelFolderBtn');
+        const folderForm = document.getElementById('folderForm');
+        const folderModalTitle = document.getElementById('folderModalTitle');
+        const saveFolderBtn = document.getElementById('saveFolderBtn');
+
+        const foldersLoading = document.getElementById('foldersLoading');
+        const foldersError = document.getElementById('foldersError');
+        const foldersErrorMessage = document.getElementById('foldersErrorMessage');
+        const foldersEmpty = document.getElementById('foldersEmpty');
+        const foldersGrid = document.getElementById('foldersGrid');
+
+        // Check if folders feature is enabled and show/hide the tab
+        async function checkFoldersEnabled() {
+            try {
+                const response = await fetch('/api/admin/settings');
+                if (response.ok) {
+                    const settings = await response.json();
+                    const foldersSetting = settings.find(s => s.key === 'enable_folders');
+                    foldersEnabled = foldersSetting && foldersSetting.value === 'true';
+
+                    if (foldersEnabled && tabFolders) {
+                        tabFolders.style.display = '';
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking folders enabled status:', error);
+            }
+        }
+        checkFoldersEnabled();
+
+        // Load folders from API
+        async function loadFolders() {
+            if (!foldersEnabled) {
+                if (foldersError) {
+                    foldersErrorMessage.textContent = 'Folders feature is not enabled';
+                    foldersError.classList.remove('hidden');
+                }
+                return;
+            }
+            showFoldersLoadingState();
+
+            try {
+                const response = await fetch('/api/folders');
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                }
+
+                folders = await response.json();
+                displayFolders();
+            } catch (error) {
+                console.error('Error loading folders:', error);
+                showFoldersErrorState(error.message);
+            }
+        }
+
+        function showFoldersLoadingState() {
+            if (foldersLoading) foldersLoading.classList.remove('hidden');
+            if (foldersError) foldersError.classList.add('hidden');
+            if (foldersEmpty) foldersEmpty.classList.add('hidden');
+            if (foldersGrid) foldersGrid.classList.add('hidden');
+        }
+
+        function showFoldersErrorState(message) {
+            if (foldersLoading) foldersLoading.classList.add('hidden');
+            if (foldersError) foldersError.classList.remove('hidden');
+            if (foldersEmpty) foldersEmpty.classList.add('hidden');
+            if (foldersGrid) foldersGrid.classList.add('hidden');
+            if (foldersErrorMessage) foldersErrorMessage.textContent = message;
+        }
+
+        function displayFolders() {
+            if (foldersLoading) foldersLoading.classList.add('hidden');
+            if (foldersError) foldersError.classList.add('hidden');
+
+            if (folders.length === 0) {
+                if (foldersEmpty) foldersEmpty.classList.remove('hidden');
+                if (foldersGrid) foldersGrid.classList.add('hidden');
+            } else {
+                if (foldersEmpty) foldersEmpty.classList.add('hidden');
+                if (foldersGrid) foldersGrid.classList.remove('hidden');
+                renderFoldersGrid();
+            }
+        }
+
+        function renderFoldersGrid() {
+            if (!foldersGrid) return;
+            foldersGrid.textContent = '';
+
+            folders.forEach(folder => {
+                const folderCard = createFolderCard(folder);
+                foldersGrid.appendChild(folderCard);
+            });
+        }
+
+        function createFolderCard(folder) {
+            const div = document.createElement('div');
+            const isGroupFolder = folder.group_id !== null && folder.group_id !== undefined;
+            const canEdit = folder.can_edit !== undefined ? folder.can_edit : true;
+
+            div.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:shadow-md transition-shadow duration-200 overflow-hidden';
+
+            // Create header
+            const header = document.createElement('div');
+            header.className = 'flex items-center px-4 py-3 border-b border-[var(--border-primary)]';
+            header.style.backgroundColor = folder.color + '15';
+
+            const colorDot = document.createElement('div');
+            colorDot.className = 'w-3 h-3 rounded-full mr-3 flex-shrink-0';
+            colorDot.style.backgroundColor = folder.color;
+
+            const titleWrapper = document.createElement('div');
+            titleWrapper.className = 'flex-grow';
+
+            const title = document.createElement('h3');
+            title.className = 'font-medium text-[var(--text-primary)] truncate';
+            title.textContent = folder.name;
+            titleWrapper.appendChild(title);
+
+            if (isGroupFolder) {
+                const groupLabel = document.createElement('span');
+                groupLabel.className = 'text-xs text-[var(--text-muted)]';
+                const groupIcon = document.createElement('i');
+                groupIcon.className = 'fas fa-users mr-1';
+                groupLabel.appendChild(groupIcon);
+                groupLabel.appendChild(document.createTextNode(folder.group_name || ''));
+                titleWrapper.appendChild(groupLabel);
+            }
+
+            header.appendChild(colorDot);
+            header.appendChild(titleWrapper);
+
+            if (canEdit) {
+                const actions = document.createElement('div');
+                actions.className = 'flex items-center space-x-2';
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-folder-btn text-[var(--text-muted)] hover:text-[var(--text-accent)] p-1';
+                editBtn.title = 'Edit folder';
+                const editIcon = document.createElement('i');
+                editIcon.className = 'fas fa-edit';
+                editBtn.appendChild(editIcon);
+                editBtn.addEventListener('click', () => openFolderModal(folder));
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-folder-btn text-[var(--text-muted)] hover:text-red-500 p-1';
+                deleteBtn.title = 'Delete folder';
+                const deleteIcon = document.createElement('i');
+                deleteIcon.className = 'fas fa-trash';
+                deleteBtn.appendChild(deleteIcon);
+                deleteBtn.addEventListener('click', () => deleteFolder(folder.id, folder.name));
+
+                actions.appendChild(editBtn);
+                actions.appendChild(deleteBtn);
+                header.appendChild(actions);
+            } else {
+                const lockIcon = document.createElement('span');
+                lockIcon.className = 'text-xs text-[var(--text-muted)]';
+                lockIcon.title = "You don't have permission to edit this group folder";
+                const lock = document.createElement('i');
+                lock.className = 'fas fa-lock';
+                lockIcon.appendChild(lock);
+                header.appendChild(lockIcon);
+            }
+
+            // Create body
+            const body = document.createElement('div');
+            body.className = 'px-4 py-3';
+
+            // Metadata badges
+            const badges = document.createElement('div');
+            badges.className = 'flex flex-wrap gap-2 mb-2';
+
+            if (folder.protect_from_deletion || folder.retention_days === -1) {
+                const badge = document.createElement('span');
+                badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium';
+                badge.style.backgroundColor = '#f59e0b';
+                badge.style.color = 'white';
+                badge.title = 'Protected with infinite retention';
+                const shieldIcon = document.createElement('i');
+                shieldIcon.className = 'fas fa-shield-alt';
+                badge.appendChild(shieldIcon);
+                badge.appendChild(document.createTextNode(' ∞'));
+                badges.appendChild(badge);
+            } else if (folder.retention_days && folder.retention_days > 0) {
+                const badge = document.createElement('span');
+                badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium';
+                badge.style.backgroundColor = '#2563eb';
+                badge.style.color = 'white';
+                badge.title = 'Retention: ' + folder.retention_days + ' days';
+                const clockIcon = document.createElement('i');
+                clockIcon.className = 'fas fa-clock';
+                badge.appendChild(clockIcon);
+                badge.appendChild(document.createTextNode(' ' + folder.retention_days + 'd'));
+                badges.appendChild(badge);
+            }
+
+            if (isGroupFolder) {
+                const badge = document.createElement('span');
+                badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium';
+                badge.style.backgroundColor = '#9333ea';
+                badge.style.color = 'white';
+                const shareIcon = document.createElement('i');
+                if (folder.auto_share_on_apply) {
+                    shareIcon.className = 'fas fa-user-friends';
+                    badge.title = 'Auto-shares with all group members';
+                    badge.appendChild(shareIcon);
+                    badge.appendChild(document.createTextNode(' All members'));
+                } else if (folder.share_with_group_lead) {
+                    shareIcon.className = 'fas fa-user-tie';
+                    badge.title = 'Shares with group admins only';
+                    badge.appendChild(shareIcon);
+                    badge.appendChild(document.createTextNode(' Admins only'));
+                } else {
+                    shareIcon.className = 'fas fa-user-lock';
+                    badge.title = 'Manual sharing only';
+                    badge.appendChild(shareIcon);
+                    badge.appendChild(document.createTextNode(' Manual'));
+                }
+                badges.appendChild(badge);
+            }
+
+            if (badges.childNodes.length > 0) {
+                body.appendChild(badges);
+            }
+
+            // Info row
+            const infoRow = document.createElement('div');
+            infoRow.className = 'text-sm text-[var(--text-muted)]';
+
+            if (folder.custom_prompt) {
+                const promptIcon = document.createElement('i');
+                promptIcon.className = 'fas fa-comment-alt mr-1';
+                promptIcon.title = 'Has custom prompt';
+                infoRow.appendChild(promptIcon);
+            }
+            if (folder.default_language) {
+                const langIcon = document.createElement('i');
+                langIcon.className = 'fas fa-language mr-1';
+                langIcon.title = 'Language: ' + folder.default_language;
+                infoRow.appendChild(langIcon);
+            }
+            if (folder.naming_template_name) {
+                const templateIcon = document.createElement('i');
+                templateIcon.className = 'fas fa-heading mr-1';
+                templateIcon.title = 'Naming template: ' + folder.naming_template_name;
+                infoRow.appendChild(templateIcon);
+            }
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'ml-auto';
+            const count = folder.recording_count || 0;
+            countSpan.textContent = count + ' recording' + (count !== 1 ? 's' : '');
+            infoRow.appendChild(countSpan);
+            body.appendChild(infoRow);
+
+            div.appendChild(header);
+            div.appendChild(body);
+
+            return div;
+        }
+
+        // Close folder modal
+        function closeFolderModal() {
+            if (folderModal) folderModal.classList.add('hidden');
+            if (folderForm) folderForm.reset();
+            isEditingFolder = false;
+            document.getElementById('folderId').value = '';
+        }
+
+        if (closeFolderModalBtn) closeFolderModalBtn.addEventListener('click', closeFolderModal);
+        if (cancelFolderBtn) cancelFolderBtn.addEventListener('click', closeFolderModal);
+
+        // Close modal when clicking outside
+        if (folderModal) {
+            folderModal.addEventListener('click', (event) => {
+                if (event.target === folderModal) {
+                    closeFolderModal();
+                }
+            });
+        }
+
+        // Open folder modal
+        function openFolderModal(folder) {
+            folder = folder || null;
+            if (folder) {
+                // Edit mode
+                isEditingFolder = true;
+                if (folderModalTitle) folderModalTitle.textContent = 'Edit Folder';
+                if (saveFolderBtn) {
+                    saveFolderBtn.textContent = '';
+                    const saveIcon = document.createElement('i');
+                    saveIcon.className = 'fas fa-save mr-2';
+                    saveFolderBtn.appendChild(saveIcon);
+                    saveFolderBtn.appendChild(document.createTextNode(' Update Folder'));
+                }
+
+                // Populate form
+                document.getElementById('folderId').value = folder.id;
+                document.getElementById('folderName').value = folder.name;
+                document.getElementById('folderColor').value = folder.color;
+                document.getElementById('folderCustomPrompt').value = folder.custom_prompt || '';
+                var langField = document.getElementById('folderLanguage');
+                if (langField) langField.value = folder.default_language || '';
+                var minField = document.getElementById('folderMinSpeakers');
+                if (minField) minField.value = folder.default_min_speakers || '';
+                var maxField = document.getElementById('folderMaxSpeakers');
+                if (maxField) maxField.value = folder.default_max_speakers || '';
+
+                // Group selection
+                const folderGroupId = document.getElementById('folderGroupId');
+                if (folderGroupId) {
+                    folderGroupId.value = folder.group_id || '';
+                    updateFolderGroupSettingsVisibility();
+                }
+
+                // Group settings
+                var autoShare = document.getElementById('folderAutoShareOnApply');
+                if (autoShare) autoShare.checked = folder.auto_share_on_apply !== false;
+                var shareWithLead = document.getElementById('folderShareWithGroupLead');
+                if (shareWithLead) shareWithLead.checked = folder.share_with_group_lead !== false;
+
+                // Retention settings
+                const folderRetentionDays = document.getElementById('folderRetentionDays');
+                const folderProtectFromDeletion = document.getElementById('folderProtectFromDeletion');
+                if (folderProtectFromDeletion && folderRetentionDays) {
+                    if (folder.retention_days === -1 || folder.protect_from_deletion) {
+                        folderProtectFromDeletion.checked = true;
+                        folderRetentionDays.value = '';
+                        folderRetentionDays.disabled = true;
+                    } else {
+                        folderProtectFromDeletion.checked = false;
+                        folderRetentionDays.value = folder.retention_days || '';
+                        folderRetentionDays.disabled = false;
+                    }
+                }
+            } else {
+                // Create mode
+                isEditingFolder = false;
+                if (folderModalTitle) folderModalTitle.textContent = 'Create Folder';
+                if (saveFolderBtn) {
+                    saveFolderBtn.textContent = '';
+                    const saveIcon = document.createElement('i');
+                    saveIcon.className = 'fas fa-save mr-2';
+                    saveFolderBtn.appendChild(saveIcon);
+                    saveFolderBtn.appendChild(document.createTextNode(' Save Folder'));
+                }
+                if (folderForm) folderForm.reset();
+                document.getElementById('folderColor').value = '#10B981';
+                document.getElementById('folderId').value = '';
+            }
+
+            // Load naming templates for dropdown
+            loadNamingTemplatesForFolderModal();
+
+            if (folderModal) folderModal.classList.remove('hidden');
+        }
+
+        // Load naming templates for folder modal
+        async function loadNamingTemplatesForFolderModal() {
+            const select = document.getElementById('folderNamingTemplate');
+            if (!select) return;
+
+            try {
+                const response = await fetch('/api/naming-templates');
+                if (response.ok) {
+                    const templates = await response.json();
+                    select.textContent = '';
+                    const defaultOpt = document.createElement('option');
+                    defaultOpt.value = '';
+                    defaultOpt.textContent = 'No template (use user default or AI title)';
+                    select.appendChild(defaultOpt);
+                    templates.forEach(function(t) {
+                        const option = document.createElement('option');
+                        option.value = t.id;
+                        option.textContent = t.name;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading naming templates:', error);
+            }
+        }
+
+        // Update folder group settings visibility
+        function updateFolderGroupSettingsVisibility() {
+            const folderGroupId = document.getElementById('folderGroupId');
+            const folderGroupSettingsSection = document.getElementById('folderGroupSettingsSection');
+            if (folderGroupId && folderGroupSettingsSection) {
+                if (folderGroupId.value) {
+                    folderGroupSettingsSection.classList.remove('hidden');
+                } else {
+                    folderGroupSettingsSection.classList.add('hidden');
+                }
+            }
+        }
+
+        // Folder group selection change
+        const folderGroupIdSelect = document.getElementById('folderGroupId');
+        if (folderGroupIdSelect) {
+            folderGroupIdSelect.addEventListener('change', updateFolderGroupSettingsVisibility);
+        }
+
+        // Folder protect from deletion checkbox
+        const folderProtectCheckbox = document.getElementById('folderProtectFromDeletion');
+        const folderRetentionInput = document.getElementById('folderRetentionDays');
+        if (folderProtectCheckbox && folderRetentionInput) {
+            folderProtectCheckbox.addEventListener('change', function() {
+                if (folderProtectCheckbox.checked) {
+                    folderRetentionInput.value = '';
+                    folderRetentionInput.disabled = true;
+                    folderRetentionInput.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    folderRetentionInput.disabled = false;
+                    folderRetentionInput.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            });
+        }
+
+        // Delete folder
+        async function deleteFolder(folderId, folderName) {
+            if (!confirm('Are you sure you want to delete the folder "' + folderName + '"?\n\nRecordings in this folder will be removed from the folder but not deleted.')) {
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name=csrf-token]');
+                const csrfValue = csrfToken ? csrfToken.getAttribute('content') : '';
+                const response = await fetch('/api/folders/' + folderId, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfValue
+                    }
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || 'Failed to delete folder');
+                }
+
+                folders = folders.filter(function(f) { return f.id !== folderId; });
+                displayFolders();
+                showToast('Folder "' + folderName + '" deleted successfully');
+            } catch (error) {
+                console.error('Error deleting folder:', error);
+                showToast('Failed to delete folder: ' + error.message, 'error');
+            }
+        }
+
+        // Create folder button
+        if (createFolderBtn) {
+            createFolderBtn.addEventListener('click', function() { openFolderModal(); });
+        }
+
+        // Save folder form
+        if (folderForm) {
+            folderForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const folderId = document.getElementById('folderId').value;
+                const folderName = document.getElementById('folderName').value.trim();
+
+                if (!folderName) {
+                    showToast('Folder name is required', 'error');
+                    return;
+                }
+
+                const folderData = {
+                    name: folderName,
+                    color: document.getElementById('folderColor').value,
+                    custom_prompt: document.getElementById('folderCustomPrompt').value.trim() || null
+                };
+
+                var langEl = document.getElementById('folderLanguage');
+                folderData.default_language = langEl ? langEl.value.trim() || null : null;
+                var minEl = document.getElementById('folderMinSpeakers');
+                folderData.default_min_speakers = minEl && minEl.value ? parseInt(minEl.value) : null;
+                var maxEl = document.getElementById('folderMaxSpeakers');
+                folderData.default_max_speakers = maxEl && maxEl.value ? parseInt(maxEl.value) : null;
+                var templateEl = document.getElementById('folderNamingTemplate');
+                folderData.naming_template_id = templateEl && templateEl.value ? parseInt(templateEl.value) : null;
+
+                // Group settings
+                const folderGroupIdEl = document.getElementById('folderGroupId');
+                if (folderGroupIdEl && folderGroupIdEl.value) {
+                    folderData.group_id = parseInt(folderGroupIdEl.value);
+                    var autoShareEl = document.getElementById('folderAutoShareOnApply');
+                    folderData.auto_share_on_apply = autoShareEl ? autoShareEl.checked : true;
+                    var shareLeadEl = document.getElementById('folderShareWithGroupLead');
+                    folderData.share_with_group_lead = shareLeadEl ? shareLeadEl.checked : true;
+                }
+
+                // Retention settings
+                const folderProtect = document.getElementById('folderProtectFromDeletion');
+                const folderRetention = document.getElementById('folderRetentionDays');
+                if (folderProtect && folderProtect.checked) {
+                    folderData.retention_days = -1;
+                } else if (folderRetention && folderRetention.value) {
+                    folderData.retention_days = parseInt(folderRetention.value);
+                }
+
+                try {
+                    const csrfToken = document.querySelector('meta[name=csrf-token]');
+                    const csrfValue = csrfToken ? csrfToken.getAttribute('content') : '';
+                    const url = isEditingFolder ? '/api/folders/' + folderId : '/api/folders';
+                    const method = isEditingFolder ? 'PUT' : 'POST';
+
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfValue
+                        },
+                        body: JSON.stringify(folderData)
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        throw new Error(data.error || 'Failed to save folder');
+                    }
+
+                    const savedFolder = await response.json();
+
+                    if (isEditingFolder) {
+                        const index = folders.findIndex(function(f) { return f.id === parseInt(folderId); });
+                        if (index !== -1) {
+                            folders[index] = savedFolder;
+                        }
+                        showToast('Folder "' + savedFolder.name + '" updated successfully');
+                    } else {
+                        folders.push(savedFolder);
+                        showToast('Folder "' + savedFolder.name + '" created successfully');
+                    }
+
+                    displayFolders();
+                    closeFolderModal();
+                } catch (error) {
+                    console.error('Error saving folder:', error);
+                    showToast('Failed to save folder: ' + error.message, 'error');
+                }
+            });
+        }
+
+        // Check if auto-deletion is enabled for folder retention section
+        function checkFolderAutoDeletionEnabled() {
+            const isAutoDeletionEnabled = {{ 'true' if enable_auto_deletion else 'false' }};
+            const retentionSection = document.getElementById('folderRetentionSection');
+
+            if (retentionSection && isAutoDeletionEnabled) {
+                retentionSection.classList.remove('hidden');
+            }
+        }
+        checkFolderAutoDeletionEnabled();
+
+        // Initialize folder group selection visibility
+        function initFolderGroupSelection() {
+            const folderGroupSection = document.getElementById('folderGroupSelectionSection');
+            if (folderGroupSection && adminGroups && adminGroups.length > 0) {
+                folderGroupSection.classList.remove('hidden');
+
+                // Populate folder group dropdown
+                const folderGroupIdEl = document.getElementById('folderGroupId');
+                if (folderGroupIdEl) {
+                    folderGroupIdEl.textContent = '';
+                    const defaultOpt = document.createElement('option');
+                    defaultOpt.value = '';
+                    defaultOpt.textContent = 'Personal Folder (Not Associated with a Group)';
+                    folderGroupIdEl.appendChild(defaultOpt);
+                    adminGroups.forEach(function(group) {
+                        const option = document.createElement('option');
+                        option.value = group.id;
+                        option.textContent = group.name;
+                        folderGroupIdEl.appendChild(option);
+                    });
+                }
+            }
+        }
+        initFolderGroupSelection();
+
+        // ========== END FOLDERS MANAGEMENT ==========
+
         // AJAX form submission for Account Information
         const accountInfoForm = document.getElementById('accountInfoForm');
         if (accountInfoForm) {
-            accountInfoForm.addEventListener('submit', async (e) => {
+            accountInfoForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const formData = new FormData(accountInfoForm);
-                
+
                 try {
                     const response = await fetch('/account', {
                         method: 'POST',
                         body: formData
                     });
-                    
+
                     if (response.ok) {
                         showToast('Account information updated successfully', 'success');
                     } else {
-                        const text = await response.text();
+                        var text = await response.text();
                         showToast('Failed to update account information', 'error');
                     }
                 } catch (error) {

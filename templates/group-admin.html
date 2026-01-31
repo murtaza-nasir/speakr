@@ -217,6 +217,9 @@
                                             <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" title="Manage Group Tags">
                                                 <i class="fas fa-tags"></i>
                                             </button>
+                                            <button v-if="foldersEnabled" @click="openManageTeamFoldersModal(group)" class="text-emerald-500 hover:text-emerald-700" title="Manage Group Folders">
+                                                <i class="fas fa-folder"></i>
+                                            </button>
                                             <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" title="Edit Group">
                                                 <i class="fas fa-edit"></i>
                                             </button>
@@ -612,6 +615,195 @@
                 </div>
             </div>
         </div>
+
+        <!-- Manage Group Folders Modal -->
+        <div v-if="showManageTeamFoldersModal" @click.self="closeManageTeamFoldersModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">
+                        <i class="fas fa-folder mr-2 text-emerald-500"></i>
+                        Manage Folders for ${ currentTeam?.name }
+                    </h3>
+                    <button @click="closeManageTeamFoldersModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                </div>
+
+                <!-- Create/Edit Folder Form -->
+                <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)]">
+                            ${ editingTeamFolderId ? 'Edit Group Folder' : 'Create New Group Folder' }
+                        </h4>
+                        <button v-if="editingTeamFolderId" @click="cancelEditTeamFolder" type="button" class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                            <i class="fas fa-times mr-1"></i> Cancel
+                        </button>
+                    </div>
+                    <form @submit.prevent="saveTeamFolder" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Folder Name *</label>
+                                <input v-model="newTeamFolder.name" type="text" required maxlength="50"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                       placeholder="e.g., Client Calls">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                                <input v-model="newTeamFolder.color" type="color"
+                                       class="w-full h-10 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- Custom Prompt -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                Custom Summarization Prompt
+                                <span class="text-[var(--text-muted)] font-normal">- Optional AI instructions</span>
+                            </label>
+                            <textarea v-model="newTeamFolder.custom_prompt" rows="3"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   placeholder="Enter custom instructions for AI summarization"></textarea>
+                            <p class="text-xs text-[var(--text-muted)] mt-1">
+                                Recordings in this folder will use this prompt (unless overridden by a tag).
+                            </p>
+                        </div>
+
+                        <!-- Transcription Settings -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Default Language</label>
+                                <select v-model="newTeamFolder.default_language"
+                                        class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]">
+                                    <option value="">Auto-detect</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Spanish</option>
+                                    <option value="fr">French</option>
+                                    <option value="de">German</option>
+                                    <option value="zh">Chinese</option>
+                                    <option value="ja">Japanese</option>
+                                    <option value="pt">Portuguese</option>
+                                    <option value="it">Italian</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Min Speakers</label>
+                                <input v-model.number="newTeamFolder.default_min_speakers" type="number" min="1" max="10"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                       placeholder="1">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">Max Speakers</label>
+                                <input v-model.number="newTeamFolder.default_max_speakers" type="number" min="1" max="10"
+                                       class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                       placeholder="5">
+                            </div>
+                        </div>
+
+                        <!-- Retention and Protection -->
+                        <div>
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                Retention Period (days)
+                                <span class="text-[var(--text-muted)] font-normal">- Optional override for auto-deletion</span>
+                            </label>
+                            <input v-model.number="newTeamFolder.retention_days" type="number" min="0" step="1"
+                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)]"
+                                   placeholder="Leave empty to use global retention">
+                            <p class="text-xs text-[var(--text-muted)] mt-1">
+                                Recordings in this folder will be deleted after this many days. Leave empty to use global retention (${ globalRetentionDays } days).
+                            </p>
+                        </div>
+                        <div class="flex items-center">
+                            <input v-model="newTeamFolder.protect_from_deletion" type="checkbox" id="folderProtectFromDeletion"
+                                   class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                            <label for="folderProtectFromDeletion" class="text-xs text-[var(--text-secondary)]">
+                                <i class="fas fa-shield-alt mr-1"></i> Protect recordings in this folder from auto-deletion
+                            </label>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex items-center">
+                                <input v-model="newTeamFolder.auto_share_on_apply" type="checkbox" id="folderAutoShareOnApply"
+                                       class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                                <label for="folderAutoShareOnApply" class="text-xs text-[var(--text-secondary)]">
+                                    <i class="fas fa-user-friends mr-1"></i> Auto-share recordings with all group members when added to this folder
+                                </label>
+                            </div>
+                            <div class="flex items-center">
+                                <input v-model="newTeamFolder.share_with_group_lead" type="checkbox" id="folderShareWithGroupLead"
+                                       class="mr-2 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
+                                <label for="folderShareWithGroupLead" class="text-xs text-[var(--text-secondary)]">
+                                    <i class="fas fa-user-tie mr-1"></i> Share recordings with group admins when added to this folder
+                                </label>
+                            </div>
+                            <p class="text-xs text-[var(--text-muted)] ml-6">
+                                Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
+                            </p>
+                        </div>
+                        <div v-if="teamFolderError" class="text-[var(--text-danger)] text-xs">${ teamFolderError }</div>
+                        <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 text-sm">
+                            <i :class="editingTeamFolderId ? 'fas fa-save' : 'fas fa-plus'" class="mr-1"></i>
+                            ${ editingTeamFolderId ? 'Update Folder' : 'Create Folder' }
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Existing Group Folders -->
+                <div>
+                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Group Folders</h4>
+                    <div v-if="teamFolders.length > 0" class="space-y-3">
+                        <div v-for="folder in teamFolders" :key="folder.id"
+                             class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)]">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center space-x-3 flex-1">
+                                    <span class="inline-block w-4 h-4 rounded flex-shrink-0" :style="{ backgroundColor: folder.color || '#10B981' }"></span>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-medium text-[var(--text-primary)]">${ folder.name }</div>
+                                        <div class="text-xs text-[var(--text-muted)] mt-1 space-x-3">
+                                            <span v-if="folder.retention_days">
+                                                <i class="fas fa-clock mr-1"></i> ${ folder.retention_days } day retention
+                                            </span>
+                                            <span v-else>
+                                                <i class="fas fa-globe mr-1"></i> Global retention
+                                            </span>
+                                            <span v-if="folder.protect_from_deletion" class="text-green-500">
+                                                <i class="fas fa-shield-alt mr-1"></i> Protected
+                                            </span>
+                                            <span>
+                                                <i class="fas fa-file-audio mr-1"></i> ${ folder.recording_count || 0 } recordings
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex gap-2 flex-shrink-0">
+                                    <button @click="editTeamFolder(folder)" class="text-blue-500 hover:text-blue-700 px-2 py-1" title="Edit Folder">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button @click="deleteTeamFolder(folder)" class="text-red-500 hover:text-red-700 px-2 py-1" title="Delete Folder">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Additional details if configured -->
+                            <div v-if="folder.custom_prompt || folder.default_language || folder.default_min_speakers || folder.default_max_speakers"
+                                 class="mt-2 pt-2 border-t border-[var(--border-secondary)] space-y-1">
+                                <div v-if="folder.custom_prompt" class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-comment-dots mr-1"></i> Custom prompt configured
+                                </div>
+                                <div v-if="folder.default_language" class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-language mr-1"></i> Language: ${ folder.default_language.toUpperCase() }
+                                </div>
+                                <div v-if="folder.default_min_speakers || folder.default_max_speakers" class="text-xs text-[var(--text-muted)]">
+                                    <i class="fas fa-users mr-1"></i> Speakers:
+                                    <span v-if="folder.default_min_speakers">${ folder.default_min_speakers }-</span><span v-if="folder.default_max_speakers">${ folder.default_max_speakers }</span><span v-else>auto</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-8 text-[var(--text-muted)]">
+                        <i class="fas fa-folder text-3xl mb-2"></i>
+                        <p class="text-sm">No group folders created yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -664,6 +856,25 @@
                     share_with_group_lead: true
                 });
                 const teamTagError = ref('');
+
+                // Folders state
+                const foldersEnabled = ref(false);
+                const showManageTeamFoldersModal = ref(false);
+                const teamFolders = ref([]);
+                const editingTeamFolderId = ref(null);
+                const newTeamFolder = ref({
+                    name: '',
+                    color: '#10B981',
+                    custom_prompt: '',
+                    default_language: '',
+                    default_min_speakers: null,
+                    default_max_speakers: null,
+                    retention_days: null,
+                    protect_from_deletion: false,
+                    auto_share_on_apply: true,
+                    share_with_group_lead: true
+                });
+                const teamFolderError = ref('');
                 const syncResults = ref({ shares_created: 0, recordings_processed: 0 });
                 const users = ref([]);
                 
@@ -1083,6 +1294,186 @@
                     }
                 };
 
+                // Group Folders Management
+                const openManageTeamFoldersModal = async (group) => {
+                    currentTeam.value = group;
+                    teamFolderError.value = '';
+                    await loadTeamFolders(group.id);
+                    showManageTeamFoldersModal.value = true;
+                };
+
+                const closeManageTeamFoldersModal = () => {
+                    showManageTeamFoldersModal.value = false;
+                    currentTeam.value = null;
+                    teamFolders.value = [];
+                    editingTeamFolderId.value = null;
+                    newTeamFolder.value = {
+                        name: '',
+                        color: '#10B981',
+                        custom_prompt: '',
+                        default_language: '',
+                        default_min_speakers: null,
+                        default_max_speakers: null,
+                        retention_days: null,
+                        protect_from_deletion: false,
+                        auto_share_on_apply: true,
+                        share_with_group_lead: true
+                    };
+                    teamFolderError.value = '';
+                };
+
+                const loadTeamFolders = async (groupId) => {
+                    try {
+                        const response = await fetch(`/api/groups/${groupId}/folders`);
+                        if (!response.ok) throw new Error('Failed to load group folders');
+                        const data = await response.json();
+                        teamFolders.value = data.folders || [];
+                    } catch (error) {
+                        teamFolderError.value = error.message;
+                    }
+                };
+
+                const editTeamFolder = (folder) => {
+                    editingTeamFolderId.value = folder.id;
+                    newTeamFolder.value = {
+                        name: folder.name,
+                        color: folder.color || '#10B981',
+                        custom_prompt: folder.custom_prompt || '',
+                        default_language: folder.default_language || '',
+                        default_min_speakers: folder.default_min_speakers,
+                        default_max_speakers: folder.default_max_speakers,
+                        retention_days: folder.retention_days,
+                        protect_from_deletion: folder.protect_from_deletion || false,
+                        auto_share_on_apply: folder.auto_share_on_apply !== undefined ? folder.auto_share_on_apply : true,
+                        share_with_group_lead: folder.share_with_group_lead !== undefined ? folder.share_with_group_lead : true
+                    };
+                    document.querySelector('.max-h-\\[90vh\\]')?.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const cancelEditTeamFolder = () => {
+                    editingTeamFolderId.value = null;
+                    newTeamFolder.value = {
+                        name: '',
+                        color: '#10B981',
+                        custom_prompt: '',
+                        default_language: '',
+                        default_min_speakers: null,
+                        default_max_speakers: null,
+                        retention_days: null,
+                        protect_from_deletion: false,
+                        auto_share_on_apply: true,
+                        share_with_group_lead: true
+                    };
+                    teamFolderError.value = '';
+                };
+
+                const saveTeamFolder = async () => {
+                    teamFolderError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = { 'Content-Type': 'application/json' };
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const payload = {
+                            name: newTeamFolder.value.name,
+                            color: newTeamFolder.value.color,
+                            protect_from_deletion: newTeamFolder.value.protect_from_deletion,
+                            auto_share_on_apply: newTeamFolder.value.auto_share_on_apply,
+                            share_with_group_lead: newTeamFolder.value.share_with_group_lead
+                        };
+
+                        if (newTeamFolder.value.custom_prompt && newTeamFolder.value.custom_prompt.trim()) {
+                            payload.custom_prompt = newTeamFolder.value.custom_prompt.trim();
+                        }
+                        if (newTeamFolder.value.default_language) {
+                            payload.default_language = newTeamFolder.value.default_language;
+                        }
+                        if (newTeamFolder.value.default_min_speakers) {
+                            payload.default_min_speakers = newTeamFolder.value.default_min_speakers;
+                        }
+                        if (newTeamFolder.value.default_max_speakers) {
+                            payload.default_max_speakers = newTeamFolder.value.default_max_speakers;
+                        }
+                        if (newTeamFolder.value.retention_days && newTeamFolder.value.retention_days > 0) {
+                            payload.retention_days = newTeamFolder.value.retention_days;
+                        }
+
+                        let response;
+                        if (editingTeamFolderId.value) {
+                            response = await fetch(`/api/folders/${editingTeamFolderId.value}`, {
+                                method: 'PUT',
+                                headers,
+                                body: JSON.stringify(payload)
+                            });
+                        } else {
+                            response = await fetch(`/api/groups/${currentTeam.value.id}/folders`, {
+                                method: 'POST',
+                                headers,
+                                body: JSON.stringify(payload)
+                            });
+                        }
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || (editingTeamFolderId.value ? 'Failed to update folder' : 'Failed to create folder'));
+                        }
+
+                        editingTeamFolderId.value = null;
+                        newTeamFolder.value = {
+                            name: '',
+                            color: '#10B981',
+                            custom_prompt: '',
+                            default_language: '',
+                            default_min_speakers: null,
+                            default_max_speakers: null,
+                            retention_days: null,
+                            protect_from_deletion: false,
+                            auto_share_on_apply: true,
+                            share_with_group_lead: true
+                        };
+                        await loadTeamFolders(currentTeam.value.id);
+                    } catch (error) {
+                        teamFolderError.value = error.message;
+                    }
+                };
+
+                const deleteTeamFolder = async (folder) => {
+                    if (!confirm(`Delete the folder "${folder.name}"? Recordings will be removed from this folder but not deleted.`)) return;
+
+                    teamFolderError.value = '';
+                    try {
+                        const csrfToken = document.querySelector('meta[name=csrf-token]')?.getAttribute('content');
+                        const headers = {};
+                        if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+                        const response = await fetch(`/api/folders/${folder.id}`, {
+                            method: 'DELETE',
+                            headers
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.error || 'Failed to delete folder');
+                        }
+
+                        await loadTeamFolders(currentTeam.value.id);
+                    } catch (error) {
+                        teamFolderError.value = error.message;
+                    }
+                };
+
+                const loadFoldersEnabled = async () => {
+                    try {
+                        const response = await fetch('/api/config');
+                        if (response.ok) {
+                            const config = await response.json();
+                            foldersEnabled.value = config.enable_folders === true;
+                        }
+                    } catch (error) {
+                        console.warn('Error loading config:', error);
+                    }
+                };
+
                 const formatFileSize = (bytes) => {
                     if (!bytes || bytes === 0) return '0 Bytes';
                     
@@ -1135,6 +1526,7 @@
 
                 onMounted(async () => {
                     loadGroups();
+                    loadFoldersEnabled();
                     initializeDarkMode();
                     setupGlobalClickHandler();
                 });
@@ -1194,7 +1586,22 @@
                     editTeamTag,
                     cancelEditTeamTag,
                     saveTeamTag,
-                    deleteTeamTag
+                    deleteTeamTag,
+
+                    // Folders
+                    foldersEnabled,
+                    showManageTeamFoldersModal,
+                    teamFolders,
+                    editingTeamFolderId,
+                    newTeamFolder,
+                    teamFolderError,
+                    openManageTeamFoldersModal,
+                    closeManageTeamFoldersModal,
+                    loadTeamFolders,
+                    editTeamFolder,
+                    cancelEditTeamFolder,
+                    saveTeamFolder,
+                    deleteTeamFolder
                 }
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2

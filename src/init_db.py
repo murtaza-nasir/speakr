@@ -525,6 +525,18 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not create unique index on user.sso_subject: {e}")
 
+        # Add folder_id column to recording table for folders feature
+        if add_column_if_not_exists(engine, 'recording', 'folder_id', 'INTEGER'):
+            app.logger.info("Added folder_id column to recording table")
+            # Create index for folder_id
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text('CREATE INDEX IF NOT EXISTS ix_recording_folder_id ON recording (folder_id)'))
+                    conn.commit()
+                    app.logger.info("Created index ix_recording_folder_id on recording.folder_id")
+            except Exception as e:
+                app.logger.warning(f"Could not create index on recording.folder_id: {e}")
+
         # Initialize default system settings
         if not SystemSetting.query.filter_by(key='transcript_length_limit').first():
             SystemSetting.set_setting(
@@ -583,7 +595,16 @@ def initialize_database(app):
                 setting_type='boolean'
             )
             app.logger.info("Initialized disable_auto_summarization setting")
-        
+
+        if not SystemSetting.query.filter_by(key='enable_folders').first():
+            SystemSetting.set_setting(
+                key='enable_folders',
+                value='false',
+                description='Enable the Folders feature, allowing users to organize recordings into folders with custom prompts and ASR settings.',
+                setting_type='boolean'
+            )
+            app.logger.info("Initialized enable_folders setting")
+
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
         if ENABLE_INQUIRE_MODE:
