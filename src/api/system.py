@@ -238,7 +238,7 @@ def get_config():
             'users_can_delete_enabled': USERS_CAN_DELETE,
             'enable_incognito_mode': ENABLE_INCOGNITO_MODE,
             'incognito_mode_default': INCOGNITO_MODE_DEFAULT,
-            'enable_folders': SystemSetting.get_setting('enable_folders', 'false') == 'true',
+            'enable_folders': SystemSetting.get_setting('enable_folders', False) == True,
             **chunking_info
         })
     except Exception as e:
