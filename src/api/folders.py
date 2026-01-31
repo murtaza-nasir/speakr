@@ -45,8 +45,8 @@ def init_folders_helpers(**kwargs):
 def get_folders():
     """Get all folders for the current user, including group folders they have access to."""
     # Check if folders feature is enabled - return empty array if not
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify([])
 
     # Get user's personal folders
@@ -88,8 +88,8 @@ def get_folders():
 def create_folder():
     """Create a new folder (personal or group folder)."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     data = request.get_json()
@@ -167,8 +167,8 @@ def create_folder():
 def update_folder(folder_id):
     """Update a folder."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     folder = db.session.get(Folder, folder_id)
@@ -276,8 +276,8 @@ def update_folder(folder_id):
 def delete_folder(folder_id):
     """Delete a folder. Recordings in this folder will have folder_id set to NULL."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     folder = db.session.get(Folder, folder_id)
@@ -310,8 +310,8 @@ def delete_folder(folder_id):
 def create_group_folder(group_id):
     """Create a group-scoped folder (group admins only)."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     if not ENABLE_INTERNAL_SHARING:
@@ -379,8 +379,8 @@ def create_group_folder(group_id):
 def get_group_folders(group_id):
     """Get all folders for a team (team members only)."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     # Verify team exists
@@ -408,8 +408,8 @@ def get_group_folders(group_id):
 def assign_recording_folder(recording_id):
     """Assign a recording to a folder (or move to a different folder)."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     recording = db.session.get(Recording, recording_id)
@@ -473,8 +473,8 @@ def assign_recording_folder(recording_id):
 def remove_recording_folder(recording_id):
     """Remove a recording from its folder."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     recording = db.session.get(Recording, recording_id)
@@ -503,8 +503,8 @@ def remove_recording_folder(recording_id):
 def bulk_assign_folder():
     """Assign multiple recordings to a folder."""
     # Check if folders feature is enabled
-    folders_enabled = SystemSetting.get_setting('enable_folders', 'false')
-    if folders_enabled != 'true':
+    folders_enabled = SystemSetting.get_setting('enable_folders', False)
+    if not folders_enabled:
         return jsonify({'error': 'Folders feature is not enabled'}), 403
 
     data = request.get_json()
