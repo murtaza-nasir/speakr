@@ -44,10 +44,12 @@ class ConnectorRegistry:
         from .connectors.openai_whisper import OpenAIWhisperConnector
         from .connectors.openai_transcribe import OpenAITranscribeConnector
         from .connectors.asr_endpoint import ASREndpointConnector
+        from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
         self.register('asr_endpoint', ASREndpointConnector)
+        self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -146,6 +148,10 @@ class ConnectorRegistry:
                 connector_name = 'asr_endpoint'
                 if asr_base_url:
                     logger.info("Auto-detected ASR endpoint from ASR_BASE_URL")
+            # Priority 2.5: Azure OpenAI - check for Azure endpoint URL
+            elif self._is_azure_endpoint():
+                connector_name = 'azure_openai_transcribe'
+                logger.info("Auto-detected Azure OpenAI from TRANSCRIPTION_BASE_URL")
             # Priority 3: Model-based detection
             elif transcription_model and 'gpt-4o' in transcription_model:
                 connector_name = 'openai_transcribe'
@@ -199,6 +205,11 @@ class ConnectorRegistry:
         # Default: 30 minutes
         return 1800
 
+    def _is_azure_endpoint(self) -> bool:
+        """Check if the TRANSCRIPTION_BASE_URL points to an Azure OpenAI endpoint."""
+        base_url = os.environ.get('TRANSCRIPTION_BASE_URL', '').lower()
+        return '.openai.azure.com' in base_url or '.cognitiveservices.azure.com' in base_url
+
     def _build_config_from_env(self, connector_name: str) -> Dict[str, Any]:
         """
         Build connector config from environment variables.
@@ -230,6 +241,26 @@ class ConnectorRegistry:
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
                 'base_url': base_url,
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'gpt-4o-transcribe')
+            }
+
+        elif connector_name == 'azure_openai_transcribe':
+            # Azure OpenAI requires endpoint and deployment_name
+            # TRANSCRIPTION_BASE_URL should be the Azure endpoint (e.g., https://your-resource.openai.azure.com)
+            endpoint = os.environ.get('TRANSCRIPTION_BASE_URL', '')
+            if endpoint:
+                endpoint = endpoint.split('#')[0].strip()
+                # Remove any trailing /openai or /v1 paths - we build the full URL ourselves
+                endpoint = endpoint.rstrip('/')
+                for suffix in ['/openai/v1', '/openai', '/v1']:
+                    if endpoint.lower().endswith(suffix):
+                        endpoint = endpoint[:-len(suffix)]
+
+            return {
+                'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+                'endpoint': endpoint,
+                'deployment_name': os.environ.get('AZURE_DEPLOYMENT_NAME', os.environ.get('TRANSCRIPTION_MODEL', 'gpt-4o-transcribe')),
+                'api_version': os.environ.get('AZURE_API_VERSION', '2025-04-01-preview'),
+                'model': os.environ.get('TRANSCRIPTION_MODEL', '')  # For capability detection
             }
 
         else:  # openai_whisper (default)
