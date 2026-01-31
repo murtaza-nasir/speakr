@@ -1,5 +1,10 @@
 """
 Database schema migration utilities.
+
+IMPORTANT: All migrations must be compatible with both SQLite and PostgreSQL.
+- Boolean defaults: SQLite uses 0/1, PostgreSQL requires FALSE/TRUE
+- Reserved keywords: "user", "order" etc. must be quoted
+- The add_column_if_not_exists() function handles these automatically
 """
 
 from sqlalchemy import inspect, text
