@@ -22,6 +22,7 @@ ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() 
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
+READABLE_PUBLIC_LINKS = os.environ.get('READABLE_PUBLIC_LINKS', 'false').lower() == 'true'
 
 # Create blueprint
 shares_bp = Blueprint('shares', __name__)
@@ -122,8 +123,10 @@ def view_shared_recording(public_id):
     share = Share.query.filter_by(public_id=public_id).first_or_404()
     recording = share.recording
 
-    # Process transcription for server-side rendering
-    processed_transcript = process_transcription_for_template(recording.transcription)
+    # Process transcription for server-side rendering (only if READABLE_PUBLIC_LINKS is enabled)
+    processed_transcript = None
+    if READABLE_PUBLIC_LINKS:
+        processed_transcript = process_transcription_for_template(recording.transcription)
 
     # Create a limited dictionary for the public view
     recording_data = {
@@ -142,7 +145,7 @@ def view_shared_recording(public_id):
         'audio_duration': recording.get_audio_duration()
     }
 
-    return render_template('share.html', recording=recording_data, transcript=processed_transcript)
+    return render_template('share.html', recording=recording_data, transcript=processed_transcript, readable_mode=READABLE_PUBLIC_LINKS)
 
 
 @shares_bp.route('/share/audio/<string:public_id>')
