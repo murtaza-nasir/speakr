@@ -363,8 +363,9 @@ def initialize_database(app):
                 # Rename is_starred to is_highlighted by copying data
                 try:
                     with engine.connect() as conn:
-                        # Add is_highlighted column
-                        conn.execute(text('ALTER TABLE shared_recording_state ADD COLUMN is_highlighted BOOLEAN DEFAULT 0'))
+                        # Add is_highlighted column (PostgreSQL needs FALSE, SQLite uses 0)
+                        default_val = 'FALSE' if engine.name == 'postgresql' else '0'
+                        conn.execute(text(f'ALTER TABLE shared_recording_state ADD COLUMN is_highlighted BOOLEAN DEFAULT {default_val}'))
                         # Copy data from is_starred to is_highlighted
                         conn.execute(text('UPDATE shared_recording_state SET is_highlighted = is_starred'))
                         conn.commit()

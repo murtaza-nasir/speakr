@@ -22,6 +22,11 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
     columns = [col['name'] for col in inspector.get_columns(table_name)]
 
     if column_name not in columns:
+        # PostgreSQL requires TRUE/FALSE for boolean defaults, not 0/1
+        if engine.name == 'postgresql' and 'BOOLEAN' in column_type.upper():
+            column_type = column_type.replace('DEFAULT 0', 'DEFAULT FALSE')
+            column_type = column_type.replace('DEFAULT 1', 'DEFAULT TRUE')
+
         with engine.connect() as conn:
             # Quote identifiers to handle reserved keywords (e.g., "user" in PostgreSQL)
             # MySQL uses backticks, PostgreSQL/SQLite use double quotes
