@@ -232,6 +232,9 @@ export function useAudio(state, utils) {
             let combinedStream;
 
             if (mode === 'microphone') {
+                if (!canRecordAudio.value) {
+                    throw new Error('Microphone recording is not available. Make sure you are using HTTPS.');
+                }
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         echoCancellation: true,
@@ -248,6 +251,9 @@ export function useAudio(state, utils) {
                 source.connect(analyser.value);
 
             } else if (mode === 'system') {
+                if (!canRecordSystemAudio.value) {
+                    throw new Error('System audio recording is not available. Make sure you are using HTTPS.');
+                }
                 // Use pre-obtained display stream (required for Firefox user gesture)
                 // or get it now for browsers that don't require immediate call
                 const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
@@ -291,6 +297,9 @@ export function useAudio(state, utils) {
                 source.connect(analyser.value);
 
             } else if (mode === 'both') {
+                if (!canRecordAudio.value || !canRecordSystemAudio.value) {
+                    throw new Error('Recording is not available. Make sure you are using HTTPS.');
+                }
                 const micStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         echoCancellation: true,
