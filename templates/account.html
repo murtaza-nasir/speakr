@@ -456,7 +456,7 @@
                             <i class="fas fa-users mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.speakersManagement">Speakers</span>
                         </a>
                         <a href="#" id="tab-folders" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]" style="display: none;">
-                            <i class="fas fa-folder mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.folderManagement">Folders</span>
+                            <i class="fas fa-folder mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.folderManagement">Folder Management</span>
                         </a>
                         <a href="#" id="tab-tags" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-tags mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.tagManagement">Tags</span>
@@ -884,11 +884,11 @@
 
                     <!-- Folders Tab Content -->
                     <div id="content-folders" class="hidden tab-content pt-6">
-                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.folderManagement">Folder Management</h2>
+                    <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="folderManagement.title">Folder Management</h2>
 
                     <div class="mb-6">
                         <div class="flex justify-between items-center mb-4">
-                            <p class="text-[var(--text-secondary)]">Organize your recordings into folders. Unlike tags, a recording can only belong to one folder. Folder prompts are applied before user prompts but after tag prompts.</p>
+                            <p class="text-[var(--text-secondary)]" data-i18n="folderManagement.description">Organize your recordings into folders. Unlike tags, a recording can only belong to one folder. Folder prompts are applied before user prompts but after tag prompts.</p>
                             <button id="createFolderBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                 <i class="fas fa-plus mr-2"></i> <span data-i18n="folderManagement.createFolder">Create Folder</span>
                             </button>
@@ -897,20 +897,20 @@
                         <!-- Loading state -->
                         <div id="foldersLoading" class="text-center py-8 hidden">
                             <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                            <p class="text-[var(--text-muted)] mt-2">Loading folders...</p>
+                            <p class="text-[var(--text-muted)] mt-2" data-i18n="common.loading">Loading...</p>
                         </div>
 
                         <!-- Error state -->
                         <div id="foldersError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <span id="foldersErrorMessage">Failed to load folders</span>
+                            <span id="foldersErrorMessage" data-i18n="common.error">Failed to load folders</span>
                         </div>
 
                         <!-- Empty state -->
                         <div id="foldersEmpty" class="text-center py-12 hidden">
                             <i class="fas fa-folder text-4xl text-[var(--text-light)] mb-4"></i>
-                            <p class="text-[var(--text-muted)] text-lg mb-2">No folders created yet</p>
-                            <p class="text-sm text-[var(--text-light)]">Create your first folder to organize your recordings</p>
+                            <p class="text-[var(--text-muted)] text-lg mb-2" data-i18n="folderManagement.noFolders">No folders created yet</p>
+                            <p class="text-sm text-[var(--text-light)]" data-i18n="folderManagement.noFoldersDescription">Create your first folder to organize your recordings</p>
                         </div>
 
                         <!-- Folders grid -->

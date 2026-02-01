@@ -11,7 +11,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         currentPage, perPage, totalRecordings, totalPages, hasNextPage, hasPrevPage,
         showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
-        filterStarred, filterInbox, sortBy,
+        filterStarred, filterInbox, filterFolder, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
@@ -60,6 +60,11 @@ export function useRecordings(state, utils, reprocessComposable) {
             }
             if (filterInbox.value) {
                 params.set('inbox', 'true');
+            }
+
+            // Add folder filter
+            if (filterFolder && filterFolder.value) {
+                params.set('folder', filterFolder.value);
             }
 
             const response = await fetch(`${endpoint}?${params}`);
@@ -387,6 +392,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterTextQuery.value = '';
         filterStarred.value = false;
         filterInbox.value = false;
+        // Note: filterFolder is NOT cleared here - it's a navigation element, not a filter
         searchQuery.value = '';
     };
 

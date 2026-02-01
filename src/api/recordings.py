@@ -1374,6 +1374,7 @@ def get_recordings_paginated():
         show_starred = request.args.get('starred', '').lower() == 'true'
         show_inbox = request.args.get('inbox', '').lower() == 'true'
         sort_by = request.args.get('sort_by', 'created_at')  # 'created_at' or 'meeting_date'
+        folder_filter = request.args.get('folder', '').strip()  # folder_id or 'none' for no folder
 
         # Get all accessible recording IDs (own + shared)
         accessible_recording_ids = get_accessible_recording_ids(current_user.id)
@@ -1440,6 +1441,19 @@ def get_recordings_paginated():
                     Recording.id.in_(inbox_subq)
                 )
             )
+
+        # Apply folder filter (AND with other filters)
+        if folder_filter:
+            if folder_filter.lower() == 'none':
+                # Filter recordings with no folder
+                stmt = stmt.where(Recording.folder_id.is_(None))
+            else:
+                # Filter by specific folder_id
+                try:
+                    folder_id = int(folder_filter)
+                    stmt = stmt.where(Recording.folder_id == folder_id)
+                except ValueError:
+                    pass  # Invalid folder_id, ignore filter
 
         # Apply search filters if provided
         if search_query:
@@ -2114,6 +2128,16 @@ def upload_file():
                 if tag and (tag.user_id == current_user.id or (tag.group_id and GroupMembership.query.filter_by(group_id=tag.group_id, user_id=current_user.id).first())):
                     selected_tags.append(tag)
 
+        # Get folder_id if provided
+        selected_folder = None
+        folder_id = request.form.get('folder_id')
+        if folder_id:
+            folder = Folder.query.filter_by(id=folder_id).first()
+            if folder:
+                # Allow folder if it's user's own folder OR it's a group folder where user is a member
+                if folder.user_id == current_user.id or (folder.group_id and GroupMembership.query.filter_by(group_id=folder.group_id, user_id=current_user.id).first()):
+                    selected_folder = folder
+
         # Get ASR advanced options if provided
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers') or None
@@ -2131,10 +2155,20 @@ def upload_file():
             except (ValueError, TypeError):
                 max_speakers = None
 
-        # Apply precedence hierarchy: user input > tag defaults > environment variables > auto-detect
+        # Apply precedence hierarchy: user input > tag defaults > folder defaults > environment variables > auto-detect
+
+        # Apply folder defaults first (lower priority than tags)
+        if selected_folder and not selected_tags:
+            # Only apply folder defaults if no tags are selected (tags take priority)
+            if not language and selected_folder.default_language:
+                language = selected_folder.default_language
+            if min_speakers is None and selected_folder.default_min_speakers:
+                min_speakers = selected_folder.default_min_speakers
+            if max_speakers is None and selected_folder.default_max_speakers:
+                max_speakers = selected_folder.default_max_speakers
 
         # Apply tag defaults if tags are selected and values are not explicitly provided by user
-        # Use first tag's defaults (highest priority)
+        # Use first tag's defaults (highest priority - overrides folder)
         if selected_tags:
             first_tag = selected_tags[0]
             if not language and first_tag.default_language:
@@ -2193,6 +2227,7 @@ def upload_file():
             user_id=current_user.id,
             mime_type=mime_type,
             notes=notes,
+            folder_id=selected_folder.id if selected_folder else None,
             processing_source='upload'  # Track that this was manually uploaded
         )
         db.session.add(recording)

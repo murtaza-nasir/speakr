@@ -2017,6 +2017,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
+            watch(filterFolder, (newValue) => {
+                // Persist folder selection to localStorage
+                if (newValue) {
+                    localStorage.setItem('selectedFolder', newValue);
+                } else {
+                    localStorage.removeItem('selectedFolder');
+                }
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
             watch(sortBy, () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
@@ -2169,6 +2179,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
+
+                        // Restore saved folder selection from localStorage
+                        if (foldersEnabled.value) {
+                            const savedFolder = localStorage.getItem('selectedFolder');
+                            if (savedFolder) {
+                                filterFolder.value = savedFolder;
+                            }
+                        }
+
                         // Set default incognito mode state if feature enabled and default is true
                         if (config.enable_incognito_mode && config.incognito_mode_default) {
                             incognitoMode.value = true;

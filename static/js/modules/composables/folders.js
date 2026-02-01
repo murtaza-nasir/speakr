@@ -12,10 +12,28 @@ export function useFolders({
     showToast,
     setGlobalError
 }) {
-    // Computed
+    // Computed / Helpers
     const getRecordingFolder = (recording) => {
-        if (!recording || !recording.folder) return null;
-        return recording.folder;
+        if (!recording || !recording.folder_id) return null;
+        // Try to get from recording.folder first, then lookup
+        if (recording.folder) return recording.folder;
+        return availableFolders.value?.find(f => f.id === recording.folder_id) || null;
+    };
+
+    const getFolderById = (folderId) => {
+        if (!folderId || !availableFolders.value) return null;
+        // Use == for loose equality to handle string/number type mismatch (e.g., from localStorage)
+        return availableFolders.value.find(f => f.id == folderId) || null;
+    };
+
+    const getFolderColor = (folderId) => {
+        const folder = getFolderById(folderId);
+        return folder?.color || '#10B981';
+    };
+
+    const getFolderName = (folderId) => {
+        const folder = getFolderById(folderId);
+        return folder?.name || 'Folder';
     };
 
     const getAvailableFoldersForRecording = () => {
@@ -144,6 +162,9 @@ export function useFolders({
     return {
         // Methods
         getRecordingFolder,
+        getFolderById,
+        getFolderColor,
+        getFolderName,
         getAvailableFoldersForRecording,
         assignFolderToRecording,
         removeRecordingFromFolder,

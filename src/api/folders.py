@@ -416,10 +416,9 @@ def assign_recording_folder(recording_id):
     if not recording:
         return jsonify({'error': 'Recording not found'}), 404
 
-    # Check access to recording
+    # Check access to recording (require edit permission)
     if has_recording_access:
-        has_access, permission = has_recording_access(recording, current_user)
-        if not has_access or permission not in ['owner', 'edit']:
+        if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to modify this recording'}), 403
     else:
         # Fallback: only owner can assign folder
@@ -481,10 +480,9 @@ def remove_recording_folder(recording_id):
     if not recording:
         return jsonify({'error': 'Recording not found'}), 404
 
-    # Check access to recording
+    # Check access to recording (require edit permission)
     if has_recording_access:
-        has_access, permission = has_recording_access(recording, current_user)
-        if not has_access or permission not in ['owner', 'edit']:
+        if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to modify this recording'}), 403
     else:
         # Fallback: only owner can remove folder
@@ -539,10 +537,9 @@ def bulk_assign_folder():
         if not recording:
             continue
 
-        # Check access
+        # Check access (require edit permission)
         if has_recording_access:
-            has_access, permission = has_recording_access(recording, current_user)
-            if not has_access or permission not in ['owner', 'edit']:
+            if not has_recording_access(recording, current_user, require_edit=True):
                 continue
         else:
             if recording.user_id != current_user.id:
