@@ -54,6 +54,25 @@ Search across all your recordings using natural language questions instead of ke
 
 ## Organization and Management
 
+### Folders
+
+Organize recordings into folders for clean, project-based organization. Each recording belongs to exactly one folder (or no folder), providing a simple hierarchical structure alongside the flexible tagging system.
+
+**Folder Features:**
+
+- **Per-Folder Settings** - Each folder can have its own custom AI prompts, default transcription language, and ASR speaker settings
+- **Sidebar Selector** - Quick folder dropdown to filter recordings by folder
+- **Folder Pills** - Visual indicators showing which folder a recording belongs to
+- **Group Folders** - Share folders with groups for automatic access when recordings are added
+- **Retention Policies** - Set folder-specific retention periods or protect folder contents from auto-deletion
+
+Folders complement tags rather than replacing them. Use folders for primary organization (by project, client, or meeting type) and tags for cross-cutting categorization (status, topics, follow-ups).
+
+!!! note "Enabling Folders"
+    Folders are disabled by default. Administrators must set `enable_folders` to `true` in System Settings or set `ENABLE_FOLDERS=true` in the environment.
+
+See the [Folders Guide](user-guide/folders.md) for detailed usage instructions.
+
 ### Bulk Operations
 
 Select multiple recordings in the sidebar to perform batch operations efficiently. Enter multi-select mode by clicking the checkbox icon or using keyboard shortcuts, then select individual recordings or use Ctrl/Cmd+A to select all visible recordings.
@@ -82,6 +101,8 @@ Implement intelligent data lifecycle management with flexible retention policies
 Build and maintain a library of speaker profiles that persist across recordings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after each transcription to build your library. Once identified, speakers are remembered and suggested in future recordings. The system tracks usage statistics, showing how often each speaker appears and when they were last identified. Bulk management tools help maintain a clean, organized speaker library.
 
 **Voice Profile Recognition**: The system builds voice recognition profiles from speaker identifications across multiple recordings. These profiles use 256-dimensional voice embeddings to suggest speaker matches when processing new recordings, making speaker identification faster and more consistent. The voice matching system calculates similarity scores to help identify speakers across recordings, even when audio quality varies. Voice profiles are automatically updated as more recordings are processed, improving recognition accuracy over time.
+
+**Auto Speaker Labeling**: Enable automatic speaker identification in your [account settings](user-guide/settings.md#processing-preferences). When enabled, new recordings are automatically analyzed against your speaker profiles, and matching speakers are labeled without manual intervention. Configure the confidence threshold to balance between more matches (low threshold) and higher accuracy (high threshold). This feature requires WhisperX ASR with speaker embeddings enabled.
 
 **Privacy-First Cleanup**: Voice profiles are automatically managed alongside recording retention policies. When all recordings containing a particular speaker are deleted, the speaker's voice profile is automatically removed during the next scheduled cleanup. This ensures biometric voice data is only retained when actively used, maintaining compliance with data minimization principles. The cleanup process is fully automatic and requires no manual intervention when auto-deletion is enabled.
 
