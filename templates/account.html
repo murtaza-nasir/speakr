@@ -531,8 +531,30 @@
                                     </div>
                                     <div>
                                         <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription Language</label>
-                                        <input type="text" name="transcription_language" id="transcription_language" value="{{ current_user.transcription_language or '' }}" placeholder="e.g., en, es, zh (ISO 639-1 code)" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Leave blank for auto-detection by transcription service.</p>
+                                        <select name="transcription_language" id="transcription_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
+                                            <option value="en" {% if current_user.transcription_language == 'en' %}selected{% endif %}>English</option>
+                                            <option value="es" {% if current_user.transcription_language == 'es' %}selected{% endif %}>Spanish</option>
+                                            <option value="fr" {% if current_user.transcription_language == 'fr' %}selected{% endif %}>French</option>
+                                            <option value="de" {% if current_user.transcription_language == 'de' %}selected{% endif %}>German</option>
+                                            <option value="it" {% if current_user.transcription_language == 'it' %}selected{% endif %}>Italian</option>
+                                            <option value="pt" {% if current_user.transcription_language == 'pt' %}selected{% endif %}>Portuguese</option>
+                                            <option value="nl" {% if current_user.transcription_language == 'nl' %}selected{% endif %}>Dutch</option>
+                                            <option value="ru" {% if current_user.transcription_language == 'ru' %}selected{% endif %}>Russian</option>
+                                            <option value="zh" {% if current_user.transcription_language == 'zh' %}selected{% endif %}>Chinese</option>
+                                            <option value="ja" {% if current_user.transcription_language == 'ja' %}selected{% endif %}>Japanese</option>
+                                            <option value="ko" {% if current_user.transcription_language == 'ko' %}selected{% endif %}>Korean</option>
+                                            <option value="ar" {% if current_user.transcription_language == 'ar' %}selected{% endif %}>Arabic</option>
+                                            <option value="hi" {% if current_user.transcription_language == 'hi' %}selected{% endif %}>Hindi</option>
+                                            <option value="pl" {% if current_user.transcription_language == 'pl' %}selected{% endif %}>Polish</option>
+                                            <option value="uk" {% if current_user.transcription_language == 'uk' %}selected{% endif %}>Ukrainian</option>
+                                            <option value="vi" {% if current_user.transcription_language == 'vi' %}selected{% endif %}>Vietnamese</option>
+                                            <option value="th" {% if current_user.transcription_language == 'th' %}selected{% endif %}>Thai</option>
+                                            <option value="tr" {% if current_user.transcription_language == 'tr' %}selected{% endif %}>Turkish</option>
+                                            <option value="id" {% if current_user.transcription_language == 'id' %}selected{% endif %}>Indonesian</option>
+                                            <option value="sv" {% if current_user.transcription_language == 'sv' %}selected{% endif %}>Swedish</option>
+                                        </select>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Select auto-detect to let the transcription service determine the language.</p>
                                     </div>
                                     <div>
                                         <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.preferredOutputLanguage">Preferred Output Language</label>

@@ -6,12 +6,13 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.5.1 - Incognito Mode Enhancements"
-    **In-app recording support, default incognito option, and LLM compatibility fixes**
+!!! info "Latest Release: v0.8.6 - Folders & Automation"
+    **Organize recordings into folders with custom prompts, auto speaker labeling, and per-user auto-summarization**
 
-    - **Incognito Mode for In-App Recordings** - The incognito toggle now works for microphone recordings, not just uploads
-    - **Default Incognito Mode** - New `INCOGNITO_MODE_DEFAULT=true` option to start with incognito enabled
-    - **LLM Streaming Compatibility** - New `ENABLE_STREAM_OPTIONS=false` for LLM servers with limited OpenAI API support
+    - **Folders Organization** - Group recordings into folders with custom prompts and ASR settings per folder
+    - **Auto Speaker Labeling** - Automatic speaker identification using voice embedding matching
+    - **Per-User Auto-Summarization** - User-configurable automatic summary generation
+    - **Azure OpenAI Connector** - Experimental transcription connector (community testing welcome)
 
     See the [v0.8.0 release notes](#version-080) for the full connector architecture and REST API features.
 

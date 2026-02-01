@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.5.1-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.6-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -160,7 +160,21 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.5.1)
+## Latest Release (v0.8.6)
+
+**Folders & Automation**
+
+- **Folders Organization** - Organize recordings into folders with custom prompts and ASR settings per folder
+- **Auto Speaker Labeling** - Automatic speaker identification using voice embedding matching
+- **Per-User Auto-Summarization** - User-configurable automatic summary generation
+- **Azure OpenAI Connector** - New transcription connector for Azure OpenAI (experimental, community testing welcome)
+- **HTTPS Validation** - Clear error messages when attempting to record on non-HTTPS connections
+
+**Improvements** - Legacy ASR code removed (fully migrated to connector architecture), audio codec fallback to MP3, share page click-to-seek, new `READABLE_PUBLIC_LINKS` option for server-rendered transcripts (LLM/scraper accessible)
+
+**Bug Fixes** - PostgreSQL boolean defaults in migrations, folders feature detection, audio player visibility for incognito recordings
+
+### Previous Release (v0.8.5.1)
 
 **Incognito Mode Enhancements & Compatibility Fixes**
 

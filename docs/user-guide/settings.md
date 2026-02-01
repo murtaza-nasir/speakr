@@ -24,6 +24,29 @@ The right side displays your recording metrics at a glance. You'll see your tota
 
 Your username and email address appear here as read-only fields. The email serves as your login credential and cannot be changed without administrator assistance.
 
+### Processing Preferences
+
+Control how your recordings are automatically processed:
+
+#### Auto-Summarization
+
+The **Auto-Summarization** toggle controls whether summaries are automatically generated after transcription completes. When enabled (the default), every recording receives an AI-generated summary using your custom prompt or the system default. Disable this if you prefer to manually trigger summarization or if you only need transcripts.
+
+#### Auto Speaker Labeling
+
+When you have speaker voice profiles with embeddings (from WhisperX ASR), the **Auto Speaker Labeling** feature can automatically identify and label speakers in new recordings.
+
+- **Enable/Disable** - Toggle automatic speaker identification
+- **Confidence Threshold** - Choose how strict the matching should be:
+  - **Low** - More matches, but may have false positives
+  - **Medium** - Balanced accuracy (recommended)
+  - **High** - Fewer matches, but higher confidence
+
+Auto speaker labeling works by comparing voice embeddings from the new recording against your saved speaker profiles. When a match exceeds your confidence threshold, the speaker is automatically labeled with the known name.
+
+!!! tip "Building Voice Profiles"
+    Auto speaker labeling requires voice profiles with embeddings. These are created when you identify speakers in recordings processed with WhisperX ASR (with `ASR_RETURN_SPEAKER_EMBEDDINGS=true`). The more recordings you identify a speaker in, the better the matching becomes.
+
 ### Account Actions
 
 The account actions section provides quick access to essential functions. The prominent "Go to Recordings" button takes you directly to your recording library. The "Change Password" button opens a secure dialog for updating your credentials. The "Manage Speakers" link provides a shortcut to speaker profile management, though this functionality is also accessible via its dedicated tab.

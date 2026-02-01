@@ -113,6 +113,18 @@ Speakr uses separate job queues for transcription and summarization to prevent s
 
 Jobs are persisted to the database and survive application restarts. If Speakr restarts while jobs are processing, they automatically resume from where they left off.
 
+### Folders Feature
+
+**ENABLE_FOLDERS**: Enable the folders organization feature. When `true`, users can create folders to organize recordings with per-folder custom prompts and ASR settings. Default: `false`.
+
+### Public Share Page Rendering
+
+**READABLE_PUBLIC_LINKS**: When `true`, transcripts on public share pages are server-side rendered in HTML, making them accessible to LLMs, scrapers, and accessibility tools. When `false`, transcripts are rendered client-side via JavaScript. Default: `false`.
+
+### Admin User Creation
+
+**SKIP_EMAIL_DOMAIN_CHECK**: When `true`, bypasses DNS validation of email domains when creating admin users via the setup script. Useful for development or when DNS lookups are restricted. Default: `false`.
+
 ### Audio Compression
 
 Speakr can automatically compress lossless audio uploads (WAV, AIFF) to save storage space. This happens transparently on upload - the original file is replaced with the compressed version.

@@ -54,6 +54,13 @@ Welcome to the Speakr User Guide! This documentation will help you master every 
   </div>
 
   <div class="guide-card">
+    <div class="card-icon">📁</div>
+    <h3>Folders</h3>
+    <p>Organize recordings into folders with per-folder prompts, ASR settings, and retention policies.</p>
+    <a href="folders" class="card-link">Organize with Folders →</a>
+  </div>
+
+  <div class="guide-card">
     <div class="card-icon">⚙️</div>
     <h3>Account Settings</h3>
     <p>Configure preferences, manage speakers, create tags, and customize AI prompts.</p>

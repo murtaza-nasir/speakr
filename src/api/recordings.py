@@ -2337,7 +2337,8 @@ def upload_incognito():
             current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
 
         # Get optional parameters
-        language = request.form.get('language', '') or None
+        # Note: Empty string '' means auto-detect, don't convert to None
+        language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers')
         max_speakers = request.form.get('max_speakers')
         auto_summarize = request.form.get('auto_summarize', 'false').lower() == 'true'
