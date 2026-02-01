@@ -9,47 +9,46 @@
     <div class="sidebar-content-wrapper">
         <!-- Sidebar Header -->
         <div class="p-4 border-b border-[var(--border-primary)] flex-shrink-0">
-            <div class="flex items-center gap-1.5 mb-4">
+            <div class="flex items-center gap-2 mb-3">
                 <!-- Folder Selector (replaces static "Recording" title) -->
                 <div v-if="foldersEnabled && availableFolders.length > 0" class="relative flex-1 min-w-0">
                     <select v-model="filterFolder"
-                            class="w-full pl-6 pr-6 py-1.5 text-sm font-semibold rounded-lg cursor-pointer appearance-none border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
-                            style="outline: none !important; box-shadow: none !important; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%2710%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 6px center;">
+                            class="w-full h-9 pl-8 pr-7 text-base font-semibold rounded-md cursor-pointer appearance-none border-0 bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                            style="outline: none !important; box-shadow: none !important; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center;">
                         <option value="">All Recordings</option>
                         <option value="none">Unfiled</option>
                         <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
                             ${ folder.name }
                         </option>
                     </select>
-                    <i class="fas fa-folder absolute left-2 top-1/2 transform -translate-y-1/2 pointer-events-none"
-                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"
-                       style="font-size: 11px;"></i>
+                    <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none text-sm"
+                       :style="{ color: filterFolder && filterFolder !== 'none' ? getFolderColor(filterFolder) : 'var(--text-muted)' }"></i>
                 </div>
                 <h2 v-else class="text-lg font-semibold flex-1" v-text="t('nav.recording')"></h2>
-                <div class="flex gap-1.5 flex-shrink-0">
+                <div class="flex gap-2 flex-shrink-0">
                     <!-- Selection Mode Toggle -->
                     <button v-if="!selectionMode && recordings.length > 0"
                             @click="enterSelectionMode"
-                            class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm"
+                            class="w-9 h-9 flex items-center justify-center bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:opacity-80 transition-opacity"
                             title="Select multiple">
                         <i class="fas fa-list-check"></i>
                     </button>
                     <button v-if="selectionMode"
                             @click="exitSelectionMode"
-                            class="px-2 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:opacity-80 transition-opacity text-sm"
+                            class="h-9 px-3 flex items-center bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:opacity-80 transition-opacity text-sm"
                             title="Exit selection mode">
                         <i class="fas fa-times mr-1"></i>Done
                     </button>
                     <!-- New button - compact when folders enabled -->
                     <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
                             @click="switchToUploadView"
-                            class="px-2 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm"
+                            class="w-9 h-9 flex items-center justify-center bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors"
                             title="New Recording">
                         <i class="fas fa-plus"></i>
                     </button>
                     <button v-else-if="!selectionMode"
                             @click="switchToUploadView"
-                            class="px-3 py-1.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
+                            class="h-9 px-3 flex items-center bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
                         <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
                     </button>
                 </div>
@@ -58,11 +57,11 @@
             <!-- Search and Sort Controls -->
             <div class="space-y-3">
                 <!-- Filter Toggle Button -->
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center gap-1.5">
                     <button @click="showAdvancedFilters = !showAdvancedFilters"
-                            class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] transition-colors">
+                            class="flex-1 h-7 flex items-center justify-between pl-2 pr-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs hover:bg-[var(--bg-tertiary)] transition-colors">
                         <span class="flex items-center">
-                            <i class="fas fa-filter mr-2 text-[var(--text-muted)]"></i>
+                            <i class="fas fa-filter mr-1.5 text-[var(--text-muted)] text-[10px]"></i>
                             <span v-if="!searchQuery && filterTags.length === 0 && filterSpeakers.length === 0 && !filterDatePreset && !filterDateRange.start && !filterDateRange.end && !filterTextQuery && !filterStarred && !filterInbox"
                                   v-text="t('sidebar.searchRecordings')">
                             </span>
@@ -70,13 +69,13 @@
                                 Active filters (${ (filterTags.length > 0 ? 1 : 0) + (filterSpeakers.length > 0 ? 1 : 0) + (filterDatePreset || filterDateRange.start || filterDateRange.end ? 1 : 0) + (filterTextQuery ? 1 : 0) + (filterStarred ? 1 : 0) + (filterInbox ? 1 : 0) })
                             </span>
                         </span>
-                        <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)]', showAdvancedFilters ? 'rotate-180' : '']"></i>
+                        <i :class="['fas fa-chevron-down transition-transform text-[var(--text-muted)] text-[10px]', showAdvancedFilters ? 'rotate-180' : '']"></i>
                     </button>
                     <button v-if="searchQuery || filterTags.length > 0 || filterSpeakers.length > 0 || filterDatePreset || filterDateRange.start || filterDateRange.end || filterTextQuery || filterStarred || filterInbox"
                             @click="clearAllFilters"
-                            class="px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                            class="w-7 h-7 flex items-center justify-center bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-xs hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)] transition-colors"
                             :title="t('buttons.clearAllFilters')">
-                        <i class="fas fa-times text-[var(--text-muted)]"></i>
+                        <i class="fas fa-times text-[var(--text-muted)] text-[10px]"></i>
                     </button>
                 </div>
 
