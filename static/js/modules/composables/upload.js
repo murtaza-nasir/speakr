@@ -37,6 +37,8 @@ export function useUpload(state, utils) {
         selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
         dragover, availableTags, uploadTagSearchFilter,
+        // Folder state
+        availableFolders, selectedFolderId,
         // Incognito mode state
         incognitoMode, incognitoRecording, incognitoProcessing,
         // View state
@@ -321,6 +323,12 @@ export function useUpload(state, utils) {
                     const tagId = tag.id || tag;
                     formData.append(`tag_ids[${index}]`, tagId);
                 });
+
+                // Add folder if selected
+                const folderToUse = nextFileItem.folder_id || selectedFolderId.value;
+                if (folderToUse) {
+                    formData.append('folder_id', folderToUse);
+                }
 
                 // Add diarization options if connector supports it
                 if (connectorSupportsDiarization.value) {

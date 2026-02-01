@@ -95,6 +95,27 @@
                 </button>
             </div>
             <div v-if="!isRecording && audioBlobURL" class="flex flex-col gap-3 md:gap-4">
+                <!-- Folder Selection (only shown if folders are enabled) -->
+                <div v-if="foldersEnabled">
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
+                        <i class="fas fa-folder mr-1"
+                           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+                        Folder (optional)
+                    </label>
+                    <div class="relative">
+                        <select v-model="selectedFolderId"
+                                class="w-full pl-8 pr-8 py-2 text-sm rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] appearance-none border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition-colors">
+                            <option :value="null">No Folder</option>
+                            <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                                ${ folder.name }
+                            </option>
+                        </select>
+                        <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+                        <i class="fas fa-chevron-down absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" style="font-size: 10px;"></i>
+                    </div>
+                </div>
+
                 <!-- Tag Selection -->
                 <div>
                     <label for="recordingTagSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">

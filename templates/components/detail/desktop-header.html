@@ -43,6 +43,21 @@
             <div class="flex items-center gap-2 ml-4">
                 <!-- Incognito recordings have limited actions -->
                 <template v-if="!selectedRecording.incognito">
+                    <!-- Folder Assignment (icon-only dropdown matching other buttons) -->
+                    <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
+                         class="relative p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                         :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : 'Assign Folder'">
+                        <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
+                                :value="selectedRecording.folder_id || ''"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <option value="">No Folder</option>
+                            <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                                ${ folder.name }
+                            </option>
+                        </select>
+                        <i class="fas fa-folder"
+                           :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+                    </div>
                     <button @click="toggleInbox(selectedRecording)"
                             class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                             :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
@@ -109,67 +124,52 @@
 
         <!-- Metadata Row -->
         <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)] mt-2">
-            <!-- Shared Status Badges and Tags -->
-            <div v-if="selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || selectedRecording.has_group_tags || (selectedRecording.tags && selectedRecording.tags.length > 0)" class="flex items-center gap-1.5 flex-wrap">
+            <!-- Folder Pill, Shared Status Badges and Tags -->
+            <div v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || selectedRecording.has_group_tags || (selectedRecording.tags && selectedRecording.tags.length > 0)" class="flex items-center gap-1.5 flex-wrap">
+                <!-- Folder Pill (shown when folder assigned) -->
+                <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+                      :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
+                      :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
+                    <i class="fas fa-folder mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
+                    ${ getFolderName(selectedRecording.folder_id) }
+                </span>
                 <!-- Shared by someone else (INCOMING) -->
                 <span v-if="selectedRecording.is_shared"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-purple-500 text-white cursor-help"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-purple-500 text-white"
                       :title="t('sharing.sharedBy') + ' ' + (selectedRecording.owner_username || t('sharing.unknown'))">
                     <i class="fas fa-arrow-down" style="vertical-align: middle; line-height: 0;"></i>
                 </span>
 
                 <!-- Group indicator (show for both owned and shared recordings with group tags) -->
                 <span v-if="selectedRecording.has_group_tags"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-blue-500 text-white cursor-help"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-blue-500 text-white"
                       :title="t('sharing.teamRecording')">
                     <i class="fas fa-users" style="vertical-align: middle; line-height: 0;"></i>
                 </span>
 
                 <!-- Shared with others (OUTGOING) -->
                 <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-indigo-500 text-white cursor-help"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-indigo-500 text-white"
                       :title="t('sharing.sharedWith') + ' ' + selectedRecording.shared_with_count + ' ' + t('sharing.users')">
                     <i class="fas fa-arrow-up" style="vertical-align: middle; line-height: 0;"></i>
                 </span>
 
                 <!-- Public link shares -->
                 <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-teal-500 text-white cursor-help"
+                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-teal-500 text-white"
                       :title="selectedRecording.public_share_count + ' ' + t('sharing.publicLinksGenerated')">
                     <i class="fas fa-globe" style="vertical-align: middle; line-height: 0;"></i>
                 </span>
 
                 <!-- Tags -->
                 <span v-for="tag in selectedRecording.tags" :key="tag.id"
-                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full cursor-help"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
                       :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }"
                       :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
                     <i v-if="tag.group_id" class="fas fa-users mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
                     ${tag.name}
                 </span>
-
-                <!-- Folder (only shown if folders are enabled) -->
-                <span v-if="foldersEnabled && selectedRecording.folder"
-                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full cursor-help"
-                      :style="{ backgroundColor: selectedRecording.folder.color || '#10B981', color: getContrastTextColor(selectedRecording.folder.color || '#10B981') }"
-                      :title="selectedRecording.folder.group_id ? ('Group Folder: ' + selectedRecording.folder.group_name) : ('Folder: ' + selectedRecording.folder.name)">
-                    <i class="fas fa-folder mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
-                    ${selectedRecording.folder.name}
-                </span>
-            </div>
-
-            <!-- Folder Assignment (only if folders enabled and recording can be edited) -->
-            <div v-if="foldersEnabled && selectedRecording.can_edit !== false && !selectedRecording.incognito" class="relative flex items-center gap-2">
-                <i class="fas fa-folder text-[var(--text-accent)]"></i>
-                <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
-                        :value="selectedRecording.folder_id || ''"
-                        class="bg-transparent border-none text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-accent)] focus:outline-none appearance-none pr-5"
-                        style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 0 center;">
-                    <option value="">No Folder</option>
-                    <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                        ${ folder.name }
-                    </option>
-                </select>
             </div>
 
             <!-- Participants -->
