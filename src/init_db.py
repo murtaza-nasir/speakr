@@ -16,7 +16,7 @@ from sqlalchemy import text, inspect
 from src.database import db
 from src.models import Recording, TranscriptChunk, SystemSetting
 from src.services.embeddings import process_recording_chunks
-from src.utils import add_column_if_not_exists, migrate_column_type
+from src.utils import add_column_if_not_exists, migrate_column_type, create_index_if_not_exists
 
 # Configuration
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
@@ -133,8 +133,8 @@ def initialize_database(app):
                         # Rename new table to user
                         conn.execute(text("ALTER TABLE user_new RENAME TO user"))
                         
-                        # Recreate the unique index on sso_subject
-                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON user (sso_subject)'))
+                        # Recreate the unique index on sso_subject (quote "user" for PostgreSQL)
+                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON "user" (sso_subject)'))
                         
                         conn.commit()
                         app.logger.info("Successfully made password column nullable for SSO support")
@@ -276,19 +276,10 @@ def initialize_database(app):
 
         # Create indexes for token lookups (for faster token verification)
         try:
-            inspector = inspect(engine)
-            if 'user' in inspector.get_table_names():
-                existing_indexes = [idx['name'] for idx in inspector.get_indexes('user')]
-                if 'ix_user_email_verification_token' not in existing_indexes:
-                    with engine.connect() as conn:
-                        conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_email_verification_token ON user (email_verification_token)'))
-                        conn.commit()
-                        app.logger.info("Created index ix_user_email_verification_token on user.email_verification_token")
-                if 'ix_user_password_reset_token' not in existing_indexes:
-                    with engine.connect() as conn:
-                        conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_password_reset_token ON user (password_reset_token)'))
-                        conn.commit()
-                        app.logger.info("Created index ix_user_password_reset_token on user.password_reset_token")
+            if create_index_if_not_exists(engine, 'ix_user_email_verification_token', 'user', 'email_verification_token'):
+                app.logger.info("Created index ix_user_email_verification_token on user.email_verification_token")
+            if create_index_if_not_exists(engine, 'ix_user_password_reset_token', 'user', 'password_reset_token'):
+                app.logger.info("Created index ix_user_password_reset_token on user.password_reset_token")
         except Exception as e:
             app.logger.warning(f"Could not create token indexes: {e}")
         if add_column_if_not_exists(engine, 'tag', 'naming_template_id', 'INTEGER'):
@@ -372,15 +363,14 @@ def initialize_database(app):
             if has_is_starred and not has_is_highlighted:
                 # Rename is_starred to is_highlighted by copying data
                 try:
+                    # Add is_highlighted column using utility (handles PostgreSQL boolean defaults)
+                    add_column_if_not_exists(engine, 'shared_recording_state', 'is_highlighted', 'BOOLEAN DEFAULT 0')
+                    # Copy data from is_starred to is_highlighted
                     with engine.connect() as conn:
-                        # Add is_highlighted column (PostgreSQL needs FALSE, SQLite uses 0)
-                        default_val = 'FALSE' if engine.name == 'postgresql' else '0'
-                        conn.execute(text(f'ALTER TABLE shared_recording_state ADD COLUMN is_highlighted BOOLEAN DEFAULT {default_val}'))
-                        # Copy data from is_starred to is_highlighted
                         conn.execute(text('UPDATE shared_recording_state SET is_highlighted = is_starred'))
                         conn.commit()
-                        app.logger.info("Migrated is_starred to is_highlighted in shared_recording_state table")
-                        # Note: We keep is_starred for now to avoid breaking existing code during transition
+                    app.logger.info("Migrated is_starred to is_highlighted in shared_recording_state table")
+                    # Note: We keep is_starred for now to avoid breaking existing code during transition
                 except Exception as e:
                     app.logger.warning(f"Could not migrate is_starred to is_highlighted: {e}")
             elif not has_is_highlighted:
@@ -511,31 +501,20 @@ def initialize_database(app):
 
         # Add unique index for SSO subject to prevent duplicate linking
         try:
-            inspector = inspect(engine)
-            if 'user' in inspector.get_table_names():
-                existing_indexes = [idx['name'] for idx in inspector.get_indexes('user')]
-                if 'ix_user_sso_subject' not in existing_indexes:
-                    with engine.connect() as conn:
-                        if engine.name == 'mysql':
-                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON `user` (sso_subject)'))
-                        else:
-                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON "user" (sso_subject)'))
-                        conn.commit()
-                        app.logger.info("Created unique index ix_user_sso_subject on user.sso_subject")
+            if create_index_if_not_exists(engine, 'ix_user_sso_subject', 'user', 'sso_subject', unique=True):
+                app.logger.info("Created unique index ix_user_sso_subject on user.sso_subject")
         except Exception as e:
             app.logger.warning(f"Could not create unique index on user.sso_subject: {e}")
 
         # Add folder_id column to recording table for folders feature
         if add_column_if_not_exists(engine, 'recording', 'folder_id', 'INTEGER'):
             app.logger.info("Added folder_id column to recording table")
-            # Create index for folder_id
-            try:
-                with engine.connect() as conn:
-                    conn.execute(text('CREATE INDEX IF NOT EXISTS ix_recording_folder_id ON recording (folder_id)'))
-                    conn.commit()
-                    app.logger.info("Created index ix_recording_folder_id on recording.folder_id")
-            except Exception as e:
-                app.logger.warning(f"Could not create index on recording.folder_id: {e}")
+        # Create index for folder_id
+        try:
+            if create_index_if_not_exists(engine, 'ix_recording_folder_id', 'recording', 'folder_id'):
+                app.logger.info("Created index ix_recording_folder_id on recording.folder_id")
+        except Exception as e:
+            app.logger.warning(f"Could not create index on recording.folder_id: {e}")
 
         # Initialize default system settings
         if not SystemSetting.query.filter_by(key='transcript_length_limit').first():

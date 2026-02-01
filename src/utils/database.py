@@ -5,8 +5,10 @@ IMPORTANT: All migrations must be compatible with both SQLite and PostgreSQL.
 - Boolean defaults: SQLite uses 0/1, PostgreSQL requires FALSE/TRUE
 - Reserved keywords: "user", "order" etc. must be quoted
 - The add_column_if_not_exists() function handles these automatically
+- Use create_index_if_not_exists() for index creation with proper quoting
 """
 
+import re
 from sqlalchemy import inspect, text
 
 
@@ -49,6 +51,59 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
             conn.commit()
         return True
     return False
+
+
+def create_index_if_not_exists(engine, index_name, table_name, columns, unique=False):
+    """
+    Create an index on a table if it doesn't already exist.
+
+    Handles cross-database compatibility by properly quoting table names,
+    especially important for reserved keywords like 'user', 'order', etc.
+
+    Args:
+        engine: SQLAlchemy engine
+        index_name: Name of the index to create
+        table_name: Name of the table
+        columns: Column(s) to index (string, can be comma-separated for composite)
+        unique: Whether to create a unique index (default False)
+
+    Returns:
+        bool: True if index was created, False if it already existed or table doesn't exist
+    """
+    inspector = inspect(engine)
+
+    # Check if table exists
+    if table_name not in inspector.get_table_names():
+        return False
+
+    # Check if index already exists
+    existing_indexes = [idx['name'] for idx in inspector.get_indexes(table_name)]
+    if index_name in existing_indexes:
+        return False
+
+    unique_clause = 'UNIQUE ' if unique else ''
+
+    with engine.connect() as conn:
+        # Quote table name to handle reserved keywords (e.g., "user" in PostgreSQL)
+        # MySQL uses backticks, PostgreSQL/SQLite use double quotes
+        if engine.name == 'mysql':
+            quoted_table = f'`{table_name}`'
+        else:
+            quoted_table = f'"{table_name}"'
+
+        # Note: IF NOT EXISTS may not be supported on all databases, but we already
+        # checked for existence above, so it's just a safety net
+        try:
+            conn.execute(text(
+                f'CREATE {unique_clause}INDEX IF NOT EXISTS {index_name} ON {quoted_table} ({columns})'
+            ))
+        except Exception:
+            # Some databases don't support IF NOT EXISTS, try without
+            conn.execute(text(
+                f'CREATE {unique_clause}INDEX {index_name} ON {quoted_table} ({columns})'
+            ))
+        conn.commit()
+    return True
 
 
 def migrate_column_type(engine, table_name, column_name, new_type, transform_sql=None):
