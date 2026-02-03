@@ -2723,7 +2723,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // Load speakers for the Speakers Management tab
             let speakersTabData = [];
             let speakersTabLoaded = false;
-            
+
+            // API Tokens tab variables
+            let tokensData = [];
+            let tokensTabLoaded = false;
+
             async function loadSpeakersTab() {
                 // Don't reload if already loaded
                 if (speakersTabLoaded) return;
@@ -5350,10 +5354,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 localStorage.setItem('preferredLanguage', newUILanguage);
             }
         });
-
-        // API Tokens Management Functions
-        let tokensData = [];
-        let tokensTabLoaded = false;
 
         async function loadTokensTab() {
             if (tokensTabLoaded) return;
