@@ -258,15 +258,22 @@ def convert_if_needed(
         logger.info(f"Converting {original_filename} (codec: {audio_codec}) - unsupported for processing")
     
     if needs_conversion:
-        # Determine target codec - fall back to mp3 if AUDIO_CODEC is unsupported by connector
-        target_codec = AUDIO_CODEC
-        if connector_specs and connector_specs.unsupported_codecs:
-            if AUDIO_CODEC in connector_specs.unsupported_codecs:
-                target_codec = 'mp3'
-                logger.warning(
-                    f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
-                    f"falling back to mp3 for {original_filename}"
-                )
+        # Determine target codec
+        # If chunking is needed, always convert to MP3 (chunking requires MP3 anyway)
+        # This avoids double conversion: original → configured codec → mp3
+        if needs_chunking:
+            target_codec = 'mp3'
+            logger.info(f"Using MP3 for {original_filename} since chunking is needed")
+        else:
+            # Fall back to mp3 if AUDIO_CODEC is unsupported by connector
+            target_codec = AUDIO_CODEC
+            if connector_specs and connector_specs.unsupported_codecs:
+                if AUDIO_CODEC in connector_specs.unsupported_codecs:
+                    target_codec = 'mp3'
+                    logger.warning(
+                        f"AUDIO_CODEC '{AUDIO_CODEC}' is not supported by connector, "
+                        f"falling back to mp3 for {original_filename}"
+                    )
 
         logger.info(f"Converting {original_filename} to {target_codec.upper()}")
 

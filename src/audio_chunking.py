@@ -359,40 +359,48 @@ class AudioChunkingService:
     def convert_to_mp3_and_get_info(self, file_path: str, temp_dir: str) -> Tuple[str, float, float]:
         """
         Convert the input file to MP3 format for consistency and get its size and duration info.
-        
+
+        If the input is already MP3, skips conversion and just copies it.
+
         Args:
             file_path: Path to the source audio file
             temp_dir: Directory to store the temporary MP3 file
-            
+
         Returns:
             Tuple of (mp3_file_path, duration_seconds, size_bytes)
         """
         try:
+            import shutil
+
             # Generate MP3 filename
             base_name = os.path.splitext(os.path.basename(file_path))[0]
             mp3_filename = f"{base_name}_converted.mp3"
             mp3_path = os.path.join(temp_dir, mp3_filename)
-            
-            logger.info(f"Converting {file_path} to 128kbps MP3 format for accurate chunking...")
-            
-            # Use centralized FFmpeg utility for conversion
-            convert_to_mp3(file_path, mp3_path)
-            
+
+            # Check if input is already MP3 - skip conversion
+            file_ext = os.path.splitext(file_path)[1].lower()
+            if file_ext == '.mp3':
+                logger.info(f"Input {file_path} is already MP3, skipping conversion")
+                shutil.copy2(file_path, mp3_path)
+            else:
+                logger.info(f"Converting {file_path} to 128kbps MP3 format for chunking...")
+                # Use centralized FFmpeg utility for conversion
+                convert_to_mp3(file_path, mp3_path)
+
             if not os.path.exists(mp3_path):
                 raise ValueError("MP3 file was not created")
-            
-            # Get the size and duration of the converted MP3 file
+
+            # Get the size and duration of the MP3 file
             mp3_size = os.path.getsize(mp3_path)
             mp3_duration = self.get_audio_duration(mp3_path)
-            
+
             if not mp3_duration:
                 raise ValueError("Could not determine MP3 file duration")
-            
-            logger.info(f"Converted MP3: {mp3_size/1024/1024:.1f}MB, {mp3_duration:.1f}s")
-            
+
+            logger.info(f"MP3 ready for chunking: {mp3_size/1024/1024:.1f}MB, {mp3_duration:.1f}s")
+
             # Optionally preserve converted file for debugging (set PRESERVE_CHUNK_DEBUG=true in env)
             if os.getenv('PRESERVE_CHUNK_DEBUG', 'false').lower() == 'true':
-                import shutil
                 # Save debug files in /data/uploads/debug/ directory
                 debug_dir = '/data/uploads/debug'
                 os.makedirs(debug_dir, exist_ok=True)
@@ -400,9 +408,9 @@ class AudioChunkingService:
                 debug_path = os.path.join(debug_dir, debug_filename)
                 shutil.copy2(mp3_path, debug_path)
                 logger.info(f"Debug: Preserved converted file as {debug_path}")
-            
+
             return mp3_path, mp3_duration, mp3_size
-            
+
         except (FFmpegError, FFmpegNotFoundError) as e:
             logger.error(f"Error converting file to MP3: {e}")
             raise
