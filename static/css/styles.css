@@ -3723,13 +3723,12 @@ body.fullscreen-mode {
     border-left: 1px solid var(--text-primary);
 }
 
-/* Recording notes editor - fixed height with internal scrolling */
+/* Recording notes editor - constrained height with internal scrolling */
 .recording-notes-editor {
-    flex: 1 !important; /* Take available space in flex container */
     display: flex !important;
     flex-direction: column !important;
-    min-height: 200px !important; /* Minimum usable height */
-    max-height: none !important; /* Allow parent to control max height */
+    min-height: 150px !important; /* Minimum usable height */
+    max-height: 35vh !important; /* Cap height so folder/tags/buttons stay visible */
     overflow: hidden !important; /* Prevent container from growing */
 }
 
@@ -3757,15 +3756,14 @@ body.fullscreen-mode {
     min-height: auto !important; /* Don't force content to fill editor */
 }
 
-/* Recording notes textarea fallback - fixed height with internal scrolling */
+/* Recording notes textarea fallback - constrained height with internal scrolling */
 .recording-notes-editor textarea {
     background-color: var(--bg-input) !important;
     color: var(--text-primary) !important;
     border-color: var(--border-secondary) !important;
-    flex: 1 !important; /* Take available space */
+    flex: 1 !important; /* Fill editor container */
     height: auto !important; /* Let flex control height */
-    min-height: 200px !important; /* Minimum usable height */
-    max-height: none !important; /* No max height - let parent control */
+    min-height: 0 !important; /* Allow flex shrinking within capped parent */
     overflow-y: auto !important; /* Enable internal scrolling */
     resize: none !important; /* Prevent manual resizing */
 }
@@ -3776,16 +3774,15 @@ body.fullscreen-mode {
     box-shadow: 0 0 0 2px var(--ring-focus) !important;
 }
 
-/* Ensure all textareas in recording view use theme colors and fixed height */
+/* Ensure all textareas in recording view use theme colors and constrained height */
 .recording-notes-editor textarea,
 textarea[ref="recordingNotesEditor"] {
     background-color: var(--bg-input) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-secondary) !important;
-    flex: 1 !important; /* Take available space */
+    flex: 1 !important; /* Fill editor container */
     height: auto !important; /* Let flex control height */
-    min-height: 200px !important; /* Minimum usable height */
-    max-height: none !important; /* No max height - let parent control */
+    min-height: 0 !important; /* Allow flex shrinking within capped parent */
     overflow-y: auto !important; /* Enable internal scrolling */
     resize: none !important; /* Prevent manual resizing */
 }

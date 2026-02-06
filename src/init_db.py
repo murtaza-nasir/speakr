@@ -79,67 +79,72 @@ def initialize_database(app):
             app.logger.info("Added sso_subject column to user table")
         
         # Make password column nullable for SSO users
-        # SQLite doesn't support ALTER COLUMN, so we need to check and recreate if needed
         try:
             inspector = inspect(engine)
             if 'user' in inspector.get_table_names():
-                # Check if password is NOT NULL by querying schema
-                with engine.connect() as conn:
-                    result = conn.execute(text("SELECT sql FROM sqlite_master WHERE type='table' AND name='user'"))
-                    schema = result.scalar()
-                    
-                    if schema and 'password VARCHAR(60) NOT NULL' in schema:
-                        app.logger.info("Migrating user table to make password nullable for SSO support...")
-                        
-                        # Create new table with nullable password
-                        conn.execute(text("""
-                            CREATE TABLE user_new (
-                                id INTEGER NOT NULL, 
-                                username VARCHAR(20) NOT NULL, 
-                                email VARCHAR(120) NOT NULL, 
-                                password VARCHAR(60), 
-                                is_admin BOOLEAN, 
-                                can_share_publicly BOOLEAN, 
-                                transcription_language VARCHAR(10), 
-                                output_language VARCHAR(50), 
-                                ui_language VARCHAR(10), 
-                                summary_prompt TEXT, 
-                                extract_events BOOLEAN, 
-                                name VARCHAR(100), 
-                                job_title VARCHAR(100), 
-                                company VARCHAR(100), 
-                                diarize BOOLEAN,
-                                sso_provider VARCHAR(100),
-                                sso_subject VARCHAR(255),
-                                PRIMARY KEY (id), 
-                                UNIQUE (username), 
-                                UNIQUE (email)
-                            )
+                if engine.name == 'sqlite':
+                    # SQLite doesn't support ALTER COLUMN, so we need to check and recreate
+                    with engine.connect() as conn:
+                        result = conn.execute(text("SELECT sql FROM sqlite_master WHERE type='table' AND name='user'"))
+                        schema = result.scalar()
+
+                        if schema and 'password VARCHAR(60) NOT NULL' in schema:
+                            app.logger.info("Migrating user table to make password nullable for SSO support...")
+
+                            conn.execute(text("""
+                                CREATE TABLE user_new (
+                                    id INTEGER NOT NULL,
+                                    username VARCHAR(20) NOT NULL,
+                                    email VARCHAR(120) NOT NULL,
+                                    password VARCHAR(60),
+                                    is_admin BOOLEAN,
+                                    can_share_publicly BOOLEAN,
+                                    transcription_language VARCHAR(10),
+                                    output_language VARCHAR(50),
+                                    ui_language VARCHAR(10),
+                                    summary_prompt TEXT,
+                                    extract_events BOOLEAN,
+                                    name VARCHAR(100),
+                                    job_title VARCHAR(100),
+                                    company VARCHAR(100),
+                                    diarize BOOLEAN,
+                                    sso_provider VARCHAR(100),
+                                    sso_subject VARCHAR(255),
+                                    PRIMARY KEY (id),
+                                    UNIQUE (username),
+                                    UNIQUE (email)
+                                )
+                            """))
+                            conn.execute(text("""
+                                INSERT INTO user_new
+                                SELECT id, username, email, password, is_admin, can_share_publicly,
+                                       transcription_language, output_language, ui_language,
+                                       summary_prompt, extract_events, name, job_title, company,
+                                       diarize, sso_provider, sso_subject
+                                FROM user
+                            """))
+                            conn.execute(text("DROP TABLE user"))
+                            conn.execute(text("ALTER TABLE user_new RENAME TO user"))
+                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON "user" (sso_subject)'))
+                            conn.commit()
+                            app.logger.info("Successfully made password column nullable for SSO support")
+                        else:
+                            app.logger.info("Password column is already nullable, skipping migration")
+
+                elif engine.name == 'postgresql':
+                    # PostgreSQL supports ALTER COLUMN directly
+                    with engine.connect() as conn:
+                        result = conn.execute(text("""
+                            SELECT is_nullable FROM information_schema.columns
+                            WHERE table_name = 'user' AND column_name = 'password'
                         """))
-                        
-                        # Copy all data from old table to new table
-                        conn.execute(text("""
-                            INSERT INTO user_new 
-                            SELECT id, username, email, password, is_admin, can_share_publicly,
-                                   transcription_language, output_language, ui_language, 
-                                   summary_prompt, extract_events, name, job_title, company, 
-                                   diarize, sso_provider, sso_subject
-                            FROM user
-                        """))
-                        
-                        # Drop old table
-                        conn.execute(text("DROP TABLE user"))
-                        
-                        # Rename new table to user
-                        conn.execute(text("ALTER TABLE user_new RENAME TO user"))
-                        
-                        # Recreate the unique index on sso_subject (quote "user" for PostgreSQL)
-                        conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS ix_user_sso_subject ON "user" (sso_subject)'))
-                        
-                        conn.commit()
-                        app.logger.info("Successfully made password column nullable for SSO support")
-                    else:
-                        app.logger.info("Password column is already nullable, skipping migration")
+                        row = result.fetchone()
+                        if row and row[0] == 'NO':
+                            conn.execute(text('ALTER TABLE "user" ALTER COLUMN password DROP NOT NULL'))
+                            conn.commit()
+                            app.logger.info("Made password column nullable for SSO support (PostgreSQL)")
+                        else:
+                            app.logger.info("Password column is already nullable, skipping migration")
         except Exception as e:
             app.logger.warning(f"Could not migrate password column to nullable (may cause issues with SSO): {e}")
         
@@ -203,7 +208,7 @@ def initialize_database(app):
                 # Find tags with protect_from_deletion=True but retention_days != -1
                 result = conn.execute(text("""
                     SELECT COUNT(*) FROM tag
-                    WHERE protect_from_deletion = 1
+                    WHERE protect_from_deletion = TRUE
                     AND (retention_days IS NULL OR retention_days != -1)
                 """))
                 count = result.scalar()
@@ -213,7 +218,7 @@ def initialize_database(app):
                     conn.execute(text("""
                         UPDATE tag
                         SET retention_days = -1
-                        WHERE protect_from_deletion = 1
+                        WHERE protect_from_deletion = TRUE
                         AND (retention_days IS NULL OR retention_days != -1)
                     """))
                     conn.commit()
@@ -249,7 +254,7 @@ def initialize_database(app):
             # Set all existing users to email_verified=True (grandfathered)
             try:
                 with engine.connect() as conn:
-                    conn.execute(text('UPDATE user SET email_verified = 1 WHERE email_verified = 0 OR email_verified IS NULL'))
+                    conn.execute(text('UPDATE "user" SET email_verified = TRUE WHERE email_verified = FALSE OR email_verified IS NULL'))
                     conn.commit()
                     app.logger.info("Set email_verified=True for all existing users (grandfathered)")
             except Exception as e:
@@ -313,7 +318,7 @@ def initialize_database(app):
                                 WHERE rt.recording_id = internal_share.recording_id
                                 AND gm.user_id = internal_share.shared_with_user_id
                                 AND t.group_id IS NOT NULL
-                                AND (t.auto_share_on_apply = 1 OR t.share_with_group_lead = 1)
+                                AND (t.auto_share_on_apply = TRUE OR t.share_with_group_lead = TRUE)
                                 LIMIT 1
                             )
                         WHERE source_type = 'manual'
@@ -324,7 +329,7 @@ def initialize_database(app):
                             WHERE rt.recording_id = internal_share.recording_id
                             AND gm.user_id = internal_share.shared_with_user_id
                             AND t.group_id IS NOT NULL
-                            AND (t.auto_share_on_apply = 1 OR t.share_with_group_lead = 1)
+                            AND (t.auto_share_on_apply = TRUE OR t.share_with_group_lead = TRUE)
                         )
                     '''))
                     conn.commit()

@@ -21,6 +21,7 @@ changes.txt
 !.github/CLA-SETUP.md
 !docs/**/*.md
 docker-compose.dev.yml
+docker-compose.postgres.yml
 .clinerules
 temp/
 .claude/

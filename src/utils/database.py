@@ -3,6 +3,7 @@ Database schema migration utilities.
 
 IMPORTANT: All migrations must be compatible with both SQLite and PostgreSQL.
 - Boolean defaults: SQLite uses 0/1, PostgreSQL requires FALSE/TRUE
+- Type differences: SQLite DATETIME -> PostgreSQL TIMESTAMP, BLOB -> BYTEA
 - Reserved keywords: "user", "order" etc. must be quoted
 - The add_column_if_not_exists() function handles these automatically
 - Use create_index_if_not_exists() for index creation with proper quoting
@@ -29,10 +30,17 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
     columns = [col['name'] for col in inspector.get_columns(table_name)]
 
     if column_name not in columns:
-        # PostgreSQL requires TRUE/FALSE for boolean defaults, not 0/1
-        if engine.name == 'postgresql' and 'BOOLEAN' in column_type.upper():
-            column_type = column_type.replace('DEFAULT 0', 'DEFAULT FALSE')
-            column_type = column_type.replace('DEFAULT 1', 'DEFAULT TRUE')
+        if engine.name == 'postgresql':
+            # PostgreSQL requires TRUE/FALSE for boolean defaults, not 0/1
+            if 'BOOLEAN' in column_type.upper():
+                column_type = column_type.replace('DEFAULT 0', 'DEFAULT FALSE')
+                column_type = column_type.replace('DEFAULT 1', 'DEFAULT TRUE')
+
+            # PostgreSQL uses TIMESTAMP, not DATETIME
+            column_type = re.sub(r'\bDATETIME\b', 'TIMESTAMP', column_type, flags=re.IGNORECASE)
+
+            # PostgreSQL uses BYTEA, not BLOB
+            column_type = re.sub(r'\bBLOB\b', 'BYTEA', column_type, flags=re.IGNORECASE)
 
         with engine.connect() as conn:
             # Quote identifiers to handle reserved keywords (e.g., "user" in PostgreSQL)
