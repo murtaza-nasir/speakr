@@ -14,6 +14,7 @@ export function createUIState(ref, computed) {
     const windowWidth = ref(window.innerWidth);
     const mobileTab = ref('transcript');
     const isMetadataExpanded = ref(false);
+    const expandedSection = ref('settings');  // 'notes' or 'settings'
 
     // --- i18n State ---
     const currentLanguage = ref('en');
@@ -75,6 +76,7 @@ export function createUIState(ref, computed) {
         windowWidth,
         mobileTab,
         isMetadataExpanded,
+        expandedSection,
 
         // i18n
         currentLanguage,

@@ -3723,13 +3723,26 @@ body.fullscreen-mode {
     border-left: 1px solid var(--text-primary);
 }
 
-/* Recording notes editor - constrained height with internal scrolling */
+/* Recording notes editor base */
 .recording-notes-editor {
     display: flex !important;
     flex-direction: column !important;
-    min-height: 150px !important; /* Minimum usable height */
-    max-height: 35vh !important; /* Cap height so folder/tags/buttons stay visible */
-    overflow: hidden !important; /* Prevent container from growing */
+    min-height: 150px !important;
+    overflow: hidden !important;
+}
+
+/* During active recording: fill available space */
+.recording-notes-editor.recording-active {
+    flex: 1 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+}
+
+/* Notes editor inside accordion — fill expanded section */
+.recording-notes-editor.accordion-expanded {
+    flex: 1 !important;
+    min-height: 0 !important;
+    max-height: none !important;
 }
 
 .recording-notes-editor .EasyMDEContainer {
