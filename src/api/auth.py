@@ -667,6 +667,9 @@ def account():
     admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
     admin_disabled_auto_summarization = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
 
+    # Get user's UI language preference
+    user_language = current_user.ui_language if current_user.ui_language else 'en'
+
     return render_template('account.html',
                            title='Account',
                            default_summary_prompt_text=default_summary_prompt_text,
@@ -688,7 +691,8 @@ def account():
                            auto_speaker_labelling=current_user.auto_speaker_labelling,
                            auto_speaker_labelling_threshold=current_user.auto_speaker_labelling_threshold or 'medium',
                            admin_disabled_auto_summarization=admin_disabled_auto_summarization,
-                           auto_summarization=current_user.auto_summarization if current_user.auto_summarization is not None else True)
+                           auto_summarization=current_user.auto_summarization if current_user.auto_summarization is not None else True,
+                           user_language=user_language)
 
 
 @auth_bp.route('/api/user/auto-speaker-labelling', methods=['POST'])
