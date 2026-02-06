@@ -247,14 +247,16 @@ export function useUpload(state, utils) {
         // AND change their status to 'ready' so they move to upload progress immediately
         for (const item of uploadQueue.value) {
             if (item.status === 'queued') {
-                // Always use the CURRENT tag selection - override whatever was captured at add time
-                item.tags = [...selectedTags.value];
-                // Always use the CURRENT ASR options
-                item.asrOptions = {
-                    language: asrLanguage.value,
-                    min_speakers: asrMinSpeakers.value,
-                    max_speakers: asrMaxSpeakers.value
-                };
+                if (!item.preserveOptions) {
+                    // For file uploads: use current UI selection (user may have changed tags after dropping)
+                    item.tags = [...selectedTags.value];
+                    item.asrOptions = {
+                        language: asrLanguage.value,
+                        min_speakers: asrMinSpeakers.value,
+                        max_speakers: asrMaxSpeakers.value
+                    };
+                    item.folder_id = selectedFolderId.value;
+                }
                 // Change status to 'ready' to remove from upload view but keep in queue
                 item.status = 'ready';
             }

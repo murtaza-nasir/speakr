@@ -59,6 +59,47 @@ class TestMigrationCompatibility(unittest.TestCase):
             "\n".join(f"  - {m[:100]}..." if len(m) > 100 else f"  - {m}" for m in problematic)
         )
 
+    def test_no_boolean_integer_comparisons_in_raw_sql(self):
+        """
+        Ensure raw SQL doesn't compare boolean columns to integers (0/1).
+
+        PostgreSQL strictly separates boolean and integer types:
+        - 'column = 1' fails with 'operator does not exist: boolean = integer'
+        - 'column = TRUE' works on both SQLite (3.23+) and PostgreSQL
+
+        Known boolean columns in migrations: protect_from_deletion, email_verified,
+        auto_share_on_apply, share_with_group_lead, is_inbox, is_highlighted,
+        deletion_exempt, is_admin, can_share_publicly.
+        """
+        boolean_columns = [
+            'protect_from_deletion', 'email_verified', 'auto_share_on_apply',
+            'share_with_group_lead', 'is_inbox', 'is_highlighted',
+            'deletion_exempt', 'is_admin', 'can_share_publicly',
+            'auto_speaker_labelling', 'auto_summarization'
+        ]
+
+        # Find raw SQL in text() calls
+        sql_pattern = r"text\s*\(\s*['\"\"]\"\"(.*?)['\"\"]\"\"?\s*\)"
+        # Simpler: find lines with known boolean column = 0 or = 1
+        problematic = []
+        for col in boolean_columns:
+            # Match: column = 0 or column = 1 (not = TRUE/FALSE)
+            pattern = rf"{col}\s*=\s*[01]\b"
+            matches = re.finditer(pattern, self.content, re.IGNORECASE)
+            for match in matches:
+                # Get surrounding context to check if it's in a text() SQL call
+                start = max(0, match.start() - 200)
+                context = self.content[start:match.end() + 50]
+                if 'text(' in context and 'sqlite_master' not in context:
+                    problematic.append(f"{col}: ...{match.group()}...")
+
+        self.assertEqual(
+            len(problematic), 0,
+            f"Found boolean columns compared to integers in raw SQL. "
+            f"Use TRUE/FALSE instead of 1/0 for PostgreSQL compatibility:\n" +
+            "\n".join(f"  - {p}" for p in problematic)
+        )
+
     def test_reserved_keywords_quoted_in_index_creation(self):
         """
         Ensure reserved keywords like 'user' are properly quoted in index creation.
@@ -115,6 +156,37 @@ class TestMigrationCompatibility(unittest.TestCase):
             f"vs {len(utility_matches)} add_column_if_not_exists() calls. "
             f"Consider using the utility function for cross-database compatibility."
         )
+
+    def test_incompatible_types_handled_by_utility(self):
+        """
+        Ensure columns with PostgreSQL-incompatible types (DATETIME, BLOB) are
+        added through add_column_if_not_exists() which auto-converts them,
+        and NOT via raw ALTER TABLE statements that would bypass conversion.
+
+        PostgreSQL type differences:
+        - DATETIME -> TIMESTAMP
+        - BLOB -> BYTEA
+        """
+        incompatible_types = ['DATETIME', 'BLOB']
+
+        # Check for raw ALTER TABLE statements using incompatible types
+        for sql_type in incompatible_types:
+            pattern = rf"conn\.execute\s*\(\s*text\s*\(['\"][^'\"]*ALTER\s+TABLE[^'\"]*\b{sql_type}\b[^'\"]*['\"]"
+            matches = re.findall(pattern, self.content, re.IGNORECASE)
+
+            self.assertEqual(
+                len(matches), 0,
+                f"Found raw ALTER TABLE statements using '{sql_type}' which is incompatible with PostgreSQL. "
+                f"Use add_column_if_not_exists() which auto-converts types:\n" +
+                "\n".join(f"  - {m[:100]}..." if len(m) > 100 else f"  - {m}" for m in matches)
+            )
+
+        # Verify that add_column_if_not_exists calls using these types exist
+        # (confirming they go through the utility which handles conversion)
+        for sql_type in incompatible_types:
+            pattern = rf"add_column_if_not_exists\s*\([^)]*['\"]({sql_type})['\"]"
+            matches = re.findall(pattern, self.content, re.IGNORECASE)
+            # Just informational - these are fine because the utility converts them
 
     def test_create_index_uses_utility_for_user_table(self):
         """

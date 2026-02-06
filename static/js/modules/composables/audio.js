@@ -15,7 +15,7 @@ export function useAudio(state, utils) {
         showRecordingDisclaimerModal, pendingRecordingMode, currentView, isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
-        selectedTagIds, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
+        selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
         progressPopupMinimized, progressPopupClosed,
         // Incognito mode
         enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
@@ -523,6 +523,8 @@ export function useAudio(state, utils) {
             file: recordedFile,
             notes: recordingNotes.value,
             tags: selectedTags, // Completely non-reactive deep copy
+            folder_id: selectedFolderId.value,
+            preserveOptions: true, // Prevents startUpload from overwriting recording's options
             asrOptions: {
                 language: asrLanguage.value,
                 min_speakers: asrMinSpeakers.value,
