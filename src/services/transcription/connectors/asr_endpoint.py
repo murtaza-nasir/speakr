@@ -5,7 +5,6 @@ Supports whisper-asr-webservice, WhisperX, and other compatible ASR services
 that expose a /asr endpoint.
 """
 
-import json
 import logging
 import httpx
 from typing import Dict, Any, Set, Optional
@@ -19,6 +18,7 @@ from ..base import (
     ConnectorSpecifications,
 )
 from ..exceptions import TranscriptionError, ConfigurationError, ProviderError
+from src.config.app_config import ASR_ENABLE_CHUNKING, ASR_MAX_DURATION_SECONDS
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +34,12 @@ class ASREndpointConnector(BaseTranscriptionConnector):
     }
     PROVIDER_NAME = "asr_endpoint"
 
-    # Self-hosted ASR endpoints typically handle files of any size internally
+    # SPECIFICATIONS is set dynamically in __init__ based on ASR_ENABLE_CHUNKING config
+    # Default values here for class-level reference (overridden per-instance)
     SPECIFICATIONS = ConnectorSpecifications(
-        max_file_size_bytes=None,  # Unlimited
-        max_duration_seconds=None,  # Unlimited
-        handles_chunking_internally=True,  # ASR service handles it
+        max_file_size_bytes=None,
+        max_duration_seconds=None,
+        handles_chunking_internally=True,
     )
 
     def __init__(self, config: Dict[str, Any]):
@@ -58,6 +59,30 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         self.timeout = config.get('timeout', 1800)  # 30 minutes default
         self.return_embeddings = config.get('return_speaker_embeddings', False)
         self.default_diarize = config.get('diarize', True)
+
+        # Configure chunking behavior based on environment variables
+        # ASR_ENABLE_CHUNKING=true enables app-level chunking for self-hosted ASR services
+        # that may crash on long files due to GPU memory exhaustion
+        if ASR_ENABLE_CHUNKING:
+            # Calculate recommended chunk size (80% of max for safety margin)
+            recommended_chunk = int(ASR_MAX_DURATION_SECONDS * 0.8)
+            self.SPECIFICATIONS = ConnectorSpecifications(
+                max_file_size_bytes=None,  # No file size limit
+                max_duration_seconds=ASR_MAX_DURATION_SECONDS,
+                handles_chunking_internally=False,  # App handles chunking
+                recommended_chunk_seconds=recommended_chunk,
+            )
+            logger.info(
+                f"ASR chunking enabled: max_duration={ASR_MAX_DURATION_SECONDS}s, "
+                f"recommended_chunk={recommended_chunk}s"
+            )
+        else:
+            # Default behavior: ASR service handles everything internally
+            self.SPECIFICATIONS = ConnectorSpecifications(
+                max_file_size_bytes=None,
+                max_duration_seconds=None,
+                handles_chunking_internally=True,
+            )
 
         # Add speaker embeddings capability if enabled
         if self.return_embeddings:
