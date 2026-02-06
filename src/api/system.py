@@ -32,6 +32,7 @@ ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').low
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() == 'true'
+ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 INCOGNITO_MODE_DEFAULT = os.environ.get('INCOGNITO_MODE_DEFAULT', 'false').lower() == 'true'
 
@@ -247,6 +248,7 @@ def get_config():
             'enable_incognito_mode': ENABLE_INCOGNITO_MODE,
             'incognito_mode_default': INCOGNITO_MODE_DEFAULT,
             'enable_folders': SystemSetting.get_setting('enable_folders', False) == True,
+            'enable_auto_export': ENABLE_AUTO_EXPORT,
             **chunking_info
         })
     except Exception as e:

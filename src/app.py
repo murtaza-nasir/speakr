@@ -548,6 +548,7 @@ from src.api.speakers import speakers_bp, init_speakers_helpers
 from src.api.inquire import inquire_bp, init_inquire_helpers
 from src.api.templates import templates_bp, init_templates_helpers
 from src.api.naming_templates import naming_templates_bp
+from src.api.export_templates import export_templates_bp
 from src.api.events import events_bp, init_events_helpers
 from src.api.system import system_bp, init_system_helpers
 from src.api.push_notifications import push_bp
@@ -591,6 +592,7 @@ app.register_blueprint(speakers_bp)
 app.register_blueprint(inquire_bp)
 app.register_blueprint(templates_bp)
 app.register_blueprint(naming_templates_bp)
+app.register_blueprint(export_templates_bp)
 app.register_blueprint(events_bp)
 app.register_blueprint(system_bp)
 app.register_blueprint(push_bp)

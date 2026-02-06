@@ -97,6 +97,7 @@
     "sharedTranscripts": "Shared Transcripts",
     "speakersManagement": "Speakers Management",
     "tagManagement": "Tag Management",
+    "templates": "Templates",
     "transcriptTemplates": "Transcript Templates"
   },
   "apiTokens": {
@@ -122,6 +123,7 @@
     "info": "Extracted events will appear in an 'Events' tab on recordings where calendar items are detected."
   },
   "transcriptTemplates": {
+    "tabTitle": "Transcript",
     "title": "Transcript Templates",
     "description": "Customize how transcripts are formatted for download and export.",
     "createNew": "Create Template",
@@ -144,6 +146,7 @@
     "chooseTemplate": "Choose template..."
   },
   "namingTemplates": {
+    "tabTitle": "Naming",
     "title": "Naming Templates",
     "description": "Define how recording titles are generated from filenames and transcription content.",
     "createNew": "Create Template",
@@ -1198,5 +1201,44 @@
     "mute": "Mute",
     "unmute": "Unmute",
     "playbackSpeed": "Playback speed"
+  },
+  "exportLabels": {
+    "metadata": "Metadata",
+    "notes": "Notes",
+    "summary": "Summary",
+    "transcription": "Transcription",
+    "date": "Date",
+    "created": "Created",
+    "originalFile": "Original File",
+    "fileSize": "File Size",
+    "participants": "Participants",
+    "tags": "Tags",
+    "transcriptionTime": "Transcription Time",
+    "summarizationTime": "Summarization Time",
+    "footer": "Generated with [Speakr](https://github.com/learnedmachine/speakr)"
+  },
+  "exportTemplates": {
+    "tabTitle": "Export",
+    "title": "Export Templates",
+    "description": "Customize how recordings are exported to markdown files.",
+    "createNew": "Create Template",
+    "availableTemplates": "Available Templates",
+    "createDefaults": "Create Default Template",
+    "templateName": "Template Name",
+    "template": "Template",
+    "templateDescription": "Description",
+    "availableVars": "Available Variables",
+    "availableLabels": "Localized Labels (auto-translated)",
+    "conditionals": "Conditionals",
+    "conditionalsHint": "Use {{#if variable}}...{{/if}} to conditionally include content",
+    "setDefault": "Set as default template",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "selectOrCreate": "Select a template to edit or create a new one",
+    "viewGuide": "View Template Guide",
+    "default": "Default",
+    "recordingData": "Recording Data",
+    "contentSections": "Content Sections"
   }
 }

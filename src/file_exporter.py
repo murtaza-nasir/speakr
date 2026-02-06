@@ -4,6 +4,7 @@ File Exporter for Automated Recording Export
 
 Exports transcriptions and summaries as markdown files to a configured directory.
 Supports per-user subdirectories based on username.
+Supports customizable export templates with localized labels.
 """
 
 import os
@@ -180,7 +181,7 @@ def mark_export_as_deleted(recording_id):
 def format_duration(seconds):
     """Format duration in seconds to human-readable string."""
     if not seconds:
-        return "Unknown"
+        return ""
 
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -197,13 +198,73 @@ def format_duration(seconds):
 def format_file_size(bytes_size):
     """Format file size in bytes to human-readable string."""
     if not bytes_size:
-        return "Unknown"
+        return ""
 
     for unit in ['B', 'KB', 'MB', 'GB']:
         if bytes_size < 1024:
             return f"{bytes_size:.1f} {unit}"
         bytes_size /= 1024
     return f"{bytes_size:.1f} TB"
+
+
+def get_user_export_template(user):
+    """
+    Get the user's default export template.
+
+    Args:
+        user: User object
+
+    Returns:
+        ExportTemplate object or None
+    """
+    from src.models import ExportTemplate
+    return ExportTemplate.query.filter_by(
+        user_id=user.id,
+        is_default=True
+    ).first()
+
+
+def render_export_template(template_str, context, labels):
+    """
+    Render an export template with variable substitution and conditionals.
+
+    Args:
+        template_str: Template string with {{variables}} and {{#if var}}...{{/if}} blocks
+        context: Dictionary of variable values
+        labels: Dictionary of localized labels
+
+    Returns:
+        Rendered string
+    """
+    result = template_str
+
+    # Process conditionals first: {{#if variable}}content{{/if}}
+    def replace_conditional(match):
+        var_name = match.group(1)
+        content = match.group(2)
+        # Check if the variable exists and is truthy
+        value = context.get(var_name, '')
+        if value:
+            return content
+        return ''
+
+    # Match {{#if var}}...{{/if}} blocks (non-greedy)
+    conditional_pattern = r'\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}'
+    result = re.sub(conditional_pattern, replace_conditional, result, flags=re.DOTALL)
+
+    # Replace label variables: {{label.key}}
+    def replace_label(match):
+        key = match.group(1)
+        return labels.get(key, key)
+
+    result = re.sub(r'\{\{label\.(\w+)\}\}', replace_label, result)
+
+    # Replace context variables: {{variable}}
+    for key, value in context.items():
+        placeholder = '{{' + key + '}}'
+        result = result.replace(placeholder, str(value) if value else '')
+
+    return result
 
 
 def generate_markdown_content(recording, user, include_transcription=True, include_summary=True):
@@ -215,6 +276,98 @@ def generate_markdown_content(recording, user, include_transcription=True, inclu
         include_transcription: Whether to include transcription
         include_summary: Whether to include summary
     """
+    from src.utils.localization import get_export_labels, format_date_localized, format_datetime_localized
+
+    # Get user's language preference (default to English)
+    user_language = getattr(user, 'ui_language', 'en') or 'en'
+
+    # Get localized labels
+    labels = get_export_labels(user_language)
+
+    # Get user's export template
+    export_template = get_user_export_template(user)
+
+    if export_template:
+        # Use custom template
+        return generate_from_template(
+            recording, user, export_template.template, labels, user_language,
+            include_transcription, include_summary
+        )
+    else:
+        # Use default (backwards compatible) behavior
+        return generate_default_markdown(
+            recording, user, labels, user_language,
+            include_transcription, include_summary
+        )
+
+
+def generate_from_template(recording, user, template_str, labels, user_language,
+                           include_transcription=True, include_summary=True):
+    """
+    Generate markdown content using a custom template.
+
+    Args:
+        recording: Recording object
+        user: User object
+        template_str: Template string
+        labels: Localized labels dictionary
+        user_language: User's language code
+        include_transcription: Whether to include transcription
+        include_summary: Whether to include summary
+
+    Returns:
+        Rendered markdown string
+    """
+    from src.utils.localization import format_date_localized, format_datetime_localized
+
+    # Build context with all available variables
+    context = {
+        'title': recording.title or f"Recording {recording.id}",
+        'meeting_date': format_date_localized(recording.meeting_date, user_language) if recording.meeting_date else '',
+        'created_at': format_datetime_localized(recording.created_at, user_language) if recording.created_at else '',
+        'original_filename': recording.original_filename or '',
+        'file_size': format_file_size(recording.file_size) if recording.file_size else '',
+        'participants': recording.participants or '',
+        'tags': ', '.join([tag.name for tag in recording.tags]) if recording.tags else '',
+        'transcription_duration': format_duration(recording.transcription_duration_seconds) if recording.transcription_duration_seconds else '',
+        'summarization_duration': format_duration(recording.summarization_duration_seconds) if recording.summarization_duration_seconds else '',
+        'notes': recording.notes or '' if include_summary else '',  # Notes included with summary setting
+        'summary': recording.summary or '' if include_summary else '',
+        'transcription': '',  # Will be set below
+    }
+
+    # Format transcription if included
+    if include_transcription and recording.transcription:
+        context['transcription'] = format_transcription_with_template(recording.transcription, user)
+
+    # Render template
+    rendered = render_export_template(template_str, context, labels)
+
+    # Always append hardcoded footer
+    footer = labels.get('footer', 'Generated with [Speakr](https://github.com/learnedmachine/speakr)')
+    rendered += f"\n\n---\n\n*{footer}*\n"
+
+    return rendered
+
+
+def generate_default_markdown(recording, user, labels, user_language,
+                              include_transcription=True, include_summary=True):
+    """
+    Generate markdown using the default (backwards compatible) format.
+
+    Args:
+        recording: Recording object
+        user: User object
+        labels: Localized labels dictionary
+        user_language: User's language code
+        include_transcription: Whether to include transcription
+        include_summary: Whether to include summary
+
+    Returns:
+        Rendered markdown string
+    """
+    from src.utils.localization import format_date_localized, format_datetime_localized
+
     lines = []
 
     # Header with title
@@ -223,53 +376,55 @@ def generate_markdown_content(recording, user, include_transcription=True, inclu
     lines.append("")
 
     # Metadata section
-    lines.append("## Metadata")
+    lines.append(f"## {labels.get('metadata', 'Metadata')}")
     lines.append("")
 
     if recording.meeting_date:
-        lines.append(f"- **Date:** {recording.meeting_date.strftime('%B %d, %Y')}")
+        date_str = format_date_localized(recording.meeting_date, user_language)
+        lines.append(f"- **{labels.get('date', 'Date')}:** {date_str}")
 
     if recording.created_at:
-        lines.append(f"- **Created:** {recording.created_at.strftime('%B %d, %Y at %I:%M %p')}")
+        created_str = format_datetime_localized(recording.created_at, user_language)
+        lines.append(f"- **{labels.get('created', 'Created')}:** {created_str}")
 
     if recording.original_filename:
-        lines.append(f"- **Original File:** {recording.original_filename}")
+        lines.append(f"- **{labels.get('originalFile', 'Original File')}:** {recording.original_filename}")
 
     if recording.file_size:
-        lines.append(f"- **File Size:** {format_file_size(recording.file_size)}")
+        lines.append(f"- **{labels.get('fileSize', 'File Size')}:** {format_file_size(recording.file_size)}")
 
     if recording.participants:
-        lines.append(f"- **Participants:** {recording.participants}")
+        lines.append(f"- **{labels.get('participants', 'Participants')}:** {recording.participants}")
 
     if recording.tags:
         tag_names = [tag.name for tag in recording.tags]
-        lines.append(f"- **Tags:** {', '.join(tag_names)}")
+        lines.append(f"- **{labels.get('tags', 'Tags')}:** {', '.join(tag_names)}")
 
     if recording.transcription_duration_seconds:
-        lines.append(f"- **Transcription Time:** {format_duration(recording.transcription_duration_seconds)}")
+        lines.append(f"- **{labels.get('transcriptionTime', 'Transcription Time')}:** {format_duration(recording.transcription_duration_seconds)}")
 
     if recording.summarization_duration_seconds:
-        lines.append(f"- **Summarization Time:** {format_duration(recording.summarization_duration_seconds)}")
+        lines.append(f"- **{labels.get('summarizationTime', 'Summarization Time')}:** {format_duration(recording.summarization_duration_seconds)}")
 
     lines.append("")
 
     # Notes section (if available)
     if recording.notes:
-        lines.append("## Notes")
+        lines.append(f"## {labels.get('notes', 'Notes')}")
         lines.append("")
         lines.append(recording.notes)
         lines.append("")
 
     # Summary section
     if include_summary and recording.summary:
-        lines.append("## Summary")
+        lines.append(f"## {labels.get('summary', 'Summary')}")
         lines.append("")
         lines.append(recording.summary)
         lines.append("")
 
     # Transcription section
     if include_transcription and recording.transcription:
-        lines.append("## Transcription")
+        lines.append(f"## {labels.get('transcription', 'Transcription')}")
         lines.append("")
         # Format transcription using user's template
         formatted_transcription = format_transcription_with_template(recording.transcription, user)
@@ -279,7 +434,8 @@ def generate_markdown_content(recording, user, include_transcription=True, inclu
     # Footer
     lines.append("---")
     lines.append("")
-    lines.append("*Generated with [Speakr](https://github.com/learnedmachine/speakr)*")
+    footer = labels.get('footer', 'Generated with [Speakr](https://github.com/learnedmachine/speakr)')
+    lines.append(f"*{footer}*")
     lines.append("")
 
     return "\n".join(lines)
