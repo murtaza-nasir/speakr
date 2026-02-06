@@ -1072,12 +1072,18 @@ def compress_lossless_audio(filepath, codec='mp3', bitrate='128k', codec_info=No
 
 def merge_diarized_chunks(chunk_results):
     """
-    Merge diarized transcription chunks while preserving speaker labels AND segments.
+    Merge diarized transcription chunks while remapping speaker labels to be unique.
 
-    Since we use known_speaker_references, speaker labels (A, B, C, D) should be
-    consistent across chunks. This function:
-    1. Concatenates the diarized text from each chunk
-    2. Merges all segments with adjusted timestamps based on chunk start_time
+    Since ASR services can't maintain speaker identity across chunks, each chunk's
+    speakers are remapped to unique IDs:
+    - Chunk 1: SPEAKER_00, SPEAKER_01 → SPEAKER_00, SPEAKER_01
+    - Chunk 2: SPEAKER_00, SPEAKER_01 → SPEAKER_02, SPEAKER_03
+    - etc.
+
+    This function:
+    1. Remaps speaker labels to be unique across all chunks
+    2. Updates both segments and transcription text with new labels
+    3. Adjusts timestamps based on chunk start_time
 
     Args:
         chunk_results: List of chunk results with 'transcription', 'segments', 'start_time'
@@ -1086,6 +1092,7 @@ def merge_diarized_chunks(chunk_results):
         Tuple of (merged_text, merged_segments, all_speakers)
     """
     from src.services.transcription import TranscriptionSegment
+    import re
 
     if not chunk_results:
         return "", [], []
@@ -1096,15 +1103,69 @@ def merge_diarized_chunks(chunk_results):
     merged_parts = []
     merged_segments = []
     all_speakers = set()
+    next_speaker_number = 0  # Track the next available speaker number
 
-    for chunk in sorted_chunks:
+    for chunk_idx, chunk in enumerate(sorted_chunks):
+        chunk_segments = chunk.get('segments') or []
+
+        # Build speaker remapping for this chunk
+        # Maps original speaker label -> new unique speaker label
+        chunk_speakers = set()
+        for seg in chunk_segments:
+            if hasattr(seg, 'speaker'):
+                speaker = seg.speaker
+            else:
+                speaker = seg.get('speaker', 'Unknown')
+            if speaker:
+                chunk_speakers.add(speaker)
+
+        # Also check chunk metadata for speakers
+        if chunk.get('speakers'):
+            for s in chunk['speakers']:
+                chunk_speakers.add(s)
+
+        # Create remapping: sort speakers to ensure deterministic ordering
+        speaker_remap = {}
+        for original_speaker in sorted(chunk_speakers):
+            if original_speaker and original_speaker != 'Unknown':
+                # Extract number from speaker label (e.g., SPEAKER_00 -> 0)
+                # For first chunk, keep original numbering; for subsequent chunks, remap
+                if chunk_idx == 0:
+                    # First chunk: keep original labels but track highest number
+                    speaker_remap[original_speaker] = original_speaker
+                    match = re.search(r'(\d+)$', original_speaker)
+                    if match:
+                        num = int(match.group(1))
+                        next_speaker_number = max(next_speaker_number, num + 1)
+                else:
+                    # Subsequent chunks: remap to new unique numbers
+                    new_speaker = f"SPEAKER_{next_speaker_number:02d}"
+                    speaker_remap[original_speaker] = new_speaker
+                    next_speaker_number += 1
+
+        # Update transcription text with remapped speakers
         chunk_text = chunk.get('transcription', '').strip()
+        if chunk_text and chunk_idx > 0:
+            # Replace speaker labels in text (e.g., [SPEAKER_00]: -> [SPEAKER_02]:)
+            for original, remapped in speaker_remap.items():
+                if original != remapped:
+                    # Handle various formats: [SPEAKER_00]:, SPEAKER_00:, (SPEAKER_00)
+                    chunk_text = re.sub(
+                        rf'\[{re.escape(original)}\]',
+                        f'[{remapped}]',
+                        chunk_text
+                    )
+                    chunk_text = re.sub(
+                        rf'(?<!\[){re.escape(original)}(?![\d])',
+                        remapped,
+                        chunk_text
+                    )
+
         if chunk_text:
             merged_parts.append(chunk_text)
 
-        # Merge segments with adjusted timestamps
+        # Merge segments with adjusted timestamps and remapped speakers
         chunk_start_offset = chunk.get('start_time', 0)
-        chunk_segments = chunk.get('segments') or []
 
         for seg in chunk_segments:
             # Handle both TranscriptionSegment objects and dicts
@@ -1123,7 +1184,9 @@ def merge_diarized_chunks(chunk_results):
             if not text or not text.strip():
                 continue
 
-            all_speakers.add(speaker)
+            # Remap speaker label
+            remapped_speaker = speaker_remap.get(speaker, speaker)
+            all_speakers.add(remapped_speaker)
 
             # Adjust timestamps by chunk offset
             adjusted_start = (start_time or 0) + chunk_start_offset
@@ -1131,15 +1194,10 @@ def merge_diarized_chunks(chunk_results):
 
             merged_segments.append(TranscriptionSegment(
                 text=text,
-                speaker=speaker,
+                speaker=remapped_speaker,
                 start_time=adjusted_start,
                 end_time=adjusted_end
             ))
-
-        # Track speakers from chunk metadata too
-        if chunk.get('speakers'):
-            for s in chunk['speakers']:
-                all_speakers.add(s)
 
     merged_text = '\n'.join(merged_parts)
     return merged_text, merged_segments, sorted(list(all_speakers))
