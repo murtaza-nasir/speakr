@@ -5214,7 +5214,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         // Initialize folder group selection visibility
         function initFolderGroupSelection() {
             const folderGroupSection = document.getElementById('folderGroupSelectionSection');
-            if (folderGroupSection && adminGroups && adminGroups.length > 0) {
+            if (folderGroupSection && userAdminGroups && userAdminGroups.length > 0) {
                 folderGroupSection.classList.remove('hidden');
 
                 // Populate folder group dropdown
@@ -5225,7 +5225,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     defaultOpt.value = '';
                     defaultOpt.textContent = 'Personal Folder (Not Associated with a Group)';
                     folderGroupIdEl.appendChild(defaultOpt);
-                    adminGroups.forEach(function(group) {
+                    userAdminGroups.forEach(function(group) {
                         const option = document.createElement('option');
                         option.value = group.id;
                         option.textContent = group.name;
