@@ -374,7 +374,9 @@ db.init_app(app)
 from src.models import (
     User, Speaker, Recording, TranscriptChunk, Share, InternalShare,
     SharedRecordingState, Group, GroupMembership, Tag, RecordingTag,
-    Event, TranscriptTemplate, InquireSession, SystemSetting, PushSubscription
+    Event, TranscriptTemplate, InquireSession, SystemSetting, PushSubscription,
+    APIToken, NamingTemplate, Folder, SpeakerSnippet, ShareAuditLog,
+    ProcessingJob, TokenUsage, TranscriptionUsage
 )
 
 # Import utility functions from extracted modules
