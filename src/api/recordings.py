@@ -2190,6 +2190,11 @@ def upload_file():
             except (ValueError, TypeError):
                 max_speakers = None
 
+        # Fall back to user's default transcription language if still not set
+        if not language and current_user.transcription_language:
+            language = current_user.transcription_language
+            current_app.logger.info(f"Using user's default transcription language: {language}")
+
         # Create initial database entry
         now = datetime.utcnow()
 
