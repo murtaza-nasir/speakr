@@ -1555,9 +1555,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             recording.transcription = response.to_storage_format()
                             current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
                         else:
-                            # Store as plain text
-                            recording.transcription = response.text
-                            current_app.logger.info(f"Transcription completed: {len(response.text)} characters")
+                            # Store as plain text (ensure it's a string)
+                            transcription_text = response.text if isinstance(response.text, str) else ''
+                            recording.transcription = transcription_text
+                            current_app.logger.info(f"Transcription completed: {len(transcription_text)} characters")
 
                         # Store speaker embeddings if available
                         if response.speaker_embeddings:
