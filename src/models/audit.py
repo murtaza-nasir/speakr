@@ -17,7 +17,7 @@ class ShareAuditLog(db.Model):
 
     # Action details
     action = db.Column(db.String(20), nullable=False)  # 'created', 'modified', 'revoked', 'cascade_revoked'
-    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id'), nullable=False)
+    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id', ondelete='CASCADE'), nullable=False)
 
     # Actor (who performed the action)
     actor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -40,7 +40,7 @@ class ShareAuditLog(db.Model):
     ip_address = db.Column(db.String(45), nullable=True)  # Actor's IP address
 
     # Recording relationship
-    recording = db.relationship('Recording', backref='share_audit_logs')
+    recording = db.relationship('Recording', backref=db.backref('share_audit_logs', cascade='all, delete-orphan'))
 
     def to_dict(self):
         """Convert to dictionary for API responses."""

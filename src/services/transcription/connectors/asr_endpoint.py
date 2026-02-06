@@ -213,7 +213,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
                 ))
 
         # Get the full text
-        if 'text' in data:
+        if 'text' in data and isinstance(data['text'], str):
             full_text = data['text']
         elif full_text_parts:
             full_text = '\n'.join(full_text_parts)

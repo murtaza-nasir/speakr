@@ -16,7 +16,7 @@ class ProcessingJob(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id'), nullable=False, index=True)
+    recording_id = db.Column(db.Integer, db.ForeignKey('recording.id', ondelete='CASCADE'), nullable=False, index=True)
 
     # Job type: transcribe, summarize, reprocess_transcription, reprocess_summary
     job_type = db.Column(db.String(50), nullable=False)
@@ -41,7 +41,7 @@ class ProcessingJob(db.Model):
 
     # Relationships
     user = db.relationship('User', backref=db.backref('processing_jobs', lazy='dynamic'))
-    recording = db.relationship('Recording', backref=db.backref('processing_jobs', lazy='dynamic'))
+    recording = db.relationship('Recording', backref=db.backref('processing_jobs', lazy='dynamic', cascade='all, delete-orphan'))
 
     def __repr__(self):
         return f'<ProcessingJob {self.id} type={self.job_type} status={self.status}>'
