@@ -23,6 +23,7 @@ from .organization import Group, GroupMembership, Tag, RecordingTag, Folder
 from .events import Event
 from .templates import TranscriptTemplate
 from .naming_template import NamingTemplate
+from .export_template import ExportTemplate
 from .inquire import InquireSession
 from .system import SystemSetting
 from .audit import ShareAuditLog
@@ -58,6 +59,7 @@ __all__ = [
     'Event',
     'TranscriptTemplate',
     'NamingTemplate',
+    'ExportTemplate',
     'InquireSession',
     'SystemSetting',
     'PushSubscription',

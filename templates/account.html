@@ -462,10 +462,7 @@
                             <i class="fas fa-tags mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.tagManagement">Tags</span>
                         </a>
                         <a href="#" id="tab-templates" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                            <i class="fas fa-file-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.transcriptTemplates">Templates</span>
-                        </a>
-                        <a href="#" id="tab-naming-templates" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                            <i class="fas fa-heading mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.namingTemplates">Naming</span>
+                            <i class="fas fa-file-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.templates">Templates</span>
                         </a>
                         <a href="#" id="tab-tokens" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-key mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.apiTokens">API Tokens</span>
@@ -981,226 +978,360 @@
 
                     <div id="content-templates" class="hidden tab-content pt-6">
                     <div class="space-y-6">
-                        <!-- Templates Header -->
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div>
-                                <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="transcriptTemplates.title">Transcript Templates</h2>
-                                <p class="text-[var(--text-secondary)]" data-i18n="transcriptTemplates.description">Customize how transcripts are formatted for download and export.</p>
-                            </div>
-                            <button id="createTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-plus mr-2"></i>
-                                <span data-i18n="transcriptTemplates.createNew">Create Template</span>
-                            </button>
+                        <!-- Sub-tabs for Templates (sticky) -->
+                        <div class="sticky top-0 z-10 bg-[var(--bg-secondary)] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 -mt-6 pt-6 pb-0 border-b border-[var(--border-primary)]">
+                            <nav class="flex gap-4" id="templates-subtabs">
+                                <button id="subtab-transcript" class="pb-2 px-1 text-sm font-medium border-b-2 border-[var(--border-accent)] text-[var(--text-accent)]" data-i18n="transcriptTemplates.tabTitle">
+                                    Transcript
+                                </button>
+                                <button id="subtab-export" class="pb-2 px-1 text-sm font-medium border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" style="display: none;" data-i18n="exportTemplates.tabTitle">
+                                    Export
+                                </button>
+                                <button id="subtab-naming" class="pb-2 px-1 text-sm font-medium border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-i18n="namingTemplates.tabTitle">
+                                    Naming
+                                </button>
+                            </nav>
                         </div>
 
-                        <!-- Templates Grid -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <!-- Templates List (Left) -->
-                            <div class="lg:col-span-1">
-                                <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                    <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="transcriptTemplates.availableTemplates">Available Templates</h3>
-                                    <div id="templatesList" class="space-y-2">
-                                        <!-- Templates will be populated here -->
+                        <!-- Transcript Templates Sub-content -->
+                        <div id="subcontent-transcript" class="space-y-6">
+                            <!-- Templates Header -->
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="transcriptTemplates.title">Transcript Templates</h2>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="transcriptTemplates.description">Customize how transcripts are formatted for download and export.</p>
+                                </div>
+                                <button id="createTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    <span data-i18n="transcriptTemplates.createNew">Create Template</span>
+                                </button>
+                            </div>
+
+                            <!-- Templates Grid -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Templates List (Left) -->
+                                <div class="lg:col-span-1">
+                                    <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="transcriptTemplates.availableTemplates">Available Templates</h3>
+                                        <div id="templatesList" class="space-y-2">
+                                            <!-- Templates will be populated here -->
+                                        </div>
+                                        <button id="createDefaultTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
+                                            <i class="fas fa-magic mr-2"></i>
+                                            <span data-i18n="transcriptTemplates.createDefaults">Create Default Templates</span>
+                                        </button>
                                     </div>
-                                    <button id="createDefaultTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
-                                        <i class="fas fa-magic mr-2"></i>
-                                        <span data-i18n="transcriptTemplates.createDefaults">Create Default Templates</span>
-                                    </button>
                                 </div>
-                            </div>
 
-                            <!-- Template Editor (Right) -->
-                            <div class="lg:col-span-2">
-                                <div id="templateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
-                                    <form id="templateForm" class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.templateName">Template Name</label>
-                                            <input type="text" id="templateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
-                                        </div>
+                                <!-- Template Editor (Right) -->
+                                <div class="lg:col-span-2">
+                                    <div id="templateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
+                                        <form id="templateForm" class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.templateName">Template Name</label>
+                                                <input type="text" id="templateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
+                                            </div>
 
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.description">Description</label>
-                                            <input type="text" id="templateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                                        </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.description">Description</label>
+                                                <input type="text" id="templateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                            </div>
 
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.template">Template</label>
-                                            <textarea id="templateContent" rows="6" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required></textarea>
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="transcriptTemplates.template">Template</label>
+                                                <textarea id="templateContent" rows="6" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required></textarea>
 
-                                            <!-- Available Variables -->
-                                            <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
-                                                <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="transcriptTemplates.availableVars">Available Variables:</p>
-                                                <div class="flex flex-wrap gap-2">
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{index}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{speaker}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{text}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{start_time}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{end_time}}</code>
+                                                <!-- Available Variables -->
+                                                <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
+                                                    <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="transcriptTemplates.availableVars">Available Variables:</p>
+                                                    <div class="flex flex-wrap gap-2">
+                                                        {% raw %}<code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{index}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{speaker}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{text}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{start_time}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded">{{end_time}}</code>{% endraw %}
+                                                    </div>
+                                                    <p class="text-xs text-[var(--text-muted)] mt-2" data-i18n="transcriptTemplates.filters">Filters: |upper for uppercase, |srt for subtitle time format</p>
                                                 </div>
-                                                <p class="text-xs text-[var(--text-muted)] mt-2" data-i18n="transcriptTemplates.filters">Filters: |upper for uppercase, |srt for subtitle time format</p>
                                             </div>
-                                        </div>
 
-                                        <div class="flex items-center">
-                                            <input type="checkbox" id="templateIsDefault" class="mr-2">
-                                            <label for="templateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="transcriptTemplates.setDefault">Set as default template</label>
-                                        </div>
-
-                                        <div class="flex gap-3">
-                                            <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                                <i class="fas fa-save mr-2"></i>
-                                                <span data-i18n="transcriptTemplates.save">Save</span>
-                                            </button>
-                                            <button type="button" id="cancelTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
-                                                <span data-i18n="transcriptTemplates.cancel">Cancel</span>
-                                            </button>
-                                            <button type="button" id="deleteTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
-                                                <i class="fas fa-trash mr-2"></i>
-                                                <span data-i18n="transcriptTemplates.delete">Delete</span>
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-
-                                <!-- Empty State -->
-                                <div id="templateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
-                                    <i class="fas fa-file-alt text-4xl text-[var(--text-muted)] mb-4"></i>
-                                    <p class="text-[var(--text-muted)]" data-i18n="transcriptTemplates.selectOrCreate">Select a template to edit or create a new one</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Documentation Link -->
-                        <div class="mt-8 text-center">
-                            <a href="https://murtaza-nasir.github.io/speakr/user-guide/transcript-templates/" target="_blank" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
-                                <i class="fas fa-question-circle mr-1"></i>
-                                <span data-i18n="transcriptTemplates.viewGuide">View Template Guide</span>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                    <!-- Naming Templates Tab Content -->
-                    <div id="content-naming-templates" class="hidden tab-content pt-6">
-                    <div class="space-y-6">
-                        <!-- Naming Templates Header -->
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div>
-                                <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="namingTemplates.title">Naming Templates</h2>
-                                <p class="text-[var(--text-secondary)]" data-i18n="namingTemplates.description">Define how recording titles are generated from filenames and transcription content.</p>
-                            </div>
-                            <button id="createNamingTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-plus mr-2"></i>
-                                <span data-i18n="namingTemplates.createNew">Create Template</span>
-                            </button>
-                        </div>
-
-                        <!-- Naming Templates Grid -->
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <!-- Naming Templates List (Left) -->
-                            <div class="lg:col-span-1">
-                                <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                    <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.availableTemplates">Available Templates</h3>
-                                    <div id="namingTemplatesList" class="space-y-2">
-                                        <!-- Templates will be populated here -->
-                                    </div>
-                                    <button id="createDefaultNamingTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
-                                        <i class="fas fa-magic mr-2"></i>
-                                        <span data-i18n="namingTemplates.createDefaults">Create Default Templates</span>
-                                    </button>
-                                </div>
-
-                                <!-- User Default Selection -->
-                                <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
-                                    <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.userDefault">Default Template</h3>
-                                    <select id="userDefaultNamingTemplate" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                                        <option value="" data-i18n="namingTemplates.noDefault">No default (AI title only)</option>
-                                    </select>
-                                    <p class="mt-2 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.userDefaultHint">Applied when no tag has a naming template set.</p>
-                                </div>
-                            </div>
-
-                            <!-- Naming Template Editor (Right) -->
-                            <div class="lg:col-span-2">
-                                <div id="namingTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
-                                    <form id="namingTemplateForm" class="space-y-4">
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.templateName">Template Name</label>
-                                            <input type="text" id="namingTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
-                                        </div>
-
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.descriptionLabel">Description</label>
-                                            <input type="text" id="namingTemplateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                                        </div>
-
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.template">Template</label>
-                                            <input type="text" id="namingTemplateContent" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required placeholder="{{date}} - {{ai_title}}">
-
-                                            <!-- Available Variables -->
-                                            <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
-                                                <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="namingTemplates.availableVars">Built-in Variables:</p>
-                                                <div class="flex flex-wrap gap-2 mb-2">
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="AI-generated title from transcription">{{ai_title}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Original filename without extension">{{filename}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date (YYYY-MM-DD)">{{date}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date and time">{{datetime}}</code>
-                                                    <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Time only (HH:MM)">{{time}}</code>
-                                                </div>
-                                                <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.customVarsHint">Define regex patterns below to extract custom variables from filenames.</p>
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="templateIsDefault" class="mr-2">
+                                                <label for="templateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="transcriptTemplates.setDefault">Set as default template</label>
                                             </div>
-                                        </div>
 
-                                        <!-- Regex Patterns -->
-                                        <div>
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.regexPatterns">Regex Patterns (Optional)</label>
-                                            <div id="regexPatternsContainer" class="space-y-2">
-                                                <!-- Regex patterns will be added here dynamically -->
-                                            </div>
-                                            <button type="button" id="addRegexPatternBtn" class="mt-2 text-sm text-[var(--text-accent)] hover:text-[var(--text-primary)]">
-                                                <i class="fas fa-plus mr-1"></i>
-                                                <span data-i18n="namingTemplates.addPattern">Add Pattern</span>
-                                            </button>
-                                            <p class="mt-1 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.regexHint">Extract data from filenames. Use capture groups () to specify the match. Example: (\d{10}) for phone numbers.</p>
-                                        </div>
-
-                                        <!-- Test Section -->
-                                        <div class="border-t border-[var(--border-primary)] pt-4 mt-4">
-                                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.testTemplate">Test Template</label>
-                                            <div class="flex gap-2">
-                                                <input type="text" id="testFilename" class="flex-1 px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" placeholder="sample-file-name.mp3">
-                                                <button type="button" id="testNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)]">
-                                                    <i class="fas fa-play mr-1"></i>
-                                                    <span data-i18n="namingTemplates.test">Test</span>
+                                            <div class="flex gap-3">
+                                                <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                    <i class="fas fa-save mr-2"></i>
+                                                    <span data-i18n="transcriptTemplates.save">Save</span>
+                                                </button>
+                                                <button type="button" id="cancelTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
+                                                    <span data-i18n="transcriptTemplates.cancel">Cancel</span>
+                                                </button>
+                                                <button type="button" id="deleteTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
+                                                    <i class="fas fa-trash mr-2"></i>
+                                                    <span data-i18n="transcriptTemplates.delete">Delete</span>
                                                 </button>
                                             </div>
-                                            <div id="testResult" class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded-md hidden">
-                                                <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.result">Result:</p>
-                                                <p id="testResultText" class="text-sm text-[var(--text-primary)] font-medium"></p>
-                                            </div>
-                                        </div>
+                                        </form>
+                                    </div>
 
-                                        <div class="flex gap-3">
-                                            <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                                <i class="fas fa-save mr-2"></i>
-                                                <span data-i18n="namingTemplates.save">Save</span>
-                                            </button>
-                                            <button type="button" id="cancelNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
-                                                <span data-i18n="namingTemplates.cancel">Cancel</span>
-                                            </button>
-                                            <button type="button" id="deleteNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
-                                                <i class="fas fa-trash mr-2"></i>
-                                                <span data-i18n="namingTemplates.delete">Delete</span>
-                                            </button>
+                                    <!-- Empty State -->
+                                    <div id="templateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
+                                        <i class="fas fa-file-alt text-4xl text-[var(--text-muted)] mb-4"></i>
+                                        <p class="text-[var(--text-muted)]" data-i18n="transcriptTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Documentation Link -->
+                            <div class="mt-8 text-center">
+                                <a href="https://murtaza-nasir.github.io/speakr/user-guide/transcript-templates/" target="_blank" class="text-sm text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+                                    <i class="fas fa-question-circle mr-1"></i>
+                                    <span data-i18n="transcriptTemplates.viewGuide">View Template Guide</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Export Templates Sub-content -->
+                        <div id="subcontent-export" class="space-y-6 hidden">
+                            <!-- Export Templates Header -->
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="exportTemplates.title">Export Templates</h2>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="exportTemplates.description">Customize how recordings are exported to markdown files.</p>
+                                </div>
+                                <button id="createExportTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    <span data-i18n="exportTemplates.createNew">Create Template</span>
+                                </button>
+                            </div>
+
+                            <!-- Export Templates Grid -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Export Templates List (Left) -->
+                                <div class="lg:col-span-1">
+                                    <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="exportTemplates.availableTemplates">Available Templates</h3>
+                                        <div id="exportTemplatesList" class="space-y-2">
+                                            <!-- Export templates will be populated here -->
                                         </div>
-                                    </form>
+                                        <button id="createDefaultExportTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
+                                            <i class="fas fa-magic mr-2"></i>
+                                            <span data-i18n="exportTemplates.createDefaults">Create Default Template</span>
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <!-- Empty State -->
-                                <div id="namingTemplateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
-                                    <i class="fas fa-heading text-4xl text-[var(--text-muted)] mb-4"></i>
-                                    <p class="text-[var(--text-muted)]" data-i18n="namingTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                <!-- Export Template Editor (Right) -->
+                                <div class="lg:col-span-2">
+                                    <div id="exportTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
+                                        <form id="exportTemplateForm" class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="exportTemplates.templateName">Template Name</label>
+                                                <input type="text" id="exportTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="exportTemplates.templateDescription">Description</label>
+                                                <input type="text" id="exportTemplateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="exportTemplates.template">Template</label>
+                                                <textarea id="exportTemplateContent" rows="12" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required></textarea>
+
+                                                <!-- Available Variables -->
+                                                <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3">
+                                                    <div>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.recordingData">Recording Data:</p>
+                                                        <div class="flex flex-wrap gap-2">
+                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{title}}" title="Click to copy"><code>{{title}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{meeting_date}}" title="Click to copy"><code>{{meeting_date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{created_at}}" title="Click to copy"><code>{{created_at}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{original_filename}}" title="Click to copy"><code>{{original_filename}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{file_size}}" title="Click to copy"><code>{{file_size}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{participants}}" title="Click to copy"><code>{{participants}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{tags}}" title="Click to copy"><code>{{tags}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.contentSections">Content Sections:</p>
+                                                        <div class="flex flex-wrap gap-2">
+                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{notes}}" title="Click to copy"><code>{{notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{summary}}" title="Click to copy"><code>{{summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{transcription}}" title="Click to copy"><code>{{transcription}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.availableLabels">Localized Labels (auto-translated):</p>
+                                                        <div class="flex flex-wrap gap-2">
+                                                            {% raw %}<button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.metadata}}" title="Click to copy"><code>{{label.metadata}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.notes}}" title="Click to copy"><code>{{label.notes}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.summary}}" title="Click to copy"><code>{{label.summary}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.transcription}}" title="Click to copy"><code>{{label.transcription}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.date}}" title="Click to copy"><code>{{label.date}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>
+                                                            <button type="button" class="copy-var-btn text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-pointer hover:bg-[var(--bg-accent-light)] transition-colors flex items-center gap-1" data-copy="{{label.created}}" title="Click to copy"><code>{{label.created}}</code><i class="fas fa-copy text-[var(--text-muted)] text-[10px]"></i></button>{% endraw %}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="exportTemplates.conditionals">Conditionals:</p>
+                                                        <p class="text-xs text-[var(--text-muted)]" data-i18n="exportTemplates.conditionalsHint">Use {% raw %}{{#if variable}}...{{/if}}{% endraw %} to conditionally include content</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="exportTemplateIsDefault" class="mr-2">
+                                                <label for="exportTemplateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="exportTemplates.setDefault">Set as default template</label>
+                                            </div>
+
+                                            <div class="flex gap-3">
+                                                <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                    <i class="fas fa-save mr-2"></i>
+                                                    <span data-i18n="exportTemplates.save">Save</span>
+                                                </button>
+                                                <button type="button" id="cancelExportTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
+                                                    <span data-i18n="exportTemplates.cancel">Cancel</span>
+                                                </button>
+                                                <button type="button" id="deleteExportTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
+                                                    <i class="fas fa-trash mr-2"></i>
+                                                    <span data-i18n="exportTemplates.delete">Delete</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- Empty State -->
+                                    <div id="exportTemplateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
+                                        <i class="fas fa-file-export text-4xl text-[var(--text-muted)] mb-4"></i>
+                                        <p class="text-[var(--text-muted)]" data-i18n="exportTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Naming Templates Sub-content -->
+                        <div id="subcontent-naming" class="space-y-6 hidden">
+                            <!-- Naming Templates Header -->
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="namingTemplates.title">Naming Templates</h2>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="namingTemplates.description">Define how recording titles are generated from filenames and transcription content.</p>
+                                </div>
+                                <button id="createNamingTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    <span data-i18n="namingTemplates.createNew">Create Template</span>
+                                </button>
+                            </div>
+
+                            <!-- Naming Templates Grid -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Naming Templates List (Left) -->
+                                <div class="lg:col-span-1">
+                                    <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.availableTemplates">Available Templates</h3>
+                                        <div id="namingTemplatesList" class="space-y-2">
+                                            <!-- Templates will be populated here -->
+                                        </div>
+                                        <button id="createDefaultNamingTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
+                                            <i class="fas fa-magic mr-2"></i>
+                                            <span data-i18n="namingTemplates.createDefaults">Create Default Templates</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- User Default Selection -->
+                                    <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="namingTemplates.userDefault">Default Template</h3>
+                                        <select id="userDefaultNamingTemplate" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                            <option value="" data-i18n="namingTemplates.noDefault">No default (AI title only)</option>
+                                        </select>
+                                        <p class="mt-2 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.userDefaultHint">Applied when no tag has a naming template set.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Naming Template Editor (Right) -->
+                                <div class="lg:col-span-2">
+                                    <div id="namingTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
+                                        <form id="namingTemplateForm" class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.templateName">Template Name</label>
+                                                <input type="text" id="namingTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.descriptionLabel">Description</label>
+                                                <input type="text" id="namingTemplateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.template">Template</label>
+                                                <input type="text" id="namingTemplateContent" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm" required placeholder="{% raw %}{{date}} - {{ai_title}}{% endraw %}">
+
+                                                <!-- Available Variables -->
+                                                <div class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md">
+                                                    <p class="text-xs font-medium text-[var(--text-secondary)] mb-2" data-i18n="namingTemplates.availableVars">Built-in Variables:</p>
+                                                    <div class="flex flex-wrap gap-2 mb-2">
+                                                        {% raw %}<code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="AI-generated title from transcription">{{ai_title}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Original filename without extension">{{filename}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date (YYYY-MM-DD)">{{date}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Recording date and time">{{datetime}}</code>
+                                                        <code class="text-xs bg-[var(--bg-primary)] px-2 py-1 rounded cursor-help" title="Time only (HH:MM)">{{time}}</code>{% endraw %}
+                                                    </div>
+                                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.customVarsHint">Define regex patterns below to extract custom variables from filenames.</p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Regex Patterns -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.regexPatterns">Regex Patterns (Optional)</label>
+                                                <div id="regexPatternsContainer" class="space-y-2">
+                                                    <!-- Regex patterns will be added here dynamically -->
+                                                </div>
+                                                <button type="button" id="addRegexPatternBtn" class="mt-2 text-sm text-[var(--text-accent)] hover:text-[var(--text-primary)]">
+                                                    <i class="fas fa-plus mr-1"></i>
+                                                    <span data-i18n="namingTemplates.addPattern">Add Pattern</span>
+                                                </button>
+                                                <p class="mt-1 text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.regexHint">Extract data from filenames. Use capture groups () to specify the match. Example: (\d{10}) for phone numbers.</p>
+                                            </div>
+
+                                            <!-- Test Section -->
+                                            <div class="border-t border-[var(--border-primary)] pt-4 mt-4">
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="namingTemplates.testTemplate">Test Template</label>
+                                                <div class="flex gap-2">
+                                                    <input type="text" id="testFilename" class="flex-1 px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" placeholder="sample-file-name.mp3">
+                                                    <button type="button" id="testNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)]">
+                                                        <i class="fas fa-play mr-1"></i>
+                                                        <span data-i18n="namingTemplates.test">Test</span>
+                                                    </button>
+                                                </div>
+                                                <div id="testResult" class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded-md hidden">
+                                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="namingTemplates.result">Result:</p>
+                                                    <p id="testResultText" class="text-sm text-[var(--text-primary)] font-medium"></p>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex gap-3">
+                                                <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                    <i class="fas fa-save mr-2"></i>
+                                                    <span data-i18n="namingTemplates.save">Save</span>
+                                                </button>
+                                                <button type="button" id="cancelNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
+                                                    <span data-i18n="namingTemplates.cancel">Cancel</span>
+                                                </button>
+                                                <button type="button" id="deleteNamingTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
+                                                    <i class="fas fa-trash mr-2"></i>
+                                                    <span data-i18n="namingTemplates.delete">Delete</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- Empty State -->
+                                    <div id="namingTemplateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
+                                        <i class="fas fa-heading text-4xl text-[var(--text-muted)] mb-4"></i>
+                                        <p class="text-[var(--text-muted)]" data-i18n="namingTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2551,7 +2682,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabFolders = document.getElementById('tab-folders');
             const tabTags = document.getElementById('tab-tags');
             const tabTemplates = document.getElementById('tab-templates');
-            const tabNamingTemplates = document.getElementById('tab-naming-templates');
             const tabTokens = document.getElementById('tab-tokens');
             const tabAbout = document.getElementById('tab-about');
             const contentAccount = document.getElementById('content-account');
@@ -2561,7 +2691,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const contentFolders = document.getElementById('content-folders');
             const contentTags = document.getElementById('content-tags');
             const contentTemplates = document.getElementById('content-templates');
-            const contentNamingTemplates = document.getElementById('content-naming-templates');
             const contentTokens = document.getElementById('content-tokens');
             const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
@@ -2578,7 +2707,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 { tab: tabFolders, content: contentFolders, name: 'folders' },
                 { tab: tabTags, content: contentTags, name: 'tags' },
                 { tab: tabTemplates, content: contentTemplates, name: 'templates' },
-                { tab: tabNamingTemplates, content: contentNamingTemplates, name: 'naming-templates' },
                 { tab: tabTokens, content: contentTokens, name: 'tokens' },
                 { tab: tabAbout, content: contentAbout, name: 'about' }
             ];
@@ -2597,7 +2725,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         content.classList.add('hidden');
                     }
                 });
-                
+
                 // Load content when switching tabs
                 if (targetName === 'speakers') {
                     loadSpeakersTab();
@@ -2609,8 +2737,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadTags();
                 } else if (targetName === 'templates') {
                     loadTemplates();
-                } else if (targetName === 'naming-templates') {
-                    loadNamingTemplates();
                 } else if (targetName === 'tokens') {
                     loadTokensTab();
                 } else if (targetName === 'about') {
@@ -2644,10 +2770,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             function showTemplatesTab() {
                 switchToTab('templates');
-            }
-
-            function showNamingTemplatesTab() {
-                switchToTab('naming-templates');
             }
 
             function showTokensTab() {
@@ -2693,11 +2815,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             tabTemplates.addEventListener('click', (e) => {
                 e.preventDefault();
                 showTemplatesTab();
-            });
-
-            tabNamingTemplates.addEventListener('click', (e) => {
-                e.preventDefault();
-                showNamingTemplatesTab();
             });
 
             tabTokens.addEventListener('click', (e) => {
@@ -4655,7 +4772,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         const foldersGrid = document.getElementById('foldersGrid');
 
         // Check if folders feature is enabled and show/hide the tab
-        async function checkFoldersEnabled() {
+        // Also check if auto-export is enabled for export templates sub-tab
+        async function checkFeaturesEnabled() {
             try {
                 const response = await fetch('/api/config');
                 if (response.ok) {
@@ -4665,12 +4783,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (foldersEnabled && tabFolders) {
                         tabFolders.style.display = '';
                     }
+
+                    // Show export templates sub-tab if auto-export is enabled
+                    const exportSubtab = document.getElementById('subtab-export');
+                    if (config.enable_auto_export === true && exportSubtab) {
+                        exportSubtab.style.display = '';
+                    }
                 }
             } catch (error) {
-                console.error('Error checking folders enabled status:', error);
+                console.error('Error checking features enabled status:', error);
             }
         }
-        checkFoldersEnabled();
+        checkFeaturesEnabled();
 
         // Load folders from API
         async function loadFolders() {
@@ -5890,6 +6014,330 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } catch (error) {
                 console.error('Error creating default templates:', error);
                 showToast('Failed to create default templates', 'error');
+            }
+        });
+
+        // ============================================
+        // Templates Sub-tabs (Transcript / Export / Naming)
+        // ============================================
+        const subtabTranscript = document.getElementById('subtab-transcript');
+        const subtabExport = document.getElementById('subtab-export');
+        const subtabNaming = document.getElementById('subtab-naming');
+        const subcontentTranscript = document.getElementById('subcontent-transcript');
+        const subcontentExport = document.getElementById('subcontent-export');
+        const subcontentNaming = document.getElementById('subcontent-naming');
+
+        function switchTemplateSubtab(tab) {
+            // Reset all tabs
+            [subtabTranscript, subtabExport, subtabNaming].forEach(t => {
+                if (t) {
+                    t.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                    t.classList.add('border-transparent', 'text-[var(--text-muted)]');
+                }
+            });
+            // Hide all content
+            [subcontentTranscript, subcontentExport, subcontentNaming].forEach(c => {
+                if (c) c.classList.add('hidden');
+            });
+
+            if (tab === 'transcript') {
+                subtabTranscript?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                subtabTranscript?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
+                subcontentTranscript?.classList.remove('hidden');
+            } else if (tab === 'export') {
+                subtabExport?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                subtabExport?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
+                subcontentExport?.classList.remove('hidden');
+                loadExportTemplates();
+            } else if (tab === 'naming') {
+                subtabNaming?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                subtabNaming?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
+                subcontentNaming?.classList.remove('hidden');
+                loadNamingTemplates();
+            }
+        }
+
+        subtabTranscript?.addEventListener('click', () => switchTemplateSubtab('transcript'));
+        subtabExport?.addEventListener('click', () => switchTemplateSubtab('export'));
+        subtabNaming?.addEventListener('click', () => switchTemplateSubtab('naming'));
+
+        // ============================================
+        // Copy Variable Button Handler
+        // ============================================
+        document.querySelectorAll('.copy-var-btn').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                const textToCopy = this.getAttribute('data-copy');
+                try {
+                    await navigator.clipboard.writeText(textToCopy);
+                    // Visual feedback - change icon temporarily
+                    const icon = this.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fa-copy');
+                        icon.classList.add('fa-check');
+                        icon.classList.remove('text-[var(--text-muted)]');
+                        icon.classList.add('text-green-500');
+                        setTimeout(() => {
+                            icon.classList.remove('fa-check');
+                            icon.classList.add('fa-copy');
+                            icon.classList.remove('text-green-500');
+                            icon.classList.add('text-[var(--text-muted)]');
+                        }, 1000);
+                    }
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                }
+            });
+        });
+
+        // ============================================
+        // Export Templates Management
+        // ============================================
+        let exportTemplates = [];
+        let currentExportTemplate = null;
+        let isEditingExportTemplate = false;
+        let exportTemplatesLoaded = false;
+
+        async function loadExportTemplates() {
+            if (exportTemplatesLoaded) return;
+
+            try {
+                const response = await fetch('/api/export-templates');
+                if (!response.ok) {
+                    throw new Error('Failed to load export templates');
+                }
+                exportTemplates = await response.json();
+                exportTemplatesLoaded = true;
+
+                // Show/hide create defaults button
+                if (exportTemplates.length === 0) {
+                    document.getElementById('createDefaultExportTemplatesBtn').style.display = 'block';
+                } else {
+                    document.getElementById('createDefaultExportTemplatesBtn').style.display = 'none';
+                }
+
+                renderExportTemplatesList();
+            } catch (error) {
+                console.error('Error loading export templates:', error);
+                showToast('Failed to load export templates', 'error');
+            }
+        }
+
+        function renderExportTemplatesList() {
+            const list = document.getElementById('exportTemplatesList');
+            if (!list) return;
+            list.textContent = '';
+
+            if (exportTemplates.length === 0) {
+                const emptyMsg = document.createElement('p');
+                emptyMsg.className = 'text-sm text-[var(--text-muted)] text-center py-4';
+                emptyMsg.textContent = 'No templates yet';
+                list.appendChild(emptyMsg);
+                return;
+            }
+
+            exportTemplates.forEach(template => {
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-[var(--bg-primary)] rounded-md hover:bg-[var(--bg-tertiary)] cursor-pointer transition-colors border border-[var(--border-primary)]';
+                if (template.is_default) {
+                    item.className += ' ring-2 ring-[var(--ring-focus)]';
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex items-start justify-between';
+
+                const inner = document.createElement('div');
+                inner.className = 'flex-1';
+
+                const nameEl = document.createElement('h4');
+                nameEl.className = 'text-sm font-medium text-[var(--text-primary)]';
+                nameEl.textContent = template.name;
+                inner.appendChild(nameEl);
+
+                if (template.description) {
+                    const descEl = document.createElement('p');
+                    descEl.className = 'text-xs text-[var(--text-muted)] mt-1';
+                    descEl.textContent = template.description;
+                    inner.appendChild(descEl);
+                }
+
+                if (template.is_default) {
+                    const defaultEl = document.createElement('span');
+                    defaultEl.className = 'text-xs text-[var(--text-accent)] mt-1';
+                    const starIcon = document.createElement('i');
+                    starIcon.className = 'fas fa-star mr-1';
+                    defaultEl.appendChild(starIcon);
+                    defaultEl.appendChild(document.createTextNode(t('exportTemplates.default')));
+                    inner.appendChild(defaultEl);
+                }
+
+                wrapper.appendChild(inner);
+                item.appendChild(wrapper);
+
+                item.addEventListener('click', () => selectExportTemplate(template));
+                list.appendChild(item);
+            });
+        }
+
+        function selectExportTemplate(template) {
+            currentExportTemplate = template;
+            isEditingExportTemplate = true;
+
+            // Show editor, hide empty state
+            document.getElementById('exportTemplateEditor').classList.remove('hidden');
+            document.getElementById('exportTemplateEmptyState').classList.add('hidden');
+
+            // Populate form
+            document.getElementById('exportTemplateName').value = template.name;
+            document.getElementById('exportTemplateDescription').value = template.description || '';
+            document.getElementById('exportTemplateContent').value = template.template;
+            document.getElementById('exportTemplateIsDefault').checked = template.is_default;
+
+            // Show delete button
+            document.getElementById('deleteExportTemplateBtn').classList.remove('hidden');
+        }
+
+        function createNewExportTemplate() {
+            currentExportTemplate = null;
+            isEditingExportTemplate = false;
+
+            // Show editor, hide empty state
+            document.getElementById('exportTemplateEditor').classList.remove('hidden');
+            document.getElementById('exportTemplateEmptyState').classList.add('hidden');
+
+            // Clear form
+            document.getElementById('exportTemplateForm').reset();
+
+            // Hide delete button
+            document.getElementById('deleteExportTemplateBtn').classList.add('hidden');
+        }
+
+        document.getElementById('createExportTemplateBtn')?.addEventListener('click', createNewExportTemplate);
+
+        document.getElementById('cancelExportTemplateBtn')?.addEventListener('click', () => {
+            document.getElementById('exportTemplateEditor').classList.add('hidden');
+            document.getElementById('exportTemplateEmptyState').classList.remove('hidden');
+            currentExportTemplate = null;
+            isEditingExportTemplate = false;
+        });
+
+        document.getElementById('exportTemplateForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const templateData = {
+                name: document.getElementById('exportTemplateName').value,
+                description: document.getElementById('exportTemplateDescription').value,
+                template: document.getElementById('exportTemplateContent').value,
+                is_default: document.getElementById('exportTemplateIsDefault').checked
+            };
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const url = isEditingExportTemplate ? `/api/export-templates/${currentExportTemplate.id}` : '/api/export-templates';
+                const method = isEditingExportTemplate ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(templateData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save export template');
+                }
+
+                const savedTemplate = await response.json();
+
+                if (isEditingExportTemplate) {
+                    const index = exportTemplates.findIndex(t => t.id === savedTemplate.id);
+                    if (index !== -1) {
+                        exportTemplates[index] = savedTemplate;
+                    }
+                } else {
+                    exportTemplates.push(savedTemplate);
+                }
+
+                // Update default status for other templates if needed
+                if (savedTemplate.is_default) {
+                    exportTemplates.forEach(t => {
+                        if (t.id !== savedTemplate.id) {
+                            t.is_default = false;
+                        }
+                    });
+                }
+
+                renderExportTemplatesList();
+                showToast(isEditingExportTemplate ? 'Export template updated successfully' : 'Export template created successfully', 'success');
+
+                document.getElementById('exportTemplateEditor').classList.add('hidden');
+                document.getElementById('exportTemplateEmptyState').classList.remove('hidden');
+                currentExportTemplate = null;
+                isEditingExportTemplate = false;
+            } catch (error) {
+                console.error('Error saving export template:', error);
+                showToast(error.message || 'Failed to save export template', 'error');
+            }
+        });
+
+        document.getElementById('deleteExportTemplateBtn')?.addEventListener('click', async () => {
+            if (!currentExportTemplate || !confirm('Are you sure you want to delete this export template?')) {
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch(`/api/export-templates/${currentExportTemplate.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete export template');
+                }
+
+                exportTemplates = exportTemplates.filter(t => t.id !== currentExportTemplate.id);
+                renderExportTemplatesList();
+
+                document.getElementById('exportTemplateEditor').classList.add('hidden');
+                document.getElementById('exportTemplateEmptyState').classList.remove('hidden');
+                currentExportTemplate = null;
+                isEditingExportTemplate = false;
+
+                showToast('Export template deleted successfully', 'success');
+            } catch (error) {
+                console.error('Error deleting export template:', error);
+                showToast('Failed to delete export template', 'error');
+            }
+        });
+
+        document.getElementById('createDefaultExportTemplatesBtn')?.addEventListener('click', async () => {
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch('/api/export-templates/create-defaults', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create default export template');
+                }
+
+                const result = await response.json();
+                exportTemplates = result.templates;
+                renderExportTemplatesList();
+                document.getElementById('createDefaultExportTemplatesBtn').style.display = 'none';
+                showToast('Default export template created successfully', 'success');
+            } catch (error) {
+                console.error('Error creating default export template:', error);
+                showToast('Failed to create default export template', 'error');
             }
         });
 
