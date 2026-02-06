@@ -52,6 +52,11 @@ else:
     ASR_MAX_SPEAKERS = None
     ASR_RETURN_SPEAKER_EMBEDDINGS = False
 
+# ASR chunking configuration - enables app-level chunking for self-hosted ASR services
+# that may crash on long files due to GPU memory exhaustion
+ASR_ENABLE_CHUNKING = os.environ.get('ASR_ENABLE_CHUNKING', 'false').lower() == 'true'
+ASR_MAX_DURATION_SECONDS = int(os.environ.get('ASR_MAX_DURATION_SECONDS', '7200'))  # 2 hours default
+
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 CHUNK_SIZE_MB = int(os.environ.get('CHUNK_SIZE_MB', '20'))
 CHUNK_OVERLAP_SECONDS = int(os.environ.get('CHUNK_OVERLAP_SECONDS', '3'))

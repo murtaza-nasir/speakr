@@ -152,12 +152,20 @@ def get_system_info():
         is_asr_connector = transcription_info.get('connector') == 'asr_endpoint'
         asr_enabled = is_asr_connector or USE_ASR_ENDPOINT
 
+        # Determine the active transcription endpoint based on which connector is in use
+        if asr_enabled:
+            active_endpoint = ASR_BASE_URL
+        else:
+            active_endpoint = os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1')
+
         return jsonify({
             'version': version,
             'llm_endpoint': TEXT_MODEL_BASE_URL,
             'llm_model': TEXT_MODEL_NAME,
-            'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
+            'transcription_endpoint': active_endpoint,  # The actual endpoint being used
             'asr_enabled': asr_enabled,
+            # Legacy fields for backwards compatibility
+            'whisper_endpoint': os.environ.get('TRANSCRIPTION_BASE_URL', 'https://api.openai.com/v1'),
             'asr_endpoint': ASR_BASE_URL if asr_enabled else None,
             'transcription': transcription_info,
         })

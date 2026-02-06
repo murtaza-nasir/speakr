@@ -1353,18 +1353,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                             </p>
                                             <p class="text-[var(--text-secondary)]">
                                                 <span class="font-medium" data-i18n="aboutPage.endpoint">Endpoint:</span>
-                                                <span id="whisper-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">Loading...</span>
+                                                <span id="transcription-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">Loading...</span>
                                             </p>
-                                            <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium" data-i18n="aboutPage.asrEnabled">ASR Enabled:</span>
-                                                <span id="asr-status" class="ml-1">Loading...</span>
-                                            </p>
-                                            <div id="asr-endpoint-row" style="display: none;">
-                                                <p class="text-[var(--text-secondary)]">
-                                                    <span class="font-medium" data-i18n="aboutPage.asrEndpoint">ASR Endpoint:</span>
-                                                    <span id="asr-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">-</span>
-                                                </p>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -3460,20 +3450,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // Display model name from connector info, with fallback
                     const transcriptionModel = data.transcription?.model || data.transcription?.connector || 'whisper-1';
                     document.getElementById('transcription-model').textContent = transcriptionModel;
-                    document.getElementById('whisper-endpoint').textContent = data.whisper_endpoint;
-                    document.getElementById('asr-status').textContent = data.asr_enabled ? 'Yes' : 'No';
-
-                    if (data.asr_enabled && data.asr_endpoint) {
-                        document.getElementById('asr-endpoint').textContent = data.asr_endpoint;
-                        document.getElementById('asr-endpoint-row').style.display = 'block';
-                    }
+                    // Show the active transcription endpoint (ASR or OpenAI depending on config)
+                    document.getElementById('transcription-endpoint').textContent = data.transcription_endpoint || data.whisper_endpoint;
                 } catch (error) {
                     document.getElementById('system-version').textContent = 'Failed to load';
                     document.getElementById('llm-endpoint').textContent = 'Failed to load';
                     document.getElementById('llm-model').textContent = 'Failed to load';
                     document.getElementById('transcription-model').textContent = 'Failed to load';
-                    document.getElementById('whisper-endpoint').textContent = 'Failed to load';
-                    document.getElementById('asr-status').textContent = 'Failed to load';
+                    document.getElementById('transcription-endpoint').textContent = 'Failed to load';
                 }
             }
 
