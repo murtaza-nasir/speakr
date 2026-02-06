@@ -207,17 +207,39 @@ def format_file_size(bytes_size):
     return f"{bytes_size:.1f} TB"
 
 
-def get_user_export_template(user):
+def get_user_export_template(user, recording=None):
     """
-    Get the user's default export template.
+    Get the export template to use for a recording.
+
+    Resolution order:
+    1. Folder's export_template_id (if recording is in a folder)
+    2. Tag's export_template_id (first matching tag with an export template)
+    3. User's default export template (is_default=True)
 
     Args:
         user: User object
+        recording: Optional Recording object (for folder/tag lookup)
 
     Returns:
         ExportTemplate object or None
     """
     from src.models import ExportTemplate
+
+    # 1. Check folder's export template
+    if recording and recording.folder and recording.folder.export_template_id:
+        template = ExportTemplate.query.get(recording.folder.export_template_id)
+        if template:
+            return template
+
+    # 2. Check tags' export templates
+    if recording and recording.tags:
+        for tag in recording.tags:
+            if tag.export_template_id:
+                template = ExportTemplate.query.get(tag.export_template_id)
+                if template:
+                    return template
+
+    # 3. Fall back to user's default
     return ExportTemplate.query.filter_by(
         user_id=user.id,
         is_default=True
@@ -284,8 +306,8 @@ def generate_markdown_content(recording, user, include_transcription=True, inclu
     # Get localized labels
     labels = get_export_labels(user_language)
 
-    # Get user's export template
-    export_template = get_user_export_template(user)
+    # Get export template (checks folder, tags, then user default)
+    export_template = get_user_export_template(user, recording)
 
     if export_template:
         # Use custom template

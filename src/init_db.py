@@ -285,6 +285,12 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'tag', 'naming_template_id', 'INTEGER'):
             app.logger.info("Added naming_template_id column to tag table")
 
+        # Export template assignments for tags and folders
+        if add_column_if_not_exists(engine, 'tag', 'export_template_id', 'INTEGER'):
+            app.logger.info("Added export_template_id column to tag table")
+        if add_column_if_not_exists(engine, 'folder', 'export_template_id', 'INTEGER'):
+            app.logger.info("Added export_template_id column to folder table")
+
         # Add source tracking columns to internal_share table
         if add_column_if_not_exists(engine, 'internal_share', 'source_type', 'VARCHAR(20) DEFAULT "manual"'):
             app.logger.info("Added source_type column to internal_share table")
