@@ -131,6 +131,14 @@ def create_tag():
         if not template:
             return jsonify({'error': 'Naming template not found'}), 404
 
+    # Validate export_template_id if provided
+    export_template_id = data.get('export_template_id')
+    if export_template_id:
+        from src.models import ExportTemplate
+        template = ExportTemplate.query.filter_by(id=export_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Export template not found'}), 404
+
     tag = Tag(
         name=data['name'],
         user_id=current_user.id,
@@ -144,7 +152,8 @@ def create_tag():
         retention_days=retention_days,
         auto_share_on_apply=data.get('auto_share_on_apply', True) if group_id else True,
         share_with_group_lead=data.get('share_with_group_lead', True) if group_id else True,
-        naming_template_id=naming_template_id
+        naming_template_id=naming_template_id,
+        export_template_id=export_template_id
     )
 
     db.session.add(tag)
@@ -252,6 +261,14 @@ def update_tag(tag_id):
             if not template:
                 return jsonify({'error': 'Naming template not found'}), 404
         tag.naming_template_id = naming_template_id if naming_template_id else None
+    if 'export_template_id' in data:
+        export_template_id = data['export_template_id']
+        if export_template_id:
+            from src.models import ExportTemplate
+            template = ExportTemplate.query.filter_by(id=export_template_id, user_id=current_user.id).first()
+            if not template:
+                return jsonify({'error': 'Export template not found'}), 404
+        tag.export_template_id = export_template_id if export_template_id else None
 
     tag.updated_at = datetime.utcnow()
 
@@ -331,6 +348,22 @@ def create_group_tag(group_id):
     if existing_tag:
         return jsonify({'error': 'A group tag with this name already exists'}), 400
 
+    # Validate naming_template_id if provided
+    naming_template_id = data.get('naming_template_id')
+    if naming_template_id:
+        from src.models import NamingTemplate
+        template = NamingTemplate.query.filter_by(id=naming_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Naming template not found'}), 404
+
+    # Validate export_template_id if provided
+    export_template_id = data.get('export_template_id')
+    if export_template_id:
+        from src.models import ExportTemplate
+        template = ExportTemplate.query.filter_by(id=export_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Export template not found'}), 404
+
     # Create the group tag with all supported parameters
     tag = Tag(
         name=name,
@@ -344,7 +377,9 @@ def create_group_tag(group_id):
         protect_from_deletion=data.get('protect_from_deletion', False),
         retention_days=data.get('retention_days'),
         auto_share_on_apply=data.get('auto_share_on_apply', True),  # Default to True for group tags
-        share_with_group_lead=data.get('share_with_group_lead', True)  # Default to True for group tags
+        share_with_group_lead=data.get('share_with_group_lead', True),  # Default to True for group tags
+        naming_template_id=naming_template_id,
+        export_template_id=export_template_id
     )
 
     db.session.add(tag)

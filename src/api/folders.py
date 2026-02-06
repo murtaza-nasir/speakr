@@ -134,6 +134,13 @@ def create_folder():
         if not template:
             return jsonify({'error': 'Naming template not found'}), 404
 
+    # Validate export_template_id if provided
+    export_template_id = data.get('export_template_id')
+    if export_template_id:
+        template = ExportTemplate.query.filter_by(id=export_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Export template not found'}), 404
+
     folder = Folder(
         name=data['name'],
         user_id=current_user.id,
@@ -147,7 +154,8 @@ def create_folder():
         retention_days=retention_days,
         auto_share_on_apply=data.get('auto_share_on_apply', True) if group_id else True,
         share_with_group_lead=data.get('share_with_group_lead', True) if group_id else True,
-        naming_template_id=naming_template_id
+        naming_template_id=naming_template_id,
+        export_template_id=export_template_id
     )
 
     db.session.add(folder)
@@ -258,6 +266,13 @@ def update_folder(folder_id):
             if not template:
                 return jsonify({'error': 'Naming template not found'}), 404
         folder.naming_template_id = naming_template_id if naming_template_id else None
+    if 'export_template_id' in data:
+        export_template_id = data['export_template_id']
+        if export_template_id:
+            template = ExportTemplate.query.filter_by(id=export_template_id, user_id=current_user.id).first()
+            if not template:
+                return jsonify({'error': 'Export template not found'}), 404
+        folder.export_template_id = export_template_id if export_template_id else None
 
     folder.updated_at = datetime.utcnow()
 
@@ -346,6 +361,20 @@ def create_group_folder(group_id):
     if existing_folder:
         return jsonify({'error': 'A group folder with this name already exists'}), 400
 
+    # Validate naming_template_id if provided
+    naming_template_id = data.get('naming_template_id')
+    if naming_template_id:
+        template = NamingTemplate.query.filter_by(id=naming_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Naming template not found'}), 404
+
+    # Validate export_template_id if provided
+    export_template_id = data.get('export_template_id')
+    if export_template_id:
+        template = ExportTemplate.query.filter_by(id=export_template_id, user_id=current_user.id).first()
+        if not template:
+            return jsonify({'error': 'Export template not found'}), 404
+
     # Create the group folder with all supported parameters
     folder = Folder(
         name=name,
@@ -359,7 +388,9 @@ def create_group_folder(group_id):
         protect_from_deletion=data.get('protect_from_deletion', False),
         retention_days=data.get('retention_days'),
         auto_share_on_apply=data.get('auto_share_on_apply', True),  # Default to True for group folders
-        share_with_group_lead=data.get('share_with_group_lead', True)  # Default to True for group folders
+        share_with_group_lead=data.get('share_with_group_lead', True),  # Default to True for group folders
+        naming_template_id=naming_template_id,
+        export_template_id=export_template_id
     )
 
     db.session.add(folder)

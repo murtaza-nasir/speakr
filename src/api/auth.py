@@ -625,6 +625,7 @@ def account():
     ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
     ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
     ASR_RETURN_SPEAKER_EMBEDDINGS = os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
+    ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
 
     # Get connector diarization support (new architecture)
     connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
@@ -692,7 +693,8 @@ def account():
                            auto_speaker_labelling_threshold=current_user.auto_speaker_labelling_threshold or 'medium',
                            admin_disabled_auto_summarization=admin_disabled_auto_summarization,
                            auto_summarization=current_user.auto_summarization if current_user.auto_summarization is not None else True,
-                           user_language=user_language)
+                           user_language=user_language,
+                           enable_auto_export=ENABLE_AUTO_EXPORT)
 
 
 @auth_bp.route('/api/user/auto-speaker-labelling', methods=['POST'])

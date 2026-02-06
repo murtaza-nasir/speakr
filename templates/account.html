@@ -2022,6 +2022,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.namingTemplateHint">Select a naming template to automatically format titles for recordings with this tag</p>
                 </div>
 
+                <!-- Export Template Selection -->
+                {% if enable_auto_export %}
+                <div>
+                    <label for="tagExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.exportTemplate">Export Template</label>
+                    <select id="tagExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="" data-i18n="editTagModal.noExportTemplate">No template (use user default)</option>
+                        <!-- Export template options will be populated dynamically -->
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.exportTemplateHint">Select an export template to use when exporting recordings with this tag</p>
+                </div>
+                {% endif %}
+
                 <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
                 <div id="tagGroupSelectionSection" class="hidden">
                     <label for="tagGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
@@ -2182,6 +2194,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </select>
                     <p class="text-xs text-[var(--text-light)] mt-1">Select a naming template to automatically format titles for recordings in this folder</p>
                 </div>
+
+                <!-- Export Template Selection -->
+                {% if enable_auto_export %}
+                <div>
+                    <label for="folderExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Export Template</label>
+                    <select id="folderExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                        <option value="">No template (use user default)</option>
+                        <!-- Export template options will be populated dynamically -->
+                    </select>
+                    <p class="text-xs text-[var(--text-light)] mt-1">Select an export template to use when exporting recordings in this folder</p>
+                </div>
+                {% endif %}
 
                 <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
                 <div id="folderGroupSelectionSection" class="hidden">
@@ -4538,6 +4562,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (document.getElementById('tagNamingTemplate')) {
                     document.getElementById('tagNamingTemplate').value = tag.naming_template_id || '';
                 }
+
+                // Populate export template
+                if (document.getElementById('tagExportTemplate')) {
+                    document.getElementById('tagExportTemplate').value = tag.export_template_id || '';
+                }
             } else {
                 // Create mode
                 isEditingTag = false;
@@ -4578,10 +4607,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (document.getElementById('tagNamingTemplate')) {
                     document.getElementById('tagNamingTemplate').value = '';
                 }
+
+                // Reset export template
+                if (document.getElementById('tagExportTemplate')) {
+                    document.getElementById('tagExportTemplate').value = '';
+                }
             }
 
             // Load naming templates for dropdown
             loadNamingTemplatesForTagModal();
+
+            // Load export templates for dropdown
+            loadExportTemplatesForTagModal();
 
             tagModal.classList.remove('hidden');
         }
@@ -4620,6 +4657,44 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 }
             } catch (error) {
                 console.error('Error loading naming templates for tag modal:', error);
+            }
+        }
+
+        // Load export templates for the tag modal dropdown
+        async function loadExportTemplatesForTagModal() {
+            const select = document.getElementById('tagExportTemplate');
+            if (!select) return;
+
+            try {
+                const response = await fetch('/api/export-templates');
+                if (!response.ok) return;
+
+                const templates = await response.json();
+
+                // Preserve current selection
+                const currentValue = select.value;
+
+                // Clear all options and add default
+                select.textContent = '';
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = 'No template (use user default)';
+                select.appendChild(defaultOpt);
+
+                // Add template options
+                templates.forEach(template => {
+                    const option = document.createElement('option');
+                    option.value = template.id;
+                    option.textContent = template.name + (template.is_default ? ' (Default)' : '');
+                    select.appendChild(option);
+                });
+
+                // Restore selection
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            } catch (error) {
+                console.error('Error loading export templates for tag modal:', error);
             }
         }
 
@@ -4680,11 +4755,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             const namingTemplateId = formData.get('naming_template_id');
+            const exportTemplateId = formData.get('export_template_id');
             const tagData = {
                 name: formData.get('name'),
                 color: formData.get('color'),
                 custom_prompt: formData.get('custom_prompt') || null,
                 naming_template_id: namingTemplateId ? parseInt(namingTemplateId) : null,
+                export_template_id: exportTemplateId ? parseInt(exportTemplateId) : null,
                 default_language: formData.get('default_language') || null,
                 default_min_speakers: formData.get('default_min_speakers') ? parseInt(formData.get('default_min_speakers')) : null,
                 default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null,
@@ -5117,14 +5194,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('folderId').value = '';
             }
 
-            // Load naming templates for dropdown
-            loadNamingTemplatesForFolderModal();
+            // Load naming templates for dropdown (pass folder to set initial value)
+            loadNamingTemplatesForFolderModal(folder);
+
+            // Load export templates for dropdown (pass folder to set initial value)
+            loadExportTemplatesForFolderModal(folder);
 
             if (folderModal) folderModal.classList.remove('hidden');
         }
 
         // Load naming templates for folder modal
-        async function loadNamingTemplatesForFolderModal() {
+        async function loadNamingTemplatesForFolderModal(folder) {
             const select = document.getElementById('folderNamingTemplate');
             if (!select) return;
 
@@ -5143,9 +5223,45 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         option.textContent = t.name;
                         select.appendChild(option);
                     });
+
+                    // Set value if editing
+                    if (folder && folder.naming_template_id) {
+                        select.value = folder.naming_template_id;
+                    }
                 }
             } catch (error) {
                 console.error('Error loading naming templates:', error);
+            }
+        }
+
+        // Load export templates for folder modal
+        async function loadExportTemplatesForFolderModal(folder) {
+            const select = document.getElementById('folderExportTemplate');
+            if (!select) return;
+
+            try {
+                const response = await fetch('/api/export-templates');
+                if (response.ok) {
+                    const templates = await response.json();
+                    select.textContent = '';
+                    const defaultOpt = document.createElement('option');
+                    defaultOpt.value = '';
+                    defaultOpt.textContent = 'No template (use user default)';
+                    select.appendChild(defaultOpt);
+                    templates.forEach(function(t) {
+                        const option = document.createElement('option');
+                        option.value = t.id;
+                        option.textContent = t.name + (t.is_default ? ' (Default)' : '');
+                        select.appendChild(option);
+                    });
+
+                    // Set value if editing
+                    if (folder && folder.export_template_id) {
+                        select.value = folder.export_template_id;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading export templates:', error);
             }
         }
 
@@ -5246,6 +5362,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 folderData.default_max_speakers = maxEl && maxEl.value ? parseInt(maxEl.value) : null;
                 var templateEl = document.getElementById('folderNamingTemplate');
                 folderData.naming_template_id = templateEl && templateEl.value ? parseInt(templateEl.value) : null;
+                var exportTemplateEl = document.getElementById('folderExportTemplate');
+                folderData.export_template_id = exportTemplateEl && exportTemplateEl.value ? parseInt(exportTemplateEl.value) : null;
 
                 // Group settings
                 const folderGroupIdEl = document.getElementById('folderGroupId');
