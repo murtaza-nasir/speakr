@@ -71,280 +71,333 @@
             </div>
         </div>
 
-        <!-- Scrollable Content Area: Notes + Actions -->
-        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
-            <!-- Middle: Notepad (flexible height) -->
-            <div class="p-3 md:p-6 flex flex-col">
-                <label for="recordingNotes" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 flex-shrink-0">
-                    <i class="fas fa-pencil-alt mr-1"></i>
-                    Recording Notes (Markdown)
-                </label>
-                <div class="flex-1 recording-notes-editor" style="min-height: 150px;">
-                    <textarea ref="recordingNotesEditor" v-model="recordingNotes"
-                              class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-2 md:p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"
-                              :placeholder="t('form.notesPlaceholder')"></textarea>
-                </div>
-            </div>
+        <!-- MIDDLE: Content Area -->
+        <div class="flex-1 min-h-0 flex flex-col">
 
-            <!-- Bottom: Action Buttons -->
-            <div class="flex-shrink-0 p-3 md:p-6 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
+            <!-- STATE 1: Recording in progress — notes fill space, no accordion -->
+            <template v-if="isRecording">
+                <div class="flex-1 min-h-0 flex flex-col p-3 md:p-6">
+                    <label for="recordingNotes" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 flex-shrink-0">
+                        <i class="fas fa-pencil-alt mr-1"></i>
+                        Recording Notes (Markdown)
+                    </label>
+                    <div class="recording-notes-editor recording-active" style="min-height: 150px;">
+                        <textarea ref="recordingNotesEditor" v-model="recordingNotes"
+                                  class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-2 md:p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"
+                                  :placeholder="t('form.notesPlaceholder')"></textarea>
+                    </div>
+                </div>
+            </template>
+
+            <!-- STATE 2: Recording finished — accordion -->
+            <template v-else-if="audioBlobURL">
+
+                <!-- Notes Section -->
+                <div :class="['flex flex-col border-b border-[var(--border-primary)]',
+                               expandedSection === 'notes' ? 'flex-1 min-h-0' : 'flex-shrink-0']">
+                    <!-- Header bar (always visible) -->
+                    <button @click="expandedSection = expandedSection === 'notes' ? 'settings' : 'notes'"
+                            class="flex-shrink-0 flex items-center justify-between w-full px-3 md:px-6 py-2.5
+                                   bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] transition-colors">
+                        <span class="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)]">
+                            <i class="fas fa-pencil-alt text-[var(--text-muted)]"></i>
+                            Recording Notes
+                            <span v-if="recordingNotes" class="text-[10px] text-[var(--text-muted)]">(has content)</span>
+                        </span>
+                        <i :class="['fas text-[var(--text-muted)] transition-transform duration-200',
+                                    expandedSection === 'notes' ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                    </button>
+                    <!-- Content (when expanded) -->
+                    <div v-show="expandedSection === 'notes'" class="flex-1 min-h-0 flex flex-col p-3 md:p-6">
+                        <div class="recording-notes-editor accordion-expanded">
+                            <textarea ref="recordingNotesEditor" v-model="recordingNotes"
+                                      class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-2 md:p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"
+                                      :placeholder="t('form.notesPlaceholder')"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div :class="['flex flex-col',
+                               expandedSection === 'settings' ? 'flex-1 min-h-0' : 'flex-shrink-0']">
+                    <!-- Header bar -->
+                    <button @click="expandedSection = expandedSection === 'settings' ? 'notes' : 'settings'"
+                            class="flex-shrink-0 flex items-center justify-between w-full px-3 md:px-6 py-2.5
+                                   bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)]
+                                   hover:bg-[var(--bg-accent)] transition-colors">
+                        <span class="flex items-center gap-2 text-sm font-medium text-[var(--text-secondary)]">
+                            <i class="fas fa-sliders-h text-[var(--text-muted)]"></i>
+                            Upload Settings
+                        </span>
+                        <i :class="['fas text-[var(--text-muted)] transition-transform duration-200',
+                                    expandedSection === 'settings' ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                    </button>
+                    <!-- Content (when expanded) -->
+                    <div v-show="expandedSection === 'settings'" class="flex-1 min-h-0 overflow-y-auto p-3 md:p-6">
+                        <div class="flex flex-col gap-3 md:gap-4">
+
+                            <!-- Folder Selection (only shown if folders are enabled) -->
+                            <div v-if="foldersEnabled">
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
+                                    <i class="fas fa-folder mr-1"
+                                       :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+                                    Folder (optional)
+                                </label>
+                                <div class="relative">
+                                    <select v-model="selectedFolderId"
+                                            class="w-full pl-8 pr-8 py-2 text-sm rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] appearance-none border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition-colors">
+                                        <option :value="null">No Folder</option>
+                                        <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                                            ${ folder.name }
+                                        </option>
+                                    </select>
+                                    <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
+                                       :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
+                                    <i class="fas fa-chevron-down absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" style="font-size: 10px;"></i>
+                                </div>
+                            </div>
+
+                            <!-- Tag Selection -->
+                            <div>
+                                <label for="recordingTagSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
+                                    <i class="fas fa-tags mr-1"></i>
+                                    Select Tags (optional, in priority order)
+                                </label>
+
+                                <!-- Selected Tags Display - Compact with Drag Reorder -->
+                                <div v-if="selectedTags.length > 0" class="mb-2">
+                                    <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto"
+                                         @touchmove="handleTagTouchMove">
+                                        <div class="flex flex-wrap gap-1">
+                                            <span v-for="(tag, index) in selectedTags" :key="tag.id"
+                                                  :data-tag-index="index"
+                                                  draggable="true"
+                                                  @dragstart="handleTagDragStart(index, $event)"
+                                                  @dragover="handleTagDragOver(index, $event)"
+                                                  @drop="handleTagDrop(index, $event)"
+                                                  @dragend="handleTagDragEnd"
+                                                  @touchstart="handleTagTouchStart(index, $event)"
+                                                  @touchend="handleTagTouchEnd"
+                                                  :class="[
+                                                      'inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium transition-all duration-150',
+                                                      draggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
+                                                      dragOverTagIndex === index && draggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
+                                                  ]"
+                                                  :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                                                  :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
+                                                <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
+                                                <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
+                                                <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>
+                                                <span>${tag.name}</span>
+                                                <button @click.stop="removeTagFromSelection(tag.id)"
+                                                        class="ml-1 hover:opacity-100 opacity-70">
+                                                    <i class="fas fa-times" style="font-size: 9px;"></i>
+                                                </button>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                        <i class="fas fa-grip-vertical mr-0.5" style="font-size: 9px;"></i>
+                                        Drag to reorder &bull; First tag's defaults applied
+                                    </p>
+                                </div>
+
+                                <!-- Tag Selection Container - Compact -->
+                                <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0"
+                                     class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
+                                    <!-- Search Filter -->
+                                    <div class="mb-1.5">
+                                        <div class="relative">
+                                            <input v-model="uploadTagSearchFilter"
+                                                   type="text"
+                                                   :placeholder="t('tagsModal.searchTags')"
+                                                   class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                            <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
+                                            <button v-if="uploadTagSearchFilter"
+                                                    @click="uploadTagSearchFilter = ''"
+                                                    class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                                                <i class="fas fa-times" style="font-size: 9px;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Available Tags Grid -->
+                                    <div v-if="filteredAvailableTagsForUpload.length > 0"
+                                         class="overflow-y-auto"
+                                         style="max-height: 100px;">
+                                        <div class="grid grid-cols-2 gap-1">
+                                            <button v-for="tag in filteredAvailableTagsForUpload"
+                                                    :key="tag.id"
+                                                    @click="addTagToSelection(tag.id)"
+                                                    class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
+                                                <div class="flex items-center gap-1 min-w-0">
+                                                    <i v-if="tag.group_id" class="fas fa-users flex-shrink-0 text-[9px]"
+                                                       :style="{ color: tag.color || '#6B7280' }"></i>
+                                                    <span v-else class="w-2 h-2 rounded-full flex-shrink-0"
+                                                          :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
+                                                    <span class="text-[11px] text-[var(--text-primary)] truncate">
+                                                        <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>${tag.name}
+                                                    </span>
+                                                </div>
+                                                <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div v-else class="py-2 text-center">
+                                        <p class="text-[11px] text-[var(--text-muted)]">
+                                            <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
+                                            No matching tags
+                                        </p>
+                                    </div>
+                                </div>
+                                <!-- Empty States -->
+                                <div v-else-if="availableTags.length === 0"
+                                     class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                    <p class="text-xs text-[var(--text-muted)] text-center">
+                                        <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
+                                        <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
+                                    </p>
+                                </div>
+                                <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
+                                    <p class="text-xs text-[var(--text-muted)] text-center">
+                                        <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
+                                        All tags selected
+                                    </p>
+                                </div>
+
+                                <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
+                                    <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
+                                    Selected tags include custom summary prompts
+                                </p>
+                                <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
+                                   class="text-xs text-[var(--text-muted)] mt-1">
+                                    <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
+                                    First tag's ASR settings will be applied: ${selectedTags[0].name}
+                                </p>
+                            </div>
+
+                            <!-- Advanced Options for diarization-enabled connectors (collapsible) -->
+                            <div v-if="connectorSupportsDiarization">
+                                <button @click="showAdvancedOptions = !showAdvancedOptions"
+                                        class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                                    <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                                        <i class="fas fa-cog text-[var(--text-muted)]"></i>
+                                        <span v-text="t('help.advancedAsrOptions')"></span>
+                                    </span>
+                                    <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                                </button>
+
+                                <div v-if="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] space-y-3">
+                                    <div>
+                                        <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                            Language
+                                        </label>
+                                        <select id="recordingAsrLanguage" v-model="asrLanguage"
+                                                class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                            <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Speaker Settings - only show for connectors that support min/max speakers -->
+                                    <div v-if="connectorSupportsSpeakerCount" class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
+                                            </label>
+                                            <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
+                                                   min="1" max="20" :placeholder="t('form.auto')"
+                                                   class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                        </div>
+
+                                        <div>
+                                            <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
+                                            </label>
+                                            <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
+                                                   min="1" max="20" :placeholder="t('form.auto')"
+                                                   class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Incognito Mode Toggle (only shown if feature is enabled) -->
+                            <div v-if="enableIncognitoMode">
+                                <button @click="incognitoMode = !incognitoMode"
+                                        :class="[
+                                            'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all duration-200',
+                                            incognitoMode
+                                                ? 'bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-400/50 dark:border-violet-500/50'
+                                                : 'bg-[var(--bg-tertiary)] border-[var(--border-secondary)] hover:border-[var(--border-focus)]'
+                                        ]">
+                                    <div class="flex items-center gap-3">
+                                        <div :class="[
+                                            'w-8 h-8 rounded-full flex items-center justify-center transition-all',
+                                            incognitoMode
+                                                ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
+                                                : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
+                                        ]">
+                                            <i class="fas fa-user-secret text-sm"></i>
+                                        </div>
+                                        <div class="text-left">
+                                            <span :class="['text-sm font-medium', incognitoMode ? 'text-violet-700 dark:text-violet-300' : 'text-[var(--text-secondary)]']">
+                                                Incognito Mode
+                                            </span>
+                                            <p v-if="!incognitoMode" class="text-[10px] text-[var(--text-muted)]">
+                                                Process without saving
+                                            </p>
+                                            <p v-else class="text-[10px] text-violet-600 dark:text-violet-400">
+                                                Session only &bull; Not saved to account
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div :class="[
+                                        'w-10 h-5 rounded-full relative transition-all duration-200',
+                                        incognitoMode ? 'bg-gradient-to-r from-violet-500 to-purple-500' : 'bg-[var(--bg-secondary)]'
+                                    ]">
+                                        <div :class="[
+                                            'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200',
+                                            incognitoMode ? 'left-5' : 'left-0.5'
+                                        ]"></div>
+                                    </div>
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            </template>
+        </div>
+
+        <!-- BOTTOM: Action Buttons (always pinned) -->
+        <div class="flex-shrink-0 p-3 md:p-6 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)]">
             <div v-if="isRecording" class="text-center">
                 <button @click="stopRecording"
                         class="px-6 md:px-8 py-2.5 md:py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors animate-pulse text-sm md:text-base">
                     <i class="fas fa-stop mr-2"></i>Stop Recording
                 </button>
             </div>
-            <div v-if="!isRecording && audioBlobURL" class="flex flex-col gap-3 md:gap-4">
-                <!-- Folder Selection (only shown if folders are enabled) -->
-                <div v-if="foldersEnabled">
-                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
-                        <i class="fas fa-folder mr-1"
-                           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
-                        Folder (optional)
-                    </label>
-                    <div class="relative">
-                        <select v-model="selectedFolderId"
-                                class="w-full pl-8 pr-8 py-2 text-sm rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] appearance-none border border-[var(--border-secondary)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition-colors">
-                            <option :value="null">No Folder</option>
-                            <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                                ${ folder.name }
-                            </option>
-                        </select>
-                        <i class="fas fa-folder absolute left-2.5 top-1/2 transform -translate-y-1/2 pointer-events-none"
-                           :style="{ color: selectedFolderId ? getFolderColor(selectedFolderId) : 'var(--text-muted)' }"></i>
-                        <i class="fas fa-chevron-down absolute right-2.5 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" style="font-size: 10px;"></i>
-                    </div>
-                </div>
-
-                <!-- Tag Selection -->
-                <div>
-                    <label for="recordingTagSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
-                        <i class="fas fa-tags mr-1"></i>
-                        Select Tags (optional, in priority order)
-                    </label>
-
-                    <!-- Selected Tags Display - Compact with Drag Reorder -->
-                    <div v-if="selectedTags.length > 0" class="mb-2">
-                        <div class="p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] max-h-16 overflow-y-auto"
-                             @touchmove="handleTagTouchMove">
-                            <div class="flex flex-wrap gap-1">
-                                <span v-for="(tag, index) in selectedTags" :key="tag.id"
-                                      :data-tag-index="index"
-                                      draggable="true"
-                                      @dragstart="handleTagDragStart(index, $event)"
-                                      @dragover="handleTagDragOver(index, $event)"
-                                      @drop="handleTagDrop(index, $event)"
-                                      @dragend="handleTagDragEnd"
-                                      @touchstart="handleTagTouchStart(index, $event)"
-                                      @touchend="handleTagTouchEnd"
-                                      :class="[
-                                          'inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-medium transition-all duration-150',
-                                          draggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
-                                          dragOverTagIndex === index && draggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
-                                      ]"
-                                      :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                                      :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
-                                    <span class="opacity-75 mr-0.5 text-[9px]">${index + 1}.</span>
-                                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[9px]"></i>
-                                    <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>
-                                    <span>${tag.name}</span>
-                                    <button @click.stop="removeTagFromSelection(tag.id)"
-                                            class="ml-1 hover:opacity-100 opacity-70">
-                                        <i class="fas fa-times" style="font-size: 9px;"></i>
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">
-                            <i class="fas fa-grip-vertical mr-0.5" style="font-size: 9px;"></i>
-                            Drag to reorder &bull; First tag's defaults applied
-                        </p>
-                    </div>
-
-                    <!-- Tag Selection Container - Compact -->
-                    <div v-if="availableTags.filter(tag => !selectedTagIds.includes(tag.id)).length > 0"
-                         class="border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] p-2">
-                        <!-- Search Filter -->
-                        <div class="mb-1.5">
-                            <div class="relative">
-                                <input v-model="uploadTagSearchFilter"
-                                       type="text"
-                                       :placeholder="t('tagsModal.searchTags')"
-                                       class="w-full px-2 py-1 pl-6 text-xs bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                                <i class="fas fa-search absolute left-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]" style="font-size: 9px;"></i>
-                                <button v-if="uploadTagSearchFilter"
-                                        @click="uploadTagSearchFilter = ''"
-                                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
-                                    <i class="fas fa-times" style="font-size: 9px;"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Available Tags Grid -->
-                        <div v-if="filteredAvailableTagsForUpload.length > 0"
-                             class="overflow-y-auto"
-                             style="max-height: 100px;">
-                            <div class="grid grid-cols-2 gap-1">
-                                <button v-for="tag in filteredAvailableTagsForUpload"
-                                        :key="tag.id"
-                                        @click="addTagToSelection(tag.id)"
-                                        class="group flex items-center justify-between px-1.5 py-1 rounded border border-[var(--border-secondary)] hover:border-[var(--border-focus)] bg-[var(--bg-primary)] hover:bg-[var(--bg-secondary)] transition-all">
-                                    <div class="flex items-center gap-1 min-w-0">
-                                        <i v-if="tag.group_id" class="fas fa-users flex-shrink-0 text-[9px]"
-                                           :style="{ color: tag.color || '#6B7280' }"></i>
-                                        <span v-else class="w-2 h-2 rounded-full flex-shrink-0"
-                                              :style="{ backgroundColor: tag.color || '#6B7280' }"></span>
-                                        <span class="text-[11px] text-[var(--text-primary)] truncate">
-                                            <span v-if="tag.group_id" class="opacity-75">${tag.group_name}: </span>${tag.name}
-                                        </span>
-                                    </div>
-                                    <i class="fas fa-plus text-[var(--text-muted)] group-hover:text-[var(--text-accent)] transition-colors" style="font-size: 9px;"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div v-else class="py-2 text-center">
-                            <p class="text-[11px] text-[var(--text-muted)]">
-                                <i class="fas fa-search mr-1" style="font-size: 9px;"></i>
-                                No matching tags
-                            </p>
-                        </div>
-                    </div>
-                    <!-- Empty States -->
-                    <div v-else-if="availableTags.length === 0"
-                         class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
-                        <p class="text-xs text-[var(--text-muted)] text-center">
-                            <i class="fas fa-info-circle mr-1" style="font-size: 10px;"></i>
-                            <span v-text="t('help.noTagsCreated')"></span> <a href="/account#tags" class="text-[var(--text-accent)] hover:underline" v-text="t('help.createTags')"></a>
-                        </p>
-                    </div>
-                    <div v-else class="p-2 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)]">
-                        <p class="text-xs text-[var(--text-muted)] text-center">
-                            <i class="fas fa-check-circle mr-1" style="font-size: 10px;"></i>
-                            All tags selected
-                        </p>
-                    </div>
-
-                    <p v-if="selectedTags.some(tag => tag.custom_prompt)" class="text-xs text-[var(--text-muted)] mt-1">
-                        <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
-                        Selected tags include custom summary prompts
-                    </p>
-                    <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
-                       class="text-xs text-[var(--text-muted)] mt-1">
-                        <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
-                        First tag's ASR settings will be applied: ${selectedTags[0].name}
-                    </p>
-                </div>
-
-                <!-- Advanced Options for diarization-enabled connectors (collapsible) -->
-                <div v-if="connectorSupportsDiarization">
-                    <button @click="showAdvancedOptions = !showAdvancedOptions"
-                            class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
-                        <span class="flex items-center gap-2 text-[var(--text-secondary)]">
-                            <i class="fas fa-cog text-[var(--text-muted)]"></i>
-                            <span v-text="t('help.advancedAsrOptions')"></span>
-                        </span>
-                        <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
-                    </button>
-
-                    <div v-if="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-secondary)] space-y-3">
-                        <div>
-                            <label for="recordingAsrLanguage" class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                                Language
-                            </label>
-                            <select id="recordingAsrLanguage" v-model="asrLanguage"
-                                    class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                                <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value" v-text="lang.label"></option>
-                            </select>
-                        </div>
-
-                        <!-- Speaker Settings - only show for connectors that support min/max speakers -->
-                        <div v-if="connectorSupportsSpeakerCount" class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label for="recordingAsrMinSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.minSpeakers')">
-                                </label>
-                                <input type="number" id="recordingAsrMinSpeakers" v-model="asrMinSpeakers"
-                                       min="1" max="20" :placeholder="t('form.auto')"
-                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                            </div>
-
-                            <div>
-                                <label for="recordingAsrMaxSpeakers" class="block text-xs font-medium text-[var(--text-secondary)] mb-1" v-text="t('form.maxSpeakers')">
-                                </label>
-                                <input type="number" id="recordingAsrMaxSpeakers" v-model="asrMaxSpeakers"
-                                       min="1" max="20" :placeholder="t('form.auto')"
-                                       class="w-full px-2 py-1 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] text-xs">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Incognito Mode Toggle (only shown if feature is enabled) -->
-                <div v-if="enableIncognitoMode" class="mb-3">
-                    <button @click="incognitoMode = !incognitoMode"
-                            :class="[
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all duration-200',
-                                incognitoMode
-                                    ? 'bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-400/50 dark:border-violet-500/50'
-                                    : 'bg-[var(--bg-tertiary)] border-[var(--border-secondary)] hover:border-[var(--border-focus)]'
-                            ]">
-                        <div class="flex items-center gap-3">
-                            <div :class="[
-                                'w-8 h-8 rounded-full flex items-center justify-center transition-all',
-                                incognitoMode
-                                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
-                                    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
-                            ]">
-                                <i class="fas fa-user-secret text-sm"></i>
-                            </div>
-                            <div class="text-left">
-                                <span :class="['text-sm font-medium', incognitoMode ? 'text-violet-700 dark:text-violet-300' : 'text-[var(--text-secondary)]']">
-                                    Incognito Mode
-                                </span>
-                                <p v-if="!incognitoMode" class="text-[10px] text-[var(--text-muted)]">
-                                    Process without saving
-                                </p>
-                                <p v-else class="text-[10px] text-violet-600 dark:text-violet-400">
-                                    Session only &bull; Not saved to account
-                                </p>
-                            </div>
-                        </div>
-                        <div :class="[
-                            'w-10 h-5 rounded-full relative transition-all duration-200',
-                            incognitoMode ? 'bg-gradient-to-r from-violet-500 to-purple-500' : 'bg-[var(--bg-secondary)]'
-                        ]">
-                            <div :class="[
-                                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-200',
-                                incognitoMode ? 'left-5' : 'left-0.5'
-                            ]"></div>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- Upload/Discard Buttons -->
-                <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <!-- Normal Upload Button -->
-                    <button v-if="!incognitoMode || !enableIncognitoMode"
-                            @click="uploadRecordedAudio"
-                            class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
-                        <i class="fas fa-upload"></i>
-                        <span v-text="t('help.uploadRecordingNotes')"></span>
-                    </button>
-                    <!-- Incognito Upload Button -->
-                    <button v-else
-                            @click="uploadRecordedAudioIncognito"
-                            :disabled="incognitoProcessing"
-                            class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-sm">
-                        <i :class="incognitoProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-user-secret'"></i>
-                        <span v-if="incognitoProcessing">Processing...</span>
-                        <span v-else>Process in Incognito</span>
-                    </button>
-                    <button @click="discardRecording"
-                            class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
-                        <i class="fas fa-trash"></i>
-                        <span v-text="t('help.discard')"></span>
-                    </button>
-                </div>
+            <div v-if="!isRecording && audioBlobURL" class="flex flex-col sm:flex-row gap-3 justify-center">
+                <!-- Normal Upload Button -->
+                <button v-if="!incognitoMode || !enableIncognitoMode"
+                        @click="uploadRecordedAudio"
+                        class="flex-1 px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-upload"></i>
+                    <span v-text="t('help.uploadRecordingNotes')"></span>
+                </button>
+                <!-- Incognito Upload Button -->
+                <button v-else
+                        @click="uploadRecordedAudioIncognito"
+                        :disabled="incognitoProcessing"
+                        class="flex-1 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-sm">
+                    <i :class="incognitoProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-user-secret'"></i>
+                    <span v-if="incognitoProcessing">Processing...</span>
+                    <span v-else>Process in Incognito</span>
+                </button>
+                <button @click="discardRecording"
+                        class="px-6 py-3 bg-[var(--bg-danger)] text-white rounded-lg hover:bg-[var(--bg-danger-hover)] transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-trash"></i>
+                    <span v-text="t('help.discard')"></span>
+                </button>
             </div>
-        </div>
         </div>
     </div>
 </div>

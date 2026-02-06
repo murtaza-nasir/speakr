@@ -705,6 +705,9 @@ export function useAudio(state, utils) {
 
         await releaseWakeLock();
         await hideRecordingNotification();
+
+        // Return to upload view
+        currentView.value = 'upload';
     };
 
     // Draw single visualizer

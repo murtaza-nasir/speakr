@@ -287,6 +287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const windowWidth = ref(window.innerWidth);
             const mobileTab = ref('transcript');
             const isMetadataExpanded = ref(false);
+            const expandedSection = ref('settings');  // 'notes' or 'settings' for recording view accordion
             const showSortOptions = ref(false);
 
             // --- i18n State ---
@@ -630,7 +631,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // UI
                 browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, tokenBudget, isDarkMode,
-                currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, isMetadataExpanded,
+                currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
 
@@ -2072,6 +2073,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                         sessionStorage.removeItem('speakr_incognito_recording');
                         incognitoRecording.value = null;
                     }
+                }
+            });
+
+            // Re-initialize recording notes editor when recording stops (DOM switches from recording template to accordion template)
+            watch(isRecording, async (newVal, oldVal) => {
+                if (oldVal === true && newVal === false && currentView.value === 'recording') {
+                    uiComposable.destroyRecordingNotesEditor();
+                    expandedSection.value = recordingNotes.value ? 'notes' : 'settings';
+                    await nextTick();
+                    uiComposable.initializeRecordingNotesEditor();
+                }
+            });
+
+            // Refresh CodeMirror when notes section becomes visible in accordion
+            watch(expandedSection, async (newSection) => {
+                if (newSection === 'notes' && recordingMarkdownEditorInstance.value) {
+                    await nextTick();
+                    recordingMarkdownEditorInstance.value.codemirror.refresh();
                 }
             });
 

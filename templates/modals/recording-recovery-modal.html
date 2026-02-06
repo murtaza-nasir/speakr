@@ -1,6 +1,6 @@
 <!-- Recording Recovery Modal -->
 <div v-if="showRecoveryModal" @click.self="cancelRecovery" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto">
         <div class="p-6 border-b border-[var(--border-primary)]">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -43,7 +43,7 @@
                 </div>
                 <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-secondary)]">
                     <span class="text-[var(--text-muted)]">${ t('recording.notes') }:</span>
-                    <p class="mt-1 text-[var(--text-primary)]">${ recoverableRecording.notes }</p>
+                    <p class="mt-1 text-[var(--text-primary)] max-h-32 overflow-y-auto text-xs whitespace-pre-wrap">${ recoverableRecording.notes }</p>
                 </div>
             </div>
         </div>
