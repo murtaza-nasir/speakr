@@ -147,6 +147,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.8.7 - Export Templates & Localization"
+    - **Customizable Export Templates** - Create markdown templates for exports with variables (`{{title}}`, `{{summary}}`, `{{notes}}`) and conditionals for optional sections
+    - **Localized Labels** - Use `{{label.metadata}}`, `{{label.summary}}` etc. for automatically translated labels based on user's UI language
+    - **Localized Dates** - Export dates formatted per user's language preference (e.g., "15. Januar 2026" for German)
+    - **Improvements** - Opt-in ASR chunking, speaker ID remapping, ASR validation fixes
+
+    Fully backwards compatible with v0.8.x.
+
 !!! info "Version 0.8.3 - Naming Templates"
     - **Custom Title Formatting** - Create templates with variables (`{{ai_title}}`, `{{filename}}`, `{{date}}`) and regex patterns to extract data from filenames
     - **Tag or User Default** - Assign templates to tags or set a user-wide default; templates without `{{ai_title}}` skip the AI call to save tokens
