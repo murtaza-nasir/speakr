@@ -5,9 +5,7 @@
 # Docker
 .dockerignore
 Dockerfile
-docker-compose.yml
-docker-compose.override.yml
-docker-compose.override.yml.example
+docker-compose*.yml
 
 # Python
 __pycache__/
@@ -33,16 +31,33 @@ var/
 venv/
 .venv/
 
-# Data directories (these will be mounted as volumes)
+# Data directories (mounted as volumes)
 data/
 uploads/
 instance/
+exports/
+auto-process/
 
-# IDE files
+# Non-runtime directories
+temp/
+docs/
+site/
+plan/
+unraid/
+tests/
+.claude/
+.migrate/
+.github/
+
+# IDE and editor files
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Logs
+# Logs and misc
 *.log
+*.md
+!requirements*.txt
+LICENSE
+CLAUDE.md
