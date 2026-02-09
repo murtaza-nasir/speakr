@@ -6,6 +6,7 @@ that expose a /asr endpoint.
 """
 
 import logging
+import os
 import httpx
 from typing import Dict, Any, Set, Optional
 
@@ -56,7 +57,7 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         super().__init__(config)
 
         self.base_url = config['base_url'].rstrip('/')
-        self.timeout = config.get('timeout', 1800)  # 30 minutes default
+        self._config_timeout = config.get('timeout', 1800)  # 30 minutes default
         self.return_embeddings = config.get('return_speaker_embeddings', False)
         self.default_diarize = config.get('diarize', True)
 
@@ -87,6 +88,29 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         # Add speaker embeddings capability if enabled
         if self.return_embeddings:
             self.CAPABILITIES = self.CAPABILITIES | {TranscriptionCapability.SPEAKER_EMBEDDINGS}
+
+    @property
+    def timeout(self):
+        """Get ASR timeout, reading fresh from env/DB each time to respect runtime changes."""
+        # Environment variables take priority
+        env_timeout = os.environ.get('ASR_TIMEOUT') or os.environ.get('asr_timeout_seconds')
+        if env_timeout:
+            try:
+                return int(env_timeout)
+            except (ValueError, TypeError):
+                pass
+
+        # Try database setting (Admin UI)
+        try:
+            from src.models import SystemSetting
+            db_timeout = SystemSetting.get_setting('asr_timeout_seconds', None)
+            if db_timeout is not None:
+                return int(db_timeout)
+        except Exception:
+            pass
+
+        # Fall back to config value from initialization
+        return self._config_timeout
 
     def _validate_config(self) -> None:
         """Validate required configuration."""
