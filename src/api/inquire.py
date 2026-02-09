@@ -16,7 +16,7 @@ from werkzeug.utils import secure_filename
 from src.database import db
 from src.models import *
 from src.utils import *
-from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks
+from src.services.embeddings import get_accessible_recording_ids, semantic_search_chunks, EMBEDDINGS_AVAILABLE
 from src.services.llm import call_llm_completion, call_chat_completion, process_streaming_with_thinking, client, chat_client, TokenBudgetExceeded
 
 # Create blueprint
@@ -299,11 +299,12 @@ Use proper markdown formatting including headings (##), bold (**text**), bullet 
                 
                 # Use captured user context for personalized search terms
                 
-                enrichment_prompt = f"""You are a query enhancement assistant. Given a user's question about transcribed meetings/recordings, generate 3-5 alternative search terms or phrases that would help find relevant content in a semantic search system.
+                if EMBEDDINGS_AVAILABLE:
+                    enrichment_prompt = f"""You are a query enhancement assistant. Given a user's question about transcribed meetings/recordings, generate 3-5 alternative search terms or phrases that would help find relevant content in a semantic search system.
 
 User context:
 - Name: {user_name}
-- Title: {user_title}  
+- Title: {user_title}
 - Company: {user_company}
 
 User question: "{user_message}"
@@ -321,6 +322,27 @@ Examples:
 - Use their job title and company context when relevant
 
 Respond with only a JSON array of strings: ["term1", "term2", "term3", ...]"""
+                else:
+                    enrichment_prompt = f"""You are a keyword extraction assistant. Given a user's question about transcribed meetings/recordings, extract 3-5 essential keyword phrases for a basic text search (SQL LIKE matching, not semantic search).
+
+User context:
+- Name: {user_name}
+
+User question: "{user_message}"
+
+Rules:
+- Return ONLY the key terms that would actually appear in a transcript — no filler words
+- Each term should be 1-3 words maximum
+- Replace pronouns like "me", "my", "I" with the user's name "{user_name}"
+- Focus on proper nouns, topic-specific terms, and distinctive phrases
+- Do NOT include common words like "meeting", "discussion", "plan", "talk" unless they are the actual topic
+
+Examples:
+- "what is up with Railroad Retirement" → ["Railroad Retirement", "railroad", "retirement"]
+- "when did Beth mention the budget deadline" → ["Beth", "budget deadline", "budget"]
+- "what did we discuss about AI foresight" → ["AI foresight", "{user_name}", "foresight"]
+
+Respond with only a JSON array of strings: ["term1", "term2", ...]"""
                 
                 try:
                     enrichment_response = call_llm_completion(

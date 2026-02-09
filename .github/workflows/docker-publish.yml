@@ -58,7 +58,18 @@ jobs:
             type=sha
             type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
 
-      # Build and push Docker image
+      # Extract metadata for lite image
+      - name: Extract Docker metadata (lite)
+        id: meta-lite
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=lite,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{version}}-lite
+            type=semver,pattern={{major}}.{{minor}}-lite
+
+      # Build and push full Docker image
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@v4
@@ -72,3 +83,19 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             PRODUCTION=1
+
+      # Build and push lightweight Docker image (no PyTorch/sentence-transformers)
+      - name: Build and push lite Docker image
+        id: build-and-push-lite
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-lite.outputs.tags }}
+          labels: ${{ steps.meta-lite.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PRODUCTION=1
+            LIGHTWEIGHT=1

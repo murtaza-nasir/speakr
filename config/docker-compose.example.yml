@@ -1,5 +1,7 @@
 services:
   app:
+    # Use 'lite' tag for a smaller image (~700MB vs ~4.4GB) without PyTorch
+    # Semantic search in Inquire Mode falls back to text search; all other features work normally
     image: learnedmachine/speakr:latest
     container_name: speakr
     restart: unless-stopped
