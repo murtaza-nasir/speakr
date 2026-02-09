@@ -10,6 +10,9 @@ Before diving into management, it's worth understanding what you're managing. In
 
 This approach goes beyond simple keyword matching. The system understands that "budget concerns" relates to "financial constraints" and "cost overruns" even though the exact words differ. This semantic understanding makes Inquire Mode powerful for discovering information that users might not remember precisely.
 
+!!! note "Lightweight Image"
+    If you're using the `lite` Docker image (`learnedmachine/speakr:lite`), the embedding model is not included. Inquire Mode still works but falls back to keyword-based text search instead of semantic search. To use full semantic search, switch to the `latest` image tag.
+
 ## The Embedding Model
 
 Your Speakr instance uses the all-MiniLM-L6-v2 model, shown prominently in the interface. This model generates 384-dimensional vectors - imagine each chunk of text mapped to a point in 384-dimensional space where similar meanings cluster together.

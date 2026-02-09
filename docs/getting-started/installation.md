@@ -54,6 +54,15 @@ services:
       - ./instance:/data/instance
 ```
 
+**Choosing an image tag:**
+
+| Tag | Size | Description |
+|-----|------|-------------|
+| `latest` | ~4.4GB | Full image with semantic search via PyTorch embeddings |
+| `lite` | ~725MB | Lightweight image without PyTorch — all features work, Inquire Mode falls back to text search |
+
+If you don't plan to use Inquire Mode's semantic search (or are fine with basic text search), the `lite` tag is recommended for faster pulls and less disk usage. Just replace `latest` with `lite` in the configuration above.
+
 Or download the example configuration:
 
 ```bash
@@ -341,7 +350,7 @@ With everything configured, you're ready to start Speakr. The `-d` flag runs the
 docker compose up -d
 ```
 
-The first time you run this command, Docker will download the Speakr image from Docker Hub. This image is approximately 3GB and contains all the dependencies needed to run Speakr, including FFmpeg for audio processing and various Python libraries. The download time depends on your internet connection speed.
+The first time you run this command, Docker will download the Speakr image from Docker Hub. The `latest` image is approximately 4.4GB (or ~725MB for the `lite` tag) and contains all the dependencies needed to run Speakr, including FFmpeg for audio processing and various Python libraries. The download time depends on your internet connection speed.
 
 Monitor the startup process to ensure everything is working correctly:
 
@@ -920,7 +929,10 @@ Modify the docker-compose.yml to build locally instead of using the pre-built im
 ```yaml
 services:
   app:
-    build: .  # Build from current directory
+    build:
+      context: .
+      args:
+        LIGHTWEIGHT: 0  # Set to 1 for a smaller image without PyTorch
     image: speakr:custom  # Tag for your custom build
     container_name: speakr
     restart: unless-stopped
@@ -937,6 +949,12 @@ Build and start your custom version:
 
 ```bash
 docker compose up -d --build
+```
+
+To build a lightweight image without PyTorch directly:
+
+```bash
+docker build --build-arg LIGHTWEIGHT=1 -t speakr:lite .
 ```
 
 The `--build` flag forces Docker to rebuild the image even if one exists. This is useful when you've made code changes and want to test them.

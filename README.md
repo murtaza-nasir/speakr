@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.7-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.8-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -119,6 +119,8 @@ docker compose up -d
 # Access at http://localhost:8899
 ```
 
+> **Lightweight image:** Use `learnedmachine/speakr:lite` for a smaller image (~725MB vs ~4.4GB) that skips PyTorch. All features work normally — only Inquire Mode's semantic search falls back to basic text search.
+
 **Required API Keys:**
 - `TRANSCRIPTION_API_KEY` - For speech-to-text (OpenAI) or `ASR_BASE_URL` for self-hosted
 - `TEXT_MODEL_API_KEY` - For summaries, titles, and chat (OpenRouter or OpenAI)
@@ -160,7 +162,17 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.7)
+## Latest Release (v0.8.8)
+
+**Lightweight Docker Image**
+
+- **Lite Image** - New `learnedmachine/speakr:lite` tag (~725MB vs ~4.4GB) skips PyTorch/sentence-transformers for users who don't need semantic search
+- **Multi-Stage Dockerfile** - Optimized build with static ffmpeg binaries and smaller final image for both variants
+- **Improved Text Search** - Better fallback search with stop word filtering, keyword-focused query enrichment, and match ranking
+
+*Thanks to [sakowicz](https://github.com/sakowicz) for the suggestion*
+
+### Previous Release (v0.8.7)
 
 **Export Templates & Localization**
 
