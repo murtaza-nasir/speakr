@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt requirements-embeddings.txt ./
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt && \
+COPY requirements.txt requirements-embeddings.txt constraints.txt ./
+RUN pip install --no-cache-dir --prefix=/install -c constraints.txt -r requirements.txt && \
     if [ "$LIGHTWEIGHT" = "0" ]; then \
-        pip install --no-cache-dir --prefix=/install -r requirements-embeddings.txt; \
+        pip install --no-cache-dir --prefix=/install -c constraints.txt -r requirements-embeddings.txt; \
     fi
 
 # Download vendor assets (JS/CSS/fonts)
