@@ -224,8 +224,8 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
         if not accessible_recording_ids:
             return []
 
-        # Build base query for chunks from accessible recordings
-        chunks_query = TranscriptChunk.query.filter(
+        # Build base query for chunks from accessible recordings with eager loading
+        chunks_query = TranscriptChunk.query.options(joinedload(TranscriptChunk.recording)).filter(
             TranscriptChunk.recording_id.in_(accessible_recording_ids)
         )
         
@@ -263,23 +263,50 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
                 if filters.get('date_to'):
                     chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
         
-        # Simple text search - split query into words and search for them
-        query_words = query.lower().split()
+        # Text search - filter stop words and rank by match count
+        stop_words = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been',
+                       'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                       'would', 'could', 'should', 'may', 'might', 'shall', 'can',
+                       'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from',
+                       'up', 'about', 'into', 'through', 'during', 'before', 'after',
+                       'and', 'but', 'or', 'nor', 'not', 'so', 'yet', 'both',
+                       'it', 'its', 'this', 'that', 'these', 'those', 'what', 'which',
+                       'who', 'whom', 'how', 'when', 'where', 'why',
+                       'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he', 'she',
+                       'his', 'her', 'they', 'them', 'their'}
+
+        query_words = [w for w in query.lower().split() if w not in stop_words and len(w) > 1]
+
+        if not query_words:
+            # If all words were stop words, fall back to using original query words
+            query_words = [w for w in query.lower().split() if len(w) > 1]
+
         if query_words:
-            # Create a filter that matches any of the query words in the content
+            from sqlalchemy import or_, func, case, literal
+
+            # Filter: match ANY keyword (OR) to get candidates
             text_conditions = []
             for word in query_words:
                 text_conditions.append(TranscriptChunk.content.ilike(f'%{word}%'))
-            
-            # Combine conditions with OR
-            from sqlalchemy import or_
             chunks_query = chunks_query.filter(or_(*text_conditions))
-        
-        # Get chunks and return with dummy similarity scores
-        chunks = chunks_query.limit(top_k).all()
-        
-        # Return chunks with dummy similarity scores (1.0 for found chunks)
-        return [(chunk, 1.0) for chunk in chunks]
+
+            # Fetch more candidates than needed so we can rank them
+            chunks = chunks_query.limit(top_k * 5).all()
+
+            # Rank by how many query words each chunk matches
+            scored_chunks = []
+            for chunk in chunks:
+                content_lower = chunk.content.lower()
+                match_count = sum(1 for word in query_words if word in content_lower)
+                score = match_count / len(query_words)  # 0.0 to 1.0
+                scored_chunks.append((chunk, score))
+
+            # Sort by score descending, take top_k
+            scored_chunks.sort(key=lambda x: x[1], reverse=True)
+            return scored_chunks[:top_k]
+
+        # No usable query words
+        return []
         
     except Exception as e:
         current_app.logger.error(f"Error in basic text search: {e}")

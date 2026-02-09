@@ -2,6 +2,8 @@ FROM python:3.11-slim
 
 # Build argument to determine if this is a production build
 ARG PRODUCTION=0
+# Set LIGHTWEIGHT=1 to skip PyTorch/sentence-transformers (~1.7GB smaller image)
+ARG LIGHTWEIGHT=0
 
 WORKDIR /app
 
@@ -12,8 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-embeddings.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && \
+    if [ "$LIGHTWEIGHT" = "0" ]; then \
+        pip install --no-cache-dir -r requirements-embeddings.txt; \
+    fi
 
 # Create directory structure for vendor files
 RUN mkdir -p /app/static/vendor
