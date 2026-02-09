@@ -24,6 +24,13 @@ jobs:
       id-token: write
 
     steps:
+      # Free up disk space on the runner (~30GB)
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          sudo docker image prune -af
+          df -h /
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
