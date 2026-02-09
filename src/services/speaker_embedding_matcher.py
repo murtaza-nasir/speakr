@@ -15,7 +15,10 @@ Uses 256-dimensional embeddings from WhisperX diarization.
 import json
 import numpy as np
 from datetime import datetime
-from sklearn.metrics.pairwise import cosine_similarity
+try:
+    from sklearn.metrics.pairwise import cosine_similarity
+except ImportError:
+    cosine_similarity = None
 from src.database import db
 from src.models import Speaker
 
