@@ -606,6 +606,9 @@
     "leaveBlankPrompt": "留空以使用您的默认摘要提示",
     "maxSpeakers": "最大发言人数",
     "minSpeakers": "最小发言人数",
+    "exportTemplate": "导出模板",
+    "exportTemplateHint": "选择导出带有此标签的录音时使用的导出模板",
+    "noExportTemplate": "无模板（使用用户默认）",
     "tagName": "标签名称 *",
     "tagNamePlaceholder": "例如，会议、访谈",
     "title": "编辑标签"

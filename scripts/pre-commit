@@ -8,7 +8,7 @@
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
 
 # Only run if migration-related files are staged
-if echo "$STAGED_FILES" | grep -qE '^(src/init_db\.py|src/utils/database\.py)$'; then
+if echo "$STAGED_FILES" | grep -qE '^(src/init_db\.py|src/utils/database\.py|src/models/)'; then
     echo "Migration files changed — running PostgreSQL compatibility checks..."
     python tests/test_migration_compatibility.py
     if [ $? -ne 0 ]; then
