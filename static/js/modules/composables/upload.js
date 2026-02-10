@@ -332,16 +332,17 @@ export function useUpload(state, utils) {
                     formData.append('folder_id', folderToUse);
                 }
 
-                // Add diarization options if connector supports it
+                // Add ASR options (language is always sent, speaker options only if supported)
+                const asrOpts = nextFileItem.asrOptions || {};
+                const language = asrOpts.language || uploadLanguage.value;
+                if (language) {
+                    formData.append('language', language);
+                }
+
                 if (connectorSupportsDiarization.value) {
-                    const asrOpts = nextFileItem.asrOptions || {};
-                    const language = asrOpts.language || uploadLanguage.value;
                     const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
                     const maxSpeakers = asrOpts.max_speakers || uploadMaxSpeakers.value;
 
-                    if (language) {
-                        formData.append('language', language);
-                    }
                     if (minSpeakers && minSpeakers !== '') {
                         formData.append('min_speakers', minSpeakers.toString());
                     }
