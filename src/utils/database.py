@@ -42,6 +42,10 @@ def add_column_if_not_exists(engine, table_name, column_name, column_type):
             # PostgreSQL uses BYTEA, not BLOB
             column_type = re.sub(r'\bBLOB\b', 'BYTEA', column_type, flags=re.IGNORECASE)
 
+            # PostgreSQL interprets double-quoted strings as identifiers, not literals
+            # Convert DEFAULT "value" to DEFAULT 'value'
+            column_type = re.sub(r'''DEFAULT\s+"([^"]*)"''', r"DEFAULT '\1'", column_type, flags=re.IGNORECASE)
+
         with engine.connect() as conn:
             # Quote identifiers to handle reserved keywords (e.g., "user" in PostgreSQL)
             # MySQL uses backticks, PostgreSQL/SQLite use double quotes
