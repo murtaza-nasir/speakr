@@ -654,8 +654,11 @@ export function useAudio(state, utils) {
                 console.warn('[Recording] Failed to clear IndexedDB session:', dbError);
             }
 
-            // Clear recording state
-            discardRecording();
+            // Clear recording state (must await so currentView='upload' completes
+            // before we override it with 'detail', otherwise the deferred
+            // currentView='upload' fires after 'detail' and the view watcher
+            // clears incognito data thinking we navigated away)
+            await discardRecording();
 
             processingProgress.value = 100;
             processingMessage.value = 'Incognito recording ready!';
