@@ -528,6 +528,9 @@
     "leaveBlankPrompt": "Laissez vide pour utiliser votre invite de résumé par défaut",
     "maxSpeakers": "Maximum d'Intervenants",
     "minSpeakers": "Minimum d'Intervenants",
+    "exportTemplate": "Modèle d'exportation",
+    "exportTemplateHint": "Sélectionnez un modèle d'exportation à utiliser lors de l'exportation des enregistrements avec cette étiquette",
+    "noExportTemplate": "Aucun modèle (utiliser le défaut de l'utilisateur)",
     "tagName": "Nom de l'Étiquette *",
     "tagNamePlaceholder": "ex., Réunions, Entretiens",
     "title": "Modifier l'Étiquette"

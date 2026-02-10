@@ -534,6 +534,9 @@
     "leaveBlankPrompt": "Deja en blanco para usar tu prompt de resumen predeterminado",
     "maxSpeakers": "Máximo de Oradores",
     "minSpeakers": "Mínimo de Oradores",
+    "exportTemplate": "Plantilla de exportación",
+    "exportTemplateHint": "Selecciona una plantilla de exportación para usar al exportar grabaciones con esta etiqueta",
+    "noExportTemplate": "Sin plantilla (usar predeterminado del usuario)",
     "tagName": "Nombre de la Etiqueta *",
     "tagNamePlaceholder": "ej., Reuniones, Entrevistas",
     "title": "Editar Etiqueta"

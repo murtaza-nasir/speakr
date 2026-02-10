@@ -534,6 +534,9 @@
     "leaveBlankPrompt": "Leer lassen, um Ihren Standard-Zusammenfassungs-Prompt zu verwenden",
     "maxSpeakers": "Maximale Sprecheranzahl",
     "minSpeakers": "Minimale Sprecheranzahl",
+    "exportTemplate": "Exportvorlage",
+    "exportTemplateHint": "Wählen Sie eine Exportvorlage für den Export von Aufnahmen mit diesem Tag",
+    "noExportTemplate": "Keine Vorlage (Benutzerstandard verwenden)",
     "tagName": "Tag-Name *",
     "tagNamePlaceholder": "z.B. Meetings, Interviews",
     "title": "Tag Bearbeiten"
