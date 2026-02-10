@@ -188,6 +188,33 @@ class TestMigrationCompatibility(unittest.TestCase):
             matches = re.findall(pattern, self.content, re.IGNORECASE)
             # Just informational - these are fine because the utility converts them
 
+    def test_no_double_quoted_string_defaults(self):
+        """
+        Ensure no SQL DEFAULT values use double-quoted strings.
+
+        In SQL, double quotes denote identifiers (column/table names), not string
+        literals. SQLite tolerates this, but PostgreSQL will interpret DEFAULT "en"
+        as a reference to a column named "en" and fail with 'column "en" does not exist'.
+
+        String defaults must use single quotes: DEFAULT 'en'
+        """
+        # Match DEFAULT followed by a double-quoted string value
+        pattern = r'DEFAULT\s+"[^"]*"'
+
+        lines = self.content.splitlines()
+        problematic = []
+        for i, line in enumerate(lines, 1):
+            if re.search(pattern, line, re.IGNORECASE):
+                problematic.append(f"  Line {i}: {line.strip()}")
+
+        self.assertEqual(
+            len(problematic), 0,
+            f"Found double-quoted string defaults in init_db.py. "
+            f"PostgreSQL interprets double quotes as column identifiers, not string literals. "
+            f"Use single quotes instead (e.g., DEFAULT 'en' not DEFAULT \"en\"):\n" +
+            "\n".join(problematic)
+        )
+
     def test_create_index_uses_utility_for_user_table(self):
         """
         Ensure index creation on 'user' table uses create_index_if_not_exists().

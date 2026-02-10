@@ -71,7 +71,7 @@ def initialize_database(app):
             app.logger.info("Added company column to user table")
         if add_column_if_not_exists(engine, 'user', 'diarize', 'BOOLEAN'):
             app.logger.info("Added diarize column to user table")
-        if add_column_if_not_exists(engine, 'user', 'ui_language', 'VARCHAR(10) DEFAULT "en"'):
+        if add_column_if_not_exists(engine, 'user', 'ui_language', "VARCHAR(10) DEFAULT 'en'"):
             app.logger.info("Added ui_language column to user table")
         if add_column_if_not_exists(engine, 'user', 'sso_provider', 'VARCHAR(100)'):
             app.logger.info("Added sso_provider column to user table")
@@ -158,7 +158,7 @@ def initialize_database(app):
             app.logger.info("Added transcription_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'summarization_duration_seconds', 'INTEGER'):
             app.logger.info("Added summarization_duration_seconds column to recording table")
-        if add_column_if_not_exists(engine, 'recording', 'processing_source', 'VARCHAR(50) DEFAULT "upload"'):
+        if add_column_if_not_exists(engine, 'recording', 'processing_source', "VARCHAR(50) DEFAULT 'upload'"):
             app.logger.info("Added processing_source column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'error_message', 'TEXT'):
             app.logger.info("Added error_message column to recording table")
@@ -272,7 +272,7 @@ def initialize_database(app):
         # Auto speaker labelling settings
         if add_column_if_not_exists(engine, 'user', 'auto_speaker_labelling', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added auto_speaker_labelling column to user table")
-        if add_column_if_not_exists(engine, 'user', 'auto_speaker_labelling_threshold', 'VARCHAR(10) DEFAULT "medium"'):
+        if add_column_if_not_exists(engine, 'user', 'auto_speaker_labelling_threshold', "VARCHAR(10) DEFAULT 'medium'"):
             app.logger.info("Added auto_speaker_labelling_threshold column to user table")
 
         # Auto summarization setting (per-user, default enabled)
@@ -297,7 +297,7 @@ def initialize_database(app):
             app.logger.info("Added export_template_id column to folder table")
 
         # Add source tracking columns to internal_share table
-        if add_column_if_not_exists(engine, 'internal_share', 'source_type', 'VARCHAR(20) DEFAULT "manual"'):
+        if add_column_if_not_exists(engine, 'internal_share', 'source_type', "VARCHAR(20) DEFAULT 'manual'"):
             app.logger.info("Added source_type column to internal_share table")
 
         if add_column_if_not_exists(engine, 'internal_share', 'source_tag_id', 'INTEGER'):

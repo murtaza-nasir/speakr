@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Pre-commit hook: runs PostgreSQL migration compatibility tests
+# when migration-related files are staged.
+#
+# Install: ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Only run if migration-related files are staged
+if echo "$STAGED_FILES" | grep -qE '^(src/init_db\.py|src/utils/database\.py)$'; then
+    echo "Migration files changed — running PostgreSQL compatibility checks..."
+    python tests/test_migration_compatibility.py
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "Pre-commit hook FAILED: PostgreSQL migration compatibility issues found."
+        echo "Fix the issues above before committing."
+        exit 1
+    fi
+    echo "All migration compatibility checks passed."
+fi
