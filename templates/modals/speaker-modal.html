@@ -281,14 +281,28 @@
 
         <!-- Footer Buttons -->
         <div class="bg-[var(--bg-tertiary)] px-3 sm:px-6 py-2 sm:py-4 flex flex-row justify-between items-center gap-2 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
-            <!-- Auto Identify Button -->
-            <button @click="autoIdentifySpeakers" class="px-2 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
+            <div class="flex items-center gap-2">
+                <!-- Only fill missing checkbox -->
+                <label class="flex items-center text-xs sm:text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
+                    <input type="checkbox" v-model="onlyFillMissing" class="speaker-checkbox w-4 h-4 mr-2">
+                    <span class="select-none">Only find missing names</span>
+                </label>
+
+                <!-- Auto Identify Button -->
+                <button @click="autoIdentifySpeakers" class="px-2 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
                 <i class="fas fa-magic mr-1 sm:mr-2"></i>
                 <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
                 <span v-if="!isAutoIdentifying" class="sm:hidden">Auto</span>
                 <span v-else>
                     <i class="fas fa-spinner fa-spin"></i>
                 </span>
+                </button>
+            </div>
+            <!-- Apply Suggested Button - show only when at least one modal speaker has suggestions -->
+            <button v-if="(modalSpeakers || []).some(s => (voiceSuggestions && voiceSuggestions[s] && voiceSuggestions[s].length > 0) || (speakerSuggestions && speakerSuggestions[s] && speakerSuggestions[s].length > 0))" @click="applySuggestedNames" class="px-2 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium ml-2">
+                <i class="fas fa-tag mr-1 sm:mr-2"></i>
+                <span class="hidden sm:inline">Apply Suggested</span>
+                <span class="sm:hidden">Apply</span>
             </button>
             <!-- Cancel & Save Buttons -->
             <div class="flex gap-2">

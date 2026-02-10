@@ -983,16 +983,48 @@ JSON Response:
             from src.services.llm import call_llm_completion
             current_app.logger.info(f"[Auto-Identify] Calling LLM directly with prompt")
 
+            # Build response_format. If the env var `AUTO_IDENTIFY_RESPONSE_SCHEMA`
+            # is set (truthy), enable using an internal JSON Schema response
+            # format that matches the Example format shown above. Otherwise use
+            # the default `json_object` response_format.
+            response_format = {"type": "json_object"}
+            if os.environ.get('AUTO_IDENTIFY_RESPONSE_SCHEMA'):
+                try:
+                    # Construct a JSON Schema that enforces keys like "SPEAKER_01"
+                    # mapping to string values (empty string allowed when unknown).
+                    json_schema = {
+                        "type": "object",
+                        "patternProperties": {
+                            "^SPEAKER_\\d{2}$": {
+                                "type": "string",
+                                "description": "Identified full name for the speaker label; empty string if unknown"
+                            }
+                        },
+                        # Allow additionalProperties to avoid strict schema rejections
+                        # from LLM servers that may produce slightly different keys.
+                        "additionalProperties": True
+                    }
+                    # Wrap schema according to provider expectation: json_schema.schema
+                    response_format = {"type": "json_schema", "json_schema": {"schema": json_schema}}
+                    current_app.logger.info("[Auto-Identify] AUTO_IDENTIFY_RESPONSE_SCHEMA enabled: using built-in speaker-label json_schema for LLM response_format")
+                except Exception as e:
+                    current_app.logger.warning(f"[Auto-Identify] Failed to construct internal JSON schema: {e}; falling back to json_object")
+
             completion = call_llm_completion(
                 messages=[
                     {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt + '\n\nReturn a single JSON object that contains exactly the keys: ' + ', '.join(speaker_labels) + '. Each key must map to the identified full name as a string, or an empty string if unknown. Return ONLY the JSON object and no additional text.'}
                 ],
                 temperature=0.2,
-                response_format={"type": "json_object"},
+                response_format=response_format,
                 user_id=current_user.id,
                 operation_type='speaker_identification'
             )
+            # Log full completion object for debugging (repr may contain useful metadata)
+            try:
+                current_app.logger.debug(f"[Auto-Identify] Full LLM completion repr: {repr(completion)}")
+            except Exception:
+                current_app.logger.debug("[Auto-Identify] Full LLM completion could not be repr()-ed")
             response_content = completion.choices[0].message.content
             current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {response_content}")
 
@@ -1001,9 +1033,66 @@ JSON Response:
             current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
 
             # Post-process the map to replace "Unknown" with an empty string
-            for speaker_label, identified_name in identified_map.items():
+            for speaker_label, identified_name in list(identified_map.items()):
                 if identified_name and identified_name.strip().lower() in ["unknown", "n/a", "not available", "unclear"]:
                     identified_map[speaker_label] = ""
+
+            # Normalize mapping: ensure keys are SPEAKER_XX -> name.
+            try:
+                speaker_label_re = re.compile(r'^SPEAKER_\d{2}$', re.IGNORECASE)
+
+                if identified_map:
+                    # Detect inverted mapping: keys look like human names, values look like SPEAKER_XX
+                    keys_are_names_values_labels = any(not speaker_label_re.match(k or '') for k in identified_map.keys()) and any(speaker_label_re.match((v or '')) for v in identified_map.values())
+
+                    if keys_are_names_values_labels:
+                        inverted = {}
+                        for k, v in identified_map.items():
+                            if speaker_label_re.match((v or '')):
+                                inverted[v] = k
+                        identified_map = inverted
+                        current_app.logger.info("[Auto-Identify] Inverted identified_map (detected name->label mapping)")
+
+                    # If mapping is label->label (no real names), clear values to signal unidentified
+                    keys_are_labels = all(speaker_label_re.match(k or '') for k in identified_map.keys())
+                    values_are_labels = all(speaker_label_re.match((v or '')) for v in identified_map.values())
+                    if keys_are_labels and values_are_labels:
+                        current_app.logger.info("[Auto-Identify] LLM returned label->label mapping; treating as unidentified")
+                        for k in list(identified_map.keys()):
+                            identified_map[k] = ""
+
+                    # For mixed cases, sanitize any values that still look like labels
+                    for k, v in list(identified_map.items()):
+                        if v and speaker_label_re.match(v):
+                            identified_map[k] = ""
+            except Exception as e:
+                current_app.logger.warning(f"[Auto-Identify] Failed to normalize identified_map: {e}")
+            # Sanitize identified names: remove parenthetical clarifications,
+            # drop explanatory clauses after ' or ', take first clause before commas/semicolons,
+            # and trim whitespace. If the cleaned value still looks like a SPEAKER label,
+            # treat it as unidentified.
+            try:
+                sanitized_map = {}
+                for k, v in list(identified_map.items()):
+                    if not v:
+                        sanitized_map[k] = ""
+                        continue
+                    # Remove parenthetical content
+                    cleaned = re.sub(r'\s*\(.*?\)', '', v)
+                    # Prefer text before common separators or ' or '
+                    cleaned = re.split(r'\s+or\s+|,|;|-', cleaned)[0].strip()
+                    # Collapse multiple spaces
+                    cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+                    # If cleaned looks like a speaker label, clear it
+                    if speaker_label_re.match(cleaned):
+                        sanitized_map[k] = ""
+                    else:
+                        sanitized_map[k] = cleaned
+
+                identified_map = sanitized_map
+                current_app.logger.info(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
+            except Exception as e:
+                current_app.logger.warning(f"[Auto-Identify] Failed to sanitize identified_map: {e}")
         except Exception as e:
             current_app.logger.error(f"[Auto-Identify] Error calling LLM: {e}", exc_info=True)
             return jsonify({'error': f'Failed to identify speakers: {str(e)}'}), 500

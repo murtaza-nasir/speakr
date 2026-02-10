@@ -24,6 +24,9 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Current speaker highlight state
     let currentSpeakerId = null;
 
+    // Should auto-identify only fill missing names (do not overwrite existing identified names)
+    const onlyFillMissing = Vue.ref(true);
+
     // Number of speaker colors available in CSS (must match styles.css and app.modular.js)
     const SPEAKER_COLOR_COUNT = 16;
 
@@ -772,8 +775,28 @@ export function useSpeakers(state, utils, processedTranscription) {
             let identifiedCount = 0;
             for (const speakerId in data.speaker_map) {
                 const identifiedName = data.speaker_map[speakerId];
-                if (speakerMap.value[speakerId] && identifiedName && identifiedName.trim() !== '') {
-                    speakerMap.value[speakerId].name = identifiedName;
+                if (!identifiedName || !identifiedName.trim()) continue;
+                const target = speakerMap.value[speakerId];
+                if (!target) continue;
+
+                if (onlyFillMissing.value) {
+                    const existing = target.name;
+                    if (!existing || existing.trim() === '') {
+                        target.name = identifiedName;
+                        identifiedCount++;
+                    }
+                } else {
+                    // Don't overwrite a more-specific existing name with a less-specific result.
+                    const existingName = target.name || '';
+                    const existingTokens = existingName.trim().split(/\s+/).filter(Boolean).length;
+                    const identifiedTokens = identifiedName.trim().split(/\s+/).filter(Boolean).length;
+
+                    if (existingTokens >= 2 && identifiedTokens < existingTokens) {
+                        // Skip overwriting a full name with a shorter name
+                        continue;
+                    }
+
+                    target.name = identifiedName;
                     identifiedCount++;
                 }
             }
@@ -790,6 +813,58 @@ export function useSpeakers(state, utils, processedTranscription) {
         } catch (error) {
             console.error('Auto Identify Speakers Error:', error);
             showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 5000, 'error');
+        } finally {
+            isAutoIdentifying.value = false;
+        }
+    };
+
+    // Apply Suggested: apply suggested names from voice or dropdown suggestions to blank fields (does NOT call LLM or save)
+    const applySuggestedNames = async () => {
+        if (!selectedRecording.value) {
+            showToast('No recording selected.', 'fa-exclamation-circle');
+            return;
+        }
+
+        // Prevent re-entry
+        if (isAutoIdentifying.value) return;
+
+        isAutoIdentifying.value = true;
+
+        try {
+            const vs = voiceSuggestions.value || {};
+            const ss = speakerSuggestions.value || {};
+
+            (modalSpeakers.value || []).forEach(speakerId => {
+                const entry = speakerMap.value[speakerId];
+                if (!entry) return;
+
+                // Respect 'This is Me'
+                if (entry.isMe) {
+                    entry.name = currentUserName.value || entry.name || 'Me';
+                    return;
+                }
+
+                // Don't overwrite an existing typed name
+                if (entry.name && entry.name.trim() !== '') return;
+
+                // Apply voice suggestion if available
+                if (vs[speakerId] && vs[speakerId].length > 0 && vs[speakerId][0].name) {
+                    entry.name = vs[speakerId][0].name;
+                    return;
+                }
+
+                // Apply first speaker suggestion (from search/autocomplete) if available
+                if (ss[speakerId] && ss[speakerId].length > 0) {
+                    const first = ss[speakerId][0];
+                    entry.name = (first && first.name) ? first.name : String(first);
+                    return;
+                }
+            });
+
+            showToast('Applied suggested names — click Save to persist.', 'fa-check-circle');
+        } catch (err) {
+            console.error('Apply Suggested Names Error:', err);
+            showToast(`Error: ${err.message || 'Failed to apply suggested names'}`, 'fa-exclamation-circle', 5000, 'error');
         } finally {
             isAutoIdentifying.value = false;
         }
@@ -1128,6 +1203,10 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         // Auto-identify
         autoIdentifySpeakers,
+        // Apply suggested names (does not call LLM; user must Save to persist)
+        applySuggestedNames,
+        // Option: only fill missing names during auto-identify
+        onlyFillMissing,
 
         // Add speaker
         openAddSpeakerModal,
