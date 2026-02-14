@@ -1750,7 +1750,7 @@ def identify_speakers(recording_id):
     """
     from src.services.llm import call_llm_completion
     from src.utils import safe_json_loads
-    from src.models.system_settings import SystemSetting
+    from src.models import SystemSetting
 
     try:
         recording = db.session.get(Recording, recording_id)
@@ -1974,7 +1974,7 @@ def chat_with_recording(recording_id):
     """Chat about a recording's content."""
     from src.services.llm import chat_client, call_chat_completion
     from src.tasks.processing import format_transcription_for_llm
-    from src.models.system_settings import SystemSetting
+    from src.models import SystemSetting
 
     recording = db.session.get(Recording, recording_id)
     if not recording:
