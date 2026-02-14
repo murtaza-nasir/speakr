@@ -14,6 +14,7 @@ All endpoints require token authentication via:
 """
 
 import os
+import re
 import json
 from datetime import datetime, date, timedelta
 from typing import Optional
@@ -236,6 +237,24 @@ OPENAPI_SPEC = {
         "/recordings/{id}/speakers": {
             "get": {"tags": ["Speakers"], "summary": "Get speakers in recording", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Speakers with suggestions"}}}
         },
+        "/recordings/{id}/speakers/assign": {
+            "put": {
+                "tags": ["Speakers"],
+                "summary": "Assign speaker names to transcription",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["speaker_map"], "properties": {"speaker_map": {"type": "object", "description": "Map of speaker labels to names. Values can be: integer (Speaker ID), string (name), or object {name, isMe}."}, "regenerate_summary": {"type": "boolean", "default": False}}}}}},
+                "responses": {"200": {"description": "Speakers assigned"}, "404": {"description": "Recording or speaker not found"}, "403": {"description": "Permission denied"}}
+            }
+        },
+        "/recordings/{id}/speakers/identify": {
+            "post": {
+                "tags": ["Speakers"],
+                "summary": "Auto-identify speakers via LLM",
+                "description": "Analyzes transcript context to suggest speaker names. Returns suggestions only — does not modify the recording.",
+                "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
+                "responses": {"200": {"description": "Speaker identification suggestions"}, "400": {"description": "Transcription not available or unsupported format"}}
+            }
+        },
         "/recordings/batch": {
             "patch": {"tags": ["Batch"], "summary": "Batch update recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids", "updates"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}, "updates": {"type": "object"}}}}}}, "responses": {"200": {"description": "Batch results"}}},
             "delete": {"tags": ["Batch"], "summary": "Batch delete recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Batch results"}}}
@@ -286,6 +305,15 @@ OPENAPI_SPEC = {
         "/speakers/{id}": {
             "put": {"tags": ["Speakers"], "summary": "Update speaker", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}}}}}}, "responses": {"200": {"description": "Speaker updated"}}},
             "delete": {"tags": ["Speakers"], "summary": "Delete speaker", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Speaker deleted"}}}
+        },
+        "/settings/auto-summarization": {
+            "put": {
+                "tags": ["Settings"],
+                "summary": "Toggle auto-summarization",
+                "description": "Enable or disable auto-summarization for the current user.",
+                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["enabled"], "properties": {"enabled": {"type": "boolean"}}}}}},
+                "responses": {"200": {"description": "Setting updated"}}
+            }
         }
     },
     "tags": [
@@ -297,7 +325,8 @@ OPENAPI_SPEC = {
         {"name": "Audio", "description": "Audio file operations"},
         {"name": "Tags", "description": "Tag management"},
         {"name": "Speakers", "description": "Speaker management"},
-        {"name": "Batch", "description": "Batch operations"}
+        {"name": "Batch", "description": "Batch operations"},
+        {"name": "Settings", "description": "User settings"}
     ]
 }
 
@@ -1527,6 +1556,330 @@ def get_recording_speakers(recording_id):
 
 
 # =============================================================================
+# Speaker Operations
+# =============================================================================
+
+@api_v1_bp.route('/recordings/<int:recording_id>/speakers/assign', methods=['PUT'])
+@login_required
+def assign_speakers(recording_id):
+    """
+    Assign speaker names to a recording's transcription segments.
+
+    Request body:
+    {
+        "speaker_map": {
+            "SPEAKER_00": 5,                           // Speaker ID (integer)
+            "SPEAKER_01": "Jane Doe",                   // Direct name (string)
+            "SPEAKER_02": {"name": "Bob", "isMe": false} // Full object
+        },
+        "regenerate_summary": false
+    }
+    """
+    from src.services.speaker import update_speaker_usage
+    from src.services.speaker_embedding_matcher import update_speaker_embedding
+    from src.services.speaker_snippets import create_speaker_snippets
+    from src.services.job_queue import job_queue
+
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if not has_recording_access(recording, current_user, require_edit=True):
+            return jsonify({'error': 'Permission denied'}), 403
+
+        data = request.get_json()
+        if not data or 'speaker_map' not in data:
+            return jsonify({'error': 'speaker_map is required'}), 400
+
+        raw_speaker_map = data['speaker_map']
+        regenerate_summary = data.get('regenerate_summary', False)
+
+        if not isinstance(raw_speaker_map, dict):
+            return jsonify({'error': 'speaker_map must be an object'}), 400
+
+        # Normalize speaker_map values to {name, isMe} format
+        speaker_map = {}
+        for label, value in raw_speaker_map.items():
+            if isinstance(value, int):
+                # Speaker ID — resolve from database
+                speaker_obj = db.session.get(Speaker, value)
+                if not speaker_obj:
+                    return jsonify({'error': f'Speaker with ID {value} not found'}), 404
+                if speaker_obj.user_id != current_user.id:
+                    return jsonify({'error': f'Speaker with ID {value} does not belong to you'}), 403
+                speaker_map[label] = {'name': speaker_obj.name, 'isMe': False}
+            elif isinstance(value, str):
+                speaker_map[label] = {'name': value.strip(), 'isMe': False}
+            elif isinstance(value, dict):
+                speaker_map[label] = {
+                    'name': value.get('name', '').strip() if value.get('name') else '',
+                    'isMe': value.get('isMe', False)
+                }
+            else:
+                return jsonify({'error': f'Invalid value type for speaker "{label}"'}), 400
+
+        transcription_text = recording.transcription
+        is_json = False
+        try:
+            transcription_data = json.loads(transcription_text)
+            is_json = isinstance(transcription_data, list)
+        except (json.JSONDecodeError, TypeError):
+            is_json = False
+
+        speaker_names_used = []
+
+        if is_json:
+            for segment in transcription_data:
+                original_speaker_label = segment.get('speaker')
+                if original_speaker_label in speaker_map:
+                    new_name_info = speaker_map[original_speaker_label]
+                    new_name = new_name_info.get('name', '').strip()
+                    if new_name_info.get('isMe') and not new_name:
+                        new_name = current_user.name or 'Me'
+                    if new_name:
+                        segment['speaker'] = new_name
+                        if new_name not in speaker_names_used:
+                            speaker_names_used.append(new_name)
+
+            recording.transcription = json.dumps(transcription_data)
+
+            # Update participants — exclude unresolved SPEAKER_XX labels
+            final_speakers = set()
+            for seg in transcription_data:
+                speaker = seg.get('speaker')
+                if speaker and str(speaker).strip():
+                    if not re.match(r'^SPEAKER_\d+$', str(speaker), re.IGNORECASE):
+                        final_speakers.add(speaker)
+            recording.participants = ', '.join(sorted(list(final_speakers)))
+        else:
+            # Plain text transcript
+            new_participants = []
+            for speaker_label, new_name_info in speaker_map.items():
+                new_name = new_name_info.get('name', '').strip()
+                if new_name_info.get('isMe') and not new_name:
+                    new_name = current_user.name or 'Me'
+                if new_name:
+                    transcription_text = re.sub(
+                        r'\[\s*' + re.escape(speaker_label) + r'\s*\]',
+                        f'[{new_name}]',
+                        transcription_text,
+                        flags=re.IGNORECASE
+                    )
+                    if new_name not in new_participants:
+                        new_participants.append(new_name)
+
+            recording.transcription = transcription_text
+            recording.participants = ', '.join(new_participants)
+            speaker_names_used = new_participants
+
+        # Update speaker usage statistics
+        if speaker_names_used:
+            update_speaker_usage(speaker_names_used)
+
+        # Update speaker voice embeddings if available
+        embeddings_updated = 0
+        snippets_created = 0
+        if recording.speaker_embeddings and speaker_map:
+            try:
+                embeddings_data = json.loads(recording.speaker_embeddings) if isinstance(recording.speaker_embeddings, str) else recording.speaker_embeddings
+
+                # Build reverse map: SPEAKER_XX -> actual name assigned
+                speaker_label_to_name = {}
+                for speaker_label, speaker_info in speaker_map.items():
+                    name = speaker_info.get('name', '').strip()
+                    if speaker_info.get('isMe') and not name:
+                        name = current_user.name or 'Me'
+                    if name and not re.match(r'^SPEAKER_\d+$', name, re.IGNORECASE):
+                        speaker_label_to_name[speaker_label] = name
+
+                for speaker_label, embedding in embeddings_data.items():
+                    if speaker_label in speaker_label_to_name and embedding and len(embedding) == 256:
+                        speaker_name = speaker_label_to_name[speaker_label]
+                        speaker_obj = Speaker.query.filter_by(
+                            user_id=current_user.id,
+                            name=speaker_name
+                        ).first()
+                        if speaker_obj:
+                            update_speaker_embedding(speaker_obj, embedding, recording.id)
+                            embeddings_updated += 1
+
+                if speaker_label_to_name:
+                    snippets_created = create_speaker_snippets(recording.id, speaker_map)
+            except Exception as e:
+                current_app.logger.error(f"Error updating speaker embeddings: {e}", exc_info=True)
+
+        db.session.commit()
+
+        summary_queued = False
+        if regenerate_summary:
+            job_queue.enqueue(
+                user_id=current_user.id,
+                recording_id=recording.id,
+                job_type='summarize',
+                params={'user_id': current_user.id}
+            )
+            summary_queued = True
+
+        return jsonify({
+            'success': True,
+            'message': 'Speakers updated successfully.',
+            'recording': {
+                'id': recording.id,
+                'title': recording.title,
+                'participants': recording.participants,
+                'status': recording.status
+            },
+            'summary_queued': summary_queued,
+            'embeddings_updated': embeddings_updated,
+            'snippets_created': snippets_created
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating speakers for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@api_v1_bp.route('/recordings/<int:recording_id>/speakers/identify', methods=['POST'])
+@login_required
+def identify_speakers(recording_id):
+    """
+    Trigger LLM-based auto-identification of speakers from transcript context.
+    Returns suggestions only — does not modify the recording.
+    """
+    from src.services.llm import call_llm_completion
+    from src.utils import safe_json_loads
+    from src.models.system_settings import SystemSetting
+
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if not has_recording_access(recording, current_user):
+            return jsonify({'error': 'Permission denied'}), 403
+
+        if not recording.transcription:
+            return jsonify({'error': 'No transcription available for speaker identification'}), 400
+
+        try:
+            transcription_data = json.loads(recording.transcription)
+        except (json.JSONDecodeError, TypeError):
+            return jsonify({'error': 'Transcription format not supported for auto-identification'}), 400
+
+        if not isinstance(transcription_data, list):
+            return jsonify({'error': 'Transcription format not supported for auto-identification'}), 400
+
+        # Extract unique speakers in order of appearance
+        seen_speakers = set()
+        unique_speakers = []
+        for segment in transcription_data:
+            speaker = segment.get('speaker')
+            if speaker and speaker not in seen_speakers:
+                seen_speakers.add(speaker)
+                unique_speakers.append(speaker)
+
+        if not unique_speakers:
+            return jsonify({'error': 'No speakers found in transcription'}), 400
+
+        # Normalize all labels to SPEAKER_XX format
+        speaker_to_label = {}
+        for idx, speaker in enumerate(unique_speakers):
+            speaker_to_label[speaker] = f'SPEAKER_{str(idx).zfill(2)}'
+
+        # Create temporary transcript with normalized labels
+        temp_transcript = []
+        for segment in transcription_data:
+            temp_segment = segment.copy()
+            original_speaker = segment.get('speaker')
+            if original_speaker:
+                temp_segment['speaker'] = speaker_to_label[original_speaker]
+            temp_transcript.append(temp_segment)
+
+        # Format transcript as text for LLM
+        formatted_lines = []
+        for segment in temp_transcript:
+            speaker = segment.get('speaker', 'Unknown Speaker')
+            sentence = segment.get('sentence', '')
+            formatted_lines.append(f"[{speaker}]: {sentence}")
+        formatted_transcription = "\n".join(formatted_lines)
+
+        speaker_labels = list(speaker_to_label.values())
+
+        # Apply configurable transcript length limit
+        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+        if transcript_limit == -1:
+            transcript_text = formatted_transcription
+        else:
+            transcript_text = formatted_transcription[:transcript_limit]
+
+        prompt = f"""Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.
+
+The speakers that need to be identified are: {', '.join(speaker_labels)}
+
+Look for clues in the conversation such as:
+- Names mentioned by other speakers when addressing someone
+- Self-introductions or references to their own name
+- Context clues about roles, relationships, or positions
+- Any direct mentions of names in the dialogue
+
+Here is the complete conversation transcript:
+
+{transcript_text}
+
+Based on the conversation above, identify the most likely real names for the speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.
+
+Respond with a single JSON object where keys are the speaker labels (e.g., "SPEAKER_01") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string "".
+
+Example format:
+{{
+  "SPEAKER_01": "Jane Smith",
+  "SPEAKER_03": "Bob Johnson",
+  "SPEAKER_05": ""
+}}
+
+JSON Response:
+"""
+
+        try:
+            completion = call_llm_completion(
+                messages=[
+                    {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                response_format={"type": "json_object"},
+                user_id=current_user.id,
+                operation_type='speaker_identification'
+            )
+            response_content = completion.choices[0].message.content
+            identified_map = safe_json_loads(response_content, {})
+
+            # Post-process: clear "Unknown"/"N/A" values
+            for speaker_label, identified_name in identified_map.items():
+                if identified_name and identified_name.strip().lower() in ["unknown", "n/a", "not available", "unclear"]:
+                    identified_map[speaker_label] = ""
+        except Exception as e:
+            current_app.logger.error(f"[Auto-Identify] Error calling LLM: {e}", exc_info=True)
+            return jsonify({'error': f'Failed to identify speakers: {str(e)}'}), 500
+
+        # Map results back to original speaker labels
+        final_speaker_map = {}
+        for original_speaker, temp_label in speaker_to_label.items():
+            if temp_label in identified_map:
+                final_speaker_map[original_speaker] = identified_map[temp_label]
+
+        return jsonify({'success': True, 'speaker_map': final_speaker_map})
+
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 503
+    except Exception as e:
+        current_app.logger.error(f"Error during auto speaker identification for recording {recording_id}: {e}", exc_info=True)
+        return jsonify({'error': f'An unexpected error occurred: {str(e)}'}), 500
+
+
+# =============================================================================
 # Processing Operations
 # =============================================================================
 
@@ -1961,6 +2314,31 @@ def batch_transcribe_recordings():
         'queued': success_count,
         'failed': len(results) - success_count,
         'results': results
+    })
+
+
+# =============================================================================
+# Settings
+# =============================================================================
+
+@api_v1_bp.route('/settings/auto-summarization', methods=['PUT'])
+@login_required
+def update_auto_summarization():
+    """Toggle auto-summarization for the current user."""
+    data = request.get_json()
+
+    if data is None:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    if 'enabled' not in data:
+        return jsonify({'error': 'enabled field is required'}), 400
+
+    current_user.auto_summarization = bool(data['enabled'])
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'auto_summarization': current_user.auto_summarization
     })
 
 
