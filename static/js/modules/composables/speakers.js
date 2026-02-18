@@ -773,20 +773,24 @@ export function useSpeakers(state, utils, processedTranscription) {
 
             // Update speakerMap with the identified names
             let identifiedCount = 0;
+            let nameChanges = ''
             for (const speakerId in data.speaker_map) {
                 const identifiedName = data.speaker_map[speakerId];
                 if (!identifiedName || !identifiedName.trim()) continue;
                 const target = speakerMap.value[speakerId];
                 if (!target) continue;
 
-                if (onlyFillMissing.value) {
-                    const existing = target.name;
-                    if (!existing || existing.trim() === '') {
+                if (onlyFillMissing.value){
+                    if(speakerId.includes('SPEAKER_')) {
+                        // Only fill missing names for generic speaker IDs (e.g., SPEAKER_01)
                         target.name = identifiedName;
                         identifiedCount++;
+                        nameChanges += `\n${speakerId}: ${identifiedName}`;
                     }
                 } else {
                     // Don't overwrite a more-specific existing name with a less-specific result.
+                    // speakerMap loads with no names, so any identified name is an improvement over blank. 
+                    // But if the user has already typed a full name, we don't want to overwrite it with a shorter suggestion from the LLM.
                     const existingName = target.name || '';
                     const existingTokens = existingName.trim().split(/\s+/).filter(Boolean).length;
                     const identifiedTokens = identifiedName.trim().split(/\s+/).filter(Boolean).length;
@@ -798,11 +802,12 @@ export function useSpeakers(state, utils, processedTranscription) {
 
                     target.name = identifiedName;
                     identifiedCount++;
+                    nameChanges += `\n${speakerId}: ${identifiedName}`;
                 }
             }
 
             if (identifiedCount > 0) {
-                showToast(`${identifiedCount} speaker(s) identified successfully!`, 'fa-check-circle');
+                showToast(`${identifiedCount} speaker(s) identified successfully!${nameChanges}`, 'fa-check-circle');
             } else {
                 showToast('No speakers could be identified from the context.', 'fa-info-circle');
             }

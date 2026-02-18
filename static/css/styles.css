@@ -2496,6 +2496,7 @@ body {
     display: block !important;
     max-width: 450px;
     word-wrap: break-word;
+    white-space: pre-line;  
     /* All other styles handled by Tailwind classes */
 }
 

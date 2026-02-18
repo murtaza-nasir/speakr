@@ -53,8 +53,7 @@ export const showToast = (message, iconClass = 'fa-info-circle', duration = 3000
         fullIconClass = `fas ${iconClass}`;
     }
 
-    toast.innerHTML = `
-        <i class="${fullIconClass}" style="color: ${iconColor}"></i>
+    toast.innerHTML = `<i class="${fullIconClass}" style="color: ${iconColor}"></i>
         <span class="flex-1">${message}</span>
     `;
 
