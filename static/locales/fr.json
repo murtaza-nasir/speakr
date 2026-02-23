@@ -95,7 +95,10 @@
     "tagManagement": "Gestion des Étiquettes",
     "templates": "Modèles",
     "transcriptTemplates": "Modèles de Transcription",
-    "promptOptions": "Options de Prompt"
+    "promptOptions": "Options de Prompt",
+    "apiTokens": "Jetons API",
+    "folderManagement": "Gestion des dossiers",
+    "namingTemplates": "Nommage"
   },
   "namingTemplates": {
     "tabTitle": "Nommage",
@@ -340,7 +343,8 @@
     "shareRecording": "Partager l'Enregistrement",
     "toggleTheme": "Changer de thème",
     "updateTag": "Update Tag",
-    "saveSettings": "Enregistrer les Paramètres"
+    "saveSettings": "Enregistrer les Paramètres",
+    "copy": "Copier"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmer le Nouveau Mot de Passe",
@@ -532,7 +536,10 @@
     "noExportTemplate": "Aucun modèle (utiliser le défaut de l'utilisateur)",
     "tagName": "Nom de l'Étiquette *",
     "tagNamePlaceholder": "ex., Réunions, Entretiens",
-    "title": "Modifier l'Étiquette"
+    "title": "Modifier l'Étiquette",
+    "namingTemplate": "Modèle de nommage",
+    "namingTemplateHint": "Sélectionnez un modèle de nommage pour formater automatiquement les titres des enregistrements avec cette étiquette",
+    "noNamingTemplate": "Pas de modèle (utiliser le défaut ou le titre IA)"
   },
   "errors": {
     "audioRecordingFailed": "音频录制失败。请检查您的麦克风。",
@@ -693,7 +700,8 @@
     "summaryGenerationTimedOut": "La génération du résumé a expiré",
     "summaryRegenerationStarted": "Régénération du résumé lancée",
     "summaryUpdated": "Résumé mis à jour !",
-    "transcriptUpdated": "Transcription mise à jour avec succès !"
+    "transcriptUpdated": "Transcription mise à jour avec succès !",
+    "speakerName": "Nom de l'orateur"
   },
   "inquire": {
     "title": "Enquêter",
@@ -741,7 +749,37 @@
     "time": "fois",
     "times": "fois",
     "last": "Dernier",
-    "added": "Ajouté"
+    "added": "Ajouté",
+    "confidence": "Confiance",
+    "confidenceHigh": "élevée",
+    "confidenceLow": "faible",
+    "confidenceMedium": "moyenne",
+    "created": "Créé",
+    "description": "Gérez vos orateurs sauvegardés. Ils sont automatiquement enregistrés lorsque vous utilisez des noms d'orateurs dans vos enregistrements.",
+    "failedToLoad": "Échec du chargement des orateurs",
+    "failedToLoadSnippets": "Échec du chargement des extraits",
+    "keepThisSpeaker": "Garder cet orateur (les autres seront fusionnés) :",
+    "lastUsed": "Dernière utilisation",
+    "loadingSpeakers": "Chargement des orateurs...",
+    "match": "correspondance",
+    "mergeDescription": "Combiner plusieurs profils d'orateurs en un seul. Tous les embeddings, extraits et données d'utilisation seront fusionnés.",
+    "mergeFailed": "Échec de la fusion des orateurs",
+    "mergeNSpeakers": "Fusionner {{count}} orateurs",
+    "mergeSpeakers": "Fusionner les orateurs",
+    "mergeSuccess": "Orateurs fusionnés avec succès",
+    "noSnippetsAvailable": "Aucun extrait disponible",
+    "noSpeakersYet": "Aucun orateur sauvegardé pour le moment",
+    "sample": "échantillon",
+    "samples": "échantillons",
+    "selectToMerge": "Sélectionner 2+ pour fusionner",
+    "speakersToMerge": "Orateurs à fusionner :",
+    "speakersWillAppear": "Les orateurs apparaîtront ici lorsque vous utiliserez des noms d'orateurs dans vos enregistrements",
+    "targetWillReceive": "L'orateur sélectionné recevra toutes les données vocales et les extraits des autres.",
+    "totalSpeakers": "orateurs sauvegardés",
+    "usedTimes": "Utilisé",
+    "viewSnippets": "Voir les extraits",
+    "voiceMatchSuggestions": "Suggestions de correspondance vocale",
+    "voiceProfile": "Profil vocal"
   },
   "manageSpeakersModal": {
     "created": "Créé",
@@ -854,7 +892,19 @@
     "stopRecording": "Arrêter l'Enregistrement",
     "systemAudio": "Audio Système",
     "systemAudioNotSupported": "L'enregistrement audio système n'est pas pris en charge dans ce navigateur",
-    "title": "Enregistrement Audio"
+    "title": "Enregistrement Audio",
+    "discardRecovery": "Ignorer",
+    "duration": "Durée",
+    "modeBoth": "Microphone + Système",
+    "modeMicrophone": "Microphone",
+    "modeSystem": "Audio système",
+    "recordingMode": "Mode d'enregistrement",
+    "recoveryDescription": "Nous avons trouvé un enregistrement inachevé d'une session précédente. Souhaitez-vous le restaurer ?",
+    "recoveryFound": "Enregistrement non sauvegardé détecté",
+    "recoveryTitle": "Récupérer l'enregistrement",
+    "restoreRecording": "Restaurer",
+    "size": "Taille",
+    "startedAt": "Commencé le"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "L'audio sera re-transcrit à partir de zéro. Cela régénérera également le titre et le résumé basés sur la nouvelle transcription.",
@@ -1107,7 +1157,11 @@
     "start": "Début",
     "end": "Fin",
     "location": "Lieu",
-    "attendees": "Participants"
+    "attendees": "Participants",
+    "confirmDelete": "Supprimer l'événement « {title} » ?",
+    "delete": "Supprimer",
+    "deleteFailed": "Échec de la suppression de l'événement",
+    "deleted": "Événement supprimé"
   },
   "pwa": {
     "installApp": "Installer l'App",
@@ -1198,5 +1252,56 @@
     "default": "Par défaut",
     "recordingData": "Données d'enregistrement",
     "contentSections": "Sections de contenu"
+  },
+  "apiTokens": {
+    "activeTokens": "Jetons actifs",
+    "createFirstToken": "Créez votre premier jeton API pour activer l'accès programmatique",
+    "createToken": "Créer un jeton",
+    "created": "Créé",
+    "description": "Créez et gérez des jetons API pour l'accès programmatique à votre compte",
+    "expires": "Expire",
+    "lastUsed": "Dernière utilisation",
+    "neverUsed": "Jamais utilisé",
+    "noExpiration": "Pas d'expiration",
+    "noTokens": "Aucun jeton API",
+    "securityNotice": "Avis de sécurité",
+    "securityWarning": "Traitez les jetons API comme des mots de passe. Ils fournissent un accès complet à votre compte. Ne partagez jamais les jetons dans des zones accessibles au public comme GitHub, le code côté client ou les logs",
+    "title": "Jetons API",
+    "usageExamples": "Exemples d'utilisation"
+  },
+  "folderManagement": {
+    "allFolders": "Tous les dossiers",
+    "asrDefaults": "Paramètres ASR par défaut",
+    "autoShareOnApply": "Partager automatiquement avec les membres du groupe",
+    "autoShareOnApplyHelp": "Partager automatiquement les enregistrements avec tous les membres du groupe lors de l'ajout à ce dossier",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce dossier ? Les enregistrements seront retirés du dossier mais pas supprimés.",
+    "createFolder": "Créer un dossier",
+    "customPrompt": "Prompt personnalisé",
+    "defaultLanguage": "Langue par défaut",
+    "deleteFolder": "Supprimer le dossier",
+    "description": "Organisez vos enregistrements dans des dossiers. Contrairement aux étiquettes, un enregistrement ne peut appartenir qu'à un seul dossier. Les prompts de dossier sont appliqués avant les prompts utilisateur mais après les prompts d'étiquette.",
+    "editFolder": "Modifier le dossier",
+    "filterByFolder": "Filtrer par dossier",
+    "folderColor": "Couleur du dossier",
+    "folderName": "Nom du dossier",
+    "groupSettings": "Paramètres de groupe",
+    "maxSpeakers": "Orateurs max.",
+    "minSpeakers": "Orateurs min.",
+    "moveToFolder": "Déplacer vers le dossier",
+    "namingTemplate": "Modèle de nommage",
+    "noFolder": "Aucun dossier",
+    "noFolders": "Aucun dossier créé pour le moment",
+    "noFoldersDescription": "Créez votre premier dossier pour organiser vos enregistrements",
+    "protectFromDeletion": "Protéger contre la suppression",
+    "protectFromDeletionHelp": "Protéger les enregistrements de ce dossier contre la suppression automatique",
+    "recordings": "enregistrements",
+    "removeFromFolder": "Retirer du dossier",
+    "retentionDays": "Jours de rétention",
+    "retentionDaysHelp": "Les enregistrements de ce dossier seront supprimés après ce nombre de jours. Laisser vide pour utiliser la rétention globale.",
+    "retentionSettings": "Paramètres de rétention",
+    "selectNamingTemplate": "Sélectionner un modèle de nommage...",
+    "shareWithGroupLead": "Partager avec les administrateurs du groupe",
+    "shareWithGroupLeadHelp": "Partager les enregistrements avec les administrateurs du groupe lors de l'ajout à ce dossier",
+    "title": "Gestion des dossiers"
   }
 }

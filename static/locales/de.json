@@ -95,7 +95,10 @@
     "tagManagement": "Tag-Verwaltung",
     "templates": "Vorlagen",
     "transcriptTemplates": "Transkript-Vorlagen",
-    "promptOptions": "Prompt-Optionen"
+    "promptOptions": "Prompt-Optionen",
+    "apiTokens": "API-Token",
+    "folderManagement": "Ordnerverwaltung",
+    "namingTemplates": "Benennung"
   },
   "namingTemplates": {
     "tabTitle": "Benennung",
@@ -346,7 +349,8 @@
     "shareRecording": "Aufnahme teilen",
     "toggleTheme": "Design umschalten",
     "updateTag": "Update Tag",
-    "saveSettings": "Einstellungen Speichern"
+    "saveSettings": "Einstellungen Speichern",
+    "copy": "Kopieren"
   },
   "changePasswordModal": {
     "confirmPassword": "Neues Passwort Bestätigen",
@@ -538,7 +542,10 @@
     "noExportTemplate": "Keine Vorlage (Benutzerstandard verwenden)",
     "tagName": "Tag-Name *",
     "tagNamePlaceholder": "z.B. Meetings, Interviews",
-    "title": "Tag Bearbeiten"
+    "title": "Tag Bearbeiten",
+    "namingTemplate": "Benennungsvorlage",
+    "namingTemplateHint": "Wählen Sie eine Benennungsvorlage, um Titel für Aufnahmen mit diesem Tag automatisch zu formatieren",
+    "noNamingTemplate": "Keine Vorlage (Standard oder KI-Titel verwenden)"
   },
   "errors": {
     "audioRecordingFailed": "音频录制失败。请检查您的麦克风。",
@@ -891,7 +898,19 @@
     "stopRecording": "Aufnahme stoppen",
     "systemAudio": "System-Audio",
     "systemAudioNotSupported": "System-Audio-Aufnahme wird in diesem Browser nicht unterstützt",
-    "title": "Audio-Aufnahme"
+    "title": "Audio-Aufnahme",
+    "discardRecovery": "Verwerfen",
+    "duration": "Dauer",
+    "modeBoth": "Mikrofon + System",
+    "modeMicrophone": "Mikrofon",
+    "modeSystem": "System-Audio",
+    "recordingMode": "Aufnahmemodus",
+    "recoveryDescription": "Wir haben eine unvollständige Aufnahme aus einer früheren Sitzung gefunden. Möchten Sie diese wiederherstellen?",
+    "recoveryFound": "Nicht gespeicherte Aufnahme gefunden",
+    "recoveryTitle": "Aufnahme wiederherstellen",
+    "restoreRecording": "Wiederherstellen",
+    "size": "Größe",
+    "startedAt": "Gestartet am"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",
@@ -1138,7 +1157,11 @@
     "start": "Beginn",
     "end": "Ende",
     "location": "Ort",
-    "attendees": "Teilnehmer"
+    "attendees": "Teilnehmer",
+    "confirmDelete": "Ereignis \"{title}\" löschen?",
+    "delete": "Löschen",
+    "deleteFailed": "Ereignis konnte nicht gelöscht werden",
+    "deleted": "Ereignis gelöscht"
   },
   "pwa": {
     "installApp": "App installieren",
@@ -1229,5 +1252,56 @@
     "default": "Standard",
     "recordingData": "Aufnahmedaten",
     "contentSections": "Inhaltsbereiche"
+  },
+  "apiTokens": {
+    "activeTokens": "Aktive Token",
+    "createFirstToken": "Erstellen Sie Ihr erstes API-Token, um programmgesteuerten Zugriff zu ermöglichen",
+    "createToken": "Token erstellen",
+    "created": "Erstellt",
+    "description": "Erstellen und verwalten Sie API-Token für den programmgesteuerten Zugriff auf Ihr Konto",
+    "expires": "Läuft ab",
+    "lastUsed": "Zuletzt verwendet",
+    "neverUsed": "Nie verwendet",
+    "noExpiration": "Kein Ablaufdatum",
+    "noTokens": "Keine API-Token",
+    "securityNotice": "Sicherheitshinweis",
+    "securityWarning": "Behandeln Sie API-Token wie Passwörter. Sie bieten vollen Zugriff auf Ihr Konto. Teilen Sie Token niemals in öffentlich zugänglichen Bereichen wie GitHub, clientseitigem Code oder Logs",
+    "title": "API-Token",
+    "usageExamples": "Verwendungsbeispiele"
+  },
+  "folderManagement": {
+    "allFolders": "Alle Ordner",
+    "asrDefaults": "ASR-Standardwerte",
+    "autoShareOnApply": "Automatisch mit Gruppenmitgliedern teilen",
+    "autoShareOnApplyHelp": "Aufnahmen automatisch mit allen Gruppenmitgliedern teilen, wenn sie diesem Ordner hinzugefügt werden",
+    "confirmDelete": "Möchten Sie diesen Ordner wirklich löschen? Aufnahmen werden aus dem Ordner entfernt, aber nicht gelöscht.",
+    "createFolder": "Ordner erstellen",
+    "customPrompt": "Benutzerdefinierter Prompt",
+    "defaultLanguage": "Standardsprache",
+    "deleteFolder": "Ordner löschen",
+    "description": "Organisieren Sie Ihre Aufnahmen in Ordnern. Im Gegensatz zu Tags kann eine Aufnahme nur einem Ordner zugeordnet werden. Ordner-Prompts werden vor Benutzer-Prompts, aber nach Tag-Prompts angewendet.",
+    "editFolder": "Ordner bearbeiten",
+    "filterByFolder": "Nach Ordner filtern",
+    "folderColor": "Ordnerfarbe",
+    "folderName": "Ordnername",
+    "groupSettings": "Gruppeneinstellungen",
+    "maxSpeakers": "Max. Sprecher",
+    "minSpeakers": "Min. Sprecher",
+    "moveToFolder": "In Ordner verschieben",
+    "namingTemplate": "Benennungsvorlage",
+    "noFolder": "Kein Ordner",
+    "noFolders": "Noch keine Ordner erstellt",
+    "noFoldersDescription": "Erstellen Sie Ihren ersten Ordner, um Ihre Aufnahmen zu organisieren",
+    "protectFromDeletion": "Vor Löschung schützen",
+    "protectFromDeletionHelp": "Aufnahmen in diesem Ordner vor automatischer Löschung schützen",
+    "recordings": "Aufnahmen",
+    "removeFromFolder": "Aus Ordner entfernen",
+    "retentionDays": "Aufbewahrungstage",
+    "retentionDaysHelp": "Aufnahmen in diesem Ordner werden nach dieser Anzahl von Tagen gelöscht. Leer lassen für globale Aufbewahrungsregel.",
+    "retentionSettings": "Aufbewahrungseinstellungen",
+    "selectNamingTemplate": "Benennungsvorlage auswählen...",
+    "shareWithGroupLead": "Mit Gruppenadministratoren teilen",
+    "shareWithGroupLeadHelp": "Aufnahmen mit Gruppenadministratoren teilen, wenn sie diesem Ordner hinzugefügt werden",
+    "title": "Ordnerverwaltung"
   }
 }
