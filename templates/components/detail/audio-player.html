@@ -91,12 +91,31 @@
             <!-- Spacer -->
             <div class="flex-1"></div>
 
-            <!-- Volume Button -->
-            <button @click="toggleAudioMute"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
-                    :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
-                <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-sm"></i>
-            </button>
+            <!-- Volume Control -->
+            <div class="relative flex items-center flex-shrink-0 group/vol"
+                 @mouseenter="showVolumeSlider = true"
+                 @mouseleave="showVolumeSlider = false">
+                <button @click="toggleAudioMute"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all"
+                        :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
+                        :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
+                    <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
+                </button>
+                <!-- Volume Slider (expands on hover, outer div is invisible hover bridge) -->
+                <div class="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50 transition-all duration-200"
+                     :class="showVolumeSlider ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'"
+                     @mouseenter="showVolumeSlider = true"
+                     @mouseleave="showVolumeSlider = false">
+                    <div class="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-lg shadow-xl flex flex-col items-center gap-1">
+                        <span class="text-[10px] font-mono text-[var(--text-muted)]">${ Math.round(playerVolume * 100) }</span>
+                        <input type="range" min="0" max="1" step="0.05"
+                               :value="audioIsMuted ? 0 : playerVolume"
+                               @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                               class="volume-slider-vertical"
+                               style="height: 80px;">
+                    </div>
+                </div>
+            </div>
 
             <!-- Download Button -->
             <a :href="'/audio/' + selectedRecording.id + '?download=true'"

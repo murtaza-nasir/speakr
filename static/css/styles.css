@@ -3069,6 +3069,62 @@ body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
 }
 
+/* Vertical volume slider (popup) */
+.volume-slider-vertical {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 20px;
+}
+
+.volume-slider-vertical::-webkit-slider-runnable-track {
+    background: var(--border-accent);
+    opacity: 0.5;
+    width: 6px;
+    border-radius: 3px;
+}
+
+.dark .volume-slider-vertical::-webkit-slider-runnable-track {
+    background: var(--border-accent);
+    opacity: 0.6;
+}
+
+.volume-slider-vertical::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
+.volume-slider-vertical::-moz-range-track {
+    background: var(--border-accent);
+    opacity: 0.5;
+    width: 6px;
+    border-radius: 3px;
+}
+
+.dark .volume-slider-vertical::-moz-range-track {
+    background: var(--border-accent);
+    opacity: 0.6;
+}
+
+.volume-slider-vertical::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text-accent);
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+}
+
 /* Player play button - accent colored with proper contrast */
 .player-play-button {
     background-color: var(--text-accent);
