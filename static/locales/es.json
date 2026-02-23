@@ -95,7 +95,10 @@
     "speakersManagement": "Gestión de Hablantes",
     "tagManagement": "Gestión de Etiquetas",
     "templates": "Plantillas",
-    "transcriptTemplates": "Plantillas de Transcripción"
+    "transcriptTemplates": "Plantillas de Transcripción",
+    "apiTokens": "Tokens de API",
+    "folderManagement": "Gestión de carpetas",
+    "namingTemplates": "Nombrado"
   },
   "eventExtraction": {
     "title": "Extracción de Eventos",
@@ -346,7 +349,8 @@
     "saveSettings": "Guardar Configuración",
     "shareRecording": "Compartir Grabación",
     "toggleTheme": "Cambiar tema",
-    "updateTag": "Update Tag"
+    "updateTag": "Update Tag",
+    "copy": "Copiar"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmar Nueva Contraseña",
@@ -538,7 +542,10 @@
     "noExportTemplate": "Sin plantilla (usar predeterminado del usuario)",
     "tagName": "Nombre de la Etiqueta *",
     "tagNamePlaceholder": "ej., Reuniones, Entrevistas",
-    "title": "Editar Etiqueta"
+    "title": "Editar Etiqueta",
+    "namingTemplate": "Plantilla de nombrado",
+    "namingTemplateHint": "Selecciona una plantilla de nombrado para formatear automáticamente los títulos de las grabaciones con esta etiqueta",
+    "noNamingTemplate": "Sin plantilla (usar predeterminado o título IA)"
   },
   "errors": {
     "audioRecordingFailed": "音频录制失败。请检查您的麦克风。",
@@ -699,7 +706,8 @@
     "summaryGenerationTimedOut": "La generación del resumen expiró",
     "summaryRegenerationStarted": "Regeneración del resumen iniciada",
     "summaryUpdated": "¡Resumen actualizado!",
-    "transcriptUpdated": "¡Transcripción actualizada correctamente!"
+    "transcriptUpdated": "¡Transcripción actualizada correctamente!",
+    "speakerName": "Nombre del hablante"
   },
   "inquire": {
     "title": "Consultar",
@@ -747,7 +755,37 @@
     "time": "vez",
     "times": "veces",
     "last": "Último",
-    "added": "Añadido"
+    "added": "Añadido",
+    "confidence": "Confianza",
+    "confidenceHigh": "alta",
+    "confidenceLow": "baja",
+    "confidenceMedium": "media",
+    "created": "Creado",
+    "description": "Gestiona tus hablantes guardados. Se guardan automáticamente cuando usas nombres de hablantes en tus grabaciones.",
+    "failedToLoad": "Error al cargar hablantes",
+    "failedToLoadSnippets": "Error al cargar fragmentos",
+    "keepThisSpeaker": "Mantener este hablante (los demás se fusionarán en él):",
+    "lastUsed": "Último uso",
+    "loadingSpeakers": "Cargando hablantes...",
+    "match": "coincidencia",
+    "mergeDescription": "Combinar varios perfiles de hablante en uno. Todos los embeddings, fragmentos y datos de uso se fusionarán.",
+    "mergeFailed": "Error al fusionar hablantes",
+    "mergeNSpeakers": "Fusionar {{count}} hablantes",
+    "mergeSpeakers": "Fusionar hablantes",
+    "mergeSuccess": "Hablantes fusionados correctamente",
+    "noSnippetsAvailable": "Sin fragmentos disponibles",
+    "noSpeakersYet": "Aún no hay hablantes guardados",
+    "sample": "muestra",
+    "samples": "muestras",
+    "selectToMerge": "Seleccionar 2+ para fusionar",
+    "speakersToMerge": "Hablantes a fusionar:",
+    "speakersWillAppear": "Los hablantes aparecerán aquí cuando uses nombres de hablantes en tus grabaciones",
+    "targetWillReceive": "El hablante seleccionado recibirá todos los datos de voz y fragmentos de los demás.",
+    "totalSpeakers": "hablantes guardados",
+    "usedTimes": "Usado",
+    "viewSnippets": "Ver fragmentos",
+    "voiceMatchSuggestions": "Sugerencias de coincidencia de voz",
+    "voiceProfile": "Perfil de voz"
   },
   "manageSpeakersModal": {
     "created": "Creado",
@@ -860,7 +898,19 @@
     "stopRecording": "Detener Grabación",
     "systemAudio": "Audio del Sistema",
     "systemAudioNotSupported": "La grabación de audio del sistema no es compatible con este navegador",
-    "title": "Grabación de Audio"
+    "title": "Grabación de Audio",
+    "discardRecovery": "Descartar",
+    "duration": "Duración",
+    "modeBoth": "Micrófono + Sistema",
+    "modeMicrophone": "Micrófono",
+    "modeSystem": "Audio del sistema",
+    "recordingMode": "Modo de grabación",
+    "recoveryDescription": "Encontramos una grabación sin terminar de una sesión anterior. ¿Deseas restaurarla?",
+    "recoveryFound": "Grabación no guardada detectada",
+    "recoveryTitle": "Recuperar grabación",
+    "restoreRecording": "Restaurar",
+    "size": "Tamaño",
+    "startedAt": "Iniciado el"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "El audio será re-transcrito desde cero. Esto también regenerará el título y resumen basado en la nueva transcripción.",
@@ -1107,7 +1157,11 @@
     "start": "Inicio",
     "end": "Fin",
     "location": "Ubicación",
-    "attendees": "Asistentes"
+    "attendees": "Asistentes",
+    "confirmDelete": "¿Eliminar evento \"{title}\"?",
+    "delete": "Eliminar",
+    "deleteFailed": "Error al eliminar el evento",
+    "deleted": "Evento eliminado"
   },
   "pwa": {
     "installApp": "Instalar App",
@@ -1198,5 +1252,56 @@
     "default": "Predeterminada",
     "recordingData": "Datos de grabación",
     "contentSections": "Secciones de contenido"
+  },
+  "apiTokens": {
+    "activeTokens": "Tokens activos",
+    "createFirstToken": "Crea tu primer token de API para habilitar el acceso programático",
+    "createToken": "Crear token",
+    "created": "Creado",
+    "description": "Crea y gestiona tokens de API para acceso programático a tu cuenta",
+    "expires": "Expira",
+    "lastUsed": "Último uso",
+    "neverUsed": "Nunca usado",
+    "noExpiration": "Sin expiración",
+    "noTokens": "Sin tokens de API",
+    "securityNotice": "Aviso de seguridad",
+    "securityWarning": "Trata los tokens de API como contraseñas. Proporcionan acceso completo a tu cuenta. Nunca compartas tokens en áreas públicas como GitHub, código del lado del cliente o logs",
+    "title": "Tokens de API",
+    "usageExamples": "Ejemplos de uso"
+  },
+  "folderManagement": {
+    "allFolders": "Todas las carpetas",
+    "asrDefaults": "Valores ASR predeterminados",
+    "autoShareOnApply": "Compartir automáticamente con miembros del grupo",
+    "autoShareOnApplyHelp": "Compartir grabaciones automáticamente con todos los miembros del grupo al añadirlas a esta carpeta",
+    "confirmDelete": "¿Estás seguro de que quieres eliminar esta carpeta? Las grabaciones se eliminarán de la carpeta pero no se borrarán.",
+    "createFolder": "Crear carpeta",
+    "customPrompt": "Prompt personalizado",
+    "defaultLanguage": "Idioma predeterminado",
+    "deleteFolder": "Eliminar carpeta",
+    "description": "Organiza tus grabaciones en carpetas. A diferencia de las etiquetas, una grabación solo puede pertenecer a una carpeta. Los prompts de carpeta se aplican antes que los del usuario pero después de los de etiqueta.",
+    "editFolder": "Editar carpeta",
+    "filterByFolder": "Filtrar por carpeta",
+    "folderColor": "Color de carpeta",
+    "folderName": "Nombre de carpeta",
+    "groupSettings": "Configuración de grupo",
+    "maxSpeakers": "Máx. hablantes",
+    "minSpeakers": "Mín. hablantes",
+    "moveToFolder": "Mover a carpeta",
+    "namingTemplate": "Plantilla de nombrado",
+    "noFolder": "Sin carpeta",
+    "noFolders": "Aún no se han creado carpetas",
+    "noFoldersDescription": "Crea tu primera carpeta para organizar tus grabaciones",
+    "protectFromDeletion": "Proteger contra eliminación",
+    "protectFromDeletionHelp": "Proteger las grabaciones en esta carpeta contra la eliminación automática",
+    "recordings": "grabaciones",
+    "removeFromFolder": "Quitar de carpeta",
+    "retentionDays": "Días de retención",
+    "retentionDaysHelp": "Las grabaciones en esta carpeta se eliminarán después de estos días. Dejar vacío para usar la retención global.",
+    "retentionSettings": "Configuración de retención",
+    "selectNamingTemplate": "Seleccionar plantilla de nombrado...",
+    "shareWithGroupLead": "Compartir con administradores del grupo",
+    "shareWithGroupLeadHelp": "Compartir grabaciones con administradores del grupo al añadirlas a esta carpeta",
+    "title": "Gestión de carpetas"
   }
 }
