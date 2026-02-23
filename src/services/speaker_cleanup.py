@@ -3,8 +3,14 @@ Speaker cleanup service for managing orphaned speaker voice profiles.
 
 This module provides automatic cleanup of speaker records when their associated
 recordings are deleted through auto-deletion or manual deletion processes.
+
+By default, speaker profiles (including voice embeddings) are preserved even
+when all their recordings are deleted, since embeddings are aggregated and
+represent hours of manual identification work. Set DELETE_ORPHANED_SPEAKERS=true
+to enable automatic cleanup of speakers with no remaining recordings.
 """
 
+import os
 import logging
 import json
 from datetime import datetime
@@ -18,6 +24,10 @@ logger = logging.getLogger(__name__)
 def cleanup_orphaned_speakers(dry_run=False):
     """
     Clean up speaker records that no longer have any associated recordings.
+
+    Only runs if DELETE_ORPHANED_SPEAKERS=true is set. By default, speaker
+    profiles are preserved because voice embeddings are aggregated values
+    that can't be reconstructed from recordings alone.
 
     A speaker is considered orphaned when:
     - It has no SpeakerSnippet records
@@ -35,6 +45,17 @@ def cleanup_orphaned_speakers(dry_run=False):
                 'orphaned_speakers': list of dict (if dry_run=True)
             }
     """
+    delete_orphans = os.environ.get('DELETE_ORPHANED_SPEAKERS', 'false').lower() in ('true', '1', 'yes')
+
+    if not delete_orphans:
+        logger.debug("Speaker cleanup skipped (DELETE_ORPHANED_SPEAKERS is not enabled)")
+        return {
+            'speakers_deleted': 0,
+            'embeddings_removed': 0,
+            'speakers_evaluated': 0,
+            'orphaned_speakers': []
+        }
+
     logger.info("Starting speaker cleanup process (dry_run=%s)", dry_run)
 
     stats = {

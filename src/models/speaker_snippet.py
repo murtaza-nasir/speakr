@@ -25,7 +25,7 @@ class SpeakerSnippet(db.Model):
 
     # Relationships
     speaker = db.relationship('Speaker', backref=db.backref('snippets', lazy=True, cascade='all, delete-orphan'))
-    recording = db.relationship('Recording', backref=db.backref('speaker_snippets', lazy=True))
+    recording = db.relationship('Recording', backref=db.backref('speaker_snippets', lazy=True, cascade='all, delete-orphan'))
 
     def to_dict(self):
         """Convert model to dictionary representation."""

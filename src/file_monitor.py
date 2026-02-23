@@ -180,8 +180,9 @@ class FileMonitor:
                 continue
 
             # Check if file is still being written (size stability check)
+            stability_time = int(os.environ.get('AUTO_PROCESS_STABILITY_TIME', '5'))
             try:
-                if not self._is_file_stable(file_path):
+                if not self._is_file_stable(file_path, stability_time):
                     continue
             except FileNotFoundError:
                 # File might have been picked up by another worker after iterdir()
@@ -261,7 +262,7 @@ class FileMonitor:
             initial_mtime = file_path.stat().st_mtime
             
             # Wait a bit and check again
-            time.sleep(min(stability_time, 2))
+            time.sleep(stability_time)
             
             current_size = file_path.stat().st_size
             current_mtime = file_path.stat().st_mtime
