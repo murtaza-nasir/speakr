@@ -289,7 +289,7 @@
                     <button @click="autoIdentifySpeakers(false)" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-purple-600 text-white rounded-l-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
                         <i class="fas fa-magic mr-1 sm:mr-1.5"></i>
                         <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
-                        <span v-if="!isAutoIdentifying" class="sm:hidden">Auto</span>
+                        <span v-if="!isAutoIdentifying" class="sm:hidden" v-text="t('help.autoIdentifyMobile')"></span>
                         <span v-else>
                             <i class="fas fa-spinner fa-spin"></i>
                         </span>
@@ -301,15 +301,15 @@
                     <!-- Dropdown menu -->
                     <div v-if="showAutoIdDropdown" class="absolute bottom-full left-0 mb-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg z-50 min-w-[180px]">
                         <button @click="autoIdentifySpeakers(true)" class="w-full px-3 py-2 text-left text-xs sm:text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors rounded-md">
-                            <i class="fas fa-users mr-2"></i>Identify all speakers
+                            <i class="fas fa-users mr-2"></i><span v-text="t('help.identifyAllSpeakers')"></span>
                         </button>
                     </div>
                 </div>
                 <!-- Apply Suggested Button -->
                 <button v-if="hasAnySuggestions" @click="applySuggestedNames" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 active:scale-[0.98] transition-all flex items-center text-xs sm:text-sm font-medium">
                     <i class="fas fa-lightbulb mr-1 sm:mr-1.5"></i>
-                    <span class="hidden sm:inline">Apply Suggested</span>
-                    <span class="sm:hidden">Suggest</span>
+                    <span class="hidden sm:inline" v-text="t('help.applySuggested')"></span>
+                    <span class="sm:hidden" v-text="t('help.applySuggestedMobile')"></span>
                 </button>
             </div>
             <!-- Right: Cancel & Save Buttons -->

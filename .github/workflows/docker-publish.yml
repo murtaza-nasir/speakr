@@ -165,6 +165,7 @@ jobs:
             type=raw,value=lite,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
             type=semver,pattern={{version}}-lite
             type=semver,pattern={{major}}.{{minor}}-lite
+            type=sha,suffix=-lite
 
       # Build and push lightweight Docker image (no PyTorch/sentence-transformers)
       - name: Build and push lite Docker image

@@ -21,6 +21,10 @@ export function useSpeakers(state, utils, processedTranscription) {
 
     const { showToast, setGlobalError, onChatComplete } = utils;
 
+    // i18n helper — falls back to the provided fallback string if i18n is not loaded
+    const t = (key, params, fallback) => window.i18n ? window.i18n.t(key, params) : (fallback || key);
+    const tc = (key, count, params) => window.i18n ? window.i18n.tc(key, count, params) : (params && params.count != null ? `${params.count}` : key);
+
     // Current speaker highlight state
     let currentSpeakerId = null;
 
@@ -220,7 +224,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             selectedRecording.value = data.recording;
             editedTranscriptData.value = null;
 
-            showToast('Saved!', 'fa-check-circle', 2000, 'success');
+            showToast(t('help.saved'), 'fa-check-circle', 2000, 'success');
         } catch (error) {
             console.error('Save Transcript Error:', error);
             showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 3000, 'error');
@@ -272,8 +276,8 @@ export function useSpeakers(state, utils, processedTranscription) {
                 selectedRecording.value = summarizingRecording;
                 editedTranscriptData.value = null;
 
-                showToast('Transcript updated successfully!', 'fa-check-circle');
-                showToast('Summary regeneration started', 'fa-sync-alt');
+                showToast(t('help.transcriptUpdated'), 'fa-check-circle');
+                showToast(t('help.summaryRegenerationStarted'), 'fa-sync-alt');
 
                 // Poll for summary completion
                 pollForSummaryCompletion(selectedRecording.value.id);
@@ -285,7 +289,7 @@ export function useSpeakers(state, utils, processedTranscription) {
                 selectedRecording.value = data.recording;
                 editedTranscriptData.value = null;
 
-                showToast('Transcript updated successfully!', 'fa-check-circle');
+                showToast(t('help.transcriptUpdated'), 'fa-check-circle');
             }
         } catch (error) {
             console.error('Save Transcript Error:', error);
@@ -339,8 +343,8 @@ export function useSpeakers(state, utils, processedTranscription) {
                 }
                 selectedRecording.value = summarizingRecording;
 
-                showToast('Speaker names updated successfully!', 'fa-check-circle');
-                showToast('Summary regeneration started', 'fa-sync-alt');
+                showToast(t('help.speakerNamesUpdated'), 'fa-check-circle');
+                showToast(t('help.summaryRegenerationStarted'), 'fa-sync-alt');
 
                 // Poll for summary completion
                 pollForSummaryCompletion(selectedRecording.value.id);
@@ -352,7 +356,7 @@ export function useSpeakers(state, utils, processedTranscription) {
                 }
                 selectedRecording.value = data.recording;
 
-                showToast('Speaker names updated successfully!', 'fa-check-circle');
+                showToast(t('help.speakerNamesUpdated'), 'fa-check-circle');
             }
         } catch (error) {
             setGlobalError(`Failed to save speaker names: ${error.message}`);
@@ -418,17 +422,17 @@ export function useSpeakers(state, utils, processedTranscription) {
                         }
                     }
 
-                    showToast('Summary updated!', 'fa-check-circle');
+                    showToast(t('help.summaryUpdated'), 'fa-check-circle');
                     // Refresh token budget after LLM operation
                     if (onChatComplete) onChatComplete();
                 } else if (statusData.status === 'FAILED' || statusData.status === 'ERROR') {
                     // Stop polling if it failed
                     clearInterval(pollInterval);
-                    showToast('Summary generation failed', 'fa-exclamation-circle', 3000, 'error');
+                    showToast(t('help.summaryGenerationFailed'), 'fa-exclamation-circle', 3000, 'error');
                 } else if (attempts >= maxAttempts) {
                     // Stop polling after max attempts
                     clearInterval(pollInterval);
-                    showToast('Summary generation timed out', 'fa-clock', 3000, 'warning');
+                    showToast(t('help.summaryGenerationTimedOut'), 'fa-clock', 3000, 'warning');
                 }
             } catch (error) {
                 console.error('Error polling for summary:', error);
@@ -762,12 +766,12 @@ export function useSpeakers(state, utils, processedTranscription) {
         showAutoIdDropdown.value = false;
 
         if (!selectedRecording.value) {
-            showToast('No recording selected.', 'fa-exclamation-circle');
+            showToast(t('help.noRecordingSelected'), 'fa-exclamation-circle');
             return;
         }
 
         isAutoIdentifying.value = true;
-        showToast('Starting automatic speaker identification...', 'fa-magic');
+        showToast(t('help.startingAutoIdentification'), 'fa-magic');
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -808,9 +812,9 @@ export function useSpeakers(state, utils, processedTranscription) {
             }
 
             if (identifiedCount > 0) {
-                showToast(`${identifiedCount} speaker${identifiedCount === 1 ? '' : 's'} identified successfully!`, 'fa-check-circle');
+                showToast(tc('help.speakersIdentified', identifiedCount, { count: identifiedCount }), 'fa-check-circle');
             } else {
-                showToast('No speakers could be identified from the context.', 'fa-info-circle');
+                showToast(t('help.noSpeakersIdentified'), 'fa-info-circle');
             }
 
             // Refresh token budget after LLM operation
@@ -871,9 +875,9 @@ export function useSpeakers(state, utils, processedTranscription) {
         }
 
         if (appliedCount > 0) {
-            showToast(`Applied ${appliedCount} suggested name${appliedCount === 1 ? '' : 's'}`, 'fa-check-circle');
+            showToast(tc('help.appliedSuggestedNames', appliedCount, { count: appliedCount }), 'fa-check-circle');
         } else {
-            showToast('No suggestions to apply', 'fa-info-circle');
+            showToast(t('help.noSuggestionsToApply'), 'fa-info-circle');
         }
     };
 
@@ -938,7 +942,7 @@ export function useSpeakers(state, utils, processedTranscription) {
         const name = newSpeakerIsMe.value ? (currentUserName.value || 'Me') : newSpeakerName.value.trim();
 
         if (!newSpeakerIsMe.value && !name) {
-            showToast('Please enter a speaker name', 'fa-exclamation-circle');
+            showToast(t('help.pleaseEnterSpeakerName'), 'fa-exclamation-circle');
             return;
         }
 
@@ -970,7 +974,7 @@ export function useSpeakers(state, utils, processedTranscription) {
         modalSpeakers.value.push(newSpeakerId);
 
         closeAddSpeakerModal();
-        showToast('Speaker added successfully', 'fa-check-circle');
+        showToast(t('help.speakerAdded'), 'fa-check-circle');
     };
 
     // =========================================
@@ -1092,7 +1096,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             });
 
             closeEditSpeakersModal();
-            showToast('Speakers updated! Save the transcript to apply changes.', 'fa-check-circle');
+            showToast(t('help.speakersUpdatedSaveToApply'), 'fa-check-circle');
         } else {
             // Regular flow for non-ASR editor context
             speakerMap.value = map;
@@ -1117,7 +1121,7 @@ export function useSpeakers(state, utils, processedTranscription) {
             }
         } catch (e) {
             console.error('Error opening text editor:', e);
-            showToast('Error opening text editor', 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('help.errorOpeningTextEditor'), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 
@@ -1142,12 +1146,12 @@ export function useSpeakers(state, utils, processedTranscription) {
                 closeEditTextModal();
 
                 // Immediately persist the change
-                showToast('Saving...', 'fa-spinner fa-spin');
+                showToast(t('help.savingProgress'), 'fa-spinner fa-spin');
                 await saveTranscriptImmediately(transcriptionData);
             }
         } catch (e) {
             console.error('Error saving text:', e);
-            showToast('Error saving text', 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('help.errorSavingText'), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 
@@ -1174,12 +1178,12 @@ export function useSpeakers(state, utils, processedTranscription) {
                 editingSpeakerIndex.value = null;
 
                 // Immediately persist the change
-                showToast('Saving...', 'fa-spinner fa-spin');
+                showToast(t('help.savingProgress'), 'fa-spinner fa-spin');
                 await saveTranscriptImmediately(transcriptionData);
             }
         } catch (e) {
             console.error('Error changing speaker:', e);
-            showToast('Error changing speaker', 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('help.errorChangingSpeaker'), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 
