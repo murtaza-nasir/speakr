@@ -379,12 +379,10 @@ We welcome contributions to Speakr! There are many ways to help:
 
 ### Code Contributions
 
-All code contributions require signing a [Contributor License Agreement (CLA)](CLA.md). This one-time process ensures we can maintain our dual-license model (AGPLv3 and Commercial).
+By submitting a pull request, you agree to our [Contributor License Agreement (CLA)](CLA.md). This ensures we can maintain our dual-license model (AGPLv3 and Commercial). You retain copyright ownership of your contribution — the CLA simply grants us permission to include it in both the open source and commercial versions of Speakr. Our bot will post a reminder when you open a PR.
 
 **See our [Contributing Guide](CONTRIBUTING.md) for complete details on:**
 - How the CLA works and why we need it
 - Step-by-step contribution process
 - Development setup instructions
 - Coding standards and best practices
-
-The CLA is automatically enforced via GitHub Actions. When you submit your first PR, our bot will guide you through signing.
