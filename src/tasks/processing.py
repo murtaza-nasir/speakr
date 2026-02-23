@@ -1544,8 +1544,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
 
             # Determine if we should diarize
             if diarize is None:
-                # Use connector's default diarization setting
-                should_diarize = connector.supports_diarization
+                # Use connector's configured default (respects ASR_DIARIZE env var)
+                should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
             else:
                 should_diarize = diarize and connector.supports_diarization
 
@@ -1960,8 +1960,8 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             except Exception as e:
                 current_app.logger.warning(f"[Incognito] Could not get audio duration: {e}")
 
-        # Determine diarization settings
-        should_diarize = connector.supports_diarization
+        # Determine diarization settings (respects ASR_DIARIZE env var)
+        should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
 
         # Use user's language preference if not explicitly provided
         if language is None and user:

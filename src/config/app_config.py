@@ -126,10 +126,13 @@ def initialize_config(app):
             app.logger.info(f"Connector capabilities: {capabilities}")
 
             # Log diarization support prominently
-            if connector.supports_diarization:
-                app.logger.info("Speaker diarization: ENABLED")
-            else:
+            diarize_default = getattr(connector, 'default_diarize', connector.supports_diarization)
+            if not connector.supports_diarization:
                 app.logger.info("Speaker diarization: NOT AVAILABLE (connector does not support it)")
+            elif not diarize_default:
+                app.logger.info("Speaker diarization: DISABLED (ASR_DIARIZE=false)")
+            else:
+                app.logger.info("Speaker diarization: ENABLED")
 
         except Exception as e:
             app.logger.error(f"Failed to initialize transcription connector: {e}")
