@@ -143,15 +143,14 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             # Determine if we should diarize
             should_diarize = request.diarize if request.diarize is not None else self.default_diarize
 
-            if should_diarize:
-                # Send both parameter names for compatibility:
-                # - 'diarize' is used by whisper-asr-webservice
-                # - 'enable_diarization' is used by WhisperX
-                params['diarize'] = True
-                params['enable_diarization'] = True
+            # Send both parameter names for compatibility:
+            # - 'diarize' is used by whisper-asr-webservice
+            # - 'enable_diarization' is used by WhisperX
+            params['diarize'] = should_diarize
+            params['enable_diarization'] = should_diarize
 
-                if self.return_embeddings:
-                    params['return_speaker_embeddings'] = True
+            if should_diarize and self.return_embeddings:
+                params['return_speaker_embeddings'] = True
 
             if request.min_speakers:
                 params['min_speakers'] = request.min_speakers
