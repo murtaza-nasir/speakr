@@ -384,21 +384,28 @@ class FairJobQueue:
         """Run transcription task. Status updates handled by task function."""
         from src.tasks.processing import transcribe_audio_task
         from flask import current_app
+        from src.services.storage import get_storage_service
 
-        filepath = recording.audio_path
-        filename_for_asr = recording.original_filename or os.path.basename(filepath)
+        storage = get_storage_service()
+        audio_path = (recording.audio_path or '').strip()
+        if not audio_path:
+            logger.error(f"Cannot run transcription job for recording {recording.id}: missing audio_path")
+            raise ValueError(f"Missing audio_path for recording {recording.id}")
+        with storage.materialize(audio_path) as materialized:
+            filepath = materialized.local_path
+            filename_for_asr = recording.original_filename or os.path.basename(filepath)
 
-        transcribe_audio_task(
-            current_app._get_current_object().app_context(),
-            recording.id,
-            filepath,
-            filename_for_asr,
-            datetime.utcnow(),
-            language=params.get('language'),
-            min_speakers=params.get('min_speakers'),
-            max_speakers=params.get('max_speakers'),
-            tag_id=params.get('tag_id')
-        )
+            transcribe_audio_task(
+                current_app._get_current_object().app_context(),
+                recording.id,
+                filepath,
+                filename_for_asr,
+                datetime.utcnow(),
+                language=params.get('language'),
+                min_speakers=params.get('min_speakers'),
+                max_speakers=params.get('max_speakers'),
+                tag_id=params.get('tag_id')
+            )
 
     def _run_summarization(self, job, recording, params):
         """Run summarization-only task. Status updates handled by task function."""
@@ -416,21 +423,28 @@ class FairJobQueue:
         """Run transcription reprocessing task. Status updates handled by task function."""
         from src.tasks.processing import transcribe_audio_task
         from flask import current_app
+        from src.services.storage import get_storage_service
 
-        filepath = recording.audio_path
-        filename_for_asr = recording.original_filename or os.path.basename(filepath)
+        storage = get_storage_service()
+        audio_path = (recording.audio_path or '').strip()
+        if not audio_path:
+            logger.error(f"Cannot run reprocess transcription job for recording {recording.id}: missing audio_path")
+            raise ValueError(f"Missing audio_path for recording {recording.id}")
+        with storage.materialize(audio_path) as materialized:
+            filepath = materialized.local_path
+            filename_for_asr = recording.original_filename or os.path.basename(filepath)
 
-        transcribe_audio_task(
-            current_app._get_current_object().app_context(),
-            recording.id,
-            filepath,
-            filename_for_asr,
-            datetime.utcnow(),
-            language=params.get('language'),
-            min_speakers=params.get('min_speakers'),
-            max_speakers=params.get('max_speakers'),
-            tag_id=params.get('tag_id')
-        )
+            transcribe_audio_task(
+                current_app._get_current_object().app_context(),
+                recording.id,
+                filepath,
+                filename_for_asr,
+                datetime.utcnow(),
+                language=params.get('language'),
+                min_speakers=params.get('min_speakers'),
+                max_speakers=params.get('max_speakers'),
+                tag_id=params.get('tag_id')
+            )
 
     def _run_reprocess_summary(self, job, recording, params):
         """Run summary reprocessing task. Status updates handled by task function."""

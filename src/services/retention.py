@@ -8,6 +8,7 @@ from flask import current_app
 
 from src.database import db
 from src.models import Recording, RecordingTag, Tag
+from src.services.storage import get_storage_service
 
 ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
 GLOBAL_RETENTION_DAYS = int(os.environ.get('GLOBAL_RETENTION_DAYS', '0'))
@@ -151,9 +152,10 @@ def process_auto_deletion():
                 # Determine deletion mode
                 if DELETION_MODE == 'audio_only':
                     # Delete only the audio file, keep transcription
-                    if recording.audio_path and os.path.exists(recording.audio_path):
+                    storage = get_storage_service()
+                    if recording.audio_path and storage.exists(recording.audio_path):
                         current_app.logger.info(f"Recording {recording.id} is past retention ({retention_days} days), deleting audio")
-                        os.remove(recording.audio_path)
+                        storage.delete(recording.audio_path, missing_ok=True)
                         current_app.logger.info(f"Auto-deleted audio file: {recording.audio_path}")
                         recording.audio_deleted_at = datetime.utcnow()
                         db.session.commit()
@@ -173,8 +175,8 @@ def process_auto_deletion():
                         current_app.logger.info(f"Recording {recording.id} is past retention ({retention_days} days), deleting fully")
 
                     # Delete audio file if it exists
-                    if recording.audio_path and os.path.exists(recording.audio_path):
-                        os.remove(recording.audio_path)
+                    if recording.audio_path:
+                        get_storage_service().delete(recording.audio_path, missing_ok=True)
 
                     # Delete associated processing jobs (required due to NOT NULL constraint)
                     from src.models.processing_job import ProcessingJob

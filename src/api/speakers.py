@@ -445,7 +445,9 @@ def get_snippet_audio(recording_id):
         if recording.audio_deleted_at:
             return jsonify({'error': 'Audio file has been deleted'}), 410
 
-        if not recording.audio_path or not os.path.exists(recording.audio_path):
+        from src.services.storage import get_storage_service
+        storage = get_storage_service()
+        if not recording.audio_path or not storage.exists(recording.audio_path):
             return jsonify({'error': 'Audio file not found'}), 404
 
         # Create temporary file for the snippet
@@ -454,12 +456,13 @@ def get_snippet_audio(recording_id):
 
         try:
             # Use centralized FFmpeg utility to extract the audio segment
-            extract_audio_segment(
-                recording.audio_path,
-                output_path,
-                start_time,
-                duration
-            )
+            with storage.materialize(recording.audio_path) as materialized:
+                extract_audio_segment(
+                    materialized.local_path,
+                    output_path,
+                    start_time,
+                    duration
+                )
 
             # Send the file
             response = send_file(

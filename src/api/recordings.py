@@ -35,8 +35,9 @@ from src.services.document import process_markdown_to_docx
 from src.services.llm import client, chat_client, call_llm_completion, call_chat_completion, process_streaming_with_thinking, TokenBudgetExceeded
 from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
-from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
+from src.services.storage import get_storage_service
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -1042,7 +1043,7 @@ def reprocess_transcription(recording_id):
         if not has_recording_access(recording, current_user, require_edit=True):
             return jsonify({'error': 'You do not have permission to reprocess this recording'}), 403
 
-        if not recording.audio_path or not os.path.exists(recording.audio_path):
+        if not recording.audio_path or not get_storage_service().exists(recording.audio_path):
             return jsonify({'error': 'Audio file not found for reprocessing'}), 404
 
         if recording.status in ['QUEUED', 'PROCESSING', 'SUMMARIZING']:
@@ -1999,7 +2000,9 @@ def upload_file():
 
         original_filename = file.filename
         safe_filename = secure_filename(original_filename)
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}")
+        storage = get_storage_service()
+        staging_dir = storage.get_staging_dir()
+        filepath = os.path.join(staging_dir, f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}")
 
         # Get original file size
         file.seek(0, os.SEEK_END)
@@ -2095,6 +2098,16 @@ def upload_file():
         # Determine MIME type of the final file
         mime_type, _ = mimetypes.guess_type(filepath)
         current_app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
+
+        # Cache media duration while the upload is still available locally.
+        # This avoids later S3 materialization just to serialize API responses.
+        audio_duration_seconds = None
+        try:
+            detected_duration = get_duration(filepath, timeout=30)
+            if detected_duration is not None and detected_duration > 0:
+                audio_duration_seconds = float(detected_duration)
+        except Exception as e:
+            current_app.logger.warning(f"Could not determine duration for upload {original_filename}: {e}")
 
         # Get notes from the form
         notes = request.form.get('notes')
@@ -2223,7 +2236,7 @@ def upload_file():
             current_app.logger.debug("No file date available, using current time")
 
         recording = Recording(
-            audio_path=filepath,
+            audio_path=None,
             original_filename=original_filename,
             title=f"Recording - {original_filename}",
             file_size=final_file_size,
@@ -2231,11 +2244,25 @@ def upload_file():
             meeting_date=meeting_date,
             user_id=current_user.id,
             mime_type=mime_type,
+            audio_duration_seconds=audio_duration_seconds,
             notes=notes,
             folder_id=selected_folder.id if selected_folder else None,
             processing_source='upload'  # Track that this was manually uploaded
         )
         db.session.add(recording)
+        db.session.commit()
+
+        storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
+        stored_object = storage.upload_local_file(
+            filepath,
+            storage_key,
+            content_type=mime_type,
+            delete_source=True,
+        )
+        # Intentionally do not reuse `filepath` after upload: with delete_source=True
+        # the staging file may already be gone (notably on S3 backend). Workers should
+        # always read from recording.audio_path via the storage facade.
+        recording.audio_path = stored_object.locator
         db.session.commit()
 
         # Add tags to recording if selected (preserve order)
@@ -2629,9 +2656,10 @@ def delete_recording(recording_id):
 
         # Delete the audio file first
         try:
-            if recording.audio_path and os.path.exists(recording.audio_path):
-                os.remove(recording.audio_path)
-                current_app.logger.info(f"Deleted audio file: {recording.audio_path}")
+            if recording.audio_path:
+                storage = get_storage_service()
+                storage.delete(recording.audio_path, missing_ok=True)
+                current_app.logger.info(f"Deleted audio file via storage backend: {recording.audio_path}")
         except Exception as e:
             current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
 
@@ -2994,9 +3022,9 @@ def delete_job(job_id):
             recording = db.session.get(Recording, job.recording_id)
             if recording:
                 # Delete audio file
-                if recording.audio_path and os.path.exists(recording.audio_path):
+                if recording.audio_path:
                     try:
-                        os.remove(recording.audio_path)
+                        get_storage_service().delete(recording.audio_path, missing_ok=True)
                     except Exception as e:
                         current_app.logger.error(f"Error deleting audio file: {e}")
                 # Delete ALL processing jobs for this recording first
@@ -3087,22 +3115,38 @@ def get_audio(recording_id):
 
         if not has_access:
             return jsonify({'error': 'You do not have permission to access this audio file'}), 403
-        if not os.path.exists(recording.audio_path):
-            current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
-            return jsonify({'error': 'Audio file missing from server'}), 404
+        storage = get_storage_service()
 
         # Check if download is requested
         download = request.args.get('download', 'false').lower() == 'true'
+        download_name = None
         if download:
             # Generate filename from recording title or use default
             filename = recording.title or f'recording_{recording_id}'
             # Sanitize filename and add extension
             filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_')).strip()
-            ext = os.path.splitext(recording.audio_path)[1] or '.mp3'
-            filename = f"{filename}{ext}"
-            return send_file(recording.audio_path, as_attachment=True, download_name=filename)
+            ext = os.path.splitext(recording.original_filename or '')[1] or '.mp3'
+            download_name = f"{filename}{ext}"
 
-        return send_file(recording.audio_path)
+        delivery = storage.get_audio_delivery(
+            recording.audio_path,
+            download=download,
+            mime_type=recording.mime_type,
+            download_name=download_name,
+            is_public=False,
+        )
+
+        if delivery.mode == 'redirect_url':
+            return redirect(delivery.url, code=302)
+
+        if not delivery.local_path or not os.path.exists(delivery.local_path):
+            current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
+            return jsonify({'error': 'Audio file missing from server'}), 404
+
+        if download:
+            return send_file(delivery.local_path, as_attachment=True, download_name=download_name)
+
+        return send_file(delivery.local_path)
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500
@@ -3565,9 +3609,9 @@ def bulk_delete_recordings():
                     continue
 
                 # Delete audio file
-                if recording.audio_path and os.path.exists(recording.audio_path):
+                if recording.audio_path:
                     try:
-                        os.remove(recording.audio_path)
+                        get_storage_service().delete(recording.audio_path, missing_ok=True)
                     except Exception as e:
                         current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
 
@@ -3727,7 +3771,7 @@ def bulk_reprocess():
 
                 # For transcription reprocess, need audio file
                 if reprocess_type == 'transcription':
-                    if not recording.audio_path or not os.path.exists(recording.audio_path):
+                    if not recording.audio_path or not get_storage_service().exists(recording.audio_path):
                         continue
                     job_type = 'reprocess_transcription'
                 else:

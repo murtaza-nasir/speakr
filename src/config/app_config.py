@@ -66,6 +66,22 @@ AUDIO_COMPRESS_UPLOADS = os.environ.get('AUDIO_COMPRESS_UPLOADS', 'true').lower(
 AUDIO_CODEC = os.environ.get('AUDIO_CODEC', 'mp3').lower()  # mp3, flac, opus
 AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')  # For lossy codecs
 
+# File storage backend configuration (dual local / S3-compatible)
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/data/uploads')
+FILE_STORAGE_BACKEND = os.environ.get('FILE_STORAGE_BACKEND', 'local').lower().strip()  # local | s3
+FILE_STORAGE_KEY_PREFIX = (os.environ.get('FILE_STORAGE_KEY_PREFIX', 'recordings') or 'recordings').strip().strip('/')
+FILE_STORAGE_STAGING_DIR = os.environ.get('FILE_STORAGE_STAGING_DIR', '').strip() or os.path.join(UPLOAD_FOLDER, '_staging')
+S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', '').strip() or None
+S3_REGION = os.environ.get('S3_REGION', '').strip() or None
+S3_ENDPOINT_URL = os.environ.get('S3_ENDPOINT_URL', '').strip() or None
+S3_ACCESS_KEY_ID = os.environ.get('S3_ACCESS_KEY_ID', '').strip() or None
+S3_SECRET_ACCESS_KEY = os.environ.get('S3_SECRET_ACCESS_KEY', '').strip() or None
+S3_SESSION_TOKEN = os.environ.get('S3_SESSION_TOKEN', '').strip() or None
+S3_USE_PATH_STYLE = os.environ.get('S3_USE_PATH_STYLE', 'false').lower() == 'true'
+S3_VERIFY_SSL = os.environ.get('S3_VERIFY_SSL', 'true').lower() == 'true'
+S3_PRESIGN_TTL_SECONDS = int(os.environ.get('S3_PRESIGN_TTL_SECONDS', '900'))
+S3_PRESIGN_PUBLIC_TTL_SECONDS = int(os.environ.get('S3_PRESIGN_PUBLIC_TTL_SECONDS', '300'))
+
 # Unsupported codecs - comma-separated list of codecs to exclude from the default supported list
 # Useful when your transcription service doesn't support certain codecs (e.g., vllm doesn't support opus)
 # Example: AUDIO_UNSUPPORTED_CODECS=opus,vorbis
