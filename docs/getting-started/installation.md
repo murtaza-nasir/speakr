@@ -311,6 +311,50 @@ When enabled, Speakr checks the watch directory every 30 seconds for new audio f
 
 To use this feature, you'll need to mount an additional volume in your Docker Compose configuration, which we'll cover in the next steps.
 
+#### File Storage Backend (Local / S3-Compatible)
+
+Speakr supports two storage backends for recording audio files: **local filesystem** (default) and **S3-compatible object storage** (AWS S3, MinIO, and other S3 API providers). You can switch between them using a single environment variable:
+
+```bash
+# Storage backend: local (default) or s3
+FILE_STORAGE_BACKEND=local
+
+# Key prefix inside the selected backend (default: recordings)
+FILE_STORAGE_KEY_PREFIX=recordings
+
+# Optional staging directory for uploads/conversion before final store
+# FILE_STORAGE_STAGING_DIR=/data/uploads/_staging
+```
+
+When set to `local`, audio files are stored under `UPLOAD_FOLDER` as before — no additional configuration is needed.
+
+To use **S3 or MinIO**, set `FILE_STORAGE_BACKEND=s3` and configure the S3 connection:
+
+```bash
+FILE_STORAGE_BACKEND=s3
+
+S3_BUCKET_NAME=speakr-audio
+S3_REGION=us-east-1
+S3_ENDPOINT_URL=http://minio:9000       # For MinIO / custom S3-compatible endpoints
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_USE_PATH_STYLE=true                   # Required for MinIO
+S3_VERIFY_SSL=false                      # Set false for local MinIO without TLS
+
+# Presigned URL TTL (seconds) for audio playback/download
+S3_PRESIGN_TTL_SECONDS=900               # Private access (default 15 min)
+S3_PRESIGN_PUBLIC_TTL_SECONDS=300        # Shared links (default 5 min)
+```
+
+!!! info "How S3 Audio Delivery Works"
+    When using S3 storage, audio endpoints return a `302` redirect to a short-lived presigned URL instead of streaming the file through the backend. This keeps bandwidth off your application server while preserving compatibility with `<audio>` tags and direct downloads. The presigned URLs expire according to the TTL settings above.
+
+!!! tip "Mixed Storage Support"
+    Speakr can read from **both** local and S3 storage simultaneously. Existing local recordings continue to work even after switching `FILE_STORAGE_BACKEND=s3` — only new uploads go to S3. This allows a gradual transition. See the [Migration Guide](../admin-guide/migration-guide.md#migrating-audio-files-to-s3) for details on migrating historical files.
+
+!!! warning "boto3 Required"
+    S3 support requires the `boto3` Python package, which is included in the default Docker image. If you build from source, ensure `boto3>=1.34.0` is installed.
+
 ### Step 6: Set Up Data Directories
 
 Speakr needs local directories to store your data persistently. These directories are mounted as Docker volumes, ensuring your recordings and database survive container updates and restarts:
@@ -744,7 +788,7 @@ Apache requires these modules: `sudo a2enmod ssl proxy proxy_http proxy_wstunnel
 
 ### Backup Strategy
 
-Regular backups are essential for production deployments. Your Speakr data consists of three critical components that need backing up: the SQLite database in the `instance` directory, the audio files and transcriptions in the `uploads` directory, and your configuration in the `.env` file.
+Regular backups are essential for production deployments. Your Speakr data consists of three critical components that need backing up: the SQLite database in the `instance` directory, the audio files in the `uploads` directory (when using local storage), and your configuration in the `.env` file. If you use S3 storage, audio files are managed by your S3 provider's durability guarantees and do not need to be included in local backups.
 
 Create a backup script that captures all three components:
 

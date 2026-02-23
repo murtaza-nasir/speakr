@@ -187,6 +187,10 @@ All tokens are hashed using SHA-256 before storage - the plaintext token is show
 
 Handle large audio files that exceed API limits through intelligent chunking. See the [troubleshooting guide](troubleshooting.md#files-over-25mb-fail-with-openai) for configuration details. Learn about [chunking strategies](faq.md#whats-the-difference-between-chunking-by-size-vs-duration) in the FAQ. The system automatically splits long recordings into manageable segments, processes them separately, then seamlessly reassembles the results. Configure chunk size by duration or file size to match your API provider's requirements.
 
+### S3-Compatible Object Storage
+
+Store recording audio files in S3-compatible object storage (AWS S3, MinIO, or any S3 API provider) instead of, or in addition to, the local filesystem. Switch storage backends with a single environment variable (`FILE_STORAGE_BACKEND=s3`). Audio playback and downloads use short-lived presigned URLs, keeping large file traffic off your application server. Existing local recordings continue to work alongside S3 — Speakr reads from both backends transparently based on each recording's storage locator. Migration scripts are provided to normalize legacy paths and move historical files to S3. See the [installation guide](getting-started/installation.md#file-storage-backend-local-s3-compatible) for configuration details and the [migration guide](admin-guide/migration-guide.md#migrating-audio-files-to-s3) for transitioning existing data.
+
 ### Black Hole Processing
 
 Set up a watched directory where dropped audio files are automatically processed. Configure this in [system settings](admin-guide/system-settings.md) for automated workflows. Perfect for automation workflows or batch processing, the black hole directory monitors for new files and queues them for transcription without manual intervention.
