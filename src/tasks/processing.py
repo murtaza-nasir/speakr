@@ -165,15 +165,21 @@ def clean_llm_response(text):
     cleaned = re.sub(r'<(?!/?(?:code|pre|blockquote|p|br|hr|ul|ol|li|h[1-6]|em|strong|b|i|a|img)(?:\s|>|/))[^>]+>', '', cleaned)
 
     # Clean up excessive whitespace while preserving intentional formatting
-    # Remove leading/trailing whitespace from each line
+    # Handle lines individually to preserve Markdown hard line breaks (two spaces at end)
     lines = cleaned.split('\n')
     cleaned_lines = []
+    
     for line in lines:
-        # Preserve lines that are part of code blocks or lists
-        if line.strip() or (len(cleaned_lines) > 0 and cleaned_lines[-1].strip().startswith(('```', '-', '*', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.'))):
-            cleaned_lines.append(line.rstrip())
+        # If a line consists only of whitespace (e.g., after tag removal),
+        # make it completely empty. This is necessary for the \n{3,} regex to work later.
+        if not line.strip():
+            cleaned_lines.append("")
+        else:
+            # Preserve lines containing text exactly as they are
+            # This keeps trailing spaces needed for Markdown hard line breaks intact
+            cleaned_lines.append(line)
 
-    # Join lines and remove multiple consecutive blank lines
+    # Join lines and collapse 3+ consecutive newlines into exactly 2 (one blank line)
     cleaned = '\n'.join(cleaned_lines)
     cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
 
