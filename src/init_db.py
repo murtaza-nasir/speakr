@@ -517,6 +517,15 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not create unique index on user.sso_subject: {e}")
 
+        # Add file_hash column for duplicate detection
+        if add_column_if_not_exists(engine, 'recording', 'file_hash', 'VARCHAR(64)'):
+            app.logger.info("Added file_hash column to recording table")
+        try:
+            if create_index_if_not_exists(engine, 'ix_recording_user_file_hash', 'recording', 'user_id, file_hash'):
+                app.logger.info("Created index ix_recording_user_file_hash on recording (user_id, file_hash)")
+        except Exception as e:
+            app.logger.warning(f"Could not create index on recording (user_id, file_hash): {e}")
+
         # Add folder_id column to recording table for folders feature
         if add_column_if_not_exists(engine, 'recording', 'folder_id', 'INTEGER'):
             app.logger.info("Added folder_id column to recording table")

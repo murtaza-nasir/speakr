@@ -296,7 +296,6 @@
     "currentUsageMinutes": "Current Usage",
     "userTranscriptionUsage": "User Transcription Usage (This Month)",
     "noTranscriptionData": "No transcription usage data available",
-    "minutes": "minutes",
     "percentUsed": "used",
     "topUsers": "Top Users",
     "topUsersByStorage": "Top Users by Storage",
@@ -403,20 +402,56 @@
     "title": "Choose Color Scheme",
     "themes": {
       "light": {
-        "blue": { "name": "Ocean Blue", "description": "Classic blue theme with professional appeal" },
-        "emerald": { "name": "Forest Emerald", "description": "Fresh green theme for a natural feel" },
-        "purple": { "name": "Royal Purple", "description": "Elegant purple theme with sophistication" },
-        "rose": { "name": "Sunset Rose", "description": "Warm pink theme with gentle energy" },
-        "amber": { "name": "Golden Amber", "description": "Warm yellow theme for brightness" },
-        "teal": { "name": "Ocean Teal", "description": "Cool teal theme for tranquility" }
+        "blue": {
+          "name": "Ocean Blue",
+          "description": "Classic blue theme with professional appeal"
+        },
+        "emerald": {
+          "name": "Forest Emerald",
+          "description": "Fresh green theme for a natural feel"
+        },
+        "purple": {
+          "name": "Royal Purple",
+          "description": "Elegant purple theme with sophistication"
+        },
+        "rose": {
+          "name": "Sunset Rose",
+          "description": "Warm pink theme with gentle energy"
+        },
+        "amber": {
+          "name": "Golden Amber",
+          "description": "Warm yellow theme for brightness"
+        },
+        "teal": {
+          "name": "Ocean Teal",
+          "description": "Cool teal theme for tranquility"
+        }
       },
       "dark": {
-        "blue": { "name": "Midnight Blue", "description": "Deep blue theme for focused work" },
-        "emerald": { "name": "Dark Forest", "description": "Rich green theme for comfortable viewing" },
-        "purple": { "name": "Deep Purple", "description": "Mysterious purple theme for creativity" },
-        "rose": { "name": "Dark Rose", "description": "Muted pink theme with subtle warmth" },
-        "amber": { "name": "Dark Amber", "description": "Warm brown theme for cozy sessions" },
-        "teal": { "name": "Deep Teal", "description": "Dark teal theme for calm focus" }
+        "blue": {
+          "name": "Midnight Blue",
+          "description": "Deep blue theme for focused work"
+        },
+        "emerald": {
+          "name": "Dark Forest",
+          "description": "Rich green theme for comfortable viewing"
+        },
+        "purple": {
+          "name": "Deep Purple",
+          "description": "Mysterious purple theme for creativity"
+        },
+        "rose": {
+          "name": "Dark Rose",
+          "description": "Muted pink theme with subtle warmth"
+        },
+        "amber": {
+          "name": "Dark Amber",
+          "description": "Warm brown theme for cozy sessions"
+        },
+        "teal": {
+          "name": "Deep Teal",
+          "description": "Dark teal theme for calm focus"
+        }
       }
     }
   },
@@ -703,7 +738,7 @@
     "speakerRequirement": "Speaker identification requires recordings with multiple speakers",
     "activeFilters": "Active Filters:",
     "tagsCount": "tags",
-    "speakersCount": "speakers", 
+    "speakersCount": "speakers",
     "dateRangeActive": "Date range active",
     "filtersActive": "Filters active",
     "askQuestions": "Ask Questions About Your Transcriptions",
@@ -964,7 +999,6 @@
     "searchRecordings": "Search recordings...",
     "sharedWithMe": "Shared with Me",
     "starred": "Starred",
-    "inbox": "Inbox",
     "sortBy": "Sort By",
     "sortByDate": "Created Date",
     "sortByMeetingDate": "Meeting Date",
@@ -1161,7 +1195,8 @@
     "transcribing": "Transcribing...",
     "untitled": "Untitled Recording",
     "uploadProgress": "Upload Progress",
-    "willAutoSummarize": "Will auto-summarize after transcription"
+    "willAutoSummarize": "Will auto-summarize after transcription",
+    "duplicateDetected": "This file appears to be a duplicate of \"{{existingName}}\" (uploaded {{existingDate}})"
   },
   "uploadProgress": {
     "title": "Upload Progress"

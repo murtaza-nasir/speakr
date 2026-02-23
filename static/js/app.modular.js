@@ -1634,6 +1634,63 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
+            // Track completed recording IDs to detect new completions
+            const completedRecordingIds = new Set();
+
+            // Watch allJobs for completed/failed transitions - update local recordings state
+            watch(allJobs, async (jobs) => {
+                for (const job of jobs) {
+                    if (job.job_status === 'completed' && !completedRecordingIds.has(job.recording_id)) {
+                        completedRecordingIds.add(job.recording_id);
+                        try {
+                            const fullResponse = await fetch(`/api/recordings/${job.recording_id}`);
+                            if (fullResponse.ok) {
+                                const data = await fullResponse.json();
+                                const idx = recordings.value.findIndex(r => r.id === job.recording_id);
+                                if (idx !== -1) {
+                                    recordings.value[idx] = data;
+                                }
+                                if (selectedRecording.value?.id === job.recording_id) {
+                                    selectedRecording.value = data;
+                                }
+                                // Update display name on upload queue item
+                                const queueItem = uploadQueue.value.find(u => u.recordingId === job.recording_id);
+                                if (queueItem) {
+                                    queueItem.displayName = data.title || data.original_filename || queueItem.file?.name;
+                                    queueItem.status = 'completed';
+                                }
+                                // Refresh token budget
+                                if (typeof loadTokenBudget === 'function') loadTokenBudget();
+                            }
+                        } catch (err) {
+                            console.error(`Error fetching completed recording ${job.recording_id}:`, err);
+                        }
+                    } else if (job.job_status === 'failed' && !completedRecordingIds.has(`fail_${job.recording_id}`)) {
+                        completedRecordingIds.add(`fail_${job.recording_id}`);
+                        try {
+                            const failedResponse = await fetch(`/api/recordings/${job.recording_id}`);
+                            if (failedResponse.ok) {
+                                const failedData = await failedResponse.json();
+                                const idx = recordings.value.findIndex(r => r.id === job.recording_id);
+                                if (idx !== -1) {
+                                    recordings.value[idx] = failedData;
+                                }
+                                if (selectedRecording.value?.id === job.recording_id) {
+                                    selectedRecording.value = failedData;
+                                }
+                                const queueItem = uploadQueue.value.find(u => u.recordingId === job.recording_id);
+                                if (queueItem) {
+                                    queueItem.status = 'failed';
+                                    queueItem.error = failedData.error_message || 'Processing failed on server.';
+                                }
+                            }
+                        } catch (err) {
+                            console.error(`Error fetching failed recording ${job.recording_id}:`, err);
+                        }
+                    }
+                }
+            }, { deep: true });
+
             // Get job details for a recording
             const getJobDetails = (recordingId) => {
                 return jobQueueDetails.value[recordingId] || null;
@@ -1709,9 +1766,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const unifiedProgressItems = computed(() => {
                 const items = new Map(); // Key by recordingId or clientId
 
-                // Get the currently uploading file's clientId for special handling
-                const currentUploadClientId = currentlyProcessingFile.value?.clientId;
-
                 // 1. First, add all backend jobs (these have the most accurate status)
                 for (const job of allJobs.value) {
                     const key = `rec_${job.recording_id}`;
@@ -1752,80 +1806,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // 2. Add upload queue items (client-side tracking)
                 for (const upload of uploadQueue.value) {
-                    // Check if this is the currently uploading file
-                    const isCurrentUpload = upload.clientId === currentUploadClientId;
-
-                    // If we have a recordingId and it's already tracked from jobs, check if we should merge
+                    // If we have a recordingId and it's already tracked from jobs, merge upload info
                     if (upload.recordingId) {
                         const key = `rec_${upload.recordingId}`;
                         const existing = items.get(key);
 
                         if (existing) {
-                            // Merge upload info into existing item
                             existing.clientId = upload.clientId;
                             existing.file = upload.file;
-                            // If this is the current upload, use the global progress refs
-                            if (isCurrentUpload && ['uploading', 'pending', 'processing', 'summarizing'].includes(upload.status)) {
-                                // Map upload status to unified status
-                                if (upload.status === 'uploading') {
-                                    existing.status = 'uploading';
-                                } else if (upload.status === 'summarizing') {
-                                    existing.status = 'summarizing';
-                                } else if (upload.status === 'processing' || upload.status === 'pending') {
-                                    existing.status = 'transcribing';
-                                }
-                                existing.progress = processingProgress.value;
-                                existing.progressMessage = processingMessage.value || 'Processing...';
+                            existing.duplicateWarning = upload.duplicateWarning || null;
+                            // If still uploading, override job status with upload status
+                            if (upload.status === 'uploading') {
+                                existing.status = 'uploading';
+                                existing.progress = upload.progress || 0;
+                                existing.progressMessage = 'Uploading...';
                                 existing.title = upload.displayName || upload.file?.name || existing.title;
                             }
                             continue;
                         }
                     }
 
-                    // Determine unified status from upload status
+                    // Determine unified status from upload status (per-item progress)
                     let unifiedStatus = 'ready';
-                    let progressVal = 0;
+                    let progressVal = upload.progress || 0;
                     let progressMsg = 'Waiting to upload...';
 
-                    // If this is the currently processing file, use global progress refs
-                    if (isCurrentUpload) {
-                        progressVal = processingProgress.value;
-                        progressMsg = processingMessage.value || 'Processing...';
-
-                        if (upload.status === 'uploading') {
-                            unifiedStatus = 'uploading';
-                        } else if (upload.status === 'pending' || upload.status === 'processing' || upload.status === 'PROCESSING') {
-                            unifiedStatus = 'transcribing';
-                        } else if (upload.status === 'summarizing' || upload.status === 'SUMMARIZING') {
-                            unifiedStatus = 'summarizing';
-                        } else if (upload.status === 'completed' || upload.status === 'COMPLETED') {
-                            unifiedStatus = 'completed';
-                            progressMsg = 'Done';
-                        } else if (upload.status === 'failed' || upload.status === 'FAILED') {
-                            unifiedStatus = 'failed';
-                            progressMsg = upload.error || 'Processing failed';
-                        } else if (upload.status === 'ready') {
-                            unifiedStatus = 'ready';
-                            progressMsg = 'Waiting to upload...';
-                        }
-                    } else {
-                        // Not the current upload - use item's own status
-                        if (upload.status === 'uploading') {
-                            unifiedStatus = 'uploading';
-                            progressMsg = 'Uploading...';
-                        } else if (upload.status === 'completed' || upload.status === 'COMPLETED') {
-                            unifiedStatus = 'completed';
-                            progressMsg = 'Done';
-                        } else if (upload.status === 'failed' || upload.status === 'FAILED') {
-                            unifiedStatus = 'upload_failed';
-                            progressMsg = upload.error || 'Upload failed';
-                        } else if (upload.status === 'ready') {
-                            unifiedStatus = 'ready';
-                            progressMsg = 'Waiting to upload...';
-                        } else if (upload.status === 'queued') {
-                            unifiedStatus = 'ready';
-                            progressMsg = 'Waiting to upload...';
-                        }
+                    if (upload.status === 'uploading') {
+                        unifiedStatus = 'uploading';
+                        progressMsg = 'Uploading...';
+                    } else if (upload.status === 'pending') {
+                        unifiedStatus = 'queued';
+                        progressVal = 100;
+                        progressMsg = 'Uploaded, waiting for processing...';
+                    } else if (upload.status === 'completed' || upload.status === 'COMPLETED') {
+                        unifiedStatus = 'completed';
+                        progressMsg = 'Done';
+                    } else if (upload.status === 'failed' || upload.status === 'FAILED') {
+                        unifiedStatus = 'upload_failed';
+                        progressMsg = upload.error || 'Upload failed';
+                    } else if (upload.status === 'ready') {
+                        unifiedStatus = 'ready';
+                        progressMsg = 'Waiting to upload...';
+                    } else if (upload.status === 'queued') {
+                        unifiedStatus = 'ready';
+                        progressMsg = 'Waiting to upload...';
                     }
 
                     const key = upload.recordingId ? `rec_${upload.recordingId}` : `client_${upload.clientId}`;
@@ -1846,6 +1870,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         progressMessage: progressMsg,
                         queuePosition: null,
                         errorMessage: upload.status === 'failed' ? upload.error : null,
+                        duplicateWarning: upload.duplicateWarning || null,
                         file: upload.file,
                         source: 'upload'
                     });

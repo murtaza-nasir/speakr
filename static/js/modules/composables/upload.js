@@ -268,6 +268,39 @@ export function useUpload(state, utils) {
         }
     };
 
+    // --- Parallel Upload System ---
+    // Concurrency limiter: max 3 simultaneous uploads
+    const MAX_CONCURRENT_UPLOADS = 3;
+    let activeUploadCount = 0;
+    const pendingUploadQueue = []; // Functions waiting for a slot
+
+    const acquireUploadSlot = () => {
+        return new Promise(resolve => {
+            if (activeUploadCount < MAX_CONCURRENT_UPLOADS) {
+                activeUploadCount++;
+                resolve();
+            } else {
+                pendingUploadQueue.push(resolve);
+            }
+        });
+    };
+
+    const releaseUploadSlot = () => {
+        activeUploadCount--;
+        if (pendingUploadQueue.length > 0) {
+            activeUploadCount++;
+            const next = pendingUploadQueue.shift();
+            next();
+        }
+        // When all uploads are done, clear processing active flag
+        const stillUploading = uploadQueue.value.some(item =>
+            ['uploading', 'ready'].includes(item.status)
+        );
+        if (!stillUploading) {
+            isProcessingActive.value = false;
+        }
+    };
+
     const resetCurrentFileProcessingState = () => {
         if (pollInterval.value) clearInterval(pollInterval.value);
         pollInterval.value = null;
@@ -276,424 +309,209 @@ export function useUpload(state, utils) {
         processingMessage.value = '';
     };
 
+    /**
+     * Upload a single file to the server.
+     * Acquires a concurrency slot, uploads, then releases.
+     * Status updates are per-item (no global processingProgress).
+     */
+    const uploadSingleFile = async (fileItem) => {
+        await acquireUploadSlot();
+
+        fileItem.status = 'uploading';
+        fileItem.progress = 5;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', fileItem.file);
+
+            // Send file's lastModified timestamp for meeting_date
+            if (fileItem.file.lastModified) {
+                const lastModified = fileItem.file.lastModified;
+                formData.append('file_last_modified', lastModified.toString());
+            }
+
+            if (fileItem.notes) {
+                formData.append('notes', fileItem.notes);
+            }
+
+            // Add tags if selected
+            const tagsToUse = fileItem.tags || selectedTags.value || [];
+            tagsToUse.forEach((tag, index) => {
+                const tagId = tag.id || tag;
+                formData.append(`tag_ids[${index}]`, tagId);
+            });
+
+            // Add folder if selected
+            const folderToUse = fileItem.folder_id || selectedFolderId.value;
+            if (folderToUse) {
+                formData.append('folder_id', folderToUse);
+            }
+
+            // Add ASR options
+            const asrOpts = fileItem.asrOptions || {};
+            const language = asrOpts.language || uploadLanguage.value;
+            if (language) {
+                formData.append('language', language);
+            }
+
+            if (connectorSupportsDiarization.value) {
+                const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
+                const maxSpeakers = asrOpts.max_speakers || uploadMaxSpeakers.value;
+
+                if (minSpeakers && minSpeakers !== '') {
+                    formData.append('min_speakers', minSpeakers.toString());
+                }
+                if (maxSpeakers && maxSpeakers !== '') {
+                    formData.append('max_speakers', maxSpeakers.toString());
+                }
+            }
+
+            // Use XMLHttpRequest for per-file upload progress
+            const data = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        // Map upload progress to 5-90% range
+                        fileItem.progress = Math.round(5 + (e.loaded / e.total) * 85);
+                    }
+                };
+
+                xhr.onload = () => {
+                    const contentType = xhr.getResponseHeader('content-type') || '';
+                    if (!contentType.includes('application/json')) {
+                        const titleMatch = xhr.responseText.match(/<title>([^<]+)<\/title>/i);
+                        const h1Match = xhr.responseText.match(/<h1>([^<]+)<\/h1>/i);
+                        reject(new Error(titleMatch?.[1] || h1Match?.[1] ||
+                            `Server error (${xhr.status}): Response was not JSON`));
+                        return;
+                    }
+
+                    let parsed;
+                    try {
+                        parsed = JSON.parse(xhr.responseText);
+                    } catch {
+                        reject(new Error(`Invalid JSON response (${xhr.status})`));
+                        return;
+                    }
+
+                    if (xhr.status === 202 && parsed.id) {
+                        resolve(parsed);
+                    } else if (!String(xhr.status).startsWith('2')) {
+                        let errorMsg = parsed.error || `Upload failed with status ${xhr.status}`;
+                        if (xhr.status === 413) errorMsg = parsed.error || `File too large. Max: ${parsed.max_size_mb?.toFixed(0) || maxFileSizeMB.value} MB.`;
+                        reject(new Error(errorMsg));
+                    } else {
+                        reject(new Error('Unexpected success response from server after upload.'));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error during upload'));
+                xhr.ontimeout = () => reject(new Error('Upload timed out'));
+
+                // Store abort controller on item for cancellation
+                fileItem._xhr = xhr;
+
+                xhr.open('POST', '/upload');
+                // Include CSRF token (required for POST requests)
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (csrfToken) {
+                    xhr.setRequestHeader('X-CSRFToken', csrfToken);
+                }
+                xhr.send(formData);
+            });
+
+            // Upload succeeded - recording is now on the server
+            console.log(`File ${fileItem.file.name} uploaded. Recording ID: ${data.id}. Server will process via job queue.`);
+            fileItem.status = 'pending';
+            fileItem.recordingId = data.id;
+            fileItem.progress = 100;
+
+            // Add to recordings list
+            recordings.value.unshift(data);
+            totalRecordings.value++;
+
+            // Handle duplicate warning
+            if (data.duplicate_warning) {
+                const warning = data.duplicate_warning;
+                const existingDate = warning.existing_created_at
+                    ? new Date(warning.existing_created_at).toLocaleDateString()
+                    : '';
+                const existingName = warning.existing_title || 'Unknown';
+                showToast(
+                    `⚠️ ${existingName} (${existingDate})`,
+                    'fa-copy'
+                );
+                fileItem.duplicateWarning = warning;
+            }
+
+        } catch (error) {
+            console.error(`Upload Error for ${fileItem.file.name} (Client ID: ${fileItem.clientId}):`, error);
+            fileItem.status = 'failed';
+            fileItem.error = error.message;
+            fileItem.progress = 0;
+
+            // Show friendly error message
+            const friendlyErr = getFriendlyError(error.message);
+            setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
+
+            // Store failed upload in IndexedDB for background sync retry
+            try {
+                await FailedUploads.storeFailedUpload({
+                    file: fileItem.file,
+                    fileName: fileItem.file.name,
+                    fileSize: fileItem.file.size,
+                    clientId: fileItem.clientId,
+                    notes: fileItem.notes,
+                    tags: fileItem.tags,
+                    asrOptions: fileItem.asrOptions,
+                    error: error.message
+                });
+
+                if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                    const registration = await navigator.serviceWorker.ready;
+                    await registration.sync.register('sync-uploads');
+                    console.log('[Upload] Registered background sync for failed upload');
+                }
+            } catch (syncError) {
+                console.warn('[Upload] Failed to register background sync:', syncError);
+            }
+        } finally {
+            fileItem._xhr = null;
+            releaseUploadSlot();
+        }
+    };
+
+    /**
+     * Start uploading all ready files in parallel (with concurrency limit).
+     * Processing status is tracked via allJobs polling in app.modular.js.
+     */
     const startProcessingQueue = async () => {
-        console.log("Attempting to start processing queue...");
-        if (isProcessingActive.value) {
-            console.log("Queue processor already active.");
+        const readyItems = uploadQueue.value.filter(item => item.status === 'ready');
+        if (readyItems.length === 0) {
+            console.log("No files ready to upload.");
             return;
         }
 
         isProcessingActive.value = true;
-        resetCurrentFileProcessingState();
+        console.log(`Starting parallel upload of ${readyItems.length} file(s) (max ${MAX_CONCURRENT_UPLOADS} concurrent)...`);
 
-        const nextFileItem = uploadQueue.value.find(item => item.status === 'ready' || item.status === 'queued');
-
-        if (nextFileItem) {
-            console.log(`Processing next file: ${nextFileItem.file.name} (Client ID: ${nextFileItem.clientId})`);
-            currentlyProcessingFile.value = nextFileItem;
-
-            // Check if this is a "reload" item (existing recording being tracked)
-            if (nextFileItem.clientId.startsWith('reload-')) {
-                console.log(`Skipping upload for existing recording: ${nextFileItem.recordingId}`);
-                nextFileItem.status = 'processing';
-                startStatusPolling(nextFileItem, nextFileItem.recordingId);
-                return;
-            }
-
-            nextFileItem.status = 'uploading';
-            processingMessage.value = 'Preparing upload...';
-            processingProgress.value = 5;
-
-            try {
-                const formData = new FormData();
-                formData.append('file', nextFileItem.file);
-
-                // Send file's lastModified timestamp for meeting_date
-                if (nextFileItem.file.lastModified) {
-                    const lastModified = nextFileItem.file.lastModified;
-                    formData.append('file_last_modified', lastModified.toString());
-                    console.log(`[Upload] File lastModified: ${lastModified} (${new Date(lastModified).toISOString()})`);
-                }
-
-                if (nextFileItem.notes) {
-                    formData.append('notes', nextFileItem.notes);
-                }
-
-                // Add tags if selected
-                const tagsToUse = nextFileItem.tags || selectedTags.value || [];
-                tagsToUse.forEach((tag, index) => {
-                    const tagId = tag.id || tag;
-                    formData.append(`tag_ids[${index}]`, tagId);
-                });
-
-                // Add folder if selected
-                const folderToUse = nextFileItem.folder_id || selectedFolderId.value;
-                if (folderToUse) {
-                    formData.append('folder_id', folderToUse);
-                }
-
-                // Add ASR options (language is always sent, speaker options only if supported)
-                const asrOpts = nextFileItem.asrOptions || {};
-                const language = asrOpts.language || uploadLanguage.value;
-                if (language) {
-                    formData.append('language', language);
-                }
-
-                if (connectorSupportsDiarization.value) {
-                    const minSpeakers = asrOpts.min_speakers || uploadMinSpeakers.value;
-                    const maxSpeakers = asrOpts.max_speakers || uploadMaxSpeakers.value;
-
-                    if (minSpeakers && minSpeakers !== '') {
-                        formData.append('min_speakers', minSpeakers.toString());
-                    }
-                    if (maxSpeakers && maxSpeakers !== '') {
-                        formData.append('max_speakers', maxSpeakers.toString());
-                    }
-                }
-
-                processingMessage.value = 'Uploading file...';
-                processingProgress.value = 10;
-
-                const response = await fetch('/upload', { method: 'POST', body: formData });
-
-                // Safely parse JSON response, handling HTML error pages
-                let data;
-                const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    const text = await response.text();
-                    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
-                    const h1Match = text.match(/<h1>([^<]+)<\/h1>/i);
-                    throw new Error(titleMatch?.[1] || h1Match?.[1] ||
-                        `Server error (${response.status}): Response was not JSON`);
-                }
-                data = await response.json();
-
-                if (!response.ok) {
-                    let errorMsg = data.error || `Upload failed with status ${response.status}`;
-                    if (response.status === 413) errorMsg = data.error || `File too large. Max: ${data.max_size_mb?.toFixed(0) || maxFileSizeMB.value} MB.`;
-                    throw new Error(errorMsg);
-                }
-
-                if (response.status === 202 && data.id) {
-                    console.log(`File ${nextFileItem.file.name} uploaded. Recording ID: ${data.id}. Starting status poll.`);
-                    nextFileItem.status = 'pending';
-                    nextFileItem.recordingId = data.id;
-                    processingMessage.value = 'Upload complete. Waiting for processing...';
-                    processingProgress.value = 30;
-
-                    recordings.value.unshift(data);
-                    totalRecordings.value++;
-                    pollProcessingStatus(nextFileItem);
-
-                } else {
-                    throw new Error('Unexpected success response from server after upload.');
-                }
-
-            } catch (error) {
-                console.error(`Upload/Processing Error for ${nextFileItem.file.name} (Client ID: ${nextFileItem.clientId}):`, error);
-                nextFileItem.status = 'failed';
-                nextFileItem.error = error.message;
-                const failedRecordIndex = recordings.value.findIndex(r => r.id === nextFileItem.recordingId);
-                if (failedRecordIndex !== -1) {
-                    recordings.value[failedRecordIndex].status = 'FAILED';
-                    recordings.value[failedRecordIndex].transcription = `Upload/Processing failed: ${error.message}`;
-                } else {
-                    // Show friendly error message in toast
-                    const friendlyErr = getFriendlyError(error.message);
-                    setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
-                }
-
-                // Store failed upload in IndexedDB for background sync retry
-                try {
-                    await FailedUploads.storeFailedUpload({
-                        file: nextFileItem.file,
-                        fileName: nextFileItem.file.name,
-                        fileSize: nextFileItem.file.size,
-                        clientId: nextFileItem.clientId,
-                        notes: nextFileItem.notes,
-                        tags: nextFileItem.tags,
-                        asrOptions: nextFileItem.asrOptions,
-                        error: error.message
-                    });
-
-                    // Register for background sync
-                    if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
-                        const registration = await navigator.serviceWorker.ready;
-                        await registration.sync.register('sync-uploads');
-                        console.log('[Upload] Registered background sync for failed upload');
-                        showToast('Upload will retry automatically when connection is restored', 'info');
-                    }
-                } catch (syncError) {
-                    console.warn('[Upload] Failed to register background sync:', syncError);
-                }
-
-                resetCurrentFileProcessingState();
-                isProcessingActive.value = false;
-                await Vue.nextTick();
-                startProcessingQueue();
-            }
-        } else {
-            console.log("Upload queue is empty or no files are queued.");
-            isProcessingActive.value = false;
-        }
+        // Fire off all uploads concurrently (semaphore handles limiting)
+        const uploadPromises = readyItems.map(item => uploadSingleFile(item));
+        // Don't await - let them run in background. isProcessingActive is cleared by releaseUploadSlot.
+        Promise.allSettled(uploadPromises).then(() => {
+            console.log('All uploads settled.');
+        });
     };
 
+    // Keep backward-compat aliases
     const startStatusPolling = (fileItem, recordingId) => {
+        // No longer needed - allJobs polling handles status tracking
         fileItem.recordingId = recordingId;
-        pollProcessingStatus(fileItem);
     };
 
-    const pollProcessingStatus = (fileItem) => {
-        if (pollInterval.value) clearInterval(pollInterval.value);
-
-        const recordingId = fileItem.recordingId;
-        if (!recordingId) {
-            console.error("Cannot poll status without recording ID for", fileItem.file.name);
-            fileItem.status = 'failed';
-            fileItem.error = 'Internal error: Missing recording ID for polling.';
-            resetCurrentFileProcessingState();
-            isProcessingActive.value = false;
-            Vue.nextTick(startProcessingQueue);
-            return;
-        }
-
-        processingMessage.value = 'Waiting for transcription...';
-        processingProgress.value = 40;
-
-        pollInterval.value = setInterval(async () => {
-            const shouldStopPolling = !currentlyProcessingFile.value ||
-                                     currentlyProcessingFile.value.clientId !== fileItem.clientId ||
-                                     fileItem.status === 'failed' ||
-                                     (fileItem.status === 'completed' && (!fileItem.willAutoSummarize || fileItem.summaryCompleted));
-
-            if (shouldStopPolling) {
-                console.log(`Polling stopped for ${fileItem.clientId} as it's no longer active or finished.`);
-                clearInterval(pollInterval.value);
-                pollInterval.value = null;
-                if (currentlyProcessingFile.value && currentlyProcessingFile.value.clientId === fileItem.clientId) {
-                    resetCurrentFileProcessingState();
-                    isProcessingActive.value = false;
-                    await Vue.nextTick();
-                    startProcessingQueue();
-                }
-                return;
-            }
-
-            try {
-                console.log(`Polling status for recording ID: ${recordingId} (${fileItem.file.name})`);
-                // Use lightweight status-only endpoint
-                const response = await fetch(`/recording/${recordingId}/status`);
-                if (!response.ok) throw new Error(`Status check failed with status ${response.status}`);
-
-                // Safely parse JSON response, handling HTML error pages
-                const statusContentType = response.headers.get('content-type') || '';
-                if (!statusContentType.includes('application/json')) {
-                    const text = await response.text();
-                    const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
-                    const h1Match = text.match(/<h1>([^<]+)<\/h1>/i);
-                    throw new Error(titleMatch?.[1] || h1Match?.[1] ||
-                        `Server error (${response.status}): Status response was not JSON`);
-                }
-                const statusData = await response.json();
-                const galleryIndex = recordings.value.findIndex(r => r.id === recordingId);
-
-                // Update status in recordings list
-                if (galleryIndex !== -1) {
-                    // Create new object to ensure Vue reactivity
-                    recordings.value[galleryIndex] = {
-                        ...recordings.value[galleryIndex],
-                        status: statusData.status
-                    };
-
-                    // Update selectedRecording with new object reference for reactivity
-                    if (selectedRecording.value?.id === recordingId) {
-                        selectedRecording.value = {
-                            ...selectedRecording.value,
-                            status: statusData.status
-                        };
-                    }
-                }
-
-                const previousStatus = fileItem.status;
-                fileItem.status = statusData.status;
-
-                if (statusData.status === 'COMPLETED') {
-                    // Fetch full recording data when complete
-                    const fullResponse = await fetch(`/api/recordings/${recordingId}`);
-                    if (fullResponse.ok) {
-                        const data = await fullResponse.json();
-
-                        // Update recordings list first
-                        if (galleryIndex !== -1) {
-                            recordings.value[galleryIndex] = data;
-                        }
-
-                        // Always update selectedRecording if it's the current recording,
-                        // even if it's not in the current recordings list (e.g., filtered out)
-                        if (selectedRecording.value?.id === recordingId) {
-                            selectedRecording.value = data;
-                            // Force Vue to detect the change
-                            await nextTick();
-                        }
-
-                        // Store display name separately since File.name is read-only
-                        fileItem.displayName = data.title || data.original_filename || fileItem.file.name;
-                    }
-
-                    console.log(`Processing COMPLETED for ${fileItem.displayName} (ID: ${recordingId})`);
-
-                    if (previousStatus === 'summarizing') {
-                        console.log(`Auto-summary completed for ${fileItem.displayName}`);
-                        processingMessage.value = 'Processing complete!';
-                        processingProgress.value = 100;
-                        fileItem.status = 'completed';
-                        fileItem.summaryCompleted = true;
-
-                        clearInterval(pollInterval.value);
-                        pollInterval.value = null;
-                        resetCurrentFileProcessingState();
-                        isProcessingActive.value = false;
-                        // Refresh token budget after LLM operations
-                        if (onChatComplete) onChatComplete();
-
-                        startProcessingQueue();
-                        return;
-                    } else if (fileItem.willAutoSummarize && !fileItem.hasCheckedForAutoSummary) {
-                        processingMessage.value = 'Transcription complete!';
-                        processingProgress.value = 85;
-                        fileItem.status = 'awaiting_summary';
-                        fileItem.hasCheckedForAutoSummary = true;
-                        fileItem.autoSummaryStartTime = Date.now();
-                        return;
-                    } else if (fileItem.willAutoSummarize && fileItem.hasCheckedForAutoSummary) {
-                        const waitTime = Date.now() - fileItem.autoSummaryStartTime;
-                        const maxWaitTime = 5000; // 5 seconds - if no summarization starts, complete
-
-                        if (waitTime > maxWaitTime) {
-                            console.log(`Auto-summary did not start within ${maxWaitTime}ms, completing`);
-                            processingMessage.value = 'Processing complete!';
-                            processingProgress.value = 100;
-                            fileItem.status = 'completed';
-                            fileItem.summaryCompleted = false; // Summary didn't happen
-                            clearInterval(pollInterval.value);
-                            pollInterval.value = null;
-                            resetCurrentFileProcessingState();
-                            isProcessingActive.value = false;
-                            // Refresh token budget after LLM operations
-                            if (onChatComplete) onChatComplete();
-                            startProcessingQueue();
-                            return;
-                        }
-                        return;
-                    } else {
-                        processingMessage.value = 'Processing complete!';
-                        processingProgress.value = 100;
-                        fileItem.status = 'completed';
-                        fileItem.summaryCompleted = true;
-
-                        clearInterval(pollInterval.value);
-                        pollInterval.value = null;
-                        resetCurrentFileProcessingState();
-                        isProcessingActive.value = false;
-                        // Refresh token budget after LLM operations
-                        if (onChatComplete) onChatComplete();
-                        startProcessingQueue();
-                        return;
-                    }
-
-                } else if (statusData.status === 'FAILED') {
-                    console.log(`Processing FAILED for ${fileItem.displayName || fileItem.file.name} (ID: ${recordingId})`);
-                    processingMessage.value = 'Processing failed.';
-                    processingProgress.value = 100;
-                    fileItem.status = 'failed';
-
-                    // Fetch full data to get error details and update UI
-                    try {
-                        const failedResponse = await fetch(`/api/recordings/${recordingId}`);
-                        if (failedResponse.ok) {
-                            const failedData = await failedResponse.json();
-                            fileItem.error = failedData.error_message || 'Processing failed on server.';
-
-                            // Update recordings list so error shows in detail view
-                            const galleryIndex = recordings.value.findIndex(r => r.id === recordingId);
-                            if (galleryIndex !== -1) {
-                                recordings.value[galleryIndex] = failedData;
-                            }
-
-                            // Update selectedRecording to show error in transcription panel
-                            if (selectedRecording.value?.id === recordingId) {
-                                selectedRecording.value = failedData;
-                                await nextTick();
-                            }
-                        } else {
-                            fileItem.error = 'Processing failed on server.';
-                        }
-                    } catch (err) {
-                        fileItem.error = 'Processing failed on server.';
-                    }
-
-                    // Show friendly error message in toast
-                    const friendlyErr = getFriendlyError(fileItem.error);
-                    setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
-                    clearInterval(pollInterval.value);
-                    pollInterval.value = null;
-                    resetCurrentFileProcessingState();
-                    isProcessingActive.value = false;
-                    await Vue.nextTick();
-                    startProcessingQueue();
-
-                } else if (statusData.status === 'PROCESSING') {
-                    const couldUseChunking = chunkingEnabled.value && !useAsrEndpoint.value;
-
-                    if (couldUseChunking) {
-                        if (chunkingMode.value === 'size') {
-                            const chunkThresholdBytes = chunkingLimit.value * 1024 * 1024;
-                            const willUseChunking = fileItem.file.size > chunkThresholdBytes;
-
-                            if (willUseChunking) {
-                                processingMessage.value = 'Processing large file (chunking in progress)...';
-                                const maxProgress = fileItem.willAutoSummarize ? 70 : 80;
-                                processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 3));
-                            } else {
-                                processingMessage.value = 'Transcription in progress...';
-                                const maxProgress = fileItem.willAutoSummarize ? 65 : 75;
-                                processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 5));
-                            }
-                        } else {
-                            processingMessage.value = 'Processing file (chunking determined server-side)...';
-                            const maxProgress = fileItem.willAutoSummarize ? 70 : 80;
-                            processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 3));
-                        }
-                    } else {
-                        processingMessage.value = 'Transcription in progress...';
-                        const maxProgress = fileItem.willAutoSummarize ? 65 : 75;
-                        processingProgress.value = Math.round(Math.min(maxProgress, processingProgress.value + Math.random() * 5));
-                    }
-                } else if (statusData.status === 'SUMMARIZING') {
-                    console.log(`Auto-summary started for ${fileItem.displayName || fileItem.file.name}`);
-                    processingMessage.value = 'Generating summary...';
-                    processingProgress.value = 90;
-                    fileItem.status = 'summarizing';
-                } else {
-                    processingMessage.value = 'Waiting in queue...';
-                    processingProgress.value = 45;
-                }
-            } catch (error) {
-                console.error(`Polling Error for ${fileItem.displayName || fileItem.file.name} (ID: ${recordingId}):`, error);
-                fileItem.status = 'failed';
-                fileItem.error = `Error checking status: ${error.message}`;
-                setGlobalError(`Error checking status for "${fileItem.displayName || fileItem.file.name}": ${error.message}.`);
-                const galleryIndex = recordings.value.findIndex(r => r.id === recordingId);
-                if (galleryIndex !== -1) recordings.value[galleryIndex].status = 'FAILED';
-
-                clearInterval(pollInterval.value);
-                pollInterval.value = null;
-                resetCurrentFileProcessingState();
-                isProcessingActive.value = false;
-                await Vue.nextTick();
-                startProcessingQueue();
-            }
-        }, 5000);
+    const pollProcessingStatus = () => {
+        // No-op: status tracking is now handled by allJobs polling in app.modular.js
     };
 
     // Tag selection helpers

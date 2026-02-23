@@ -173,6 +173,7 @@
                      class="px-2 py-1 bg-[var(--bg-tertiary)]/30 rounded-md flex items-center gap-2 hover:bg-[var(--bg-tertiary)]/50 cursor-pointer mb-1">
                     <i class="fas fa-check-circle text-xs text-green-500"></i>
                     <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
+                    <i v-if="item.duplicateWarning" class="fas fa-copy text-xs text-amber-500" title="Duplicate file detected"></i>
                     <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">Done</span>
                 </div>
             </div>

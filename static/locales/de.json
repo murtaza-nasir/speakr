@@ -1144,7 +1144,8 @@
     "transcribing": "Transkribiere...",
     "untitled": "Unbenannte Aufnahme",
     "uploadProgress": "Upload-Fortschritt",
-    "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst"
+    "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst",
+    "duplicateDetected": "Diese Datei scheint ein Duplikat von \"{{existingName}}\" zu sein (hochgeladen am {{existingDate}})"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

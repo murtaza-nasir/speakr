@@ -1160,7 +1160,8 @@
     "transcribing": "Транскрибирование...",
     "untitled": "Запись без названия",
     "uploadProgress": "Прогресс загрузки",
-    "willAutoSummarize": "Автоматически создаст резюме после транскрибирования"
+    "willAutoSummarize": "Автоматически создаст резюме после транскрибирования",
+    "duplicateDetected": "Этот файл является дубликатом \"{{existingName}}\" (загружен {{existingDate}})"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"
