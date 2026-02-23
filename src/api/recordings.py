@@ -983,27 +983,112 @@ JSON Response:
             from src.services.llm import call_llm_completion
             current_app.logger.info(f"[Auto-Identify] Calling LLM directly with prompt")
 
-            completion = call_llm_completion(
-                messages=[
-                    {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                response_format={"type": "json_object"},
-                user_id=current_user.id,
-                operation_type='speaker_identification'
-            )
-            response_content = completion.choices[0].message.content
-            current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {response_content}")
+            use_schema = os.environ.get('AUTO_IDENTIFY_RESPONSE_SCHEMA', '').strip() in ('1', 'true', 'yes')
+            system_msg = "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications."
+
+            response_content = None
+            if use_schema:
+                # Build JSON schema response format with constrained keys
+                schema_properties = {label: {"type": "string"} for label in speaker_labels}
+                schema_response_format = {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "speaker_identification",
+                        "strict": True,
+                        "schema": {
+                            "type": "object",
+                            "properties": schema_properties,
+                            "required": speaker_labels,
+                            "additionalProperties": False
+                        }
+                    }
+                }
+                schema_prompt = prompt + f"\n\nIMPORTANT: Your JSON response must contain exactly these keys: {', '.join(speaker_labels)}"
+                try:
+                    current_app.logger.info("[Auto-Identify] Trying json_schema response format")
+                    completion = call_llm_completion(
+                        messages=[
+                            {"role": "system", "content": system_msg},
+                            {"role": "user", "content": schema_prompt}
+                        ],
+                        temperature=0.2,
+                        response_format=schema_response_format,
+                        user_id=current_user.id,
+                        operation_type='speaker_identification'
+                    )
+                    response_content = completion.choices[0].message.content
+                    current_app.logger.info(f"[Auto-Identify] LLM Raw Response (schema mode): {response_content}")
+                except Exception as schema_err:
+                    current_app.logger.warning(f"[Auto-Identify] json_schema mode failed, falling back to json_object: {schema_err}")
+                    response_content = None
+
+            if response_content is None:
+                completion = call_llm_completion(
+                    messages=[
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.2,
+                    response_format={"type": "json_object"},
+                    user_id=current_user.id,
+                    operation_type='speaker_identification'
+                )
+                response_content = completion.choices[0].message.content
+                current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {response_content}")
 
             from src.utils import safe_json_loads
             identified_map = safe_json_loads(response_content, {})
             current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
 
-            # Post-process the map to replace "Unknown" with an empty string
+            # --- Sanitize identified_map ---
+            speaker_label_re = re.compile(r'^SPEAKER_\d{2}$')
+
+            # Detect inverted map ({name: "SPEAKER_XX"}) and flip it
+            if identified_map and all(
+                speaker_label_re.match(str(v)) for v in identified_map.values() if v
+            ) and not any(speaker_label_re.match(str(k)) for k in identified_map.keys()):
+                current_app.logger.warning("[Auto-Identify] Detected inverted map, flipping keys/values")
+                identified_map = {v: k for k, v in identified_map.items() if v}
+
+            sanitized = {}
             for speaker_label, identified_name in identified_map.items():
-                if identified_name and identified_name.strip().lower() in ["unknown", "n/a", "not available", "unclear"]:
-                    identified_map[speaker_label] = ""
+                # Skip entries whose key isn't a valid SPEAKER_XX label
+                if not speaker_label_re.match(str(speaker_label)):
+                    continue
+                if not identified_name or not isinstance(identified_name, str):
+                    sanitized[speaker_label] = ""
+                    continue
+
+                name = identified_name.strip()
+
+                # Clear generic placeholders
+                if name.lower() in ["unknown", "n/a", "not available", "unclear", "unidentified", ""]:
+                    sanitized[speaker_label] = ""
+                    continue
+
+                # Clear label-to-label entries (e.g. "SPEAKER_01": "SPEAKER_02")
+                if speaker_label_re.match(name):
+                    sanitized[speaker_label] = ""
+                    continue
+
+                # Strip parenthetical content: "John (the host)" → "John"
+                name = re.sub(r'\s*\([^)]*\)', '', name).strip()
+
+                # Take first name segment before comma, semicolon, or slash
+                name = re.split(r'[,;/]', name)[0].strip()
+
+                # Collapse whitespace
+                name = re.sub(r'\s+', ' ', name)
+
+                # Final check: if result still matches SPEAKER_XX, clear it
+                if speaker_label_re.match(name) or not name:
+                    sanitized[speaker_label] = ""
+                    continue
+
+                sanitized[speaker_label] = name
+
+            identified_map = sanitized
+            current_app.logger.info(f"[Auto-Identify] Sanitized identified_map: {identified_map}")
         except Exception as e:
             current_app.logger.error(f"[Auto-Identify] Error calling LLM: {e}", exc_info=True)
             return jsonify({'error': f'Failed to identify speakers: {str(e)}'}), 500

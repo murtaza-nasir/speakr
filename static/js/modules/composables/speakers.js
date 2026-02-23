@@ -174,6 +174,7 @@ export function useSpeakers(state, utils, processedTranscription) {
         }
 
         showSpeakerModal.value = false;
+        showAutoIdDropdown.value = false;
         highlightedSpeaker.value = null;
         // Clear the speaker map to prevent stale data from persisting
         speakerMap.value = {};
@@ -735,7 +736,31 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Auto-Identify Speakers
     // =========================================
 
-    const autoIdentifySpeakers = async () => {
+    // Split button dropdown visibility + click-outside handling
+    const showAutoIdDropdown = Vue.ref(false);
+    const autoIdSplitBtn = Vue.ref(null);
+
+    const onAutoIdClickOutside = (e) => {
+        if (autoIdSplitBtn.value && !autoIdSplitBtn.value.contains(e.target)) {
+            showAutoIdDropdown.value = false;
+        }
+    };
+    Vue.watch(showAutoIdDropdown, (open) => {
+        if (open) {
+            document.addEventListener('click', onAutoIdClickOutside, true);
+        } else {
+            document.removeEventListener('click', onAutoIdClickOutside, true);
+        }
+    });
+
+    /**
+     * Auto-identify speakers via LLM.
+     * @param {boolean} identifyAll - When false (default), only fill speakers with empty names.
+     *                                When true, overwrite all speaker names.
+     */
+    const autoIdentifySpeakers = async (identifyAll = false) => {
+        showAutoIdDropdown.value = false;
+
         if (!selectedRecording.value) {
             showToast('No recording selected.', 'fa-exclamation-circle');
             return;
@@ -773,13 +798,17 @@ export function useSpeakers(state, utils, processedTranscription) {
             for (const speakerId in data.speaker_map) {
                 const identifiedName = data.speaker_map[speakerId];
                 if (speakerMap.value[speakerId] && identifiedName && identifiedName.trim() !== '') {
+                    // Skip speakers that already have a name unless identifyAll is true
+                    if (!identifyAll && speakerMap.value[speakerId].name && speakerMap.value[speakerId].name.trim() !== '') {
+                        continue;
+                    }
                     speakerMap.value[speakerId].name = identifiedName;
                     identifiedCount++;
                 }
             }
 
             if (identifiedCount > 0) {
-                showToast(`${identifiedCount} speaker(s) identified successfully!`, 'fa-check-circle');
+                showToast(`${identifiedCount} speaker${identifiedCount === 1 ? '' : 's'} identified successfully!`, 'fa-check-circle');
             } else {
                 showToast('No speakers could be identified from the context.', 'fa-info-circle');
             }
@@ -792,6 +821,59 @@ export function useSpeakers(state, utils, processedTranscription) {
             showToast(`Error: ${error.message}`, 'fa-exclamation-circle', 5000, 'error');
         } finally {
             isAutoIdentifying.value = false;
+        }
+    };
+
+    // =========================================
+    // Apply Suggested Names
+    // =========================================
+
+    /** True when any unnamed, non-isMe speaker has voice or autocomplete suggestions */
+    const hasAnySuggestions = Vue.computed(() => {
+        for (const speakerId of modalSpeakers.value) {
+            const data = speakerMap.value[speakerId];
+            if (!data || data.isMe) continue;
+            if (data.name && data.name.trim() !== '') continue;
+            // Check voice suggestions
+            if (voiceSuggestions.value[speakerId] && voiceSuggestions.value[speakerId].length > 0) {
+                return true;
+            }
+            // Check autocomplete suggestions
+            if (speakerSuggestions.value[speakerId] && speakerSuggestions.value[speakerId].length > 0) {
+                return true;
+            }
+        }
+        return false;
+    });
+
+    /** Bulk-apply voice suggestions (priority) then autocomplete suggestions to empty names only */
+    const applySuggestedNames = () => {
+        let appliedCount = 0;
+        for (const speakerId of modalSpeakers.value) {
+            const data = speakerMap.value[speakerId];
+            if (!data || data.isMe) continue;
+            if (data.name && data.name.trim() !== '') continue;
+
+            // Priority 1: voice suggestions
+            const voice = voiceSuggestions.value[speakerId];
+            if (voice && voice.length > 0) {
+                data.name = voice[0].name;
+                appliedCount++;
+                continue;
+            }
+
+            // Priority 2: autocomplete suggestions
+            const auto = speakerSuggestions.value[speakerId];
+            if (auto && auto.length > 0) {
+                data.name = auto[0].name;
+                appliedCount++;
+            }
+        }
+
+        if (appliedCount > 0) {
+            showToast(`Applied ${appliedCount} suggested name${appliedCount === 1 ? '' : 's'}`, 'fa-check-circle');
+        } else {
+            showToast('No suggestions to apply', 'fa-info-circle');
         }
     };
 
@@ -1128,6 +1210,10 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         // Auto-identify
         autoIdentifySpeakers,
+        showAutoIdDropdown,
+        autoIdSplitBtn,
+        hasAnySuggestions,
+        applySuggestedNames,
 
         // Add speaker
         openAddSpeakerModal,
