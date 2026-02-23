@@ -203,6 +203,7 @@ Speakr supports storing recording audio files in S3-compatible object storage (A
 - S3 bucket created and accessible from your Speakr server
 - S3 credentials configured in `.env` (see [installation guide](../getting-started/installation.md#file-storage-backend-local-s3-compatible))
 - `boto3>=1.34.0` installed (included in the default Docker image)
+- **S3 bucket CORS configured** for browser playback/download via presigned URLs (required when your app domain differs from the S3/MinIO endpoint)
 
 ## Migration Phases
 
@@ -255,6 +256,29 @@ S3_USE_PATH_STYLE=true                # Required for MinIO
 ```
 
 After restarting, **new uploads** go to S3, while existing `local://` recordings continue to be served from the local filesystem. The application supports both backends simultaneously.
+
+> **Important (CORS):** Because Speakr serves S3 audio using browser redirects to presigned URLs, your S3/MinIO bucket must allow cross-origin requests from your Speakr web origin.
+>
+> At minimum, allow:
+> - methods: `GET`, `HEAD`
+> - headers: `Range` (recommended for audio seeking/streaming)
+> - your Speakr origin (for example `https://speakr.example.com`)
+>
+> Example AWS S3 CORS (adjust origin):
+>
+> ```json
+> [
+>   {
+>     "AllowedHeaders": ["*"],
+>     "AllowedMethods": ["GET", "HEAD"],
+>     "AllowedOrigins": ["https://speakr.example.com"],
+>     "ExposeHeaders": ["Accept-Ranges", "Content-Length", "Content-Range", "Content-Type", "ETag"],
+>     "MaxAgeSeconds": 3000
+>   }
+> ]
+> ```
+>
+> For MinIO, configure equivalent CORS rules for the bucket (via Console, `mc`, or your provisioning tool).
 
 ### Phase 4: Migrate Historical Files to S3
 
@@ -324,11 +348,7 @@ docker compose exec app python scripts/backfill_audio_duration_seconds.py --repo
 
 ### Phase 5: Cleanup Local Files
 
-After confirming all recordings are served from S3, you can reclaim local disk space. The migration script deletes local source files after successful upload by default. If you disabled this, you can clean up manually or with a dedicated pass.
-
-### Phase 6: Enforce S3-Only Storage (Optional)
-
-Once all recordings are migrated, you may optionally remove legacy path support by disabling the local fallback. This is not required — Speakr will continue to route correctly based on each recording's locator indefinitely.
+After confirming all recordings are served from S3, you can reclaim local disk space. The migration script does not delete local source files after successful upload by default. You can set --delete-local-after-success parameter to the migration script to auto-delete migrated local files.
 
 ## Verifying the Migration
 
