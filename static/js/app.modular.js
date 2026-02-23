@@ -533,6 +533,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showSpeedMenu = ref(false);
             const playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0];
             const speedMenuPosition = ref({});
+            const showVolumeSlider = ref(false);
+            const showModalVolumeSlider = ref(false);
 
             // --- Modal Audio Player State (Independent from main) ---
             const modalAudioCurrentTime = ref(0);
@@ -709,7 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,
                 modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying, modalPlaybackRate,
-                playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition,
+                playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider, showModalVolumeSlider,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,
