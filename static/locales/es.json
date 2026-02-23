@@ -1145,7 +1145,9 @@
     "untitled": "Grabación Sin Título",
     "uploadProgress": "Progreso de Carga",
     "willAutoSummarize": "Se resumirá automáticamente después de la transcripción",
-    "duplicateDetected": "Este archivo parece ser un duplicado de \"{{existingName}}\" (subido el {{existingDate}})"
+    "duplicateDetected": "Este archivo parece ser un duplicado de \"{{existingName}}\" (subido el {{existingDate}})",
+    "duplicateFile": "Archivo duplicado",
+    "copies": "copias de este archivo"
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

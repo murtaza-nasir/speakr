@@ -535,6 +535,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const speedMenuPosition = ref({});
             const showVolumeSlider = ref(false);
             const showModalVolumeSlider = ref(false);
+            const showDuplicatesModal = ref(false);
+            const duplicatesModalData = ref(null);
 
             // --- Modal Audio Player State (Independent from main) ---
             const modalAudioCurrentTime = ref(0);
@@ -2003,7 +2005,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return '';
             };
 
-            // Tag functions from composable (using composable's implementations)
+            // Duplicates modal
+            const openDuplicatesModal = (duplicateInfo) => {
+                duplicatesModalData.value = duplicateInfo;
+                showDuplicatesModal.value = true;
+            };
+
+            const navigateToDuplicate = (id) => {
+                showDuplicatesModal.value = false;
+                const rec = recordings.value.find(r => r.id === id);
+                // selectRecording always re-fetches full data from the API
+                recordingsComposable.selectRecording(rec || { id });
+            };
 
             // =========================================================================
             // WATCHERS
@@ -2417,6 +2430,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 removeProgressItem,
                 retryProgressItem,
                 hasSpeakerNames,
+                showDuplicatesModal,
+                duplicatesModalData,
+                openDuplicatesModal,
+                navigateToDuplicate,
                 tagsWithCustomPrompts,
                 recordingDisclaimerHtml,
                 getTagPromptPreview,

@@ -1196,7 +1196,9 @@
     "untitled": "Untitled Recording",
     "uploadProgress": "Upload Progress",
     "willAutoSummarize": "Will auto-summarize after transcription",
-    "duplicateDetected": "This file appears to be a duplicate of \"{{existingName}}\" (uploaded {{existingDate}})"
+    "duplicateDetected": "This file appears to be a duplicate of \"{{existingName}}\" (uploaded {{existingDate}})",
+    "duplicateFile": "Duplicate file",
+    "copies": "copies of this file"
   },
   "uploadProgress": {
     "title": "Upload Progress"

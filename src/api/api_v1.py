@@ -735,7 +735,8 @@ def get_recording(recording_id):
         'audio_available': recording.audio_deleted_at is None,
         'processing_time_seconds': recording.processing_time_seconds,
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
-        'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in recording.tags]
+        'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in recording.tags],
+        'duplicate_info': recording.get_duplicate_info()
     }
 
     # Include large text fields based on params

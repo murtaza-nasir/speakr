@@ -1161,7 +1161,9 @@
     "untitled": "Запись без названия",
     "uploadProgress": "Прогресс загрузки",
     "willAutoSummarize": "Автоматически создаст резюме после транскрибирования",
-    "duplicateDetected": "Этот файл является дубликатом \"{{existingName}}\" (загружен {{existingDate}})"
+    "duplicateDetected": "Этот файл является дубликатом \"{{existingName}}\" (загружен {{existingDate}})",
+    "duplicateFile": "Дубликат файла",
+    "copies": "копий этого файла"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"
