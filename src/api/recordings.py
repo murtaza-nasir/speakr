@@ -2527,7 +2527,12 @@ def delete_recording(recording_id):
             if chunk_count > 0:
                 current_app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
 
-        # Delete associated processing jobs (required because recording_id is NOT NULL)
+        # Delete associated records with NOT NULL recording_id constraints
+        from src.models.speaker_snippet import SpeakerSnippet
+        deleted_snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
+        if deleted_snippets > 0:
+            current_app.logger.info(f"Deleted {deleted_snippets} speaker snippets for recording {recording_id}")
+
         from src.models.processing_job import ProcessingJob
         deleted_jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
         if deleted_jobs > 0:
@@ -3457,8 +3462,10 @@ def bulk_delete_recordings():
                     except Exception as e:
                         current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
 
-                # Delete associated processing jobs
+                # Delete associated records with NOT NULL recording_id constraints
                 from src.models import ProcessingJob
+                from src.models.speaker_snippet import SpeakerSnippet
+                SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
                 ProcessingJob.query.filter_by(recording_id=recording_id).delete()
 
                 # Delete the recording
