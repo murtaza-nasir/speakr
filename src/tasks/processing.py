@@ -1492,7 +1492,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     actual_content_type = audio_mime_type
                     actual_filename = os.path.basename(audio_filepath)
 
-                    # Persist extracted audio through storage layer (supports local and S3)
+                    # Legacy/repair fallback path: in the normal upload flow, video containers should
+                    # already be converted/extracted before the Recording is stored. We still handle
+                    # video here for historical records / reprocess jobs where a video object may
+                    # remain in recording.audio_path.
+                    # TODO(storage-cleanup): after migrating legacy video-backed recordings to audio
+                    # objects and normalizing cached durations, this branch should be removable.
                     try:
                         from src.services.storage import get_storage_service
                         storage = get_storage_service()
@@ -1730,6 +1735,13 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             try:
                 cached_audio_duration = None
                 if chunking_service:
+                    # Legacy cache-repair fallback: new uploads should already populate
+                    # recording.audio_duration_seconds, and extracted-video paths above also try to do
+                    # that. This probe exists to repair historical rows and edge cases during
+                    # processing/reprocessing while we still have local access to media.
+                    # TODO(storage-cleanup): after running backfill/migrations for missing
+                    # audio_duration_seconds (and cleaning legacy video-backed objects), remove this
+                    # multi-path probing block and rely on DB-stored duration.
                     duration_probe_candidates = []
                     if filepath:
                         duration_probe_candidates.append(filepath)
