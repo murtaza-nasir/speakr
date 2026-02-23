@@ -286,6 +286,42 @@ The script is **idempotent**:
 
 Run in batches and monitor progress. Repeat until all local files are migrated.
 
+### Optional: Backfill Cached Audio Durations (`audio_duration_seconds`)
+
+If your instance already had recordings before the `audio_duration_seconds` cache field was introduced, older rows may still have `NULL` values. You can backfill them with the dedicated script:
+
+```bash
+# Preview only (no DB writes)
+docker compose exec app python scripts/backfill_audio_duration_seconds.py --dry-run
+
+# Run backfill for all eligible recordings
+docker compose exec app python scripts/backfill_audio_duration_seconds.py
+```
+
+The script:
+
+- updates **only** recordings where `audio_duration_seconds IS NULL`
+- skips recordings with `audio_deleted_at` set
+- skips active jobs (`PROCESSING`, `QUEUED`)
+- calculates duration using the storage abstraction + `ffprobe`, so it works for both `local://` and `s3://` recordings
+
+**Useful options:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview without updating DB |
+| `--limit N` | Process only the first N recordings |
+| `--recording-id ID` | Backfill one recording |
+| `--only-user ID` | Backfill recordings for one user |
+| `--report-jsonl <path>` | Write a JSONL report |
+| `--ffprobe-timeout SECONDS` | Override ffprobe timeout (default: 30) |
+
+Example with report:
+
+```bash
+docker compose exec app python scripts/backfill_audio_duration_seconds.py --report-jsonl /tmp/audio-duration-backfill.jsonl
+```
+
 ### Phase 5: Cleanup Local Files
 
 After confirming all recordings are served from S3, you can reclaim local disk space. The migration script deletes local source files after successful upload by default. If you disabled this, you can clean up manually or with a dedicated pass.
@@ -303,6 +339,7 @@ After migration, verify that:
 3. **Reprocessing** works — the worker materializes audio from S3 to a temporary local file for transcription
 4. **Deletion** and **retention** properly remove S3 objects
 5. **Shared links** generate working presigned URLs with appropriate TTL
+6. **Cached durations** are backfilled for older rows (check `recording.audio_duration_seconds` is no longer `NULL` for historical recordings)
 
 ## Rollback
 
