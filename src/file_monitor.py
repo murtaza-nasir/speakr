@@ -361,6 +361,14 @@ class FileMonitor:
                     self.logger.error(f"FFmpeg conversion failed: {e}")
                     raise
                 
+                # Compute file hash for duplicate detection
+                file_hash = None
+                try:
+                    from src.utils.file_hash import compute_file_sha256
+                    file_hash = compute_file_sha256(str(final_path))
+                except Exception as e:
+                    self.logger.warning(f"Could not compute file hash: {e}")
+
                 # Get file size and MIME type
                 file_size = final_path.stat().st_size
                 mime_type, _ = mimetypes.guess_type(str(final_path))
@@ -376,6 +384,16 @@ class FileMonitor:
                     meeting_date = now
                     self.logger.debug("No metadata creation date found, using current time")
 
+                # Check for duplicate
+                if file_hash:
+                    existing = Recording.query.filter_by(user_id=user_id, file_hash=file_hash).first()
+                    if existing:
+                        self.logger.warning(
+                            f"Duplicate file detected for user {user_id}: "
+                            f"hash={file_hash[:12]}... matches recording {existing.id} "
+                            f"({existing.title}). Processing anyway."
+                        )
+
                 recording = Recording(
                     audio_path=str(final_path),
                     original_filename=original_filename,
@@ -386,7 +404,8 @@ class FileMonitor:
                     user_id=user_id,
                     mime_type=mime_type,
                     is_inbox=True,  # Auto-processed files go to inbox
-                    processing_source='auto_process'  # Track that this was auto-processed
+                    processing_source='auto_process',  # Track that this was auto-processed
+                    file_hash=file_hash
                 )
                 
                 db.session.add(recording)

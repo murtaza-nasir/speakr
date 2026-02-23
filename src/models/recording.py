@@ -41,6 +41,7 @@ class Recording(db.Model):
     summarization_duration_seconds = db.Column(db.Integer, nullable=True)  # Time taken for summarization
     processing_source = db.Column(db.String(50), default='upload')  # upload, auto_process, recording
     error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
+    file_hash = db.Column(db.String(64), nullable=True)  # SHA-256 hash for duplicate detection
 
     # Auto-deletion and archival fields
     audio_deleted_at = db.Column(db.DateTime, nullable=True)  # When audio file was deleted (null = not deleted)

@@ -37,6 +37,7 @@ from src.services.embeddings import process_recording_chunks
 from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
+from src.utils.file_hash import compute_file_sha256
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -1978,6 +1979,27 @@ def upload_file():
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
 
+        # Compute file hash for duplicate detection (hash the final/converted file)
+        file_hash = None
+        duplicate_warning = None
+        try:
+            file_hash = compute_file_sha256(filepath)
+            existing = Recording.query.filter_by(
+                user_id=current_user.id, file_hash=file_hash
+            ).first()
+            if existing:
+                duplicate_warning = {
+                    'existing_recording_id': existing.id,
+                    'existing_title': existing.title,
+                    'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
+                }
+                current_app.logger.info(
+                    f"Duplicate file detected for user {current_user.id}: "
+                    f"hash={file_hash[:12]}... matches recording {existing.id}"
+                )
+        except Exception as e:
+            current_app.logger.warning(f"Could not compute file hash: {e}")
+
         # Determine MIME type of the final file
         mime_type, _ = mimetypes.guess_type(filepath)
         current_app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
@@ -2119,7 +2141,8 @@ def upload_file():
             mime_type=mime_type,
             notes=notes,
             folder_id=selected_folder.id if selected_folder else None,
-            processing_source='upload'  # Track that this was manually uploaded
+            processing_source='upload',  # Track that this was manually uploaded
+            file_hash=file_hash
         )
         db.session.add(recording)
         db.session.commit()
@@ -2160,7 +2183,10 @@ def upload_file():
         )
         current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
 
-        return jsonify(recording.to_dict(viewer_user=current_user)), 202
+        response_data = recording.to_dict(viewer_user=current_user)
+        if duplicate_warning:
+            response_data['duplicate_warning'] = duplicate_warning
+        return jsonify(response_data), 202
 
     except RequestEntityTooLarge:
         max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
