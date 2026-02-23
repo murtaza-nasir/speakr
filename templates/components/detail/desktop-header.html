@@ -207,6 +207,14 @@
                     <span :title="item.fullText || item.text">${item.text}</span>
                 </span>
             </div>
+
+            <!-- Duplicate Indicator -->
+            <button v-if="selectedRecording.duplicate_info"
+                    @click="openDuplicatesModal(selectedRecording.duplicate_info)"
+                    class="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
+                <i class="fas fa-copy"></i>
+                <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
+            </button>
         </div>
     </div>
 </div>

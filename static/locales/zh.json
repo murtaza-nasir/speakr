@@ -1274,7 +1274,9 @@
     "untitled": "无标题录音",
     "uploadProgress": "上传进度",
     "willAutoSummarize": "转录后将自动生成摘要",
-    "duplicateDetected": "此文件似乎与 \"{{existingName}}\" 重复（上传于 {{existingDate}}）"
+    "duplicateDetected": "此文件似乎与 \"{{existingName}}\" 重复（上传于 {{existingDate}}）",
+    "duplicateFile": "重复文件",
+    "copies": "份此文件的副本"
   },
   "uploadProgress": {
     "title": "上传进度"

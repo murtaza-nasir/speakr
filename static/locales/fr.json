@@ -1139,7 +1139,9 @@
     "untitled": "Enregistrement Sans Titre",
     "uploadProgress": "Progression du Téléchargement",
     "willAutoSummarize": "Résumé automatique après la transcription",
-    "duplicateDetected": "Ce fichier semble être un doublon de \"{{existingName}}\" (importé le {{existingDate}})"
+    "duplicateDetected": "Ce fichier semble être un doublon de \"{{existingName}}\" (importé le {{existingDate}})",
+    "duplicateFile": "Fichier en double",
+    "copies": "copies de ce fichier"
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
