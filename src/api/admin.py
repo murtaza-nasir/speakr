@@ -329,10 +329,12 @@ def admin_delete_user(user_id):
         if total_chunks > 0:
             current_app.logger.info(f"Deleting {total_chunks} transcript chunks with embeddings for user {user_id}")
     
+    from src.services.storage import get_storage_service
+    storage = get_storage_service()
     for recording in user.recordings:
         try:
-            if recording.audio_path and os.path.exists(recording.audio_path):
-                os.remove(recording.audio_path)
+            if recording.audio_path:
+                storage.delete(recording.audio_path, missing_ok=True)
         except Exception as e:
             current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
     

@@ -68,13 +68,15 @@ Run Speakr once with internet access to cache the embedding model, then disconne
 
 ### How do I backup my Speakr data?
 
-Your Speakr data consists of three essential components: the SQLite database in the `instance/` directory, audio files and transcriptions in the `uploads/` directory, and your configuration in the `.env` file. To create a complete backup, stop the container first to ensure database consistency, then backup all three directories:
+Your Speakr data consists of three essential components: the SQLite database in the `instance/` directory, audio files in the `uploads/` directory (when using local storage), and your configuration in the `.env` file. To create a complete backup, stop the container first to ensure database consistency, then backup all three directories:
 
 ```bash
 docker compose down
 tar czf speakr_backup_$(date +%Y%m%d).tar.gz uploads/ instance/ .env
 docker compose up -d
 ```
+
+If you use S3 storage for audio files (`FILE_STORAGE_BACKEND=s3`), audio data is stored externally and managed by your S3 provider's durability guarantees. In that case you only need to back up `instance/` and `.env`.
 
 Regular automated backups are highly recommended for production use.
 
@@ -247,6 +249,14 @@ AUDIO_UNSUPPORTED_CODECS=opus,vorbis
 ```
 
 Files using these codecs will be automatically converted to your target format before transcription. See the [troubleshooting guide](troubleshooting.md#format-not-recognised-errors) for more details.
+
+### Can I store audio files in S3 or MinIO instead of local disk?
+
+Yes. Set `FILE_STORAGE_BACKEND=s3` in your `.env` and configure the S3 connection variables (`S3_BUCKET_NAME`, `S3_ENDPOINT_URL`, etc.). Speakr will store new uploads in S3 and serve audio via short-lived presigned URLs instead of streaming through the backend. Existing local recordings continue to work — the system reads from both backends based on each recording's storage locator. See the [installation guide](getting-started/installation.md#file-storage-backend-local-s3-compatible) for full configuration and the [migration guide](admin-guide/migration-guide.md#migrating-audio-files-to-s3) for moving existing files to S3.
+
+### What happens to existing recordings when I switch to S3 storage?
+
+Nothing breaks. Existing local recordings keep working as before — Speakr reads from both local and S3 storage simultaneously. Only **new** uploads go to S3 after you change `FILE_STORAGE_BACKEND=s3`. To migrate historical files, use the provided migration scripts: first normalize legacy paths with `scripts/migrate_local_paths_to_local_locator.py`, then move files to S3 with `scripts/migrate_local_recordings_to_s3.py`. Both scripts support `--dry-run` and are idempotent.
 
 ---
 

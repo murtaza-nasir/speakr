@@ -351,11 +351,14 @@ Example group tag retention configuration:
    - Skip if exempt
    ↓
 4. Delete based on mode:
-   - audio_only: Remove file, keep DB record, set audio_deleted_at
-   - full_recording: Remove file and DB record
+   - audio_only: Remove file via storage service, keep DB record, set audio_deleted_at
+   - full_recording: Remove file via storage service and DB record
    ↓
 5. Return statistics
 ```
+
+!!! info "S3 Storage Support"
+    Audio deletion works transparently with both local and S3 storage backends. The storage service resolves each recording's storage locator (`local://...` or `s3://...`) and deletes the file from the correct backend. If the file is already missing, the deletion is treated as successful and processing continues.
 
 ## Migration Guide
 

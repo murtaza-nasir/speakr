@@ -1,4 +1,4 @@
-# Migration Guide: Connector Architecture
+# Migration Guide
 
 This guide helps you migrate from the legacy transcription configuration to the new connector-based architecture introduced in Speakr v0.8.
 
@@ -190,3 +190,184 @@ If you encounter issues during migration:
 1. Check the [troubleshooting guide](../troubleshooting.md)
 2. Review the [installation guide](../getting-started/installation.md) for complete configuration examples
 3. Open an issue on [GitHub](https://github.com/murtaza-nasir/speakr/issues)
+
+---
+
+# Migrating Audio Files to S3
+
+Speakr supports storing recording audio files in S3-compatible object storage (AWS S3, MinIO, etc.) alongside or instead of the local filesystem. This section covers how to transition an existing instance from local storage to S3.
+
+## Prerequisites
+
+- Speakr updated to a version that includes the storage abstraction layer
+- S3 bucket created and accessible from your Speakr server
+- S3 credentials configured in `.env` (see [installation guide](../getting-started/installation.md#file-storage-backend-local-s3-compatible))
+- `boto3>=1.34.0` installed (included in the default Docker image)
+- **S3 bucket CORS configured** for browser playback/download via presigned URLs (required when your app domain differs from the S3/MinIO endpoint)
+
+## Migration Phases
+
+The migration is designed to be **gradual and zero-downtime**. Each phase is independent and can be performed separately.
+
+### Phase 1: Deploy Storage Abstraction (No Behavior Change)
+
+Update Speakr to the version with the storage layer while keeping `FILE_STORAGE_BACKEND=local` (the default). The application continues to work exactly as before — all reads, writes, and deletions now go through the unified storage service but still operate on local files.
+
+```bash
+FILE_STORAGE_BACKEND=local
+```
+
+### Phase 2: Normalize Legacy Paths
+
+Existing recordings may have inconsistent `audio_path` values (absolute paths, relative paths). The normalization script converts them all to the `local://` locator format without moving any files:
+
+```bash
+# Preview changes without writing
+docker compose exec app python scripts/migrate_local_paths_to_local_locator.py --dry-run
+
+# Run the actual normalization
+docker compose exec app python scripts/migrate_local_paths_to_local_locator.py
+```
+
+**Available options:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview changes without writing to DB |
+| `--limit N` | Process only the first N records |
+| `--recording-id ID` | Process a single recording |
+| `--only-user ID` | Process recordings for a specific user |
+| `--allow-missing-file` | Normalize even if the local file is missing |
+| `--report-jsonl <path>` | Write a JSONL report of all actions |
+
+The script is **idempotent** — running it multiple times is safe.
+
+### Phase 3: Switch New Uploads to S3
+
+Configure S3 credentials and switch the storage backend:
+
+```bash
+FILE_STORAGE_BACKEND=s3
+S3_BUCKET_NAME=speakr-audio
+S3_ENDPOINT_URL=http://minio:9000     # For MinIO
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_USE_PATH_STYLE=true                # Required for MinIO
+```
+
+After restarting, **new uploads** go to S3, while existing `local://` recordings continue to be served from the local filesystem. The application supports both backends simultaneously.
+
+> **Important (CORS):** Because Speakr serves S3 audio using browser redirects to presigned URLs, your S3/MinIO bucket must allow cross-origin requests from your Speakr web origin.
+>
+> At minimum, allow:
+> - methods: `GET`, `HEAD`
+> - headers: `Range` (recommended for audio seeking/streaming)
+> - your Speakr origin (for example `https://speakr.example.com`)
+>
+> Example AWS S3 CORS (adjust origin):
+>
+> ```json
+> [
+>   {
+>     "AllowedHeaders": ["*"],
+>     "AllowedMethods": ["GET", "HEAD"],
+>     "AllowedOrigins": ["https://speakr.example.com"],
+>     "ExposeHeaders": ["Accept-Ranges", "Content-Length", "Content-Range", "Content-Type", "ETag"],
+>     "MaxAgeSeconds": 3000
+>   }
+> ]
+> ```
+>
+> For MinIO, configure equivalent CORS rules for the bucket (via Console, `mc`, or your provisioning tool).
+
+### Phase 4: Migrate Historical Files to S3
+
+Move existing local files to S3 using the migration script:
+
+```bash
+# Preview what would be migrated
+docker compose exec app python scripts/migrate_local_recordings_to_s3.py --dry-run
+
+# Run the migration (verifies upload size by default)
+docker compose exec app python scripts/migrate_local_recordings_to_s3.py --limit 100
+```
+
+**Available options:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview without uploading or modifying DB |
+| `--limit N` | Migrate only N records per run |
+| `--recording-id ID` | Migrate a specific recording |
+| `--only-user ID` | Migrate recordings for a specific user |
+| `--verify-size` | Verify uploaded size matches local (enabled by default) |
+
+The script is **idempotent**:
+
+- Recordings already on `s3://` are skipped
+- If the S3 object already exists with matching size, only the DB is updated
+- Recordings in `PROCESSING` or `QUEUED` status are skipped to avoid race conditions
+
+Run in batches and monitor progress. Repeat until all local files are migrated.
+
+### Optional: Backfill Cached Audio Durations (`audio_duration_seconds`)
+
+If your instance already had recordings before the `audio_duration_seconds` cache field was introduced, older rows may still have `NULL` values. You can backfill them with the dedicated script:
+
+```bash
+# Preview only (no DB writes)
+docker compose exec app python scripts/backfill_audio_duration_seconds.py --dry-run
+
+# Run backfill for all eligible recordings
+docker compose exec app python scripts/backfill_audio_duration_seconds.py
+```
+
+The script:
+
+- updates **only** recordings where `audio_duration_seconds IS NULL`
+- skips recordings with `audio_deleted_at` set
+- skips active jobs (`PROCESSING`, `QUEUED`)
+- calculates duration using the storage abstraction + `ffprobe`, so it works for both `local://` and `s3://` recordings
+
+**Useful options:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Preview without updating DB |
+| `--limit N` | Process only the first N recordings |
+| `--recording-id ID` | Backfill one recording |
+| `--only-user ID` | Backfill recordings for one user |
+| `--report-jsonl <path>` | Write a JSONL report |
+| `--ffprobe-timeout SECONDS` | Override ffprobe timeout (default: 30) |
+
+Example with report:
+
+```bash
+docker compose exec app python scripts/backfill_audio_duration_seconds.py --report-jsonl /tmp/audio-duration-backfill.jsonl
+```
+
+### Phase 5: Cleanup Local Files
+
+After confirming all recordings are served from S3, you can reclaim local disk space. The migration script does not delete local source files after successful upload by default. You can set --delete-local-after-success parameter to the migration script to auto-delete migrated local files.
+
+## Verifying the Migration
+
+After migration, verify that:
+
+1. **Audio playback** works for migrated recordings (they should redirect to presigned S3 URLs)
+2. **New uploads** are stored in S3 (check `recording.audio_path` starts with `s3://`)
+3. **Reprocessing** works — the worker materializes audio from S3 to a temporary local file for transcription
+4. **Deletion** and **retention** properly remove S3 objects
+5. **Shared links** generate working presigned URLs with appropriate TTL
+6. **Cached durations** are backfilled for older rows (check `recording.audio_duration_seconds` is no longer `NULL` for historical recordings)
+
+## Rollback
+
+If you need to revert to local storage:
+
+1. Set `FILE_STORAGE_BACKEND=local` in `.env`
+2. Restart the container
+3. New uploads will go to local storage again
+4. Existing `s3://` recordings continue to work as long as S3 credentials remain configured
+
+The system is designed so that both backends can coexist indefinitely.

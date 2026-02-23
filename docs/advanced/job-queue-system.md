@@ -149,9 +149,10 @@ When a new upload fails permanently:
 
 ```python
 if is_new_upload and recording:
-    # Delete audio file
-    if recording.audio_path and os.path.exists(recording.audio_path):
-        os.remove(recording.audio_path)
+    # Delete audio file via storage service (works for both local and S3)
+    if recording.audio_path:
+        from src.services.storage import get_storage_service
+        get_storage_service().delete(recording.audio_path, missing_ok=True)
     # Delete all processing jobs for this recording
     ProcessingJob.query.filter_by(recording_id=recording_id).delete()
     # Delete the recording

@@ -18,7 +18,7 @@ import json
 from datetime import datetime, date, timedelta
 from typing import Optional
 
-from flask import Blueprint, jsonify, request, current_app, send_file
+from flask import Blueprint, jsonify, request, current_app, send_file, redirect
 from flask_login import login_required, current_user
 from sqlalchemy import func, extract, or_, and_
 
@@ -31,6 +31,7 @@ from src.services.token_tracking import TokenTracker
 from src.services.transcription_tracking import transcription_tracker
 from src.file_exporter import format_transcription_with_template
 from src.api.recordings import upload_file as _upload_file_ui
+from src.services.storage import get_storage_service
 
 # Create blueprint with /api/v1 prefix
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -1775,14 +1776,25 @@ def download_audio(recording_id):
     if not recording.audio_path:
         return jsonify({'error': 'No audio file'}), 404
 
-    audio_path = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'uploads'), recording.audio_path)
-    if not os.path.exists(audio_path):
-        return jsonify({'error': 'Audio file not found'}), 404
-
     download = request.args.get('download', 'false').lower() == 'true'
 
+    storage = get_storage_service()
+    delivery = storage.get_audio_delivery(
+        recording.audio_path,
+        download=download,
+        mime_type=recording.mime_type or 'audio/mpeg',
+        download_name=recording.original_filename or f'recording-{recording_id}.mp3',
+        is_public=False,
+    )
+
+    if delivery.mode == 'redirect_url':
+        return redirect(delivery.url, code=302)
+
+    if not delivery.local_path or not os.path.exists(delivery.local_path):
+        return jsonify({'error': 'Audio file not found'}), 404
+
     return send_file(
-        audio_path,
+        delivery.local_path,
         mimetype=recording.mime_type or 'audio/mpeg',
         as_attachment=download,
         download_name=recording.original_filename or f'recording-{recording_id}.mp3'
