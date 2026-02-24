@@ -148,12 +148,9 @@ Regular maintenance keeps your speaker library relevant. Remove speakers who no 
 When recordings are deleted (either manually or through auto-deletion), Speakr automatically manages speaker voice profiles to protect your privacy:
 
 - **Speakers with remaining recordings**: Voice profiles are preserved and continue to provide recognition suggestions
-- **Speakers with no recordings**: Automatically removed during the next scheduled cleanup to ensure voice data is not retained unnecessarily
-- **No manual action needed**: Cleanup happens automatically when auto-deletion is enabled
+- **Speakers with no recordings**: Preserved by default. If `DELETE_ORPHANED_SPEAKERS=true` is set, they are automatically removed during the next scheduled cleanup
 
-This automatic cleanup ensures your speaker list stays current and maintains compliance with data privacy regulations. Voice embeddings (biometric data) are only retained when there are active recordings that reference the speaker, following data minimization principles.
-
-**Note**: If you want to preserve a speaker's voice profile, ensure at least one recording containing that speaker is retained. Protected recordings (with protected tags) will preserve their associated speakers.
+**Note**: Protected recordings (with protected tags) will always preserve their associated speakers.
 
 ## Tag Management Tab
 

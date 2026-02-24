@@ -169,6 +169,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - **Video Retention** - New `VIDEO_RETENTION=true` option preserves video streams for in-browser playback. When enabled, uploaded video files keep their video track and render with a native `<video>` player alongside the transcript. Audio is extracted to a temp file for transcription and cleaned up automatically. HTTP Range requests enable seeking without downloading the full file.
 - **Parallel Uploads** - Multiple files upload concurrently with individual progress bars, making batch uploads significantly faster. Configurable via `MAX_CONCURRENT_UPLOADS` (default: 3)
 - **Duplicate Detection** - SHA-256 file hashing detects duplicate uploads with warning toasts and a clickable copies indicator in the sidebar and header
+- **Speaker Profile Preservation** - Speaker profiles and voice embeddings are now preserved by default when all recordings are deleted. Set `DELETE_ORPHANED_SPEAKERS=true` to enable automatic cleanup
 - **Volume Controls** - Volume slider popups and mute visual indicators on all audio/video players
 - **Speaker Enhancements** - Split button UI, apply suggested names, name sanitization, JSON schema option, new speaker API endpoints
 - **Localization** - Complete translations for folders, API tokens, recording recovery, events, and speakers management

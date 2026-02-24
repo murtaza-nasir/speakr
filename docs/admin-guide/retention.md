@@ -164,13 +164,15 @@ GET /admin/auto-deletion/stats
 
 ## Speaker Data Cleanup
 
-When recordings are automatically deleted, Speakr manages associated speaker voice profile data to maintain privacy and GDPR compliance.
+By default, speaker profiles and voice embeddings are preserved even when all associated recordings are deleted. This is because voice embeddings are aggregated values that cannot be reconstructed from individual recordings.
+
+To enable automatic cleanup of orphaned speaker profiles, set `DELETE_ORPHANED_SPEAKERS=true` in your environment.
 
 ### What Gets Cleaned Up
 
-When the auto-deletion job runs, the system automatically:
+When `DELETE_ORPHANED_SPEAKERS=true` and the auto-deletion job runs, the system:
 
-1. **Removes orphaned speaker profiles**: Speakers with no remaining recordings are deleted entirely
+1. **Removes orphaned speaker profiles**: Speakers with no remaining recordings are deleted
 2. **Cleans embedding references**: Recording IDs are removed from speaker voice profile metadata
 3. **Applies to both deletion modes**: Works with both `audio_only` and `full_recording` deletion modes
 
@@ -179,29 +181,26 @@ When the auto-deletion job runs, the system automatically:
 Speaker cleanup runs on the same schedule as auto-deletion:
 
 - **Frequency**: Daily at 2:00 AM (server time)
-- **Trigger**: Automatically when `ENABLE_AUTO_DELETION=true`
-- **No additional configuration**: Uses existing auto-deletion settings
+- **Trigger**: Automatically when `ENABLE_AUTO_DELETION=true` and `DELETE_ORPHANED_SPEAKERS=true`
 
 ### When Speakers Are Deleted
 
 A speaker is considered "orphaned" and deleted when:
 
+- `DELETE_ORPHANED_SPEAKERS=true` is set
 - No `SpeakerSnippet` records exist for the speaker (no voice samples in any recordings)
 - No valid recording references remain in the speaker's voice profile metadata
-- This occurs after all recordings containing that speaker have been deleted
 
 **Note**: Speakers are preserved as long as they have at least one active recording with speaker identifications.
 
 ### Privacy & GDPR Compliance
 
-This automatic cleanup ensures:
+For deployments that need to treat voice embeddings as biometric data, enable `DELETE_ORPHANED_SPEAKERS=true` to ensure:
 
-- **Data Minimization**: Removes biometric voice data (embeddings) when no longer needed for system function
-- **Right to Erasure**: Deletes personal data (voice profiles) when recordings are removed
+- **Data Minimization**: Removes voice data when no longer needed
+- **Right to Erasure**: Deletes voice profiles when recordings are removed
 - **Transparency**: Cleanup activity is logged for audit purposes
-- **No Manual Action Required**: Cleanup happens automatically with retention policies
-
-The system treats voice embeddings as biometric data under GDPR. When recordings are deleted (either through auto-deletion or manual deletion), the associated voice profile data is evaluated for removal. This ensures compliance with data protection regulations without requiring manual intervention.
+- **Automatic**: No manual intervention required when combined with retention policies
 
 ### Monitoring Cleanup Activity
 
