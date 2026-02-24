@@ -125,6 +125,10 @@ Jobs are persisted to the database and survive application restarts. If Speakr r
 
 **SKIP_EMAIL_DOMAIN_CHECK**: When `true`, bypasses DNS validation of email domains when creating admin users via the setup script. Useful for development or when DNS lookups are restricted. Default: `false`.
 
+### Speaker Profile Cleanup
+
+**DELETE_ORPHANED_SPEAKERS**: Controls whether speaker profiles are automatically deleted when all their associated recordings are removed. When `false` (the default), speaker profiles and voice embeddings are preserved. When `true`, speakers with no remaining recordings are automatically cleaned up. Default: `false`.
+
 ### Video Retention
 
 **VIDEO_RETENTION**: When enabled, uploaded video files keep their video stream for in-browser playback instead of extracting audio and discarding the video. The audio is extracted to a temporary file for transcription only, then cleaned up after processing. The video renders with a native `<video>` player alongside the transcript, with full seeking support via HTTP Range requests. All player controls (play/pause, seek, speed, volume) work identically. Ideal for presentations, lectures, and screen recordings. Default: `false`.
@@ -169,6 +173,9 @@ DELETION_MODE=audio_only
 AUDIO_COMPRESS_UPLOADS=true
 AUDIO_CODEC=mp3
 AUDIO_BITRATE=128k
+
+# Speaker cleanup (preserve profiles by default)
+DELETE_ORPHANED_SPEAKERS=false
 
 # Video retention (keep video files for playback)
 VIDEO_RETENTION=false

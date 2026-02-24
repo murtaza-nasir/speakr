@@ -104,7 +104,7 @@ Build and maintain a library of speaker profiles that persist across recordings.
 
 **Auto Speaker Labeling**: Enable automatic speaker identification in your [account settings](user-guide/settings.md#processing-preferences). When enabled, new recordings are automatically analyzed against your speaker profiles, and matching speakers are labeled without manual intervention. Configure the confidence threshold to balance between more matches (low threshold) and higher accuracy (high threshold). This feature requires WhisperX ASR with speaker embeddings enabled.
 
-**Privacy-First Cleanup**: Voice profiles are automatically managed alongside recording retention policies. When all recordings containing a particular speaker are deleted, the speaker's voice profile is automatically removed during the next scheduled cleanup. This ensures biometric voice data is only retained when actively used, maintaining compliance with data minimization principles. The cleanup process is fully automatic and requires no manual intervention when auto-deletion is enabled.
+**Speaker Profile Preservation**: By default, speaker profiles and voice embeddings are preserved even when all associated recordings are deleted. Set `DELETE_ORPHANED_SPEAKERS=true` to automatically clean up speakers with no remaining recordings.
 
 ### Custom Prompts
 
