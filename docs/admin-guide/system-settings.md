@@ -125,6 +125,14 @@ Jobs are persisted to the database and survive application restarts. If Speakr r
 
 **SKIP_EMAIL_DOMAIN_CHECK**: When `true`, bypasses DNS validation of email domains when creating admin users via the setup script. Useful for development or when DNS lookups are restricted. Default: `false`.
 
+### Video Retention
+
+**VIDEO_RETENTION**: When enabled, uploaded video files keep their video stream for in-browser playback instead of extracting audio and discarding the video. The audio is extracted to a temporary file for transcription only, then cleaned up after processing. The video renders with a native `<video>` player alongside the transcript, with full seeking support via HTTP Range requests. All player controls (play/pause, seek, speed, volume) work identically. Ideal for presentations, lectures, and screen recordings. Default: `false`.
+
+### Concurrent Uploads
+
+**MAX_CONCURRENT_UPLOADS**: Controls how many files can be uploaded simultaneously when batch uploading. Higher values speed up batch uploads but use more bandwidth and server resources. Default: `3`.
+
 ### Audio Compression
 
 Speakr can automatically compress lossless audio uploads (WAV, AIFF) to save storage space. This happens transparently on upload - the original file is replaced with the compressed version.
@@ -161,6 +169,12 @@ DELETION_MODE=audio_only
 AUDIO_COMPRESS_UPLOADS=true
 AUDIO_CODEC=mp3
 AUDIO_BITRATE=128k
+
+# Video retention (keep video files for playback)
+VIDEO_RETENTION=false
+
+# Concurrent uploads (default: 3)
+MAX_CONCURRENT_UPLOADS=3
 
 # Processing queue
 JOB_QUEUE_WORKERS=2

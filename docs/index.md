@@ -6,15 +6,14 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.6 - Folders & Automation"
-    **Organize recordings into folders with custom prompts, auto speaker labeling, and per-user auto-summarization**
+!!! info "Latest Release: v0.8.11-alpha - Video Retention, Parallel Uploads & Duplicate Detection"
+    **Video playback, concurrent uploads, and file deduplication**
 
-    - **Folders Organization** - Group recordings into folders with custom prompts and ASR settings per folder
-    - **Auto Speaker Labeling** - Automatic speaker identification using voice embedding matching
-    - **Per-User Auto-Summarization** - User-configurable automatic summary generation
-    - **Azure OpenAI Connector** - Experimental transcription connector (community testing welcome)
-
-    See the [v0.8.0 release notes](#version-080) for the full connector architecture and REST API features.
+    - **Video Retention** - Keep video streams for in-browser `<video>` playback alongside transcripts (`VIDEO_RETENTION=true`)
+    - **Parallel Uploads** - Batch uploads run concurrently with individual progress bars (`MAX_CONCURRENT_UPLOADS`, default: 3)
+    - **Duplicate Detection** - SHA-256 hashing warns on duplicate uploads with clickable copies indicator
+    - **Volume Controls** - Volume slider popups and mute indicators on all players
+    - **Speaker Enhancements** - Split button UI, apply suggested names, new speaker API endpoints
 
 ## Quick Navigation
 
@@ -146,6 +145,15 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.8.11-alpha - Video Retention, Parallel Uploads & Duplicate Detection"
+    - **Video Retention** - New `VIDEO_RETENTION=true` option preserves video streams for in-browser playback with native `<video>` player, HTTP Range seeking, and automatic temp audio cleanup
+    - **Parallel Uploads** - Concurrent uploads with individual progress bars for faster batch processing (`MAX_CONCURRENT_UPLOADS`, default: 3)
+    - **Duplicate Detection** - SHA-256 file hashing with warning toasts and clickable copies indicator in sidebar/header
+    - **Volume Controls** - Volume slider popups and mute visual indicators on all audio/video players
+    - **Speaker Enhancements** - Split button UI, apply suggested names, name sanitization, JSON schema option, new speaker API endpoints
+    - **Localization** - Complete translations for folders, API tokens, recording recovery, events, and speakers management
+    - **Bug Fixes** - ASR_DIARIZE=false ignored, bulk delete cascade, file monitor stability, speaker snippets, null transcription, clean_llm_response too aggressive
 
 !!! info "Version 0.8.7 - Export Templates & Localization"
     - **Customizable Export Templates** - Create markdown templates for exports with variables (`{{title}}`, `{{summary}}`, `{{notes}}`) and conditionals for optional sections

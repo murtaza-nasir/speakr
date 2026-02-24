@@ -85,6 +85,9 @@ SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() =
 # Public sharing configuration
 ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() == 'true'
 
+# Video retention - when enabled, video files keep their video stream for playback
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+
 # Log embedding status on startup
 if ENABLE_INQUIRE_MODE and EMBEDDINGS_AVAILABLE:
     print("✅ Inquire Mode: Full semantic search enabled (embeddings available)")
@@ -121,6 +124,12 @@ if ENABLE_PUBLIC_SHARING:
     print("✅ Public sharing: Enabled (users can create public share links)")
 else:
     print("🔒 Public sharing: Disabled (public share links are not allowed)")
+
+# Log video retention status
+if VIDEO_RETENTION:
+    print("✅ Video retention: Enabled (video files preserve video stream for playback)")
+else:
+    print("ℹ️  Video retention: Disabled (video uploads extract audio only)")
 
 # Configure logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()

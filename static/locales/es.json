@@ -1147,7 +1147,8 @@
     "willAutoSummarize": "Se resumirá automáticamente después de la transcripción",
     "duplicateDetected": "Este archivo parece ser un duplicado de \"{{existingName}}\" (subido el {{existingDate}})",
     "duplicateFile": "Archivo duplicado",
-    "copies": "copias de este archivo"
+    "copies": "copias de este archivo",
+    "videoRetained": "Video conservado para reproducción"
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

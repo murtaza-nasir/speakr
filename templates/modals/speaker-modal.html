@@ -142,9 +142,11 @@
                         <i class="fas fa-user-secret"></i>
                         <span>Audio not stored in incognito mode</span>
                     </div>
-                    <!-- Custom Audio Player (Independent from main player) -->
-                    <div v-else class="flex items-center gap-2">
-                        <audio ref="speakerModalAudioRef" class="hidden"
+                    <!-- Custom Audio/Video Player (Independent from main player) -->
+                    <div v-else>
+                        <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
+                               ref="speakerModalAudioRef"
+                               :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'w-full rounded-lg mb-2' : 'hidden'"
                                :key="'speaker-modal-' + selectedRecording.id"
                                :src="'/audio/' + selectedRecording.id"
                                :volume="playerVolume"
@@ -153,7 +155,8 @@
                                @timeupdate="handleModalAudioTimeUpdate"
                                @loadedmetadata="handleModalAudioLoadedMetadata"
                                @ended="modalAudioIsPlaying = false">
-                        </audio>
+                        </component>
+                        <div class="flex items-center gap-2">
                         <!-- Play/Pause -->
                         <button @click="$refs.speakerModalAudioRef?.paused ? $refs.speakerModalAudioRef.play() : $refs.speakerModalAudioRef.pause()"
                                 class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
@@ -203,6 +206,7 @@
                             <span class="text-[10px] font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
                         </button>
                     </div>
+                </div>
                 </div>
 
                 <!-- Transcript Section (Virtual Scrolling for performance) -->

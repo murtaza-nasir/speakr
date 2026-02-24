@@ -134,7 +134,9 @@ export function useAudioPlayer(ref, computed) {
      */
     let getAudioElement = () => {
         return document.querySelector('audio[ref="audioPlayerElement"]') ||
-               document.querySelector('audio');
+               document.querySelector('video[ref="audioPlayerElement"]') ||
+               document.querySelector('audio') ||
+               document.querySelector('video');
     };
 
     /**

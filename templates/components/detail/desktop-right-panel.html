@@ -16,8 +16,9 @@
         </div>
         <!-- Custom Audio Player Card -->
         <div v-else class="bg-[var(--bg-tertiary)] rounded-xl p-4 shadow-sm border border-[var(--border-primary)] overflow-hidden">
-            <!-- Hidden audio element -->
-            <audio ref="audioPlayerElement"
+            <!-- Video/Audio element (video when mime_type starts with video/) -->
+            <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
+                   ref="audioPlayerElement"
                    :src="'/audio/' + selectedRecording.id"
                    :volume="playerVolume"
                    @play="handleAudioPlayPause"
@@ -28,8 +29,9 @@
                    @ended="handleAudioEnded"
                    @waiting="handleAudioWaiting"
                    @canplay="handleAudioCanPlay"
-                   class="hidden">
-            </audio>
+                   @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && toggleAudioPlayback()"
+                   :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'w-full rounded-lg mb-3 cursor-pointer' : 'hidden'">
+            </component>
 
             <!-- Progress Bar (now on top, full width, draggable) -->
             <div class="w-full h-4 rounded-full cursor-pointer relative mb-3 group flex items-center"
