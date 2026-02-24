@@ -20,6 +20,9 @@ from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.audio_conversion import convert_if_needed
 
+# Video retention - when enabled, video files keep their video stream for playback
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+
 # Flask app components will be imported inside functions to avoid circular imports
 
 class FileMonitor:
@@ -180,8 +183,9 @@ class FileMonitor:
                 continue
 
             # Check if file is still being written (size stability check)
+            stability_time = int(os.environ.get('AUTO_PROCESS_STABILITY_TIME', '5'))
             try:
-                if not self._is_file_stable(file_path):
+                if not self._is_file_stable(file_path, stability_time):
                     continue
             except FileNotFoundError:
                 # File might have been picked up by another worker after iterdir()
@@ -261,7 +265,7 @@ class FileMonitor:
             initial_mtime = file_path.stat().st_mtime
             
             # Wait a bit and check again
-            time.sleep(min(stability_time, 2))
+            time.sleep(stability_time)
             
             current_size = file_path.stat().st_size
             current_mtime = file_path.stat().st_mtime
@@ -334,32 +338,48 @@ class FileMonitor:
                 except Exception as e:
                     self.logger.warning(f"Could not get connector specs: {e}")
 
-                # Convert/compress file if necessary - convert_if_needed handles ALL conversion needs
+                # Check if this is a video file (for video retention logic)
+                has_video = codec_info.get('has_video', False) if codec_info else False
+
+                # Video retention: skip conversion for videos, processing pipeline handles extraction
+                if VIDEO_RETENTION and has_video:
+                    self.logger.info(f"Video retention: keeping original video, skipping conversion")
+                    final_path = destination_path
+                else:
+                    # Convert/compress file if necessary - convert_if_needed handles ALL conversion needs
+                    try:
+                        result = convert_if_needed(
+                            str(destination_path),
+                            original_filename=original_filename,
+                            codec_info=codec_info,
+                            needs_chunking=False,
+                            is_asr_endpoint=False,
+                            delete_original=True,  # Clean up original after conversion
+                            connector_specs=connector_specs  # Pass connector specs for codec restrictions
+                        )
+                        final_path = Path(result.output_path)
+
+                        # Log what happened
+                        if result.was_converted:
+                            self.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
+                        if result.was_compressed:
+                            self.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+
+                    except FFmpegNotFoundError as e:
+                        self.logger.error(f"FFmpeg not found: {e}")
+                        raise
+                    except FFmpegError as e:
+                        self.logger.error(f"FFmpeg conversion failed: {e}")
+                        raise
+
+                # Compute file hash for duplicate detection
+                file_hash = None
                 try:
-                    result = convert_if_needed(
-                        str(destination_path),
-                        original_filename=original_filename,
-                        codec_info=codec_info,
-                        needs_chunking=False,
-                        is_asr_endpoint=False,
-                        delete_original=True,  # Clean up original after conversion
-                        connector_specs=connector_specs  # Pass connector specs for codec restrictions
-                    )
-                    final_path = Path(result.output_path)
-                    
-                    # Log what happened
-                    if result.was_converted:
-                        self.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
-                    if result.was_compressed:
-                        self.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
-                        
-                except FFmpegNotFoundError as e:
-                    self.logger.error(f"FFmpeg not found: {e}")
-                    raise
-                except FFmpegError as e:
-                    self.logger.error(f"FFmpeg conversion failed: {e}")
-                    raise
-                
+                    from src.utils.file_hash import compute_file_sha256
+                    file_hash = compute_file_sha256(str(final_path))
+                except Exception as e:
+                    self.logger.warning(f"Could not compute file hash: {e}")
+
                 # Get file size and MIME type
                 file_size = final_path.stat().st_size
                 mime_type, _ = mimetypes.guess_type(str(final_path))
@@ -375,6 +395,16 @@ class FileMonitor:
                     meeting_date = now
                     self.logger.debug("No metadata creation date found, using current time")
 
+                # Check for duplicate
+                if file_hash:
+                    existing = Recording.query.filter_by(user_id=user_id, file_hash=file_hash).first()
+                    if existing:
+                        self.logger.warning(
+                            f"Duplicate file detected for user {user_id}: "
+                            f"hash={file_hash[:12]}... matches recording {existing.id} "
+                            f"({existing.title}). Processing anyway."
+                        )
+
                 recording = Recording(
                     audio_path=str(final_path),
                     original_filename=original_filename,
@@ -385,12 +415,13 @@ class FileMonitor:
                     user_id=user_id,
                     mime_type=mime_type,
                     is_inbox=True,  # Auto-processed files go to inbox
-                    processing_source='auto_process'  # Track that this was auto-processed
+                    processing_source='auto_process',  # Track that this was auto-processed
+                    file_hash=file_hash
                 )
                 
                 db.session.add(recording)
                 db.session.commit()
-                
+
                 self.logger.info(f"Created recording record with ID: {recording.id} for user: {user.username}")
 
                 # Queue for background processing

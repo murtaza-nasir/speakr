@@ -95,7 +95,10 @@
     "tagManagement": "Tag-Verwaltung",
     "templates": "Vorlagen",
     "transcriptTemplates": "Transkript-Vorlagen",
-    "promptOptions": "Prompt-Optionen"
+    "promptOptions": "Prompt-Optionen",
+    "apiTokens": "API-Token",
+    "folderManagement": "Ordnerverwaltung",
+    "namingTemplates": "Benennung"
   },
   "namingTemplates": {
     "tabTitle": "Benennung",
@@ -277,7 +280,6 @@
     "currentUsageMinutes": "Aktuelle Nutzung",
     "userTranscriptionUsage": "Benutzer-Transkriptionsnutzung (Dieser Monat)",
     "noTranscriptionData": "Keine Transkriptionsnutzungsdaten verfügbar",
-    "minutes": "Minuten",
     "percentUsed": "verwendet",
     "topUsers": "Top-Benutzer",
     "topUsersByStorage": "Top-Benutzer nach Speicher",
@@ -347,7 +349,8 @@
     "shareRecording": "Aufnahme teilen",
     "toggleTheme": "Design umschalten",
     "updateTag": "Update Tag",
-    "saveSettings": "Einstellungen Speichern"
+    "saveSettings": "Einstellungen Speichern",
+    "copy": "Kopieren"
   },
   "changePasswordModal": {
     "confirmPassword": "Neues Passwort Bestätigen",
@@ -539,7 +542,10 @@
     "noExportTemplate": "Keine Vorlage (Benutzerstandard verwenden)",
     "tagName": "Tag-Name *",
     "tagNamePlaceholder": "z.B. Meetings, Interviews",
-    "title": "Tag Bearbeiten"
+    "title": "Tag Bearbeiten",
+    "namingTemplate": "Benennungsvorlage",
+    "namingTemplateHint": "Wählen Sie eine Benennungsvorlage, um Titel für Aufnahmen mit diesem Tag automatisch zu formatieren",
+    "noNamingTemplate": "Keine Vorlage (Standard oder KI-Titel verwenden)"
   },
   "errors": {
     "audioRecordingFailed": "音频录制失败。请检查您的麦克风。",
@@ -608,6 +614,11 @@
     "audioDeletedTitle": "Audiodatei gelöscht",
     "audioDeletedDescription": "Die Audiodatei für diese Aufnahme wurde gelöscht, aber die Transkription ist weiterhin verfügbar.",
     "autoIdentify": "Automatisch identifizieren",
+    "autoIdentifyMobile": "Auto",
+    "applySuggested": "Vorschläge anwenden",
+    "applySuggestedMobile": "Vorschlag",
+    "appliedSuggestedNames": "{{count}} vorgeschlagener Name angewendet",
+    "appliedSuggestedNamesPlural": "{{count}} vorgeschlagene Namen angewendet",
     "bothAudioDesc": "Nimmt Ihre Stimme + Meeting-Teilnehmer auf (empfohlen für Online-Meetings)",
     "clearFilters": "Filter löschen",
     "clickToAddNotes": "Klicken um Notizen hinzuzufügen...",
@@ -626,6 +637,7 @@
     "generatingSummary": "Generiere Zusammenfassung...",
     "groups": "Gruppen",
     "identifying": "Identifiziere...",
+    "identifyAllSpeakers": "Alle Sprecher identifizieren",
     "howToRecordSystemAudio": "Wie man System-Audio aufnimmt",
     "importantNote": "Wichtiger Hinweis",
     "lines": "{{count}} Zeilen",
@@ -638,6 +650,8 @@
     "navigate": "Navigiere",
     "noDateSet": "Kein Datum gesetzt",
     "noParticipants": "Keine Teilnehmer",
+    "noSpeakersIdentified": "Es konnten keine Sprecher aus dem Kontext identifiziert werden.",
+    "noSuggestionsToApply": "Keine Vorschläge zum Anwenden",
     "noTagsCreated": "Noch keine Tags erstellt.",
     "of": "von",
     "playFromHere": "Von hier abspielen",
@@ -659,6 +673,8 @@
     "sharingWindowNoAudio": "Das Teilen eines \"Fensters\" nimmt kein Audio auf.",
     "speakerName": "Sprechername",
     "speakerCount": "Sprecher",
+    "speakersIdentified": "{{count}} Sprecher erfolgreich identifiziert!",
+    "speakersIdentifiedPlural": "{{count}} Sprecher erfolgreich identifiziert!",
     "specificBrowserTab": "spezifischen Browser-Tab",
     "startTime": "Start",
     "systemAudioDesc": "Nimmt Meeting-Teilnehmer und Systemklänge auf",
@@ -675,7 +691,23 @@
     "youHaveXSpeakers": "Sie haben {{count}} Sprecher, aber nur 16 eindeutige Farben sind verfügbar. Die Farben wiederholen sich nach dem 16. Sprecher.",
     "speakers": "Sprecher",
     "publicLinkDesc": "Jeder mit diesem Link kann auf die Aufnahme zugreifen",
-    "internalSharingDesc": "Mit bestimmten Benutzern in Ihrer Organisation teilen"
+    "internalSharingDesc": "Mit bestimmten Benutzern in Ihrer Organisation teilen",
+    "errorChangingSpeaker": "Fehler beim Wechseln des Sprechers",
+    "errorOpeningTextEditor": "Fehler beim Öffnen des Texteditors",
+    "errorSavingText": "Fehler beim Speichern des Textes",
+    "noRecordingSelected": "Keine Aufnahme ausgewählt.",
+    "pleaseEnterSpeakerName": "Bitte geben Sie einen Sprechernamen ein",
+    "saved": "Gespeichert!",
+    "savingProgress": "Wird gespeichert...",
+    "speakerAdded": "Sprecher erfolgreich hinzugefügt",
+    "speakerNamesUpdated": "Sprechernamen erfolgreich aktualisiert!",
+    "speakersUpdatedSaveToApply": "Sprecher aktualisiert! Speichern Sie die Transkription, um die Änderungen zu übernehmen.",
+    "startingAutoIdentification": "Automatische Sprecheridentifikation wird gestartet...",
+    "summaryGenerationFailed": "Zusammenfassungsgenerierung fehlgeschlagen",
+    "summaryGenerationTimedOut": "Zeitüberschreitung bei der Zusammenfassungsgenerierung",
+    "summaryRegenerationStarted": "Neugenerierung der Zusammenfassung gestartet",
+    "summaryUpdated": "Zusammenfassung aktualisiert!",
+    "transcriptUpdated": "Transkription erfolgreich aktualisiert!"
   },
   "inquire": {
     "title": "Nachfragen",
@@ -866,7 +898,19 @@
     "stopRecording": "Aufnahme stoppen",
     "systemAudio": "System-Audio",
     "systemAudioNotSupported": "System-Audio-Aufnahme wird in diesem Browser nicht unterstützt",
-    "title": "Audio-Aufnahme"
+    "title": "Audio-Aufnahme",
+    "discardRecovery": "Verwerfen",
+    "duration": "Dauer",
+    "modeBoth": "Mikrofon + System",
+    "modeMicrophone": "Mikrofon",
+    "modeSystem": "System-Audio",
+    "recordingMode": "Aufnahmemodus",
+    "recoveryDescription": "Wir haben eine unvollständige Aufnahme aus einer früheren Sitzung gefunden. Möchten Sie diese wiederherstellen?",
+    "recoveryFound": "Nicht gespeicherte Aufnahme gefunden",
+    "recoveryTitle": "Aufnahme wiederherstellen",
+    "restoreRecording": "Wiederherstellen",
+    "size": "Größe",
+    "startedAt": "Gestartet am"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",
@@ -1100,7 +1144,11 @@
     "transcribing": "Transkribiere...",
     "untitled": "Unbenannte Aufnahme",
     "uploadProgress": "Upload-Fortschritt",
-    "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst"
+    "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst",
+    "duplicateDetected": "Diese Datei scheint ein Duplikat von \"{{existingName}}\" zu sein (hochgeladen am {{existingDate}})",
+    "duplicateFile": "Doppelte Datei",
+    "copies": "Kopien dieser Datei",
+    "videoRetained": "Video für Wiedergabe beibehalten"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
@@ -1113,7 +1161,11 @@
     "start": "Beginn",
     "end": "Ende",
     "location": "Ort",
-    "attendees": "Teilnehmer"
+    "attendees": "Teilnehmer",
+    "confirmDelete": "Ereignis \"{title}\" löschen?",
+    "delete": "Löschen",
+    "deleteFailed": "Ereignis konnte nicht gelöscht werden",
+    "deleted": "Ereignis gelöscht"
   },
   "pwa": {
     "installApp": "App installieren",
@@ -1204,5 +1256,56 @@
     "default": "Standard",
     "recordingData": "Aufnahmedaten",
     "contentSections": "Inhaltsbereiche"
+  },
+  "apiTokens": {
+    "activeTokens": "Aktive Token",
+    "createFirstToken": "Erstellen Sie Ihr erstes API-Token, um programmgesteuerten Zugriff zu ermöglichen",
+    "createToken": "Token erstellen",
+    "created": "Erstellt",
+    "description": "Erstellen und verwalten Sie API-Token für den programmgesteuerten Zugriff auf Ihr Konto",
+    "expires": "Läuft ab",
+    "lastUsed": "Zuletzt verwendet",
+    "neverUsed": "Nie verwendet",
+    "noExpiration": "Kein Ablaufdatum",
+    "noTokens": "Keine API-Token",
+    "securityNotice": "Sicherheitshinweis",
+    "securityWarning": "Behandeln Sie API-Token wie Passwörter. Sie bieten vollen Zugriff auf Ihr Konto. Teilen Sie Token niemals in öffentlich zugänglichen Bereichen wie GitHub, clientseitigem Code oder Logs",
+    "title": "API-Token",
+    "usageExamples": "Verwendungsbeispiele"
+  },
+  "folderManagement": {
+    "allFolders": "Alle Ordner",
+    "asrDefaults": "ASR-Standardwerte",
+    "autoShareOnApply": "Automatisch mit Gruppenmitgliedern teilen",
+    "autoShareOnApplyHelp": "Aufnahmen automatisch mit allen Gruppenmitgliedern teilen, wenn sie diesem Ordner hinzugefügt werden",
+    "confirmDelete": "Möchten Sie diesen Ordner wirklich löschen? Aufnahmen werden aus dem Ordner entfernt, aber nicht gelöscht.",
+    "createFolder": "Ordner erstellen",
+    "customPrompt": "Benutzerdefinierter Prompt",
+    "defaultLanguage": "Standardsprache",
+    "deleteFolder": "Ordner löschen",
+    "description": "Organisieren Sie Ihre Aufnahmen in Ordnern. Im Gegensatz zu Tags kann eine Aufnahme nur einem Ordner zugeordnet werden. Ordner-Prompts werden vor Benutzer-Prompts, aber nach Tag-Prompts angewendet.",
+    "editFolder": "Ordner bearbeiten",
+    "filterByFolder": "Nach Ordner filtern",
+    "folderColor": "Ordnerfarbe",
+    "folderName": "Ordnername",
+    "groupSettings": "Gruppeneinstellungen",
+    "maxSpeakers": "Max. Sprecher",
+    "minSpeakers": "Min. Sprecher",
+    "moveToFolder": "In Ordner verschieben",
+    "namingTemplate": "Benennungsvorlage",
+    "noFolder": "Kein Ordner",
+    "noFolders": "Noch keine Ordner erstellt",
+    "noFoldersDescription": "Erstellen Sie Ihren ersten Ordner, um Ihre Aufnahmen zu organisieren",
+    "protectFromDeletion": "Vor Löschung schützen",
+    "protectFromDeletionHelp": "Aufnahmen in diesem Ordner vor automatischer Löschung schützen",
+    "recordings": "Aufnahmen",
+    "removeFromFolder": "Aus Ordner entfernen",
+    "retentionDays": "Aufbewahrungstage",
+    "retentionDaysHelp": "Aufnahmen in diesem Ordner werden nach dieser Anzahl von Tagen gelöscht. Leer lassen für globale Aufbewahrungsregel.",
+    "retentionSettings": "Aufbewahrungseinstellungen",
+    "selectNamingTemplate": "Benennungsvorlage auswählen...",
+    "shareWithGroupLead": "Mit Gruppenadministratoren teilen",
+    "shareWithGroupLeadHelp": "Aufnahmen mit Gruppenadministratoren teilen, wenn sie diesem Ordner hinzugefügt werden",
+    "title": "Ordnerverwaltung"
   }
 }

@@ -41,6 +41,9 @@ from src.services.transcription_tracking import transcription_tracker
 # Configuration for internal sharing
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
+# Video retention - when enabled, video files keep their video stream for playback
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+
 
 def apply_team_tag_auto_shares(recording_id):
     """
@@ -1467,6 +1470,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             actual_filepath = filepath
             actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
             actual_filename = original_filename
+            audio_filepath = None  # Track temp audio extracted from video (for cleanup)
 
             # Use codec detection to check if file is a video
             try:
@@ -1485,32 +1489,24 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 )
 
             if is_video:
-                current_app.logger.info(f"Video container detected, extracting audio...")
-                try:
-                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath)
-                    actual_filepath = audio_filepath
-                    actual_content_type = audio_mime_type
-                    actual_filename = os.path.basename(audio_filepath)
-
-                    # Legacy/repair fallback path: in the normal upload flow, video containers should
-                    # already be converted/extracted before the Recording is stored. We still handle
-                    # video here for historical records / reprocess jobs where a video object may
-                    # remain in recording.audio_path.
-                    # TODO(storage-cleanup): after migrating legacy video-backed recordings to audio
-                    # objects and normalizing cached durations, this branch should be removable.
+                if VIDEO_RETENTION:
+                    # Video retention: keep original video, extract audio to temp for transcription only
+                    current_app.logger.info(f"Video container detected, retaining video and extracting audio to temp...")
                     try:
-                        from src.services.storage import get_storage_service
-                        storage = get_storage_service()
-                        old_audio_locator = recording.audio_path
-                        extracted_key = storage.build_recording_key(actual_filename, recording.id)
-                        stored_audio = storage.upload_local_file(
-                            audio_filepath,
-                            extracted_key,
-                            content_type=audio_mime_type,
-                            delete_source=False,
+                        audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                        # Use extracted audio for transcription processing
+                        actual_filepath = audio_filepath
+                        actual_content_type = audio_mime_type
+                        actual_filename = os.path.basename(audio_filepath)
+
+                        # Keep original video file as the stored media (recording.audio_path may be a storage locator).
+                        video_mime_type = (
+                            mime_type
+                            or mimetypes.guess_type(original_filename or filepath)[0]
+                            or mimetypes.guess_type(filepath)[0]
+                            or 'video/mp4'
                         )
-                        recording.audio_path = stored_audio.locator
-                        recording.mime_type = audio_mime_type
+                        recording.mime_type = video_mime_type
                         try:
                             extracted_duration = chunking_service.get_audio_duration(audio_filepath) if chunking_service else None
                             if extracted_duration and extracted_duration > 0:
@@ -1518,30 +1514,71 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         except Exception as duration_err:
                             current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {duration_err}")
                         db.session.commit()
-                        current_app.logger.info(f"Audio extracted and stored: {stored_audio.locator}")
-
-                        # Best-effort cleanup of previous stored source (e.g. original video)
-                        if old_audio_locator and old_audio_locator != stored_audio.locator:
-                            try:
-                                storage.delete(old_audio_locator, missing_ok=True)
-                            except Exception as cleanup_err:
-                                current_app.logger.warning(f"Failed to delete original source after audio extraction: {cleanup_err}")
-                    except Exception:
-                        # Do NOT persist temporary extracted path in DB. Keep previous locator and continue
-                        # processing with the local extracted file for this job only.
-                        recording.mime_type = audio_mime_type
+                        current_app.logger.info(f"Video retained (media path unchanged), temp audio extracted: {audio_filepath}")
+                    except Exception as e:
+                        current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                        recording.status = 'FAILED'
+                        recording.error_msg = f"Audio extraction failed: {str(e)}"
                         db.session.commit()
-                        current_app.logger.warning(
-                            "Failed to persist extracted audio via storage layer; keeping previous recording.audio_path and continuing with temporary local file",
-                            exc_info=True,
-                        )
-                    current_app.logger.info(f"Audio extracted: {audio_filepath}")
-                except Exception as e:
-                    current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
-                    recording.status = 'FAILED'
-                    recording.error_msg = f"Audio extraction failed: {str(e)}"
-                    db.session.commit()
-                    raise  # Re-raise so job queue marks the job as failed
+                        raise
+                else:
+                    # Legacy/repair fallback path: in the normal upload flow, video containers should
+                    # already be converted/extracted before the Recording is stored. We still handle
+                    # video here for historical records / reprocess jobs where a video object may
+                    # remain in recording.audio_path.
+                    # TODO(storage-cleanup): after migrating legacy video-backed recordings to audio
+                    # objects and normalizing cached durations, this branch should be removable.
+                    current_app.logger.info(f"Video container detected, extracting audio...")
+                    try:
+                        audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                        actual_filepath = audio_filepath
+                        actual_content_type = audio_mime_type
+                        actual_filename = os.path.basename(audio_filepath)
+
+                        try:
+                            from src.services.storage import get_storage_service
+                            storage = get_storage_service()
+                            old_audio_locator = recording.audio_path
+                            extracted_key = storage.build_recording_key(actual_filename, recording.id)
+                            stored_audio = storage.upload_local_file(
+                                audio_filepath,
+                                extracted_key,
+                                content_type=audio_mime_type,
+                                delete_source=False,
+                            )
+                            recording.audio_path = stored_audio.locator
+                            recording.mime_type = audio_mime_type
+                            try:
+                                extracted_duration = chunking_service.get_audio_duration(audio_filepath) if chunking_service else None
+                                if extracted_duration and extracted_duration > 0:
+                                    recording.audio_duration_seconds = float(extracted_duration)
+                            except Exception as duration_err:
+                                current_app.logger.warning(f"Could not determine extracted audio duration for recording {recording.id}: {duration_err}")
+                            db.session.commit()
+                            current_app.logger.info(f"Audio extracted and stored: {stored_audio.locator}")
+
+                            # Best-effort cleanup of previous stored source (e.g. original video)
+                            if old_audio_locator and old_audio_locator != stored_audio.locator:
+                                try:
+                                    storage.delete(old_audio_locator, missing_ok=True)
+                                except Exception as cleanup_err:
+                                    current_app.logger.warning(f"Failed to delete original source after audio extraction: {cleanup_err}")
+                        except Exception:
+                            # Do NOT persist temporary extracted path in DB. Keep previous locator and continue
+                            # processing with the local extracted file for this job only.
+                            recording.mime_type = audio_mime_type
+                            db.session.commit()
+                            current_app.logger.warning(
+                                "Failed to persist extracted audio via storage layer; keeping previous recording.audio_path and continuing with temporary local file",
+                                exc_info=True,
+                            )
+                        current_app.logger.info(f"Audio extracted: {audio_filepath}")
+                    except Exception as e:
+                        current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                        recording.status = 'FAILED'
+                        recording.error_msg = f"Audio extraction failed: {str(e)}"
+                        db.session.commit()
+                        raise  # Re-raise so job queue marks the job as failed
 
             # Validate and convert audio format if needed using unified conversion utility
             # This respects:
@@ -1584,8 +1621,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
 
             # Determine if we should diarize
             if diarize is None:
-                # Use connector's default diarization setting
-                should_diarize = connector.supports_diarization
+                # Use connector's configured default (respects ASR_DIARIZE env var)
+                should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
             else:
                 should_diarize = diarize and connector.supports_diarization
 
@@ -1725,6 +1762,15 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 except OSError:
                     pass  # Best effort cleanup
 
+            # Clean up temp audio extracted from video when video retention is enabled
+            if is_video and VIDEO_RETENTION and audio_filepath and audio_filepath != filepath:
+                try:
+                    if os.path.exists(audio_filepath):
+                        os.remove(audio_filepath)
+                        current_app.logger.info(f"Cleaned up temp audio from video retention: {audio_filepath}")
+                except OSError:
+                    pass  # Best effort cleanup
+
             # Calculate and save transcription duration
             transcription_end_time = time.time()
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
@@ -1763,7 +1809,15 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 # Get actual audio duration (not processing time)
                 audio_duration = recording.audio_duration_seconds
                 if (audio_duration is None or audio_duration <= 0) and chunking_service:
-                    audio_duration = chunking_service.get_audio_duration(filepath)
+                    duration_probe_candidates = []
+                    if actual_filepath:
+                        duration_probe_candidates.append(actual_filepath)
+                    if filepath and filepath not in duration_probe_candidates:
+                        duration_probe_candidates.append(filepath)
+                    for candidate_path in duration_probe_candidates:
+                        audio_duration = chunking_service.get_audio_duration(candidate_path)
+                        if audio_duration and audio_duration > 0:
+                            break
 
                 if audio_duration and audio_duration > 0:
                     # Get model name from connector if available
@@ -2027,8 +2081,8 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             except Exception as e:
                 current_app.logger.warning(f"[Incognito] Could not get audio duration: {e}")
 
-        # Determine diarization settings
-        should_diarize = connector.supports_diarization
+        # Determine diarization settings (respects ASR_DIARIZE env var)
+        should_diarize = getattr(connector, 'default_diarize', connector.supports_diarization)
 
         # Use user's language preference if not explicitly provided
         if language is None and user:

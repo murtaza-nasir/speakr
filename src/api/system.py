@@ -35,6 +35,8 @@ SHOW_USERNAMES_IN_UI = os.environ.get('SHOW_USERNAMES_IN_UI', 'false').lower() =
 ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
 ENABLE_INCOGNITO_MODE = os.environ.get('ENABLE_INCOGNITO_MODE', 'false').lower() == 'true'
 INCOGNITO_MODE_DEFAULT = os.environ.get('INCOGNITO_MODE_DEFAULT', 'false').lower() == 'true'
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+MAX_CONCURRENT_UPLOADS = int(os.environ.get('MAX_CONCURRENT_UPLOADS', '3'))
 
 # Import chunking service (will be set from app)
 chunking_service = None
@@ -249,6 +251,8 @@ def get_config():
             'incognito_mode_default': INCOGNITO_MODE_DEFAULT,
             'enable_folders': SystemSetting.get_setting('enable_folders', False) == True,
             'enable_auto_export': ENABLE_AUTO_EXPORT,
+            'video_retention': VIDEO_RETENTION,
+            'max_concurrent_uploads': MAX_CONCURRENT_UPLOADS,
             **chunking_info
         })
     except Exception as e:

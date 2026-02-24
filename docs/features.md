@@ -104,7 +104,7 @@ Build and maintain a library of speaker profiles that persist across recordings.
 
 **Auto Speaker Labeling**: Enable automatic speaker identification in your [account settings](user-guide/settings.md#processing-preferences). When enabled, new recordings are automatically analyzed against your speaker profiles, and matching speakers are labeled without manual intervention. Configure the confidence threshold to balance between more matches (low threshold) and higher accuracy (high threshold). This feature requires WhisperX ASR with speaker embeddings enabled.
 
-**Privacy-First Cleanup**: Voice profiles are automatically managed alongside recording retention policies. When all recordings containing a particular speaker are deleted, the speaker's voice profile is automatically removed during the next scheduled cleanup. This ensures biometric voice data is only retained when actively used, maintaining compliance with data minimization principles. The cleanup process is fully automatic and requires no manual intervention when auto-deletion is enabled.
+**Speaker Profile Preservation**: By default, speaker profiles and voice embeddings are preserved even when all associated recordings are deleted. Set `DELETE_ORPHANED_SPEAKERS=true` to automatically clean up speakers with no remaining recordings.
 
 ### Custom Prompts
 
@@ -213,9 +213,18 @@ Install Speakr as a progressive web app for a native-like experience on any devi
 
 Reduce eye strain with a full dark mode implementation that affects every interface element. The theme preference persists across sessions and devices, automatically applying your choice whenever you log in.
 
+### Video Retention
+
+When enabled (`VIDEO_RETENTION=true`), uploaded video files preserve their video stream for in-browser playback. Instead of extracting audio and discarding the video, Speakr keeps the original file and renders it with a native `<video>` player alongside the transcript. Audio is extracted to a temporary file for transcription only, then cleaned up automatically. All existing player controls (play/pause, seek, speed, volume) work identically with video since HTML5 `<video>` and `<audio>` share the same media API. HTTP Range requests enable efficient seeking without downloading the entire file. This feature is ideal for presentations, lectures, and screen recordings where the visual context adds value to the transcript. Default: `false` (current behavior preserved — video uploads extract audio only).
+
+<div style="max-width: 800px; margin: 2em auto;">
+  <img src="assets/images/screenshots/video-playback.png" alt="Video playback alongside transcript" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">In-browser video playback alongside speaker-labeled transcript and summary</p>
+</div>
+
 ### Playback Speed Control
 
-Adjust audio playback speed from 0.5x to 3x on all audio players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.
+Adjust audio playback speed from 0.5x to 3x on all audio/video players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.
 
 ### Incognito Mode
 

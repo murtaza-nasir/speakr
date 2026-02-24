@@ -113,7 +113,10 @@
     "tagManagement": "标签管理",
     "templates": "模板",
     "transcriptTemplates": "转录模板",
-    "promptOptions": "提示选项"
+    "promptOptions": "提示选项",
+    "apiTokens": "API 令牌",
+    "folderManagement": "文件夹管理",
+    "namingTemplates": "命名"
   },
   "namingTemplates": {
     "tabTitle": "命名",
@@ -296,7 +299,6 @@
     "currentUsageMinutes": "当前使用量",
     "userTranscriptionUsage": "用户转录使用情况（本月）",
     "noTranscriptionData": "暂无转录使用数据",
-    "minutes": "分钟",
     "percentUsed": "已使用",
     "topUsers": "顶级用户",
     "topUsersByStorage": "按存储排序的顶级用户",
@@ -419,7 +421,8 @@
     "shareRecording": "分享录音",
     "toggleTheme": "切换主题",
     "updateTag": "更新标签",
-    "saveSettings": "保存设置"
+    "saveSettings": "保存设置",
+    "copy": "复制"
   },
   "changePasswordModal": {
     "confirmPassword": "确认新密码",
@@ -611,7 +614,10 @@
     "noExportTemplate": "无模板（使用用户默认）",
     "tagName": "标签名称 *",
     "tagNamePlaceholder": "例如，会议、访谈",
-    "title": "编辑标签"
+    "title": "编辑标签",
+    "namingTemplate": "命名模板",
+    "namingTemplateHint": "选择命名模板以自动格式化带有此标签的录音标题",
+    "noNamingTemplate": "无模板（使用用户默认或 AI 标题）"
   },
   "errors": {
     "audioRecordingFailed": "音频录制失败。请检查您的麦克风。",
@@ -680,6 +686,11 @@
     "audioDeletedTitle": "音频文件已删除",
     "audioDeletedDescription": "此录音的音频文件已被删除，但转录内容仍然可用。",
     "autoIdentify": "自动识别",
+    "autoIdentifyMobile": "自动",
+    "applySuggested": "应用建议",
+    "applySuggestedMobile": "建议",
+    "appliedSuggestedNames": "已应用 {{count}} 个建议名称",
+    "appliedSuggestedNamesPlural": "已应用 {{count}} 个建议名称",
     "bothAudioDesc": "录制您的声音 + 会议参与者（推荐用于在线会议）",
     "clearFilters": "清除筛选",
     "clickToAddNotes": "点击添加笔记...",
@@ -697,6 +708,7 @@
     "generatingSummary": "生成摘要中...",
     "groups": "组",
     "identifying": "识别中...",
+    "identifyAllSpeakers": "识别所有发言人",
     "howToRecordSystemAudio": "如何录制系统音频",
     "importantNote": "重要提示",
     "lines": "{{count}} 行",
@@ -709,6 +721,8 @@
     "navigate": "导航",
     "noDateSet": "未设置日期",
     "noParticipants": "无参与者",
+    "noSpeakersIdentified": "无法从上下文中识别发言人。",
+    "noSuggestionsToApply": "没有可应用的建议",
     "noTagsCreated": "尚未创建标签。",
     "of": "/",
     "playFromHere": "从此处播放",
@@ -729,6 +743,8 @@
     "sharedOn": "共享于",
     "sharingWindowNoAudio": "共享\"窗口\"不会捕获音频。",
     "speakerCount": "发言人",
+    "speakersIdentified": "成功识别 {{count}} 位发言人！",
+    "speakersIdentifiedPlural": "成功识别 {{count}} 位发言人！",
     "specificBrowserTab": "特定浏览器标签页",
     "startTime": "开始",
     "systemAudioDesc": "录制会议参与者和系统声音",
@@ -773,7 +789,7 @@
     "showMore": "显示更多",
     "speaker": "发言人",
     "speakerName": "发言人名称",
-    "speakerNamesUpdated": "发言人名称已更新",
+    "speakerNamesUpdated": "发言人名称更新成功！",
     "speakers": "发言人",
     "startRecording": "开始录音",
     "stopRecording": "停止录音",
@@ -794,7 +810,22 @@
     "waitingToUpload": "等待上传",
     "publicLinkDesc": "任何拥有此链接的人都可以访问录音",
     "internalSharingDesc": "与您组织中的特定用户分享",
-    "enterSpeakerName": "输入发言人姓名..."
+    "enterSpeakerName": "输入发言人姓名...",
+    "errorChangingSpeaker": "更改发言人时出错",
+    "errorOpeningTextEditor": "打开文本编辑器时出错",
+    "errorSavingText": "保存文本时出错",
+    "noRecordingSelected": "未选择录音。",
+    "pleaseEnterSpeakerName": "请输入发言人名称",
+    "saved": "已保存！",
+    "savingProgress": "保存中...",
+    "speakerAdded": "发言人添加成功",
+    "speakersUpdatedSaveToApply": "发言人已更新！保存转录以应用更改。",
+    "startingAutoIdentification": "正在启动自动发言人识别...",
+    "summaryGenerationFailed": "摘要生成失败",
+    "summaryGenerationTimedOut": "摘要生成超时",
+    "summaryRegenerationStarted": "摘要重新生成已开始",
+    "summaryUpdated": "摘要已更新！",
+    "transcriptUpdated": "转录更新成功！"
   },
   "inquire": {
     "title": "查询",
@@ -948,7 +979,19 @@
     "stopRecording": "停止录音",
     "systemAudio": "系统音频",
     "systemAudioNotSupported": "此浏览器不支持系统音频录制",
-    "title": "音频录制"
+    "title": "音频录制",
+    "discardRecovery": "丢弃",
+    "duration": "时长",
+    "modeBoth": "麦克风 + 系统",
+    "modeMicrophone": "麦克风",
+    "modeSystem": "系统音频",
+    "recordingMode": "录音模式",
+    "recoveryDescription": "我们发现了上次会话中未完成的录音。是否要恢复？",
+    "recoveryFound": "检测到未保存的录音",
+    "recoveryTitle": "恢复录音",
+    "restoreRecording": "恢复",
+    "size": "大小",
+    "startedAt": "开始时间"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "音频将从头重新转录。这也将基于新转录重新生成标题和摘要。",
@@ -1230,7 +1273,11 @@
     "transcribing": "转录中...",
     "untitled": "无标题录音",
     "uploadProgress": "上传进度",
-    "willAutoSummarize": "转录后将自动生成摘要"
+    "willAutoSummarize": "转录后将自动生成摘要",
+    "duplicateDetected": "此文件似乎与 \"{{existingName}}\" 重复（上传于 {{existingDate}}）",
+    "duplicateFile": "重复文件",
+    "copies": "份此文件的副本",
+    "videoRetained": "视频已保留供播放"
   },
   "uploadProgress": {
     "title": "上传进度"
@@ -1266,7 +1313,11 @@
     "start": "开始",
     "end": "结束",
     "location": "地点",
-    "attendees": "参与者"
+    "attendees": "参与者",
+    "confirmDelete": "删除事件“{title}”？",
+    "delete": "删除",
+    "deleteFailed": "删除事件失败",
+    "deleted": "事件已删除"
   },
   "pwa": {
     "installApp": "安装应用",
@@ -1357,5 +1408,56 @@
     "default": "默认",
     "recordingData": "录音数据",
     "contentSections": "内容部分"
+  },
+  "apiTokens": {
+    "activeTokens": "活跃令牌",
+    "createFirstToken": "创建您的第一个 API 令牌以启用编程访问",
+    "createToken": "创建令牌",
+    "created": "创建于",
+    "description": "创建和管理 API 令牌以编程方式访问您的账户",
+    "expires": "过期时间",
+    "lastUsed": "最后使用",
+    "neverUsed": "从未使用",
+    "noExpiration": "永不过期",
+    "noTokens": "没有 API 令牌",
+    "securityNotice": "安全提示",
+    "securityWarning": "请像密码一样对待 API 令牌。它们提供对您账户的完全访问权限。切勿在公共区域分享令牌",
+    "title": "API 令牌",
+    "usageExamples": "使用示例"
+  },
+  "folderManagement": {
+    "allFolders": "所有文件夹",
+    "asrDefaults": "ASR 默认设置",
+    "autoShareOnApply": "自动与群组成员共享",
+    "autoShareOnApplyHelp": "添加到此文件夹时自动与所有群组成员共享录音",
+    "confirmDelete": "确定要删除此文件夹吗？录音将从文件夹中移除但不会被删除。",
+    "createFolder": "创建文件夹",
+    "customPrompt": "自定义提示词",
+    "defaultLanguage": "默认语言",
+    "deleteFolder": "删除文件夹",
+    "description": "将录音整理到文件夹中。与标签不同，录音只能属于一个文件夹。文件夹提示词在用户提示词之前、标签提示词之后应用。",
+    "editFolder": "编辑文件夹",
+    "filterByFolder": "按文件夹筛选",
+    "folderColor": "文件夹颜色",
+    "folderName": "文件夹名称",
+    "groupSettings": "群组设置",
+    "maxSpeakers": "最大发言人数",
+    "minSpeakers": "最小发言人数",
+    "moveToFolder": "移动到文件夹",
+    "namingTemplate": "命名模板",
+    "noFolder": "无文件夹",
+    "noFolders": "尚未创建文件夹",
+    "noFoldersDescription": "创建您的第一个文件夹来整理录音",
+    "protectFromDeletion": "防止删除",
+    "protectFromDeletionHelp": "保护此文件夹中的录音不被自动删除",
+    "recordings": "录音",
+    "removeFromFolder": "从文件夹中移除",
+    "retentionDays": "保留天数",
+    "retentionDaysHelp": "此文件夹中的录音将在指定天数后删除。留空使用全局保留设置。",
+    "retentionSettings": "保留设置",
+    "selectNamingTemplate": "选择命名模板...",
+    "shareWithGroupLead": "与群组管理员共享",
+    "shareWithGroupLeadHelp": "添加到此文件夹时与群组管理员共享录音",
+    "title": "文件夹管理"
   }
 }

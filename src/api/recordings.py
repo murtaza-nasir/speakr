@@ -38,6 +38,7 @@ from src.file_exporter import export_recording, mark_export_as_deleted
 from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
 from src.utils.audio_conversion import convert_if_needed
 from src.services.storage import get_storage_service
+from src.utils.file_hash import compute_file_sha256
 
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
@@ -48,6 +49,7 @@ ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() =
 DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only' or 'full_recording'
 USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
@@ -880,6 +882,8 @@ def auto_identify_speakers(recording_id):
     Automatically identifies speakers in a transcription using an LLM.
     Strips existing names and re-identifies all speakers from scratch.
     """
+    from src.services.speaker_identification import identify_speakers_from_transcript
+
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording:
@@ -891,7 +895,6 @@ def auto_identify_speakers(recording_id):
         if not recording.transcription:
             return jsonify({'error': 'No transcription available for speaker identification'}), 400
 
-        # Parse the transcription
         try:
             transcription_data = json.loads(recording.transcription)
         except (json.JSONDecodeError, TypeError):
@@ -900,129 +903,14 @@ def auto_identify_speakers(recording_id):
         if not isinstance(transcription_data, list):
             return jsonify({'error': 'Transcription format not supported for auto-identification'}), 400
 
-        # Extract unique speakers in order of appearance
-        seen_speakers = set()
-        unique_speakers = []
-        for segment in transcription_data:
-            speaker = segment.get('speaker')
-            if speaker and speaker not in seen_speakers:
-                seen_speakers.add(speaker)
-                unique_speakers.append(speaker)
+        speaker_map = identify_speakers_from_transcript(transcription_data, current_user.id)
 
-        if not unique_speakers:
+        if not speaker_map:
             return jsonify({'error': 'No speakers found in transcription'}), 400
 
-        # Create a mapping from current names to SPEAKER_XX labels
-        speaker_to_label = {}
-        for idx, speaker in enumerate(unique_speakers):
-            speaker_to_label[speaker] = f'SPEAKER_{str(idx).zfill(2)}'
-
-        # Create a temporary transcript with SPEAKER_XX labels
-        temp_transcript = []
-        for segment in transcription_data:
-            temp_segment = segment.copy()
-            original_speaker = segment.get('speaker')
-            if original_speaker:
-                temp_segment['speaker'] = speaker_to_label[original_speaker]
-            temp_transcript.append(temp_segment)
-
-        # Format for LLM directly (don't pass JSON, pass formatted text)
-        formatted_lines = []
-        for segment in temp_transcript:
-            speaker = segment.get('speaker', 'Unknown Speaker')
-            sentence = segment.get('sentence', '')
-            formatted_lines.append(f"[{speaker}]: {sentence}")
-        formatted_transcription = "\n".join(formatted_lines)
-
-        # Get all SPEAKER_XX labels
-        speaker_labels = list(speaker_to_label.values())
-
-        current_app.logger.info(f"[Auto-Identify] Formatted transcript (first 500 chars): {formatted_transcription[:500]}")
-        current_app.logger.info(f"[Auto-Identify] Speaker labels: {speaker_labels}")
-
-        # Call identify_unidentified_speakers_from_text but pass the formatted text directly
-        # We need to bypass format_transcription_for_llm since we already formatted it
-        if not speaker_labels:
-            return jsonify({'error': 'No speakers found in transcription'}), 400
-
-        # Get configurable transcript length limit
-        transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-        if transcript_limit == -1:
-            transcript_text = formatted_transcription
-        else:
-            transcript_text = formatted_transcription[:transcript_limit]
-
-        prompt = f"""Analyze the following conversation transcript and identify the names of the speakers based on the context and content of their dialogue.
-
-The speakers that need to be identified are: {', '.join(speaker_labels)}
-
-Look for clues in the conversation such as:
-- Names mentioned by other speakers when addressing someone
-- Self-introductions or references to their own name
-- Context clues about roles, relationships, or positions
-- Any direct mentions of names in the dialogue
-
-Here is the complete conversation transcript:
-
-{transcript_text}
-
-Based on the conversation above, identify the most likely real names for the speakers. Pay close attention to how speakers address each other and any names that are mentioned in the dialogue.
-
-Respond with a single JSON object where keys are the speaker labels (e.g., "SPEAKER_01") and values are the identified full names. If a name cannot be determined from the conversation context, use an empty string "".
-
-Example format:
-{{
-  "SPEAKER_01": "Jane Smith",
-  "SPEAKER_03": "Bob Johnson",
-  "SPEAKER_05": ""
-}}
-
-JSON Response:
-"""
-
-        try:
-            from src.services.llm import call_llm_completion
-            current_app.logger.info(f"[Auto-Identify] Calling LLM directly with prompt")
-
-            completion = call_llm_completion(
-                messages=[
-                    {"role": "system", "content": "You are an expert in analyzing conversation transcripts to identify speakers based on contextual clues in the dialogue. Analyze the conversation carefully to find names mentioned when speakers address each other or introduce themselves. Your response must be a single, valid JSON object containing only the requested speaker identifications."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                response_format={"type": "json_object"},
-                user_id=current_user.id,
-                operation_type='speaker_identification'
-            )
-            response_content = completion.choices[0].message.content
-            current_app.logger.info(f"[Auto-Identify] LLM Raw Response: {response_content}")
-
-            from src.utils import safe_json_loads
-            identified_map = safe_json_loads(response_content, {})
-            current_app.logger.info(f"[Auto-Identify] Parsed identified_map: {identified_map}")
-
-            # Post-process the map to replace "Unknown" with an empty string
-            for speaker_label, identified_name in identified_map.items():
-                if identified_name and identified_name.strip().lower() in ["unknown", "n/a", "not available", "unclear"]:
-                    identified_map[speaker_label] = ""
-        except Exception as e:
-            current_app.logger.error(f"[Auto-Identify] Error calling LLM: {e}", exc_info=True)
-            return jsonify({'error': f'Failed to identify speakers: {str(e)}'}), 500
-        current_app.logger.info(f"[Auto-Identify] LLM returned identified_map: {identified_map}")
-
-        # Map back to original speaker IDs
-        final_speaker_map = {}
-        for original_speaker, temp_label in speaker_to_label.items():
-            if temp_label in identified_map:
-                final_speaker_map[original_speaker] = identified_map[temp_label]
-
-        current_app.logger.info(f"[Auto-Identify] Final speaker_map to return: {final_speaker_map}")
-        current_app.logger.info(f"[Auto-Identify] Speaker mapping: {speaker_to_label}")
-
-        return jsonify({'success': True, 'speaker_map': final_speaker_map})
+        return jsonify({'success': True, 'speaker_map': speaker_map})
 
     except ValueError as ve:
-        # Handle cases where API key is not set
         return jsonify({'error': str(ve)}), 503
     except Exception as e:
         current_app.logger.error(f"Error during auto speaker identification for recording {recording_id}: {e}", exc_info=True)
@@ -2066,34 +1954,60 @@ def upload_file():
             current_app.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
             codec_info = None
 
-        # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
-        try:
-            result = convert_if_needed(
-                filepath,
-                original_filename=original_filename,
-                codec_info=codec_info,
-                needs_chunking=needs_chunking_for_processing,
-                is_asr_endpoint=USE_ASR_ENDPOINT,
-                delete_original=True,
-                connector_specs=connector_specs  # Pass connector specs for codec restrictions
-            )
-            filepath = result.output_path
-            
-            # Log what happened
-            if result.was_converted:
-                current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
-            if result.was_compressed:
-                current_app.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
-                
-        except FFmpegNotFoundError as e:
-            current_app.logger.error(f"FFmpeg not found: {e}")
-            return jsonify({'error': 'Audio conversion tool (FFmpeg) not found on server.'}), 500
-        except FFmpegError as e:
-            current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
-            return jsonify({'error': f'Failed to convert audio file: {str(e)}'}), 500
+        # Video retention: skip conversion for videos, processing pipeline handles extraction
+        has_video = codec_info.get('has_video', False) if codec_info else False
+        if VIDEO_RETENTION and has_video:
+            current_app.logger.info(f"Video retention: keeping original video, skipping conversion")
+        else:
+            # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
+            try:
+                result = convert_if_needed(
+                    filepath,
+                    original_filename=original_filename,
+                    codec_info=codec_info,
+                    needs_chunking=needs_chunking_for_processing,
+                    is_asr_endpoint=USE_ASR_ENDPOINT,
+                    delete_original=True,
+                    connector_specs=connector_specs  # Pass connector specs for codec restrictions
+                )
+                filepath = result.output_path
+
+                # Log what happened
+                if result.was_converted:
+                    current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
+                if result.was_compressed:
+                    current_app.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+
+            except FFmpegNotFoundError as e:
+                current_app.logger.error(f"FFmpeg not found: {e}")
+                return jsonify({'error': 'Audio conversion tool (FFmpeg) not found on server.'}), 500
+            except FFmpegError as e:
+                current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
+                return jsonify({'error': f'Failed to convert audio file: {str(e)}'}), 500
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
+
+        # Compute file hash for duplicate detection (hash the final/converted file)
+        file_hash = None
+        duplicate_warning = None
+        try:
+            file_hash = compute_file_sha256(filepath)
+            existing = Recording.query.filter_by(
+                user_id=current_user.id, file_hash=file_hash
+            ).first()
+            if existing:
+                duplicate_warning = {
+                    'existing_recording_id': existing.id,
+                    'existing_title': existing.title,
+                    'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
+                }
+                current_app.logger.info(
+                    f"Duplicate file detected for user {current_user.id}: "
+                    f"hash={file_hash[:12]}... matches recording {existing.id}"
+                )
+        except Exception as e:
+            current_app.logger.warning(f"Could not compute file hash: {e}")
 
         # Determine MIME type of the final file
         mime_type, _ = mimetypes.guess_type(filepath)
@@ -2247,7 +2161,8 @@ def upload_file():
             audio_duration_seconds=audio_duration_seconds,
             notes=notes,
             folder_id=selected_folder.id if selected_folder else None,
-            processing_source='upload'  # Track that this was manually uploaded
+            processing_source='upload',  # Track that this was manually uploaded
+            file_hash=file_hash
         )
         db.session.add(recording)
         db.session.flush()  # Assign recording.id without committing transaction yet
@@ -2301,7 +2216,10 @@ def upload_file():
         )
         current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
 
-        return jsonify(recording.to_dict(viewer_user=current_user)), 202
+        response_data = recording.to_dict(viewer_user=current_user)
+        if duplicate_warning:
+            response_data['duplicate_warning'] = duplicate_warning
+        return jsonify(response_data), 202
 
     except RequestEntityTooLarge:
         max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
@@ -2669,7 +2587,12 @@ def delete_recording(recording_id):
             if chunk_count > 0:
                 current_app.logger.info(f"Deleting {chunk_count} transcript chunks with embeddings for recording {recording_id}")
 
-        # Delete associated processing jobs (required because recording_id is NOT NULL)
+        # Delete associated records with NOT NULL recording_id constraints
+        from src.models.speaker_snippet import SpeakerSnippet
+        deleted_snippets = SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
+        if deleted_snippets > 0:
+            current_app.logger.info(f"Deleted {deleted_snippets} speaker snippets for recording {recording_id}")
+
         from src.models.processing_job import ProcessingJob
         deleted_jobs = ProcessingJob.query.filter_by(recording_id=recording_id).delete()
         if deleted_jobs > 0:
@@ -3144,9 +3067,9 @@ def get_audio(recording_id):
             return jsonify({'error': 'Audio file missing from server'}), 404
 
         if download:
-            return send_file(delivery.local_path, as_attachment=True, download_name=download_name)
+            return send_file(delivery.local_path, as_attachment=True, download_name=download_name, conditional=True)
 
-        return send_file(delivery.local_path)
+        return send_file(delivery.local_path, conditional=True)
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500
@@ -3615,8 +3538,10 @@ def bulk_delete_recordings():
                     except Exception as e:
                         current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
 
-                # Delete associated processing jobs
+                # Delete associated records with NOT NULL recording_id constraints
                 from src.models import ProcessingJob
+                from src.models.speaker_snippet import SpeakerSnippet
+                SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
                 ProcessingJob.query.filter_by(recording_id=recording_id).delete()
 
                 # Delete the recording

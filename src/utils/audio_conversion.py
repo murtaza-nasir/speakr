@@ -208,16 +208,16 @@ def convert_if_needed(
                     copy_stream=False
                 )
                 final_codec = video_target_codec
-            
+
             final_size = os.path.getsize(output_filepath)
             reduction = ((original_size - final_size) / original_size * 100) if original_size > 0 else 0
-            
+
             logger.info(
                 f"Successfully extracted audio from {original_filename}: "
                 f"{original_size/1024/1024:.1f}MB -> {final_size/1024/1024:.1f}MB "
                 f"({reduction:.1f}% reduction)"
             )
-            
+
             return ConversionResult(
                 output_path=output_filepath,
                 mime_type=mime_type,

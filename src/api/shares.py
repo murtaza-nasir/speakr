@@ -169,7 +169,7 @@ def get_shared_audio(public_id):
         if not delivery.local_path or not os.path.exists(delivery.local_path):
             current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
             return jsonify({'error': 'Audio file missing from server'}), 404
-        return send_file(delivery.local_path, mimetype=(recording.mime_type or delivery.mimetype))
+        return send_file(delivery.local_path, mimetype=(recording.mime_type or delivery.mimetype), conditional=True)
     except Exception as e:
         current_app.logger.error(f"Error serving shared audio for public_id {public_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500

@@ -107,9 +107,11 @@
                         <i class="fas fa-info-circle"></i>
                         <span>Audio file has been archived and is no longer available for playback.</span>
                     </div>
-                    <!-- Custom Audio Player -->
-                    <div v-else class="flex items-center gap-3">
-                        <audio ref="audioPlayer" class="hidden"
+                    <!-- Custom Audio/Video Player -->
+                    <div v-else>
+                        <component :is="recording.mime_type && recording.mime_type.startsWith('video/') ? 'video' : 'audio'"
+                               ref="audioPlayer"
+                               :class="recording.mime_type && recording.mime_type.startsWith('video/') ? 'w-full rounded-lg mb-3' : 'hidden'"
                                :src="'/share/audio/' + recording.public_id"
                                @play="handleAudioPlayPause"
                                @pause="handleAudioPlayPause"
@@ -117,7 +119,8 @@
                                @loadedmetadata="handleAudioLoadedMetadata"
                                @durationchange="handleAudioDurationChange"
                                @ended="handleAudioEnded">
-                        </audio>
+                        </component>
+                        <div class="flex items-center gap-3">
                         <!-- Play/Pause -->
                         <button @click="toggleAudioPlayback"
                                 class="w-10 h-10 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
@@ -166,6 +169,7 @@
                                    @input="(e) => setAudioVolume(parseFloat(e.target.value))"
                                    class="volume-slider w-20 h-1.5 rounded-full cursor-pointer">
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>

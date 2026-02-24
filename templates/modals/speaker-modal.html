@@ -142,9 +142,11 @@
                         <i class="fas fa-user-secret"></i>
                         <span>Audio not stored in incognito mode</span>
                     </div>
-                    <!-- Custom Audio Player (Independent from main player) -->
-                    <div v-else class="flex items-center gap-2">
-                        <audio ref="speakerModalAudioRef" class="hidden"
+                    <!-- Custom Audio/Video Player (Independent from main player) -->
+                    <div v-else>
+                        <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
+                               ref="speakerModalAudioRef"
+                               :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'w-full rounded-lg mb-2' : 'hidden'"
                                :key="'speaker-modal-' + selectedRecording.id"
                                :src="'/audio/' + selectedRecording.id"
                                :volume="playerVolume"
@@ -153,7 +155,8 @@
                                @timeupdate="handleModalAudioTimeUpdate"
                                @loadedmetadata="handleModalAudioLoadedMetadata"
                                @ended="modalAudioIsPlaying = false">
-                        </audio>
+                        </component>
+                        <div class="flex items-center gap-2">
                         <!-- Play/Pause -->
                         <button @click="$refs.speakerModalAudioRef?.paused ? $refs.speakerModalAudioRef.play() : $refs.speakerModalAudioRef.pause()"
                                 class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
@@ -172,11 +175,30 @@
                                  :style="{ width: modalAudioProgressPercent + '%' }">
                             </div>
                         </div>
-                        <!-- Volume -->
-                        <button @click="$refs.speakerModalAudioRef && ($refs.speakerModalAudioRef.muted = !$refs.speakerModalAudioRef.muted)"
-                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0">
-                            <i :class="playerVolume === 0 ? 'fas fa-volume-mute' : 'fas fa-volume-up'" class="text-xs"></i>
-                        </button>
+                        <!-- Volume Control -->
+                        <div class="relative flex items-center flex-shrink-0"
+                             @mouseenter="showModalVolumeSlider = true"
+                             @mouseleave="showModalVolumeSlider = false">
+                            <button @click="if ($refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.muted = !$refs.speakerModalAudioRef.muted; audioIsMuted = $refs.speakerModalAudioRef.muted; }"
+                                    class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] transition-all flex-shrink-0"
+                                    :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'">
+                                <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-xs"></i>
+                            </button>
+                            <!-- Volume Slider Popup (outer div is invisible hover bridge) -->
+                            <div class="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-[9999] transition-all duration-200"
+                                 :class="showModalVolumeSlider ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'"
+                                 @mouseenter="showModalVolumeSlider = true"
+                                 @mouseleave="showModalVolumeSlider = false">
+                                <div class="px-2.5 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-lg shadow-xl flex flex-col items-center gap-1">
+                                    <span class="text-[9px] font-mono text-[var(--text-muted)]">${ Math.round(playerVolume * 100) }</span>
+                                    <input type="range" min="0" max="1" step="0.05"
+                                           :value="audioIsMuted ? 0 : playerVolume"
+                                           @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                           class="volume-slider-vertical"
+                                           style="height: 70px;">
+                                </div>
+                            </div>
+                        </div>
                         <!-- Speed Control (compact - tap to cycle) -->
                         <button @click="cycleModalPlaybackRate(); if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.playbackRate = modalPlaybackRate"
                                 class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
@@ -184,6 +206,7 @@
                             <span class="text-[10px] font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
                         </button>
                     </div>
+                </div>
                 </div>
 
                 <!-- Transcript Section (Virtual Scrolling for performance) -->
@@ -281,16 +304,38 @@
 
         <!-- Footer Buttons -->
         <div class="bg-[var(--bg-tertiary)] px-3 sm:px-6 py-2 sm:py-4 flex flex-row justify-between items-center gap-2 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
-            <!-- Auto Identify Button -->
-            <button @click="autoIdentifySpeakers" class="px-2 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
-                <i class="fas fa-magic mr-1 sm:mr-2"></i>
-                <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
-                <span v-if="!isAutoIdentifying" class="sm:hidden">Auto</span>
-                <span v-else>
-                    <i class="fas fa-spinner fa-spin"></i>
-                </span>
-            </button>
-            <!-- Cancel & Save Buttons -->
+            <!-- Left: Auto Identify Split Button + Apply Suggested -->
+            <div class="flex items-center gap-2">
+                <!-- Split Button: Auto Identify -->
+                <div class="relative inline-flex" ref="autoIdSplitBtn">
+                    <!-- Main button: identify missing only -->
+                    <button @click="autoIdentifySpeakers(false)" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-purple-600 text-white rounded-l-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
+                        <i class="fas fa-magic mr-1 sm:mr-1.5"></i>
+                        <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
+                        <span v-if="!isAutoIdentifying" class="sm:hidden" v-text="t('help.autoIdentifyMobile')"></span>
+                        <span v-else>
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </button>
+                    <!-- Dropdown arrow -->
+                    <button @click="showAutoIdDropdown = !showAutoIdDropdown" class="px-1.5 py-1.5 sm:py-2 bg-purple-600 text-white rounded-r-md border-l border-purple-500 hover:bg-purple-700 active:scale-[0.98] transition-all text-xs sm:text-sm" :disabled="isAutoIdentifying">
+                        <i class="fas fa-caret-down"></i>
+                    </button>
+                    <!-- Dropdown menu -->
+                    <div v-if="showAutoIdDropdown" class="absolute bottom-full left-0 mb-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg z-50 min-w-[180px]">
+                        <button @click="autoIdentifySpeakers(true)" class="w-full px-3 py-2 text-left text-xs sm:text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors rounded-md">
+                            <i class="fas fa-users mr-2"></i><span v-text="t('help.identifyAllSpeakers')"></span>
+                        </button>
+                    </div>
+                </div>
+                <!-- Apply Suggested Button -->
+                <button v-if="hasAnySuggestions" @click="applySuggestedNames" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 active:scale-[0.98] transition-all flex items-center text-xs sm:text-sm font-medium">
+                    <i class="fas fa-lightbulb mr-1 sm:mr-1.5"></i>
+                    <span class="hidden sm:inline" v-text="t('help.applySuggested')"></span>
+                    <span class="sm:hidden" v-text="t('help.applySuggestedMobile')"></span>
+                </button>
+            </div>
+            <!-- Right: Cancel & Save Buttons -->
             <div class="flex gap-2">
                 <button @click="closeSpeakerModal" class="px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-md border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.98] transition-all text-xs sm:text-sm" v-text="t('common.cancel')"></button>
                 <button

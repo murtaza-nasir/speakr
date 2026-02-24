@@ -42,6 +42,7 @@ class Recording(db.Model):
     summarization_duration_seconds = db.Column(db.Integer, nullable=True)  # Time taken for summarization
     processing_source = db.Column(db.String(50), default='upload')  # upload, auto_process, recording
     error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
+    file_hash = db.Column(db.String(64), nullable=True)  # SHA-256 hash for duplicate detection
 
     # Auto-deletion and archival fields
     audio_deleted_at = db.Column(db.DateTime, nullable=True)  # When audio file was deleted (null = not deleted)
@@ -181,6 +182,35 @@ class Recording(db.Model):
             logger.warning(f"Failed to get duration for recording {self.id}: {e}")
             return None
 
+    def get_duplicate_info(self):
+        """Check if other recordings share the same file_hash for this user.
+
+        Returns:
+            Dict with total copy count and list of copies, or None.
+        """
+        if not self.file_hash:
+            return None
+        dupes = Recording.query.filter(
+            Recording.user_id == self.user_id,
+            Recording.file_hash == self.file_hash,
+        ).with_entities(
+            Recording.id, Recording.title, Recording.created_at
+        ).order_by(Recording.created_at).all()
+        if len(dupes) > 1:
+            return {
+                'total_copies': len(dupes),
+                'copies': [
+                    {
+                        'id': d.id,
+                        'title': d.title or f'#{d.id}',
+                        'created_at': local_datetime_filter(d.created_at),
+                        'is_self': d.id == self.id
+                    }
+                    for d in dupes
+                ]
+            }
+        return None
+
     def to_list_dict(self, viewer_user=None):
         """
         Lightweight dict for list views - excludes expensive HTML conversions.
@@ -222,6 +252,7 @@ class Recording(db.Model):
             'folder_id': self.folder_id,
             'folder': self.folder.to_dict() if self.folder else None,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
+            'duplicate_info': self.get_duplicate_info(),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count
         }
@@ -281,6 +312,7 @@ class Recording(db.Model):
             'folder': self.folder.to_dict() if self.folder else None,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'events': [event.to_dict() for event in self.events] if self.events else [],
+            'duplicate_info': self.get_duplicate_info(),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count
         }

@@ -416,6 +416,8 @@ export function useAudio(state, utils) {
             mediaRecorder.value = recorder;
             recorder.start(5000); // 5-second chunks for less overhead while still enabling crash recovery
             isRecording.value = true;
+            // Switch to recording view immediately so pending wake-lock/notification awaits don't block Safari rendering
+            currentView.value = 'recording';
 
             // Start timer
             recordingInterval.value = setInterval(() => {
@@ -441,9 +443,6 @@ export function useAudio(state, utils) {
                     isRecording: true
                 });
             }
-
-            // Switch to recording view
-            currentView.value = 'recording';
 
         } catch (error) {
             console.error('Recording error:', error);

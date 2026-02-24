@@ -447,7 +447,7 @@
                             </div>
 
                             <!-- Tags -->
-                            <div v-if="getRecordingTags(recording).length > 0" class="flex flex-wrap gap-1 mt-1">
+                            <div v-if="getRecordingTags(recording).length > 0 || recording.duplicate_info" class="flex flex-wrap items-center gap-1 mt-1">
                                 <button v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id"
                                         @click.stop="filterByTag(tag)"
                                         class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
@@ -461,6 +461,12 @@
                                       :title="'More tags...'">
                                     +${getRecordingTags(recording).length - 4}
                                 </span>
+                                <button v-if="recording.duplicate_info"
+                                        @click.stop="openDuplicatesModal(recording.duplicate_info)"
+                                        class="text-amber-500 hover:text-amber-400 transition-colors"
+                                        :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
+                                    <i class="fas fa-copy text-xs"></i>
+                                </button>
                             </div>
                         </div>
                     </div>

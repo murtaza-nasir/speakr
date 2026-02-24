@@ -83,6 +83,13 @@ Explore Speakr's powerful features through our visual gallery. Click on any imag
 
 ## Transcription Features
 
+### Video Playback
+
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/video-playback.png" alt="Video Playback" />
+  <p class="caption">In-browser video playback alongside speaker-labeled transcript and summary</p>
+</div>
+
 ### Interactive Audio Synchronization
 
 <div class="screenshot-grid">

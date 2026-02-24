@@ -15,13 +15,17 @@ import json
 from src.database import db
 from src.models import Speaker, SpeakerSnippet, Recording
 
+MAX_SNIPPETS_PER_SPEAKER = 7
+MAX_SNIPPETS_PER_RECORDING = 2
+
 
 def create_speaker_snippets(recording_id, speaker_map):
     """
     Extract and store representative snippets for each identified speaker.
 
     This function is called after a user saves speaker identifications in a recording.
-    It extracts 3-5 representative quotes per speaker for display in speaker profiles.
+    It extracts up to MAX_SNIPPETS_PER_RECORDING quotes per speaker from this recording,
+    and enforces a global cap of MAX_SNIPPETS_PER_SPEAKER by evicting the oldest.
 
     Args:
         recording_id: ID of the recording
@@ -40,19 +44,34 @@ def create_speaker_snippets(recording_id, speaker_map):
     except (json.JSONDecodeError, TypeError):
         return 0
 
-    snippets_created = 0
+    # Build a reverse map: assigned name -> speaker_info
+    # After transcript is saved, segment['speaker'] contains the real name,
+    # not the original SPEAKER_XX label. We need to match by name too.
+    name_to_info = {}
+    for label, info in speaker_map.items():
+        name = info.get('name', '').strip()
+        if name and not name.startswith('SPEAKER_'):
+            name_to_info[name] = info
+
+    # Collect candidates per speaker: (speaker_obj, segment_idx, text, timestamp)
+    candidates = {}  # speaker_id -> list of (segment_idx, text, timestamp)
 
     for segment_idx, segment in enumerate(transcript):
-        speaker_label = segment.get('speaker')  # SPEAKER_00, SPEAKER_01, etc.
+        speaker_field = segment.get('speaker')
 
-        if not speaker_label or speaker_label not in speaker_map:
+        if not speaker_field:
             continue
 
-        speaker_info = speaker_map[speaker_label]
-        speaker_name = speaker_info.get('name')
+        # Try matching by original label first, then by assigned name
+        if speaker_field in speaker_map:
+            speaker_info = speaker_map[speaker_field]
+            speaker_name = speaker_info.get('name')
+        elif speaker_field in name_to_info:
+            speaker_name = speaker_field
+        else:
+            continue
 
         if not speaker_name or speaker_name.startswith('SPEAKER_'):
-            # Skip if not actually identified
             continue
 
         # Find the speaker in database
@@ -64,32 +83,50 @@ def create_speaker_snippets(recording_id, speaker_map):
         if not speaker:
             continue
 
-        # Limit to 5 snippets per recording per speaker
-        existing_count = SpeakerSnippet.query.filter_by(
-            speaker_id=speaker.id,
-            recording_id=recording_id
-        ).count()
-
-        if existing_count >= 5:
-            continue
-
-        # Get the text (limit to 200 chars)
         text = segment.get('sentence', '').strip()
-        if len(text) < 10:  # Skip very short segments
+        if len(text) < 10:
             continue
 
-        text_snippet = text[:200]
+        if speaker.id not in candidates:
+            candidates[speaker.id] = []
+        candidates[speaker.id].append((segment_idx, text[:200], segment.get('start_time')))
 
-        # Create snippet
-        snippet = SpeakerSnippet(
-            speaker_id=speaker.id,
-            recording_id=recording_id,
-            segment_index=segment_idx,
-            text_snippet=text_snippet,
-            timestamp=segment.get('start_time')
-        )
-        db.session.add(snippet)
-        snippets_created += 1
+    # Delete existing snippets for this recording (re-save replaces them)
+    SpeakerSnippet.query.filter_by(recording_id=recording_id).delete()
+
+    snippets_created = 0
+
+    for speaker_id, segs in candidates.items():
+        # Pick up to MAX_SNIPPETS_PER_RECORDING spread across the transcript
+        if len(segs) <= MAX_SNIPPETS_PER_RECORDING:
+            chosen = segs
+        else:
+            # Evenly sample from the segments
+            step = len(segs) / MAX_SNIPPETS_PER_RECORDING
+            chosen = [segs[int(i * step)] for i in range(MAX_SNIPPETS_PER_RECORDING)]
+
+        for segment_idx, text_snippet, timestamp in chosen:
+            # Evict oldest if at global cap
+            global_count = SpeakerSnippet.query.filter_by(speaker_id=speaker_id).count()
+            if global_count >= MAX_SNIPPETS_PER_SPEAKER:
+                oldest = SpeakerSnippet.query.filter_by(speaker_id=speaker_id)\
+                    .order_by(SpeakerSnippet.created_at.asc()).first()
+                if oldest:
+                    db.session.delete(oldest)
+                    db.session.flush()
+
+            snippet = SpeakerSnippet(
+                speaker_id=speaker_id,
+                recording_id=recording_id,
+                segment_index=segment_idx,
+                text_snippet=text_snippet,
+                timestamp=timestamp,
+            )
+            db.session.add(snippet)
+            snippets_created += 1
+
+        # Flush after each speaker batch to keep counts accurate
+        db.session.flush()
 
     if snippets_created > 0:
         db.session.commit()

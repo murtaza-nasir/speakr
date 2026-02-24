@@ -813,13 +813,13 @@ export function useUI(state, utils, processedTranscription) {
     const seekAudio = (time, context = 'main') => {
         let audioPlayer = null;
         if (context === 'modal') {
-            audioPlayer = document.querySelector('audio.speaker-modal-transcript');
+            audioPlayer = document.querySelector('audio.speaker-modal-transcript') || document.querySelector('video.speaker-modal-transcript');
         } else {
-            audioPlayer = document.querySelector('.main-content-area audio');
+            audioPlayer = document.querySelector('.main-content-area audio') || document.querySelector('.main-content-area video');
         }
 
         if (!audioPlayer) {
-            audioPlayer = document.querySelector('audio');
+            audioPlayer = document.querySelector('audio') || document.querySelector('video');
         }
 
         if (audioPlayer && isFinite(time)) {
@@ -856,16 +856,18 @@ export function useUI(state, utils, processedTranscription) {
 
     // --- Custom Audio Player Controls ---
     const getAudioElement = () => {
-        // First check for audio in visible modals (z-50 class) - these take priority
-        const modalAudio = document.querySelector('.fixed.z-50 audio');
-        if (modalAudio) {
-            return modalAudio;
+        // First check for audio/video in visible modals (z-50 class) - these take priority
+        const modalMedia = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
+        if (modalMedia) {
+            return modalMedia;
         }
         // Fall back to main player in right column (desktop) or detail view (mobile)
         return document.querySelector('#rightMainColumn audio') ||
+               document.querySelector('#rightMainColumn video') ||
                document.querySelector('.detail-view audio') ||
-               document.querySelector('audio[ref="audioPlayerElement"]') ||
-               document.querySelector('audio');
+               document.querySelector('.detail-view video') ||
+               document.querySelector('audio') ||
+               document.querySelector('video');
     };
 
     const toggleAudioPlayback = () => {
@@ -1060,10 +1062,9 @@ export function useUI(state, utils, processedTranscription) {
         playbackRate.value = rate;
         localStorage.setItem('playbackRate', rate);
 
-        // Apply to all audio elements
-        const audioElements = document.querySelectorAll('audio');
-        audioElements.forEach(audio => {
-            audio.playbackRate = rate;
+        // Apply to all audio and video elements
+        document.querySelectorAll('audio, video').forEach(el => {
+            el.playbackRate = rate;
         });
     };
 
@@ -1080,6 +1081,7 @@ export function useUI(state, utils, processedTranscription) {
 
         // Apply to modal audio elements
         const modalAudio = document.querySelector('.speaker-modal-transcript')?.closest('.fixed')?.querySelector('audio') ||
+                          document.querySelector('.speaker-modal-transcript')?.closest('.fixed')?.querySelector('video') ||
                           document.querySelector('[ref="speakerModalAudioRef"]') ||
                           document.querySelector('[ref="asrEditorAudioRef"]');
         if (modalAudio) {
