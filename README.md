@@ -311,18 +311,18 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
       <br><em>Main Screen with Chat</em>
     </td>
     <td align="center">
-      <img src="docs/assets/images/screenshots/Inquire mode.png" alt="Inquire Mode" width="400"/>
-      <br><em>AI-Powered Semantic Search</em>
+      <img src="docs/assets/images/screenshots/video-playback.png" alt="Video Playback" width="400"/>
+      <br><em>Video Playback with Transcript</em>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/assets/images/screenshots/chat-interface.png" alt="Transcription with Chat" width="400"/>
-      <br><em>Interactive Transcription & Chat</em>
+      <img src="docs/assets/images/screenshots/Inquire mode.png" alt="Inquire Mode" width="400"/>
+      <br><em>AI-Powered Semantic Search</em>
     </td>
     <td align="center">
-      <img src="docs/assets/images/screenshots/multilingual-chinese.png" alt="Multi-language Support" width="400"/>
-      <br><em>Full Internationalization</em>
+      <img src="docs/assets/images/screenshots/chat-interface.png" alt="Transcription with Chat" width="400"/>
+      <br><em>Interactive Transcription & Chat</em>
     </td>
   </tr>
 </table>
