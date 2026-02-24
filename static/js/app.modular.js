@@ -537,6 +537,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showVolumeSlider = ref(false);
             const showModalVolumeSlider = ref(false);
             const showDuplicatesModal = ref(false);
+            const videoCollapsed = ref(false);
             const duplicatesModalData = ref(null);
 
             // --- Modal Audio Player State (Independent from main) ---
@@ -2433,6 +2434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 retryProgressItem,
                 hasSpeakerNames,
                 showDuplicatesModal,
+                videoCollapsed,
                 duplicatesModalData,
                 openDuplicatesModal,
                 navigateToDuplicate,

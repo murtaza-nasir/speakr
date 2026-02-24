@@ -28,7 +28,7 @@
                @waiting="handleAudioWaiting"
                @canplay="handleAudioCanPlay"
                @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && toggleAudioPlayback()"
-               :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'w-full rounded-lg mb-2 cursor-pointer' : 'hidden'">
+               :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? (videoCollapsed ? 'hidden' : 'w-full rounded-lg mb-2 cursor-pointer') : 'hidden'">
         </component>
 
         <!-- Progress Bar (draggable, touch support) -->
@@ -126,6 +126,15 @@
                :title="t('buttons.downloadAudio') || 'Download audio'">
                 <i class="fas fa-download text-sm"></i>
             </a>
+
+            <!-- Video Toggle Button -->
+            <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
+                    @click="videoCollapsed = !videoCollapsed"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all flex-shrink-0"
+                    :class="videoCollapsed ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
+                    :title="videoCollapsed ? 'Show video' : 'Hide video'">
+                <i :class="videoCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
+            </button>
         </div>
     </div>
 </div>
