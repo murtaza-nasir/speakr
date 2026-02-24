@@ -213,6 +213,11 @@ Reduce eye strain with a full dark mode implementation that affects every interf
 
 When enabled (`VIDEO_RETENTION=true`), uploaded video files preserve their video stream for in-browser playback. Instead of extracting audio and discarding the video, Speakr keeps the original file and renders it with a native `<video>` player alongside the transcript. Audio is extracted to a temporary file for transcription only, then cleaned up automatically. All existing player controls (play/pause, seek, speed, volume) work identically with video since HTML5 `<video>` and `<audio>` share the same media API. HTTP Range requests enable efficient seeking without downloading the entire file. This feature is ideal for presentations, lectures, and screen recordings where the visual context adds value to the transcript. Default: `false` (current behavior preserved — video uploads extract audio only).
 
+<div style="max-width: 800px; margin: 2em auto;">
+  <img src="assets/images/screenshots/video-playback.png" alt="Video playback alongside transcript" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">In-browser video playback alongside speaker-labeled transcript and summary</p>
+</div>
+
 ### Playback Speed Control
 
 Adjust audio playback speed from 0.5x to 3x on all audio/video players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.
