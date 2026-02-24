@@ -3,8 +3,6 @@ name: Docker Build and Publish
 on:
   release:
     types: [published]
-  push:
-    tags: [ 'v*.*.*' ]
   workflow_dispatch:
 
 env:
@@ -97,12 +95,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=match,pattern=v(.*),group=1
             type=sha
-            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
 
       # Build and push full Docker image
       - name: Build and push Docker image
@@ -162,9 +157,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=lite,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v') }}
-            type=semver,pattern={{version}}-lite
-            type=semver,pattern={{major}}.{{minor}}-lite
+            type=raw,value=lite,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
+            type=match,pattern=v(.*),group=1,suffix=-lite
             type=sha,suffix=-lite
 
       # Build and push lightweight Docker image (no PyTorch/sentence-transformers)
