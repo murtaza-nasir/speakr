@@ -1141,7 +1141,8 @@
     "willAutoSummarize": "Résumé automatique après la transcription",
     "duplicateDetected": "Ce fichier semble être un doublon de \"{{existingName}}\" (importé le {{existingDate}})",
     "duplicateFile": "Fichier en double",
-    "copies": "copies de ce fichier"
+    "copies": "copies de ce fichier",
+    "videoRetained": "Vidéo conservée pour la lecture"
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"

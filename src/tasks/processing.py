@@ -41,6 +41,9 @@ from src.services.transcription_tracking import transcription_tracker
 # Configuration for internal sharing
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
+# Video retention - when enabled, video files keep their video stream for playback
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+
 
 def apply_team_tag_auto_shares(recording_id):
     """
@@ -1467,6 +1470,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             actual_filepath = filepath
             actual_content_type = mime_type or mimetypes.guess_type(original_filename)[0] or 'application/octet-stream'
             actual_filename = original_filename
+            audio_filepath = None  # Track temp audio extracted from video (for cleanup)
 
             # Use codec detection to check if file is a video
             try:
@@ -1485,23 +1489,46 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 )
 
             if is_video:
-                current_app.logger.info(f"Video container detected, extracting audio...")
-                try:
-                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath)
-                    actual_filepath = audio_filepath
-                    actual_content_type = audio_mime_type
-                    actual_filename = os.path.basename(audio_filepath)
+                if VIDEO_RETENTION:
+                    # Video retention: keep original video, extract audio to temp for transcription only
+                    current_app.logger.info(f"Video container detected, retaining video and extracting audio to temp...")
+                    try:
+                        audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                        # Use extracted audio for transcription processing
+                        actual_filepath = audio_filepath
+                        actual_content_type = audio_mime_type
+                        actual_filename = os.path.basename(audio_filepath)
 
-                    recording.audio_path = audio_filepath
-                    recording.mime_type = audio_mime_type
-                    db.session.commit()
-                    current_app.logger.info(f"Audio extracted: {audio_filepath}")
-                except Exception as e:
-                    current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
-                    recording.status = 'FAILED'
-                    recording.error_msg = f"Audio extraction failed: {str(e)}"
-                    db.session.commit()
-                    raise  # Re-raise so job queue marks the job as failed
+                        # Keep original video file as the stored media
+                        recording.audio_path = filepath
+                        recording.mime_type = mimetypes.guess_type(filepath)[0] or 'video/mp4'
+                        db.session.commit()
+                        current_app.logger.info(f"Video retained at: {filepath}, temp audio extracted: {audio_filepath}")
+                    except Exception as e:
+                        current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                        recording.status = 'FAILED'
+                        recording.error_msg = f"Audio extraction failed: {str(e)}"
+                        db.session.commit()
+                        raise
+                else:
+                    # Default: extract audio, delete original video
+                    current_app.logger.info(f"Video container detected, extracting audio...")
+                    try:
+                        audio_filepath, audio_mime_type = extract_audio_from_video(filepath)
+                        actual_filepath = audio_filepath
+                        actual_content_type = audio_mime_type
+                        actual_filename = os.path.basename(audio_filepath)
+
+                        recording.audio_path = audio_filepath
+                        recording.mime_type = audio_mime_type
+                        db.session.commit()
+                        current_app.logger.info(f"Audio extracted: {audio_filepath}")
+                    except Exception as e:
+                        current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
+                        recording.status = 'FAILED'
+                        recording.error_msg = f"Audio extraction failed: {str(e)}"
+                        db.session.commit()
+                        raise  # Re-raise so job queue marks the job as failed
 
             # Validate and convert audio format if needed using unified conversion utility
             # This respects:
@@ -1685,6 +1712,15 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 except OSError:
                     pass  # Best effort cleanup
 
+            # Clean up temp audio extracted from video when video retention is enabled
+            if is_video and VIDEO_RETENTION and audio_filepath and audio_filepath != filepath:
+                try:
+                    if os.path.exists(audio_filepath):
+                        os.remove(audio_filepath)
+                        current_app.logger.info(f"Cleaned up temp audio from video retention: {audio_filepath}")
+                except OSError:
+                    pass  # Best effort cleanup
+
             # Calculate and save transcription duration
             transcription_end_time = time.time()
             recording.transcription_duration_seconds = int(transcription_end_time - transcription_start_time)
@@ -1696,7 +1732,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 # Get actual audio duration (not processing time)
                 audio_duration = None
                 if chunking_service:
-                    audio_duration = chunking_service.get_audio_duration(filepath)
+                    audio_duration = chunking_service.get_audio_duration(recording.audio_path)
 
                 if audio_duration and audio_duration > 0:
                     # Get model name from connector if available

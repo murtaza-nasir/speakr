@@ -32,7 +32,7 @@ export function useUpload(state, utils) {
     const {
         uploadQueue, currentlyProcessingFile, processingProgress, processingMessage,
         isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
-        maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit,
+        maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, maxConcurrentUploads,
         recordings, selectedRecording, totalRecordings, globalError,
         selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
         useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
@@ -269,14 +269,13 @@ export function useUpload(state, utils) {
     };
 
     // --- Parallel Upload System ---
-    // Concurrency limiter: max 3 simultaneous uploads
-    const MAX_CONCURRENT_UPLOADS = 3;
+    // Concurrency limiter: configurable via MAX_CONCURRENT_UPLOADS env var (default 3)
     let activeUploadCount = 0;
     const pendingUploadQueue = []; // Functions waiting for a slot
 
     const acquireUploadSlot = () => {
         return new Promise(resolve => {
-            if (activeUploadCount < MAX_CONCURRENT_UPLOADS) {
+            if (activeUploadCount < (maxConcurrentUploads?.value || 3)) {
                 activeUploadCount++;
                 resolve();
             } else {
@@ -494,7 +493,7 @@ export function useUpload(state, utils) {
         }
 
         isProcessingActive.value = true;
-        console.log(`Starting parallel upload of ${readyItems.length} file(s) (max ${MAX_CONCURRENT_UPLOADS} concurrent)...`);
+        console.log(`Starting parallel upload of ${readyItems.length} file(s) (max ${maxConcurrentUploads?.value || 3} concurrent)...`);
 
         // Fire off all uploads concurrently (semaphore handles limiting)
         const uploadPromises = readyItems.map(item => uploadSingleFile(item));

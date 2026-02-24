@@ -286,6 +286,26 @@ Supported codecs by default: `pcm_s16le`, `pcm_s24le`, `pcm_f32le`, `mp3`, `flac
 !!! tip "Storage Savings Example"
     A 500MB WAV recording compressed to MP3 at 128k becomes roughly 50MB - a 90% reduction. For lossless preservation, FLAC typically achieves 50-70% reduction while maintaining perfect audio quality.
 
+#### Video Retention
+
+By default, when users upload video files, Speakr extracts the audio and discards the video stream. If you want to preserve video for in-browser playback alongside the transcript, enable video retention:
+
+```bash
+VIDEO_RETENTION=true
+```
+
+When enabled, the original video file is kept and served with a native `<video>` player. Audio is extracted to a temporary file for transcription only, then cleaned up automatically. All player controls (seek, speed, volume) work identically. This is particularly useful for presentations, lectures, and screen recordings where the visual context adds value. Storage overhead is modest — video streams are typically only 10-20% of the total file size for presentation-style content.
+
+#### Concurrent Upload Limit
+
+Control how many files upload simultaneously when batch uploading:
+
+```bash
+MAX_CONCURRENT_UPLOADS=3  # default
+```
+
+Higher values speed up batch uploads but use more bandwidth and server resources.
+
 #### Inquire Mode for Semantic Search
 
 Inquire Mode transforms Speakr from a simple transcription tool into a knowledge base of all your recordings. When enabled, you can search across all your transcriptions using natural language questions:

@@ -58,8 +58,8 @@ export function useTranscription(state, utils) {
 
     // Helper to pause outer audio player when opening modals with their own player
     const pauseOuterAudioPlayer = () => {
-        const outerAudio = document.querySelector('#rightMainColumn audio') ||
-                          document.querySelector('.detail-view audio:not(.fixed audio)');
+        const outerAudio = document.querySelector('#rightMainColumn audio') || document.querySelector('#rightMainColumn video') ||
+                          document.querySelector('.detail-view audio:not(.fixed audio)') || document.querySelector('.detail-view video:not(.fixed video)');
         if (outerAudio && !outerAudio.paused) {
             outerAudio.pause();
         }
@@ -99,7 +99,7 @@ export function useTranscription(state, utils) {
 
     const closeAsrEditorModal = () => {
         // Pause any playing modal audio before closing
-        const modalAudio = document.querySelector('.fixed.z-50 audio');
+        const modalAudio = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
         if (modalAudio) {
             modalAudio.pause();
         }
@@ -303,8 +303,8 @@ export function useTranscription(state, utils) {
 
     const seekToSegmentTime = (time) => {
         // Find audio elements and use the one in a visible modal (z-50)
-        const audioElements = document.querySelectorAll('.fixed.z-50 audio');
-        const audioElement = audioElements.length > 0 ? audioElements[audioElements.length - 1] : null;
+        const mediaElements = document.querySelectorAll('.fixed.z-50 audio, .fixed.z-50 video');
+        const audioElement = mediaElements.length > 0 ? mediaElements[mediaElements.length - 1] : null;
         if (audioElement) {
             audioElement.currentTime = time;
             audioElement.play();

@@ -17,6 +17,7 @@ export function createUploadState(ref, computed) {
     const chunkingMode = ref('size');
     const chunkingLimit = ref(20);
     const chunkingLimitDisplay = ref('20MB');
+    const maxConcurrentUploads = ref(3);
     const recordingDisclaimer = ref('');
     const showRecordingDisclaimerModal = ref(false);
     const pendingRecordingMode = ref(null);
@@ -50,6 +51,7 @@ export function createUploadState(ref, computed) {
         chunkingMode,
         chunkingLimit,
         chunkingLimitDisplay,
+        maxConcurrentUploads,
         recordingDisclaimer,
         showRecordingDisclaimerModal,
         pendingRecordingMode,

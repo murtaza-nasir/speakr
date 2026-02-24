@@ -311,6 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const chunkingMode = ref('size');
             const chunkingLimit = ref(20);
             const chunkingLimitDisplay = ref('20MB');
+            const maxConcurrentUploads = ref(3);
             const recordingDisclaimer = ref('');
             const showRecordingDisclaimerModal = ref(false);
             const pendingRecordingMode = ref(null);
@@ -643,7 +644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,
                 isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
-                recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
+                maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
@@ -2238,6 +2239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         showUsernamesInUI.value = config.show_usernames_in_ui === true;
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
+                        maxConcurrentUploads.value = config.max_concurrent_uploads || 3;
 
                         // Restore saved folder selection from localStorage
                         if (foldersEnabled.value) {

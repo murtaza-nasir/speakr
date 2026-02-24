@@ -209,9 +209,13 @@ Install Speakr as a progressive web app for a native-like experience on any devi
 
 Reduce eye strain with a full dark mode implementation that affects every interface element. The theme preference persists across sessions and devices, automatically applying your choice whenever you log in.
 
+### Video Retention
+
+When enabled (`VIDEO_RETENTION=true`), uploaded video files preserve their video stream for in-browser playback. Instead of extracting audio and discarding the video, Speakr keeps the original file and renders it with a native `<video>` player alongside the transcript. Audio is extracted to a temporary file for transcription only, then cleaned up automatically. All existing player controls (play/pause, seek, speed, volume) work identically with video since HTML5 `<video>` and `<audio>` share the same media API. HTTP Range requests enable efficient seeking without downloading the entire file. This feature is ideal for presentations, lectures, and screen recordings where the visual context adds value to the transcript. Default: `false` (current behavior preserved — video uploads extract audio only).
+
 ### Playback Speed Control
 
-Adjust audio playback speed from 0.5x to 3x on all audio players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.
+Adjust audio playback speed from 0.5x to 3x on all audio/video players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.
 
 ### Incognito Mode
 

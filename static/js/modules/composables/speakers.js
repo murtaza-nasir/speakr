@@ -47,8 +47,8 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Helper to pause outer audio player when opening modals with their own player
     const pauseOuterAudioPlayer = () => {
         // Find the audio player in the right panel (not in a modal)
-        const outerAudio = document.querySelector('#rightMainColumn audio') ||
-                          document.querySelector('.detail-view audio:not(.fixed audio)');
+        const outerAudio = document.querySelector('#rightMainColumn audio') || document.querySelector('#rightMainColumn video') ||
+                          document.querySelector('.detail-view audio:not(.fixed audio)') || document.querySelector('.detail-view video:not(.fixed video)');
         if (outerAudio && !outerAudio.paused) {
             outerAudio.pause();
         }
@@ -168,7 +168,7 @@ export function useSpeakers(state, utils, processedTranscription) {
 
     const closeSpeakerModal = () => {
         // Pause any playing modal audio before closing
-        const modalAudio = document.querySelector('.fixed.z-50 audio');
+        const modalAudio = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
         if (modalAudio) {
             modalAudio.pause();
         }

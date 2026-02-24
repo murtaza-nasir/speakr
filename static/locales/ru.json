@@ -1163,7 +1163,8 @@
     "willAutoSummarize": "Автоматически создаст резюме после транскрибирования",
     "duplicateDetected": "Этот файл является дубликатом \"{{existingName}}\" (загружен {{existingDate}})",
     "duplicateFile": "Дубликат файла",
-    "copies": "копий этого файла"
+    "copies": "копий этого файла",
+    "videoRetained": "Видео сохранено для воспроизведения"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

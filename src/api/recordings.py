@@ -48,6 +48,7 @@ ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() =
 DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only' or 'full_recording'
 USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
+VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
@@ -1950,31 +1951,36 @@ def upload_file():
             current_app.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
             codec_info = None
 
-        # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
-        try:
-            result = convert_if_needed(
-                filepath,
-                original_filename=original_filename,
-                codec_info=codec_info,
-                needs_chunking=needs_chunking_for_processing,
-                is_asr_endpoint=USE_ASR_ENDPOINT,
-                delete_original=True,
-                connector_specs=connector_specs  # Pass connector specs for codec restrictions
-            )
-            filepath = result.output_path
-            
-            # Log what happened
-            if result.was_converted:
-                current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
-            if result.was_compressed:
-                current_app.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
-                
-        except FFmpegNotFoundError as e:
-            current_app.logger.error(f"FFmpeg not found: {e}")
-            return jsonify({'error': 'Audio conversion tool (FFmpeg) not found on server.'}), 500
-        except FFmpegError as e:
-            current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
-            return jsonify({'error': f'Failed to convert audio file: {str(e)}'}), 500
+        # Video retention: skip conversion for videos, processing pipeline handles extraction
+        has_video = codec_info.get('has_video', False) if codec_info else False
+        if VIDEO_RETENTION and has_video:
+            current_app.logger.info(f"Video retention: keeping original video, skipping conversion")
+        else:
+            # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
+            try:
+                result = convert_if_needed(
+                    filepath,
+                    original_filename=original_filename,
+                    codec_info=codec_info,
+                    needs_chunking=needs_chunking_for_processing,
+                    is_asr_endpoint=USE_ASR_ENDPOINT,
+                    delete_original=True,
+                    connector_specs=connector_specs  # Pass connector specs for codec restrictions
+                )
+                filepath = result.output_path
+
+                # Log what happened
+                if result.was_converted:
+                    current_app.logger.info(f"File converted: {result.original_codec} -> {result.final_codec}")
+                if result.was_compressed:
+                    current_app.logger.info(f"File compressed: {result.size_reduction_percent:.1f}% size reduction")
+
+            except FFmpegNotFoundError as e:
+                current_app.logger.error(f"FFmpeg not found: {e}")
+                return jsonify({'error': 'Audio conversion tool (FFmpeg) not found on server.'}), 500
+            except FFmpegError as e:
+                current_app.logger.error(f"FFmpeg conversion failed for {filepath}: {e}")
+                return jsonify({'error': f'Failed to convert audio file: {str(e)}'}), 500
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
@@ -3017,9 +3023,9 @@ def get_audio(recording_id):
             filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_')).strip()
             ext = os.path.splitext(recording.audio_path)[1] or '.mp3'
             filename = f"{filename}{ext}"
-            return send_file(recording.audio_path, as_attachment=True, download_name=filename)
+            return send_file(recording.audio_path, as_attachment=True, download_name=filename, mimetype=recording.mime_type, conditional=True)
 
-        return send_file(recording.audio_path)
+        return send_file(recording.audio_path, mimetype=recording.mime_type, conditional=True)
     except Exception as e:
         current_app.logger.error(f"Error serving audio for recording {recording_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500

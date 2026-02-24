@@ -1198,7 +1198,8 @@
     "willAutoSummarize": "Will auto-summarize after transcription",
     "duplicateDetected": "This file appears to be a duplicate of \"{{existingName}}\" (uploaded {{existingDate}})",
     "duplicateFile": "Duplicate file",
-    "copies": "copies of this file"
+    "copies": "copies of this file",
+    "videoRetained": "Video preserved for playback"
   },
   "uploadProgress": {
     "title": "Upload Progress"
