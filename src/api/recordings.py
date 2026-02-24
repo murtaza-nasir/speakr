@@ -2250,7 +2250,7 @@ def upload_file():
             processing_source='upload'  # Track that this was manually uploaded
         )
         db.session.add(recording)
-        db.session.commit()
+        db.session.flush()  # Assign recording.id without committing transaction yet
 
         storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
         stored_object = storage.upload_local_file(
@@ -2263,7 +2263,6 @@ def upload_file():
         # the staging file may already be gone (notably on S3 backend). Workers should
         # always read from recording.audio_path via the storage facade.
         recording.audio_path = stored_object.locator
-        db.session.commit()
 
         # Add tags to recording if selected (preserve order)
         for order, tag in enumerate(selected_tags, 1):
@@ -2275,8 +2274,9 @@ def upload_file():
             )
             db.session.add(new_association)
 
+        db.session.commit()
+
         if selected_tags:
-            db.session.commit()
             tag_names = [tag.name for tag in selected_tags]
             current_app.logger.info(f"Added {len(selected_tags)} tags to recording {recording.id}: {', '.join(tag_names)}")
 
