@@ -695,6 +695,16 @@ def admin_update_setting():
     
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
+
+        # Update Flask's MAX_CONTENT_LENGTH immediately when file size limit changes
+        if key == 'max_file_size_mb' and value:
+            try:
+                new_limit = int(value) * 1024 * 1024
+                current_app.config['MAX_CONTENT_LENGTH'] = new_limit
+                current_app.logger.info(f"Updated MAX_CONTENT_LENGTH to {value}MB")
+            except (ValueError, TypeError):
+                pass
+
         return jsonify(setting.to_dict())
     except Exception as e:
         db.session.rollback()
