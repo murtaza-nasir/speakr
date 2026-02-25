@@ -162,9 +162,9 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.11-alpha)
+## Latest Release (v0.8.12-alpha)
 
-**Video Retention, Parallel Uploads & Duplicate Detection**
+**Speaker Search, Shared Page Improvements & Bug Fixes**
 
 - **Video Retention** - New `VIDEO_RETENTION=true` option preserves video streams for in-browser playback. When enabled, uploaded video files keep their video track and render with a native `<video>` player alongside the transcript. Audio is extracted to a temp file for transcription and cleaned up automatically. HTTP Range requests enable seeking without downloading the full file.
 - **Parallel Uploads** - Multiple files upload concurrently with individual progress bars, making batch uploads significantly faster. Configurable via `MAX_CONCURRENT_UPLOADS` (default: 3)

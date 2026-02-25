@@ -6,8 +6,8 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.11-alpha - Video Retention, Parallel Uploads & Duplicate Detection"
-    **Video playback, concurrent uploads, and file deduplication**
+!!! info "Latest Release: v0.8.12-alpha - Speaker Search, Shared Page Improvements & Bug Fixes"
+    **Speaker name filter, auto-scroll on shared pages, and misc fixes**
 
     - **Video Retention** - Keep video streams for in-browser `<video>` playback alongside transcripts (`VIDEO_RETENTION=true`)
     - **Parallel Uploads** - Batch uploads run concurrently with individual progress bars (`MAX_CONCURRENT_UPLOADS`, default: 3)
@@ -146,9 +146,10 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.8.11-alpha - Video Retention, Parallel Uploads & Duplicate Detection"
-    - **Video Retention** - New `VIDEO_RETENTION=true` option preserves video streams for in-browser playback with native `<video>` player, HTTP Range seeking, and automatic temp audio cleanup
-    - **Parallel Uploads** - Concurrent uploads with individual progress bars for faster batch processing (`MAX_CONCURRENT_UPLOADS`, default: 3)
+!!! info "Version 0.8.12-alpha - Speaker Search, Shared Page Improvements & Bug Fixes"
+    - **Speaker Name Filter** - Search/filter speakers by name on the Speakers Management page with bulk operation support
+    - **Shared Page Auto-scroll** - Follow-along mode on public shared transcript pages, matching the main app experience
+    - **Dynamic Footer Year** - Shared page footer year no longer hardcoded
     - **Duplicate Detection** - SHA-256 file hashing with warning toasts and clickable copies indicator in sidebar/header
     - **Volume Controls** - Volume slider popups and mute visual indicators on all audio/video players
     - **Speaker Enhancements** - Split button UI, apply suggested names, name sanitization, JSON schema option, new speaker API endpoints
