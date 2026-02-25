@@ -230,9 +230,21 @@
                                     <i class="fas fa-comments mr-1"></i>Bubble
                                 </button>
                             </div>
-                            <button @click="copyTranscript" class="copy-btn">
-                                <i class="fas fa-copy mr-1"></i>Copy
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <div v-if="!recording.audio_deleted_at && (readableMode ? hasDialogue : processedTranscription.hasDialogue)"
+                                     class="follow-player-control text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                                     @click="toggleFollowPlayerMode"
+                                     :title="followPlayerMode ? 'Auto-scroll enabled' : 'Auto-scroll disabled'">
+                                    <input type="checkbox"
+                                           :checked="followPlayerMode"
+                                           @click.stop="toggleFollowPlayerMode"
+                                           class="cursor-pointer">
+                                    <i class="fas fa-arrows-alt-v follow-icon"></i>
+                                </div>
+                                <button @click="copyTranscript" class="copy-btn">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                            </div>
                         </div>
 
                         {% if readable_mode and transcript %}
@@ -404,7 +416,7 @@
         <footer class="bg-[var(--bg-secondary)] border-t border-[var(--border-primary)] py-4 px-4 flex-shrink-0">
             <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-[var(--text-muted)]">
                 <div class="flex items-center gap-2">
-                    <span>&copy; 2025 Speakr</span>
+                    <span>&copy; {{ now.year }} Speakr</span>
                     <span class="hidden sm:inline">•</span>
                     <span class="text-xs">Powered by advanced AI transcription</span>
                 </div>
@@ -443,6 +455,7 @@
                 // Readable mode flag from server
                 const readableMode = {{ 'true' if readable_mode else 'false' }};
                 const currentPlayingSegmentIndex = ref(-1);
+                const followPlayerMode = ref(localStorage.getItem('shareFollowPlayerMode') === 'true');
 
                 // Server-rendered transcript info (only used in readable mode)
                 const hasDialogue = ref({{ 'true' if transcript and transcript.has_speakers else 'false' }});
@@ -512,6 +525,25 @@
                     });
 
                     currentPlayingSegmentIndex.value = newIndex;
+
+                    // Auto-scroll to active segment if follow mode is on
+                    if (followPlayerMode.value && newIndex >= 0) {
+                        const activeEl = document.querySelector(`[data-segment-index="${newIndex}"]`);
+                        if (activeEl) {
+                            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+                }
+
+                function toggleFollowPlayerMode() {
+                    followPlayerMode.value = !followPlayerMode.value;
+                    localStorage.setItem('shareFollowPlayerMode', followPlayerMode.value);
+                    if (followPlayerMode.value && currentPlayingSegmentIndex.value >= 0) {
+                        const activeEl = document.querySelector(`[data-segment-index="${currentPlayingSegmentIndex.value}"]`);
+                        if (activeEl) {
+                            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
                 }
 
                 function handleAudioLoadedMetadata(event) {
@@ -830,6 +862,8 @@
                     hasDialogue,
                     processedTranscription,
                     currentPlayingSegmentIndex,
+                    followPlayerMode,
+                    toggleFollowPlayerMode,
                     getBubbleGlobalIndex,
                     legendExpanded,
                     isDarkMode,
