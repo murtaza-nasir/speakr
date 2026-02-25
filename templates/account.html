@@ -828,6 +828,7 @@
                             <span class="text-sm text-[var(--text-muted)]">
                                 <span id="speakersTabCountTop" class="speakers-count">0</span> <span class="hidden sm:inline" data-i18n="speakersManagement.totalSpeakers">speakers saved</span>
                             </span>
+                            <input type="text" id="speakerSearchInput" placeholder="Filter by name..." class="speaker-search-input px-2 py-1 text-sm rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-light)] focus:outline-none focus:border-[var(--border-accent)] focus:ring-1 focus:ring-[var(--border-accent)] w-32 sm:w-40" autocomplete="off">
                         </div>
                         <div class="flex space-x-1 sm:space-x-2">
                             <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
@@ -2915,6 +2916,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const speakersTabGrid = document.getElementById('speakersTabGrid');
                 speakersTabGrid.innerHTML = '';
 
+                // Re-apply active filter after render
+                const searchInput = document.getElementById('speakerSearchInput');
+                const activeFilter = searchInput ? searchInput.value : '';
+
                 speakersTabData.forEach(speaker => {
                     const createdDate = new Date(speaker.created_at).toLocaleDateString();
                     const lastUsedDate = new Date(speaker.last_used).toLocaleDateString();
@@ -2933,6 +2938,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const speakerCard = document.createElement('div');
                     speakerCard.className = 'bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors duration-200';
                     speakerCard.dataset.speakerId = speaker.id;
+                    speakerCard.dataset.speakerName = speaker.name.toLowerCase();
 
                     speakerCard.innerHTML = `
                         <div class="p-3">
@@ -3019,6 +3025,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 // Update bulk operation buttons state
                 updateBulkOperationButtons();
+
+                // Re-apply search filter if active
+                if (activeFilter) {
+                    filterSpeakers(activeFilter);
+                }
             }
             
             function openEditSpeakerModal(speakerId, currentName) {
@@ -3270,10 +3281,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     }
                 });
 
-                // Update speaker counts
-                document.querySelectorAll('.speakers-count').forEach(el => {
-                    el.textContent = speakersTabData.length;
-                });
+                // Update speaker counts (respect active filter)
+                const searchInput = document.getElementById('speakerSearchInput');
+                const currentFilter = searchInput ? searchInput.value.trim() : '';
+                if (!currentFilter) {
+                    document.querySelectorAll('.speakers-count').forEach(el => {
+                        el.textContent = speakersTabData.length;
+                    });
+                }
 
                 // Update select-all checkboxes state
                 const allCheckboxes = document.querySelectorAll('.speaker-select-checkbox');
@@ -3284,12 +3299,39 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 });
             }
 
+            // Filter speakers by name
+            function filterSpeakers(query) {
+                const cards = document.querySelectorAll('#speakersTabGrid > div[data-speaker-name]');
+                const lowerQuery = query.toLowerCase().trim();
+                let visibleCount = 0;
+
+                cards.forEach(card => {
+                    const match = !lowerQuery || card.dataset.speakerName.includes(lowerQuery);
+                    card.style.display = match ? '' : 'none';
+                    if (match) visibleCount++;
+                });
+
+                const total = speakersTabData.length;
+                const label = lowerQuery ? `${visibleCount} of ${total}` : `${total}`;
+                document.querySelectorAll('.speakers-count').forEach(el => {
+                    el.textContent = label;
+                });
+            }
+
+            document.getElementById('speakerSearchInput').addEventListener('input', (e) => {
+                filterSpeakers(e.target.value);
+            });
+
             // Handle checkbox changes
             document.addEventListener('change', (e) => {
                 // Handle select-all checkboxes
                 if (e.target.classList.contains('select-all-checkbox')) {
-                    const checkboxes = document.querySelectorAll('.speaker-select-checkbox');
+                    const checkboxes = document.querySelectorAll('#speakersTabGrid > div[data-speaker-name]:not([style*="display: none"]) .speaker-select-checkbox');
                     checkboxes.forEach(cb => cb.checked = e.target.checked);
+                    // Also uncheck hidden cards when unchecking all
+                    if (!e.target.checked) {
+                        document.querySelectorAll('.speaker-select-checkbox').forEach(cb => cb.checked = false);
+                    }
                     // Sync all select-all checkboxes
                     document.querySelectorAll('.select-all-checkbox').forEach(cb => {
                         cb.checked = e.target.checked;
