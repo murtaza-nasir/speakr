@@ -162,7 +162,11 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.12-alpha)
+## Latest Release (v0.8.13-alpha)
+
+**Video Retention Fix** - Fixed large video files silently losing their video stream during upload when `VIDEO_RETENTION=true`. Probe timeout now scales with file size and falls back to extension detection if probing fails.
+
+### Previous Release (v0.8.12-alpha)
 
 **Speaker Search, Shared Page Improvements & Bug Fixes**
 

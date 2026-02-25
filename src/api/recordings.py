@@ -1939,20 +1939,35 @@ def upload_file():
         )
 
         # Probe once and use shared conversion utility
+        # Scale timeout based on file size — large files (especially MP4 with moov at end) need more time
+        file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
+        probe_timeout = max(10, min(60, int(file_size_mb / 10)))  # 10s min, scales ~1s per 10MB, 60s max
         codec_info = None
         try:
-            codec_info = get_codec_info(filepath, timeout=10)
+            codec_info = get_codec_info(filepath, timeout=probe_timeout)
             current_app.logger.info(
                 f"Detected codec for {original_filename}: "
                 f"audio_codec={codec_info.get('audio_codec')}, "
                 f"has_video={codec_info.get('has_video', False)}"
             )
         except FFProbeError as e:
-            current_app.logger.warning(f"Failed to probe {original_filename}: {e}. Will attempt conversion.")
+            current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
             codec_info = None
 
         # Video retention: skip conversion for videos, processing pipeline handles extraction
         has_video = codec_info.get('has_video', False) if codec_info else False
+
+        # Fallback: if probe failed but VIDEO_RETENTION is on, check file extension
+        # to avoid silently discarding video from files we couldn't probe
+        if codec_info is None and VIDEO_RETENTION and not has_video:
+            video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
+            file_ext = os.path.splitext(original_filename)[1].lower()
+            if file_ext in video_extensions:
+                has_video = True
+                current_app.logger.info(
+                    f"Probe failed but file extension '{file_ext}' indicates video — "
+                    f"treating as video for VIDEO_RETENTION"
+                )
         if VIDEO_RETENTION and has_video:
             current_app.logger.info(f"Video retention: keeping original video, skipping conversion")
         else:

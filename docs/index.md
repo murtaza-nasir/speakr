@@ -6,8 +6,8 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.12-alpha - Speaker Search, Shared Page Improvements & Bug Fixes"
-    **Speaker name filter, auto-scroll on shared pages, and misc fixes**
+!!! info "Latest Release: v0.8.13-alpha - Video Retention Fix"
+    **Fixed large video uploads losing their video stream when VIDEO_RETENTION=true**
 
     - **Video Retention** - Keep video streams for in-browser `<video>` playback alongside transcripts (`VIDEO_RETENTION=true`)
     - **Parallel Uploads** - Batch uploads run concurrently with individual progress bars (`MAX_CONCURRENT_UPLOADS`, default: 3)
@@ -145,6 +145,10 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.8.13-alpha - Video Retention Fix"
+    - Fixed large video files silently losing their video stream during upload when `VIDEO_RETENTION=true`
+    - Probe timeout now scales with file size; falls back to extension-based detection if probing fails
 
 !!! info "Version 0.8.12-alpha - Speaker Search, Shared Page Improvements & Bug Fixes"
     - **Speaker Name Filter** - Search/filter speakers by name on the Speakers Management page with bulk operation support
