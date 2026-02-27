@@ -263,9 +263,7 @@ export function useUpload(state, utils) {
         }
         progressPopupMinimized.value = false;
         progressPopupClosed.value = false;
-        if (!isProcessingActive.value) {
-            startProcessingQueue();
-        }
+        startProcessingQueue();
     };
 
     // --- Parallel Upload System ---
