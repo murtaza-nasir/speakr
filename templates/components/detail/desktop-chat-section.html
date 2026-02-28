@@ -88,8 +88,9 @@
         <div class="border-t border-[var(--border-primary)] p-4 bg-[var(--bg-tertiary)]">
             <div class="flex gap-2">
                 <textarea v-model="chatInput"
+                          ref="chatInputRef"
                           @keydown="handleChatKeydown"
-                          :disabled="isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
+                          :disabled="selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
                           :placeholder="t('chat.placeholderWithHint')"
                           class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm"
                           rows="2">
