@@ -521,6 +521,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const chatInput = ref('');
             const isChatLoading = ref(false);
             const chatMessagesRef = ref(null);
+            const chatInputRef = ref(null);
 
             // --- Audio Player State (Main Player) ---
             const playerVolume = ref(1.0);
@@ -710,7 +711,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentPlayingSegmentIndex, followPlayerMode, processingIndicatorMinimized,
 
                 // Chat
-                showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef,
+                showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef,
 
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,

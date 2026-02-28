@@ -9,6 +9,7 @@ export function createChatState(ref) {
     const chatInput = ref('');
     const isChatLoading = ref(false);
     const chatMessagesRef = ref(null);
+    const chatInputRef = ref(null);
 
     return {
         showChat,
@@ -16,6 +17,7 @@ export function createChatState(ref) {
         chatMessages,
         chatInput,
         isChatLoading,
-        chatMessagesRef
+        chatMessagesRef,
+        chatInputRef
     };
 }

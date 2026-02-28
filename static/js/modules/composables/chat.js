@@ -6,7 +6,7 @@
 export function useChat(state, utils) {
     const {
         showChat, isChatMaximized, chatMessages, chatInput,
-        isChatLoading, chatMessagesRef, selectedRecording, csrfToken
+        isChatLoading, chatMessagesRef, chatInputRef, selectedRecording, csrfToken
     } = state;
 
     const { showToast, setGlobalError, onChatComplete, t } = utils;
@@ -30,6 +30,14 @@ export function useChat(state, utils) {
                 }
             });
         }
+    };
+
+    const focusChatInput = () => {
+        Vue.nextTick(() => {
+            if (chatInputRef.value) {
+                chatInputRef.value.focus();
+            }
+        });
     };
 
     const toggleChatMaximize = () => {
@@ -57,6 +65,7 @@ export function useChat(state, utils) {
         chatMessages.value.push({ role: 'user', content: message });
         chatInput.value = '';
         isChatLoading.value = true;
+        focusChatInput();
 
         await Vue.nextTick();
         scrollChatToBottom();
@@ -218,6 +227,7 @@ export function useChat(state, utils) {
             if (isChatScrolledToBottom()) {
                 scrollChatToBottom();
             }
+            focusChatInput();
             // Refresh token budget after chat completion
             if (onChatComplete) {
                 onChatComplete();
