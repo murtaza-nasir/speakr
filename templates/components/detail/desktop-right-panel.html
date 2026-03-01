@@ -16,114 +16,210 @@
         </div>
         <!-- Custom Audio Player Card -->
         <div v-else class="bg-[var(--bg-tertiary)] rounded-xl p-4 shadow-sm border border-[var(--border-primary)] overflow-hidden">
-            <!-- Video/Audio element (video when mime_type starts with video/) -->
-            <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
-                   ref="audioPlayerElement"
-                   :src="'/audio/' + selectedRecording.id"
-                   :volume="playerVolume"
-                   @play="handleAudioPlayPause"
-                   @pause="handleAudioPlayPause"
-                   @timeupdate="handleCustomAudioTimeUpdate"
-                   @loadedmetadata="handleAudioLoadedMetadata"
-                   @durationchange="handleAudioDurationChange"
-                   @ended="handleAudioEnded"
-                   @waiting="handleAudioWaiting"
-                   @canplay="handleAudioCanPlay"
-                   @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && toggleAudioPlayback()"
-                   :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? (videoCollapsed ? 'hidden' : 'w-full rounded-lg mb-3 cursor-pointer') : 'hidden'">
-            </component>
+            <!-- Video/Audio element wrapped in Teleport for fullscreen -->
+            <Teleport to="body" :disabled="!videoFullscreen">
+                <div :class="videoFullscreen ? 'video-fullscreen-overlay' : ''"
+                     @mousemove="videoFullscreen && handleFullscreenMouseMove()"
+                     @click.self="videoFullscreen && toggleAudioPlayback()">
 
-            <!-- Progress Bar (now on top, full width, draggable) -->
-            <div class="w-full h-4 rounded-full cursor-pointer relative mb-3 group flex items-center"
-                 @mousedown="startProgressDrag">
-                <!-- Track background -->
-                <div class="w-full h-2 rounded-full relative bg-[var(--border-accent)] opacity-40">
-                    <!-- Progress fill -->
-                    <div class="h-full bg-[var(--text-accent)] rounded-full pointer-events-none opacity-100"
-                         :style="{ width: audioProgressPercent + '%' }"></div>
-                </div>
-                <!-- Progress dot - stays within track bounds -->
-                <div class="absolute top-1/2 w-4 h-4 bg-[var(--text-accent)] rounded-full shadow-md transition-transform group-hover:scale-110 pointer-events-none -translate-y-1/2"
-                     :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
-                     style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
-            </div>
+                    <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
+                           ref="audioPlayerElement"
+                           :src="'/audio/' + selectedRecording.id"
+                           :volume="playerVolume"
+                           @play="handleAudioPlayPause"
+                           @pause="handleAudioPlayPause"
+                           @timeupdate="handleCustomAudioTimeUpdate"
+                           @loadedmetadata="handleAudioLoadedMetadata"
+                           @durationchange="handleAudioDurationChange"
+                           @ended="handleAudioEnded"
+                           @waiting="handleAudioWaiting"
+                           @canplay="handleAudioCanPlay"
+                           @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && toggleAudioPlayback()"
+                           @dblclick="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoFullscreen && enterVideoFullscreen()"
+                           :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')
+                               ? (videoFullscreen ? 'video-fullscreen-video' : (videoCollapsed ? 'hidden' : 'w-full rounded-lg mb-3 cursor-pointer'))
+                               : 'hidden'">
+                    </component>
 
-            <!-- Controls Row -->
-            <div class="flex items-center gap-2 min-w-0">
-                <!-- Play/Pause Button -->
-                <button @click="toggleAudioPlayback"
-                        class="w-10 h-10 flex items-center justify-center rounded-full player-play-button transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg hover:scale-105"
-                        :title="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
-                    <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
-                </button>
+                    <!-- Fullscreen Subtitle Overlay -->
+                    <div v-if="videoFullscreen && currentSubtitle"
+                         class="video-fullscreen-subtitle"
+                         :class="{ 'subtitle-shifted': fullscreenControlsVisible }">
+                        <span v-if="currentSubtitle.speaker"
+                              class="video-fullscreen-subtitle-speaker"
+                              :style="{ color: 'var(--' + currentSubtitle.color + ')' }">${ currentSubtitle.speaker }:</span>
+                        <span>${ currentSubtitle.text }</span>
+                    </div>
 
-                <!-- Time Display -->
-                <div class="flex items-baseline gap-1 flex-shrink-0 min-w-0">
-                    <span class="text-sm font-semibold font-mono" :class="isDraggingProgress ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">${ formatAudioTime(displayCurrentTime) }</span>
-                    <span class="text-xs text-[var(--text-muted)]">/</span>
-                    <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
-                </div>
+                    <!-- Fullscreen Control Bar -->
+                    <div v-if="videoFullscreen"
+                         class="video-fullscreen-controls"
+                         :class="{ visible: fullscreenControlsVisible }"
+                         @mousemove.stop="handleFullscreenMouseMove()">
 
-                <!-- Playback Speed Control -->
-                <div class="relative flex-shrink-0">
-                    <button ref="speedButtonDesktop"
-                            @click="showSpeedMenu = !showSpeedMenu; $nextTick(() => updateSpeedMenuPosition($refs.speedButtonDesktop))"
-                            data-speed-toggle
-                            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all"
-                            :title="t('tooltips.playbackSpeed') || 'Playback speed'">
-                        <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
-                    </button>
-                    <!-- Dropdown menu (teleported to body, fixed positioning) -->
-                    <Teleport to="body">
-                        <div v-if="showSpeedMenu" @click.stop
-                             data-speed-dropdown
-                             class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-md shadow-xl z-[9999] speed-dropdown overflow-y-auto backdrop-blur-sm"
-                             :style="speedMenuPosition">
-                            <div class="py-0.5">
-                                <button v-for="speed in playbackSpeeds" :key="speed"
-                                        @mousedown.prevent="setPlaybackRate(speed); showSpeedMenu = false"
-                                        class="w-full px-2 py-0.5 text-[11px] font-mono text-left hover:bg-[var(--bg-accent-light)] transition-colors"
-                                        :class="speed === playbackRate ? 'text-[var(--text-accent)] font-semibold bg-[var(--bg-accent-light)]' : 'text-[var(--text-primary)]'">
-                                    ${ speed }x
-                                </button>
+                        <!-- Progress Bar -->
+                        <div class="px-4 mb-2">
+                            <div class="w-full h-5 rounded-full cursor-pointer relative group flex items-center"
+                                 @mousedown="startProgressDrag"
+                                 @touchstart.prevent="startProgressDrag">
+                                <div class="progress-track w-full h-1 rounded-full relative bg-white/30">
+                                    <div class="h-full bg-white rounded-full pointer-events-none"
+                                         :style="{ width: audioProgressPercent + '%' }"></div>
+                                </div>
+                                <div class="absolute top-1/2 w-3 h-3 bg-white rounded-full shadow-md transition-transform group-hover:scale-125 pointer-events-none -translate-y-1/2"
+                                     :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 6px), calc(100% - 12px))' }"></div>
                             </div>
                         </div>
-                    </Teleport>
+
+                        <!-- Controls Row -->
+                        <div class="flex items-center gap-3 px-4 pb-4">
+                            <!-- Play/Pause -->
+                            <button @click.stop="toggleAudioPlayback"
+                                    class="w-10 h-10 flex items-center justify-center rounded-full text-white hover:bg-white/20 transition-all">
+                                <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-lg" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
+                            </button>
+
+                            <!-- Volume -->
+                            <div class="flex items-center gap-2">
+                                <button @click.stop="toggleAudioMute"
+                                        class="w-8 h-8 flex items-center justify-center rounded-full text-white hover:bg-white/20 transition-all">
+                                    <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
+                                </button>
+                                <input type="range" min="0" max="1" step="0.05"
+                                       :value="audioIsMuted ? 0 : playerVolume"
+                                       @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                       class="fullscreen-volume-slider w-20">
+                            </div>
+
+                            <!-- Time -->
+                            <div class="flex items-baseline gap-1 text-white">
+                                <span class="text-sm font-mono">${ formatAudioTime(displayCurrentTime) }</span>
+                                <span class="text-xs opacity-60">/</span>
+                                <span class="text-xs opacity-60 font-mono">${ formatAudioTime(audioDuration) }</span>
+                            </div>
+
+                            <div class="flex-1"></div>
+
+                            <!-- Speed -->
+                            <button @click.stop="cyclePlaybackRate"
+                                    class="px-2 h-8 flex items-center justify-center rounded-lg text-white hover:bg-white/20 transition-all"
+                                    title="Playback speed">
+                                <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
+                            </button>
+
+                            <!-- Exit Fullscreen -->
+                            <button @click.stop="exitVideoFullscreen"
+                                    class="w-8 h-8 flex items-center justify-center rounded-full text-white hover:bg-white/20 transition-all"
+                                    title="Exit fullscreen">
+                                <i class="fas fa-compress text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Teleport>
+
+            <!-- Normal Controls (hidden when fullscreen) -->
+            <div v-show="!videoFullscreen">
+                <!-- Progress Bar (now on top, full width, draggable) -->
+                <div class="w-full h-4 rounded-full cursor-pointer relative mb-3 group flex items-center"
+                     @mousedown="startProgressDrag">
+                    <!-- Track background -->
+                    <div class="progress-track w-full h-2 rounded-full relative bg-[var(--border-accent)] opacity-40">
+                        <!-- Progress fill -->
+                        <div class="h-full bg-[var(--text-accent)] rounded-full pointer-events-none opacity-100"
+                             :style="{ width: audioProgressPercent + '%' }"></div>
+                    </div>
+                    <!-- Progress dot - stays within track bounds -->
+                    <div class="absolute top-1/2 w-4 h-4 bg-[var(--text-accent)] rounded-full shadow-md transition-transform group-hover:scale-110 pointer-events-none -translate-y-1/2"
+                         :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
+                         style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
                 </div>
 
-                <!-- Spacer -->
-                <div class="flex-1 min-w-0"></div>
-
-                <!-- Volume Control - hidden on very narrow screens -->
-                <div class="hidden sm:flex items-center gap-1 flex-shrink-0">
-                    <button @click="toggleAudioMute"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] hover:opacity-80 transition-all"
-                            :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
-                            :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
-                        <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
+                <!-- Controls Row -->
+                <div class="flex items-center gap-2 min-w-0">
+                    <!-- Play/Pause Button -->
+                    <button @click="toggleAudioPlayback"
+                            class="w-10 h-10 flex items-center justify-center rounded-full player-play-button transition-all duration-200 flex-shrink-0 shadow-md hover:shadow-lg hover:scale-105"
+                            :title="audioIsPlaying ? t('tooltips.pause') : t('tooltips.play')">
+                        <i :class="audioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-base" :style="!audioIsPlaying ? 'margin-left: 2px' : ''"></i>
                     </button>
-                    <input type="range" min="0" max="1" step="0.05"
-                           :value="audioIsMuted ? 0 : playerVolume"
-                           @input="(e) => setAudioVolume(parseFloat(e.target.value))"
-                           class="volume-slider w-16">
+
+                    <!-- Time Display -->
+                    <div class="flex items-baseline gap-1 flex-shrink-0 min-w-0">
+                        <span class="text-sm font-semibold font-mono" :class="isDraggingProgress ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">${ formatAudioTime(displayCurrentTime) }</span>
+                        <span class="text-xs text-[var(--text-muted)]">/</span>
+                        <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
+                    </div>
+
+                    <!-- Playback Speed Control -->
+                    <div class="relative flex-shrink-0">
+                        <button ref="speedButtonDesktop"
+                                @click="showSpeedMenu = !showSpeedMenu; $nextTick(() => updateSpeedMenuPosition($refs.speedButtonDesktop))"
+                                data-speed-toggle
+                                class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all"
+                                :title="t('tooltips.playbackSpeed') || 'Playback speed'">
+                            <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
+                        </button>
+                        <!-- Dropdown menu (teleported to body, fixed positioning) -->
+                        <Teleport to="body">
+                            <div v-if="showSpeedMenu" @click.stop
+                                 data-speed-dropdown
+                                 class="fixed bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-md shadow-xl z-[9999] speed-dropdown overflow-y-auto backdrop-blur-sm"
+                                 :style="speedMenuPosition">
+                                <div class="py-0.5">
+                                    <button v-for="speed in playbackSpeeds" :key="speed"
+                                            @mousedown.prevent="setPlaybackRate(speed); showSpeedMenu = false"
+                                            class="w-full px-2 py-0.5 text-[11px] font-mono text-left hover:bg-[var(--bg-accent-light)] transition-colors"
+                                            :class="speed === playbackRate ? 'text-[var(--text-accent)] font-semibold bg-[var(--bg-accent-light)]' : 'text-[var(--text-primary)]'">
+                                        ${ speed }x
+                                    </button>
+                                </div>
+                            </div>
+                        </Teleport>
+                    </div>
+
+                    <!-- Spacer -->
+                    <div class="flex-1 min-w-0"></div>
+
+                    <!-- Volume Control - hidden on very narrow screens -->
+                    <div class="hidden sm:flex items-center gap-1 flex-shrink-0">
+                        <button @click="toggleAudioMute"
+                                class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] hover:opacity-80 transition-all"
+                                :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
+                                :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
+                            <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
+                        </button>
+                        <input type="range" min="0" max="1" step="0.05"
+                               :value="audioIsMuted ? 0 : playerVolume"
+                               @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                               class="volume-slider w-16">
+                    </div>
+
+                    <!-- Download Button -->
+                    <a :href="'/audio/' + selectedRecording.id + '?download=true'"
+                       download
+                       class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
+                       :title="t('buttons.downloadAudio') || 'Download audio'">
+                        <i class="fas fa-download text-sm"></i>
+                    </a>
+
+                    <!-- Video Fullscreen Button -->
+                    <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoCollapsed"
+                            @click="enterVideoFullscreen"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
+                            title="Fullscreen video">
+                        <i class="fas fa-expand text-sm"></i>
+                    </button>
+
+                    <!-- Video Toggle Button -->
+                    <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
+                            @click="videoCollapsed = !videoCollapsed"
+                            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all flex-shrink-0"
+                            :class="videoCollapsed ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
+                            :title="videoCollapsed ? 'Show video' : 'Hide video'">
+                        <i :class="videoCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
+                    </button>
                 </div>
-
-                <!-- Download Button -->
-                <a :href="'/audio/' + selectedRecording.id + '?download=true'"
-                   download
-                   class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
-                   :title="t('buttons.downloadAudio') || 'Download audio'">
-                    <i class="fas fa-download text-sm"></i>
-                </a>
-
-                <!-- Video Toggle Button -->
-                <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
-                        @click="videoCollapsed = !videoCollapsed"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all flex-shrink-0"
-                        :class="videoCollapsed ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
-                        :title="videoCollapsed ? 'Show video' : 'Hide video'">
-                    <i :class="videoCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
-                </button>
             </div>
         </div>
     </div>
