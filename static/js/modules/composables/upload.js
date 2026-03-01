@@ -44,7 +44,7 @@ export function useUpload(state, utils) {
         // View state
         currentView,
         // Upload disclaimer state
-        uploadDisclaimer, showUploadDisclaimerModal, pendingUploadFiles
+        uploadDisclaimer, showUploadDisclaimerModal
     } = state;
 
     const { computed, nextTick, ref } = Vue;
@@ -156,12 +156,6 @@ export function useUpload(state, utils) {
 
     // Add files to the upload queue
     const addFilesToQueue = (files) => {
-        // If upload disclaimer is set, show modal before queuing
-        if (uploadDisclaimer.value && uploadDisclaimer.value.trim() !== '') {
-            pendingUploadFiles.value = Array.from(files);
-            showUploadDisclaimerModal.value = true;
-            return;
-        }
         let filesAdded = 0;
         for (const file of files) {
             const fileObject = file.file ? file.file : file;
@@ -249,6 +243,11 @@ export function useUpload(state, utils) {
     const startUpload = () => {
         const pendingFiles = uploadQueue.value.filter(item => item.status === 'queued');
         if (pendingFiles.length === 0) {
+            return;
+        }
+        // Show upload disclaimer if configured
+        if (uploadDisclaimer.value && uploadDisclaimer.value.trim() !== '') {
+            showUploadDisclaimerModal.value = true;
             return;
         }
         // Update all queued files with current tags and ASR options

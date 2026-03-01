@@ -317,7 +317,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const pendingRecordingMode = ref(null);
             const uploadDisclaimer = ref('');
             const showUploadDisclaimerModal = ref(false);
-            const pendingUploadFiles = ref([]);
             const customBanner = ref('');
             const showBanner = ref(true);
 
@@ -654,7 +653,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
-                uploadDisclaimer, showUploadDisclaimerModal, pendingUploadFiles,
+                uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
@@ -1262,18 +1261,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Upload disclaimer handlers
             const acceptUploadDisclaimer = () => {
                 showUploadDisclaimerModal.value = false;
-                const files = pendingUploadFiles.value;
-                pendingUploadFiles.value = [];
-                // Temporarily clear disclaimer to prevent re-trigger, then re-queue
+                // Temporarily clear disclaimer to prevent re-trigger, then call startUpload
                 const saved = uploadDisclaimer.value;
                 uploadDisclaimer.value = '';
-                uploadComposable.addFilesToQueue(files);
+                uploadComposable.startUpload();
                 uploadDisclaimer.value = saved;
             };
 
             const cancelUploadDisclaimer = () => {
                 showUploadDisclaimerModal.value = false;
-                pendingUploadFiles.value = [];
             };
 
             // Add startUpload to utils for audio composable to use
