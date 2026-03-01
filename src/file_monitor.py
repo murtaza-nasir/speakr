@@ -23,6 +23,9 @@ from src.utils.audio_conversion import convert_if_needed
 # Video retention - when enabled, video files keep their video stream for playback
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 
+# Video passthrough - send original video files directly to ASR without extracting audio
+VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
+
 # Flask app components will be imported inside functions to avoid circular imports
 
 class FileMonitor:
@@ -351,9 +354,9 @@ class FileMonitor:
                 # Check if this is a video file (for video retention logic)
                 has_video = codec_info.get('has_video', False) if codec_info else False
 
-                # Video retention: skip conversion for videos, processing pipeline handles extraction
-                if VIDEO_RETENTION and has_video:
-                    self.logger.info(f"Video retention: keeping original video, skipping conversion")
+                # Video passthrough or retention: skip conversion for videos
+                if (VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video:
+                    self.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
                     final_path = destination_path
                 else:
                     # Convert/compress file if necessary - convert_if_needed handles ALL conversion needs

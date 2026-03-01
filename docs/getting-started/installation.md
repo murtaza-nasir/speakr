@@ -298,6 +298,19 @@ VIDEO_RETENTION=true
 
 When enabled, the original video file is kept and served with a native `<video>` player. Audio is extracted to a temporary file for transcription only, then cleaned up automatically. All player controls (seek, speed, volume) work identically. This is particularly useful for presentations, lectures, and screen recordings where the visual context adds value. Storage overhead is modest — video streams are typically only 10-20% of the total file size for presentation-style content.
 
+#### Video Passthrough to ASR
+
+If you run a custom ASR backend that accepts video files directly (e.g., one that extracts multiple audio tracks internally), you can skip Speakr's audio extraction entirely:
+
+```bash
+VIDEO_PASSTHROUGH_ASR=true
+```
+
+When enabled, video files are sent as-is to the ASR connector — no audio extraction, codec conversion, or chunking is performed. This only affects video uploads; audio files are processed normally. You can combine this with `VIDEO_RETENTION=true` to also keep the video for in-browser playback.
+
+!!! warning
+    Only enable this if your ASR backend actually accepts video files. Standard transcription APIs (OpenAI, etc.) will reject raw video input.
+
 #### Concurrent Upload Limit
 
 Control how many files upload simultaneously when batch uploading:
