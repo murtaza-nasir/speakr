@@ -16,6 +16,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.utils.ffmpeg_utils import extract_audio_segment, FFmpegError, FFmpegNotFoundError
+from src.utils.ffprobe import get_codec_info, FFProbeError
 from src.services.speaker_embedding_matcher import find_matching_speakers
 from src.services.speaker_snippets import get_speaker_snippets, get_speaker_recordings_with_snippets
 from src.services.speaker_merge import merge_speakers, preview_merge, can_merge_speakers
@@ -448,8 +449,30 @@ def get_snippet_audio(recording_id):
         if not recording.audio_path or not os.path.exists(recording.audio_path):
             return jsonify({'error': 'Audio file not found'}), 404
 
+        # Detect audio codec to pick the right output container for stream copy
+        codec_to_container = {
+            'mp3': ('.mp3', 'audio/mpeg'),
+            'aac': ('.m4a', 'audio/mp4'),
+            'opus': ('.ogg', 'audio/ogg'),
+            'vorbis': ('.ogg', 'audio/ogg'),
+            'flac': ('.flac', 'audio/flac'),
+            'pcm_s16le': ('.wav', 'audio/wav'),
+            'pcm_s24le': ('.wav', 'audio/wav'),
+            'pcm_s32le': ('.wav', 'audio/wav'),
+            'pcm_f32le': ('.wav', 'audio/wav'),
+        }
+        snippet_ext = '.mp3'
+        snippet_mime = 'audio/mpeg'
+        try:
+            codec_info = get_codec_info(recording.audio_path, timeout=10)
+            audio_codec = codec_info.get('audio_codec')
+            if audio_codec and audio_codec in codec_to_container:
+                snippet_ext, snippet_mime = codec_to_container[audio_codec]
+        except FFProbeError:
+            pass  # Fall back to mp3
+
         # Create temporary file for the snippet
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as tmp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=snippet_ext) as tmp_file:
             output_path = tmp_file.name
 
         try:
@@ -464,9 +487,9 @@ def get_snippet_audio(recording_id):
             # Send the file
             response = send_file(
                 output_path,
-                mimetype='audio/mpeg',
+                mimetype=snippet_mime,
                 as_attachment=False,
-                download_name=f'snippet_{recording_id}_{start_time:.1f}s.mp3'
+                download_name=f'snippet_{recording_id}_{start_time:.1f}s{snippet_ext}'
             )
 
             # Clean up temporary file after sending
