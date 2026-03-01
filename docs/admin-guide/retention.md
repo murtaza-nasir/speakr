@@ -12,6 +12,7 @@ This document describes the automated retention and deletion system for Speakr r
 ## Overview
 
 The auto-deletion system provides automated lifecycle management for your recordings, helping you:
+
 - **Comply with data retention policies** - Automatically remove recordings after a specified retention period
 - **Manage storage** - Prevent unlimited growth of audio files
 - **Maintain critical data** - Keep transcriptions and metadata even after audio deletion
@@ -75,6 +76,7 @@ When a recording has multiple tags with different retention periods, the **short
 Individual tags can protect recordings from auto-deletion entirely.
 
 **Example Hierarchy:**
+
 - Global retention: 90 days
 - Tag "Sprint Reviews": 180 days (longer than global)
 - Tag "Daily Standups": 14 days (shorter than global)
@@ -88,6 +90,7 @@ Individual tags can protect recordings from auto-deletion entirely.
 4. Apply this tag to recordings you want to protect
 
 **When protected:**
+
 - ✅ Recordings with protected tags are exempt from auto-deletion
 - ✅ Works regardless of age or retention period
 - ✅ Applies to all recordings with that tag
@@ -326,12 +329,14 @@ This approach lets you keep years of searchable conversation history without acc
 ### For Groups
 
 When groups are enabled:
+
 1. **Set conservative global retention** (shorter period as a baseline)
 2. **Configure group tags with custom retention** to match each group's needs
 3. **Use protected group tags** for group content requiring permanent retention
 4. **Document retention policies** so group members understand lifecycle expectations
 
 Example group tag retention configuration:
+
 - Engineering group "Architecture Decisions": Protected (never deleted)
 - Sales group "Customer Calls": 365 days
 - HR group "Interviews": 90 days
@@ -411,6 +416,7 @@ Get statistics about eligible recordings and current configuration.
 ### Auto-Deletion Not Running
 
 **Check:**
+
 1. `ENABLE_AUTO_DELETION=true` in `.env`
 2. `GLOBAL_RETENTION_DAYS > 0`
 3. Admin status for manual triggers
@@ -419,6 +425,7 @@ Get statistics about eligible recordings and current configuration.
 ### Too Many Recordings Being Deleted
 
 **Solutions:**
+
 1. Increase `GLOBAL_RETENTION_DAYS`
 2. Add protected tags to important categories
 3. Check tag assignments on recordings
@@ -427,6 +434,7 @@ Get statistics about eligible recordings and current configuration.
 ### Archived Recordings Not Showing
 
 **Check:**
+
 1. Toggle "Archived Recordings" filter in sidebar
 2. Verify `DELETION_MODE=audio_only` (full_recording doesn't archive)
 3. Check `audio_deleted_at` field in database
@@ -441,6 +449,7 @@ Get statistics about eligible recordings and current configuration.
 ## Support
 
 For issues or questions about auto-deletion:
+
 1. Check server logs for detailed error messages
 2. Verify environment variable configuration
 3. Test with `/admin/auto-deletion/stats` endpoint

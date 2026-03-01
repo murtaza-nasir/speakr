@@ -397,7 +397,9 @@ class FairJobQueue:
             language=params.get('language'),
             min_speakers=params.get('min_speakers'),
             max_speakers=params.get('max_speakers'),
-            tag_id=params.get('tag_id')
+            tag_id=params.get('tag_id'),
+            hotwords=params.get('hotwords'),
+            initial_prompt=params.get('initial_prompt'),
         )
 
     def _run_summarization(self, job, recording, params):
@@ -429,7 +431,9 @@ class FairJobQueue:
             language=params.get('language'),
             min_speakers=params.get('min_speakers'),
             max_speakers=params.get('max_speakers'),
-            tag_id=params.get('tag_id')
+            tag_id=params.get('tag_id'),
+            hotwords=params.get('hotwords'),
+            initial_prompt=params.get('initial_prompt'),
         )
 
     def _run_reprocess_summary(self, job, recording, params):

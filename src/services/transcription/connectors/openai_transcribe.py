@@ -201,9 +201,14 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                             }
                             logger.info(f"Using known speaker references for {len(speaker_names)} speakers: {speaker_names}")
             else:
-                # Non-diarization models
+                # Non-diarization models - combine initial prompt and hotwords
+                prompt_parts = []
                 if request.prompt:
-                    params["prompt"] = request.prompt
+                    prompt_parts.append(request.prompt)
+                if request.hotwords:
+                    prompt_parts.append(request.hotwords)
+                if prompt_parts:
+                    params["prompt"] = ". ".join(prompt_parts)
 
             logger.info(f"Sending request to GPT-4o Transcribe API with model: {self.model}")
             response = self.client.audio.transcriptions.create(**params)

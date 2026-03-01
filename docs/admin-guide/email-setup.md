@@ -216,6 +216,7 @@ When enabling email verification on an existing instance:
 ### "SMTP not configured" errors
 
 Ensure all required SMTP variables are set:
+
 - `SMTP_HOST`
 - `SMTP_USERNAME`
 - `SMTP_PASSWORD`

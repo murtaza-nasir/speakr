@@ -55,6 +55,7 @@ Use token statistics to identify heavy users, validate budget allocations, and f
 The Transcription Usage section provides visibility into speech-to-text API consumption across your instance. This is separate from token usage and tracks audio transcription specifically.
 
 **Summary Cards**: Four cards at the top show:
+
 - **Today's Minutes**: Transcription minutes used today across all users
 - **This Month**: Total minutes transcribed in the current calendar month
 - **Monthly Cost**: Estimated costs based on connector pricing (OpenAI Whisper/Transcribe charges, $0 for self-hosted ASR)
@@ -67,6 +68,7 @@ The Transcription Usage section provides visibility into speech-to-text API cons
 - Red: At or over 100% (blocked from new transcriptions)
 
 **Cost Estimation**: The system calculates estimated costs based on the transcription connector used:
+
 - OpenAI Whisper API: $0.006 per minute
 - OpenAI Transcribe (gpt-4o-transcribe): $0.006 per minute
 - OpenAI Transcribe (gpt-4o-mini-transcribe): $0.003 per minute

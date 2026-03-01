@@ -777,8 +777,46 @@
                                     </div>
                                 </details>
                             </div>
+
+                            <!-- Transcription Hints Section -->
+                            <div class="mt-8 pt-6 border-t border-[var(--border-secondary)]">
+                                <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
+                                    <i class="fas fa-spell-check mr-2 text-[var(--text-accent)]"></i>
+                                    Transcription Hints
+                                </h3>
+                                <p class="text-xs text-[var(--text-muted)] mb-4">
+                                    These defaults are used when no tag or folder overrides are set. They help improve recognition of domain-specific terms.
+                                </p>
+
+                                <div class="space-y-4">
+                                    <div>
+                                        <label for="transcription_hotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1">
+                                            Default Hotwords
+                                        </label>
+                                        <input type="text" name="transcription_hotwords" id="transcription_hotwords"
+                                               value="{{ current_user.transcription_hotwords or '' }}"
+                                               placeholder="e.g., Speakr, CTranslate2, PyAnnote, SDRs"
+                                               class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                        <p class="text-xs text-[var(--text-light)] mt-1">
+                                            Comma-separated words or phrases that the transcription model should prioritize recognizing (brand names, acronyms, technical terms).
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label for="transcription_initial_prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1">
+                                            Default Initial Prompt
+                                        </label>
+                                        <textarea name="transcription_initial_prompt" id="transcription_initial_prompt" rows="2"
+                                                  placeholder="e.g., This is a meeting about AI transcription tools and speech recognition."
+                                                  class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.transcription_initial_prompt or '' }}</textarea>
+                                        <p class="text-xs text-[var(--text-light)] mt-1">
+                                            Context to steer the transcription model's style and vocabulary. Describe the topic or expected content of your recordings.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
+
                         <div class="flex justify-end">
                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                 <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
@@ -1989,16 +2027,17 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <h3 id="tagModalTitle" class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="editTagModal.createTitle">Create Tag</h3>
                 <button id="closeTagModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
             </div>
-            
+
             <form id="tagForm" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" id="tagId" name="tag_id">
-                
+
+                <!-- Name and Color (always visible, outside tabs) -->
                 <div>
                     <label for="tagName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.tagName">Tag Name *</label>
                     <input type="text" id="tagName" name="name" required maxlength="50" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Meetings, Interviews">
                 </div>
-                
+
                 <div>
                     <label for="tagColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.color">Color</label>
                     <div class="flex items-center space-x-3">
@@ -2006,145 +2045,145 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <span class="text-sm text-[var(--text-muted)]" data-i18n="editTagModal.colorDescription">Choose a color for easy identification</span>
                     </div>
                 </div>
-                
-                <div>
-                    <label for="tagCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.customPrompt">Custom Summary Prompt</label>
-                    <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag" data-i18n-placeholder="editTagModal.customPromptPlaceholder"></textarea>
-                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.leaveBlankPrompt">Leave blank to use your default summary prompt</p>
+
+                <!-- Tab Navigation -->
+                <div class="border-b border-[var(--border-primary)]">
+                    <nav class="flex -mb-px space-x-1" id="tagModalTabs">
+                        <button type="button" class="tag-modal-tab active px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-[var(--border-focus)] text-[var(--text-accent)]" data-tab="tagTabTranscription">
+                            <i class="fas fa-microphone mr-1"></i>Transcription
+                        </button>
+                        <button type="button" class="tag-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-tab="tagTabSummary">
+                            <i class="fas fa-file-alt mr-1"></i>Summary & Templates
+                        </button>
+                        <button type="button" id="tagTabSharingBtn" class="tag-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hidden" data-tab="tagTabSharing">
+                            <i class="fas fa-users mr-1"></i>Sharing
+                        </button>
+                    </nav>
                 </div>
 
-                <!-- Naming Template Selection -->
-                <div>
-                    <label for="tagNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.namingTemplate">Naming Template</label>
-                    <select id="tagNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="" data-i18n="editTagModal.noNamingTemplate">No template (use user default or AI title)</option>
-                        <!-- Naming template options will be populated dynamically -->
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.namingTemplateHint">Select a naming template to automatically format titles for recordings with this tag</p>
-                </div>
-
-                <!-- Export Template Selection -->
-                {% if enable_auto_export %}
-                <div>
-                    <label for="tagExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.exportTemplate">Export Template</label>
-                    <select id="tagExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="" data-i18n="editTagModal.noExportTemplate">No template (use user default)</option>
-                        <!-- Export template options will be populated dynamically -->
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.exportTemplateHint">Select an export template to use when exporting recordings with this tag</p>
-                </div>
-                {% endif %}
-
-                <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
-                <div id="tagGroupSelectionSection" class="hidden">
-                    <label for="tagGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
-                    <select id="tagGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="">Personal Tag (Not Associated with a Group)</option>
-                        <!-- Group options will be populated dynamically -->
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1">
-                        Assign this tag to a group to enable auto-sharing when applied to recordings
-                    </p>
-                </div>
-
-                <!-- Group-Specific Settings (only shown when a group is selected) -->
-                <div id="tagGroupSettingsSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                        <i class="fas fa-users mr-2"></i>Group Sharing Settings
-                    </h4>
-
-                    <div class="space-y-3">
-                        <div class="flex items-start space-x-3">
-                            <input type="checkbox" id="tagAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
-                            <div class="flex-1">
-                                <label for="tagAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                    <i class="fas fa-share-alt mr-1"></i>
-                                    Auto-share recordings with all group members when this tag is applied
-                                </label>
-                                <p class="text-xs text-[var(--text-light)] mt-1">
-                                    All group members will automatically get access to recordings with this tag
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <input type="checkbox" id="tagShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
-                            <div class="flex-1">
-                                <label for="tagShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                    <i class="fas fa-user-shield mr-1"></i>
-                                    Share recordings with group admins only when this tag is applied
-                                </label>
-                                <p class="text-xs text-[var(--text-light)] mt-1">
-                                    Only group admins will get access (not all members)
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-[var(--text-light)] italic mt-3">
-                        Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
-                    </p>
-                </div>
-
-                <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
-                <div id="tagRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                        <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion Settings
-                    </h4>
-
-                    <div class="space-y-3">
-                        <!-- Retention Period Override -->
-                        <div id="tagRetentionDaysContainer">
-                            <label for="tagRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                                Retention Period (days)
-                            </label>
-                            <input type="number" id="tagRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
-                            <p class="text-xs text-[var(--text-light)] mt-1">
-                                Leave empty to use global retention period. Set a custom value to override for recordings with this tag.
-                            </p>
-                        </div>
-
-                        <!-- Deletion Protection Checkbox -->
-                        <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                            <input type="checkbox" id="tagProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
-                            <div class="flex-1">
-                                <label for="tagProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                    <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
-                                    Protect from Auto-Deletion (Infinite Retention)
-                                </label>
-                                <p class="text-xs text-[var(--text-light)] mt-1">
-                                    Recordings with this tag will never be automatically deleted. When enabled, retention period is set to infinite.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {% if connector_supports_diarization %}
-                <div class="border-t border-[var(--border-primary)] pt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="editTagModal.asrDefaultSettings">Diarization Default Settings</h4>
-                    <p class="text-xs text-[var(--text-light)] mb-3" data-i18n="editTagModal.asrSettingsDescription">These settings will be applied by default when using this tag with diarization-enabled transcription</p>
-                    
-                    <div class="space-y-3">
-                        <div>
-                            <label for="tagLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.defaultLanguage">Default Language</label>
-                            <input type="text" id="tagLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-3">
+                <!-- Tab: Transcription & Retention -->
+                <div id="tagTabTranscription" class="tag-modal-tab-content space-y-4">
+                    {% if connector_supports_diarization %}
+                    <div>
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="editTagModal.asrDefaultSettings">Transcription Default Settings</h4>
+                        <div class="space-y-3">
                             <div>
-                                <label for="tagMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.minSpeakers">Min Speakers</label>
-                                <input type="number" id="tagMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                <label for="tagLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.defaultLanguage">Default Language</label>
+                                <input type="text" id="tagLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
                             </div>
-                            
-                            <div>
-                                <label for="tagMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.maxSpeakers">Max Speakers</label>
-                                <input type="number" id="tagMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="tagMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.minSpeakers">Min Speakers</label>
+                                    <input type="number" id="tagMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                </div>
+                                <div>
+                                    <label for="tagMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="editTagModal.maxSpeakers">Max Speakers</label>
+                                    <input type="number" id="tagMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Hotwords & Initial Prompt -->
+                    <div>
+                        <label for="tagHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Hotwords</label>
+                        <input type="text" id="tagHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
+                        <p class="text-xs text-[var(--text-light)] mt-1">Comma-separated words to improve recognition of domain-specific terms</p>
+                    </div>
+                    <div>
+                        <label for="tagInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Initial Prompt</label>
+                        <textarea id="tagInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Context to steer the transcription model's style and vocabulary</p>
+                    </div>
+
+                    <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
+                    <div id="tagRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-2">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                            <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion
+                        </h4>
+                        <div class="space-y-3">
+                            <div id="tagRetentionDaysContainer">
+                                <label for="tagRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Retention Period (days)</label>
+                                <input type="number" id="tagRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
+                                <p class="text-xs text-[var(--text-light)] mt-1">Leave empty to use global retention period.</p>
+                            </div>
+                            <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                                <input type="checkbox" id="tagProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <div class="flex-1">
+                                    <label for="tagProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                        <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
+                                        Protect from Auto-Deletion (Infinite Retention)
+                                    </label>
+                                    <p class="text-xs text-[var(--text-light)] mt-1">Recordings with this tag will never be automatically deleted.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                {% endif %}
-                
+
+                <!-- Tab: Summary & Templates -->
+                <div id="tagTabSummary" class="tag-modal-tab-content space-y-4 hidden">
+                    <div>
+                        <label for="tagCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.customPrompt">Custom Summary Prompt</label>
+                        <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag" data-i18n-placeholder="editTagModal.customPromptPlaceholder"></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.leaveBlankPrompt">Leave blank to use your default summary prompt</p>
+                    </div>
+                    <div>
+                        <label for="tagNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.namingTemplate">Naming Template</label>
+                        <select id="tagNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="" data-i18n="editTagModal.noNamingTemplate">No template (use user default or AI title)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.namingTemplateHint">Select a naming template to automatically format titles for recordings with this tag</p>
+                    </div>
+                    {% if enable_auto_export %}
+                    <div>
+                        <label for="tagExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="editTagModal.exportTemplate">Export Template</label>
+                        <select id="tagExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="" data-i18n="editTagModal.noExportTemplate">No template (use user default)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.exportTemplateHint">Select an export template to use when exporting recordings with this tag</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tab: Sharing -->
+                <div id="tagTabSharing" class="tag-modal-tab-content space-y-4 hidden">
+                    <div id="tagGroupSelectionSection" class="hidden">
+                        <label for="tagGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
+                        <select id="tagGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">Personal Tag (Not Associated with a Group)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Assign this tag to a group to enable auto-sharing when applied to recordings</p>
+                    </div>
+                    <div id="tagGroupSettingsSection" class="hidden">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                            <i class="fas fa-users mr-2"></i>Group Sharing Settings
+                        </h4>
+                        <div class="space-y-3">
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" id="tagAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <div class="flex-1">
+                                    <label for="tagAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                        <i class="fas fa-share-alt mr-1"></i>Auto-share with all group members
+                                    </label>
+                                    <p class="text-xs text-[var(--text-light)] mt-1">All group members will automatically get access to recordings with this tag</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" id="tagShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <div class="flex-1">
+                                    <label for="tagShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                        <i class="fas fa-user-shield mr-1"></i>Share with group admins only
+                                    </label>
+                                    <p class="text-xs text-[var(--text-light)] mt-1">Only group admins will get access (not all members)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-[var(--text-light)] italic mt-3">Note: If both are enabled, all group members will have access.</p>
+                    </div>
+                </div>
+
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
                     <button type="button" id="cancelTagBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]" data-i18n="buttons.cancel">Cancel</button>
                     <button type="submit" id="saveTagBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
@@ -2167,6 +2206,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" id="folderId" name="folder_id">
 
+                <!-- Name and Color (always visible, outside tabs) -->
                 <div>
                     <label for="folderName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Folder Name *</label>
                     <input type="text" id="folderName" name="name" required maxlength="50" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Office Calls, Interviews">
@@ -2180,143 +2220,144 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </div>
                 </div>
 
-                <div>
-                    <label for="folderCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Custom Summary Prompt</label>
-                    <textarea id="folderCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings in this folder"></textarea>
-                    <p class="text-xs text-[var(--text-light)] mt-1">Leave blank to use your default summary prompt. Note: Tag prompts take priority over folder prompts.</p>
+                <!-- Tab Navigation -->
+                <div class="border-b border-[var(--border-primary)]">
+                    <nav class="flex -mb-px space-x-1" id="folderModalTabs">
+                        <button type="button" class="folder-modal-tab active px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-[var(--border-focus)] text-[var(--text-accent)]" data-tab="folderTabTranscription">
+                            <i class="fas fa-microphone mr-1"></i>Transcription
+                        </button>
+                        <button type="button" class="folder-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-tab="folderTabSummary">
+                            <i class="fas fa-file-alt mr-1"></i>Summary & Templates
+                        </button>
+                        <button type="button" id="folderTabSharingBtn" class="folder-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hidden" data-tab="folderTabSharing">
+                            <i class="fas fa-users mr-1"></i>Sharing
+                        </button>
+                    </nav>
                 </div>
 
-                <!-- Naming Template Selection -->
-                <div>
-                    <label for="folderNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Naming Template</label>
-                    <select id="folderNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="">No template (use user default or AI title)</option>
-                        <!-- Naming template options will be populated dynamically -->
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1">Select a naming template to automatically format titles for recordings in this folder</p>
-                </div>
-
-                <!-- Export Template Selection -->
-                {% if enable_auto_export %}
-                <div>
-                    <label for="folderExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Export Template</label>
-                    <select id="folderExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="">No template (use user default)</option>
-                        <!-- Export template options will be populated dynamically -->
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1">Select an export template to use when exporting recordings in this folder</p>
-                </div>
-                {% endif %}
-
-                <!-- Group Selection (only shown if internal sharing is enabled and user is admin of some groups) -->
-                <div id="folderGroupSelectionSection" class="hidden">
-                    <label for="folderGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
-                    <select id="folderGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="">Personal Folder (Not Associated with a Group)</option>
-                        <!-- Group options will be populated dynamically -->
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1">
-                        Assign this folder to a group to enable auto-sharing when recordings are moved to it
-                    </p>
-                </div>
-
-                <!-- Group-Specific Settings (only shown when a group is selected) -->
-                <div id="folderGroupSettingsSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                        <i class="fas fa-users mr-2"></i>Group Sharing Settings
-                    </h4>
-
-                    <div class="space-y-3">
-                        <div class="flex items-start space-x-3">
-                            <input type="checkbox" id="folderAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
-                            <div class="flex-1">
-                                <label for="folderAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                    <i class="fas fa-share-alt mr-1"></i>
-                                    Auto-share recordings with all group members when moved to this folder
-                                </label>
-                                <p class="text-xs text-[var(--text-light)] mt-1">
-                                    All group members will automatically get access to recordings in this folder
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start space-x-3">
-                            <input type="checkbox" id="folderShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
-                            <div class="flex-1">
-                                <label for="folderShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                    <i class="fas fa-user-shield mr-1"></i>
-                                    Share recordings with group admins only when moved to this folder
-                                </label>
-                                <p class="text-xs text-[var(--text-light)] mt-1">
-                                    Only group admins will get access (not all members)
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-[var(--text-light)] italic mt-3">
-                        Note: If both are enabled, all group members will have access. If only "group admins" is enabled, only group leads will have access.
-                    </p>
-                </div>
-
-                <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
-                <div id="folderRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                        <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion Settings
-                    </h4>
-
-                    <div class="space-y-3">
-                        <!-- Retention Period Override -->
-                        <div id="folderRetentionDaysContainer">
-                            <label for="folderRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                                Retention Period (days)
-                            </label>
-                            <input type="number" id="folderRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
-                            <p class="text-xs text-[var(--text-light)] mt-1">
-                                Leave empty to use global retention period. Set a custom value to override for recordings in this folder.
-                            </p>
-                        </div>
-
-                        <!-- Deletion Protection Checkbox -->
-                        <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                            <input type="checkbox" id="folderProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
-                            <div class="flex-1">
-                                <label for="folderProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                    <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
-                                    Protect from Auto-Deletion (Infinite Retention)
-                                </label>
-                                <p class="text-xs text-[var(--text-light)] mt-1">
-                                    Recordings in this folder will never be automatically deleted. When enabled, retention period is set to infinite.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {% if connector_supports_diarization %}
-                <div class="border-t border-[var(--border-primary)] pt-4">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Diarization Default Settings</h4>
-                    <p class="text-xs text-[var(--text-light)] mb-3">These settings will be applied by default when uploading to this folder (tag settings take priority)</p>
-
-                    <div class="space-y-3">
-                        <div>
-                            <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Default Language</label>
-                            <input type="text" id="folderLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
+                <!-- Tab: Transcription & Retention -->
+                <div id="folderTabTranscription" class="folder-modal-tab-content space-y-4">
+                    {% if connector_supports_diarization %}
+                    <div>
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Transcription Default Settings</h4>
+                        <p class="text-xs text-[var(--text-light)] mb-3">Tag settings take priority over folder settings</p>
+                        <div class="space-y-3">
                             <div>
-                                <label for="folderMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Min Speakers</label>
-                                <input type="number" id="folderMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Default Language</label>
+                                <input type="text" id="folderLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
                             </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label for="folderMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Min Speakers</label>
+                                    <input type="number" id="folderMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                </div>
+                                <div>
+                                    <label for="folderMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Max Speakers</label>
+                                    <input type="number" id="folderMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
-                            <div>
-                                <label for="folderMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Max Speakers</label>
-                                <input type="number" id="folderMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                    <!-- Hotwords & Initial Prompt -->
+                    <div>
+                        <label for="folderHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Hotwords</label>
+                        <input type="text" id="folderHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
+                        <p class="text-xs text-[var(--text-light)] mt-1">Comma-separated words to improve recognition of domain-specific terms</p>
+                    </div>
+                    <div>
+                        <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Initial Prompt</label>
+                        <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Context to steer the transcription model's style and vocabulary</p>
+                    </div>
+
+                    <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
+                    <div id="folderRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-2">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                            <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion
+                        </h4>
+                        <div class="space-y-3">
+                            <div id="folderRetentionDaysContainer">
+                                <label for="folderRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Retention Period (days)</label>
+                                <input type="number" id="folderRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
+                                <p class="text-xs text-[var(--text-light)] mt-1">Leave empty to use global retention period.</p>
+                            </div>
+                            <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                                <input type="checkbox" id="folderProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <div class="flex-1">
+                                    <label for="folderProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                        <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
+                                        Protect from Auto-Deletion (Infinite Retention)
+                                    </label>
+                                    <p class="text-xs text-[var(--text-light)] mt-1">Recordings in this folder will never be automatically deleted.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                {% endif %}
+
+                <!-- Tab: Summary & Templates -->
+                <div id="folderTabSummary" class="folder-modal-tab-content space-y-4 hidden">
+                    <div>
+                        <label for="folderCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Custom Summary Prompt</label>
+                        <textarea id="folderCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings in this folder"></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Leave blank to use your default summary prompt. Tag prompts take priority over folder prompts.</p>
+                    </div>
+                    <div>
+                        <label for="folderNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Naming Template</label>
+                        <select id="folderNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">No template (use user default or AI title)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Select a naming template to automatically format titles for recordings in this folder</p>
+                    </div>
+                    {% if enable_auto_export %}
+                    <div>
+                        <label for="folderExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Export Template</label>
+                        <select id="folderExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">No template (use user default)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Select an export template to use when exporting recordings in this folder</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Tab: Sharing -->
+                <div id="folderTabSharing" class="folder-modal-tab-content space-y-4 hidden">
+                    <div id="folderGroupSelectionSection" class="hidden">
+                        <label for="folderGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
+                        <select id="folderGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">Personal Folder (Not Associated with a Group)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1">Assign this folder to a group to enable auto-sharing when recordings are moved to it</p>
+                    </div>
+                    <div id="folderGroupSettingsSection" class="hidden">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                            <i class="fas fa-users mr-2"></i>Group Sharing Settings
+                        </h4>
+                        <div class="space-y-3">
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" id="folderAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <div class="flex-1">
+                                    <label for="folderAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                        <i class="fas fa-share-alt mr-1"></i>Auto-share with all group members
+                                    </label>
+                                    <p class="text-xs text-[var(--text-light)] mt-1">All group members will automatically get access to recordings in this folder</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start space-x-3">
+                                <input type="checkbox" id="folderShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <div class="flex-1">
+                                    <label for="folderShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
+                                        <i class="fas fa-user-shield mr-1"></i>Share with group admins only
+                                    </label>
+                                    <p class="text-xs text-[var(--text-light)] mt-1">Only group admins will get access (not all members)</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-[var(--text-light)] italic mt-3">Note: If both are enabled, all group members will have access.</p>
+                    </div>
+                </div>
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
                     <button type="button" id="cancelFolderBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
@@ -4182,8 +4223,51 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const timeoutId = setTimeout(dismissToast, 3000);
         }
 
+        // ===== MODAL TAB SWITCHING =====
+        function switchModalTab(navId, tabClass, contentClass, targetTabId) {
+            const nav = document.getElementById(navId);
+            if (!nav) return;
+            // Update tab buttons
+            nav.querySelectorAll('.' + tabClass).forEach(btn => {
+                if (btn.dataset.tab === targetTabId) {
+                    btn.classList.add('active', 'border-[var(--border-focus)]', 'text-[var(--text-accent)]');
+                    btn.classList.remove('border-transparent', 'text-[var(--text-muted)]');
+                } else {
+                    btn.classList.remove('active', 'border-[var(--border-focus)]', 'text-[var(--text-accent)]');
+                    btn.classList.add('border-transparent', 'text-[var(--text-muted)]');
+                }
+            });
+            // Show/hide tab content
+            document.querySelectorAll('.' + contentClass).forEach(panel => {
+                panel.classList.toggle('hidden', panel.id !== targetTabId);
+            });
+        }
+
+        // Attach tab click handlers for tag modal
+        document.getElementById('tagModalTabs')?.addEventListener('click', function(e) {
+            const btn = e.target.closest('.tag-modal-tab');
+            if (btn && btn.dataset.tab) {
+                switchModalTab('tagModalTabs', 'tag-modal-tab', 'tag-modal-tab-content', btn.dataset.tab);
+            }
+        });
+
+        // Attach tab click handlers for folder modal
+        document.getElementById('folderModalTabs')?.addEventListener('click', function(e) {
+            const btn = e.target.closest('.folder-modal-tab');
+            if (btn && btn.dataset.tab) {
+                switchModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', btn.dataset.tab);
+            }
+        });
+
+        // Show sharing tabs when internal sharing is enabled
+        const isInternalSharingForTabs = {{ 'true' if enable_internal_sharing else 'false' }};
+        if (isInternalSharingForTabs) {
+            document.getElementById('tagTabSharingBtn')?.classList.remove('hidden');
+            document.getElementById('folderTabSharingBtn')?.classList.remove('hidden');
+        }
+
         // ===== TAG MANAGEMENT FUNCTIONALITY =====
-        
+
         // Tag management elements
         const createTagBtn = document.getElementById('createTagBtn');
         const tagModal = document.getElementById('tagModal');
@@ -4599,6 +4683,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (document.getElementById('tagMaxSpeakers')) {
                     document.getElementById('tagMaxSpeakers').value = tag.default_max_speakers || '';
                 }
+                if (document.getElementById('tagHotwords')) {
+                    document.getElementById('tagHotwords').value = tag.default_hotwords || '';
+                }
+                if (document.getElementById('tagInitialPrompt')) {
+                    document.getElementById('tagInitialPrompt').value = tag.default_initial_prompt || '';
+                }
 
                 // Populate naming template
                 if (document.getElementById('tagNamingTemplate')) {
@@ -4661,6 +4751,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             // Load export templates for dropdown
             loadExportTemplatesForTagModal();
+
+            // Reset to first tab
+            switchModalTab('tagModalTabs', 'tag-modal-tab', 'tag-modal-tab-content', 'tagTabTranscription');
 
             tagModal.classList.remove('hidden');
         }
@@ -4807,6 +4900,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 default_language: formData.get('default_language') || null,
                 default_min_speakers: formData.get('default_min_speakers') ? parseInt(formData.get('default_min_speakers')) : null,
                 default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null,
+                default_hotwords: formData.get('default_hotwords') || null,
+                default_initial_prompt: formData.get('default_initial_prompt') || null,
                 retention_days: retentionDays
             };
 
@@ -5192,6 +5287,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (minField) minField.value = folder.default_min_speakers || '';
                 var maxField = document.getElementById('folderMaxSpeakers');
                 if (maxField) maxField.value = folder.default_max_speakers || '';
+                var hwField = document.getElementById('folderHotwords');
+                if (hwField) hwField.value = folder.default_hotwords || '';
+                var ipField = document.getElementById('folderInitialPrompt');
+                if (ipField) ipField.value = folder.default_initial_prompt || '';
 
                 // Group selection
                 const folderGroupId = document.getElementById('folderGroupId');
@@ -5241,6 +5340,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             // Load export templates for dropdown (pass folder to set initial value)
             loadExportTemplatesForFolderModal(folder);
+
+            // Reset to first tab
+            switchModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', 'folderTabTranscription');
 
             if (folderModal) folderModal.classList.remove('hidden');
         }
@@ -5402,6 +5504,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 folderData.default_min_speakers = minEl && minEl.value ? parseInt(minEl.value) : null;
                 var maxEl = document.getElementById('folderMaxSpeakers');
                 folderData.default_max_speakers = maxEl && maxEl.value ? parseInt(maxEl.value) : null;
+                var hwEl = document.getElementById('folderHotwords');
+                folderData.default_hotwords = hwEl ? hwEl.value.trim() || null : null;
+                var ipEl = document.getElementById('folderInitialPrompt');
+                folderData.default_initial_prompt = ipEl ? ipEl.value.trim() || null : null;
                 var templateEl = document.getElementById('folderNamingTemplate');
                 folderData.naming_template_id = templateEl && templateEl.value ? parseInt(templateEl.value) : null;
                 var exportTemplateEl = document.getElementById('folderExportTemplate');

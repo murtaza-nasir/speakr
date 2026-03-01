@@ -113,6 +113,7 @@ Monitors when the app goes to background:
 **Why this happens:**
 
 Mobile browsers intentionally suspend web pages in the background to save battery. This affects:
+
 - JavaScript execution (timers, code)
 - MediaRecorder API (audio capture)
 - Audio context (audio processing)
@@ -120,6 +121,7 @@ Mobile browsers intentionally suspend web pages in the background to save batter
 Native apps don't have this limitation because they use platform-specific APIs that run outside the browser.
 
 **Desktop browsers work differently:**
+
 - Recording continues when window is minimized
 - Can switch to other apps
 - Only stops when browser is completely closed
@@ -333,6 +335,7 @@ To force an update:
 3. Select **"Uninstall Speakr"**
 
 Alternatively, remove from:
+
 - **Chrome**: `chrome://apps` → Right-click app → Remove
 - **Edge**: `edge://apps` → Click ⋮ on app → Uninstall
 ---

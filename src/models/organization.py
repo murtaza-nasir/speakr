@@ -95,6 +95,10 @@ class Folder(db.Model):
     default_min_speakers = db.Column(db.Integer, nullable=True)  # Default min speakers for ASR
     default_max_speakers = db.Column(db.Integer, nullable=True)  # Default max speakers for ASR
 
+    # Transcription hints
+    default_hotwords = db.Column(db.Text, nullable=True)  # Comma-separated words to bias recognition
+    default_initial_prompt = db.Column(db.Text, nullable=True)  # Initial prompt to steer transcription
+
     # Retention and deletion settings
     protect_from_deletion = db.Column(db.Boolean, default=False)  # Exempt recordings in folder from auto-deletion
     retention_days = db.Column(db.Integer, nullable=True)  # Folder-specific retention override
@@ -141,6 +145,8 @@ class Folder(db.Model):
             'default_language': self.default_language,
             'default_min_speakers': self.default_min_speakers,
             'default_max_speakers': self.default_max_speakers,
+            'default_hotwords': self.default_hotwords,
+            'default_initial_prompt': self.default_initial_prompt,
             'protect_from_deletion': self.protect_from_deletion,
             'retention_days': self.retention_days,
             'auto_share_on_apply': self.auto_share_on_apply,
@@ -168,6 +174,10 @@ class Tag(db.Model):
     default_language = db.Column(db.String(10), nullable=True)  # Default transcription language
     default_min_speakers = db.Column(db.Integer, nullable=True)  # Default min speakers for ASR
     default_max_speakers = db.Column(db.Integer, nullable=True)  # Default max speakers for ASR
+
+    # Transcription hints
+    default_hotwords = db.Column(db.Text, nullable=True)  # Comma-separated words to bias recognition
+    default_initial_prompt = db.Column(db.Text, nullable=True)  # Initial prompt to steer transcription
 
     # Retention and deletion settings
     protect_from_deletion = db.Column(db.Boolean, default=False)  # Exempt tagged recordings from auto-deletion
@@ -215,6 +225,8 @@ class Tag(db.Model):
             'default_language': self.default_language,
             'default_min_speakers': self.default_min_speakers,
             'default_max_speakers': self.default_max_speakers,
+            'default_hotwords': self.default_hotwords,
+            'default_initial_prompt': self.default_initial_prompt,
             'protect_from_deletion': self.protect_from_deletion,
             'retention_days': self.retention_days,
             'auto_share_on_apply': self.auto_share_on_apply,

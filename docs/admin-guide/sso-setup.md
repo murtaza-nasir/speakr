@@ -50,6 +50,7 @@ Restart Speakr after updating environment variables.
 2. Copy the **Client ID** and **Client Secret**.
 3. Note the **OpenID Endpoint Configuration** (discovery) URL, typically:
    `https://<host>/realms/<realm>/.well-known/openid-configuration`
+
 4. Set the environment variables accordingly and restart Speakr.
 
 ## Azure AD / Entra ID quick start
@@ -60,6 +61,7 @@ Restart Speakr after updating environment variables.
 4. Create a client secret.
 5. Discovery URL format:
    `https://login.microsoftonline.com/<tenant-id>/v2.0/.well-known/openid-configuration`
+
 6. Set variables and restart.
 
 ## Google quick start
@@ -68,6 +70,7 @@ Restart Speakr after updating environment variables.
 2. Add authorized redirect URI: `https://your-host/auth/sso/callback`.
 3. Use discovery URL:
    `https://accounts.google.com/.well-known/openid-configuration`
+
 4. Set variables and restart.
 
 ## Auth0 quick start
@@ -76,6 +79,7 @@ Restart Speakr after updating environment variables.
 2. Allowed Callback URLs: `https://your-host/auth/sso/callback`.
 3. Discovery URL:
    `https://<your-tenant>.auth0.com/.well-known/openid-configuration`
+
 4. Set variables and restart.
 
 ## Auto-registration behavior

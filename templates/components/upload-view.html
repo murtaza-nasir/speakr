@@ -317,7 +317,7 @@
                     <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
                     Selected tags include custom summary prompts
                 </p>
-                <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers)"
+                <p v-if="selectedTags.length > 0 && connectorSupportsDiarization && selectedTags.some(tag => tag.default_language || tag.default_min_speakers || tag.default_max_speakers || tag.default_hotwords || tag.default_initial_prompt)"
                    class="text-xs text-[var(--text-muted)] mt-1">
                     <i class="fas fa-cog mr-1 text-[var(--text-accent)]"></i>
                     First tag's ASR settings will be applied: ${selectedTags[0].name}
@@ -367,6 +367,30 @@
                                    max="20"
                                    class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
                         </div>
+                    </div>
+
+                    <!-- Hotwords -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                            Hotwords
+                        </label>
+                        <input v-model="uploadHotwords"
+                               type="text"
+                               placeholder="e.g., Speakr, CTranslate2, PyAnnote"
+                               class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Comma-separated words to improve recognition of domain-specific terms</p>
+                    </div>
+
+                    <!-- Initial Prompt -->
+                    <div>
+                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                            Initial Prompt
+                        </label>
+                        <textarea v-model="uploadInitialPrompt"
+                                  rows="2"
+                                  placeholder="e.g., This is a meeting about AI transcription tools."
+                                  class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] resize-y"></textarea>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">Context to steer the transcription model's style and vocabulary</p>
                     </div>
 
                     <p class="text-xs text-[var(--text-muted)] pt-1">

@@ -54,6 +54,8 @@ Transcription accuracy depends heavily on audio quality. Background noise, multi
 
 Language mismatches cause poor results too. If you've set a specific transcription language in settings but upload audio in a different language, accuracy suffers. Either set the correct language or leave it blank for auto-detection.
 
+For domain-specific terminology, brand names, or acronyms that keep getting misspelled, use the [custom vocabulary (hotwords) and initial prompt](features.md#custom-vocabulary--transcription-hints) features. Set these per-upload in Advanced ASR Options, or configure them on your tags, folders, or user defaults for automatic application. See the [FAQ entry](faq.md#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) for practical guidance.
+
 For recordings with multiple speakers, using the [ASR endpoint with speaker diarization](features.md#speaker-diarization) dramatically improves usability. Learn how to [identify speakers](user-guide/transcripts.md#speaker-identification) after transcription, even if the raw transcription accuracy is similar.
 
 ### "Format Not Recognised" Errors
@@ -61,6 +63,7 @@ For recordings with multiple speakers, using the [ASR endpoint with speaker diar
 If your transcription service returns "format not recognised" or similar codec errors, your service may not support certain audio formats that Speakr considers supported by default.
 
 This commonly occurs with:
+
 - **vLLM-hosted Whisper instances** that don't support Opus codec
 - **Self-hosted ASR services** with limited codec support
 - **WebM recordings** (which typically use Opus audio)
@@ -107,6 +110,7 @@ If Speakr crashed or restarted while recordings were processing, they automatica
     Prior to v0.6.2, deleted recordings could remain visible in the processing queue as "ghost entries." Clicking on these would open an empty recording window. This has been resolved - deleted recordings are now immediately removed from both the frontend queue and backend job tracking.
 
 If you're on v0.6.1 or earlier and see this behavior, upgrade to v0.6.2. The fix ensures that when you delete a recording:
+
 - It's removed from your library
 - It's removed from the processing queue display
 - Any associated backend jobs are cleaned up

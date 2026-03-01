@@ -55,6 +55,7 @@ Control transcription costs by setting monthly transcription budgets for individ
 Transcription budgets are set in minutes with a minimum of 10 minutes. The budget covers all transcription operations regardless of which connector is used (OpenAI Whisper, OpenAI Transcribe, or self-hosted ASR). View detailed transcription usage statistics in the [System Statistics](statistics.md#transcription-usage-statistics) section.
 
 **Cost Tracking**: The system tracks estimated costs based on the transcription connector used:
+
 - **OpenAI Whisper**: $0.006 per minute
 - **OpenAI Transcribe**: $0.003-$0.006 per minute depending on model
 - **Self-hosted ASR**: $0 (no external API costs)

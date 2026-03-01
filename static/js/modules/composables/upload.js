@@ -34,7 +34,7 @@ export function useUpload(state, utils) {
         isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
         maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, maxConcurrentUploads,
         recordings, selectedRecording, totalRecordings, globalError,
-        selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+        selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
         useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
         dragover, availableTags, uploadTagSearchFilter,
         // Folder state
@@ -253,7 +253,9 @@ export function useUpload(state, utils) {
                     item.asrOptions = {
                         language: asrLanguage.value,
                         min_speakers: asrMinSpeakers.value,
-                        max_speakers: asrMaxSpeakers.value
+                        max_speakers: asrMaxSpeakers.value,
+                        hotwords: uploadHotwords.value,
+                        initial_prompt: uploadInitialPrompt.value,
                     };
                     item.folder_id = selectedFolderId.value;
                 }
@@ -361,6 +363,16 @@ export function useUpload(state, utils) {
                 if (maxSpeakers && maxSpeakers !== '') {
                     formData.append('max_speakers', maxSpeakers.toString());
                 }
+            }
+
+            // Add hotwords and initial prompt
+            const hotwords = asrOpts.hotwords || uploadHotwords.value;
+            const initialPrompt = asrOpts.initial_prompt || uploadInitialPrompt.value;
+            if (hotwords && hotwords.trim()) {
+                formData.append('hotwords', hotwords.trim());
+            }
+            if (initialPrompt && initialPrompt.trim()) {
+                formData.append('initial_prompt', initialPrompt.trim());
             }
 
             // Use XMLHttpRequest for per-file upload progress
@@ -544,6 +556,15 @@ export function useUpload(state, utils) {
                 uploadMaxSpeakers.value = firstTag.default_max_speakers;
             }
         }
+        // Apply hotwords/initial_prompt from first tag (works for all connectors)
+        if (firstTag) {
+            if (firstTag.default_hotwords) {
+                uploadHotwords.value = firstTag.default_hotwords;
+            }
+            if (firstTag.default_initial_prompt) {
+                uploadInitialPrompt.value = firstTag.default_initial_prompt;
+            }
+        }
     };
 
     // Computed property for filtered available tags in upload view
@@ -604,6 +625,15 @@ export function useUpload(state, utils) {
             }
             if (maxSpeakers && maxSpeakers !== '') {
                 formData.append('max_speakers', maxSpeakers.toString());
+            }
+
+            const hotwords = asrOpts.hotwords || uploadHotwords.value;
+            const initialPrompt = asrOpts.initial_prompt || uploadInitialPrompt.value;
+            if (hotwords && hotwords.trim()) {
+                formData.append('hotwords', hotwords.trim());
+            }
+            if (initialPrompt && initialPrompt.trim()) {
+                formData.append('initial_prompt', initialPrompt.trim());
             }
 
             // Request auto-summarization

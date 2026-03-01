@@ -66,6 +66,7 @@ class ProcessingJob(db.Model):
 ```
 
 **Key Fields:**
+
 - `is_new_upload`: When `True` and job fails permanently, the associated recording and audio file are deleted. When `False` (reprocessing), only the recording status is set to FAILED.
 - `status`: Job lifecycle state
 - `retry_count`: Jobs retry up to 3 times before permanent failure
@@ -187,6 +188,7 @@ Returns all jobs for the current user (active + completed/failed from last hour)
 ```
 
 **Queue Types:**
+
 - `transcription`: transcribe, reprocess_transcription
 - `summary`: summarize, reprocess_summary
 

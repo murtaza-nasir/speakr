@@ -165,12 +165,14 @@ When any group member applies this tag to a recording, all group members automat
 There are two ways to share recordings with groups:
 
 **Method 1: Using Group Tags** (Automatic)
+
 1. When uploading or after creating a recording, click the tag icon
 2. Select any group tag you have access to
 3. All group members automatically receive access to this recording
 4. Future group members will NOT see historical recordings, only new ones tagged after they join
 
 **Method 2: Individual Sharing** (Manual)
+
 1. Open any recording and click the share icon (users icon) in the toolbar
 2. Search for and select users to share with
 3. Choose permission level: view-only, edit, or reshare

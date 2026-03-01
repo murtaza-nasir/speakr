@@ -41,6 +41,7 @@ The optional ASR webservice (`onerahmet/openai-whisper-asr-webservice`) that pro
 **GPU limitation**: GPU passthrough doesn't work on macOS because Docker runs containers within a Linux VM. This is a fundamental Docker limitation on Mac.
 
 **Solution**: Use the standard CPU image instead of the GPU version:
+
 - Use `onerahmet/openai-whisper-asr-webservice:latest` (NOT `:latest-gpu`)
 - The `:latest` tag provides both amd64 (Intel) and arm64 (Apple Silicon) architectures
 - Processing will be slower without GPU acceleration but fully functional
@@ -196,9 +197,27 @@ Legal requirements vary by jurisdiction. Many regions require explicit consent f
 
 Record in quiet environments when possible. Use a good microphone positioned close to speakers. For meetings, place the recording device centrally where all participants are clearly audible. Avoid background music or TV noise. Higher quality audio not only improves transcription accuracy but also reduces processing time and API costs.
 
+### Certain specialized words don't get transcribed properly. How do I fix this?
+
+This is common with brand names, acronyms, technical jargon, or proper nouns that the transcription model hasn't seen frequently during training. Speakr provides two features to address this:
+
+**Hotwords** let you provide a comma-separated list of terms the transcription engine should prioritize. For example, if "PyAnnote" keeps being transcribed as "piano" or "pie annotate", adding it to your hotwords list biases the model toward the correct spelling.
+
+**Initial Prompt** gives the transcription engine broader context about your recording's content, helping it make better word choices when audio is ambiguous.
+
+You can set these at multiple levels, from most to least priority:
+
+1. **Per-upload** - In the Advanced ASR Options when uploading
+2. **Per-tag** - In tag settings (applied automatically when that tag is selected)
+3. **Per-folder** - In folder settings (applied to all recordings in that folder)
+4. **Per-user** - In [Account Settings → Prompt Options](user-guide/settings.md#transcription-hints) (your personal defaults)
+
+!!! note "ASR Service Compatibility"
+    Hotwords and initial prompt are fully supported by [WhisperX ASR](admin-guide/whisperx-setup.md). For OpenAI connectors (Whisper, Transcribe), hotwords are combined into the prompt field since the OpenAI API doesn't have a dedicated hotwords parameter. The community `whisper-asr-webservice` by ahmetoner supports `initial_prompt` but does not currently expose a `hotwords` parameter through its API.
+
 ### How can I maximize transcription accuracy?
 
-Speak clearly and avoid talking over others. Minimize background noise and echo. For technical content, consider adding a custom vocabulary or glossary to your [prompts](admin-guide/prompts.md). Users can set [personal prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Use the appropriate [language setting](user-guide/settings.md#language-preferences) rather than relying on auto-detection. Review [language support](features.md#language-support) for best results. For multi-speaker recordings, use the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration) with appropriate speaker count settings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after transcription for best results.
+Speak clearly and avoid talking over others. Minimize background noise and echo. For technical content, use [hotwords and initial prompts](#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) to help the transcription engine with domain-specific vocabulary. You can set these through [tags](user-guide/settings.md#transcription-hints-hotwords--initial-prompt), [folders](user-guide/folders.md), or your [personal defaults](user-guide/settings.md#transcription-hints). Users can also set [custom summary prompts](user-guide/settings.md#custom-prompts-tab) for their recordings. Use the appropriate [language setting](user-guide/settings.md#language-preferences) rather than relying on auto-detection. Review [language support](features.md#language-support) for best results. For multi-speaker recordings, use the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration) with appropriate speaker count settings. [Identify speakers](user-guide/transcripts.md#speaker-identification) after transcription for best results.
 
 For Chinese transcription specifically, use the large-v3 model as smaller models may not output Chinese characters correctly. For other languages, test different models to find the best accuracy for your specific language and accent.
 
@@ -211,9 +230,11 @@ Chunking by file size (e.g., CHUNK_LIMIT=20MB) works well for consistent bitrate
 Yes, by default. Speakr automatically compresses lossless uploads (WAV, AIFF) to save storage space. A typical 500MB WAV file becomes roughly 50MB after compression - a 90% reduction. This happens transparently when you upload.
 
 **What gets compressed:**
+
 - WAV and AIFF files (uncompressed/lossless formats)
 
 **What stays unchanged:**
+
 - Already-compressed formats: MP3, AAC, OGG, M4A, FLAC, etc.
 - These are never re-encoded to avoid quality loss
 
