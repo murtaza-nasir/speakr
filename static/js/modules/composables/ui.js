@@ -16,7 +16,8 @@ export function useUI(state, utils, processedTranscription) {
         notesMarkdownEditor, markdownEditorInstance, autoSaveTimer, csrfToken,
         summaryMarkdownEditor, recordingNotesEditor, recordingMarkdownEditorInstance,
         recordingNotes, showDownloadMenu, currentPlayingSegmentIndex, followPlayerMode,
-        playbackRate, showSpeedMenu, playbackSpeeds, modalPlaybackRate, speedMenuPosition
+        playbackRate, showSpeedMenu, playbackSpeeds, modalPlaybackRate, speedMenuPosition,
+        videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed
     } = state;
 
     const autoSaveDelay = 2000; // 2 seconds
@@ -856,7 +857,10 @@ export function useUI(state, utils, processedTranscription) {
 
     // --- Custom Audio Player Controls ---
     const getAudioElement = () => {
-        // First check for audio/video in visible modals (z-50 class) - these take priority
+        // First check fullscreen overlay (teleported to body)
+        const fullscreenMedia = document.querySelector('.video-fullscreen-overlay video');
+        if (fullscreenMedia) return fullscreenMedia;
+        // Then check for audio/video in visible modals (z-50 class) - these take priority
         const modalMedia = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
         if (modalMedia) {
             return modalMedia;
@@ -939,7 +943,7 @@ export function useUI(state, utils, processedTranscription) {
 
     // Handle progress bar drag - supports both mouse and touch, only seeks on release
     const startProgressDrag = (event) => {
-        const bar = event.currentTarget.querySelector('.h-2') || event.currentTarget;
+        const bar = event.currentTarget.querySelector('.progress-track') || event.currentTarget.querySelector('.h-2') || event.currentTarget;
         const rect = bar.getBoundingClientRect();
         const isTouch = event.type === 'touchstart';
 
@@ -1249,6 +1253,66 @@ export function useUI(state, utils, processedTranscription) {
         } else {
             showToast('Follow player mode disabled', 'fa-unlink');
         }
+    };
+
+    // --- Video Fullscreen ---
+    const handleFullscreenKeydown = (e) => {
+        if (e.key === 'Escape' || e.key === 'f') {
+            exitVideoFullscreen();
+        } else if (e.key === ' ' || e.key === 'k') {
+            e.preventDefault();
+            toggleAudioPlayback();
+        } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            seekAudioTo(audioCurrentTime.value - 10);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            seekAudioTo(audioCurrentTime.value + 10);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const audio = getAudioElement();
+            if (audio) setAudioVolume(Math.min(1, audio.volume + 0.1));
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const audio = getAudioElement();
+            if (audio) setAudioVolume(Math.max(0, audio.volume - 0.1));
+        }
+    };
+
+    const resetFullscreenControlsTimer = () => {
+        fullscreenControlsVisible.value = true;
+        if (fullscreenControlsTimer.value) {
+            clearTimeout(fullscreenControlsTimer.value);
+        }
+        fullscreenControlsTimer.value = setTimeout(() => {
+            if (audioIsPlaying.value) {
+                fullscreenControlsVisible.value = false;
+            }
+        }, 3000);
+    };
+
+    const handleFullscreenMouseMove = () => {
+        resetFullscreenControlsTimer();
+    };
+
+    const enterVideoFullscreen = () => {
+        videoFullscreen.value = true;
+        videoCollapsed.value = false;
+        fullscreenControlsVisible.value = true;
+        resetFullscreenControlsTimer();
+        document.addEventListener('keydown', handleFullscreenKeydown);
+        document.body.style.overflow = 'hidden';
+    };
+
+    const exitVideoFullscreen = () => {
+        videoFullscreen.value = false;
+        fullscreenControlsVisible.value = true;
+        if (fullscreenControlsTimer.value) {
+            clearTimeout(fullscreenControlsTimer.value);
+            fullscreenControlsTimer.value = null;
+        }
+        document.removeEventListener('keydown', handleFullscreenKeydown);
+        document.body.style.overflow = '';
     };
 
     // --- Copy Functions ---
@@ -1622,6 +1686,7 @@ export function useUI(state, utils, processedTranscription) {
 
         // Watch for recording changes to reset active segment and audio player state
         watch(selectedRecording, (newRecording) => {
+            if (videoFullscreen.value) exitVideoFullscreen();
             currentPlayingSegmentIndex.value = null;
             resetAudioPlayerState();
             // Use server-side duration if available (more reliable than browser metadata)
@@ -1966,6 +2031,11 @@ export function useUI(state, utils, processedTranscription) {
         cyclePlaybackRate,
         cycleModalPlaybackRate,
         updateSpeedMenuPosition,
+        // Video fullscreen
+        enterVideoFullscreen,
+        exitVideoFullscreen,
+        handleFullscreenMouseMove,
+        resetFullscreenControlsTimer,
         // Copy functions
         copyTranscription,
         copySummary,

@@ -545,6 +545,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showModalVolumeSlider = ref(false);
             const showDuplicatesModal = ref(false);
             const videoCollapsed = ref(false);
+            const videoFullscreen = ref(false);
+            const fullscreenControlsVisible = ref(true);
+            const fullscreenControlsTimer = ref(null);
             const duplicatesModalData = ref(null);
 
             // --- Modal Audio Player State (Independent from main) ---
@@ -725,6 +728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,
                 modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying, modalPlaybackRate,
                 playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider, showModalVolumeSlider,
+                videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,
@@ -1248,6 +1252,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }))
                     };
                 }
+            });
+
+            // Subtitle computed for fullscreen video overlay
+            const currentSubtitle = computed(() => {
+                const idx = currentPlayingSegmentIndex.value;
+                if (idx === null) return null;
+                const t = processedTranscription.value;
+                if (!t?.simpleSegments?.[idx]) return null;
+                const seg = t.simpleSegments[idx];
+                return {
+                    text: seg.sentence,
+                    speaker: t.hasDialogue ? seg.speaker : null,
+                    color: seg.color
+                };
             });
 
             // =========================================================================
@@ -2476,6 +2494,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 hasSpeakerNames,
                 showDuplicatesModal,
                 videoCollapsed,
+                videoFullscreen,
+                fullscreenControlsVisible,
+                currentSubtitle,
                 duplicatesModalData,
                 openDuplicatesModal,
                 navigateToDuplicate,
