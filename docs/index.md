@@ -6,14 +6,15 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.13-alpha - Video Retention Fix"
-    **Fixed large video uploads losing their video stream when VIDEO_RETENTION=true**
+!!! info "Latest Release: v0.8.14-alpha - Fullscreen Video, Custom Vocabulary & Localization"
+    **Fullscreen video player, custom vocabulary hints, and complete i18n coverage**
 
-    - **Video Retention** - Keep video streams for in-browser `<video>` playback alongside transcripts (`VIDEO_RETENTION=true`)
-    - **Parallel Uploads** - Batch uploads run concurrently with individual progress bars (`MAX_CONCURRENT_UPLOADS`, default: 3)
-    - **Duplicate Detection** - SHA-256 hashing warns on duplicate uploads with clickable copies indicator
-    - **Volume Controls** - Volume slider popups and mute indicators on all players
-    - **Speaker Enhancements** - Split button UI, apply suggested names, new speaker API endpoints
+    - **Fullscreen Video** - Double-click video for fullscreen with auto-hiding controls, live subtitles, and keyboard shortcuts
+    - **Custom Vocabulary (Hotwords)** - Comma-separated domain terms to improve transcription accuracy, per user/tag/folder
+    - **Initial Prompt** - Context to steer the transcription model's style and vocabulary
+    - **Video Passthrough** - `VIDEO_PASSTHROUGH_ASR=true` sends raw video to ASR backends, skipping audio extraction
+    - **Upload Disclaimer** - Configurable pre-upload disclaimer with custom banner text
+    - **Complete Localization** - All recent features fully localized across all six languages
 
 ## Quick Navigation
 
@@ -145,6 +146,15 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.8.14-alpha - Fullscreen Video, Custom Vocabulary & Localization"
+    - **Fullscreen Video Mode** - Double-click or expand button for fullscreen video with auto-hiding controls, live subtitles, and keyboard shortcuts
+    - **Custom Vocabulary (Hotwords)** - Comma-separated domain terms to improve transcription accuracy, configurable per user, tag, or folder
+    - **Initial Prompt** - Provide context to steer the transcription model's style and vocabulary
+    - **Video Passthrough** - `VIDEO_PASSTHROUGH_ASR=true` sends raw video directly to ASR backends that support video input
+    - **Upload Disclaimer Modal** - Configurable pre-upload disclaimer with custom banner in admin settings
+    - **Complete Localization** - All recent feature strings fully localized across all six supported languages
+    - **Bug Fixes** - Upload notification ordering, speaker snippets for AAC video, chat focus during streaming, upload queue blocking, duplicate hash timing, markdown formatting
 
 !!! info "Version 0.8.13-alpha - Video Retention Fix"
     - Fixed large video files silently losing their video stream during upload when `VIDEO_RETENTION=true`
