@@ -266,6 +266,8 @@
       "defaultSummaryPromptDesc": "用户未设置自己的提示时使用的默认摘要提示。这作为所有用户的基础提示。",
       "maxFileSizeDesc": "允许的音频上传最大文件大小（兆字节）。",
       "recordingDisclaimerDesc": "录音开始前向用户显示的法律免责声明。支持 Markdown 格式。留空以禁用。",
+      "uploadDisclaimerDesc": "文件上传前显示的法律免责声明。支持 Markdown。留空以禁用。",
+      "customBannerDesc": "页面顶部显示的自定义横幅。支持 Markdown。留空以禁用。",
       "transcriptLengthLimitDesc": "从转录发送到 LLM 进行摘要和聊天的最大字符数。使用 -1 表示无限制。"
     },
     "storageUsed": "已用存储",
@@ -923,6 +925,8 @@
     "editTranscription": "编辑转录",
     "identifySpeakers": "识别发言人",
     "recordingNotice": "录音提示",
+    "uploadNotice": "上传提示",
+    "uploadFiles": "上传文件",
     "reprocessSummary": "重新处理摘要",
     "reprocessTranscription": "重新处理转录",
     "resetStatus": "重置录音状态？",

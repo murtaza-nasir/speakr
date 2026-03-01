@@ -247,6 +247,8 @@
       "defaultSummaryPromptDesc": "Indicación de resumen predeterminada utilizada cuando los usuarios no han establecido su propia indicación. Esto sirve como la indicación base para todos los usuarios.",
       "maxFileSizeDesc": "Tamaño máximo de archivo permitido para cargas de audio en megabytes (MB).",
       "recordingDisclaimerDesc": "Aviso legal mostrado a los usuarios antes de comenzar la grabación. Admite formato Markdown. Dejar vacío para desactivar.",
+      "uploadDisclaimerDesc": "Aviso legal mostrado antes de subir archivos. Admite Markdown. Dejar vacío para desactivar.",
+      "customBannerDesc": "Banner personalizado mostrado en la parte superior de la página. Admite Markdown. Dejar vacío para desactivar.",
       "transcriptLengthLimitDesc": "Número máximo de caracteres a enviar desde la transcripción al LLM para resumen y chat. Use -1 para sin límite."
     },
     "storageUsed": "ALMACENAMIENTO USADO",
@@ -842,6 +844,8 @@
     "editTranscription": "Editar Transcripción",
     "identifySpeakers": "Identificar Hablantes",
     "recordingNotice": "Aviso de Grabación",
+    "uploadNotice": "Aviso de Carga",
+    "uploadFiles": "Subir Archivos",
     "reprocessSummary": "Reprocesar Resumen",
     "reprocessTranscription": "Reprocesar Transcripción",
     "resetStatus": "¿Restablecer Estado de Grabación?",

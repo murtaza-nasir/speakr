@@ -223,6 +223,8 @@ Query formulation matters enormously. [Inquire Mode](user-guide/inquire-mode.md)
 
 In many jurisdictions, you must inform participants they're being recorded. Enable a recording disclaimer in [System Settings](admin-guide/system-settings.md#recording-disclaimer). Check the [FAQ on recording compliance](faq.md#do-i-need-to-inform-people-theyre-being-recorded). Set custom text that appears before any recording starts, such as legal notices about consent requirements. This feature is particularly important in regions with strict recording laws like Australia or California.
 
+A separate [upload disclaimer](admin-guide/system-settings.md#upload-disclaimer) can be configured to show a notice before file uploads. You can also display a persistent [custom banner](admin-guide/system-settings.md#custom-banner) at the top of the page for announcements or policy reminders.
+
 ### Offline Deployment
 
 Speakr can run completely offline as all dependencies are built into the Docker image. For offline deployments, use local models via Ollama for [text generation](features.md#automatic-summarization) and ensure your ASR endpoint is hosted locally. The system will work without internet access once properly configured.

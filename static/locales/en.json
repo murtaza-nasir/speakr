@@ -263,6 +263,8 @@
       "defaultSummaryPromptDesc": "Default summarization prompt used when users have not set their own prompt. This serves as the base prompt for all users.",
       "maxFileSizeDesc": "Maximum file size allowed for audio uploads in megabytes (MB).",
       "recordingDisclaimerDesc": "Legal disclaimer shown to users before recording starts. Supports Markdown formatting. Leave empty to disable.",
+      "uploadDisclaimerDesc": "Legal disclaimer shown before file uploads. Supports Markdown. Leave empty to disable.",
+      "customBannerDesc": "Custom banner shown at the top of the page. Supports Markdown. Leave empty to disable.",
       "transcriptLengthLimitDesc": "Maximum number of characters to send from transcript to LLM for summarization and chat. Use -1 for no limit."
     },
     "storageUsed": "STORAGE USED",
@@ -858,6 +860,8 @@
     "editTranscription": "Edit Transcription",
     "identifySpeakers": "Identify Speakers",
     "recordingNotice": "Recording Notice",
+    "uploadNotice": "Upload Notice",
+    "uploadFiles": "Upload Files",
     "reprocessSummary": "Reprocess Summary",
     "reprocessTranscription": "Reprocess Transcription",
     "resetStatus": "Reset Recording Status?",

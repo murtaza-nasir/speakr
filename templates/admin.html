@@ -673,6 +673,7 @@
                             <span v-else-if="setting.key === 'asr_timeout_seconds'" class="text-[var(--text-primary)]">
                                 ${ Number(setting.value).toLocaleString() } ${t('adminDashboard.seconds')}
                             </span>
+                                            <span v-else-if="setting.value && setting.value.length > 80" class="text-[var(--text-muted)] italic">${ setting.value.substring(0, 80) }...</span>
                                             <span v-else>${ setting.value || t('adminDashboard.notSet') }</span>
                                         </div>
                                     </div>
@@ -1189,13 +1190,13 @@ Summarization Instructions:
         
         <!-- Edit System Setting Modal -->
         <div v-if="showEditSettingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg">
-                <div class="flex justify-between items-center mb-4">
+            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+                <div class="flex-shrink-0 flex justify-between items-center p-6 pb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Edit System Setting</h3>
                     <button @click="showEditSettingModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-2xl leading-none">&times;</button>
                 </div>
-                
-                <div v-if="editingSetting" class="space-y-4">
+
+                <div v-if="editingSetting" class="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Setting Key</label>
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md font-mono text-sm">
@@ -1219,7 +1220,7 @@ Summarization Instructions:
                     
                     <div>
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Current Value</label>
-                        <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md">
+                        <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md max-h-24 overflow-y-auto text-sm break-words">
                             <span v-if="editingSetting.key === 'transcript_length_limit' && editingSetting.value === '-1'">
                                 ${t('adminDashboard.noLimit')}
                             </span>
@@ -1311,13 +1312,13 @@ Summarization Instructions:
                         ${ settingError }
                     </div>
                 </div>
-                
-                <div class="flex justify-end space-x-3 mt-6">
-                    <button @click="showEditSettingModal = false" 
+
+                <div class="flex-shrink-0 flex justify-end space-x-3 p-6 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] rounded-b-lg">
+                    <button @click="showEditSettingModal = false"
                             class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
                         Cancel
                     </button>
-                    <button @click="saveSettingValue" 
+                    <button @click="saveSettingValue"
                             class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
                         ${t('buttons.saveChanges')}
                     </button>
@@ -1882,6 +1883,26 @@ Summarization Instructions:
                         if (!response.ok) throw new Error('Failed to load settings');
 
                         const data = await response.json();
+                        // Sort so related settings are grouped together
+                        const settingOrder = [
+                            'transcript_length_limit',
+                            'max_file_size_mb',
+                            'asr_timeout_seconds',
+                            'admin_default_summary_prompt',
+                            'recording_disclaimer',
+                            'upload_disclaimer',
+                            'custom_banner',
+                            'disable_auto_summarization',
+                            'enable_folders'
+                        ];
+                        data.sort((a, b) => {
+                            const ai = settingOrder.indexOf(a.key);
+                            const bi = settingOrder.indexOf(b.key);
+                            // Unknown keys go to the end in original order
+                            const aOrder = ai === -1 ? settingOrder.length : ai;
+                            const bOrder = bi === -1 ? settingOrder.length : bi;
+                            return aOrder - bOrder;
+                        });
                         settings.value = data;
                     } catch (error) {
                         console.error('Error loading settings:', error);
@@ -2206,7 +2227,9 @@ Summarization Instructions:
                         'max_file_size_mb': 'adminDashboard.settings.maxFileSizeDesc',
                         'asr_timeout_seconds': 'adminDashboard.settings.asrTimeoutDesc',
                         'admin_default_summary_prompt': 'adminDashboard.settings.defaultSummaryPromptDesc',
-                        'recording_disclaimer': 'adminDashboard.settings.recordingDisclaimerDesc'
+                        'recording_disclaimer': 'adminDashboard.settings.recordingDisclaimerDesc',
+                        'upload_disclaimer': 'adminDashboard.settings.uploadDisclaimerDesc',
+                        'custom_banner': 'adminDashboard.settings.customBannerDesc'
                     };
                     
                     const key = descriptionKeys[setting.key];
