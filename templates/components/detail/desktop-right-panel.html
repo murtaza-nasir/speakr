@@ -12,7 +12,7 @@
         <div v-else-if="selectedRecording.incognito"
              class="text-[var(--text-muted)] text-sm flex items-center gap-2 py-2">
             <i class="fas fa-user-secret"></i>
-            <span>Audio not stored in incognito mode</span>
+            <span v-text="t('incognito.audioNotStored')"></span>
         </div>
         <!-- Custom Audio Player Card -->
         <div v-else class="bg-[var(--bg-tertiary)] rounded-xl p-4 shadow-sm border border-[var(--border-primary)] overflow-hidden">
@@ -110,7 +110,7 @@
                             <!-- Exit Fullscreen -->
                             <button @click.stop="exitVideoFullscreen"
                                     class="w-8 h-8 flex items-center justify-center rounded-full text-white hover:bg-white/20 transition-all"
-                                    title="Exit fullscreen">
+                                    :title="t('tooltips.exitFullscreen')">
                                 <i class="fas fa-compress text-sm"></i>
                             </button>
                         </div>
@@ -207,7 +207,7 @@
                     <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoCollapsed"
                             @click="enterVideoFullscreen"
                             class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
-                            title="Fullscreen video">
+                            :title="t('tooltips.fullscreenVideo')">
                         <i class="fas fa-expand text-sm"></i>
                     </button>
 
@@ -216,7 +216,7 @@
                             @click="videoCollapsed = !videoCollapsed"
                             class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all flex-shrink-0"
                             :class="videoCollapsed ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
-                            :title="videoCollapsed ? 'Show video' : 'Hide video'">
+                            :title="videoCollapsed ? t('tooltips.showVideo') : t('tooltips.hideVideo')">
                         <i :class="videoCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
                     </button>
                 </div>

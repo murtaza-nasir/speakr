@@ -204,7 +204,7 @@
                                 <button @click="activeTab = 'groups'"
                                         :class="activeTab === 'groups' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
                                         class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-users-cog mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>Groups</span>
+                                    <i class="fas fa-users-cog mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.groupsTab')}</span>
                                 </button>
                                 <button v-if="!isTeamAdminOnly && inquireModeEnabled" @click="activeTab = 'vectorstore'"
                                         :class="activeTab === 'vectorstore' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
@@ -244,7 +244,7 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.username')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.email')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.admin')}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Public Share</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.publicShare')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.recordings')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.storageUsed')}</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
@@ -264,10 +264,10 @@
                                                 class="inline-flex items-center"
                                                 :title="user.can_share_publicly ? 'Revoke public sharing permission' : 'Grant public sharing permission'">
                                             <span v-if="user.can_share_publicly" class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
-                                                <i class="fas fa-check mr-1"></i> Allowed
+                                                <i class="fas fa-check mr-1"></i> ${t('adminDashboard.allowed')}
                                             </span>
                                             <span v-else class="px-2 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]">
-                                                <i class="fas fa-times mr-1"></i> Blocked
+                                                <i class="fas fa-times mr-1"></i> ${t('adminDashboard.blocked')}
                                             </span>
                                         </button>
                                     </td>
@@ -1003,11 +1003,11 @@ Summarization Instructions:
                             <table class="min-w-full divide-y divide-[var(--border-primary)]">
                                 <thead class="bg-[var(--bg-tertiary)]">
                                     <tr>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Group Name</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Description</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Members</th>
-                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Created</th>
-                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Actions</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.groupName')}</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.description')}</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.members')}</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.created')}</th>
+                                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">${t('adminDashboard.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-[var(--bg-secondary)] divide-y divide-[var(--border-primary)]">
@@ -1016,12 +1016,12 @@ Summarization Instructions:
                                             <div class="text-sm font-medium text-[var(--text-primary)]">${ group.name }</div>
                                         </td>
                                         <td class="px-6 py-4">
-                                            <div class="text-sm text-[var(--text-secondary)]">${ group.description || 'No description' }</div>
+                                            <div class="text-sm text-[var(--text-secondary)]">${ group.description || t('adminDashboard.noDescription') }</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="text-sm text-[var(--text-secondary)]">
                                                 <i class="fas fa-users mr-1"></i>
-                                                ${ group.member_count || 0 } members
+                                                ${ group.member_count || 0 } ${t('adminDashboard.membersCount')}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
@@ -1047,9 +1047,9 @@ Summarization Instructions:
                         </div>
                         <div v-else class="p-8 text-center">
                             <i class="fas fa-users-slash text-4xl text-[var(--text-muted)] mb-3"></i>
-                            <p class="text-[var(--text-muted)]" v-text="isTeamAdminOnly ? 'You are not an admin of any groups yet' : 'No groups created yet'"></p>
+                            <p class="text-[var(--text-muted)]" v-text="isTeamAdminOnly ? t('adminDashboard.noGroupsAdmin') : t('adminDashboard.noGroupsCreated')"></p>
                             <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="mt-4 px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)]">
-                                <i class="fas fa-plus mr-2"></i> Create Your First Group
+                                <i class="fas fa-plus mr-2"></i> ${t('adminDashboard.createFirstGroup')}
                             </button>
                         </div>
                     </div>
@@ -1427,7 +1427,7 @@ Summarization Instructions:
                         </div>
                     </div>
                     <div v-else class="text-center py-4 text-[var(--text-muted)]">
-                        No members yet
+                        ${t('adminDashboard.noMembersYet')}
                     </div>
                 </div>
 
@@ -2238,7 +2238,7 @@ Summarization Instructions:
                 
                 const addUser = async () => {
                     if (newUser.value.password !== newUser.value.confirmPassword) {
-                        alert('Passwords do not match');
+                        alert(t('adminDashboard.passwordsDoNotMatch'));
                         return;
                     }
                     

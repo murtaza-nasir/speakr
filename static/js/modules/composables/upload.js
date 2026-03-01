@@ -7,25 +7,26 @@ import * as FailedUploads from '../db/failed-uploads.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
 
 // Parse error message and return friendly error info
-function getFriendlyError(errorMessage) {
-    if (!errorMessage) return { title: 'Processing Error', message: 'An error occurred' };
+function getFriendlyError(errorMessage, t) {
+    const _t = t || ((key) => key);
+    if (!errorMessage) return { title: _t('errors.processingError'), message: _t('errors.processingErrorMessage') };
     const lowerText = errorMessage.toLowerCase();
     const patterns = [
-        { patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'], title: 'File Too Large', guidance: 'Enable chunking in settings or compress the file' },
-        { patterns: ['timed out', 'timeout', 'deadline exceeded'], title: 'Processing Timeout', guidance: 'Try splitting the audio into smaller parts' },
-        { patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'], title: 'Authentication Error', guidance: 'Check the API key in settings' },
-        { patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'], title: 'Rate Limit Exceeded', guidance: 'Wait a few minutes and try again' },
-        { patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'], title: 'Connection Error', guidance: 'Check network connection' },
-        { patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'], title: 'Service Unavailable', guidance: 'Try again in a few minutes' },
-        { patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt'], title: 'Invalid Audio Format', guidance: 'Convert to MP3 or WAV before uploading' },
-        { patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'], title: 'Audio Extraction Failed', guidance: 'Convert to standard audio format' },
+        { patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'], title: _t('errors.fileTooLargeTitle'), guidance: _t('errors.enableChunkingGuidance') },
+        { patterns: ['timed out', 'timeout', 'deadline exceeded'], title: _t('errors.processingTimeout'), guidance: _t('errors.splitAudioGuidance') },
+        { patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'], title: _t('errors.authenticationError'), guidance: _t('errors.checkApiKeyGuidance') },
+        { patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'], title: _t('errors.rateLimitExceeded'), guidance: _t('errors.waitAndRetryGuidance') },
+        { patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'], title: _t('errors.connectionError'), guidance: _t('errors.checkNetworkGuidance') },
+        { patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'], title: _t('errors.serviceUnavailable'), guidance: _t('errors.tryAgainLaterGuidance') },
+        { patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt'], title: _t('errors.invalidAudioFormat'), guidance: _t('errors.convertFormatGuidance') },
+        { patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'], title: _t('errors.audioExtractionFailed'), guidance: _t('errors.convertStandardGuidance') },
     ];
     for (const pattern of patterns) {
         for (const p of pattern.patterns) {
             if (lowerText.includes(p)) return { title: pattern.title, guidance: pattern.guidance };
         }
     }
-    return { title: 'Processing Error', guidance: 'Try reprocessing the recording' };
+    return { title: _t('errors.processingError'), guidance: _t('errors.processingErrorFallbackGuidance') };
 }
 
 export function useUpload(state, utils) {
@@ -49,7 +50,7 @@ export function useUpload(state, utils) {
 
     const { computed, nextTick, ref } = Vue;
 
-    const { setGlobalError, showToast, formatFileSize, onChatComplete } = utils;
+    const { setGlobalError, showToast, formatFileSize, onChatComplete, t } = utils;
 
     // Compute selected tags from IDs
     const selectedTags = computed(() => {
@@ -188,7 +189,7 @@ export function useUpload(state, utils) {
             if (isAudioFile) {
                 // Only check general file size limit
                 if (fileObject.size > maxFileSizeMB.value * 1024 * 1024) {
-                    setGlobalError(`File "${fileObject.name}" exceeds the maximum size of ${maxFileSizeMB.value} MB and was skipped.`);
+                    setGlobalError(t('upload.fileExceedsMaxSize', { name: fileObject.name, size: maxFileSizeMB.value }));
                     continue;
                 }
 
@@ -207,7 +208,7 @@ export function useUpload(state, utils) {
                 });
                 filesAdded++;
             } else if (fileObject) {
-                setGlobalError(`Invalid file type "${fileObject.name}". Only audio files and video containers with audio (MP3, WAV, MP4, MOV, AVI, etc.) are accepted. File skipped.`);
+                setGlobalError(t('upload.invalidFileType', { name: fileObject.name }));
             }
         }
         if (filesAdded > 0) {
@@ -230,7 +231,7 @@ export function useUpload(state, utils) {
         if (index !== -1 && uploadQueue.value[index].status === 'ready') {
             uploadQueue.value.splice(index, 1);
             console.log(`Cancelled waiting file: ${clientId}`);
-            showToast('File removed from queue', 'fa-trash');
+            showToast(t('upload.fileRemovedFromQueue'), 'fa-trash');
         }
     };
 
@@ -468,7 +469,7 @@ export function useUpload(state, utils) {
             fileItem.progress = 0;
 
             // Show friendly error message
-            const friendlyErr = getFriendlyError(error.message);
+            const friendlyErr = getFriendlyError(error.message, t);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
 
             // Store failed upload in IndexedDB for background sync retry
@@ -609,7 +610,7 @@ export function useUpload(state, utils) {
         }
 
         incognitoProcessing.value = true;
-        processingMessage.value = 'Processing in incognito mode...';
+        processingMessage.value = t('incognito.processingInProgress');
         processingProgress.value = 10;
         progressPopupMinimized.value = false;
         progressPopupClosed.value = false;
@@ -646,7 +647,7 @@ export function useUpload(state, utils) {
             // Request auto-summarization
             formData.append('auto_summarize', 'true');
 
-            processingMessage.value = 'Uploading file for incognito processing...';
+            processingMessage.value = t('incognito.uploadingFile');
             processingProgress.value = 20;
 
             console.log('[Incognito] Uploading file:', fileItem.file.name);
@@ -673,13 +674,13 @@ export function useUpload(state, utils) {
             }
 
             processingProgress.value = 80;
-            processingMessage.value = 'Processing complete!';
+            processingMessage.value = t('incognito.processingComplete');
 
             // Store result in sessionStorage
             const incognitoData = {
                 id: 'incognito',
                 incognito: true,
-                title: data.title || 'Incognito Recording',
+                title: data.title || t('incognito.recordingTitle'),
                 transcription: data.transcription,
                 summary: data.summary,
                 summary_html: data.summary_html,
@@ -701,20 +702,20 @@ export function useUpload(state, utils) {
             }
 
             processingProgress.value = 100;
-            processingMessage.value = 'Incognito recording ready!';
+            processingMessage.value = t('incognito.recordingReady');
 
             // Auto-select the incognito recording and switch to detail view
             selectedRecording.value = incognitoData;
             currentView.value = 'detail';
 
             // Show toast
-            showToast('Incognito recording processed - data will be lost when tab closes', 'fa-user-secret');
+            showToast(t('incognito.recordingProcessed'), 'fa-user-secret');
 
             console.log('[Incognito] Processing complete');
 
         } catch (error) {
             console.error('[Incognito] Processing failed:', error);
-            const friendlyErr = getFriendlyError(error.message);
+            const friendlyErr = getFriendlyError(error.message, t);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
             fileItem.status = 'failed';
             fileItem.error = error.message;
@@ -730,14 +731,14 @@ export function useUpload(state, utils) {
      */
     const clearIncognitoRecordingWithConfirm = () => {
         if (incognitoRecording && incognitoRecording.value) {
-            if (confirm('This will permanently discard your incognito recording. Continue?')) {
+            if (confirm(t('incognito.discardConfirm'))) {
                 IncognitoStorage.clearIncognitoRecording();
                 incognitoRecording.value = null;
                 // If the incognito recording was selected, clear selection
                 if (selectedRecording.value?.id === 'incognito') {
                     selectedRecording.value = null;
                 }
-                showToast('Incognito recording discarded', 'fa-trash');
+                showToast(t('incognito.recordingDiscarded'), 'fa-trash');
             }
         }
     };

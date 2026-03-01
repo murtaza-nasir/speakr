@@ -249,13 +249,13 @@ export function useChat(state, utils) {
     const clearChat = () => {
         if (chatMessages.value.length > 0) {
             chatMessages.value = [];
-            showToast('Chat cleared', 'fa-broom');
+            showToast(t('chat.cleared'), 'fa-broom');
         }
     };
 
     const downloadChat = async () => {
         if (!selectedRecording.value || chatMessages.value.length === 0) {
-            showToast('No chat messages to download.', 'fa-exclamation-circle');
+            showToast(t('chat.noMessagesToDownload'), 'fa-exclamation-circle');
             return;
         }
 
@@ -274,7 +274,7 @@ export function useChat(state, utils) {
 
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || 'Failed to download chat', 'fa-exclamation-circle');
+                showToast(error.error || t('chat.downloadFailed'), 'fa-exclamation-circle');
                 return;
             }
 
@@ -304,10 +304,10 @@ export function useChat(state, utils) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            showToast('Chat downloaded successfully!');
+            showToast(t('chat.downloadSuccess'));
         } catch (error) {
             console.error('Download failed:', error);
-            showToast('Failed to download chat', 'fa-exclamation-circle');
+            showToast(t('chat.downloadFailed'), 'fa-exclamation-circle');
         }
     };
 
@@ -317,12 +317,12 @@ export function useChat(state, utils) {
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text)
                 .then(() => {
-                    showToast('Copied to clipboard!');
+                    showToast(t('messages.copiedSuccessfully'));
                     animateCopyButton(button);
                 })
                 .catch(err => {
                     console.error('Copy failed:', err);
-                    showToast('Failed to copy: ' + err.message, 'fa-exclamation-circle');
+                    showToast(t('messages.copyFailed') + ': ' + err.message, 'fa-exclamation-circle');
                     fallbackCopyTextToClipboard(text, button);
                 });
         } else {
@@ -354,14 +354,14 @@ export function useChat(state, utils) {
             document.body.removeChild(textArea);
 
             if (successful) {
-                showToast('Copied to clipboard!');
+                showToast(t('messages.copiedSuccessfully'));
                 if (button) animateCopyButton(button);
             } else {
-                showToast('Copy failed. Your browser may not support this feature.', 'fa-exclamation-circle');
+                showToast(t('messages.copyNotSupported'), 'fa-exclamation-circle');
             }
         } catch (err) {
             console.error('Fallback copy failed:', err);
-            showToast('Unable to copy: ' + err.message, 'fa-exclamation-circle');
+            showToast(t('messages.copyFailed') + ': ' + err.message, 'fa-exclamation-circle');
         }
     };
 

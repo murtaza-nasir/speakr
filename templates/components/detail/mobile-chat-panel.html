@@ -41,7 +41,7 @@
             <div v-else class="whitespace-pre-wrap">${message.content}</div>
         </div>
         <div v-if="isChatLoading" class="ai-message">
-            <i class="fas fa-spinner fa-spin mr-2"></i> Thinking...
+            <i class="fas fa-spinner fa-spin mr-2"></i> ${ t('chat.thinking') }
         </div>
     </div>
     <div class="border-t border-[var(--border-primary)] p-4 bg-[var(--bg-tertiary)]">
@@ -53,7 +53,7 @@
         </div>
         <p v-if="processedTranscription.isError" class="text-xs text-amber-500 mt-2">
             <i class="fas fa-exclamation-triangle mr-1"></i>
-            Cannot chat: transcription failed
+            ${ t('chat.cannotChatTranscriptionFailed') }
         </p>
     </div>
 </div>
