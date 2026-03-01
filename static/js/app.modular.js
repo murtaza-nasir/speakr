@@ -315,6 +315,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recordingDisclaimer = ref('');
             const showRecordingDisclaimerModal = ref(false);
             const pendingRecordingMode = ref(null);
+            const uploadDisclaimer = ref('');
+            const showUploadDisclaimerModal = ref(false);
+            const pendingUploadFiles = ref([]);
+            const customBanner = ref('');
+            const showBanner = ref(true);
 
             // --- Audio Recording State ---
             const isRecording = ref(false);
@@ -649,6 +654,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
+                uploadDisclaimer, showUploadDisclaimerModal, pendingUploadFiles,
+                customBanner, showBanner,
                 showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
@@ -1251,6 +1258,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             const reprocessComposable = useReprocess(state, utils);
             const recordingsComposable = useRecordings(state, utils, reprocessComposable);
             const uploadComposable = useUpload(state, utils);
+
+            // Upload disclaimer handlers
+            const acceptUploadDisclaimer = () => {
+                showUploadDisclaimerModal.value = false;
+                const files = pendingUploadFiles.value;
+                pendingUploadFiles.value = [];
+                // Temporarily clear disclaimer to prevent re-trigger, then re-queue
+                const saved = uploadDisclaimer.value;
+                uploadDisclaimer.value = '';
+                uploadComposable.addFilesToQueue(files);
+                uploadDisclaimer.value = saved;
+            };
+
+            const cancelUploadDisclaimer = () => {
+                showUploadDisclaimerModal.value = false;
+                pendingUploadFiles.value = [];
+            };
 
             // Add startUpload to utils for audio composable to use
             utils.startUploadQueue = uploadComposable.startUpload;
@@ -1998,6 +2022,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return marked.parse(recordingDisclaimer.value);
             });
 
+            // Upload disclaimer parsed as markdown
+            const uploadDisclaimerHtml = computed(() => {
+                if (!uploadDisclaimer.value || uploadDisclaimer.value.trim() === '') {
+                    return '';
+                }
+                return marked.parse(uploadDisclaimer.value);
+            });
+
+            // Custom banner parsed as markdown
+            const customBannerHtml = computed(() => {
+                if (!customBanner.value || customBanner.value.trim() === '') {
+                    return '';
+                }
+                return marked.parse(customBanner.value);
+            });
+
             // Get tag prompt preview
             const getTagPromptPreview = (tagId) => {
                 const tag = availableTags.value.find(t => t.id == tagId);
@@ -2237,6 +2277,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         chunkingMode.value = config.chunking_mode || 'size';
                         chunkingLimit.value = config.chunking_limit || 20;
                         recordingDisclaimer.value = config.recording_disclaimer || '';
+                        uploadDisclaimer.value = config.upload_disclaimer || '';
+                        customBanner.value = config.custom_banner || '';
                         canDeleteRecordings.value = config.can_delete_recordings !== false;
                         enableInternalSharing.value = config.enable_internal_sharing === true;
                         enableArchiveToggle.value = config.enable_archive_toggle === true;
@@ -2443,6 +2485,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 navigateToDuplicate,
                 tagsWithCustomPrompts,
                 recordingDisclaimerHtml,
+                uploadDisclaimerHtml,
+                customBannerHtml,
+                acceptUploadDisclaimer,
+                cancelUploadDisclaimer,
                 getTagPromptPreview,
 
                 // Utilities

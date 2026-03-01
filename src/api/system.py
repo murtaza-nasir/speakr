@@ -239,6 +239,8 @@ def get_config():
         return jsonify({
             'max_file_size_mb': max_file_size_mb,
             'recording_disclaimer': SystemSetting.get_setting('recording_disclaimer', ''),
+            'upload_disclaimer': SystemSetting.get_setting('upload_disclaimer', ''),
+            'custom_banner': SystemSetting.get_setting('custom_banner', ''),
             'use_asr_endpoint': asr_enabled,  # Derived from connector or legacy env var
             'connector_supports_diarization': connector_supports_diarization,  # Connector capability
             'connector_supports_speaker_count': connector_supports_speaker_count,  # Min/max speakers

@@ -69,6 +69,8 @@
 
             <!-- Main Content Area -->
             <main :class="['flex-1 flex flex-col overflow-hidden main-content', !isSidebarCollapsed && !isMobileScreen ? 'sidebar-open' : '']">
+                <!-- Custom Banner -->
+                {% include 'components/banner.html' %}
                 <!-- Upload View -->
                 {% include 'components/upload-view.html' %}
 
@@ -101,6 +103,7 @@
         {% include 'modals/color-scheme-modal.html' %}
         {% include 'modals/system-audio-help-modal.html' %}
         {% include 'modals/recording-disclaimer-modal.html' %}
+        {% include 'modals/upload-disclaimer-modal.html' %}
         {% include 'modals/recording-recovery-modal.html' %}
         {% include 'modals/unified-share-modal.html' %}
         {% include 'modals/share-delete-modal.html' %}

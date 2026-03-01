@@ -247,6 +247,8 @@
       "defaultSummaryPromptDesc": "Standard-Zusammenfassungsprompt, der verwendet wird, wenn Benutzer keinen eigenen Prompt festgelegt haben. Dies dient als Basis-Prompt für alle Benutzer.",
       "maxFileSizeDesc": "Maximale Dateigröße für Audio-Uploads in Megabyte (MB).",
       "recordingDisclaimerDesc": "Rechtlicher Hinweis, der Benutzern vor Beginn der Aufnahme angezeigt wird. Unterstützt Markdown-Formatierung. Leer lassen zum Deaktivieren.",
+      "uploadDisclaimerDesc": "Rechtlicher Hinweis, der vor dem Hochladen von Dateien angezeigt wird. Unterstützt Markdown. Leer lassen zum Deaktivieren.",
+      "customBannerDesc": "Benutzerdefiniertes Banner oben auf der Seite. Unterstützt Markdown. Leer lassen zum Deaktivieren.",
       "transcriptLengthLimitDesc": "Maximale Anzahl von Zeichen, die vom Transkript an das LLM für Zusammenfassung und Chat gesendet werden. Verwenden Sie -1 für kein Limit."
     },
     "storageUsed": "GENUTZTER SPEICHER",
@@ -842,6 +844,8 @@
     "editTranscription": "Transkription bearbeiten",
     "identifySpeakers": "Sprecher identifizieren",
     "recordingNotice": "Aufnahme-Hinweis",
+    "uploadNotice": "Upload-Hinweis",
+    "uploadFiles": "Dateien hochladen",
     "reprocessSummary": "Zusammenfassung neu verarbeiten",
     "reprocessTranscription": "Transkription neu verarbeiten",
     "resetStatus": "Aufnahme-Status zurücksetzen?",

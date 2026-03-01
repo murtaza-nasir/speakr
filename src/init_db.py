@@ -600,6 +600,24 @@ def initialize_database(app):
             )
             app.logger.info("Initialized recording_disclaimer setting")
 
+        if not SystemSetting.query.filter_by(key='upload_disclaimer').first():
+            SystemSetting.set_setting(
+                key='upload_disclaimer',
+                value='',
+                description='Legal disclaimer shown before file uploads. Supports Markdown. Leave empty to disable.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized upload_disclaimer setting")
+
+        if not SystemSetting.query.filter_by(key='custom_banner').first():
+            SystemSetting.set_setting(
+                key='custom_banner',
+                value='',
+                description='Custom banner shown at the top of the page. Supports Markdown. Leave empty to disable.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized custom_banner setting")
+
         if not SystemSetting.query.filter_by(key='disable_auto_summarization').first():
             SystemSetting.set_setting(
                 key='disable_auto_summarization',

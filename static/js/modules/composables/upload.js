@@ -42,7 +42,9 @@ export function useUpload(state, utils) {
         // Incognito mode state
         incognitoMode, incognitoRecording, incognitoProcessing,
         // View state
-        currentView
+        currentView,
+        // Upload disclaimer state
+        uploadDisclaimer, showUploadDisclaimerModal, pendingUploadFiles
     } = state;
 
     const { computed, nextTick, ref } = Vue;
@@ -154,6 +156,12 @@ export function useUpload(state, utils) {
 
     // Add files to the upload queue
     const addFilesToQueue = (files) => {
+        // If upload disclaimer is set, show modal before queuing
+        if (uploadDisclaimer.value && uploadDisclaimer.value.trim() !== '') {
+            pendingUploadFiles.value = Array.from(files);
+            showUploadDisclaimerModal.value = true;
+            return;
+        }
         let filesAdded = 0;
         for (const file of files) {
             const fileObject = file.file ? file.file : file;

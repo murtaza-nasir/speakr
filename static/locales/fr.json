@@ -241,6 +241,8 @@
       "defaultSummaryPromptDesc": "Invite de résumé par défaut utilisée lorsque les utilisateurs n'ont pas défini leur propre invite. Cela sert d'invite de base pour tous les utilisateurs.",
       "maxFileSizeDesc": "Taille maximale de fichier autorisée pour les téléchargements audio en mégaoctets (Mo).",
       "recordingDisclaimerDesc": "Avis légal affiché aux utilisateurs avant le début de l'enregistrement. Prend en charge le formatage Markdown. Laisser vide pour désactiver.",
+      "uploadDisclaimerDesc": "Avis légal affiché avant le téléchargement de fichiers. Prend en charge Markdown. Laisser vide pour désactiver.",
+      "customBannerDesc": "Bannière personnalisée affichée en haut de la page. Prend en charge Markdown. Laisser vide pour désactiver.",
       "transcriptLengthLimitDesc": "Nombre maximal de caractères à envoyer de la transcription au LLM pour le résumé et le chat. Utilisez -1 pour aucune limite."
     },
     "storageUsed": "STOCKAGE UTILISÉ",
@@ -836,6 +838,8 @@
     "editTranscription": "Modifier la Transcription",
     "identifySpeakers": "Identifier les Orateurs",
     "recordingNotice": "Avis d'Enregistrement",
+    "uploadNotice": "Avis de Téléchargement",
+    "uploadFiles": "Télécharger les fichiers",
     "reprocessSummary": "Retraiter le Résumé",
     "reprocessTranscription": "Retraiter la Transcription",
     "resetStatus": "Réinitialiser le Statut de l'Enregistrement?",

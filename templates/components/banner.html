@@ -1,0 +1,11 @@
+<!-- Custom Banner -->
+<div v-if="customBannerHtml && showBanner"
+     class="flex-shrink-0 bg-[var(--bg-accent)] bg-opacity-10 border-b border-[var(--border-accent)]
+            px-4 py-2 flex items-center gap-3 text-sm text-[var(--text-primary)]">
+    <i class="fas fa-bullhorn text-[var(--text-accent)] flex-shrink-0"></i>
+    <div class="flex-1 ai-message banner-content" v-html="customBannerHtml"></div>
+    <button @click="showBanner = false"
+            class="text-[var(--text-muted)] hover:text-[var(--text-primary)] flex-shrink-0">
+        <i class="fas fa-times"></i>
+    </button>
+</div>

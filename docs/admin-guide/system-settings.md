@@ -61,6 +61,46 @@ Organizations often use this for compliance requirements - reminding users about
 
 Keep disclaimers concise and relevant. Users see this message frequently, so lengthy legal text becomes an ignored click-through. Focus on the most important points, and link to detailed policies if needed. The markdown support lets you format the message clearly for better readability and comprehension.
 
+## Upload Disclaimer
+
+The upload disclaimer works just like the recording disclaimer, but it appears when users upload files rather than when they start recording. Every time a user drags and drops files or selects files for upload, they'll see this notice and must accept it before the files are queued for processing.
+
+This is useful when uploaded files may contain third-party content or when your organization needs to remind users about data handling before they submit files to the system. The disclaimer supports full markdown formatting, just like the recording disclaimer.
+
+!!! example "Example upload disclaimer"
+    ```markdown
+    ## Upload Policy
+
+    By uploading files, you confirm that:
+
+    - You have the right to share this content
+    - No sensitive personal data is included without authorization
+    - Files will be processed by external transcription services
+
+    > See our [data handling policy](https://example.com/policy) for details.
+    ```
+
+Leave this field empty to disable the upload disclaimer entirely. When empty, file uploads proceed immediately without any prompt.
+
+## Custom Banner
+
+The custom banner displays a persistent message across the top of the main content area for all users. It's useful for announcements, maintenance notices, compliance reminders, or any message you want everyone to see when they use Speakr.
+
+The banner appears below the header and above the main content. Users can dismiss it by clicking the X button, but it reappears on page refresh, ensuring the message stays visible as long as you have it configured.
+
+Like the disclaimers, the banner supports full markdown formatting, so you can include bold text, links, and other formatting. Keep banner text short and to the point since it takes up screen space.
+
+!!! example "Example banners"
+    ```markdown
+    **System update** — Speakr will be briefly unavailable on Sunday 10pm-12am for maintenance.
+    ```
+
+    ```markdown
+    All recordings are subject to our [acceptable use policy](https://example.com/aup). Contact IT with questions.
+    ```
+
+Leave this field empty to hide the banner completely.
+
 ## System-Wide Impact
 
 Every setting on this page affects all users immediately. Changes take effect as soon as you save them, without requiring system restarts or user logouts. This immediate application means you should test changes carefully and communicate significant modifications to your users.
