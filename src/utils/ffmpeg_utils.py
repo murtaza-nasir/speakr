@@ -367,7 +367,8 @@ def extract_audio_segment(
         '-i', input_path,
         '-ss', str(start_time),
         '-t', str(duration),
-        '-c', 'copy',  # Copy codec (no re-encoding)
+        '-vn',           # Drop video streams (audio segment only)
+        '-c:a', 'copy',  # Copy audio codec (no re-encoding)
         '-y',
         output_path
     ]
