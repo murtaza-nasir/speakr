@@ -279,6 +279,20 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'user', 'auto_summarization', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added auto_summarization column to user table")
 
+        # Transcription hints (hotwords and initial prompt for improving ASR accuracy)
+        if add_column_if_not_exists(engine, 'user', 'transcription_hotwords', 'TEXT'):
+            app.logger.info("Added transcription_hotwords column to user table")
+        if add_column_if_not_exists(engine, 'user', 'transcription_initial_prompt', 'TEXT'):
+            app.logger.info("Added transcription_initial_prompt column to user table")
+        if add_column_if_not_exists(engine, 'tag', 'default_hotwords', 'TEXT'):
+            app.logger.info("Added default_hotwords column to tag table")
+        if add_column_if_not_exists(engine, 'tag', 'default_initial_prompt', 'TEXT'):
+            app.logger.info("Added default_initial_prompt column to tag table")
+        if add_column_if_not_exists(engine, 'folder', 'default_hotwords', 'TEXT'):
+            app.logger.info("Added default_hotwords column to folder table")
+        if add_column_if_not_exists(engine, 'folder', 'default_initial_prompt', 'TEXT'):
+            app.logger.info("Added default_initial_prompt column to folder table")
+
         # Create indexes for token lookups (for faster token verification)
         try:
             if create_index_if_not_exists(engine, 'ix_user_email_verification_token', 'user', 'email_verification_token'):

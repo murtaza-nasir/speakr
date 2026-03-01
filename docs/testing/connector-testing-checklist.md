@@ -25,6 +25,7 @@ TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
 ```
 
 **Expected:**
+
 - [ ] Logs show "Auto-detected OpenAI Transcribe"
 - [ ] `/api/system/info` shows `connector: "openai_transcribe"`
 - [ ] Transcription works with speaker labels (A, B, C...)
@@ -36,6 +37,7 @@ ASR_BASE_URL=http://whisperx-asr:9000
 ```
 
 **Expected:**
+
 - [ ] Logs show "Auto-detected ASR endpoint"
 - [ ] `/api/system/info` shows `connector: "asr_endpoint"`
 - [ ] No deprecation warning (USE_ASR_ENDPOINT not set)
@@ -48,6 +50,7 @@ ASR_BASE_URL=http://whisperx-asr:9000
 ```
 
 **Expected:**
+
 - [ ] Logs show deprecation warning for USE_ASR_ENDPOINT
 - [ ] Connector still works correctly
 - [ ] `/api/system/info` shows `connector: "asr_endpoint"`
@@ -61,6 +64,7 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 ```
 
 **Expected:**
+
 - [ ] Uses openai_whisper despite ASR_BASE_URL being set
 - [ ] `/api/system/info` shows `connector: "openai_whisper"`
 
@@ -72,10 +76,12 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 **Config:** Use `TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize`
 
 **Steps:**
+
 1. Upload audio with 2+ speakers
 2. Wait for transcription to complete
 
 **Expected:**
+
 - [ ] Transcription shows speaker labels (A, B, C...)
 - [ ] Speaker identification button appears in UI
 - [ ] Bubble view toggle available
@@ -85,10 +91,12 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 **Config:** Use ASR endpoint with `ASR_DIARIZE=true`
 
 **Steps:**
+
 1. Upload audio with 2+ speakers
 2. Wait for transcription to complete
 
 **Expected:**
+
 - [ ] Transcription shows speaker labels (SPEAKER_00, SPEAKER_01...)
 - [ ] Speaker identification button appears in UI
 - [ ] Min/max speakers options visible in upload form
@@ -98,10 +106,12 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 **Config:** Use `TRANSCRIPTION_MODEL=whisper-1`
 
 **Steps:**
+
 1. Upload audio with 2+ speakers
 2. Wait for transcription to complete
 
 **Expected:**
+
 - [ ] Transcription is plain text (no speaker labels)
 - [ ] Speaker identification button NOT visible
 - [ ] Bubble view toggle NOT available
@@ -112,11 +122,13 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 
 ### Test 3.1: Speaker Count Controls (ASR Only)
 **ASR Config:**
+
 - [ ] Min speakers field visible in upload form
 - [ ] Max speakers field visible in upload form
 - [ ] Min/max speakers visible in reprocess modal
 
 **OpenAI Config:**
+
 - [ ] Min speakers field NOT visible
 - [ ] Max speakers field NOT visible
 
@@ -140,9 +152,11 @@ CHUNK_LIMIT=10MB
 ```
 
 **Steps:**
+
 1. Upload file >10MB
 
 **Expected:**
+
 - [ ] File uploads without app-level chunking
 - [ ] Logs show "Connector handles chunking internally"
 - [ ] No chunk progress in UI
@@ -156,9 +170,11 @@ CHUNK_LIMIT=10MB
 ```
 
 **Steps:**
+
 1. Upload file >10MB
 
 **Expected:**
+
 - [ ] File is chunked by the app
 - [ ] Logs show chunk processing
 - [ ] Transcription merges correctly
@@ -171,9 +187,11 @@ ENABLE_CHUNKING=false
 ```
 
 **Steps:**
+
 1. Upload file >25MB
 
 **Expected:**
+
 - [ ] Upload fails with file size error (OpenAI 25MB limit)
 - [ ] Error message is clear
 
@@ -185,10 +203,12 @@ ENABLE_CHUNKING=false
 **Config:** Any OpenAI connector
 
 **Steps:**
+
 1. Upload an opus format audio file
 2. Check logs
 
 **Expected:**
+
 - [ ] File is converted before transcription
 - [ ] Logs show codec conversion
 - [ ] Transcription succeeds
@@ -200,18 +220,22 @@ AUDIO_UNSUPPORTED_CODECS=aac
 ```
 
 **Steps:**
+
 1. Upload an AAC format audio file
 2. Check logs
 
 **Expected:**
+
 - [ ] File is converted before transcription
 - [ ] Logs show "Excluding codecs from supported list"
 
 ### Test 5.3: Supported Format (No Conversion)
 **Steps:**
+
 1. Upload an MP3 file
 
 **Expected:**
+
 - [ ] No conversion occurs
 - [ ] Transcription proceeds directly
 
@@ -226,6 +250,7 @@ TRANSCRIPTION_API_KEY=invalid-key
 ```
 
 **Expected:**
+
 - [ ] Clear error message about authentication
 - [ ] Job fails gracefully
 - [ ] UI shows error state
@@ -237,6 +262,7 @@ ASR_BASE_URL=http://nonexistent:9000
 ```
 
 **Expected:**
+
 - [ ] Connection error logged
 - [ ] Job fails with timeout/connection error
 - [ ] UI shows error state
@@ -248,6 +274,7 @@ TRANSCRIPTION_CONNECTOR=nonexistent
 ```
 
 **Expected:**
+
 - [ ] App fails to start (or logs critical error)
 - [ ] Error message lists available connectors
 
@@ -263,11 +290,13 @@ ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
 
 **Steps:**
+
 1. Upload audio with known speaker
 2. Create voice profile from transcription
 3. Upload another audio with same speaker
 
 **Expected:**
+
 - [ ] Speaker embeddings returned in response
 - [ ] Voice profile creation works
 - [ ] Automatic speaker matching works
@@ -279,6 +308,7 @@ ASR_RETURN_SPEAKER_EMBEDDINGS=false
 ```
 
 **Expected:**
+
 - [ ] Voice profile features not available
 - [ ] No embeddings in response
 
@@ -312,45 +342,107 @@ ASR_RETURN_SPEAKER_EMBEDDINGS=false
 
 ### Test 9.1: Reprocess with Different Language
 **Steps:**
+
 1. Transcribe file (auto-detect language)
 2. Reprocess with specific language
 
 **Expected:**
+
 - [ ] Reprocess uses selected language
 - [ ] Transcription updates correctly
 
 ### Test 9.2: Reprocess with Speaker Count (ASR)
 **Steps:**
+
 1. Transcribe file with auto speaker detection
 2. Reprocess with min_speakers=2, max_speakers=3
 
 **Expected:**
+
 - [ ] Min/max speakers respected
 - [ ] Diarization quality may improve
 
 ---
 
-## 10. Performance & Edge Cases
+## 10. Hotwords & Initial Prompt
 
-### Test 10.1: Very Long Audio
+### Test 10.1: ASR Endpoint with Hotwords
+**Config:** ASR endpoint connector
+
+**Steps:**
+
+1. Upload audio containing domain-specific terms
+2. Set hotwords in Advanced ASR Options (e.g., "Speakr, CTranslate2, PyAnnote")
+
+**Expected:**
+
+- [ ] Hotwords passed as `hotwords` query parameter to ASR
+- [ ] Transcription accuracy improves for specified terms
+- [ ] Server logs show hotwords in request
+
+### Test 10.2: ASR Endpoint with Initial Prompt
+**Config:** ASR endpoint connector
+
+**Steps:**
+
+1. Upload audio file
+2. Set initial prompt in Advanced ASR Options
+
+**Expected:**
+
+- [ ] Initial prompt passed as `initial_prompt` query parameter to ASR
+- [ ] Server logs show initial_prompt in request
+
+### Test 10.3: OpenAI Connector with Hotwords + Prompt
+**Config:** OpenAI Whisper or OpenAI Transcribe connector
+
+**Steps:**
+
+1. Upload audio with both hotwords and initial prompt set
+
+**Expected:**
+
+- [ ] Hotwords and initial prompt combined into single `prompt` parameter
+- [ ] Combined with `. ` separator
+
+### Test 10.4: Precedence Hierarchy
+**Steps:**
+
+1. Set user-level hotwords in Account Settings
+2. Create a tag with different hotwords
+3. Upload with tag applied but no form-level hotwords
+
+**Expected:**
+
+- [ ] Tag hotwords used (overrides user defaults)
+- [ ] Upload form values override tag when explicitly set
+
+---
+
+## 11. Performance & Edge Cases
+
+### Test 11.1: Very Long Audio
 Upload audio >1 hour
 
 **Expected:**
+
 - [ ] Processing completes (may take time)
 - [ ] No timeout errors
 - [ ] Transcription is complete
 
-### Test 10.2: Empty/Silent Audio
+### Test 11.2: Empty/Silent Audio
 Upload silent audio file
 
 **Expected:**
+
 - [ ] Transcription returns empty or minimal text
 - [ ] No errors
 
-### Test 10.3: Corrupt Audio File
+### Test 11.3: Corrupt Audio File
 Upload corrupt/invalid audio file
 
 **Expected:**
+
 - [ ] Clear error message
 - [ ] Job fails gracefully
 

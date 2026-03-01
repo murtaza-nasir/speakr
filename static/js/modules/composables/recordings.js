@@ -12,7 +12,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         showSharedWithMe, showArchivedRecordings, searchQuery, searchDebounceTimer,
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, filterFolder, sortBy,
-        availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+        availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
         useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
         speakerColorMap,
@@ -431,6 +431,14 @@ export function useRecordings(state, utils, reprocessComposable) {
             }
             if (firstTag.default_max_speakers) {
                 uploadMaxSpeakers.value = firstTag.default_max_speakers;
+            }
+        }
+        if (firstTag) {
+            if (firstTag.default_hotwords) {
+                uploadHotwords.value = firstTag.default_hotwords;
+            }
+            if (firstTag.default_initial_prompt) {
+                uploadInitialPrompt.value = firstTag.default_initial_prompt;
             }
         }
     };

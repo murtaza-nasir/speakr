@@ -39,12 +39,15 @@ In the Transcript Templates section, click the **Create Template** button.
 ### Step 2: Fill in Template Details
 
 **Template Name**: Give your template a descriptive name
+
 - Examples: "Interview Format", "Subtitles SRT", "Meeting Minutes"
 
 **Description** (Optional): Add a brief description of when to use this template
+
 - Example: "Use for client interview transcriptions"
 
 **Template**: Enter your format pattern using variables
+
 - Example: `[{{start_time}}] {{speaker}}: {{text}}`
 
 ### Step 3: Set Default (Optional)
@@ -174,6 +177,7 @@ I'm doing great, thanks for asking!
 
 ### Creating Default Templates
 If you have no templates, click **Create Default Templates** to generate a comprehensive set of starter templates:
+
 - Simple Conversation - Clean format with just speaker names
 - Timestamped - Basic format with time ranges
 - Interview Q&A - Professional interview format
@@ -313,6 +317,7 @@ Here's a complete setup for automatic export to Obsidian:
    ```
 
 Now when any recording finishes processing, Speakr automatically writes a markdown file to your Obsidian vault with:
+
 - Metadata (date, participants, tags, processing times)
 - Notes (if you added any)
 - AI-generated summary
@@ -350,6 +355,7 @@ This same approach works with Logseq, Notion (if you set the export directory to
 ## Need Help?
 
 If you encounter issues or have questions about transcript templates:
+
 1. Check this guide for examples and troubleshooting
 2. Try the default templates as a starting point
 3. Report issues at [GitHub Issues](https://github.com/anthropics/claude-code/issues)

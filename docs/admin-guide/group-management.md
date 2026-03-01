@@ -238,6 +238,7 @@ DELETION_MODE=audio_only|full_recording
 Groups use several database tables that work together:
 
 **Group Table**:
+
 - `id`: Primary key
 - `name`: Group name (max 100 chars)
 - `description`: Optional group description
@@ -245,6 +246,7 @@ Groups use several database tables that work together:
 - `created_at`: Creation timestamp
 
 **TeamMembership Table**:
+
 - `id`: Primary key
 - `team_id`: References Group
 - `user_id`: References User
@@ -252,6 +254,7 @@ Groups use several database tables that work together:
 - `joined_at`: Membership timestamp
 
 **Tag Table** (Extended):
+
 - `team_id`: References Group (null for personal tags)
 - `retention_days`: Custom retention override (null uses global)
 - `protect_from_deletion`: Boolean protection flag
@@ -267,6 +270,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 **Cause**: Internal sharing not enabled or not configured correctly.
 
 **Solution**:
+
 1. Check `.env` contains `ENABLE_INTERNAL_SHARING=true`
 2. Restart Speakr after `.env` changes
 3. Clear browser cache and reload
@@ -277,6 +281,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 **Cause**: User not added to group, or internal sharing disabled.
 
 **Solution**:
+
 1. Verify user is listed in group membership
 2. Confirm `ENABLE_INTERNAL_SHARING=true` in `.env`
 3. Check user is logged in (group tags hidden for anonymous users)
@@ -287,6 +292,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 **Cause**: Group tag misconfigured or internal sharing disabled.
 
 **Solution**:
+
 1. Edit the group tag and verify "Share with all group members" or "Share with group leads" is enabled
 2. Confirm `ENABLE_INTERNAL_SHARING=true` in `.env`
 3. Check application logs when applying tags for sharing errors
@@ -297,6 +303,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 **Cause**: User doesn't have admin role in any group, or routing issue.
 
 **Solution**:
+
 1. Verify user role is "admin" not "member" in group membership
 2. Have user log out and back in to refresh session
 3. Check "Group Management" link appears in user menu (not "Admin")
@@ -307,6 +314,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 **Cause**: Protected tags, misconfigured retention, or auto-deletion disabled.
 
 **Solution**:
+
 1. Check if recording has protected group tags
 2. Verify `ENABLE_AUTO_DELETION=true` in `.env`
 3. Confirm `GLOBAL_RETENTION_DAYS` is set if no tag retention applies
@@ -318,6 +326,7 @@ Cascade deletion is configured so deleting a group deletes its tags and membersh
 **Cause**: All applicable shares already exist, or no recordings have group tags.
 
 **Solution**:
+
 1. Verify recordings actually have tags from this group
 2. Check if group members already have access via other shares
 3. Review whether recordings are owned by current group members (no self-sharing)

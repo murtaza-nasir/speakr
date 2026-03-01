@@ -587,6 +587,11 @@ def account():
             current_user.summary_prompt = summary_prompt_text if summary_prompt_text else None
             # Handle event extraction setting
             current_user.extract_events = 'extract_events' in request.form
+            # Handle transcription hints
+            hotwords = request.form.get('transcription_hotwords')
+            current_user.transcription_hotwords = hotwords if hotwords else None
+            initial_prompt = request.form.get('transcription_initial_prompt')
+            current_user.transcription_initial_prompt = initial_prompt if initial_prompt else None
 
         # Only update diarize if it's not locked by env var
         if 'ASR_DIARIZE' not in os.environ:

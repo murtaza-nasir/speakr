@@ -319,6 +319,16 @@ class FileMonitor:
                     # This should not happen if the lock is held, but good to log
                     self.logger.warning(f"Locked file {processing_path} was already deleted.")
                 
+                # Compute file hash on the ORIGINAL file before any conversion/compression.
+                # Lossy re-encoding produces different bytes each run, so hashing after
+                # conversion would miss duplicates.
+                file_hash = None
+                try:
+                    from src.utils.file_hash import compute_file_sha256
+                    file_hash = compute_file_sha256(str(destination_path))
+                except Exception as e:
+                    self.logger.warning(f"Could not compute file hash: {e}")
+
                 # Probe once to get codec info, then pass through pipeline to avoid redundant calls
                 codec_info = None
                 try:
@@ -372,13 +382,7 @@ class FileMonitor:
                         self.logger.error(f"FFmpeg conversion failed: {e}")
                         raise
 
-                # Compute file hash for duplicate detection
-                file_hash = None
-                try:
-                    from src.utils.file_hash import compute_file_sha256
-                    file_hash = compute_file_sha256(str(final_path))
-                except Exception as e:
-                    self.logger.warning(f"Could not compute file hash: {e}")
+                # (file_hash already computed above, before conversion)
 
                 # Get file size and MIME type
                 file_size = final_path.stat().st_size

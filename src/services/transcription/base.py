@@ -72,6 +72,7 @@ class TranscriptionRequest:
 
     # Advanced options
     prompt: Optional[str] = None
+    hotwords: Optional[str] = None  # Comma-separated words to bias recognition
     temperature: Optional[float] = None
 
     # Provider-specific options (passthrough)

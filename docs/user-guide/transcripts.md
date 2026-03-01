@@ -224,6 +224,7 @@ These export features are particularly useful when you've used the chat to extra
 The Notes tab is your personal workspace for adding context and thoughts about the recording. These notes are **always private** - only you can see them, whether you own the recording or it's been shared with you. This is different from summaries, which are shared with all users who have access to the recording.
 
 **Important: Notes are Personal, Summaries are Shared**
+
 - **Notes**: Always private to each user. You can add and edit your own notes on any recording (owned or shared) without needing any special permissions. Other users cannot see your notes, and you cannot see theirs.
 - **Summary**: Shared content created by the recording owner. Only users with edit permission can modify the summary, and all users with access to the recording see the same summary.
 

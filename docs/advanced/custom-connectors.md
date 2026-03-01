@@ -81,7 +81,8 @@ class TranscriptionRequest:
     max_speakers: Optional[int] = None
 
     # Advanced options
-    prompt: Optional[str] = None
+    prompt: Optional[str] = None          # Initial prompt for context/guidance
+    hotwords: Optional[str] = None        # Comma-separated words to bias recognition
     temperature: Optional[float] = None
     extra_options: Dict[str, Any] = field(default_factory=dict)
 
@@ -538,6 +539,7 @@ If you create a connector for a popular provider, consider contributing it back 
 4. Submit a pull request
 
 Popular providers we'd love to see connectors for:
+
 - Deepgram
 - AssemblyAI
 - Google Cloud Speech-to-Text

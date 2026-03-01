@@ -176,6 +176,7 @@ Ensure you have the correct environment variables set. Check the auto-detection 
 ### Features Missing After Migration
 
 If UI features like speaker identification are missing:
+
 - Verify the transcription actually contains diarization data
 - Check that your connector supports the feature (e.g., voice profiles require ASR endpoint)
 

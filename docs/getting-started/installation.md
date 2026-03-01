@@ -93,6 +93,7 @@ TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
 ```
 
 The connector automatically detects that you want the OpenAI Transcribe connector based on the model name. Other available models:
+
 - `gpt-4o-transcribe` - High quality without diarization
 - `gpt-4o-mini-transcribe` - Cost-effective option
 - `whisper-1` - Legacy model (uses Whisper connector)
@@ -179,6 +180,7 @@ ASR_BASE_URL=http://whisper-asr:9000
 > **Note:** The `USE_ASR_ENDPOINT=true` setting is deprecated. Just setting `ASR_BASE_URL` automatically enables ASR mode.
 
 The ASR_BASE_URL depends on your deployment architecture:
+
 - **Same Docker Compose stack:** Use the service name (e.g., `http://whisperx-asr:9000` or `http://whisper-asr:9000`) - Docker's internal networking
 - **Separate machine:** Use the full URL with IP address or domain name (e.g., `http://192.168.1.100:9000`)
 
@@ -399,12 +401,14 @@ If you need speaker diarization to identify different speakers in your recording
 #### Option 1: WhisperX ASR Service (Recommended - Supports Voice Profiles)
 
 **Use this if you want:**
+
 - AI-powered speaker voice profiles with automatic recognition
 - 256-dimensional speaker embeddings
 - Better speaker-to-word timestamp alignment
 - Exclusive diarization for cleaner speaker transitions
 
 **Prerequisites:**
+
 1. **Hugging Face Account & Model Access** - Visit and accept terms for ALL models:
    - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
    - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
@@ -442,11 +446,13 @@ See the [WhisperX ASR Service README](https://github.com/murtaza-nasir/whisperx-
 #### Option 2: OpenAI Whisper ASR Webservice (Basic Diarization Only)
 
 **Use this if you:**
+
 - Only need basic speaker identification (Speaker 1, Speaker 2, etc.)
 - Don't need voice profiles or speaker embeddings
 - Want simpler setup with lower resource requirements
 
 **Prerequisites:**
+
 1. **Hugging Face Account & Model Access** - Visit and accept terms:
    - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
    - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)

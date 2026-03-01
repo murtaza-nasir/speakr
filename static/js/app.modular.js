@@ -385,6 +385,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const uploadLanguage = ref('');
             const uploadMinSpeakers = ref('');
             const uploadMaxSpeakers = ref('');
+            const uploadHotwords = ref('');
+            const uploadInitialPrompt = ref('');
 
             // Tag Selection
             const availableTags = ref([]);
@@ -647,7 +649,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
                 maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, chunkingLimitDisplay,
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
-                showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers,
+                showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 

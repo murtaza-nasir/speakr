@@ -157,6 +157,11 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             if request.max_speakers:
                 params['max_speakers'] = request.max_speakers
 
+            if request.prompt:
+                params['initial_prompt'] = request.prompt
+            if request.hotwords:
+                params['hotwords'] = request.hotwords
+
             content_type = request.mime_type or 'application/octet-stream'
             files = {
                 'audio_file': (request.filename, request.audio_file, content_type)

@@ -204,8 +204,14 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             else:
                 # Non-diarization models - request verbose_json for timestamps
                 data["response_format"] = "verbose_json"
+                # Combine initial prompt and hotwords into a single prompt
+                prompt_parts = []
                 if request.prompt:
-                    data["prompt"] = request.prompt
+                    prompt_parts.append(request.prompt)
+                if request.hotwords:
+                    prompt_parts.append(request.hotwords)
+                if prompt_parts:
+                    data["prompt"] = ". ".join(prompt_parts)
 
             # Prepare file for upload
             content_type = request.mime_type or 'application/octet-stream'

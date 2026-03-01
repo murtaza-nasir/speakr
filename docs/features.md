@@ -195,6 +195,15 @@ Set up a watched directory where dropped audio files are automatically processed
 
 Automatically export completed transcriptions and summaries to markdown files after processing. Configure the export directory to point to your Obsidian vault, Logseq directory, or any other note-taking system for seamless integration. Choose what to export (transcription, summary, or both) and let Speakr maintain synchronized copies of your recordings in your preferred format. Custom export templates allow you to format the output to match your note-taking workflow. Exports are organized in per-user subdirectories for multi-user instances.
 
+### Custom Vocabulary & Transcription Hints
+
+Improve transcription accuracy for domain-specific content with two complementary features:
+
+- **Hotwords** - Provide comma-separated terms (brand names, acronyms, technical jargon) that the transcription engine should prioritize. This biases the model toward correctly recognizing words it might otherwise misspell.
+- **Initial Prompt** - Give the transcription engine context about the recording content, helping it make better overall word choices when audio is ambiguous.
+
+Set these at any level - [per-user defaults](user-guide/settings.md#transcription-hints), [per-tag](user-guide/settings.md#transcription-hints-hotwords--initial-prompt), [per-folder](user-guide/folders.md), or per-upload in the Advanced ASR Options. Values cascade with upload form taking highest priority, then tags, folders, and finally user defaults. See the [FAQ](faq.md#certain-specialized-words-dont-get-transcribed-properly-how-do-i-fix-this) for practical usage tips.
+
 ### Custom ASR Configuration
 
 Fine-tune transcription for specific scenarios with custom ASR settings. See [ASR configuration](troubleshooting.md#asr-endpoint-returns-405-or-404-errors) for common setup issues. Set expected speaker counts for different meeting types. Configure specialized models for technical vocabulary or specific accents. Apply these settings automatically through the tagging system.

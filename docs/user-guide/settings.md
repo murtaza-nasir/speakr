@@ -73,6 +73,18 @@ Understanding prompt precedence helps you use this feature effectively. Tag prom
 
 Multiple tag prompts combine intelligently when applied together. A recording tagged with both "Client" and "Technical" receives both sets of instructions, creating comprehensive summaries without needing complex single prompts trying to cover every scenario.
 
+### Transcription Hints
+
+Below the summary prompt, you'll find the **Transcription Hints** section with two fields that help improve transcription accuracy:
+
+- **Default Hotwords** - A comma-separated list of words or phrases the transcription engine should prioritize, such as brand names, acronyms, or specialized terminology (e.g., `Speakr, CTranslate2, PyAnnote`).
+- **Default Initial Prompt** - A brief description of the typical content of your recordings that provides context to the transcription engine (e.g., "This is a meeting about software development and AI tools.").
+
+These defaults apply to all your recordings unless overridden by tag defaults, folder defaults, or values you set in the upload form's Advanced ASR Options. This is the lowest priority level in the precedence hierarchy, making it a good place to set general-purpose hints that apply across most of your content.
+
+!!! tip "When to use hotwords vs initial prompt"
+    Use **hotwords** for specific terms the model tends to misspell - proper nouns, brand names, technical acronyms. Use **initial prompt** for broader context that helps the model understand the domain and make better overall word choices.
+
 ### Writing Effective Prompts
 
 Craft prompts based on how you actually use summaries. Do you extract action items for project management? Look for decisions that affect strategy? Track technical details for documentation? Your prompt should request exactly what you need for these next steps.
@@ -182,6 +194,14 @@ Tag prompts stack intelligently when multiple tags are applied. If you tag a rec
 ### ASR Defaults
 
 The ASR defaults feature is particularly valuable for consistent meeting types. Setting "Max 10" for a "Court Action" tag ensures the transcription service looks for up to 10 distinct speakers, improving accuracy for multi-party proceedings. A "One-on-One" tag might default to exactly 2 speakers, while a "Webinar" tag could specify 1-3 speakers.
+
+### Transcription Hints (Hotwords & Initial Prompt)
+
+Tags can also carry default **hotwords** and an **initial prompt** to improve transcription accuracy for specialized content. Hotwords are comma-separated terms the transcription engine should prioritize (e.g., brand names, acronyms, technical jargon). The initial prompt provides broader context about the recording content, helping the engine make better word choices.
+
+For example, a "Medical Rounds" tag might include hotwords like `epinephrine, tachycardia, intubation` and an initial prompt like "This is a medical team discussion about patient care in an ICU setting." When you upload a recording with this tag, these hints are automatically applied during transcription.
+
+These values follow a precedence hierarchy: upload form values take highest priority, then tag defaults, then folder defaults, then your personal defaults in [account settings](#custom-prompts-tab).
 
 ### Managing Tags
 

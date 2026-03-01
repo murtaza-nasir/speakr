@@ -27,6 +27,8 @@ export function createUploadState(ref, computed) {
     const uploadLanguage = ref('');
     const uploadMinSpeakers = ref('');
     const uploadMaxSpeakers = ref('');
+    const uploadHotwords = ref('');
+    const uploadInitialPrompt = ref('');
 
     // --- Computed Properties ---
     const totalInQueue = computed(() => uploadQueue.value.length);
@@ -61,6 +63,8 @@ export function createUploadState(ref, computed) {
         uploadLanguage,
         uploadMinSpeakers,
         uploadMaxSpeakers,
+        uploadHotwords,
+        uploadInitialPrompt,
 
         // Computed
         totalInQueue,

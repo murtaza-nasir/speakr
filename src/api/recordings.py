@@ -1929,6 +1929,29 @@ def upload_file():
         file.save(filepath)
         current_app.logger.info(f"File saved to {filepath}")
 
+        # Compute file hash on the ORIGINAL upload before any conversion/compression.
+        # Lossy re-encoding (e.g. FLAC→MP3) produces different bytes each run,
+        # so hashing after conversion would miss duplicates.
+        file_hash = None
+        duplicate_warning = None
+        try:
+            file_hash = compute_file_sha256(filepath)
+            existing = Recording.query.filter_by(
+                user_id=current_user.id, file_hash=file_hash
+            ).first()
+            if existing:
+                duplicate_warning = {
+                    'existing_recording_id': existing.id,
+                    'existing_title': existing.title,
+                    'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
+                }
+                current_app.logger.info(
+                    f"Duplicate file detected for user {current_user.id}: "
+                    f"hash={file_hash[:12]}... matches recording {existing.id}"
+                )
+        except Exception as e:
+            current_app.logger.warning(f"Could not compute file hash: {e}")
+
         # --- Convert files only when chunking is needed ---
         filename_lower = original_filename.lower()
 
@@ -2000,26 +2023,7 @@ def upload_file():
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
 
-        # Compute file hash for duplicate detection (hash the final/converted file)
-        file_hash = None
-        duplicate_warning = None
-        try:
-            file_hash = compute_file_sha256(filepath)
-            existing = Recording.query.filter_by(
-                user_id=current_user.id, file_hash=file_hash
-            ).first()
-            if existing:
-                duplicate_warning = {
-                    'existing_recording_id': existing.id,
-                    'existing_title': existing.title,
-                    'existing_created_at': existing.created_at.isoformat() if existing.created_at else None
-                }
-                current_app.logger.info(
-                    f"Duplicate file detected for user {current_user.id}: "
-                    f"hash={file_hash[:12]}... matches recording {existing.id}"
-                )
-        except Exception as e:
-            current_app.logger.warning(f"Could not compute file hash: {e}")
+        # (file_hash and duplicate_warning already computed above, before conversion)
 
         # Determine MIME type of the final file
         mime_type, _ = mimetypes.guess_type(filepath)
@@ -2071,6 +2075,8 @@ def upload_file():
         language = request.form.get('language', '')
         min_speakers = request.form.get('min_speakers') or None
         max_speakers = request.form.get('max_speakers') or None
+        hotwords = request.form.get('hotwords', '').strip() or None
+        initial_prompt = request.form.get('initial_prompt', '').strip() or None
 
         # Convert to int if provided
         if min_speakers:
@@ -2084,7 +2090,7 @@ def upload_file():
             except (ValueError, TypeError):
                 max_speakers = None
 
-        # Apply precedence hierarchy: user input > tag defaults > folder defaults > environment variables > auto-detect
+        # Apply precedence hierarchy: user input > tag defaults > folder defaults > environment variables > user defaults > auto-detect
 
         # Apply folder defaults first (lower priority than tags)
         if selected_folder and not selected_tags:
@@ -2095,6 +2101,10 @@ def upload_file():
                 min_speakers = selected_folder.default_min_speakers
             if max_speakers is None and selected_folder.default_max_speakers:
                 max_speakers = selected_folder.default_max_speakers
+            if not hotwords and selected_folder.default_hotwords:
+                hotwords = selected_folder.default_hotwords
+            if not initial_prompt and selected_folder.default_initial_prompt:
+                initial_prompt = selected_folder.default_initial_prompt
 
         # Apply tag defaults if tags are selected and values are not explicitly provided by user
         # Use first tag's defaults (highest priority - overrides folder)
@@ -2106,6 +2116,10 @@ def upload_file():
                 min_speakers = first_tag.default_min_speakers
             if max_speakers is None and first_tag.default_max_speakers:
                 max_speakers = first_tag.default_max_speakers
+            if not hotwords and first_tag.default_hotwords:
+                hotwords = first_tag.default_hotwords
+            if not initial_prompt and first_tag.default_initial_prompt:
+                initial_prompt = first_tag.default_initial_prompt
 
         # Apply environment variable defaults if still no values are set
         if min_speakers is None and ASR_MIN_SPEAKERS:
@@ -2119,10 +2133,14 @@ def upload_file():
             except (ValueError, TypeError):
                 max_speakers = None
 
-        # Fall back to user's default transcription language if still not set
+        # Fall back to user defaults if still not set
         if not language and current_user.transcription_language:
             language = current_user.transcription_language
             current_app.logger.info(f"Using user's default transcription language: {language}")
+        if not hotwords and current_user.transcription_hotwords:
+            hotwords = current_user.transcription_hotwords
+        if not initial_prompt and current_user.transcription_initial_prompt:
+            initial_prompt = current_user.transcription_initial_prompt
 
         # Create initial database entry
         now = datetime.utcnow()
@@ -2191,7 +2209,9 @@ def upload_file():
             'language': language,
             'min_speakers': min_speakers,
             'max_speakers': max_speakers,
-            'tag_id': first_tag.id if first_tag else None
+            'tag_id': first_tag.id if first_tag else None,
+            'hotwords': hotwords,
+            'initial_prompt': initial_prompt,
         }
 
         current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")

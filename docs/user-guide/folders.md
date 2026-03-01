@@ -37,6 +37,8 @@ Each folder can have custom settings that apply to recordings placed in it:
 | **Custom Prompt** | AI summarization instructions specific to this folder |
 | **Default Language** | Transcription language for new recordings |
 | **Min/Max Speakers** | Speaker count hints for ASR diarization |
+| **Hotwords** | Comma-separated vocabulary hints for transcription accuracy |
+| **Initial Prompt** | Context description to guide transcription |
 | **Retention Days** | Override global retention for recordings in this folder |
 | **Protection** | Exempt folder contents from auto-deletion |
 

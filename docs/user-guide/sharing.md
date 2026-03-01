@@ -52,6 +52,7 @@ Revoking access is immediate and thorough. When you revoke someone's access, the
 One of internal sharing's most powerful features is support for personal notes. When someone shares a recording with you, you can add your own private notes that only you can see. These personal notes never appear to the original owner or other recipients - they're your private space for observations, follow-ups, or context.
 
 **Important: Notes vs. Summaries**
+
 - **Notes**: Always personal and private. Each user (owner and shared recipients) can create their own notes that only they can see. No edit permission is required to add personal notes to a shared recording.
 - **Summary**: Shared globally. The recording owner's AI-generated summary is visible to all users who have access to the recording. Only users with edit permission can modify the summary.
 

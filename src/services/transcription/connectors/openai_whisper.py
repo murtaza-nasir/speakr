@@ -98,8 +98,15 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
                 params["language"] = request.language
                 logger.info(f"Using transcription language: {request.language}")
 
+            # Combine initial prompt and hotwords into a single prompt
+            # OpenAI Whisper uses prompt for both steering and vocabulary hints
+            prompt_parts = []
             if request.prompt:
-                params["prompt"] = request.prompt
+                prompt_parts.append(request.prompt)
+            if request.hotwords:
+                prompt_parts.append(request.hotwords)
+            if prompt_parts:
+                params["prompt"] = ". ".join(prompt_parts)
 
             if request.temperature is not None:
                 params["temperature"] = request.temperature

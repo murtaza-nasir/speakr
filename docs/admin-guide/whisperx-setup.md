@@ -237,6 +237,18 @@ Models are selected per-recording in Speakr. Available options:
 
 **Recommendation:** Use `large-v3` for best quality, `small` for speed.
 
+## Custom Vocabulary & Transcription Hints
+
+WhisperX supports both **hotwords** and **initial_prompt** parameters to improve transcription accuracy for domain-specific content.
+
+- **Hotwords** - Comma-separated terms the model should prioritize (brand names, acronyms, jargon). Passed as the `hotwords` query parameter to the ASR endpoint.
+- **Initial Prompt** - Context text that guides the model's word choices. Passed as the `initial_prompt` query parameter.
+
+Set these at any level in Speakr: per-user defaults, per-tag, per-folder, or per-upload in the Advanced ASR Options. See the [Custom Vocabulary feature docs](../features.md#custom-vocabulary--transcription-hints) for details on the precedence hierarchy.
+
+!!! note "ASR Service Compatibility"
+    The WhisperX ASR service (`learnedmachine/whisperx-asr-service`) fully supports both `hotwords` and `initial_prompt` parameters. The community `whisper-asr-webservice` by ahmetoner supports `initial_prompt` but does not currently expose a `hotwords` parameter through its API.
+
 ## Speaker Diarization
 
 WhisperX provides superior speaker diarization compared to standard implementations.
@@ -250,6 +262,7 @@ When uploading or processing recordings:
 - Leave blank for automatic detection
 
 **Tips:**
+
 - Set `min_speakers=2` and `max_speakers=6` for typical meetings
 - For interviews: `min_speakers=2`, `max_speakers=2`
 - For panels: `min_speakers=3`, `max_speakers=8`

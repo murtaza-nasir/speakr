@@ -54,6 +54,7 @@ Speakr fully supports OpenAI's GPT-5 model family, automatically detecting and a
 GPT-5 models use different parameters than previous models:
 
 **Unsupported Parameters** (will cause errors if used):
+
 - `temperature` - Replaced by `reasoning_effort` and `verbosity`
 - `top_p` - Not supported
 - `logprobs` - Not supported
@@ -140,11 +141,13 @@ If you use GPT-5 models through OpenRouter or other proxy services, the automati
 ### Use Cases
 
 **Summarization**:
+
 - Fast summaries: `gpt-5-nano` with `minimal` effort and `low` verbosity
 - Standard summaries: `gpt-5-mini` with `medium` effort and `medium` verbosity
 - Detailed summaries: `gpt-5` with `medium` effort and `high` verbosity
 
 **Chat**:
+
 - Quick Q&A: `gpt-5-mini` with `minimal` effort and `low` verbosity
 - Standard conversation: `gpt-5-mini` with `low` effort and `medium` verbosity
 - Complex analysis: `gpt-5` with `high` effort and `medium` verbosity
@@ -203,6 +206,7 @@ Valid values are: `low`, `medium`, `high`
 - **Token usage**: Higher verbosity = more output tokens
 
 For most use cases, we recommend:
+
 - **Model**: `gpt-5-mini`
 - **Reasoning**: `medium`
 - **Verbosity**: `medium`
@@ -295,11 +299,13 @@ CHAT_MODEL_NAME=gpt-4o
 ### When to Use Separate Chat Models
 
 **Recommended for**:
+
 - High-volume deployments where chat responsiveness is critical
 - Users who need different service tiers for different operations
 - Cost optimization when chat usage is significantly higher than summarization
 
 **Not needed for**:
+
 - Small deployments with low usage
 - When using the same model for all operations is acceptable
 - Simple setups where configuration simplicity is preferred
@@ -384,6 +390,7 @@ docker compose logs -f app | grep "LLM"
 ```
 
 Common issues:
+
 - Invalid API key
 - Model name not available on your plan
 - Rate limits exceeded
@@ -392,6 +399,7 @@ Common issues:
 ### Poor Summary Quality
 
 Try these adjustments:
+
 - Upgrade to a more capable model
 - Increase `SUMMARY_MAX_TOKENS`
 - Review and refine [custom prompts](prompts.md)
@@ -400,6 +408,7 @@ Try these adjustments:
 ### High Costs
 
 Reduce costs with:
+
 - Switch to smaller models (`gpt-5-nano`, `gpt-4o-mini`)
 - Lower token limits
 - For GPT-5: reduce reasoning effort to `minimal` or `low`
