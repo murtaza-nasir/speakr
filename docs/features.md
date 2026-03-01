@@ -227,6 +227,10 @@ When enabled (`VIDEO_RETENTION=true`), uploaded video files preserve their video
   <p style="text-align: center; margin-top: 0.5rem; font-style: italic; color: #666;">In-browser video playback alongside speaker-labeled transcript and summary</p>
 </div>
 
+### Video Passthrough to ASR
+
+For advanced self-hosted setups, Speakr can send original video files directly to the ASR backend without extracting audio first (`VIDEO_PASSTHROUGH_ASR=true`). This is designed for custom ASR containers that accept video input and handle audio extraction internally — for example, backends that process multiple audio tracks from a single video file. When enabled, video uploads skip audio extraction, codec conversion, and chunking entirely, letting the ASR backend control the full pipeline. Audio file uploads continue to work normally. This setting is independent of `VIDEO_RETENTION` — you can combine both to keep the video for playback while also sending it raw to ASR.
+
 ### Playback Speed Control
 
 Adjust audio playback speed from 0.5x to 3x on all audio/video players throughout the application. This is useful for quickly reviewing long recordings or slowing down complex content. Your speed preference is saved to localStorage and persists across sessions.

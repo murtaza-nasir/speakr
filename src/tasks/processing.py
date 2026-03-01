@@ -29,7 +29,7 @@ from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, 
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError
 from src.utils.audio_conversion import convert_if_needed, ConversionResult
 from src.utils.error_formatting import format_error_for_storage
-from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE
+from src.config.app_config import AUDIO_COMPRESS_UPLOADS, AUDIO_CODEC, AUDIO_BITRATE, VIDEO_PASSTHROUGH_ASR
 from src.audio_chunking import AudioChunkingService, ChunkProcessingError, ChunkingNotSupportedError
 from src.config.app_config import (
     ASR_DIARIZE, ASR_BASE_URL, ASR_RETURN_SPEAKER_EMBEDDINGS,
@@ -1497,7 +1497,16 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 )
 
             if is_video:
-                if VIDEO_RETENTION:
+                if VIDEO_PASSTHROUGH_ASR:
+                    # Video passthrough: send original video directly to ASR without audio extraction
+                    current_app.logger.info(f"Video passthrough: sending original video to ASR (no audio extraction)")
+                    actual_filepath = filepath  # Send video as-is to connector
+                    if VIDEO_RETENTION:
+                        # Also keep the video for playback
+                        recording.audio_path = filepath
+                        recording.mime_type = mimetypes.guess_type(filepath)[0] or 'video/mp4'
+                        db.session.commit()
+                elif VIDEO_RETENTION:
                     # Video retention: keep original video, extract audio to temp for transcription only
                     current_app.logger.info(f"Video container detected, retaining video and extracting audio to temp...")
                     try:
@@ -1545,37 +1554,42 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # - AUDIO_COMPRESS_UPLOADS setting (lossless compression)
             connector_specs = connector.specifications
             converted_filepath = None  # Track converted file for cleanup and retry
+            video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR
 
-            try:
-                # Check if chunking will be needed (affects which codecs are supported)
-                needs_chunking_check = (
-                    chunking_service and
-                    chunking_service.needs_chunking(actual_filepath, False, connector_specs)
-                )
-
-                conversion_result = convert_if_needed(
-                    filepath=actual_filepath,
-                    original_filename=actual_filename,
-                    needs_chunking=needs_chunking_check,
-                    is_asr_endpoint=False,  # Using connector architecture
-                    delete_original=False,  # Keep original, we may need it for retry
-                    connector_specs=connector_specs
-                )
-
-                if conversion_result.was_converted:
-                    current_app.logger.info(
-                        f"Audio converted: {conversion_result.original_codec} → {conversion_result.final_codec}, "
-                        f"size: {conversion_result.original_size_mb:.1f}MB → {conversion_result.final_size_mb:.1f}MB"
+            if video_passthrough_active:
+                # Skip conversion and chunking — ASR backend handles the raw video
+                current_app.logger.info(f"Video passthrough: skipping codec conversion and chunking")
+            else:
+                try:
+                    # Check if chunking will be needed (affects which codecs are supported)
+                    needs_chunking_check = (
+                        chunking_service and
+                        chunking_service.needs_chunking(actual_filepath, False, connector_specs)
                     )
-                    converted_filepath = conversion_result.output_path
-                    actual_filepath = converted_filepath
-                    actual_content_type = conversion_result.mime_type
-                    actual_filename = os.path.basename(converted_filepath)
-            except (FFmpegError, FFmpegNotFoundError) as conv_error:
-                current_app.logger.error(f"Audio conversion failed: {conv_error}")
-                raise  # Let the job fail - can't process this file
-            except Exception as e:
-                current_app.logger.warning(f"Could not validate/convert audio: {e}, proceeding with original file")
+
+                    conversion_result = convert_if_needed(
+                        filepath=actual_filepath,
+                        original_filename=actual_filename,
+                        needs_chunking=needs_chunking_check,
+                        is_asr_endpoint=False,  # Using connector architecture
+                        delete_original=False,  # Keep original, we may need it for retry
+                        connector_specs=connector_specs
+                    )
+
+                    if conversion_result.was_converted:
+                        current_app.logger.info(
+                            f"Audio converted: {conversion_result.original_codec} → {conversion_result.final_codec}, "
+                            f"size: {conversion_result.original_size_mb:.1f}MB → {conversion_result.final_size_mb:.1f}MB"
+                        )
+                        converted_filepath = conversion_result.output_path
+                        actual_filepath = converted_filepath
+                        actual_content_type = conversion_result.mime_type
+                        actual_filename = os.path.basename(converted_filepath)
+                except (FFmpegError, FFmpegNotFoundError) as conv_error:
+                    current_app.logger.error(f"Audio conversion failed: {conv_error}")
+                    raise  # Let the job fail - can't process this file
+                except Exception as e:
+                    current_app.logger.warning(f"Could not validate/convert audio: {e}, proceeding with original file")
 
             # Determine if we should diarize
             if diarize is None:
@@ -1595,17 +1609,21 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # 3. User's CHUNK_LIMIT setting → use their settings
             # 4. Connector defaults (max_file_size, recommended_chunk_seconds)
             # 5. App default (20MB)
-            current_app.logger.info(f"Chunking service available: {chunking_service is not None}")
-            current_app.logger.info(f"Connector specs: max_duration={connector_specs.max_duration_seconds}s, "
-                                   f"handles_internally={connector_specs.handles_chunking_internally}, "
-                                   f"recommended_chunk={connector_specs.recommended_chunk_seconds}s")
-
-            if chunking_service:
-                should_chunk = chunking_service.needs_chunking(actual_filepath, False, connector_specs)
-                current_app.logger.info(f"Chunking decision: should_chunk={should_chunk}")
-            else:
+            if video_passthrough_active:
                 should_chunk = False
-                current_app.logger.warning("Chunking service is disabled (ENABLE_CHUNKING=false or service not initialized)")
+                current_app.logger.info(f"Video passthrough: chunking skipped (ASR backend handles internally)")
+            else:
+                current_app.logger.info(f"Chunking service available: {chunking_service is not None}")
+                current_app.logger.info(f"Connector specs: max_duration={connector_specs.max_duration_seconds}s, "
+                                       f"handles_internally={connector_specs.handles_chunking_internally}, "
+                                       f"recommended_chunk={connector_specs.recommended_chunk_seconds}s")
+
+                if chunking_service:
+                    should_chunk = chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+                    current_app.logger.info(f"Chunking decision: should_chunk={should_chunk}")
+                else:
+                    should_chunk = False
+                    current_app.logger.warning("Chunking service is disabled (ENABLE_CHUNKING=false or service not initialized)")
 
             # Retry loop for handling format/codec errors with MP3 conversion
             max_attempts = 2
@@ -1963,47 +1981,57 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         actual_content_type = mime_type
 
         # Check if file is video and needs audio extraction
+        is_video = False
         try:
             is_video = is_video_file(filepath, timeout=10)
-            if is_video:
-                current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
-                audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
-                actual_filepath = audio_filepath
-                actual_content_type = audio_mime_type
-                actual_filename = os.path.basename(audio_filepath)
         except FFProbeError as e:
             current_app.logger.warning(f"[Incognito] Failed to probe file: {e}")
             # Check by extension
             video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.wmv', '.flv', '.m4v']
-            if any(original_filename.lower().endswith(ext) for ext in video_extensions):
-                audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
-                actual_filepath = audio_filepath
-                actual_content_type = audio_mime_type
-                actual_filename = os.path.basename(audio_filepath)
+            is_video = any(original_filename.lower().endswith(ext) for ext in video_extensions)
+
+        video_passthrough_active = is_video and VIDEO_PASSTHROUGH_ASR
+
+        if is_video:
+            if VIDEO_PASSTHROUGH_ASR:
+                current_app.logger.info(f"[Incognito] Video passthrough: sending original video to ASR (no audio extraction)")
+            else:
+                current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
+                try:
+                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                    actual_filepath = audio_filepath
+                    actual_content_type = audio_mime_type
+                    actual_filename = os.path.basename(audio_filepath)
+                except Exception as e:
+                    current_app.logger.error(f"[Incognito] Failed to extract audio from video: {e}")
+                    raise
 
         # Convert audio format if needed
-        try:
-            needs_chunking_check = (
-                chunking_service and
-                chunking_service.needs_chunking(actual_filepath, False, connector_specs)
-            )
+        if video_passthrough_active:
+            current_app.logger.info(f"[Incognito] Video passthrough: skipping codec conversion")
+        else:
+            try:
+                needs_chunking_check = (
+                    chunking_service and
+                    chunking_service.needs_chunking(actual_filepath, False, connector_specs)
+                )
 
-            conversion_result = convert_if_needed(
-                filepath=actual_filepath,
-                original_filename=actual_filename,
-                needs_chunking=needs_chunking_check,
-                is_asr_endpoint=False,
-                delete_original=False,
-                connector_specs=connector_specs
-            )
+                conversion_result = convert_if_needed(
+                    filepath=actual_filepath,
+                    original_filename=actual_filename,
+                    needs_chunking=needs_chunking_check,
+                    is_asr_endpoint=False,
+                    delete_original=False,
+                    connector_specs=connector_specs
+                )
 
-            if conversion_result.was_converted:
-                current_app.logger.info(f"[Incognito] Audio converted: {conversion_result.original_codec} -> {conversion_result.final_codec}")
+                if conversion_result.was_converted:
+                    current_app.logger.info(f"[Incognito] Audio converted: {conversion_result.original_codec} -> {conversion_result.final_codec}")
                 actual_filepath = conversion_result.output_path
                 actual_content_type = conversion_result.mime_type
                 actual_filename = os.path.basename(conversion_result.output_path)
-        except Exception as e:
-            current_app.logger.warning(f"[Incognito] Audio conversion check failed: {e}, proceeding with original")
+            except Exception as e:
+                current_app.logger.warning(f"[Incognito] Audio conversion check failed: {e}, proceeding with original")
 
         # Get audio duration if chunking service is available
         if chunking_service:
@@ -2020,8 +2048,12 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             language = user.transcription_language
 
         # Check if chunking is needed
-        should_chunk = (chunking_service and
-                       chunking_service.needs_chunking(actual_filepath, False, connector_specs))
+        if video_passthrough_active:
+            should_chunk = False
+            current_app.logger.info(f"[Incognito] Video passthrough: chunking skipped (ASR backend handles internally)")
+        else:
+            should_chunk = (chunking_service and
+                           chunking_service.needs_chunking(actual_filepath, False, connector_specs))
 
         current_app.logger.info(f"[Incognito] Starting transcription: diarize={should_diarize}, language={language}, chunking={should_chunk}")
 

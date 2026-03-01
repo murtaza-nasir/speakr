@@ -49,6 +49,7 @@ DELETION_MODE = os.environ.get('DELETION_MODE', 'full_recording')  # 'audio_only
 USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
+VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
 
@@ -1977,22 +1978,22 @@ def upload_file():
             current_app.logger.warning(f"Failed to probe {original_filename} (timeout={probe_timeout}s): {e}. Will attempt conversion.")
             codec_info = None
 
-        # Video retention: skip conversion for videos, processing pipeline handles extraction
+        # Video retention/passthrough: skip conversion for videos, processing pipeline handles extraction
         has_video = codec_info.get('has_video', False) if codec_info else False
 
-        # Fallback: if probe failed but VIDEO_RETENTION is on, check file extension
+        # Fallback: if probe failed but VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR is on, check file extension
         # to avoid silently discarding video from files we couldn't probe
-        if codec_info is None and VIDEO_RETENTION and not has_video:
+        if codec_info is None and (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and not has_video:
             video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
             file_ext = os.path.splitext(original_filename)[1].lower()
             if file_ext in video_extensions:
                 has_video = True
                 current_app.logger.info(
                     f"Probe failed but file extension '{file_ext}' indicates video — "
-                    f"treating as video for VIDEO_RETENTION"
+                    f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
                 )
-        if VIDEO_RETENTION and has_video:
-            current_app.logger.info(f"Video retention: keeping original video, skipping conversion")
+        if (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video:
+            current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
         else:
             # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
             try:

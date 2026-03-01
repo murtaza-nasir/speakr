@@ -66,6 +66,10 @@ AUDIO_COMPRESS_UPLOADS = os.environ.get('AUDIO_COMPRESS_UPLOADS', 'true').lower(
 AUDIO_CODEC = os.environ.get('AUDIO_CODEC', 'mp3').lower()  # mp3, flac, opus
 AUDIO_BITRATE = os.environ.get('AUDIO_BITRATE', '128k')  # For lossy codecs
 
+# Video passthrough - send original video files directly to ASR without extracting audio
+# Useful for custom ASR backends that handle video/multi-track audio internally
+VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
+
 # Unsupported codecs - comma-separated list of codecs to exclude from the default supported list
 # Useful when your transcription service doesn't support certain codecs (e.g., vllm doesn't support opus)
 # Example: AUDIO_UNSUPPORTED_CODECS=opus,vorbis

@@ -173,6 +173,13 @@ Jobs are persisted to the database and survive application restarts. If Speakr r
 
 **VIDEO_RETENTION**: When enabled, uploaded video files keep their video stream for in-browser playback instead of extracting audio and discarding the video. The audio is extracted to a temporary file for transcription only, then cleaned up after processing. The video renders with a native `<video>` player alongside the transcript, with full seeking support via HTTP Range requests. All player controls (play/pause, seek, speed, volume) work identically. Ideal for presentations, lectures, and screen recordings. Default: `false`.
 
+### Video Passthrough to ASR
+
+**VIDEO_PASSTHROUGH_ASR**: When enabled, original video files are sent directly to the ASR backend without extracting audio first. This is useful for custom ASR backends that accept video files and handle audio extraction internally — for example, containers that extract multiple audio tracks from a video for separate processing. When active, video files bypass audio extraction, codec conversion, and chunking entirely. Audio file uploads are unaffected. This setting is independent of `VIDEO_RETENTION` — you can use either or both. Default: `false`.
+
+!!! warning
+    Only enable this if your ASR backend actually accepts video files. Standard services like OpenAI's Whisper API will reject video input.
+
 ### Concurrent Uploads
 
 **MAX_CONCURRENT_UPLOADS**: Controls how many files can be uploaded simultaneously when batch uploading. Higher values speed up batch uploads but use more bandwidth and server resources. Default: `3`.
@@ -219,6 +226,9 @@ DELETE_ORPHANED_SPEAKERS=false
 
 # Video retention (keep video files for playback)
 VIDEO_RETENTION=false
+
+# Video passthrough (send raw video to ASR, for custom backends)
+# VIDEO_PASSTHROUGH_ASR=false
 
 # Concurrent uploads (default: 3)
 MAX_CONCURRENT_UPLOADS=3
