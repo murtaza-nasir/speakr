@@ -34,9 +34,10 @@ const parseTranscriptionError = (text) => {
         try {
             const jsonStr = text.substring(11);
             const data = JSON.parse(jsonStr);
+            const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
             return {
-                title: data.t || 'Error',
-                message: data.m || 'An error occurred',
+                title: data.t || _t('errors.fallbackTitle', 'Error'),
+                message: data.m || _t('errors.fallbackMessage', 'An error occurred'),
                 guidance: data.g || '',
                 icon: data.i || 'fa-exclamation-circle',
                 type: data.y || 'unknown',
@@ -67,71 +68,72 @@ const parseTranscriptionError = (text) => {
 
 // Parse unformatted error messages and make them user-friendly
 const parseUnformattedError = (text) => {
+    const _t = (key, fb) => (window.i18n && window.i18n.t) ? window.i18n.t(key) : fb;
     const lowerText = text.toLowerCase();
 
     // Known error patterns
     const patterns = [
         {
             patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
-            title: 'File Too Large',
-            message: 'The audio file exceeds the maximum size allowed by the transcription service.',
-            guidance: 'Try enabling audio chunking in your settings, or compress the audio file before uploading.',
+            title: _t('errors.fileTooLargeTitle', 'File Too Large'),
+            message: _t('errors.fileTooLargeMessage', 'The audio file exceeds the maximum size allowed by the transcription service.'),
+            guidance: _t('errors.fileTooLargeGuidance', 'Try enabling audio chunking in your settings, or compress the audio file before uploading.'),
             icon: 'fa-file-audio',
             type: 'size_limit'
         },
         {
             patterns: ['timed out', 'timeout', 'deadline exceeded'],
-            title: 'Processing Timeout',
-            message: 'The transcription took too long to complete.',
-            guidance: 'This can happen with very long recordings. Try splitting the audio into smaller parts.',
+            title: _t('errors.processingTimeout', 'Processing Timeout'),
+            message: _t('errors.processingTimeoutMessage', 'The transcription took too long to complete.'),
+            guidance: _t('errors.processingTimeoutGuidance', 'This can happen with very long recordings. Try splitting the audio into smaller parts.'),
             icon: 'fa-clock',
             type: 'timeout'
         },
         {
             patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'],
-            title: 'Authentication Error',
-            message: 'The transcription service rejected the API credentials.',
-            guidance: 'Please check that the API key is correct and has not expired.',
+            title: _t('errors.authenticationError', 'Authentication Error'),
+            message: _t('errors.authenticationErrorMessage', 'The transcription service rejected the API credentials.'),
+            guidance: _t('errors.authenticationErrorGuidance', 'Please check that the API key is correct and has not expired.'),
             icon: 'fa-key',
             type: 'auth'
         },
         {
             patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'],
-            title: 'Rate Limit Exceeded',
-            message: 'Too many requests were sent to the transcription service.',
-            guidance: 'Please wait a few minutes and try reprocessing.',
+            title: _t('errors.rateLimitExceeded', 'Rate Limit Exceeded'),
+            message: _t('errors.rateLimitExceededMessage', 'Too many requests were sent to the transcription service.'),
+            guidance: _t('errors.rateLimitExceededGuidance', 'Please wait a few minutes and try reprocessing.'),
             icon: 'fa-hourglass-half',
             type: 'rate_limit'
         },
         {
             patterns: ['connection refused', 'connection reset', 'could not connect', 'network unreachable'],
-            title: 'Connection Error',
-            message: 'Could not connect to the transcription service.',
-            guidance: 'Check your internet connection and ensure the service is available.',
+            title: _t('errors.connectionError', 'Connection Error'),
+            message: _t('errors.connectionErrorMessage', 'Could not connect to the transcription service.'),
+            guidance: _t('errors.connectionErrorGuidance', 'Check your internet connection and ensure the service is available.'),
             icon: 'fa-wifi',
             type: 'connection'
         },
         {
             patterns: ['503', '502', '500', 'service unavailable', 'server error', 'internal server error'],
-            title: 'Service Unavailable',
-            message: 'The transcription service is temporarily unavailable.',
-            guidance: 'This is usually temporary. Please try again in a few minutes.',
+            title: _t('errors.serviceUnavailable', 'Service Unavailable'),
+            message: _t('errors.serviceUnavailableMessage', 'The transcription service is temporarily unavailable.'),
+            guidance: _t('errors.serviceUnavailableGuidance', 'This is usually temporary. Please try again in a few minutes.'),
             icon: 'fa-server',
             type: 'service_error'
         },
         {
             patterns: ['invalid file format', 'unsupported format', 'could not decode', 'corrupt', 'not valid audio'],
-            title: 'Invalid Audio Format',
-            message: 'The audio file format is not supported or the file may be corrupted.',
-            guidance: 'Try converting the audio to MP3 or WAV format before uploading.',
+            title: _t('errors.invalidAudioFormat', 'Invalid Audio Format'),
+            message: _t('errors.invalidAudioFormatMessage', 'The audio file format is not supported or the file may be corrupted.'),
+            guidance: _t('errors.invalidAudioFormatGuidance', 'Try converting the audio to MP3 or WAV format before uploading.'),
             icon: 'fa-file-audio',
             type: 'format'
         },
         {
             patterns: ['audio extraction failed', 'ffmpeg failed', 'no audio stream'],
-            title: 'Audio Extraction Failed',
-            message: 'Could not extract audio from the uploaded file.',
-            guidance: 'Try converting the file to a standard audio format (MP3, WAV) before uploading.',
+            title: _t('errors.audioExtractionFailed', 'Audio Extraction Failed'),
+            message: _t('errors.audioExtractionFailedMessage', 'Could not extract audio from the uploaded file.'),
+            guidance: _t('errors.audioExtractionFailedGuidance', 'Try converting the file to a standard audio format (MP3, WAV) before uploading.'),
             icon: 'fa-file-video',
             type: 'extraction'
         }
@@ -168,9 +170,9 @@ const parseUnformattedError = (text) => {
     }
 
     return {
-        title: 'Processing Error',
+        title: _t('errors.processingError', 'Processing Error'),
         message: cleanMessage,
-        guidance: 'If this error persists, try reprocessing the recording.',
+        guidance: _t('errors.processingErrorGuidance', 'If this error persists, try reprocessing the recording.'),
         icon: 'fa-exclamation-circle',
         type: 'unknown',
         isKnown: false,
@@ -1728,7 +1730,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 const queueItem = uploadQueue.value.find(u => u.recordingId === job.recording_id);
                                 if (queueItem) {
                                     queueItem.status = 'failed';
-                                    queueItem.error = failedData.error_message || 'Processing failed on server.';
+                                    queueItem.error = failedData.error_message || safeT('errors.processingFailedOnServer');
                                 }
                             }
                         } catch (err) {
@@ -1752,14 +1754,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     if (response.ok) {
                         fetchJobQueueStatus();
-                        showToast('Job queued for retry', 'success');
+                        showToast(safeT('messages.jobQueuedForRetry'), 'success');
                     } else {
                         const data = await response.json();
-                        showToast(data.error || 'Failed to retry job', 'error');
+                        showToast(data.error || safeT('messages.failedToRetryJob'), 'error');
                     }
                 } catch (error) {
                     console.error('Error retrying job:', error);
-                    showToast('Failed to retry job', 'error');
+                    showToast(safeT('messages.failedToRetryJob'), 'error');
                 }
             };
 
@@ -1773,7 +1775,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         fetchJobQueueStatus();
                     } else {
                         const data = await response.json();
-                        showToast(data.error || 'Failed to delete job', 'error');
+                        showToast(data.error || safeT('messages.failedToDeleteJob'), 'error');
                     }
                 } catch (error) {
                     console.error('Error deleting job:', error);
@@ -2392,15 +2394,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const recovered = await audioComposable.recoverRecordingFromDB();
                     if (recovered) {
                         currentView.value = 'recording';
-                        showToast('Recording recovered successfully', 'success');
+                        showToast(safeT('messages.recordingRecovered'), 'success');
                     } else {
-                        showToast('Failed to recover recording', 'error');
+                        showToast(safeT('messages.failedToRecoverRecording'), 'error');
                     }
 
                     recoverableRecording.value = null;
                 } catch (error) {
                     console.error('[App] Failed to recover recording:', error);
-                    showToast('Error recovering recording', 'error');
+                    showToast(safeT('messages.errorRecoveringRecording'), 'error');
                 }
             };
 
@@ -2411,7 +2413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Clear the recording from IndexedDB
                     await audioComposable.clearRecordingSession();
 
-                    showToast('Recording discarded', 'info');
+                    showToast(safeT('messages.recordingDiscarded'), 'info');
                     recoverableRecording.value = null;
                 } catch (error) {
                     console.error('[App] Failed to discard recording:', error);

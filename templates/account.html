@@ -34,7 +34,9 @@
                 // Update all elements with data-i18n attribute
                 document.querySelectorAll('[data-i18n]').forEach(el => {
                     const key = el.getAttribute('data-i18n');
-                    el.textContent = t(key);
+                    const paramsAttr = el.getAttribute('data-i18n-params');
+                    const params = paramsAttr ? JSON.parse(paramsAttr) : {};
+                    el.textContent = t(key, params);
                 });
 
                 // Update all elements with data-i18n-placeholder attribute
@@ -50,7 +52,9 @@
             // Update all elements with data-i18n attribute
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
-                el.textContent = t(key);
+                const paramsAttr = el.getAttribute('data-i18n-params');
+                const params = paramsAttr ? JSON.parse(paramsAttr) : {};
+                el.textContent = t(key, params);
             });
 
             // Update all elements with data-i18n-placeholder attribute
@@ -625,37 +629,37 @@
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <span class="block text-sm font-medium text-[var(--text-muted)]">Provider</span>
+                                        <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.ssoProvider">Provider</span>
                                         <span class="block text-[var(--text-primary)]">{{ sso_provider_name }}</span>
                                     </div>
                                     {% if sso_linked %}
-                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">Linked</span>
+                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-success-light)] text-[var(--text-success-strong)]" data-i18n="account.ssoLinked">Linked</span>
                                     {% else %}
-                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]">Not linked</span>
+                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]" data-i18n="account.ssoNotLinked">Not linked</span>
                                     {% endif %}
                                 </div>
 
                                 {% if sso_linked %}
                                 <div class="text-xs text-[var(--text-muted)] break-all">
-                                    <span class="font-medium text-[var(--text-secondary)]">Subject:</span> {{ sso_subject }}
+                                    <span class="font-medium text-[var(--text-secondary)]" data-i18n="account.ssoSubject">Subject:</span> {{ sso_subject }}
                                 </div>
                                 {% if has_password %}
                                 <form method="POST" action="{{ url_for('auth.sso_unlink') }}" class="mt-2">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" onclick="return confirm('Are you sure you want to unlink your SSO account? You will need to use your email and password to sign in.')" class="w-full inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                        <i class="fas fa-unlink mr-2"></i> Unlink {{ sso_provider_name }} account
+                                    <button type="submit" onclick="return confirm(t('account.ssoUnlinkConfirm'))" class="w-full inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                        <i class="fas fa-unlink mr-2"></i> <span data-i18n="account.ssoUnlinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Unlink {{ sso_provider_name }} account</span>
                                     </button>
                                 </form>
                                 {% elif not password_login_disabled or current_user.is_admin %}
                                 <div class="mt-2 text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-info-circle mr-1"></i> To unlink SSO, you must first set a password.
+                                    <i class="fas fa-info-circle mr-1"></i> <span data-i18n="account.ssoSetPasswordFirst">To unlink SSO, you must first set a password.</span>
                                 </div>
                                 {% endif %}
                                 {% else %}
                                 <form method="POST" action="{{ url_for('auth.sso_link') }}" class="mt-2">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                        <i class="fas fa-link mr-2"></i> Link {{ sso_provider_name }} account
+                                        <i class="fas fa-link mr-2"></i> <span data-i18n="account.ssoLinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Link {{ sso_provider_name }} account</span>
                                     </button>
                                 </form>
                                 {% endif %}
@@ -686,7 +690,7 @@
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
                         {% if not admin_disabled_auto_summarization %}
                         <div class="flex items-center gap-3" title="Automatically generate summaries after transcription completes">
-                            <span class="text-sm text-[var(--text-secondary)]">Auto-summarize</span>
+                            <span class="text-sm text-[var(--text-secondary)]" data-i18n="account.autoSummarize">Auto-summarize</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="autoSummarizationToggle" class="sr-only peer" {% if auto_summarization %}checked{% endif %}>
                                 <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
@@ -694,7 +698,7 @@
                         </div>
                         {% else %}
                         <div class="text-sm text-[var(--text-muted)] italic" title="Auto-summarization has been disabled by the administrator">
-                            <i class="fas fa-lock mr-1"></i> Auto-summarization disabled by admin
+                            <i class="fas fa-lock mr-1"></i> <span data-i18n="account.autoSummarizationDisabled">Auto-summarization disabled by admin</span>
                         </div>
                         {% endif %}
                     </div>
@@ -782,34 +786,36 @@
                             <div class="mt-8 pt-6 border-t border-[var(--border-secondary)]">
                                 <h3 class="text-base font-semibold text-[var(--text-primary)] mb-1">
                                     <i class="fas fa-spell-check mr-2 text-[var(--text-accent)]"></i>
-                                    Transcription Hints
+                                    <span data-i18n="account.transcriptionHints">Transcription Hints</span>
                                 </h3>
-                                <p class="text-xs text-[var(--text-muted)] mb-4">
-                                    These defaults are used when no tag or folder overrides are set. They help improve recognition of domain-specific terms.
+                                <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="account.transcriptionHintsDesc">
+                                    These defaults are used when no tag or folder overrides are set. They help improve transcription accuracy for your specific use case.
                                 </p>
 
                                 <div class="space-y-4">
                                     <div>
-                                        <label for="transcription_hotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1">
+                                        <label for="transcription_hotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="account.defaultHotwords">
                                             Default Hotwords
                                         </label>
                                         <input type="text" name="transcription_hotwords" id="transcription_hotwords"
                                                value="{{ current_user.transcription_hotwords or '' }}"
+                                               data-i18n-placeholder="account.defaultHotwordsPlaceholder"
                                                placeholder="e.g., Speakr, CTranslate2, PyAnnote, SDRs"
                                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <p class="text-xs text-[var(--text-light)] mt-1">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="help.defaultHotwordsHelp">
                                             Comma-separated words or phrases that the transcription model should prioritize recognizing (brand names, acronyms, technical terms).
                                         </p>
                                     </div>
 
                                     <div>
-                                        <label for="transcription_initial_prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1">
+                                        <label for="transcription_initial_prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="account.defaultInitialPrompt">
                                             Default Initial Prompt
                                         </label>
                                         <textarea name="transcription_initial_prompt" id="transcription_initial_prompt" rows="2"
-                                                  placeholder="e.g., This is a meeting about AI transcription tools and speech recognition."
+                                                  data-i18n-placeholder="account.defaultInitialPromptPlaceholder"
+                                                  placeholder="e.g., This is a meeting about AI transcription tools. The speakers discuss CTranslate2, PyAnnote, and SDRs."
                                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.transcription_initial_prompt or '' }}</textarea>
-                                        <p class="text-xs text-[var(--text-light)] mt-1">
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="help.defaultInitialPromptHelp">
                                             Context to steer the transcription model's style and vocabulary. Describe the topic or expected content of your recordings.
                                         </p>
                                     </div>
@@ -841,7 +847,7 @@
                         </div>
                         {% if speaker_embeddings_enabled %}
                         <div class="flex items-center gap-2 sm:gap-3 ml-4 flex-shrink-0" title="Automatically label speakers in new recordings when voice profiles match">
-                            <span class="text-sm text-[var(--text-secondary)] hidden sm:inline">Auto-label</span>
+                            <span class="text-sm text-[var(--text-secondary)] hidden sm:inline" data-i18n="account.autoLabel">Auto-label</span>
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="autoSpeakerLabellingToggle" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
                                 <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
@@ -2087,14 +2093,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     <!-- Hotwords & Initial Prompt -->
                     <div>
-                        <label for="tagHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Hotwords</label>
-                        <input type="text" id="tagHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
-                        <p class="text-xs text-[var(--text-light)] mt-1">Comma-separated words to improve recognition of domain-specific terms</p>
+                        <label for="tagHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.hotwords">Hotwords</label>
+                        <input type="text" id="tagHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.hotwordsPlaceholder" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.hotwordsHelp">Comma-separated words to improve recognition of domain-specific terms</p>
                     </div>
                     <div>
-                        <label for="tagInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Initial Prompt</label>
-                        <textarea id="tagInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Context to steer the transcription model's style and vocabulary</p>
+                        <label for="tagInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
+                        <textarea id="tagInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
 
                     <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
@@ -2152,7 +2158,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <div id="tagGroupSelectionSection" class="hidden">
                         <label for="tagGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
                         <select id="tagGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">Personal Tag (Not Associated with a Group)</option>
+                            <option value="" data-i18n="account.personalTag">Personal Tag (Not Associated with a Group)</option>
                         </select>
                         <p class="text-xs text-[var(--text-light)] mt-1">Assign this tag to a group to enable auto-sharing when applied to recordings</p>
                     </div>
@@ -2262,14 +2268,14 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     <!-- Hotwords & Initial Prompt -->
                     <div>
-                        <label for="folderHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Hotwords</label>
-                        <input type="text" id="folderHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
-                        <p class="text-xs text-[var(--text-light)] mt-1">Comma-separated words to improve recognition of domain-specific terms</p>
+                        <label for="folderHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.hotwords">Hotwords</label>
+                        <input type="text" id="folderHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.hotwordsPlaceholder" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.hotwordsHelp">Comma-separated words to improve recognition of domain-specific terms</p>
                     </div>
                     <div>
-                        <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Initial Prompt</label>
-                        <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Context to steer the transcription model's style and vocabulary</p>
+                        <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
+                        <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
 
                     <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
@@ -2327,7 +2333,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <div id="folderGroupSelectionSection" class="hidden">
                         <label for="folderGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
                         <select id="folderGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">Personal Folder (Not Associated with a Group)</option>
+                            <option value="" data-i18n="account.personalFolder">Personal Folder (Not Associated with a Group)</option>
                         </select>
                         <p class="text-xs text-[var(--text-light)] mt-1">Assign this folder to a group to enable auto-sharing when recordings are moved to it</p>
                     </div>
@@ -5597,7 +5603,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     folderGroupIdEl.textContent = '';
                     const defaultOpt = document.createElement('option');
                     defaultOpt.value = '';
-                    defaultOpt.textContent = 'Personal Folder (Not Associated with a Group)';
+                    defaultOpt.textContent = t('account.personalFolder');
                     folderGroupIdEl.appendChild(defaultOpt);
                     userAdminGroups.forEach(function(group) {
                         const option = document.createElement('option');

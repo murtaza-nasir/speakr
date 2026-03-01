@@ -18,7 +18,7 @@
             </button>
             <button @click="toggleChatMaximize"
                     class="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                    :title="isChatMaximized ? 'Restore chat' : 'Maximize chat'">
+                    :title="isChatMaximized ? t('tooltips.restoreChat') : t('tooltips.maximizeChat')">
                 <i :class="['fas text-sm', isChatMaximized ? 'fa-compress' : 'fa-expand']"></i>
             </button>
             <button @click="() => { showChat = !showChat; if (!showChat) isChatMaximized = false; }"
@@ -104,7 +104,7 @@
             <p v-if="processedTranscription.isError"
                class="text-xs text-amber-500 mt-2">
                 <i class="fas fa-exclamation-triangle mr-1"></i>
-                Cannot chat: transcription failed. Please reprocess the transcription first.
+                ${ t('chat.cannotChatTranscriptionFailed') }
             </p>
             <p v-else-if="selectedRecording.status !== 'COMPLETED'"
                class="text-xs text-[var(--text-muted)] mt-2">

@@ -112,13 +112,13 @@ export function useUI(state, utils, processedTranscription) {
     // Select a color scheme
     const selectColorScheme = (schemeId) => {
         applyColorScheme(schemeId);
-        showToast('Color scheme applied', 'fa-palette');
+        showToast(t('messages.colorSchemeApplied'), 'fa-palette');
     };
 
     // Reset to default color scheme
     const resetColorScheme = () => {
         applyColorScheme('blue');
-        showToast('Color scheme reset to default', 'fa-undo');
+        showToast(t('messages.colorSchemeReset'), 'fa-undo');
     };
 
     // Toggle sidebar
@@ -326,7 +326,7 @@ export function useUI(state, utils, processedTranscription) {
                 }
             }
         } catch (error) {
-            showToast(`Failed to save: ${error.message}`, 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('messages.failedToSave', { error: error.message }), 'fa-exclamation-circle', 3000, 'error');
         }
     };
 
@@ -349,7 +349,7 @@ export function useUI(state, utils, processedTranscription) {
 
         // Check if user has permission to edit
         if (selectedRecording.value.can_edit === false) {
-            showToast('You do not have permission to edit this recording', 'fa-exclamation-circle', 3000, 'error');
+            showToast(t('messages.noPermissionToEdit'), 'fa-exclamation-circle', 3000, 'error');
             return;
         }
 
@@ -427,7 +427,7 @@ export function useUI(state, utils, processedTranscription) {
                 element: summaryMarkdownEditor.value,
                 spellChecker: false,
                 autofocus: true,
-                placeholder: "Enter summary in Markdown format...",
+                placeholder: t('form.enterSummaryMarkdown'),
                 initialValue: selectedRecording.value?.summary || '',
                 status: false,
                 toolbar: [
@@ -539,7 +539,7 @@ export function useUI(state, utils, processedTranscription) {
                 element: notesMarkdownEditor.value,
                 spellChecker: false,
                 autofocus: true,
-                placeholder: "Enter notes in Markdown format...",
+                placeholder: t('form.enterNotesMarkdown'),
                 initialValue: selectedRecording.value?.notes || '',
                 status: false,
                 toolbar: [
@@ -621,7 +621,7 @@ export function useUI(state, utils, processedTranscription) {
 
     const downloadNotes = async () => {
         if (!selectedRecording.value || !selectedRecording.value.notes) {
-            showToast('No notes available to download.', 'fa-exclamation-circle');
+            showToast(t('messages.noNotesAvailableDownload'), 'fa-exclamation-circle');
             return;
         }
 
@@ -629,7 +629,7 @@ export function useUI(state, utils, processedTranscription) {
             const response = await fetch(`/recording/${selectedRecording.value.id}/download/notes`);
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || 'Failed to download notes', 'fa-exclamation-circle');
+                showToast(error.error || t('messages.notesDownloadFailed'), 'fa-exclamation-circle');
                 return;
             }
 
@@ -644,15 +644,15 @@ export function useUI(state, utils, processedTranscription) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            showToast('Notes downloaded successfully!');
+            showToast(t('messages.notesDownloadSuccess'));
         } catch (error) {
-            showToast('Failed to download notes', 'fa-exclamation-circle');
+            showToast(t('messages.notesDownloadFailed'), 'fa-exclamation-circle');
         }
     };
 
     const downloadEventICS = async (event) => {
         if (!event || !event.id) {
-            showToast('Invalid event data', 'fa-exclamation-circle');
+            showToast(t('messages.invalidEventData'), 'fa-exclamation-circle');
             return;
         }
 
@@ -660,7 +660,7 @@ export function useUI(state, utils, processedTranscription) {
             const response = await fetch(`/api/event/${event.id}/ics`);
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || 'Failed to download event', 'fa-exclamation-circle');
+                showToast(error.error || t('messages.eventDownloadFailed'), 'fa-exclamation-circle');
                 return;
             }
 
@@ -676,16 +676,16 @@ export function useUI(state, utils, processedTranscription) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            showToast(`Event "${event.title}" downloaded. Open the file to add to your calendar.`, 'fa-calendar-check', 3000);
+            showToast(t('messages.eventDownloadSuccess', { title: event.title }), 'fa-calendar-check', 3000);
         } catch (error) {
             console.error('Download failed:', error);
-            showToast('Failed to download event', 'fa-exclamation-circle');
+            showToast(t('messages.eventDownloadFailed'), 'fa-exclamation-circle');
         }
     };
 
     const downloadICS = async () => {
         if (!selectedRecording.value || !selectedRecording.value.events || selectedRecording.value.events.length === 0) {
-            showToast('No events to export', 'fa-exclamation-circle');
+            showToast(t('messages.noEventsToExport'), 'fa-exclamation-circle');
             return;
         }
 
@@ -693,7 +693,7 @@ export function useUI(state, utils, processedTranscription) {
             const response = await fetch(`/api/recording/${selectedRecording.value.id}/events/ics`);
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || 'Failed to export events', 'fa-exclamation-circle');
+                showToast(error.error || t('messages.eventsExportFailed'), 'fa-exclamation-circle');
                 return;
             }
 
@@ -709,16 +709,16 @@ export function useUI(state, utils, processedTranscription) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            showToast(`Exported ${selectedRecording.value.events.length} events`, 'fa-calendar-check');
+            showToast(t('messages.eventsExportSuccess', { count: selectedRecording.value.events.length }), 'fa-calendar-check');
         } catch (error) {
             console.error('Download all events ICS error:', error);
-            showToast('Failed to export events', 'fa-exclamation-circle');
+            showToast(t('messages.eventsExportFailed'), 'fa-exclamation-circle');
         }
     };
 
     const deleteEvent = async (event) => {
         if (!event || !event.id) {
-            showToast('Invalid event data', 'fa-exclamation-circle');
+            showToast(t('messages.invalidEventData'), 'fa-exclamation-circle');
             return;
         }
 
@@ -1245,13 +1245,13 @@ export function useUI(state, utils, processedTranscription) {
         localStorage.setItem('followPlayerMode', followPlayerMode.value);
 
         if (followPlayerMode.value) {
-            showToast('Follow player mode enabled', 'fa-link');
+            showToast(t('messages.followPlayerEnabled'), 'fa-link');
             // Scroll to current position if we have an active segment
             if (currentPlayingSegmentIndex.value !== null) {
                 scrollToActiveSegment(currentPlayingSegmentIndex.value);
             }
         } else {
-            showToast('Follow player mode disabled', 'fa-unlink');
+            showToast(t('messages.followPlayerDisabled'), 'fa-unlink');
         }
     };
 
@@ -1337,16 +1337,16 @@ export function useUI(state, utils, processedTranscription) {
         textArea.select();
         try {
             document.execCommand('copy');
-            showToast('Copied to clipboard!');
+            showToast(t('messages.copiedSuccessfully'));
         } catch (err) {
-            showToast('Failed to copy', 'fa-exclamation-circle');
+            showToast(t('messages.copyFailed'), 'fa-exclamation-circle');
         }
         document.body.removeChild(textArea);
     };
 
     const copyTranscription = (event) => {
         if (!selectedRecording.value || !selectedRecording.value.transcription) {
-            showToast('No transcription available to copy.', 'fa-exclamation-circle');
+            showToast(t('messages.noTranscriptionToCopy'), 'fa-exclamation-circle');
             return;
         }
 
@@ -1375,7 +1375,7 @@ export function useUI(state, utils, processedTranscription) {
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(textToCopy)
-                .then(() => showToast('Transcription copied to clipboard!'))
+                .then(() => showToast(t('messages.transcriptionCopied')))
                 .catch(() => fallbackCopyTextToClipboard(textToCopy));
         } else {
             fallbackCopyTextToClipboard(textToCopy);
@@ -1384,7 +1384,7 @@ export function useUI(state, utils, processedTranscription) {
 
     const copySummary = (event) => {
         if (!selectedRecording.value || !selectedRecording.value.summary) {
-            showToast('No summary available to copy.', 'fa-exclamation-circle');
+            showToast(t('messages.noSummaryToCopy'), 'fa-exclamation-circle');
             return;
         }
         const button = event?.currentTarget;
@@ -1392,7 +1392,7 @@ export function useUI(state, utils, processedTranscription) {
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(selectedRecording.value.summary)
-                .then(() => showToast('Summary copied to clipboard!'))
+                .then(() => showToast(t('messages.summaryCopied')))
                 .catch(() => fallbackCopyTextToClipboard(selectedRecording.value.summary));
         } else {
             fallbackCopyTextToClipboard(selectedRecording.value.summary);
@@ -1401,7 +1401,7 @@ export function useUI(state, utils, processedTranscription) {
 
     const copyNotes = (event) => {
         if (!selectedRecording.value || !selectedRecording.value.notes) {
-            showToast('No notes available to copy.', 'fa-exclamation-circle');
+            showToast(t('messages.noNotesToCopy'), 'fa-exclamation-circle');
             return;
         }
         const button = event?.currentTarget;
@@ -1409,7 +1409,7 @@ export function useUI(state, utils, processedTranscription) {
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(selectedRecording.value.notes)
-                .then(() => showToast('Notes copied to clipboard!'))
+                .then(() => showToast(t('messages.notesCopied')))
                 .catch(() => fallbackCopyTextToClipboard(selectedRecording.value.notes));
         } else {
             fallbackCopyTextToClipboard(selectedRecording.value.notes);
@@ -1419,7 +1419,7 @@ export function useUI(state, utils, processedTranscription) {
     // --- Download Functions ---
     const downloadSummary = async () => {
         if (!selectedRecording.value || !selectedRecording.value.summary) {
-            showToast('No summary available to download.', 'fa-exclamation-circle');
+            showToast(t('messages.noSummaryToDownload'), 'fa-exclamation-circle');
             return;
         }
 
@@ -1427,7 +1427,7 @@ export function useUI(state, utils, processedTranscription) {
             const response = await fetch(`/recording/${selectedRecording.value.id}/download/summary`);
             if (!response.ok) {
                 const error = await response.json();
-                showToast(error.error || 'Failed to download summary', 'fa-exclamation-circle');
+                showToast(error.error || t('messages.summaryDownloadFailed'), 'fa-exclamation-circle');
                 return;
             }
 
@@ -1457,15 +1457,15 @@ export function useUI(state, utils, processedTranscription) {
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
 
-            showToast('Summary downloaded successfully!');
+            showToast(t('messages.summaryDownloadSuccess'));
         } catch (error) {
-            showToast('Failed to download summary', 'fa-exclamation-circle');
+            showToast(t('messages.summaryDownloadFailed'), 'fa-exclamation-circle');
         }
     };
 
     const downloadTranscript = async () => {
         if (!selectedRecording.value || !selectedRecording.value.transcription) {
-            showToast('No transcription available to download.', 'fa-exclamation-circle');
+            showToast(t('messages.noTranscriptionToDownload'), 'fa-exclamation-circle');
             return;
         }
 
@@ -1567,7 +1567,7 @@ export function useUI(state, utils, processedTranscription) {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(downloadUrl);
 
-                showToast('Transcript downloaded successfully!');
+                showToast(t('messages.transcriptDownloadSuccess'));
                 return;
             }
 
@@ -1578,7 +1578,7 @@ export function useUI(state, utils, processedTranscription) {
 
             const response = await fetch(url);
             if (!response.ok) {
-                throw new Error('Failed to download transcript');
+                throw new Error(t('messages.transcriptDownloadFailed'));
             }
 
             const blob = await response.blob();
@@ -1600,17 +1600,17 @@ export function useUI(state, utils, processedTranscription) {
             document.body.removeChild(a);
             URL.revokeObjectURL(downloadUrl);
 
-            showToast('Transcript downloaded successfully!');
+            showToast(t('messages.transcriptDownloadSuccess'));
         } catch (error) {
             console.error('Error downloading transcript:', error);
-            showToast('Failed to download transcript', 'fa-exclamation-circle');
+            showToast(t('messages.transcriptDownloadFailed'), 'fa-exclamation-circle');
         }
     };
 
     // Download with default template (no modal)
     const downloadWithDefaultTemplate = async () => {
         if (!selectedRecording.value || !selectedRecording.value.transcription) {
-            showToast('No transcription available to download.', 'fa-exclamation-circle');
+            showToast(t('messages.noTranscriptionToDownload'), 'fa-exclamation-circle');
             return;
         }
 
@@ -1618,7 +1618,7 @@ export function useUI(state, utils, processedTranscription) {
             // Download using the default template (server will use user's default)
             const response = await fetch(`/recording/${selectedRecording.value.id}/download/transcript`);
             if (!response.ok) {
-                throw new Error('Failed to download transcript');
+                throw new Error(t('messages.transcriptDownloadFailed'));
             }
 
             const blob = await response.blob();
@@ -1640,10 +1640,10 @@ export function useUI(state, utils, processedTranscription) {
             document.body.removeChild(a);
             URL.revokeObjectURL(downloadUrl);
 
-            showToast('Transcript downloaded successfully!');
+            showToast(t('messages.transcriptDownloadSuccess'));
         } catch (error) {
             console.error('Error downloading transcript:', error);
-            showToast('Failed to download transcript', 'fa-exclamation-circle');
+            showToast(t('messages.transcriptDownloadFailed'), 'fa-exclamation-circle');
         }
     };
 
@@ -1774,7 +1774,7 @@ export function useUI(state, utils, processedTranscription) {
                 element: recordingNotesEditor.value,
                 spellChecker: false,
                 autofocus: false,
-                placeholder: "Enter notes in Markdown format...",
+                placeholder: t('form.enterNotesMarkdown'),
                 initialValue: recordingNotes.value || '',
                 status: false,
                 toolbar: [
@@ -1884,7 +1884,7 @@ export function useUI(state, utils, processedTranscription) {
 
     const getParticipantDropdownPosition = (index) => {
         // Find the input element for this index and calculate position
-        const inputs = document.querySelectorAll('.max-w-md input[placeholder="Participant name..."]');
+        const inputs = document.querySelectorAll('.max-w-md input[placeholder="' + t('form.participantNamePlaceholder') + '"]');
         if (inputs[index]) {
             const rect = inputs[index].getBoundingClientRect();
             return {
@@ -1929,13 +1929,13 @@ export function useUI(state, utils, processedTranscription) {
             });
 
             const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Failed to save participants');
+            if (!response.ok) throw new Error(data.error || t('messages.failedToSaveParticipants'));
 
             showToast(t('common.changesSaved'), 'fa-check-circle');
             closeEditParticipantsModal();
         } catch (error) {
             console.error('Save error:', error);
-            utils.setGlobalError(`Save failed: ${error.message}`);
+            utils.setGlobalError(t('messages.saveParticipantsFailed', { error: error.message }));
         }
     };
 
