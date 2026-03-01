@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.11--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.14--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -162,23 +162,22 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.13-alpha)
+## Latest Release (v0.8.14-alpha)
+
+**Fullscreen Video, Custom Vocabulary & Localization**
+
+- **Fullscreen Video Mode** - Double-click or use the expand button to enter a fullscreen video player with auto-hiding controls, live subtitles showing speaker names, and full keyboard shortcuts
+- **Custom Vocabulary (Hotwords)** - Comma-separated words to improve recognition of domain-specific terms, configurable per user, per tag, or per folder
+- **Initial Prompt** - Provide context to steer the transcription model's style and vocabulary
+- **Video Passthrough** - New `VIDEO_PASSTHROUGH_ASR=true` option sends raw video files directly to ASR backends that support video input, skipping audio extraction
+- **Upload Disclaimer Modal** - Configurable disclaimer shown before uploads, with custom banner text in admin settings
+- **Complete Localization** - All recent feature strings (incognito mode, hotwords, upload disclaimer, fullscreen video, groups, SSO, color schemes) now fully localized across all six languages
+
+**Bug Fixes** - Upload notification ordering, speaker snippet extraction for video files with AAC audio, chat textarea staying focused during AI responses, upload queue blocking when adding files while processing, duplicate detection hashing before conversion, markdown list formatting
+
+### Previous Release (v0.8.13-alpha)
 
 **Video Retention Fix** - Fixed large video files silently losing their video stream during upload when `VIDEO_RETENTION=true`. Probe timeout now scales with file size and falls back to extension detection if probing fails.
-
-### Previous Release (v0.8.12-alpha)
-
-**Speaker Search, Shared Page Improvements & Bug Fixes**
-
-- **Video Retention** - New `VIDEO_RETENTION=true` option preserves video streams for in-browser playback. When enabled, uploaded video files keep their video track and render with a native `<video>` player alongside the transcript. Audio is extracted to a temp file for transcription and cleaned up automatically. HTTP Range requests enable seeking without downloading the full file.
-- **Parallel Uploads** - Multiple files upload concurrently with individual progress bars, making batch uploads significantly faster. Configurable via `MAX_CONCURRENT_UPLOADS` (default: 3)
-- **Duplicate Detection** - SHA-256 file hashing detects duplicate uploads with warning toasts and a clickable copies indicator in the sidebar and header
-- **Speaker Profile Preservation** - Speaker profiles and voice embeddings are now preserved by default when all recordings are deleted. Set `DELETE_ORPHANED_SPEAKERS=true` to enable automatic cleanup
-- **Volume Controls** - Volume slider popups and mute visual indicators on all audio/video players
-- **Speaker Enhancements** - Split button UI, apply suggested names, name sanitization, JSON schema option, new speaker API endpoints
-- **Localization** - Complete translations for folders, API tokens, recording recovery, events, and speakers management
-
-**Bug Fixes** - ASR_DIARIZE=false being ignored, bulk delete cascade, file monitor stability, speaker snippet creation, null transcription bug, clean_llm_response being too aggressive
 
 ### Previous Release (v0.8.8)
 
@@ -354,6 +353,8 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - ✅ Comprehensive REST API with Swagger UI documentation (v0.8.0)
 - ✅ Video retention with in-browser video playback (v0.8.11)
 - ✅ Parallel uploads with duplicate detection (v0.8.11)
+- ✅ Fullscreen video mode with live subtitles (v0.8.14)
+- ✅ Custom vocabulary and transcription hints (v0.8.14)
 
 ### Near-term
 - Quick language switching for transcription
