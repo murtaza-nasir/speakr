@@ -21,7 +21,7 @@ class ShareAuditLog(db.Model):
 
     # Actor (who performed the action)
     actor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    actor = db.relationship('User', foreign_keys=[actor_id], backref='audit_actions_performed')
+    actor = db.relationship('User', foreign_keys=[actor_id], backref=db.backref('audit_actions_performed', cascade='all, delete-orphan'))
 
     # Target (who was affected - optional for some actions)
     target_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)

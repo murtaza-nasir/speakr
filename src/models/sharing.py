@@ -69,8 +69,8 @@ class InternalShare(db.Model):
 
     # Relationships
     recording = db.relationship('Recording', backref=db.backref('internal_shares', lazy=True, cascade='all, delete-orphan'))
-    owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('shared_recordings', lazy=True))
-    shared_with = db.relationship('User', foreign_keys=[shared_with_user_id], backref=db.backref('received_shares', lazy=True))
+    owner = db.relationship('User', foreign_keys=[owner_id], backref=db.backref('shared_recordings', lazy=True, cascade='all, delete'))
+    shared_with = db.relationship('User', foreign_keys=[shared_with_user_id], backref=db.backref('received_shares', lazy=True, cascade='all, delete'))
 
     # Unique constraint: can't share same recording with same user twice
     __table_args__ = (db.UniqueConstraint('recording_id', 'shared_with_user_id', name='unique_recording_share'),)
@@ -216,7 +216,7 @@ class SharedRecordingState(db.Model):
 
     # Relationships
     recording = db.relationship('Recording', backref=db.backref('user_states', lazy=True, cascade='all, delete-orphan'))
-    user = db.relationship('User', backref=db.backref('recording_states', lazy=True))
+    user = db.relationship('User', backref=db.backref('recording_states', lazy=True, cascade='all, delete-orphan'))
 
     # Unique constraint: one state per user per recording
     __table_args__ = (db.UniqueConstraint('recording_id', 'user_id', name='unique_user_recording_state'),)
