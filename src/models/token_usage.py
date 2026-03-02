@@ -33,7 +33,7 @@ class TokenUsage(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', backref=db.backref('token_usage', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('token_usage', lazy='dynamic', cascade='all, delete-orphan'))
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'date', 'operation_type', name='uq_user_date_op'),

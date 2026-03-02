@@ -328,15 +328,21 @@ def admin_delete_user(user_id):
         total_chunks = TranscriptChunk.query.filter_by(user_id=user_id).count()
         if total_chunks > 0:
             current_app.logger.info(f"Deleting {total_chunks} transcript chunks with embeddings for user {user_id}")
-    
+
     for recording in user.recordings:
         try:
             if recording.audio_path and os.path.exists(recording.audio_path):
                 os.remove(recording.audio_path)
         except Exception as e:
             current_app.logger.error(f"Error deleting audio file {recording.audio_path}: {e}")
-    
-    # Delete user (cascade will handle all related data including chunks/embeddings)
+
+    # Explicitly delete related records that might not cascade properly
+    ProcessingJob.query.filter_by(user_id=user_id).delete()
+    InternalShare.query.filter(
+        (InternalShare.owner_id == user_id) | (InternalShare.shared_with_user_id == user_id)
+    ).delete()
+
+    # Delete user (cascade will handle remaining related data including chunks/embeddings)
     db.session.delete(user)
     db.session.commit()
     

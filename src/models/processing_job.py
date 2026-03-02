@@ -40,7 +40,7 @@ class ProcessingJob(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
 
     # Relationships
-    user = db.relationship('User', backref=db.backref('processing_jobs', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('processing_jobs', lazy='dynamic', cascade='all, delete-orphan'))
     recording = db.relationship('Recording', backref=db.backref('processing_jobs', lazy='dynamic', cascade='all, delete-orphan'))
 
     def __repr__(self):

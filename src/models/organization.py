@@ -47,7 +47,7 @@ class GroupMembership(db.Model):
 
     # Relationships
     group = db.relationship('Group', back_populates='memberships')
-    user = db.relationship('User', backref=db.backref('group_memberships', lazy=True))
+    user = db.relationship('User', backref=db.backref('group_memberships', lazy=True, cascade='all, delete-orphan'))
 
     # Unique constraint: user can only be in a group once
     __table_args__ = (db.UniqueConstraint('group_id', 'user_id', name='unique_group_membership'),)

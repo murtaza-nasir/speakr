@@ -20,6 +20,9 @@ class PushSubscription(db.Model):
     p256dh_key = db.Column(db.String(200), nullable=False)
     auth_key = db.Column(db.String(100), nullable=False)
 
+    # Relationships
+    user = db.relationship('User', backref=db.backref('push_subscriptions', lazy=True, cascade='all, delete-orphan'))
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

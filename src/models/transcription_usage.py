@@ -31,7 +31,7 @@ class TranscriptionUsage(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = db.relationship('User', backref=db.backref('transcription_usage', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('transcription_usage', lazy='dynamic', cascade='all, delete-orphan'))
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'date', 'connector_type', name='uq_user_date_connector'),
