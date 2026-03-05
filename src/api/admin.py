@@ -1028,6 +1028,42 @@ def admin_update_auto_process_config():
 
 
 
+@admin_bp.route('/admin/auto-process/trigger', methods=['POST'])
+@login_required
+def admin_trigger_auto_process():
+    """Trigger an immediate auto-process scan cycle."""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        from src.file_monitor import file_monitor
+        if not file_monitor or not file_monitor.running:
+            return jsonify({'error': 'Auto-processing is not running'}), 400
+
+        import threading
+        def run_scan():
+            try:
+                file_monitor._update_user_cache()
+                if file_monitor.mode == 'admin_only':
+                    file_monitor._scan_admin_directory()
+                elif file_monitor.mode == 'user_directories':
+                    file_monitor._scan_user_directories()
+                elif file_monitor.mode == 'single_user':
+                    file_monitor._scan_single_user_directory()
+            except Exception as e:
+                file_monitor.logger.error(f"Error during triggered scan: {e}", exc_info=True)
+
+        thread = threading.Thread(target=run_scan, daemon=True)
+        thread.start()
+
+        return jsonify({'success': True, 'message': 'Scan triggered'})
+
+    except Exception as e:
+        current_app.logger.error(f"Error triggering auto-process scan: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
 @login_required
 def admin_process_recordings_for_inquire():

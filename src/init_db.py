@@ -226,6 +226,12 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not migrate protected tags to retention_days=-1: {e}")
 
+        # Auto-process watch folder columns for tags
+        if add_column_if_not_exists(engine, 'tag', 'is_auto_process', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added is_auto_process column to tag table")
+        if add_column_if_not_exists(engine, 'tag', 'auto_process_folder_name', 'VARCHAR(100)'):
+            app.logger.info("Added auto_process_folder_name column to tag table")
+
         if add_column_if_not_exists(engine, 'tag', 'auto_share_on_apply', 'BOOLEAN DEFAULT 1'):
             app.logger.info("Added auto_share_on_apply column to tag table")
 
