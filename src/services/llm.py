@@ -43,6 +43,13 @@ CHAT_GPT5_VERBOSITY = os.environ.get("CHAT_GPT5_VERBOSITY")
 # Streaming options - disable for LLM servers that don't support OpenAI's stream_options
 ENABLE_STREAM_OPTIONS = os.environ.get("ENABLE_STREAM_OPTIONS", "true").lower() == "true"
 
+# LLM timeout and retry configuration
+# Read timeout controls how long to wait for model inference (the bottleneck for local models)
+# Connect/write stay short so misconfigured URLs fail fast instead of hanging
+LLM_REQUEST_TIMEOUT = int(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
+LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
+llm_timeout = httpx.Timeout(connect=30.0, read=float(LLM_REQUEST_TIMEOUT), write=30.0, pool=30.0)
+
 
 def get_chat_config():
     """
@@ -85,8 +92,12 @@ try:
     client = OpenAI(
         api_key=api_key,
         base_url=TEXT_MODEL_BASE_URL,
-        http_client=http_client_no_proxy
+        http_client=http_client_no_proxy,
+        timeout=llm_timeout,
+        max_retries=LLM_MAX_RETRIES,
     )
+    if LLM_REQUEST_TIMEOUT != 600 or LLM_MAX_RETRIES != 2:
+        logger.info(f"LLM client timeout: {LLM_REQUEST_TIMEOUT}s, max retries: {LLM_MAX_RETRIES}")
 except Exception as client_init_e:
     client = None
 
@@ -100,7 +111,9 @@ try:
             chat_client = OpenAI(
                 api_key=chat_config['api_key'],
                 base_url=chat_config['base_url'],
-                http_client=http_client_no_proxy
+                http_client=http_client_no_proxy,
+                timeout=llm_timeout,
+                max_retries=LLM_MAX_RETRIES,
             )
             logger.info(f"Separate chat client initialized: {chat_config['base_url']} / {chat_config['model_name']}")
         else:
