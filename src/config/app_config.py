@@ -108,7 +108,8 @@ def initialize_config(app):
     client = None
     try:
         api_key = TEXT_MODEL_API_KEY or "not-needed"
-        client = OpenAI(api_key=api_key, base_url=TEXT_MODEL_BASE_URL, http_client=http_client_no_proxy)
+        from src.services.llm import llm_timeout, LLM_MAX_RETRIES
+        client = OpenAI(api_key=api_key, base_url=TEXT_MODEL_BASE_URL, http_client=http_client_no_proxy, timeout=llm_timeout, max_retries=LLM_MAX_RETRIES)
         app.logger.info(f"LLM client initialized: {TEXT_MODEL_BASE_URL} / {TEXT_MODEL_NAME}")
     except Exception as e:
         app.logger.error(f"Failed to initialize LLM client: {e}")
