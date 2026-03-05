@@ -562,7 +562,13 @@
     "noNamingTemplate": "Без шаблона (использовать по умолчанию или ИИ-заголовок)",
     "tagName": "Название тега *",
     "tagNamePlaceholder": "например, Встречи, Интервью",
-    "title": "Редактирование тега"
+    "title": "Редактирование тега",
+    "watchFolder": "Watch Folder",
+    "watchFolderPath": "Drop files in:",
+    "watchFolderGroupTagError": "Watch folders are not available for group tags",
+    "watchFolderCreated": "Watch folder created",
+    "watchFolderRemoved": "Watch folder removed",
+    "watchFolderError": "Could not create watch folder"
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",

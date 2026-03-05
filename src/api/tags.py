@@ -12,6 +12,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
+import re
+from pathlib import Path
+
 from sqlalchemy.exc import IntegrityError
 
 from src.database import db
@@ -27,6 +30,70 @@ ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() =
 USERS_CAN_DELETE = os.environ.get('USERS_CAN_DELETE', 'true').lower() == 'true'
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
+ENABLE_AUTO_PROCESSING = os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower() == 'true'
+
+
+def _sanitize_folder_name(name):
+    """Convert a tag name to a filesystem-safe folder name."""
+    # Lowercase and replace spaces/underscores with hyphens
+    folder = name.lower().strip()
+    folder = re.sub(r'[\s_]+', '-', folder)
+    # Remove anything that isn't alphanumeric, hyphen, or dot
+    folder = re.sub(r'[^a-z0-9\-.]', '', folder)
+    # Collapse multiple hyphens
+    folder = re.sub(r'-{2,}', '-', folder)
+    # Strip leading/trailing hyphens
+    folder = folder.strip('-')
+    return folder or 'tag'
+
+
+def _get_auto_process_base_dir(user):
+    """Return the base auto-process directory for a user based on AUTO_PROCESS_MODE."""
+    watch_dir = os.environ.get('AUTO_PROCESS_WATCH_DIR', '/data/auto-process')
+    mode = os.environ.get('AUTO_PROCESS_MODE', 'admin_only')
+
+    if mode == 'user_directories':
+        return Path(watch_dir) / f'user{user.id}'
+    else:
+        # admin_only and single_user both use the base directory
+        return Path(watch_dir)
+
+
+def _ensure_auto_process_folder(tag, user):
+    """Create the auto-process watch folder for a tag. Returns (success, path_or_error)."""
+    if not tag.auto_process_folder_name:
+        return False, 'No folder name set'
+
+    base_dir = _get_auto_process_base_dir(user)
+    folder_path = base_dir / tag.auto_process_folder_name
+
+    try:
+        folder_path.mkdir(parents=True, exist_ok=True)
+        return True, str(folder_path)
+    except OSError as e:
+        return False, str(e)
+
+
+def _remove_auto_process_folder(tag, user):
+    """Remove the auto-process watch folder if it's empty. Returns (removed, message)."""
+    if not tag.auto_process_folder_name:
+        return False, 'No folder name set'
+
+    base_dir = _get_auto_process_base_dir(user)
+    folder_path = base_dir / tag.auto_process_folder_name
+
+    if not folder_path.exists():
+        return True, 'Folder does not exist'
+
+    try:
+        # Only remove if empty
+        if not any(folder_path.iterdir()):
+            folder_path.rmdir()
+            return True, 'Folder removed'
+        else:
+            return False, 'Folder not empty, leaving in place'
+    except OSError as e:
+        return False, str(e)
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -139,6 +206,16 @@ def create_tag():
         if not template:
             return jsonify({'error': 'Export template not found'}), 404
 
+    # Handle auto-process
+    is_auto_process = data.get('is_auto_process', False)
+    auto_process_folder_name = None
+    if is_auto_process:
+        if not ENABLE_AUTO_PROCESSING:
+            return jsonify({'error': 'Auto-processing is not enabled'}), 400
+        if group_id:
+            return jsonify({'error': 'Watch folders are not available for group tags'}), 400
+        auto_process_folder_name = _sanitize_folder_name(data['name'])
+
     tag = Tag(
         name=data['name'],
         user_id=current_user.id,
@@ -155,7 +232,9 @@ def create_tag():
         auto_share_on_apply=data.get('auto_share_on_apply', True) if group_id else True,
         share_with_group_lead=data.get('share_with_group_lead', True) if group_id else True,
         naming_template_id=naming_template_id,
-        export_template_id=export_template_id
+        export_template_id=export_template_id,
+        is_auto_process=is_auto_process,
+        auto_process_folder_name=auto_process_folder_name
     )
 
     db.session.add(tag)
@@ -167,7 +246,19 @@ def create_tag():
         current_app.logger.error(f"Tag creation failed due to integrity constraint: {str(e)}")
         return jsonify({'error': 'A tag with this name already exists'}), 400
 
-    return jsonify(tag.to_dict()), 201
+    response = tag.to_dict()
+
+    # Create the watch folder after commit
+    if is_auto_process:
+        success, path_or_error = _ensure_auto_process_folder(tag, current_user)
+        if success:
+            response['auto_process_folder_path'] = path_or_error
+            current_app.logger.info(f"Created auto-process folder for tag '{tag.name}': {path_or_error}")
+        else:
+            response['auto_process_folder_warning'] = f'Could not create watch folder: {path_or_error}'
+            current_app.logger.warning(f"Failed to create auto-process folder for tag '{tag.name}': {path_or_error}")
+
+    return jsonify(response), 201
 
 
 
@@ -276,6 +367,22 @@ def update_tag(tag_id):
                 return jsonify({'error': 'Export template not found'}), 404
         tag.export_template_id = export_template_id if export_template_id else None
 
+    # Handle auto-process toggle
+    if 'is_auto_process' in data:
+        new_value = bool(data['is_auto_process'])
+        if new_value and not tag.is_auto_process:
+            # Enabling auto-process
+            if not ENABLE_AUTO_PROCESSING:
+                return jsonify({'error': 'Auto-processing is not enabled'}), 400
+            if tag.group_id:
+                return jsonify({'error': 'Watch folders are not available for group tags'}), 400
+            if not tag.auto_process_folder_name:
+                tag.auto_process_folder_name = _sanitize_folder_name(tag.name)
+            tag.is_auto_process = True
+        elif not new_value and tag.is_auto_process:
+            # Disabling auto-process
+            tag.is_auto_process = False
+
     tag.updated_at = datetime.utcnow()
 
     try:
@@ -285,7 +392,20 @@ def update_tag(tag_id):
         current_app.logger.error(f"Tag update failed due to integrity constraint: {str(e)}")
         return jsonify({'error': 'A tag with this name already exists'}), 400
 
-    return jsonify(tag.to_dict())
+    response = tag.to_dict()
+
+    # Create or remove folder after commit
+    if 'is_auto_process' in data:
+        if tag.is_auto_process:
+            success, path_or_error = _ensure_auto_process_folder(tag, current_user)
+            if success:
+                response['auto_process_folder_path'] = path_or_error
+            else:
+                response['auto_process_folder_warning'] = f'Could not create watch folder: {path_or_error}'
+        else:
+            _remove_auto_process_folder(tag, current_user)
+
+    return jsonify(response)
 
 
 
@@ -311,6 +431,12 @@ def delete_tag(tag_id):
         # Personal tag - must belong to the user
         if tag.user_id != current_user.id:
             return jsonify({'error': 'You do not have permission to delete this tag'}), 403
+
+    # Clean up auto-process folder if enabled
+    if tag.is_auto_process:
+        user = db.session.get(User, tag.user_id)
+        if user:
+            _remove_auto_process_folder(tag, user)
 
     db.session.delete(tag)
     db.session.commit()

@@ -699,7 +699,8 @@ def account():
                            admin_disabled_auto_summarization=admin_disabled_auto_summarization,
                            auto_summarization=current_user.auto_summarization if current_user.auto_summarization is not None else True,
                            user_language=user_language,
-                           enable_auto_export=ENABLE_AUTO_EXPORT)
+                           enable_auto_export=ENABLE_AUTO_EXPORT,
+                           enable_auto_processing=os.environ.get('ENABLE_AUTO_PROCESSING', 'false').lower() == 'true')
 
 
 @auth_bp.route('/api/user/auto-speaker-labelling', methods=['POST'])

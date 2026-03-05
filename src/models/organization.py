@@ -193,6 +193,10 @@ class Tag(db.Model):
     # Export template for recordings with this tag
     export_template_id = db.Column(db.Integer, db.ForeignKey('export_template.id', ondelete='SET NULL'), nullable=True)
 
+    # Auto-process watch folder settings
+    is_auto_process = db.Column(db.Boolean, default=False)
+    auto_process_folder_name = db.Column(db.String(100), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -235,6 +239,8 @@ class Tag(db.Model):
             'naming_template_name': self.naming_template.name if self.naming_template else None,
             'export_template_id': self.export_template_id,
             'export_template_name': self.export_template.name if self.export_template else None,
+            'is_auto_process': self.is_auto_process or False,
+            'auto_process_folder_name': self.auto_process_folder_name,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'recording_count': len(self.recording_associations)
         }

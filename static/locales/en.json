@@ -562,7 +562,13 @@
     "noNamingTemplate": "No template (use user default or AI title)",
     "tagName": "Tag Name *",
     "tagNamePlaceholder": "e.g., Meetings, Interviews",
-    "title": "Edit Tag"
+    "title": "Edit Tag",
+    "watchFolder": "Watch Folder",
+    "watchFolderPath": "Drop files in:",
+    "watchFolderGroupTagError": "Watch folders are not available for group tags",
+    "watchFolderCreated": "Watch folder created",
+    "watchFolderRemoved": "Watch folder removed",
+    "watchFolderError": "Could not create watch folder"
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",

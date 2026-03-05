@@ -639,7 +639,13 @@
     "noNamingTemplate": "无模板（使用用户默认或 AI 标题）",
     "tagName": "标签名称 *",
     "tagNamePlaceholder": "例如，会议、访谈",
-    "title": "编辑标签"
+    "title": "编辑标签",
+    "watchFolder": "Watch Folder",
+    "watchFolderPath": "Drop files in:",
+    "watchFolderGroupTagError": "Watch folders are not available for group tags",
+    "watchFolderCreated": "Watch folder created",
+    "watchFolderRemoved": "Watch folder removed",
+    "watchFolderError": "Could not create watch folder"
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",

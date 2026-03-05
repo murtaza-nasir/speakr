@@ -136,44 +136,74 @@ class FileMonitor:
         if not self._admin_user_id:
             self.logger.warning("No admin user found, skipping admin directory scan")
             return
-            
+
         self._scan_directory_for_user(self.base_watch_directory, self._admin_user_id)
-        
+        self._scan_tag_subdirectories(self.base_watch_directory, self._admin_user_id)
+
     def _scan_user_directories(self):
         """Scan user-specific subdirectories."""
         if not self.base_watch_directory.exists():
             return
-            
+
         # Look for user directories (e.g., user123, user456)
         for item in self.base_watch_directory.iterdir():
             if not item.is_dir():
                 continue
-                
+
             # Extract user ID from directory name
             user_id = self._extract_user_id_from_dirname(item.name)
             if user_id and user_id in self._valid_users:
                 self._scan_directory_for_user(item, user_id)
+                self._scan_tag_subdirectories(item, user_id)
             elif item.name.startswith('user'):
                 self.logger.warning(f"Found user directory '{item.name}' but user ID {user_id} is not valid")
-                
+
     def _scan_single_user_directory(self):
         """Scan directory for a single configured user."""
         default_username = os.environ.get('AUTO_PROCESS_DEFAULT_USERNAME')
         if not default_username:
             self.logger.warning("AUTO_PROCESS_DEFAULT_USERNAME not configured for single_user mode")
             return
-            
+
         user_id = self._username_to_id.get(default_username)
         if user_id:
             self._scan_directory_for_user(self.base_watch_directory, user_id)
+            self._scan_tag_subdirectories(self.base_watch_directory, user_id)
         else:
             self.logger.warning(f"Configured default username '{default_username}' is not valid")
+
+    def _scan_tag_subdirectories(self, directory, user_id):
+        """Scan subdirectories that match auto-process tag folders."""
+        if not directory.exists():
+            return
+
+        from src.app import app
+        from src.models import Tag
+
+        with app.app_context():
+            for item in directory.iterdir():
+                if not item.is_dir():
+                    continue
+
+                # Skip hidden dirs and user directories (e.g., user123)
+                if item.name.startswith('.') or self._extract_user_id_from_dirname(item.name) is not None:
+                    continue
+
+                # Look up matching auto-process tag
+                tag = Tag.query.filter_by(
+                    user_id=user_id,
+                    is_auto_process=True,
+                    auto_process_folder_name=item.name
+                ).first()
+
+                if tag:
+                    self._scan_directory_for_user(item, user_id, tag_id=tag.id)
             
-    def _scan_directory_for_user(self, directory, user_id):
+    def _scan_directory_for_user(self, directory, user_id, tag_id=None):
         """Scan a specific directory for files to process for a specific user."""
         if not directory.exists():
             return
-            
+
         for file_path in directory.iterdir():
             if not file_path.is_file():
                 continue
@@ -181,7 +211,7 @@ class FileMonitor:
             # Skip hidden files, processing files, or non-supported files
             if file_path.name.startswith('.') or file_path.suffix == '.processing':
                 continue
-            
+
             if file_path.suffix.lower() not in self.potential_audio_extensions:
                 continue
 
@@ -198,7 +228,7 @@ class FileMonitor:
 
             # --- Atomic Lock via Rename ---
             processing_path = file_path.with_suffix(file_path.suffix + '.processing')
-            
+
             try:
                 file_path.rename(processing_path)
                 self.logger.info(f"Acquired lock for {file_path}, renamed to {processing_path}")
@@ -211,7 +241,7 @@ class FileMonitor:
 
             # --- Process the locked file ---
             try:
-                self._process_file(processing_path, user_id)
+                self._process_file(processing_path, user_id, tag_id=tag_id)
             except Exception as e:
                 self.logger.error(f"Error processing file {processing_path}: {e}", exc_info=True)
                 # If processing fails, unlock the file by renaming it back
@@ -279,13 +309,14 @@ class FileMonitor:
         except (OSError, FileNotFoundError):
             return False
             
-    def _process_file(self, processing_path, user_id):
+    def _process_file(self, processing_path, user_id, tag_id=None):
         """
         Process a single locked audio file for a specific user.
-        
+
         Args:
             processing_path (Path): Path to the locked audio file (e.g., file.mp3.processing)
             user_id (int): ID of the user to assign the recording to
+            tag_id (int, optional): Tag ID to apply to the recording
         """
         # Import Flask components inside function to avoid circular imports
         from src.app import app, db, Recording, User, transcribe_audio_task
@@ -431,13 +462,43 @@ class FileMonitor:
 
                 self.logger.info(f"Created recording record with ID: {recording.id} for user: {user.username}")
 
+                # Apply tag if specified
+                job_params = {}
+                if tag_id:
+                    from src.models import Tag, RecordingTag
+                    tag = db.session.get(Tag, tag_id)
+                    if tag:
+                        recording_tag = RecordingTag(
+                            recording_id=recording.id,
+                            tag_id=tag_id,
+                            order=0
+                        )
+                        db.session.add(recording_tag)
+                        db.session.commit()
+                        self.logger.info(f"Applied tag '{tag.name}' (id={tag_id}) to recording {recording.id}")
+
+                        # Pass tag settings to job params
+                        if tag.default_hotwords:
+                            job_params['hotwords'] = tag.default_hotwords
+                        if tag.default_initial_prompt:
+                            job_params['initial_prompt'] = tag.default_initial_prompt
+                        if tag.default_language:
+                            job_params['language'] = tag.default_language
+                        if tag.default_min_speakers:
+                            job_params['min_speakers'] = tag.default_min_speakers
+                        if tag.default_max_speakers:
+                            job_params['max_speakers'] = tag.default_max_speakers
+                        if tag.custom_prompt:
+                            job_params['custom_prompt'] = tag.custom_prompt
+                        job_params['tag_id'] = tag_id
+
                 # Queue for background processing
                 from src.services.job_queue import job_queue
                 job_queue.enqueue(
                     user_id=user.id,
                     recording_id=recording.id,
                     job_type='transcribe',
-                    params={},
+                    params=job_params,
                     is_new_upload=True
                 )
 
@@ -485,8 +546,44 @@ def start_file_monitor():
         )
         file_monitor.start()
         app.logger.info(f"Automated file processing started in '{mode}' mode")
+
+        # Ensure all auto-process tag folders exist
+        _ensure_tag_folders_on_startup(app, watch_dir, mode)
     else:
         app.logger.info("Automated file processing is disabled")
+
+
+def _ensure_tag_folders_on_startup(app, watch_dir, mode):
+    """Ensure all auto-process tag folders exist on startup."""
+    with app.app_context():
+        try:
+            from src.database import db
+            from src.models import Tag
+            from src.models.user import User
+            tags = Tag.query.filter_by(is_auto_process=True).all()
+            if not tags:
+                return
+
+            for tag in tags:
+                user = db.session.get(User, tag.user_id)
+                if not user:
+                    continue
+
+                if mode == 'user_directories':
+                    base_dir = Path(watch_dir) / f'user{user.id}'
+                else:
+                    base_dir = Path(watch_dir)
+
+                if tag.auto_process_folder_name:
+                    folder_path = base_dir / tag.auto_process_folder_name
+                    try:
+                        folder_path.mkdir(parents=True, exist_ok=True)
+                    except OSError as e:
+                        app.logger.error(f"Could not create auto-process folder {folder_path}: {e}")
+
+            app.logger.info(f"Verified {len(tags)} auto-process tag folder(s)")
+        except Exception as e:
+            app.logger.warning(f"Error ensuring tag folders on startup: {e}")
 
 def stop_file_monitor():
     """Stop the file monitor."""

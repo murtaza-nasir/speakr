@@ -2052,6 +2052,24 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </div>
                 </div>
 
+                {% if enable_auto_processing %}
+                <!-- Auto-process watch folder toggle -->
+                <div id="tagAutoProcessRow" class="flex items-center justify-between py-2 px-3 bg-[var(--bg-tertiary)] rounded-md">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-folder-open text-[var(--text-muted)] text-sm"></i>
+                        <label for="tagAutoProcess" class="text-sm font-medium text-[var(--text-secondary)] cursor-pointer" data-i18n="editTagModal.watchFolder">Watch Folder</label>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="tagAutoProcess" class="sr-only peer">
+                        <div class="w-9 h-5 bg-[var(--bg-quaternary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--bg-success)]"></div>
+                    </label>
+                </div>
+                <div id="tagAutoProcessPath" class="hidden px-3 py-2 bg-[var(--bg-tertiary)] rounded-md -mt-2">
+                    <span class="text-xs text-[var(--text-muted)]" data-i18n="editTagModal.watchFolderPath">Drop files in:</span>
+                    <code id="tagAutoProcessPathValue" class="block text-xs text-[var(--text-primary)] font-mono mt-1 break-all"></code>
+                </div>
+                {% endif %}
+
                 <!-- Tab Navigation -->
                 <div class="border-b border-[var(--border-primary)]">
                     <nav class="flex -mb-px space-x-1" id="tagModalTabs">
@@ -4705,6 +4723,25 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (document.getElementById('tagExportTemplate')) {
                     document.getElementById('tagExportTemplate').value = tag.export_template_id || '';
                 }
+
+                // Populate auto-process toggle
+                const autoProcessCheckbox = document.getElementById('tagAutoProcess');
+                if (autoProcessCheckbox) {
+                    autoProcessCheckbox.checked = tag.is_auto_process || false;
+                    const pathEl = document.getElementById('tagAutoProcessPath');
+                    const pathValueEl = document.getElementById('tagAutoProcessPathValue');
+                    if (tag.is_auto_process && tag.auto_process_folder_name) {
+                        pathEl?.classList.remove('hidden');
+                        if (pathValueEl) pathValueEl.textContent = tag.auto_process_folder_name;
+                    } else {
+                        pathEl?.classList.add('hidden');
+                    }
+                    // Hide auto-process for group tags
+                    const autoProcessRow = document.getElementById('tagAutoProcessRow');
+                    if (autoProcessRow) {
+                        autoProcessRow.style.display = tag.group_id ? 'none' : '';
+                    }
+                }
             } else {
                 // Create mode
                 isEditingTag = false;
@@ -4749,6 +4786,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 // Reset export template
                 if (document.getElementById('tagExportTemplate')) {
                     document.getElementById('tagExportTemplate').value = '';
+                }
+
+                // Reset auto-process
+                const autoProcessCheckbox = document.getElementById('tagAutoProcess');
+                if (autoProcessCheckbox) {
+                    autoProcessCheckbox.checked = false;
+                    document.getElementById('tagAutoProcessPath')?.classList.add('hidden');
+                    const autoProcessRow = document.getElementById('tagAutoProcessRow');
+                    if (autoProcessRow) autoProcessRow.style.display = '';
                 }
             }
 
@@ -4908,7 +4954,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null,
                 default_hotwords: formData.get('default_hotwords') || null,
                 default_initial_prompt: formData.get('default_initial_prompt') || null,
-                retention_days: retentionDays
+                retention_days: retentionDays,
+                is_auto_process: document.getElementById('tagAutoProcess')?.checked || false
             };
 
             // Add group-related fields
@@ -4962,7 +5009,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     tags.push(savedTag);
                     showToast(`Tag "${savedTag.name}" created successfully`);
                 }
-                
+
+                // Show auto-process folder notifications
+                if (savedTag.auto_process_folder_path) {
+                    showToast(translations?.editTagModal?.watchFolderCreated || 'Watch folder created');
+                }
+                if (savedTag.auto_process_folder_warning) {
+                    showToast(translations?.editTagModal?.watchFolderError || 'Could not create watch folder', 'error');
+                }
+
                 displayTags();
                 closeTagModal();
             } catch (error) {

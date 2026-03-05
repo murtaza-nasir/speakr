@@ -562,7 +562,13 @@
     "noNamingTemplate": "Sin plantilla (usar predeterminado o título IA)",
     "tagName": "Nombre de la Etiqueta *",
     "tagNamePlaceholder": "ej., Reuniones, Entrevistas",
-    "title": "Editar Etiqueta"
+    "title": "Editar Etiqueta",
+    "watchFolder": "Watch Folder",
+    "watchFolderPath": "Drop files in:",
+    "watchFolderGroupTagError": "Watch folders are not available for group tags",
+    "watchFolderCreated": "Watch folder created",
+    "watchFolderRemoved": "Watch folder removed",
+    "watchFolderError": "Could not create watch folder"
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
