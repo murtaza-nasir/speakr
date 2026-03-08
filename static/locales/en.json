@@ -202,6 +202,8 @@
     "defaultPromptInfo": "This default prompt will be used for all users who haven't set their own custom prompt in their account settings.",
     "defaultPrompts": "Default Prompts",
     "defaultSummarizationPrompt": "Default Summarization Prompt",
+    "defaultPromptFieldsTitle": "Available placeholders:",
+    "defaultPromptFieldsDesc": "You can use placeholders in the prompt text that will be substituted when processing a recording. Supported placeholders: {{meeting_date}} (replaced with the recording's meeting date in ISO 8601 format) and {{title}} (replaced with the recording title). Placeholders can be used anywhere in the prompt and will be replaced before the prompt is sent to the LLM.",
     "editUser": "Edit User",
     "email": "EMAIL",
     "emailLabel": "Email",

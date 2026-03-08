@@ -228,6 +228,18 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             if naming_template:
                 current_app.logger.info(f"Using user's default naming template '{naming_template.name}' for recording {recording_id}")
 
+        # If a title already exists (e.g., uploaded via notes), do NOT overwrite it.
+        if recording.title and recording.title.strip():
+            current_app.logger.info(
+                f"Recording {recording_id} already has a title; preserving uploaded title and skipping AI/title-template generation."
+            )
+            # Ensure status is set correctly when not auto-summarizing
+            if not will_auto_summarize:
+                recording.status = 'COMPLETED'
+                recording.completed_at = datetime.utcnow()
+            db.session.commit()
+            return
+
         # Check if we need to generate AI title
         needs_ai_title = naming_template is None or naming_template.needs_ai_title()
 
@@ -517,6 +529,28 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 - **Key Decisions Made**: A bulleted list of any decisions reached
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
                 current_app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
+        # Allow substitution placeholders in the chosen summary prompt.
+        # Supported placeholders: {{meeting_date}}, {{title}} (whitespace inside braces allowed)
+        try:
+            def _subst(text, name, val):
+                return re.sub(r"\{\{\s*" + re.escape(name) + r"\s*\}\}", val or "", text)
+
+            # Format meeting_date reasonably for prompts
+            if recording.meeting_date:
+                try:
+                    meeting_date_str = recording.meeting_date.isoformat()
+                except Exception:
+                    meeting_date_str = str(recording.meeting_date)
+            else:
+                meeting_date_str = ""
+
+            title_str = recording.title or ""
+
+            summarization_instructions = _subst(summarization_instructions, 'meeting_date', meeting_date_str)
+            summarization_instructions = _subst(summarization_instructions, 'title', title_str)
+        except Exception as e:
+            current_app.logger.warning(f"Failed to substitute placeholders in summary prompt for recording {recording_id}: {e}")
+        
 
         # Build context information
         current_date = datetime.now().strftime("%B %d, %Y")

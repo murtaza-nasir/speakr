@@ -2028,6 +2028,21 @@ def upload_file():
         # Get notes from the form
         notes = request.form.get('notes')
 
+        # Parse special SOURCE block in notes (if present) to extract JSON metadata
+        source_json = None
+        if notes:
+            try:
+                m = re.search(r"SOURCE(.*?)ENDSOURCE", notes, re.S | re.IGNORECASE)
+                if m:
+                    content = m.group(1).strip()
+                    try:
+                        source_json = json.loads(content)
+                        current_app.logger.info(f"Parsed SOURCE JSON from notes for upload: keys={list(source_json.keys())}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Failed to parse SOURCE JSON from notes: {e}")
+            except Exception:
+                source_json = None
+
         # Get file's lastModified timestamp from client (milliseconds since epoch)
         file_last_modified = request.form.get('file_last_modified')
 
@@ -2118,7 +2133,6 @@ def upload_file():
                 max_speakers = int(ASR_MAX_SPEAKERS)
             except (ValueError, TypeError):
                 max_speakers = None
-
         # Fall back to user's default transcription language if still not set
         if not language and current_user.transcription_language:
             language = current_user.transcription_language
@@ -2127,8 +2141,26 @@ def upload_file():
         # Create initial database entry
         now = datetime.utcnow()
 
-        # Determine meeting_date: prefer client-provided lastModified, then file metadata, then current time
+        # Determine meeting_date: prefer client-provided source JSON, then lastModified, then file metadata, then current time
         meeting_date = None
+        uploaded_title = None
+        # If SOURCE JSON provides a meeting_date, prefer that (highest priority)
+        if source_json and isinstance(source_json, dict):
+            if source_json.get('meeting_date'):
+                md_val = source_json.get('meeting_date')
+                try:
+                    meeting_date = datetime.fromisoformat(md_val.replace('Z', '+00:00'))
+                    current_app.logger.info(f"Using meeting_date from SOURCE JSON: {meeting_date}")
+                except Exception:
+                    try:
+                        meeting_date = datetime.strptime(md_val, '%Y-%m-%d %H:%M:%S')
+                        current_app.logger.info(f"Using meeting_date from SOURCE JSON (strptime fallback): {meeting_date}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Could not parse meeting_date from SOURCE JSON '{md_val}': {e}")
+
+            if source_json.get('title'):
+                uploaded_title = source_json.get('title')
+                current_app.logger.info(f"Using title from SOURCE JSON: {uploaded_title}")
 
         # First try client-provided file lastModified (most reliable for uploads)
         if file_last_modified:
@@ -2150,11 +2182,14 @@ def upload_file():
         if not meeting_date:
             meeting_date = now
             current_app.logger.debug("No file date available, using current time")
+        
+        # Use uploaded title from SOURCE JSON if available, otherwise default to "Recording - original_filename"
+        title = uploaded_title if uploaded_title else f"Recording - {original_filename}"
 
         recording = Recording(
             audio_path=filepath,
             original_filename=original_filename,
-            title=f"Recording - {original_filename}",
+            title=title,
             file_size=final_file_size,
             status='PENDING',
             meeting_date=meeting_date,
