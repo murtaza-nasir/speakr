@@ -131,6 +131,15 @@ def preprocess_json_escapes(json_string):
                 else:
                     # This is an inner quote that should be escaped
                     result.append('\\"')
+        elif char == '\n' and in_string:
+            # Literal newlines inside JSON strings must be escaped
+            result.append('\\n')
+        elif char == '\r' and in_string:
+            # Literal carriage returns inside JSON strings must be escaped
+            result.append('\\r')
+        elif char == '\t' and in_string:
+            # Literal tabs inside JSON strings must be escaped
+            result.append('\\t')
         else:
             result.append(char)
 
@@ -141,20 +150,56 @@ def preprocess_json_escapes(json_string):
 
 def extract_json_object(text):
     """
-    Extract the first complete JSON object or array from text using regex.
+    Extract the first complete JSON object or array from text using brace counting.
+    This is more robust than regex as it properly handles nested structures and
+    doesn't over-match when there's text after the JSON.
     """
-    # Look for JSON object
-    obj_match = re.search(r'\{.*\}', text, re.DOTALL)
-    if obj_match:
-        return obj_match.group(0)
+    # Find the first { or [ that starts a JSON structure
+    start = None
+    close_char = None
+    for i, ch in enumerate(text):
+        if ch == '{':
+            start = i
+            close_char = '}'
+            break
+        elif ch == '[':
+            start = i
+            close_char = ']'
+            break
 
-    # Look for JSON array
-    arr_match = re.search(r'\[.*\]', text, re.DOTALL)
-    if arr_match:
-        return arr_match.group(0)
+    if start is None:
+        return text
 
-    # Return original if no JSON structure found
-    return text
+    # Walk through counting braces/brackets, respecting strings
+    depth = 0
+    in_string = False
+    escape_next = False
+
+    for i in range(start, len(text)):
+        ch = text[i]
+
+        if escape_next:
+            escape_next = False
+            continue
+
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+
+        if ch == '"':
+            in_string = not in_string
+            continue
+
+        if not in_string:
+            if ch in ('{', '['):
+                depth += 1
+            elif ch in ('}', ']'):
+                depth -= 1
+                if depth == 0:
+                    return text[start:i + 1]
+
+    # If we never balanced, return from start to end (best effort)
+    return text[start:]
 
 
 def safe_json_loads(json_string, fallback_value=None):
