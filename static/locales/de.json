@@ -1197,8 +1197,8 @@
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",
     "audioReTranscribedWithAsr": "Das Audio wird mit dem ASR-Endpoint neu transkribiert. Dies umfasst Diarisierung und wird Titel und Zusammenfassung neu generieren.",
     "manualEditsOverwritten": "Alle manuellen Bearbeitungen der Transkription, des Titels oder der Zusammenfassung werden überschrieben.",
-    "manualEditsOverwrittenSummary": "Alle manuellen Bearbeitungen des Titels oder der Zusammenfassung werden überschrieben.",
-    "newTitleAndSummary": "Ein neuer Titel und eine neue Zusammenfassung werden basierend auf der vorhandenen Transkription generiert."
+    "manualEditsOverwrittenSummary": "Alle manuellen Bearbeitungen der Zusammenfassung werden überschrieben.",
+    "newTitleAndSummary": "Eine neue Zusammenfassung wird basierend auf der vorhandenen Transkription generiert."
   },
   "settings": {
     "apiKeys": "API-Schlüssel",

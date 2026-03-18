@@ -29,6 +29,13 @@
                             :title="'Edit title'">
                         <i class="fas fa-pen text-sm"></i>
                     </button>
+                    <button v-if="!editingTitle && selectedRecording.can_edit !== false && selectedRecording.status === 'COMPLETED'"
+                            @click="regenerateTitle"
+                            :disabled="regeneratingTitle"
+                            class="p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors opacity-60 hover:opacity-100 flex-shrink-0"
+                            :title="'Regenerate title with AI'">
+                        <i class="fas fa-sync-alt text-sm" :class="{ 'fa-spin': regeneratingTitle }"></i>
+                    </button>
 
                     <!-- Status Badge (for non-completed recordings) -->
                     <span v-if="!editingTitle && selectedRecording.status !== 'COMPLETED'"

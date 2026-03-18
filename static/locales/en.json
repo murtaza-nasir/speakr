@@ -1197,8 +1197,8 @@
     "audioReTranscribedFromScratch": "The audio will be re-transcribed from scratch. This will also regenerate the title and summary based on the new transcription.",
     "audioReTranscribedWithAsr": "The audio will be re-transcribed using the ASR endpoint. This includes diarization and will regenerate the title and summary.",
     "manualEditsOverwritten": "Any manual edits to the transcription, title, or summary will be overwritten.",
-    "manualEditsOverwrittenSummary": "Any manual edits to the title or summary will be overwritten.",
-    "newTitleAndSummary": "A new title and summary will be generated based on the existing transcription."
+    "manualEditsOverwrittenSummary": "Any manual edits to the summary will be overwritten.",
+    "newTitleAndSummary": "A new summary will be generated based on the existing transcription."
   },
   "settings": {
     "apiKeys": "API Keys",

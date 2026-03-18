@@ -1071,6 +1071,18 @@ def get_recording_status(recording_id):
 
 
 # =============================================================================
+# Title Regeneration
+# =============================================================================
+
+@api_v1_bp.route('/recordings/<int:recording_id>/regenerate_title', methods=['POST'])
+@login_required
+def api_regenerate_title(recording_id):
+    """Regenerate the AI title for a recording based on its existing transcription."""
+    from src.api.recordings import regenerate_title
+    return regenerate_title(recording_id)
+
+
+# =============================================================================
 # Tag Management
 # =============================================================================
 
