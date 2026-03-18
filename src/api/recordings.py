@@ -2033,6 +2033,10 @@ def upload_file():
         # Get notes from the form
         notes = request.form.get('notes')
 
+        # Get optional user-provided title and meeting_date
+        user_title = request.form.get('title')
+        user_meeting_date = request.form.get('meeting_date')
+
         # Get file's lastModified timestamp from client (milliseconds since epoch)
         file_last_modified = request.form.get('file_last_modified')
 
@@ -2146,11 +2150,21 @@ def upload_file():
         # Create initial database entry
         now = datetime.utcnow()
 
-        # Determine meeting_date: prefer client-provided lastModified, then file metadata, then current time
+        # Determine meeting_date: prefer user-provided, then client lastModified, then file metadata, then current time
         meeting_date = None
 
-        # First try client-provided file lastModified (most reliable for uploads)
-        if file_last_modified:
+        # First try user-provided meeting_date (ISO 8601 format)
+        if user_meeting_date:
+            try:
+                parsed = datetime.fromisoformat(user_meeting_date.replace('Z', '+00:00'))
+                # Strip timezone to store as naive datetime, consistent with other date sources
+                meeting_date = parsed.replace(tzinfo=None)
+                current_app.logger.info(f"Using user-provided meeting_date: {meeting_date}")
+            except (ValueError, TypeError) as e:
+                current_app.logger.warning(f"Could not parse user meeting_date '{user_meeting_date}': {e}")
+
+        # Then try client-provided file lastModified (most reliable for uploads)
+        if not meeting_date and file_last_modified:
             try:
                 # JavaScript lastModified is in milliseconds since epoch
                 timestamp_ms = int(file_last_modified)
@@ -2173,7 +2187,7 @@ def upload_file():
         recording = Recording(
             audio_path=filepath,
             original_filename=original_filename,
-            title=f"Recording - {original_filename}",
+            title=user_title.strip() if user_title and user_title.strip() else f"Recording - {original_filename}",
             file_size=final_file_size,
             status='PENDING',
             meeting_date=meeting_date,
