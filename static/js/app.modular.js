@@ -497,6 +497,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Inline Editing State ---
             const editingTitle = ref(false);
             const originalTitle = ref('');
+            const regeneratingTitle = ref(false);
             const editingParticipants = ref(false);
             const editingMeetingDate = ref(false);
             const editingSummary = ref(false);
@@ -712,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadingNewSpeakerSuggestions, showNewSpeakerSuggestions, editedTranscriptData,
 
                 // Inline Editing
-                editingTitle, originalTitle,
+                editingTitle, originalTitle, regeneratingTitle,
                 editingParticipants, editingMeetingDate, editingSummary, editingNotes,
                 tempNotesContent, tempSummaryContent, autoSaveTimer, autoSaveDelay,
 

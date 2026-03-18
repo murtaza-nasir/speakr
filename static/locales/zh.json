@@ -1337,8 +1337,8 @@
     "audioReTranscribedFromScratch": "音频将从头重新转录。这也将基于新转录重新生成标题和摘要。",
     "audioReTranscribedWithAsr": "音频将使用 ASR 端点重新转录。这包括说话人分离，并将重新生成标题和摘要。",
     "manualEditsOverwritten": "对转录、标题或摘要的任何手动编辑都将被覆盖。",
-    "manualEditsOverwrittenSummary": "对标题或摘要的任何手动编辑都将被覆盖。",
-    "newTitleAndSummary": "将基于现有转录生成新的标题和摘要。"
+    "manualEditsOverwrittenSummary": "对摘要的任何手动编辑都将被覆盖。",
+    "newTitleAndSummary": "将基于现有转录生成新的摘要。"
   },
   "settings": {
     "apiKeys": "API密钥",

@@ -1124,6 +1124,50 @@ def reprocess_summary(recording_id):
 
 
 
+@recordings_bp.route('/recording/<int:recording_id>/regenerate_title', methods=['POST'])
+@login_required
+def regenerate_title(recording_id):
+    """Regenerate the AI title for a recording based on its existing transcription."""
+    try:
+        recording = db.session.get(Recording, recording_id)
+        if not recording:
+            return jsonify({'error': 'Recording not found'}), 404
+
+        if not has_recording_access(recording, current_user, require_edit=True):
+            return jsonify({'error': 'You do not have permission to edit this recording'}), 403
+
+        if not recording.transcription or len(recording.transcription.strip()) < 10:
+            return jsonify({'error': 'No valid transcription available for title generation'}), 400
+
+        if is_transcription_error(recording.transcription):
+            return jsonify({'error': 'Cannot generate title: transcription failed. Please reprocess the transcription first.'}), 400
+
+        if client is None:
+            return jsonify({'error': 'Title generation service is not available (OpenRouter client not configured)'}), 503
+
+        from src.tasks.processing import _generate_ai_title
+
+        new_title = _generate_ai_title(recording)
+        if not new_title:
+            return jsonify({'error': 'Failed to generate a title'}), 500
+
+        recording.title = new_title
+        db.session.commit()
+
+        recording_dict = recording.to_dict(viewer_user=current_user)
+        enrich_recording_dict_with_user_status(recording_dict, recording, current_user)
+        return jsonify({
+            'success': True,
+            'title': new_title,
+            'recording': recording_dict
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error regenerating title for recording {recording_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @recordings_bp.route('/recording/<int:recording_id>/reset_status', methods=['POST'])
 @login_required
 def reset_status(recording_id):

@@ -17,7 +17,8 @@ export function useUI(state, utils, processedTranscription) {
         summaryMarkdownEditor, recordingNotesEditor, recordingMarkdownEditorInstance,
         recordingNotes, showDownloadMenu, currentPlayingSegmentIndex, followPlayerMode,
         playbackRate, showSpeedMenu, playbackSpeeds, modalPlaybackRate, speedMenuPosition,
-        videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed
+        videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
+        regeneratingTitle
     } = state;
 
     const autoSaveDelay = 2000; // 2 seconds
@@ -385,6 +386,32 @@ export function useUI(state, utils, processedTranscription) {
         // Restore original title
         selectedRecording.value.title = state.originalTitle.value;
         state.editingTitle.value = false;
+    };
+
+    const regenerateTitle = async () => {
+        if (!selectedRecording.value || regeneratingTitle.value) return;
+
+        regeneratingTitle.value = true;
+        try {
+            const csrfTokenValue = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const response = await fetch(`/recording/${selectedRecording.value.id}/regenerate_title`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfTokenValue
+                }
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to regenerate title');
+
+            selectedRecording.value.title = data.title;
+            showToast('Title regenerated', 'fa-check-circle', 3000, 'success');
+        } catch (error) {
+            showToast(error.message, 'fa-exclamation-circle', 3000, 'error');
+        } finally {
+            regeneratingTitle.value = false;
+        }
     };
 
     const toggleEditSummary = () => {
@@ -1968,6 +1995,7 @@ export function useUI(state, utils, processedTranscription) {
         toggleEditTitle,
         saveTitle,
         cancelEditTitle,
+        regenerateTitle,
         toggleEditParticipants,
         toggleEditMeetingDate,
         toggleEditSummary,

@@ -29,6 +29,13 @@
                             class="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors flex-shrink-0">
                         <i class="fas fa-pen text-xs"></i>
                     </button>
+                    <button v-if="!editingTitle && selectedRecording.can_edit !== false && selectedRecording.status === 'COMPLETED'"
+                            @click.stop="regenerateTitle"
+                            :disabled="regeneratingTitle"
+                            class="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors flex-shrink-0"
+                            :title="'Regenerate title with AI'">
+                        <i class="fas fa-sync-alt text-xs" :class="{ 'fa-spin': regeneratingTitle }"></i>
+                    </button>
 
                     <!-- Status Badge (for non-completed recordings) -->
                     <span v-if="!editingTitle && selectedRecording.status !== 'COMPLETED'"
