@@ -215,6 +215,19 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             current_app.logger.error(f"Error: Recording {recording_id} not found for title generation.")
             return
 
+        # Skip title generation if user provided a non-placeholder title
+        placeholder_patterns = [
+            f"Recording - {recording.original_filename}",
+            f"Auto-processed - {recording.original_filename}",
+        ]
+        if recording.title and recording.title not in placeholder_patterns:
+            current_app.logger.info(f"Recording {recording_id} has user-provided title '{recording.title}', skipping AI title generation")
+            if not will_auto_summarize:
+                recording.status = 'COMPLETED'
+                recording.completed_at = datetime.utcnow()
+            db.session.commit()
+            return
+
         # Resolve naming template: first tag with template → user default → None
         naming_template = None
         for tag in recording.tags:
@@ -522,6 +535,12 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
         current_date = datetime.now().strftime("%B %d, %Y")
         context_parts = []
         context_parts.append(f"Current date: {current_date}")
+
+        # Add recording metadata to context
+        if recording.meeting_date:
+            context_parts.append(f"Recording date: {recording.meeting_date.strftime('%B %d, %Y')}")
+        if recording.title:
+            context_parts.append(f"Recording title: {recording.title}")
 
         # Add folder information if recording is in a folder
         if recording.folder:
