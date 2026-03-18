@@ -109,7 +109,7 @@ class TestUploadHandlerVideoRetention(unittest.TestCase):
 
     def test_upload_handler_skips_conversion_for_video_retention(self):
         """Upload handler skips convert_if_needed for videos when retention is on."""
-        self.assertIn('VIDEO_RETENTION and has_video', self.content)
+        self.assertIn('(VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video', self.content)
         self.assertIn('skipping conversion', self.content)
 
     def test_upload_handler_has_video_from_codec_info(self):
@@ -138,8 +138,8 @@ class TestFileMonitorVideoRetention(unittest.TestCase):
 
     def test_video_retention_skips_conversion(self):
         """When VIDEO_RETENTION=True and has_video=True, convert_if_needed is skipped."""
-        # Should have the guard: if VIDEO_RETENTION and has_video: ... skip conversion
-        self.assertIn('VIDEO_RETENTION and has_video', self.content)
+        # Should have the guard: if (VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video: ... skip conversion
+        self.assertIn('VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video', self.content)
         self.assertIn('skipping conversion', self.content)
 
     def test_no_double_extraction(self):
@@ -150,7 +150,7 @@ class TestFileMonitorVideoRetention(unittest.TestCase):
         found_convert_in_else = False
 
         for i, line in enumerate(lines):
-            if 'VIDEO_RETENTION and has_video' in line and 'if' in line:
+            if 'VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video' in line and 'if' in line:
                 in_retention_skip_block = True
             elif in_retention_skip_block and 'else:' in line:
                 in_retention_skip_block = False
@@ -194,12 +194,12 @@ class TestSendFileConditional(unittest.TestCase):
         """Streaming send_file in recordings.py has conditional=True."""
         content = self._read_file('src/api/recordings.py')
         # Find the non-download send_file call
-        self.assertIn('send_file(recording.audio_path, conditional=True)', content)
+        self.assertIn('send_file(recording.audio_path, mimetype=recording.mime_type, conditional=True)', content)
 
     def test_recordings_download_has_conditional(self):
         """Download send_file in recordings.py has conditional=True."""
         content = self._read_file('src/api/recordings.py')
-        self.assertIn('as_attachment=True, download_name=filename, conditional=True', content)
+        self.assertIn('as_attachment=True, download_name=filename, mimetype=recording.mime_type, conditional=True', content)
 
     def test_shares_has_conditional(self):
         """send_file in shares.py has conditional=True."""
@@ -331,7 +331,7 @@ class TestVideoRetentionMatrix(unittest.TestCase):
     def test_file_monitor_has_both_branches(self):
         """file_monitor.py has both video retention skip and normal conversion paths."""
         content = self._read_file('src/file_monitor.py')
-        self.assertIn('VIDEO_RETENTION and has_video', content)
+        self.assertIn('VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video', content)
         # convert_if_needed should still exist in the else path
         self.assertIn('convert_if_needed(', content)
 
@@ -348,8 +348,8 @@ class TestVideoRetentionMatrix(unittest.TestCase):
     def test_all_three_entry_points_skip_for_video_retention(self):
         """All entry points (upload, file monitor, processing) handle VIDEO_RETENTION."""
         for rel_path, marker in [
-            ('src/api/recordings.py', 'VIDEO_RETENTION and has_video'),
-            ('src/file_monitor.py', 'VIDEO_RETENTION and has_video'),
+            ('src/api/recordings.py', '(VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video'),
+            ('src/file_monitor.py', '(VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video'),
             ('src/tasks/processing.py', 'if VIDEO_RETENTION:'),
         ]:
             content = self._read_file(rel_path)
