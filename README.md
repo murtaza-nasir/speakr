@@ -133,6 +133,8 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 |--------|-------|---------------------|----------------|
 | **OpenAI Transcribe** | Just API key | ✅ `gpt-4o-transcribe-diarize` | ❌ |
 | **WhisperX ASR** | GPU container | ✅ Best quality | ✅ |
+| **Mistral Voxtral** | Just API key | ✅ Built-in | ❌ |
+| **VibeVoice ASR** | Self-hosted (vLLM) | ✅ Built-in | ❌ |
 | **Legacy Whisper** | Just API key | ❌ | ❌ |
 
 **Simplest setup (OpenAI with diarization):**
@@ -147,6 +149,21 @@ ASR_BASE_URL=http://whisperx-asr:9000
 ASR_RETURN_SPEAKER_EMBEDDINGS=true  # Enable voice profiles
 ```
 Requires [WhisperX ASR Service](https://github.com/murtaza-nasir/whisperx-asr-service) container with GPU.
+
+**Mistral Voxtral (cloud diarization):**
+```bash
+TRANSCRIPTION_CONNECTOR=mistral
+TRANSCRIPTION_API_KEY=your-mistral-key
+TRANSCRIPTION_MODEL=voxtral-mini-latest
+```
+
+**VibeVoice ASR (self-hosted, no cloud dependency):**
+```bash
+TRANSCRIPTION_CONNECTOR=vibevoice
+TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
+TRANSCRIPTION_MODEL=vibevoice
+```
+Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
 
 > **⚠️ PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
 

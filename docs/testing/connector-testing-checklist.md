@@ -116,6 +116,47 @@ ASR_BASE_URL=http://whisperx-asr:9000  # Should be ignored
 - [ ] Speaker identification button NOT visible
 - [ ] Bubble view toggle NOT available
 
+### Test 2.4: Mistral Voxtral Diarization
+**Config:**
+```bash
+TRANSCRIPTION_CONNECTOR=mistral
+TRANSCRIPTION_API_KEY=your-key
+TRANSCRIPTION_MODEL=voxtral-mini-latest
+```
+
+**Steps:**
+
+1. Upload audio with 2+ speakers
+2. Wait for transcription to complete
+
+**Expected:**
+
+- [ ] Transcription shows speaker labels (speaker_0, speaker_1...)
+- [ ] Speaker identification button appears in UI
+- [ ] Bubble view toggle available
+- [ ] Can rename speakers
+
+### Test 2.5: VibeVoice ASR Diarization
+**Config:**
+```bash
+TRANSCRIPTION_CONNECTOR=vibevoice
+TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
+TRANSCRIPTION_MODEL=vibevoice
+```
+
+**Steps:**
+
+1. Upload audio with 2+ speakers
+2. Wait for transcription to complete
+
+**Expected:**
+
+- [ ] Transcription shows speaker labels (SPEAKER_00, SPEAKER_01...)
+- [ ] Speaker identification button appears in UI
+- [ ] Bubble view toggle available
+- [ ] Non-speech segments ([Silence], [Human Sounds]) are attributed to the previous speaker
+- [ ] Can rename speakers
+
 ---
 
 ## 3. UI Feature Visibility
@@ -179,7 +220,41 @@ CHUNK_LIMIT=10MB
 - [ ] Logs show chunk processing
 - [ ] Transcription merges correctly
 
-### Test 4.3: Chunking Disabled
+### Test 4.3: Mistral (Internal Chunking)
+**Config:**
+```bash
+TRANSCRIPTION_CONNECTOR=mistral
+TRANSCRIPTION_API_KEY=your-key
+```
+
+**Steps:**
+
+1. Upload file >10 minutes
+
+**Expected:**
+
+- [ ] File uploads without app-level chunking
+- [ ] Mistral handles chunking internally
+- [ ] Transcription completes successfully
+
+### Test 4.4: VibeVoice (App Chunking for Long Files)
+**Config:**
+```bash
+TRANSCRIPTION_CONNECTOR=vibevoice
+TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
+```
+
+**Steps:**
+
+1. Upload file >60 minutes
+
+**Expected:**
+
+- [ ] App splits into ~50 minute chunks
+- [ ] Each chunk transcribes successfully
+- [ ] Segments merge correctly across chunk boundaries
+
+### Test 4.5: Chunking Disabled
 **Config:**
 ```bash
 TRANSCRIPTION_MODEL=whisper-1

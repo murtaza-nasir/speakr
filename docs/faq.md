@@ -91,6 +91,8 @@ Whisper API provides basic transcription - converting speech to text without spe
 
 OpenAI's `gpt-4o-transcribe-diarize` model also offers cloud-based diarization. For longer files (over ~23 minutes), speaker tracking supports up to 4 speakers - recordings with more speakers may have inconsistent labels across sections.
 
+Mistral's Voxtral model is another cloud option with built-in diarization and language detection. If you prefer self-hosted, VibeVoice ASR runs on your own GPU(s) via vLLM and provides diarization with timestamps for 50+ languages.
+
 **Note on ASR engines**: For speaker diarization to work properly with the ASR webservice, you must use `ASR_ENGINE=whisperx`, not `faster_whisper`. While faster_whisper provides transcription, it doesn't support speaker identification.
 
 ### Can Speakr transcribe languages other than English?

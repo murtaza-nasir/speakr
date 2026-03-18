@@ -6,13 +6,17 @@ Speakr combines powerful transcription capabilities with intelligent AI features
 
 ### Multi-Engine Support
 
-Speakr supports multiple transcription engines to match your needs and budget. Use [OpenAI's Whisper API](getting-started.md#option-a-openai-whisper-configuration) for quick, cloud-based transcription with excellent accuracy. Deploy the [recommended ASR container](getting-started.md#option-b-custom-asr-endpoint-configuration) for advanced features like speaker diarization and local processing. See the [installation guide](getting-started/installation.md) for detailed setup instructions. The system automatically handles different audio formats, converting them as needed for optimal transcription quality.
+Speakr supports multiple transcription engines to match your needs and budget. Use [OpenAI's Whisper API](getting-started.md#option-a-openai-whisper-configuration) for quick, cloud-based transcription with excellent accuracy. Deploy the [recommended ASR container](getting-started.md#option-b-custom-asr-endpoint-configuration) for advanced features like speaker diarization and local processing. Use [Mistral Voxtral](getting-started/installation.md#for-mistral-voxtral-cloud-based-diarization) for cloud-based diarization via the Mistral API, or run [VibeVoice ASR](getting-started/installation.md#for-vibevoice-asr-self-hosted-via-vllm) on your own hardware for fully self-hosted transcription with diarization. See the [installation guide](getting-started/installation.md) for detailed setup instructions. The system automatically handles different audio formats, converting them as needed for optimal transcription quality.
 
 ### Speaker Diarization
 
 When using the [ASR endpoint](getting-started.md#option-b-custom-asr-endpoint-configuration), Speakr automatically identifies different speakers in your recordings. If you encounter issues, check the [troubleshooting guide](troubleshooting.md#speaker-identification-not-working). Each speaker gets a unique label that you can later customize with actual names. The system remembers these speaker profiles, building a library that improves identification accuracy over time. Manage your speaker library in [account settings](user-guide/settings.md). This feature transforms multi-person meetings from walls of text into organized conversations.
 
 **Cloud Diarization with OpenAI**: When using OpenAI's `gpt-4o-transcribe-diarize` model, speaker diarization is also available with speakers labeled as A, B, C, etc. For longer files (over ~23 minutes) that require chunking, the system maintains speaker identity across chunks using audio reference samples. This technique supports **up to 4 speakers** - recordings with more speakers may have inconsistent labels across different sections of the transcript.
+
+**Cloud Diarization with Mistral**: Mistral's Voxtral model provides built-in speaker diarization and automatic language detection. It handles chunking internally, so long files work without extra configuration.
+
+**Self-Hosted Diarization with VibeVoice**: Microsoft's VibeVoice ASR model runs on your own hardware via vLLM and provides speaker diarization with timestamps and language detection for 50+ languages. It's a good option if you want the quality of a dedicated ASR model without any cloud dependency.
 
 ### Interactive Audio Synchronization
 

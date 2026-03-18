@@ -545,3 +545,5 @@ Popular providers we'd love to see connectors for:
 - Google Cloud Speech-to-Text
 - Amazon Transcribe
 - ~~Azure Speech Services~~ → **Azure OpenAI connector now available (experimental, v0.8.6+)**
+- ~~Mistral Voxtral~~ → **Mistral connector now available**
+- ~~VibeVoice ASR~~ → **VibeVoice connector now available (self-hosted via vLLM)**
