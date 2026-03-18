@@ -240,9 +240,9 @@ def test_connector_specifications():
 
     def t3():
         specs = OpenAITranscribeConnector.SPECIFICATIONS
-        assert specs.handles_chunking_internally is True
-        assert specs.requires_chunking_param is True
-    run_test("OpenAI Transcribe has internal chunking", t3)
+        assert specs.handles_chunking_internally is False  # App must chunk for OpenAI Transcribe
+        assert specs.requires_chunking_param is True  # Must send chunking_strategy param for >30s
+    run_test("OpenAI Transcribe requires app-level chunking with chunking_strategy param", t3)
 
     def t4():
         specs = ASREndpointConnector.SPECIFICATIONS
