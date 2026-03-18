@@ -678,6 +678,8 @@ Order your response with notes from the most recent meetings first. Always use p
                 thinking_buffer = ""
                 
                 for chunk in stream:
+                    if not chunk.choices:
+                        continue
                     content = chunk.choices[0].delta.content
                     if content:
                         response_buffer += content
