@@ -236,6 +236,15 @@ def get_config():
         # Derive ASR status from connector or legacy env var
         asr_enabled = is_asr_connector or USE_ASR_ENDPOINT
 
+        # Get user's default transcription language if authenticated
+        user_transcription_language = ''
+        try:
+            from flask_login import current_user
+            if current_user and current_user.is_authenticated and current_user.transcription_language:
+                user_transcription_language = current_user.transcription_language
+        except:
+            pass
+
         return jsonify({
             'max_file_size_mb': max_file_size_mb,
             'recording_disclaimer': SystemSetting.get_setting('recording_disclaimer', ''),
@@ -255,6 +264,7 @@ def get_config():
             'enable_auto_export': ENABLE_AUTO_EXPORT,
             'video_retention': VIDEO_RETENTION,
             'max_concurrent_uploads': MAX_CONCURRENT_UPLOADS,
+            'user_transcription_language': user_transcription_language,
             **chunking_info
         })
     except Exception as e:

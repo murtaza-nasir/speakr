@@ -14,7 +14,7 @@ export function useReprocess(state, utils) {
         recordings, asrReprocessOptions, summaryReprocessPromptSource,
         summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
         availableTags, processingProgress, processingMessage,
-        currentlyProcessingFile, uploadQueue
+        currentlyProcessingFile, uploadQueue, userTranscriptionLanguage
     } = state;
 
     const { showToast, setGlobalError, onChatComplete } = utils;
@@ -33,7 +33,7 @@ export function useReprocess(state, utils) {
 
         // Reset options
         if (type === 'transcription') {
-            asrReprocessOptions.language = '';
+            asrReprocessOptions.language = userTranscriptionLanguage?.value || '';
             asrReprocessOptions.min_speakers = '';
             asrReprocessOptions.max_speakers = '';
         } else {
