@@ -6,13 +6,14 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.14-alpha - Fullscreen Video, Custom Vocabulary & Localization"
-    **Fullscreen video player, custom vocabulary hints, and complete i18n coverage**
+!!! info "Latest Release: v0.8.15-alpha - New Transcription Connectors & Upload API"
+    **Mistral/Voxtral and VibeVoice connectors, upload API metadata, and bug fixes**
 
-    - **Fullscreen Video** - Double-click video for fullscreen with auto-hiding controls, live subtitles, and keyboard shortcuts
-    - **Custom Vocabulary (Hotwords)** - Comma-separated domain terms to improve transcription accuracy, per user/tag/folder
-    - **Initial Prompt** - Context to steer the transcription model's style and vocabulary
-    - **Video Passthrough** - `VIDEO_PASSTHROUGH_ASR=true` sends raw video to ASR backends, skipping audio extraction
+    - **Mistral/Voxtral Connector** - Cloud transcription with built-in speaker diarization via Mistral's Voxtral models
+    - **VibeVoice Connector** - Self-hosted transcription via vLLM with diarization and automatic chunking for long files
+    - **Upload API: title & meeting_date** - Set recording metadata directly from integrations
+    - **Regenerate Title** - Re-generate a recording's title with AI after transcription
+    - **Default Transcription Language** - Auto-fills on upload and reprocess forms
     - **Upload Disclaimer** - Configurable pre-upload disclaimer with custom banner text
     - **Complete Localization** - All recent features fully localized across all six languages
 
@@ -147,14 +148,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.8.14-alpha - Fullscreen Video, Custom Vocabulary & Localization"
-    - **Fullscreen Video Mode** - Double-click or expand button for fullscreen video with auto-hiding controls, live subtitles, and keyboard shortcuts
-    - **Custom Vocabulary (Hotwords)** - Comma-separated domain terms to improve transcription accuracy, configurable per user, tag, or folder
-    - **Initial Prompt** - Provide context to steer the transcription model's style and vocabulary
-    - **Video Passthrough** - `VIDEO_PASSTHROUGH_ASR=true` sends raw video directly to ASR backends that support video input
-    - **Upload Disclaimer Modal** - Configurable pre-upload disclaimer with custom banner in admin settings
-    - **Complete Localization** - All recent feature strings fully localized across all six supported languages
-    - **Bug Fixes** - Upload notification ordering, speaker snippets for AAC video, chat focus during streaming, upload queue blocking, duplicate hash timing, markdown formatting
+!!! info "Version 0.8.15-alpha - New Transcription Connectors & Upload API"
+    - **Mistral/Voxtral Connector** - Cloud-based transcription with built-in speaker diarization via Mistral's Voxtral models
+    - **VibeVoice Connector** - Self-hosted transcription via vLLM with speaker diarization and automatic chunking
+    - **Upload API: title & meeting_date** - Optional metadata fields for integrations
+    - **Regenerate Title** - Button to re-generate recording title with AI
+    - **Default Transcription Language** - User-configurable default that auto-fills forms
+    - **Tag-Driven Auto-Processing** - Watch folders auto-apply tags and trigger via API
+    - **Bug Fixes** - Azure inquire crash, chat API serialization, user deletion, chunking limits
 
 !!! info "Version 0.8.13-alpha - Video Retention Fix"
     - Fixed large video files silently losing their video stream during upload when `VIDEO_RETENTION=true`
