@@ -1462,6 +1462,13 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             connector_name = connector.PROVIDER_NAME
             current_app.logger.info(f"Using transcription connector: {connector_name}")
 
+            # Fall back to admin default hotwords if none provided
+            if not hotwords:
+                admin_hotwords = SystemSetting.get_setting('admin_default_hotwords', '')
+                if admin_hotwords:
+                    hotwords = admin_hotwords
+                    current_app.logger.debug(f"Using admin default hotwords: {hotwords}")
+
             # Check transcription budget before processing
             can_proceed, usage_pct, budget_msg = transcription_tracker.check_budget(recording.user_id)
             if not can_proceed:

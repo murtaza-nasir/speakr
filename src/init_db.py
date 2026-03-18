@@ -633,6 +633,15 @@ def initialize_database(app):
             )
             app.logger.info("Initialized disable_auto_summarization setting")
 
+        if not SystemSetting.query.filter_by(key='admin_default_hotwords').first():
+            SystemSetting.set_setting(
+                key='admin_default_hotwords',
+                value='',
+                description='Global hotwords injected into all transcription requests. Comma-separated. Applied when users have not set their own hotwords.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized admin_default_hotwords setting")
+
         if not SystemSetting.query.filter_by(key='enable_folders').first():
             SystemSetting.set_setting(
                 key='enable_folders',
