@@ -1921,10 +1921,11 @@ Notes: {recording.notes or 'None'}
     messages.append({"role": "user", "content": user_message})
 
     try:
-        response = call_chat_completion(messages, user_id=current_user.id)
+        completion = call_chat_completion(messages, user_id=current_user.id)
+        reply = completion.choices[0].message.content
 
         return jsonify({
-            'response': response,
+            'response': reply,
             'sources': []  # Could be enhanced to extract relevant segments
         })
     except Exception as e:
