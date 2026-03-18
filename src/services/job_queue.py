@@ -281,6 +281,7 @@ class FairJobQueue:
             'invalid file format',
             'invalid_request_error',
             'bad request',
+            'unparseable',
         ]
 
         for pattern in permanent_patterns:
