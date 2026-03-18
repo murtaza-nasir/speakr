@@ -388,6 +388,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Advanced Options for ASR
             const showAdvancedOptions = ref(false);
+            const userTranscriptionLanguage = ref('');  // User's default from account settings
             const uploadLanguage = ref('');
             const uploadMinSpeakers = ref('');
             const uploadMaxSpeakers = ref('');
@@ -660,7 +661,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
@@ -2302,6 +2303,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
                         maxConcurrentUploads.value = config.max_concurrent_uploads || 3;
+
+                        // Set user's default transcription language for upload and reprocess forms
+                        if (config.user_transcription_language) {
+                            userTranscriptionLanguage.value = config.user_transcription_language;
+                            uploadLanguage.value = config.user_transcription_language;
+                        }
 
                         // Restore saved folder selection from localStorage
                         if (foldersEnabled.value) {
