@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.14--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.15--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -179,7 +179,21 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.14-alpha)
+## Latest Release (v0.8.15-alpha)
+
+**New Transcription Connectors, Upload API Improvements & Bug Fixes**
+
+- **Mistral/Voxtral Connector** - Cloud-based transcription with built-in speaker diarization via Mistral's Voxtral models, with admin-configurable default hotwords
+- **VibeVoice Connector** - Self-hosted transcription via vLLM with speaker diarization, automatic chunking for long files, and no cloud dependency
+- **Upload API: title & meeting_date** - Optional `title` and `meeting_date` fields on the upload API so integrations can set metadata directly
+- **Regenerate Title** - New button to regenerate a recording's title with AI after transcription
+- **Default Transcription Language** - Users can set a default language that auto-fills on upload and reprocess forms
+- **Tag-Driven Auto-Processing** - Watch folders can now auto-apply tags and trigger processing via API
+- **Configurable LLM Timeouts** - Adjust timeout and retry settings for slower local models
+
+**Bug Fixes** - Azure inquire mode crash on empty streaming chunks, chat API returning non-serializable objects, user deletion failing on NOT NULL foreign keys, duration-based chunking ignoring connector limits
+
+### Previous Release (v0.8.14-alpha)
 
 **Fullscreen Video, Custom Vocabulary & Localization**
 

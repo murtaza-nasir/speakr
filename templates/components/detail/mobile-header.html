@@ -33,7 +33,7 @@
                             @click.stop="regenerateTitle"
                             :disabled="regeneratingTitle"
                             class="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors flex-shrink-0"
-                            :title="'Regenerate title with AI'">
+                            :title="t('regenerateTitle')"
                         <i class="fas fa-sync-alt text-xs" :class="{ 'fa-spin': regeneratingTitle }"></i>
                     </button>
 
