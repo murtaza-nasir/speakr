@@ -1720,9 +1720,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     error_msg = str(e).lower()
 
                     # Check if this is a format/codec error that might be fixed by MP3 conversion
+                    # Use specific phrases to avoid false positives (e.g. "unparseable JSON" matching "invalid")
                     is_format_error = any(phrase in error_msg for phrase in [
-                        'corrupted', 'unsupported', 'invalid', 'format', 'codec',
-                        'could not find codec', 'audio file', 'decode'
+                        'corrupted file', 'unsupported audio', 'unsupported format',
+                        'invalid audio', 'invalid file format', 'invalid codec',
+                        'could not find codec', 'audio codec', 'audio format',
+                        'failed to decode audio', 'not a valid audio file',
                     ])
 
                     # Only retry with MP3 conversion on first attempt for format errors

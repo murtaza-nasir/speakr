@@ -7,6 +7,7 @@ from .openai_transcribe import OpenAITranscribeConnector
 from .asr_endpoint import ASREndpointConnector
 from .azure_openai_transcribe import AzureOpenAITranscribeConnector
 from .mistral import MistralTranscriptionConnector
+from .vibevoice import VibeVoiceTranscriptionConnector
 
 __all__ = [
     'OpenAIWhisperConnector',
@@ -14,4 +15,5 @@ __all__ = [
     'ASREndpointConnector',
     'AzureOpenAITranscribeConnector',
     'MistralTranscriptionConnector',
+    'VibeVoiceTranscriptionConnector',
 ]
