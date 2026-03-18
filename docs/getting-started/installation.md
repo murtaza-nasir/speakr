@@ -6,11 +6,13 @@ This comprehensive guide covers deploying Speakr for production use, including d
 
 Before diving into installation, it's helpful to understand how Speakr works. The application integrates with external APIs for two main purposes: transcription services that convert your audio to text, and text generation services that power features like summaries, titles, and interactive chat. Speakr is designed to be flexible, supporting both cloud-based services like OpenAI and self-hosted solutions running on your own infrastructure.
 
-Speakr uses a **connector-based architecture** for transcription services, providing a unified interface regardless of which provider you choose. Three connectors are currently available:
+Speakr uses a **connector-based architecture** for transcription services, providing a unified interface regardless of which provider you choose. The following connectors are currently available:
 
 1. **ASR Endpoint** (Recommended for best quality) - For self-hosted solutions like WhisperX that offer GPU-accelerated transcription with superior accuracy, voice profiles, and speaker diarization
 2. **OpenAI Transcribe** - Uses `gpt-4o-transcribe-diarize` for cloud-based speaker diarization without requiring additional containers
-3. **OpenAI Whisper** - Legacy whisper-1 model for basic transcription using any legacy OpenAI compatible whisper API
+3. **Mistral Voxtral** - Cloud-based transcription with built-in diarization and language detection via the Mistral API
+4. **VibeVoice ASR** - Microsoft's self-hosted multimodal ASR model with diarization, timestamps, and 50+ language support, served via vLLM
+5. **OpenAI Whisper** - Legacy whisper-1 model for basic transcription using any legacy OpenAI compatible whisper API
 
 The connector can be specified or inferred based on your configuration. For text generation, Speakr uses the OpenAI Chat Completions API format with the `/chat/completions` endpoint, which is widely supported across different AI providers.
 
@@ -195,6 +197,32 @@ ASR_RETURN_SPEAKER_EMBEDDINGS=true
 ```
 
 This setting is disabled by default because it's only supported by WhisperX. If you're using the basic OpenAI Whisper ASR Webservice, leave this setting disabled or omit it entirely to avoid errors.
+
+#### For Mistral Voxtral (Cloud-Based Diarization)
+
+Mistral's Voxtral model provides cloud-based transcription with built-in speaker diarization and automatic language detection. It requires a Mistral API key and no additional infrastructure. Voxtral handles chunking internally, so large files work without any extra configuration.
+
+```bash
+TRANSCRIPTION_CONNECTOR=mistral
+TRANSCRIPTION_API_KEY=your-mistral-api-key
+TRANSCRIPTION_MODEL=voxtral-mini-latest
+```
+
+Configure the text generation model as described above for summaries and chat features.
+
+#### For VibeVoice ASR (Self-Hosted via vLLM)
+
+Microsoft's VibeVoice ASR model provides transcription with speaker diarization, timestamps, and language detection for 50+ languages. It runs entirely on your own hardware via vLLM, so there's no cloud dependency. The model handles up to 60 minutes of audio per request, and longer files are automatically chunked by the app.
+
+You'll need a vLLM server with the VibeVoice model loaded. The bf16 model requires roughly 18GB of VRAM, which fits on two consumer GPUs (like 2x RTX 3090) using tensor parallelism. See the [VibeVoice model page](https://huggingface.co/microsoft/VibeVoice-ASR) for vLLM setup instructions.
+
+```bash
+TRANSCRIPTION_CONNECTOR=vibevoice
+TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
+TRANSCRIPTION_MODEL=vibevoice
+```
+
+If your vLLM server requires authentication, also set `TRANSCRIPTION_API_KEY`. Configure the text generation model as described above for summaries and chat features.
 
 ### Step 4: Configure System Settings
 

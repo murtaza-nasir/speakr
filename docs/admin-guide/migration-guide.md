@@ -89,6 +89,28 @@ TRANSCRIPTION_MODEL=gpt-4o-transcribe-diarize
 
 This uses OpenAI's built-in diarization. The connector is auto-detected from the model name.
 
+### Using Mistral Voxtral
+
+Mistral's Voxtral provides cloud-based transcription with diarization:
+
+```bash
+TRANSCRIPTION_CONNECTOR=mistral
+TRANSCRIPTION_API_KEY=your-mistral-key
+TRANSCRIPTION_MODEL=voxtral-mini-latest
+```
+
+### Using VibeVoice ASR (Self-Hosted)
+
+VibeVoice runs on your own hardware via vLLM, with no cloud dependency:
+
+```bash
+TRANSCRIPTION_CONNECTOR=vibevoice
+TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
+TRANSCRIPTION_MODEL=vibevoice
+```
+
+Both connectors support speaker diarization, timestamps, and automatic language detection.
+
 ## Chunking Behavior Changes
 
 The new architecture makes chunking **connector-aware**:
@@ -97,6 +119,8 @@ The new architecture makes chunking **connector-aware**:
 |-----------|-------------------|
 | **ASR Endpoint** | Handled internally—your `CHUNK_*` settings are ignored |
 | **OpenAI Transcribe** | Handled internally via `chunking_strategy=auto`—your settings are ignored |
+| **Mistral** | Handled internally—your `CHUNK_*` settings are ignored |
+| **VibeVoice** | App chunks files over ~58 minutes into ~50 minute pieces automatically |
 | **OpenAI Whisper** | Uses your `CHUNK_LIMIT` and `CHUNK_OVERLAP_SECONDS` settings |
 
 If you were manually configuring chunking for ASR endpoints, you can remove those settings as they no longer have any effect.
@@ -136,6 +160,34 @@ After updating your configuration:
    ```
 
 ## Recommended Configuration
+
+### For Mistral Voxtral (Cloud Diarization)
+
+```bash
+# Transcription
+TRANSCRIPTION_CONNECTOR=mistral
+TRANSCRIPTION_API_KEY=your-mistral-key
+TRANSCRIPTION_MODEL=voxtral-mini-latest
+
+# Text generation
+TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+TEXT_MODEL_API_KEY=sk-or-v1-xxx
+TEXT_MODEL_NAME=openai/gpt-4o-mini
+```
+
+### For VibeVoice ASR (Self-Hosted, No Cloud)
+
+```bash
+# Transcription
+TRANSCRIPTION_CONNECTOR=vibevoice
+TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
+TRANSCRIPTION_MODEL=vibevoice
+
+# Text generation
+TEXT_MODEL_BASE_URL=https://openrouter.ai/api/v1
+TEXT_MODEL_API_KEY=sk-or-v1-xxx
+TEXT_MODEL_NAME=openai/gpt-4o-mini
+```
 
 ### For Self-Hosted (Best Quality)
 
