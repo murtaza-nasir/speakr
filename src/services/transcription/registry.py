@@ -45,11 +45,13 @@ class ConnectorRegistry:
         from .connectors.openai_transcribe import OpenAITranscribeConnector
         from .connectors.asr_endpoint import ASREndpointConnector
         from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
+        from .connectors.mistral import MistralTranscriptionConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
         self.register('asr_endpoint', ASREndpointConnector)
         self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
+        self.register('mistral', MistralTranscriptionConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -261,6 +263,17 @@ class ConnectorRegistry:
                 'deployment_name': os.environ.get('AZURE_DEPLOYMENT_NAME', os.environ.get('TRANSCRIPTION_MODEL', 'gpt-4o-transcribe')),
                 'api_version': os.environ.get('AZURE_API_VERSION', '2025-04-01-preview'),
                 'model': os.environ.get('TRANSCRIPTION_MODEL', '')  # For capability detection
+            }
+
+        elif connector_name == 'mistral':
+            base_url = os.environ.get('TRANSCRIPTION_BASE_URL', '')
+            if base_url:
+                base_url = base_url.split('#')[0].strip()
+
+            return {
+                'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+                'base_url': base_url or 'https://api.mistral.ai',
+                'model': os.environ.get('TRANSCRIPTION_MODEL', 'voxtral-mini-latest'),
             }
 
         else:  # openai_whisper (default)
