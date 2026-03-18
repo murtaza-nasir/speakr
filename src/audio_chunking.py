@@ -496,11 +496,11 @@ class AudioChunkingService:
                 logger.info(f"File size {converted_size/1024/1024:.1f}MB requires {num_chunks} chunks")
                 
             else:  # duration-based
-                # Duration-based chunking with API safety limit
-                effective_limit = min(limit_value, 1400)  # Cap at OpenAI safe limit
-                num_chunks = max(1, math.ceil(total_duration / effective_limit))
-                
-                logger.info(f"Duration-based chunking: {limit_value}s limit (effective: {effective_limit}s)")
+                # Use the limit from the connector/config directly — connectors already
+                # declare their recommended_chunk_seconds with appropriate safety margins
+                num_chunks = max(1, math.ceil(total_duration / limit_value))
+
+                logger.info(f"Duration-based chunking: {limit_value}s limit")
                 logger.info(f"File duration {total_duration:.1f}s requires {num_chunks} chunks")
             
             # Calculate chunk duration
@@ -625,9 +625,9 @@ class AudioChunkingService:
                 if os.path.exists(chunk_path):
                     chunk_size = os.path.getsize(chunk_path)
                     
-                    # Verify chunk size is within limits
+                    # Verify chunk size is within limits (only relevant for size-based chunking)
                     if chunk_size > self.max_chunk_size_bytes:
-                        logger.warning(f"Chunk {chunk_index} is {chunk_size/1024/1024:.1f}MB, exceeds {self.max_chunk_size_mb}MB limit")
+                        logger.debug(f"Chunk {chunk_index} is {chunk_size/1024/1024:.1f}MB (size limit: {self.max_chunk_size_mb}MB)")
                     
                     chunk_info = {
                         'index': chunk_index,
