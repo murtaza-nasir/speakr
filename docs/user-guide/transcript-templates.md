@@ -291,30 +291,30 @@ Groups using wikis or documentation platforms can create templates that match th
 Here's a complete setup for automatic export to Obsidian:
 
 1. **Enable auto-export in `.env`**:
-   ```bash
-   ENABLE_AUTO_EXPORT=true
-   AUTO_EXPORT_DIR=/data/exports
-   AUTO_EXPORT_TRANSCRIPTION=true
-   AUTO_EXPORT_SUMMARY=true
-   ```
+    ```bash
+    ENABLE_AUTO_EXPORT=true
+    AUTO_EXPORT_DIR=/data/exports
+    AUTO_EXPORT_TRANSCRIPTION=true
+    AUTO_EXPORT_SUMMARY=true
+    ```
 
 2. **Map exports to Obsidian vault in `docker-compose.yml`**:
-   ```yaml
-   volumes:
+    ```yaml
+    volumes:
      - ./uploads:/data/uploads
      - ./instance:/data/instance
      - /Users/username/Documents/Obsidian/Transcripts:/data/exports
-   ```
+    ```
 
 3. **Create a default transcript template** in Speakr settings with the format you want:
-   ```
-   [{{start_time}}] {{speaker}}: {{text}}
-   ```
+    ```
+    [{{start_time}}] {{speaker}}: {{text}}
+    ```
 
 4. **Restart Speakr** to apply the changes:
-   ```bash
-   docker compose restart
-   ```
+    ```bash
+    docker compose restart
+    ```
 
 Now when any recording finishes processing, Speakr automatically writes a markdown file to your Obsidian vault with:
 

@@ -294,37 +294,37 @@ This approach lets you keep years of searchable conversation history without acc
 ### For Compliance
 
 1. **Set appropriate retention periods**
-   ```bash
-   # Example: 7-year retention for financial records
-   GLOBAL_RETENTION_DAYS=2555  # 7 years × 365 days
-   DELETION_MODE=full_recording
-   ```
+    ```bash
+    # Example: 7-year retention for financial records
+    GLOBAL_RETENTION_DAYS=2555  # 7 years × 365 days
+    DELETION_MODE=full_recording
+    ```
 
 2. **Use tag-based protection** for records requiring indefinite retention
-   - Create "Legal Hold" or "Permanent" tags
-   - Enable protection on these tags
-   - Apply to relevant recordings
+    - Create "Legal Hold" or "Permanent" tags
+    - Enable protection on these tags
+    - Apply to relevant recordings
 
 3. **Document your retention policy** in your organization's compliance documentation
 
 ### For Storage Management
 
 1. **Start with audio-only deletion**
-   ```bash
-   DELETION_MODE=audio_only
-   ```
-   - Keeps searchable transcriptions
-   - Frees up 95%+ of storage (audio files are large)
-   - Maintains business value of conversations
+    ```bash
+    DELETION_MODE=audio_only
+    ```
+    - Keeps searchable transcriptions
+    - Frees up 95%+ of storage (audio files are large)
+    - Maintains business value of conversations
 
 2. **Use shorter retention periods** for routine recordings
-   ```bash
-   GLOBAL_RETENTION_DAYS=30  # Routine meetings
-   ```
+    ```bash
+    GLOBAL_RETENTION_DAYS=30  # Routine meetings
+    ```
 
 3. **Protect important content** with tags
-   - "Executive Meetings" tag → protect from deletion
-   - "Daily Standup" tag → no protection (routine)
+    - "Executive Meetings" tag → protect from deletion
+    - "Daily Standup" tag → no protection (routine)
 
 ### For Groups
 
@@ -366,21 +366,21 @@ Example group tag retention configuration:
 ### Enabling Auto-Deletion on Existing System
 
 1. **Test with audio-only mode first:**
-   ```bash
-   ENABLE_AUTO_DELETION=true
-   GLOBAL_RETENTION_DAYS=365  # Start with long period
-   DELETION_MODE=audio_only   # Test safely
-   ```
+    ```bash
+    ENABLE_AUTO_DELETION=true
+    GLOBAL_RETENTION_DAYS=365  # Start with long period
+    DELETION_MODE=audio_only   # Test safely
+    ```
 
 2. **Protect existing important content:**
-   - Create protected tags
-   - Apply to critical recordings
-   - Verify exemptions via `/admin/auto-deletion/stats`
+    - Create protected tags
+    - Apply to critical recordings
+    - Verify exemptions via `/admin/auto-deletion/stats`
 
 3. **Run manual test:**
-   ```bash
-   POST /admin/auto-deletion/run
-   ```
+    ```bash
+    POST /admin/auto-deletion/run
+    ```
 
 4. **Monitor results** and adjust retention period as needed
 

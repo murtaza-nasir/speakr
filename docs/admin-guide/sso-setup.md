@@ -43,13 +43,13 @@ Restart Speakr after updating environment variables.
 ## Keycloak quick start
 
 1. In Keycloak, create a new client (e.g., `speakr`) with:
-   - **Client Type**: OpenID Connect
-   - **Access Type**: Confidential
-   - **Valid Redirect URI**: `https://your-host/auth/sso/callback`
-   - **Web Origins**: `+` (or your domain)
+    - **Client Type**: OpenID Connect
+    - **Access Type**: Confidential
+    - **Valid Redirect URI**: `https://your-host/auth/sso/callback`
+    - **Web Origins**: `+` (or your domain)
 2. Copy the **Client ID** and **Client Secret**.
 3. Note the **OpenID Endpoint Configuration** (discovery) URL, typically:
-   `https://<host>/realms/<realm>/.well-known/openid-configuration`
+    `https://<host>/realms/<realm>/.well-known/openid-configuration`
 
 4. Set the environment variables accordingly and restart Speakr.
 
@@ -60,7 +60,7 @@ Restart Speakr after updating environment variables.
 3. Grant API permissions: `openid`, `profile`, `email`.
 4. Create a client secret.
 5. Discovery URL format:
-   `https://login.microsoftonline.com/<tenant-id>/v2.0/.well-known/openid-configuration`
+    `https://login.microsoftonline.com/<tenant-id>/v2.0/.well-known/openid-configuration`
 
 6. Set variables and restart.
 
@@ -69,7 +69,7 @@ Restart Speakr after updating environment variables.
 1. Create OAuth credentials (Web application).
 2. Add authorized redirect URI: `https://your-host/auth/sso/callback`.
 3. Use discovery URL:
-   `https://accounts.google.com/.well-known/openid-configuration`
+    `https://accounts.google.com/.well-known/openid-configuration`
 
 4. Set variables and restart.
 
@@ -78,7 +78,7 @@ Restart Speakr after updating environment variables.
 1. Create a Regular Web Application.
 2. Allowed Callback URLs: `https://your-host/auth/sso/callback`.
 3. Discovery URL:
-   `https://<your-tenant>.auth0.com/.well-known/openid-configuration`
+    `https://<your-tenant>.auth0.com/.well-known/openid-configuration`
 
 4. Set variables and restart.
 

@@ -151,11 +151,11 @@ Group tags automatically share recordings with all group members when applied:
 
 1. While editing or creating a group, navigate to the **Tags** section
 2. Click "Create Group Tag" and enter:
-   - **Tag Name**: What the tag will be called (e.g., "Team Meetings", "Family Events")
-   - **Color**: Choose a color for easy visual identification
-   - **Custom Prompt** (optional): AI instructions for how to summarize recordings with this tag
-   - **Protected**: Enable to prevent automatic deletion by retention policies
-   - **Retention Days** (optional): Auto-delete recordings after this many days (leave blank to keep forever)
+    - **Tag Name**: What the tag will be called (e.g., "Team Meetings", "Family Events")
+    - **Color**: Choose a color for easy visual identification
+    - **Custom Prompt** (optional): AI instructions for how to summarize recordings with this tag
+    - **Protected**: Enable to prevent automatic deletion by retention policies
+    - **Retention Days** (optional): Auto-delete recordings after this many days (leave blank to keep forever)
 3. Save the tag
 
 When any group member applies this tag to a recording, all group members automatically get access to it.

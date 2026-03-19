@@ -20,9 +20,9 @@ A Progressive Web App combines the best of web and mobile apps:
 2. Look for the **"Add to Home Screen"** prompt at the bottom of the screen
 3. Tap **"Add"** or **"Install"**
 4. Alternatively:
-   - Tap the three-dot menu (⋮) in the browser
-   - Select **"Add to Home screen"** or **"Install app"**
-   - Follow the prompts
+    - Tap the three-dot menu (⋮) in the browser
+    - Select **"Add to Home screen"** or **"Install app"**
+    - Follow the prompts
 
 5. **Launch** the app from your home screen
 
@@ -49,8 +49,8 @@ A Progressive Web App combines the best of web and mobile apps:
 2. Look for the **install icon** (⊕) in the address bar
 3. Click it and select **"Install"**
 4. Alternatively:
-   - Click the three-dot menu
-   - Select **"Install Speakr"** or **"Add to applications"**
+    - Click the three-dot menu
+    - Select **"Install Speakr"** or **"Add to applications"**
 
 5. **Launch** from your applications menu or desktop shortcut
 

@@ -138,9 +138,9 @@ For one-off collaborations or sharing with specific people outside your groups:
 2. Click the **share icon** (users icon) in the toolbar
 3. Search for the user's name and select them
 4. Choose their permission level:
-   - **View Only**: Can read and listen, but not edit
-   - **Edit**: Can modify metadata, notes, and summary
-   - **Reshare**: Can share with additional users
+    - **View Only**: Can read and listen, but not edit
+    - **Edit**: Can modify metadata, notes, and summary
+    - **Reshare**: Can share with additional users
 5. Click to add them - they immediately receive access
 
 ### Personal Notes on Shared Recordings
