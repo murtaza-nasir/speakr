@@ -20,8 +20,8 @@ API tokens are personal access tokens that authenticate API requests on your beh
 2. Click **Create Token**
 3. Enter a descriptive name (e.g., "n8n automation", "CLI access")
 4. Choose an expiration period:
-   - **No expiration** - Token remains valid until manually revoked
-   - **30 days**, **90 days**, **1 year** - Token automatically expires
+    - **No expiration** - Token remains valid until manually revoked
+    - **30 days**, **90 days**, **1 year** - Token automatically expires
 5. Click **Create**
 
 !!! important "Save Your Token"

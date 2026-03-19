@@ -73,13 +73,13 @@ cd whisperx-asr-service
 You must accept agreements for **all three models** used by the diarization pipeline:
 
 1. **Main diarization model:**
-   - [https://huggingface.co/pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
+    - [https://huggingface.co/pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
 
 2. **Segmentation model:**
-   - [https://huggingface.co/pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+    - [https://huggingface.co/pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
 
 3. **Speaker diarization 3.1:**
-   - [https://huggingface.co/pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+    - [https://huggingface.co/pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
 
 For each model:
 
@@ -176,15 +176,15 @@ If WhisperX is on a dedicated GPU server:
 **On GPU Machine:**
 
 1. Expose service to network in `docker-compose.yml`:
-   ```yaml
-   ports:
+    ```yaml
+    ports:
      - "0.0.0.0:9000:9000"
-   ```
+    ```
 
 2. Configure firewall:
-   ```bash
-   sudo ufw allow 9000/tcp
-   ```
+    ```bash
+    sudo ufw allow 9000/tcp
+    ```
 
 **On Speakr Machine:**
 

@@ -139,23 +139,23 @@ For the best transcription and diarization quality, self-hosting an ASR service 
 **ASR Service Options:**
 
 1. **WhisperX ASR Service (Recommended)** - Best transcription quality with voice profile support
-   - Repository: [murtaza-nasir/whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service)
-   - Uses `pyannote/speaker-diarization-community-1` model with exclusive diarization
-   - **Superior transcription and diarization quality** with large models (large-v3, distil-large-v3)
-   - Supports 256-dimensional speaker embeddings for voice profile identification
-   - Better timestamp alignment between speakers and words
-   - **Required for:** Voice profiles, automatic speaker recognition, speaker embeddings
-   - **Environment file:** `config/env.whisperx.example`
-   - **Required setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features
+    - Repository: [murtaza-nasir/whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service)
+    - Uses `pyannote/speaker-diarization-community-1` model with exclusive diarization
+    - **Superior transcription and diarization quality** with large models (large-v3, distil-large-v3)
+    - Supports 256-dimensional speaker embeddings for voice profile identification
+    - Better timestamp alignment between speakers and words
+    - **Required for:** Voice profiles, automatic speaker recognition, speaker embeddings
+    - **Environment file:** `config/env.whisperx.example`
+    - **Required setting:** `ASR_RETURN_SPEAKER_EMBEDDINGS=true` to enable voice profile features
 
 2. **OpenAI Whisper ASR Webservice** - For basic speaker diarization without voice profiles
-   - Repository: [ahmetoner/whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice)
-   - Uses `pyannote/speaker-diarization-3.1` model
-   - Simpler setup, less resource intensive
-   - **Supports:** Basic speaker identification (Speaker 1, Speaker 2, etc.)
-   - **Does not support:** Voice profiles, speaker embeddings, automatic speaker recognition
-   - **Environment file:** `config/env.asr.example`
-   - **Note:** Do not set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` with this service as it will cause errors
+    - Repository: [ahmetoner/whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice)
+    - Uses `pyannote/speaker-diarization-3.1` model
+    - Simpler setup, less resource intensive
+    - **Supports:** Basic speaker identification (Speaker 1, Speaker 2, etc.)
+    - **Does not support:** Voice profiles, speaker embeddings, automatic speaker recognition
+    - **Environment file:** `config/env.asr.example`
+    - **Note:** Do not set `ASR_RETURN_SPEAKER_EMBEDDINGS=true` with this service as it will cause errors
 
 > **Important:** Before proceeding with this configuration, you'll need to set up one of the ASR service containers. See [Running ASR Service for Speaker Diarization](#running-asr-service-for-speaker-diarization) for complete instructions on deploying both containers together or separately.
 
@@ -451,9 +451,9 @@ If you need speaker diarization to identify different speakers in your recording
 **Prerequisites:**
 
 1. **Hugging Face Account & Model Access** - Visit and accept terms for ALL models:
-   - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
-   - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
-   - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+    - [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1)
+    - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+    - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
 
 2. **Generate HF Token** - Create a read-access token at [Hugging Face Settings](https://huggingface.co/settings/tokens)
 
@@ -495,8 +495,8 @@ See the [WhisperX ASR Service README](https://github.com/murtaza-nasir/whisperx-
 **Prerequisites:**
 
 1. **Hugging Face Account & Model Access** - Visit and accept terms:
-   - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
-   - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
+    - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
+    - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
 
 2. **Generate HF Token** - Create a read-access token at [Hugging Face Settings](https://huggingface.co/settings/tokens)
 
