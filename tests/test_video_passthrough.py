@@ -159,16 +159,16 @@ class TestProcessingMainPath(unittest.TestCase):
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('actual_filepath = filepath', passthrough_block)
 
-    def test_passthrough_with_retention_sets_recording_path(self):
-        """When both passthrough and retention are on, recording.audio_path is set."""
+    def test_passthrough_with_retention_preserves_locator(self):
+        """When both passthrough and retention are on, persistent media locator is preserved."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
         pt_end = video_block.find('elif VIDEO_RETENTION:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('if VIDEO_RETENTION:', passthrough_block,
                        "Passthrough branch should conditionally handle retention")
-        self.assertIn('recording.audio_path = filepath', passthrough_block)
-        self.assertIn("mimetypes.guess_type(filepath)", passthrough_block)
+        self.assertNotIn('recording.audio_path = filepath', passthrough_block)
+        self.assertIn("recording.mime_type = mimetypes.guess_type(original_filename or filepath)[0] or 'video/mp4'", passthrough_block)
 
     def test_video_passthrough_active_flag_set(self):
         """video_passthrough_active flag is computed from is_video and VIDEO_PASSTHROUGH_ASR."""

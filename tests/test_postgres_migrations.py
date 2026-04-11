@@ -118,7 +118,7 @@ class TestDatabaseMigrations(unittest.TestCase):
             columns = self._get_column_names('recording')
             expected = [
                 'id', 'is_inbox', 'is_highlighted', 'mime_type',
-                'completed_at', 'processing_time_seconds', 'error_message',
+                'audio_duration_seconds', 'completed_at', 'processing_time_seconds', 'error_message',
                 'folder_id', 'audio_deleted_at', 'deletion_exempt',
                 'speaker_embeddings',
             ]

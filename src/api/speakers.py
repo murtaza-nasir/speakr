@@ -446,43 +446,46 @@ def get_snippet_audio(recording_id):
         if recording.audio_deleted_at:
             return jsonify({'error': 'Audio file has been deleted'}), 410
 
-        if not recording.audio_path or not os.path.exists(recording.audio_path):
+        from src.services.storage import get_storage_service
+        storage = get_storage_service()
+        if not recording.audio_path or not storage.exists(recording.audio_path):
             return jsonify({'error': 'Audio file not found'}), 404
 
-        # Detect audio codec to pick the right output container for stream copy
-        codec_to_container = {
-            'mp3': ('.mp3', 'audio/mpeg'),
-            'aac': ('.m4a', 'audio/mp4'),
-            'opus': ('.ogg', 'audio/ogg'),
-            'vorbis': ('.ogg', 'audio/ogg'),
-            'flac': ('.flac', 'audio/flac'),
-            'pcm_s16le': ('.wav', 'audio/wav'),
-            'pcm_s24le': ('.wav', 'audio/wav'),
-            'pcm_s32le': ('.wav', 'audio/wav'),
-            'pcm_f32le': ('.wav', 'audio/wav'),
-        }
-        snippet_ext = '.mp3'
-        snippet_mime = 'audio/mpeg'
         try:
-            codec_info = get_codec_info(recording.audio_path, timeout=10)
-            audio_codec = codec_info.get('audio_codec')
-            if audio_codec and audio_codec in codec_to_container:
-                snippet_ext, snippet_mime = codec_to_container[audio_codec]
-        except FFProbeError:
-            pass  # Fall back to mp3
+            with storage.materialize(recording.audio_path) as materialized:
+                # Detect audio codec to pick the right output container for stream copy
+                codec_to_container = {
+                    'mp3': ('.mp3', 'audio/mpeg'),
+                    'aac': ('.m4a', 'audio/mp4'),
+                    'opus': ('.ogg', 'audio/ogg'),
+                    'vorbis': ('.ogg', 'audio/ogg'),
+                    'flac': ('.flac', 'audio/flac'),
+                    'pcm_s16le': ('.wav', 'audio/wav'),
+                    'pcm_s24le': ('.wav', 'audio/wav'),
+                    'pcm_s32le': ('.wav', 'audio/wav'),
+                    'pcm_f32le': ('.wav', 'audio/wav'),
+                }
+                snippet_ext = '.mp3'
+                snippet_mime = 'audio/mpeg'
+                try:
+                    codec_info = get_codec_info(materialized.local_path, timeout=10)
+                    audio_codec = codec_info.get('audio_codec')
+                    if audio_codec and audio_codec in codec_to_container:
+                        snippet_ext, snippet_mime = codec_to_container[audio_codec]
+                except FFProbeError:
+                    pass  # Fall back to mp3
 
-        # Create temporary file for the snippet
-        with tempfile.NamedTemporaryFile(delete=False, suffix=snippet_ext) as tmp_file:
-            output_path = tmp_file.name
+                # Create temporary file for the snippet
+                with tempfile.NamedTemporaryFile(delete=False, suffix=snippet_ext) as tmp_file:
+                    output_path = tmp_file.name
 
-        try:
-            # Use centralized FFmpeg utility to extract the audio segment
-            extract_audio_segment(
-                recording.audio_path,
-                output_path,
-                start_time,
-                duration
-            )
+                # Use centralized FFmpeg utility to extract the audio segment
+                extract_audio_segment(
+                    materialized.local_path,
+                    output_path,
+                    start_time,
+                    duration
+                )
 
             # Send the file
             response = send_file(
@@ -578,6 +581,5 @@ def merge_speaker_profiles():
         db.session.rollback()
         current_app.logger.error(f"Error merging speakers: {e}")
         return jsonify({'error': str(e)}), 500
-
 
 

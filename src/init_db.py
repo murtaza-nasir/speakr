@@ -150,6 +150,8 @@ def initialize_database(app):
         
         if add_column_if_not_exists(engine, 'recording', 'mime_type', 'VARCHAR(100)'):
             app.logger.info("Added mime_type column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'audio_duration_seconds', 'FLOAT'):
+            app.logger.info("Added audio_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'completed_at', 'DATETIME'):
             app.logger.info("Added completed_at column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'processing_time_seconds', 'INTEGER'):
