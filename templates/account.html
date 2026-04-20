@@ -72,7 +72,8 @@
                     'fr': 'Français (French)',
                     'zh': '中文 (Chinese)',
                     'de': 'Deutsch (German)',
-                    'ru': 'Русский (Russian)'
+                    'ru': 'Русский (Russian)',
+                    'pt-BR': 'Português (Brasil)'
                 };
                 
                 Array.from(langSelect.options).forEach(option => {
@@ -527,6 +528,7 @@
                                             <option value="es" {% if current_user.ui_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
                                             <option value="fr" {% if current_user.ui_language == 'fr' %}selected{% endif %}>Français (French)</option>
                                             <option value="ru" {% if current_user.ui_language == 'ru' %}selected{% endif %}>Русский (Russian)</option>
+                                            <option value="pt-BR" {% if current_user.ui_language == 'pt-BR' %}selected{% endif %}>Português (Brasil)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
                                     </div>
@@ -554,6 +556,7 @@
                                             <option value="tr" {% if current_user.transcription_language == 'tr' %}selected{% endif %}>Turkish</option>
                                             <option value="id" {% if current_user.transcription_language == 'id' %}selected{% endif %}>Indonesian</option>
                                             <option value="sv" {% if current_user.transcription_language == 'sv' %}selected{% endif %}>Swedish</option>
+                                            <option value="pt-BR" {% if current_user.transcription_language == 'pt-BR' %}selected{% endif %}>Português (Brasil)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Select auto-detect to let the transcription service determine the language.</p>
                                     </div>
