@@ -357,7 +357,10 @@ Title:"""
                 {"role": "user", "content": prompt_text}
             ],
             temperature=0.7,
-            max_tokens=5000,
+            # TITLE_MAX_TOKENS lets reasoning-model users (e.g. Kimi K2) raise
+            # the budget so the model has room for hidden thinking tokens
+            # before producing the title itself.
+            max_tokens=int(os.environ.get("TITLE_MAX_TOKENS", "5000")),
             user_id=recording.user_id,
             operation_type='title_generation'
         )
@@ -853,7 +856,9 @@ You must respond with valid JSON format only."""
             ],
             temperature=0.2,
             response_format={"type": "json_object"},
-            max_tokens=3000,
+            # EVENT_MAX_TOKENS gives reasoning-model users a knob to raise
+            # the budget when hidden thinking tokens crowd out the JSON output.
+            max_tokens=int(os.environ.get("EVENT_MAX_TOKENS", "3000")),
             user_id=recording.user_id,
             operation_type='event_extraction'
         )
@@ -2189,7 +2194,9 @@ Title:"""
                 {"role": "user", "content": prompt_text}
             ],
             temperature=0.7,
-            max_tokens=100
+            # Match the main title-generation path so reasoning-model users
+            # have a single knob (TITLE_MAX_TOKENS) that covers both flows.
+            max_tokens=int(os.environ.get("TITLE_MAX_TOKENS", "5000"))
         )
 
         raw_response = completion.choices[0].message.content

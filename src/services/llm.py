@@ -244,6 +244,16 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if response_format:
             completion_args["response_format"] = response_format
 
+        # Make the resolved max_tokens visible in logs so users can confirm
+        # their SUMMARY_MAX_TOKENS / CHAT_MAX_TOKENS / etc. settings actually
+        # took effect for a given operation. The "key" used here is
+        # max_completion_tokens for GPT-5 and max_tokens otherwise.
+        budget_key = 'max_completion_tokens' if using_gpt5 else 'max_tokens'
+        logger.info(
+            f"LLM call: operation={operation_type or 'unspecified'}, model={TEXT_MODEL_NAME}, "
+            f"{budget_key}={completion_args.get(budget_key, 'provider default')}"
+        )
+
         request_started_at = time.monotonic()
         response = client.chat.completions.create(**completion_args)
 
@@ -369,6 +379,14 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
 
         if response_format:
             completion_args["response_format"] = response_format
+
+        # Visibility: surface the resolved budget per call so admins can
+        # confirm CHAT_MAX_TOKENS or per-call overrides took effect.
+        budget_key = 'max_completion_tokens' if using_gpt5 else 'max_tokens'
+        logger.info(
+            f"Chat LLM call: operation={operation_type or 'unspecified'}, model={model_name}, "
+            f"{budget_key}={completion_args.get(budget_key, 'provider default')}"
+        )
 
         request_started_at = time.monotonic()
         response = effective_client.chat.completions.create(**completion_args)
