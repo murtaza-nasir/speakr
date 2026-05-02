@@ -227,35 +227,38 @@ def test_multiple_jobs_fair_distribution():
                     db.session.rollback()
                     return None
 
-        # Each "worker" claims one job
-        for i in range(num_jobs + 2):  # Extra attempts to ensure no double claims
-            job_id = claim_any_job(i)
-            if job_id:
-                claimed_jobs.append(job_id)
-                print(f"  Worker {i} claimed job {job_id}")
-            else:
-                print(f"  Worker {i} found no available jobs")
+        try:
+            # Each "worker" claims one job
+            for i in range(num_jobs + 2):  # Extra attempts to ensure no double claims
+                job_id = claim_any_job(i)
+                if job_id:
+                    claimed_jobs.append(job_id)
+                    print(f"  Worker {i} claimed job {job_id}")
+                else:
+                    print(f"  Worker {i} found no available jobs")
 
-        print(f"\nClaimed jobs: {claimed_jobs}")
-        print(f"Unique jobs claimed: {len(set(claimed_jobs))}")
+            print(f"\nClaimed jobs: {claimed_jobs}")
+            print(f"Unique jobs claimed: {len(set(claimed_jobs))}")
 
-        # Verify no duplicates
-        assert len(claimed_jobs) == len(set(claimed_jobs)), "Duplicate job claims detected!"
-        assert len(claimed_jobs) == num_jobs, f"Expected {num_jobs} claims, got {len(claimed_jobs)}"
+            # Verify no duplicates
+            assert len(claimed_jobs) == len(set(claimed_jobs)), "Duplicate job claims detected!"
+            assert len(claimed_jobs) == num_jobs, f"Expected {num_jobs} claims, got {len(claimed_jobs)}"
 
-        # Cleanup
-        for job_id in job_ids:
-            job = db.session.get(ProcessingJob, job_id)
-            if job:
-                db.session.delete(job)
-        for rec_id in recording_ids:
-            rec = db.session.get(Recording, rec_id)
-            if rec:
-                db.session.delete(rec)
-        db.session.commit()
-
-        print("\n[PASS] All jobs claimed exactly once!")
-        return True
+            print("\n[PASS] All jobs claimed exactly once!")
+            return True
+        finally:
+            # Cleanup must run even if the assertions above fail. Without this
+            # the synthetic 'Test Distribution Recording N' rows leak into the
+            # dev DB and show up in admin and user-facing recording lists.
+            for job_id in job_ids:
+                job = db.session.get(ProcessingJob, job_id)
+                if job:
+                    db.session.delete(job)
+            for rec_id in recording_ids:
+                rec = db.session.get(Recording, rec_id)
+                if rec:
+                    db.session.delete(rec)
+            db.session.commit()
 
 
 if __name__ == '__main__':

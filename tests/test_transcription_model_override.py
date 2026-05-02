@@ -279,22 +279,34 @@ def test_effective_model_blank_override_falls_back():
 # Main
 # -----------------------------------------------------------------------------
 
+def cleanup_test_users():
+    """Drop every user created by this file so leaked rows do not appear in
+    the admin user-management screens or aggregate stats."""
+    with app.app_context():
+        for u in User.query.filter(User.username.like('models_%')).all():
+            db.session.delete(u)
+        db.session.commit()
+
+
 def main():
     print("=== Issue #266: per-upload/tag/folder transcription model ===\n")
-    print("--- env parsing ---")
-    run("CSV + labels parses correctly", test_models_csv_parses_with_labels)
-    run("unset env var → empty options", test_models_csv_unset_means_empty)
-    print("\n--- precedence chain ---")
-    run("user input wins over tag/folder", test_user_input_wins_over_defaults)
-    run("tag default applies when no user input", test_tag_default_applied_when_no_user_input)
-    run("folder default applies when no tag", test_folder_default_applied_when_no_tag)
-    run("model outside allowlist dropped", test_user_supplied_model_outside_allowlist_dropped)
-    run("nothing configured → None", test_no_defaults_means_no_model_in_job_params)
-    print("\n--- TranscriptionRequest plumbing ---")
-    run("model field exists", test_transcription_request_has_model_field)
-    run("override propagates", test_effective_model_uses_override)
-    run("falls back when no override", test_effective_model_falls_back_to_default)
-    run("blank override falls back", test_effective_model_blank_override_falls_back)
+    try:
+        print("--- env parsing ---")
+        run("CSV + labels parses correctly", test_models_csv_parses_with_labels)
+        run("unset env var → empty options", test_models_csv_unset_means_empty)
+        print("\n--- precedence chain ---")
+        run("user input wins over tag/folder", test_user_input_wins_over_defaults)
+        run("tag default applies when no user input", test_tag_default_applied_when_no_user_input)
+        run("folder default applies when no tag", test_folder_default_applied_when_no_tag)
+        run("model outside allowlist dropped", test_user_supplied_model_outside_allowlist_dropped)
+        run("nothing configured → None", test_no_defaults_means_no_model_in_job_params)
+        print("\n--- TranscriptionRequest plumbing ---")
+        run("model field exists", test_transcription_request_has_model_field)
+        run("override propagates", test_effective_model_uses_override)
+        run("falls back when no override", test_effective_model_falls_back_to_default)
+        run("blank override falls back", test_effective_model_blank_override_falls_back)
+    finally:
+        cleanup_test_users()
 
     print(f"\nResults: {PASSED} passed, {FAILED} failed")
     return 0 if FAILED == 0 else 1

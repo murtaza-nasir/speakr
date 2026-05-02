@@ -137,10 +137,22 @@ def test_list_has_all_new_fields():
         assert not missing, f"list item missing fields: {missing}"
 
 
+def cleanup_test_users():
+    """Drop every user created by this file so leaked rows do not appear in
+    the admin user-management screens or aggregate stats."""
+    with app.app_context():
+        for u in User.query.filter(User.username.like('v1parity_%')).all():
+            db.session.delete(u)
+        db.session.commit()
+
+
 def main():
     print("=== Issue #274: API v1 parity ===\n")
-    run("detail endpoint exposes new fields", test_detail_has_all_new_fields)
-    run("list endpoint exposes new fields", test_list_has_all_new_fields)
+    try:
+        run("detail endpoint exposes new fields", test_detail_has_all_new_fields)
+        run("list endpoint exposes new fields", test_list_has_all_new_fields)
+    finally:
+        cleanup_test_users()
     print(f"\nResults: {PASSED} passed, {FAILED} failed")
     return 0 if FAILED == 0 else 1
 

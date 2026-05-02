@@ -37,6 +37,18 @@ def _get_or_create_user():
     return user
 
 
+def teardown_module(module):
+    """Drop the synthetic user created by this test module so it does not
+    accumulate in the dev database and surface in admin / user-facing screens.
+    pytest auto-calls teardown_module after every test in the file completes.
+    """
+    with app.app_context():
+        user = User.query.filter_by(username="bugfix_test_user").first()
+        if user:
+            db.session.delete(user)
+            db.session.commit()
+
+
 def _create_recording_with_snippets(user):
     """Create a recording that has speaker_snippet records attached."""
     rec = Recording(

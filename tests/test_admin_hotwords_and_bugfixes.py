@@ -358,6 +358,21 @@ def test_user_transcription_language():
 # Main
 # =============================================================================
 
+def teardown_module(module):
+    """Drop synthetic users created by this test file. pytest invokes this
+    automatically; the standalone main() also calls it explicitly so the
+    cleanup runs whether the file is executed as a script or via pytest.
+    """
+    from src.app import app, db
+    from src.models import User
+    with app.app_context():
+        for username in ('chat_test_user',):
+            user = User.query.filter_by(username=username).first()
+            if user:
+                db.session.delete(user)
+                db.session.commit()
+
+
 def main():
     global PASSED, FAILED, ERRORS
 
@@ -365,10 +380,13 @@ def main():
     print("Recent Fixes Tests (#240, #245, #246, #250)")
     print("=" * 60)
 
-    test_admin_default_hotwords()
-    test_chat_api_fix()
-    test_azure_empty_choices()
-    test_user_transcription_language()
+    try:
+        test_admin_default_hotwords()
+        test_chat_api_fix()
+        test_azure_empty_choices()
+        test_user_transcription_language()
+    finally:
+        teardown_module(None)
 
     print("\n" + "=" * 60)
     print(f"RESULTS: {PASSED} passed, {FAILED} failed")

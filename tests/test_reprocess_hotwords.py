@@ -208,13 +208,29 @@ def test_empty_when_nothing_configured():
         assert params.get("initial_prompt") is None, f"got {params!r}"
 
 
+def cleanup_test_users():
+    """Remove every user created by this test file.
+
+    Tests run against the live dev database, so without an explicit teardown
+    the synthesised users would accumulate forever and pollute the admin
+    user-management screens.
+    """
+    with app.app_context():
+        for u in User.query.filter(User.username.like('reprocess_test_%')).all():
+            db.session.delete(u)
+        db.session.commit()
+
+
 def main():
     print("=== Issue #265: reprocess hotwords/initial_prompt precedence ===\n")
-    run("user input wins over all defaults", test_user_input_wins)
-    run("tag defaults apply when no user input", test_tag_defaults_apply_when_no_user_input)
-    run("folder defaults apply when no tag", test_folder_defaults_apply_when_no_tag)
-    run("user account defaults apply as last resort", test_user_defaults_apply_as_last_resort)
-    run("nothing configured → both None", test_empty_when_nothing_configured)
+    try:
+        run("user input wins over all defaults", test_user_input_wins)
+        run("tag defaults apply when no user input", test_tag_defaults_apply_when_no_user_input)
+        run("folder defaults apply when no tag", test_folder_defaults_apply_when_no_tag)
+        run("user account defaults apply as last resort", test_user_defaults_apply_as_last_resort)
+        run("nothing configured → both None", test_empty_when_nothing_configured)
+    finally:
+        cleanup_test_users()
 
     print(f"\nResults: {PASSED} passed, {FAILED} failed")
     return 0 if FAILED == 0 else 1

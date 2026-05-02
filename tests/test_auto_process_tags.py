@@ -85,8 +85,26 @@ class TestTagAutoProcessModel(unittest.TestCase):
 # Layer 2: API Tests
 # ---------------------------------------------------------------------------
 
+def _drop_synthetic_users(*usernames):
+    """Helper used by class-level teardowns to remove any synthetic users
+    created during the test run. Cascades clear their dependent rows so the
+    dev database does not accumulate test artifacts that show up in admin
+    and user-facing screens.
+    """
+    with app.app_context():
+        for name in usernames:
+            row = User.query.filter_by(username=name).first()
+            if row:
+                db.session.delete(row)
+        db.session.commit()
+
+
 class TestTagAutoProcessAPI(unittest.TestCase):
     """Test Tag API endpoints with auto-process."""
+
+    @classmethod
+    def tearDownClass(cls):
+        _drop_synthetic_users('autotest_user', 'autotest_nonadmin')
 
     def setUp(self):
         self.app_context = app.app_context()
@@ -302,6 +320,11 @@ class TestTagAutoProcessAPI(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestFileMonitorTagSubdirs(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        _drop_synthetic_users('autotest_monitor_user')
+
+
     """Test file monitor tag subdirectory scanning."""
 
     def setUp(self):
@@ -494,6 +517,11 @@ class TestFileMonitorTagSubdirs(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestAutoProcessEdgeCases(unittest.TestCase):
+    @classmethod
+    def tearDownClass(cls):
+        _drop_synthetic_users('autotest_edge_user')
+
+
     """Edge case tests for auto-process features."""
 
     def setUp(self):
