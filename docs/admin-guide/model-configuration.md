@@ -454,7 +454,7 @@ EMBEDDING_API_KEY=sk-or-...
 EMBEDDING_MODEL=openai/text-embedding-3-large
 ```
 
-API mode does not require sentence-transformers to be installed, which makes it the natural fit for the lightweight Docker image (`learnedmachine/speakr:lite`). Semantic search still requires `scikit-learn` for cosine similarity; the lite image includes it.
+API mode does not require sentence-transformers to be installed, so the lightweight Docker image (`learnedmachine/speakr:lite`) can now run full semantic search by combining `EMBEDDING_BASE_URL` with any compatible provider. The lite image already ships `openai` and `scikit-learn`, so no further dependencies are needed.
 
 ### Compatibility Note
 

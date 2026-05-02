@@ -11,7 +11,11 @@ Before diving into management, it's worth understanding what you're managing. In
 This approach goes beyond simple keyword matching. The system understands that "budget concerns" relates to "financial constraints" and "cost overruns" even though the exact words differ. This semantic understanding makes Inquire Mode powerful for discovering information that users might not remember precisely.
 
 !!! note "Lightweight Image"
-    If you're using the `lite` Docker image (`learnedmachine/speakr:lite`), the embedding model is not included. Inquire Mode still works but falls back to keyword-based text search instead of semantic search. To use full semantic search, switch to the `latest` image tag.
+    The `lite` Docker image (`learnedmachine/speakr:lite`) ships without the local sentence-transformers model. Two options to enable semantic search on lite:
+    - Set `EMBEDDING_BASE_URL` to an OpenAI-compatible embeddings endpoint (vLLM, OpenRouter, OpenAI, etc.). Inquire Mode then runs in full semantic-search mode using API-generated vectors. See [Model Configuration](model-configuration.md#configurable-embedding-model) for setup.
+    - Switch to the `latest` image tag, which includes the local sentence-transformers model.
+
+    Without either, Inquire Mode falls back to keyword-based text search.
 
 ## The Embedding Model
 

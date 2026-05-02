@@ -88,12 +88,26 @@ ENABLE_PUBLIC_SHARING = os.environ.get('ENABLE_PUBLIC_SHARING', 'true').lower() 
 # Video retention - when enabled, video files keep their video stream for playback
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 
-# Log embedding status on startup
+# Log embedding status on startup. Two paths can power Inquire mode: a local
+# sentence-transformers model (full image) or an OpenAI-compatible HTTP
+# provider (works in the lite image too, as long as scikit-learn is present
+# for cosine similarity, which it is in both images).
+_inquire_uses_api = bool(os.environ.get('EMBEDDING_BASE_URL', '').strip())
+try:
+    from sklearn.metrics.pairwise import cosine_similarity as _has_sklearn  # noqa: F401
+    _SKLEARN_AVAILABLE = True
+except ImportError:
+    _SKLEARN_AVAILABLE = False
+
 if ENABLE_INQUIRE_MODE and EMBEDDINGS_AVAILABLE:
-    print("✅ Inquire Mode: Full semantic search enabled (embeddings available)")
+    print("✅ Inquire Mode: Full semantic search enabled (local embedding model)")
+elif ENABLE_INQUIRE_MODE and _inquire_uses_api and _SKLEARN_AVAILABLE:
+    print("✅ Inquire Mode: Full semantic search enabled (API embedding provider)")
+elif ENABLE_INQUIRE_MODE and _inquire_uses_api and not _SKLEARN_AVAILABLE:
+    print("⚠️  Inquire Mode: Basic text search only (scikit-learn missing, cannot rank API embeddings)")
 elif ENABLE_INQUIRE_MODE and not EMBEDDINGS_AVAILABLE:
     print("⚠️  Inquire Mode: Basic text search only (embedding dependencies not available)")
-    print("   To enable semantic search, install: pip install sentence-transformers==2.7.0 huggingface-hub>=0.19.0")
+    print("   To enable semantic search, install sentence-transformers locally OR set EMBEDDING_BASE_URL to use an OpenAI-compatible API.")
 elif not ENABLE_INQUIRE_MODE:
     print("ℹ️  Inquire Mode: Disabled (set ENABLE_INQUIRE_MODE=true to enable)")
 
