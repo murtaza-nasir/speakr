@@ -6,16 +6,14 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.15-alpha - New Transcription Connectors & Upload API"
-    **Mistral/Voxtral and VibeVoice connectors, upload API metadata, and bug fixes**
+!!! info "Latest Release: v0.8.16-alpha - Per-Recording Model Selection & Backlog Cleanup"
+    **Per-upload model selection, embedding model env var, Mistral chunking, API v1 parity, and bug fixes**
 
-    - **Mistral/Voxtral Connector** - Cloud transcription with built-in speaker diarization via Mistral's Voxtral models
-    - **VibeVoice Connector** - Self-hosted transcription via vLLM with diarization and automatic chunking for long files
-    - **Upload API: title & meeting_date** - Set recording metadata directly from integrations
-    - **Regenerate Title** - Re-generate a recording's title with AI after transcription
-    - **Default Transcription Language** - Auto-fills on upload and reprocess forms
-    - **Upload Disclaimer** - Configurable pre-upload disclaimer with custom banner text
-    - **Complete Localization** - All recent features fully localized across all six languages
+    - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Configurable model dropdown via `TRANSCRIPTION_MODELS_AVAILABLE`
+    - **Configurable Embedding Model** - `EMBEDDING_MODEL` env var for swapping `all-MiniLM-L6-v2`
+    - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` for long meeting recordings
+    - **API v1 Parity** - `audio_duration`, durations, folder, events, and deletion_exempt now exposed
+    - **Bug Fixes** - Reprocess now respects tag/folder hotwords; legacy "français" language values normalized; Cyrillic title generation no longer leaks unicode escapes
 
 ## Quick Navigation
 
@@ -147,6 +145,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.8.16-alpha - Per-Recording Model Selection & Backlog Cleanup"
+    - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` to expose a model dropdown
+    - **Configurable Embedding Model** - `EMBEDDING_MODEL` env var for swapping the default sentence-transformers model
+    - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` opts into app-side chunking for long recordings
+    - **API v1 Parity** - `audio_duration`, transcription/summarization durations, folder, events, and `deletion_exempt` exposed
+    - **Bug Fixes** - Reprocess now applies tag/folder hotwords; "français" → "fr" migration; Cyrillic title fix
+    - **Docs** - nginx large-upload settings, Google Gemini OpenAI-compatible setup
 
 !!! info "Version 0.8.15-alpha - New Transcription Connectors & Upload API"
     - **Mistral/Voxtral Connector** - Cloud-based transcription with built-in speaker diarization via Mistral's Voxtral models
