@@ -78,6 +78,16 @@
                         <label for="asr-max-speakers-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.maxSpeakers')"></label>
                         <input type="number" id="asr-max-speakers-reprocess" v-model.number="asrReprocessOptions.max_speakers" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('form.optional')">
                     </div>
+                    <div>
+                        <label for="asr-hotwords-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.hotwords')"></label>
+                        <input type="text" id="asr-hotwords-reprocess" v-model="asrReprocessOptions.hotwords" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('form.hotwordsPlaceholder')">
+                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5" v-text="t('form.hotwordsHelp')"></p>
+                    </div>
+                    <div>
+                        <label for="asr-initial-prompt-reprocess" class="block text-sm font-medium text-[var(--text-muted)]" v-text="t('form.initialPrompt')"></label>
+                        <textarea id="asr-initial-prompt-reprocess" v-model="asrReprocessOptions.initial_prompt" rows="2" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] resize-y" :placeholder="t('form.initialPromptPlaceholder')"></textarea>
+                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5" v-text="t('form.initialPromptHelp')"></p>
+                    </div>
                 </div>
 
                 <!-- Custom Prompt Options for Summary Reprocessing -->

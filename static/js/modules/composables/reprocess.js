@@ -36,6 +36,8 @@ export function useReprocess(state, utils) {
             asrReprocessOptions.language = userTranscriptionLanguage?.value || '';
             asrReprocessOptions.min_speakers = '';
             asrReprocessOptions.max_speakers = '';
+            asrReprocessOptions.hotwords = '';
+            asrReprocessOptions.initial_prompt = '';
         } else {
             summaryReprocessPromptSource.value = 'default';
             summaryReprocessSelectedTagId.value = '';
@@ -116,7 +118,9 @@ export function useReprocess(state, utils) {
                 recordingId,
                 asrReprocessOptions.language,
                 asrReprocessOptions.min_speakers,
-                asrReprocessOptions.max_speakers
+                asrReprocessOptions.max_speakers,
+                asrReprocessOptions.hotwords,
+                asrReprocessOptions.initial_prompt
             );
         } else {
             await reprocessSummary(
@@ -132,7 +136,7 @@ export function useReprocess(state, utils) {
     // Transcription Reprocessing
     // =========================================
 
-    const reprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers) => {
+    const reprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers, hotwords, initialPrompt) => {
         if (!recordingId) {
             setGlobalError('No recording ID provided for reprocessing.');
             return;
@@ -145,6 +149,8 @@ export function useReprocess(state, utils) {
             };
             if (minSpeakers && minSpeakers !== '') requestBody.min_speakers = parseInt(minSpeakers);
             if (maxSpeakers && maxSpeakers !== '') requestBody.max_speakers = parseInt(maxSpeakers);
+            if (hotwords && hotwords.trim()) requestBody.hotwords = hotwords.trim();
+            if (initialPrompt && initialPrompt.trim()) requestBody.initial_prompt = initialPrompt.trim();
 
             const response = await fetch(`/recording/${recordingId}/reprocess_transcription`, {
                 method: 'POST',

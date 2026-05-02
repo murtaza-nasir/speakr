@@ -971,6 +971,8 @@ def reprocess_transcription(recording_id):
 
         min_speakers = data.get('min_speakers') or None
         max_speakers = data.get('max_speakers') or None
+        hotwords = (data.get('hotwords') or '').strip() or None
+        initial_prompt = (data.get('initial_prompt') or '').strip() or None
 
         # Convert to int if provided
         if min_speakers:
@@ -984,18 +986,39 @@ def reprocess_transcription(recording_id):
             except (ValueError, TypeError):
                 max_speakers = None
 
-        # Apply tag defaults if no user input provided (for connectors that support speaker count)
-        if (min_speakers is None or max_speakers is None) and recording.tags:
+        # Apply precedence chain mirroring upload_file():
+        #   user input > tag defaults > folder defaults > env defaults > user defaults
+
+        # Tag defaults (highest priority after user input). Use the first tag's
+        # defaults when present.
+        if recording.tags:
             for tag_association in sorted(recording.tag_associations, key=lambda x: x.order):
                 tag = tag_association.tag
                 if min_speakers is None and tag.default_min_speakers:
                     min_speakers = tag.default_min_speakers
                 if max_speakers is None and tag.default_max_speakers:
                     max_speakers = tag.default_max_speakers
-                if min_speakers is not None and max_speakers is not None:
+                if not hotwords and tag.default_hotwords:
+                    hotwords = tag.default_hotwords
+                if not initial_prompt and tag.default_initial_prompt:
+                    initial_prompt = tag.default_initial_prompt
+                if (min_speakers is not None and max_speakers is not None
+                        and hotwords and initial_prompt):
                     break
 
-        # Apply environment variable defaults
+        # Folder defaults (only if recording has no tags providing the value)
+        if recording.folder:
+            folder = recording.folder
+            if min_speakers is None and folder.default_min_speakers:
+                min_speakers = folder.default_min_speakers
+            if max_speakers is None and folder.default_max_speakers:
+                max_speakers = folder.default_max_speakers
+            if not hotwords and folder.default_hotwords:
+                hotwords = folder.default_hotwords
+            if not initial_prompt and folder.default_initial_prompt:
+                initial_prompt = folder.default_initial_prompt
+
+        # Environment variable defaults
         if min_speakers is None and ASR_MIN_SPEAKERS:
             try:
                 min_speakers = int(ASR_MIN_SPEAKERS)
@@ -1007,11 +1030,22 @@ def reprocess_transcription(recording_id):
             except (ValueError, TypeError):
                 max_speakers = None
 
+        # User defaults (lowest priority). The recording owner's account-level
+        # hotwords / initial_prompt apply when no tag/folder/env value was set.
+        owner = recording.owner
+        if owner:
+            if not hotwords and owner.transcription_hotwords:
+                hotwords = owner.transcription_hotwords
+            if not initial_prompt and owner.transcription_initial_prompt:
+                initial_prompt = owner.transcription_initial_prompt
+
         # Enqueue the job with all parameters
         job_params = {
             'language': language,
             'min_speakers': min_speakers,
-            'max_speakers': max_speakers
+            'max_speakers': max_speakers,
+            'hotwords': hotwords,
+            'initial_prompt': initial_prompt,
         }
 
         job_id = job_queue.enqueue(

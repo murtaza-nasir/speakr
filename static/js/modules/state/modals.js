@@ -51,7 +51,9 @@ export function createModalState(ref, reactive) {
     const asrReprocessOptions = reactive({
         language: '',
         min_speakers: null,
-        max_speakers: null
+        max_speakers: null,
+        hotwords: '',
+        initial_prompt: ''
     });
 
     const summaryReprocessPromptSource = ref('default');
