@@ -32,6 +32,16 @@ TEXT_MODEL_NAME=openai/gpt-4o-mini
 
 **Custom Endpoints**: Speakr works with any OpenAI-compatible API endpoint, including self-hosted solutions like LocalAI, Ollama with OpenAI compatibility, or enterprise API gateways.
 
+**Google Gemini (OpenAI-compatible)**: Google exposes Gemini models behind an OpenAI-compatible URL. Point Speakr at it like any other base URL:
+
+```bash
+TEXT_MODEL_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+TEXT_MODEL_API_KEY=your_google_api_key
+TEXT_MODEL_NAME=gemini-2.0-flash
+```
+
+No special connector is needed; Speakr's standard LLM client works with the endpoint directly.
+
 ## GPT-5 Support
 
 Speakr fully supports OpenAI's GPT-5 model family, automatically detecting and adjusting API parameters when you use GPT-5 models with the official OpenAI API.
@@ -379,6 +389,58 @@ CHAT_MODEL_NAME=openai/gpt-4o
 CHAT_GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
 CHAT_GPT5_VERBOSITY=medium          # low, medium, high
 ```
+
+## Per-Upload, Per-Tag, Per-Folder Transcription Models
+
+By default Speakr uses the single `TRANSCRIPTION_MODEL` set in `.env` for every recording. If your users transcribe different kinds of recordings (calls, meetings, dictations, multi-speaker interviews) you can publish a list of models they're allowed to choose from at upload time.
+
+```bash
+# Comma-separated list of model identifiers users can pick.
+TRANSCRIPTION_MODELS_AVAILABLE=whisper-1,gpt-4o-transcribe,gpt-4o-transcribe-diarize,vibevoice
+# Optional parallel list of display names. Falls back to the model id when omitted.
+TRANSCRIPTION_MODEL_LABELS=Whisper,GPT-4o,GPT-4o (Diarize),VibeVoice
+```
+
+When the list is non-empty, a "Transcription model" dropdown appears in the upload form's Advanced ASR Options and in the reprocess modal. Tags and folders also gain a "Default transcription model" field in their edit forms — set one and any recording uploaded with that tag or in that folder uses the chosen model unless the user picks a different one at upload time.
+
+Resolution order at upload time:
+
+1. Per-upload selection (Advanced ASR Options dropdown)
+2. First tag's `default_transcription_model`
+3. Folder's `default_transcription_model`
+4. Global `TRANSCRIPTION_MODEL` env var (current behaviour)
+
+If the override isn't in `TRANSCRIPTION_MODELS_AVAILABLE`, it's silently dropped and Speakr falls back to the global default — useful as a safety net against stale browser caches sending old model ids.
+
+The override is propagated to the connector via the `model` field on `TranscriptionRequest`. Connectors that key on a model name (OpenAI Whisper / Transcribe, Mistral, VibeVoice) honour it directly. The `asr_endpoint` connector ignores it — its model is configured server-side on the WhisperX/whisper-asr-webservice container.
+
+## Configurable Embedding Model
+
+Speakr's Inquire mode (semantic search) uses [sentence-transformers](https://www.sbert.net/) to embed transcript chunks. The default model is `all-MiniLM-L6-v2` (384-dim vectors) which is fast, small, and good enough for most use cases.
+
+If you'd prefer a more accurate model, set:
+
+```bash
+EMBEDDING_MODEL=all-mpnet-base-v2     # 768-dim, higher quality
+# or
+EMBEDDING_MODEL=multi-qa-MiniLM-L6-cos-v1  # tuned for question-answering
+```
+
+Any sentence-transformers compatible model name works.
+
+**Important compatibility note**: the model name is recorded in `system_setting` on first startup. If you change `EMBEDDING_MODEL` later, Speakr logs a warning at startup and Inquire mode will return wrong results until you reprocess affected recordings (chunks embedded with the old model won't match the new model's vector space). To rebuild embeddings, reprocess each recording.
+
+## Mistral Voxtral Chunking
+
+Voxtral handles up to 3 hours per request natively, but the cloud API can time out near that limit on long meeting recordings. To opt into app-side chunking for the Mistral connector:
+
+```bash
+TRANSCRIPTION_CONNECTOR=mistral
+MISTRAL_ENABLE_CHUNKING=true
+MISTRAL_MAX_DURATION_SECONDS=7200   # 2 hours; chunks at 80% of this
+```
+
+Diarization across chunks: Mistral doesn't return voice embeddings, so speakers are remapped per chunk (`SPEAKER_00` in chunk 1 ≠ `SPEAKER_00` in chunk 2). If you need consistent speaker identity across an entire long recording, use `gpt-4o-transcribe-diarize` (uses known-speaker references) or `whisperx-asr-service` with embeddings enabled.
 
 ## Troubleshooting
 

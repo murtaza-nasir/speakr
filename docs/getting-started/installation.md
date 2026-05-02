@@ -735,18 +735,27 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
 
+    # Allow large uploads — match or exceed your Speakr MAX_CONTENT_LENGTH /
+    # max_file_size_mb. Set to 0 for unlimited.
+    client_max_body_size 4000M;
+
     location / {
         proxy_pass http://localhost:8899;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
+        # Stream the upload through to Speakr instead of buffering the whole
+        # file on the proxy first. Without this, very large uploads can fail
+        # with a 500 / "Service unavailable" before reaching the app.
+        proxy_request_buffering off;
+
         # WebSocket support for live features
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        
+
         # Timeouts for large file uploads
         proxy_read_timeout 300s;
         proxy_send_timeout 300s;
