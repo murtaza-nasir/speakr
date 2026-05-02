@@ -1464,6 +1464,11 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
     from src.services.transcription import (
         get_connector, TranscriptionRequest, TranscriptionCapability
     )
+    from src.utils.language import normalize_language_code
+
+    # Defensive normalization at the connector boundary — guards legacy DB
+    # values like "français" that pre-date the dropdown migration (issue #256).
+    language = normalize_language_code(language)
 
     with app_context:
         recording = db.session.get(Recording, recording_id)
@@ -2076,6 +2081,11 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         # Use user's language preference if not explicitly provided
         if language is None and user:
             language = user.transcription_language
+
+        # Normalize at the boundary — legacy values like "français" must
+        # become "fr" before the connector receives them (issue #256).
+        from src.utils.language import normalize_language_code
+        language = normalize_language_code(language)
 
         # Check if chunking is needed
         if video_passthrough_active:

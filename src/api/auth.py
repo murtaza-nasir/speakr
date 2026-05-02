@@ -577,7 +577,10 @@ def account():
             current_user.job_title = user_job_title if user_job_title else None
             current_user.company = user_company if user_company else None
             current_user.ui_language = ui_lang if ui_lang else 'en'
-            current_user.transcription_language = transcription_lang if transcription_lang else None
+            # Normalize transcription_language so legacy display-name values
+            # ("Français", "Deutsch", ...) can't reach the ASR call (issue #256).
+            from src.utils.language import normalize_language_code
+            current_user.transcription_language = normalize_language_code(transcription_lang)
             current_user.output_language = output_lang if output_lang else None
 
         # Check if this is the custom prompts form (has summary_prompt field)

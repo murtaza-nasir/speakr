@@ -14,7 +14,7 @@ import tempfile
 from sqlalchemy import text, inspect
 
 from src.database import db
-from src.models import Recording, TranscriptChunk, SystemSetting
+from src.models import Recording, TranscriptChunk, SystemSetting, User
 from src.services.embeddings import process_recording_chunks
 from src.utils import add_column_if_not_exists, migrate_column_type, create_index_if_not_exists
 
@@ -650,6 +650,31 @@ def initialize_database(app):
                 setting_type='boolean'
             )
             app.logger.info("Initialized enable_folders setting")
+
+        # One-shot migration: clean up legacy User.transcription_language values
+        # that were stored as display names ("Français", "English") before the
+        # account-settings input was a dropdown. Issue #256.
+        try:
+            from src.utils.language import normalize_language_code
+            from sqlalchemy import or_
+            # Touch only rows where the value isn't already a valid 2-letter code,
+            # to keep this idempotent across restarts.
+            stale_users = User.query.filter(User.transcription_language.isnot(None)).all()
+            cleaned = 0
+            for u in stale_users:
+                normalized = normalize_language_code(u.transcription_language)
+                if normalized != u.transcription_language:
+                    app.logger.info(
+                        f"Migrating user {u.id} transcription_language: {u.transcription_language!r} -> {normalized!r}"
+                    )
+                    u.transcription_language = normalized
+                    cleaned += 1
+            if cleaned:
+                db.session.commit()
+                app.logger.info(f"Normalized transcription_language for {cleaned} user(s)")
+        except Exception as e:
+            db.session.rollback()
+            app.logger.warning(f"transcription_language normalization migration skipped: {e}")
 
         # Process existing recordings for inquire mode (chunk and embed them)
         # Only run if inquire mode is enabled
