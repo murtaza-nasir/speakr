@@ -315,15 +315,16 @@ def _generate_ai_title(recording):
     Returns:
         Generated title string, or None if generation fails
     """
-    # Get configurable transcript length limit and format transcription for LLM
+    # Get configurable transcript length limit and format transcription for LLM.
+    # Format first, then truncate — slicing the raw JSON can cut a unicode escape
+    # mid-sequence, which makes json.loads() fail and leaves the literal `\uXXXX`
+    # escapes in the prompt (issue #260).
     transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
+    formatted_transcription = format_transcription_for_llm(recording.transcription)
     if transcript_limit == -1:
-        raw_transcription = recording.transcription
+        transcript_text = formatted_transcription
     else:
-        raw_transcription = recording.transcription[:transcript_limit]
-
-    # Convert ASR JSON to clean text format
-    transcript_text = format_transcription_for_llm(raw_transcription)
+        transcript_text = formatted_transcription[:transcript_limit]
 
     # Get user language preference
     user_output_language = None
