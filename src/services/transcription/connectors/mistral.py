@@ -7,6 +7,7 @@ Particularly strong for French and multilingual audio.
 """
 
 import logging
+import os
 import re
 import httpx
 from typing import Dict, Any, Set, List, Optional
@@ -34,12 +35,14 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
     }
     PROVIDER_NAME = "mistral"
 
-    # Voxtral supports up to 3 hours per request, no app-level chunking needed
+    # Default class-level spec assumes no chunking — Voxtral handles up to 3
+    # hours natively. Instances can override this in __init__ when
+    # MISTRAL_ENABLE_CHUNKING=true (issue #267).
     SPECIFICATIONS = ConnectorSpecifications(
         max_file_size_bytes=None,
-        max_duration_seconds=None,  # No hard limit for chunking decisions
+        max_duration_seconds=None,
         handles_chunking_internally=True,
-        recommended_chunk_seconds=0,  # Disable — Mistral handles up to 3hrs natively
+        recommended_chunk_seconds=0,
     )
 
     def __init__(self, config: Dict[str, Any]):
@@ -67,6 +70,28 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             timeout=httpx.Timeout(60.0, read=1800.0, write=300.0),
             verify=True,
         )
+
+        # Optional app-side chunking for very long recordings. Voxtral times
+        # out near its 3-hour limit on cloud inference; chunking lets users
+        # process longer meetings reliably. Diarization is per-chunk (Mistral
+        # doesn't return voice embeddings), so speakers will be remapped at
+        # chunk boundaries.
+        if os.environ.get('MISTRAL_ENABLE_CHUNKING', 'false').lower() == 'true':
+            try:
+                max_seconds = int(os.environ.get('MISTRAL_MAX_DURATION_SECONDS', '7200'))
+            except (ValueError, TypeError):
+                max_seconds = 7200
+            recommended_chunk = int(max_seconds * 0.8)
+            self.SPECIFICATIONS = ConnectorSpecifications(
+                max_file_size_bytes=None,
+                max_duration_seconds=max_seconds,
+                handles_chunking_internally=False,
+                recommended_chunk_seconds=recommended_chunk,
+            )
+            logger.info(
+                f"Mistral chunking enabled: max_duration={max_seconds}s, "
+                f"recommended_chunk={recommended_chunk}s"
+            )
 
     def _validate_config(self) -> None:
         """Validate required configuration."""

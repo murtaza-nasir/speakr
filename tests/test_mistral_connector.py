@@ -664,6 +664,24 @@ def test_chunking_behavior():
         os.environ.pop('CHUNK_LIMIT', None)
     run_test("Mistral specs disable app-level chunking", t1)
 
+    def t2():
+        # MISTRAL_ENABLE_CHUNKING=true should opt the connector into app-side chunking.
+        os.environ['MISTRAL_ENABLE_CHUNKING'] = 'true'
+        os.environ['MISTRAL_MAX_DURATION_SECONDS'] = '3600'
+        try:
+            connector = MistralTranscriptionConnector({'api_key': 'test'})
+            specs = connector.SPECIFICATIONS
+            assert specs.handles_chunking_internally is False, \
+                f"Chunking should be opt-in but got handles_chunking_internally={specs.handles_chunking_internally}"
+            assert specs.max_duration_seconds == 3600, f"got max_duration_seconds={specs.max_duration_seconds}"
+            # 80% of max duration as the recommended chunk size.
+            assert specs.recommended_chunk_seconds == 2880, \
+                f"got recommended_chunk_seconds={specs.recommended_chunk_seconds}"
+        finally:
+            os.environ.pop('MISTRAL_ENABLE_CHUNKING', None)
+            os.environ.pop('MISTRAL_MAX_DURATION_SECONDS', None)
+    run_test("MISTRAL_ENABLE_CHUNKING=true opts in to app-side chunking", t2)
+
 
 # =============================================================================
 # Main
