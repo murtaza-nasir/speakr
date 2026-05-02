@@ -409,56 +409,61 @@
 
                         <!-- Token Stats and Per-User Usage Side by Side -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                            <!-- Token Usage Summary Cards (2x2 grid) -->
+                            <!-- Token Usage Summary Cards (LLM and Embedding tracked separately) -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                                 <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Usage Summary</h5>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full bg-[var(--bg-info-light)] text-[var(--text-info-strong)]">
-                                                <i class="fas fa-calendar-day"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">Today</p>
-                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ tokenStats.today?.tokens?.toLocaleString() || 0 }</p>
-                                            </div>
+
+                                <!-- LLM bucket (chat, summarization, title, etc.) -->
+                                <div class="mb-3">
+                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-robot mr-1"></i> LLM</p>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                            <p class="text-xs text-[var(--text-muted)]">Today</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.today?.llm_tokens || 0).toLocaleString() }</p>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                            <p class="text-xs text-[var(--text-muted)]">This Month</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.current_month?.llm_tokens || 0).toLocaleString() }</p>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                            <p class="text-xs text-[var(--text-muted)]">Monthly Cost</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.llm_cost || 0).toFixed(4) }</p>
                                         </div>
                                     </div>
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full bg-[var(--bg-success-light)] text-[var(--text-success-strong)]">
-                                                <i class="fas fa-calendar-alt"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">This Month</p>
-                                                <p class="text-lg font-semibold text-[var(--text-primary)]">${ tokenStats.current_month?.tokens?.toLocaleString() || 0 }</p>
-                                            </div>
+                                </div>
+
+                                <!-- Embedding bucket -->
+                                <div class="mb-3">
+                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-vector-square mr-1"></i> Embeddings</p>
+                                    <div class="grid grid-cols-3 gap-3">
+                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                            <p class="text-xs text-[var(--text-muted)]">Today</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.today?.embedding_tokens || 0).toLocaleString() }</p>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                            <p class="text-xs text-[var(--text-muted)]">This Month</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.current_month?.embedding_tokens || 0).toLocaleString() }</p>
+                                        </div>
+                                        <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                            <p class="text-xs text-[var(--text-muted)]">Monthly Cost</p>
+                                            <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.embedding_cost || 0).toFixed(4) }</p>
                                         </div>
                                     </div>
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full bg-[var(--bg-warn-light)] text-[var(--text-warn-strong)]">
-                                                <i class="fas fa-dollar-sign"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">Monthly Cost</p>
-                                                <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.cost || 0).toFixed(4) }</p>
-                                            </div>
+                                </div>
+
+                                <!-- Budget warnings -->
+                                <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                    <div class="flex items-center">
+                                        <div class="p-2 rounded-full" :class="tokenStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
+                                            <i class="fas fa-exclamation-triangle"></i>
                                         </div>
-                                    </div>
-                                    <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                        <div class="flex items-center">
-                                            <div class="p-2 rounded-full" :class="tokenStats.users_at_100_percent > 0 ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-accent)] text-[var(--text-accent)]'">
-                                                <i class="fas fa-exclamation-triangle"></i>
-                                            </div>
-                                            <div class="ml-3">
-                                                <p class="text-xs text-[var(--text-muted)]">Warnings</p>
-                                                <p class="text-lg font-semibold">
-                                                    <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } blocked</span>
-                                                    <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } warning</span>
-                                                    <span v-else class="text-[var(--text-success-strong)]">None</span>
-                                                </p>
-                                            </div>
+                                        <div class="ml-3">
+                                            <p class="text-xs text-[var(--text-muted)]">Budget Warnings</p>
+                                            <p class="text-sm font-semibold">
+                                                <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } blocked</span>
+                                                <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } warning</span>
+                                                <span v-else class="text-[var(--text-success-strong)]">None</span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -523,22 +528,23 @@
                             </div>
                         </div>
 
-                        <!-- Token Usage Charts -->
+                        <!-- Token Usage Charts (LLM and Embeddings shown separately) -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Daily Usage Chart -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Daily Token Usage (Last 30 Days)</h5>
-                                <div class="h-64">
-                                    <canvas id="dailyTokenChart"></canvas>
-                                </div>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Daily LLM Tokens (Last 30 Days)</h5>
+                                <div class="h-64"><canvas id="dailyTokenChart"></canvas></div>
                             </div>
-
-                            <!-- Monthly Usage Chart -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Monthly Token Usage (Last 12 Months)</h5>
-                                <div class="h-64">
-                                    <canvas id="monthlyTokenChart"></canvas>
-                                </div>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Daily Embedding Tokens (Last 30 Days)</h5>
+                                <div class="h-64"><canvas id="dailyEmbeddingChart"></canvas></div>
+                            </div>
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Monthly LLM Tokens (Last 12 Months)</h5>
+                                <div class="h-64"><canvas id="monthlyTokenChart"></canvas></div>
+                            </div>
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Monthly Embedding Tokens (Last 12 Months)</h5>
+                                <div class="h-64"><canvas id="monthlyEmbeddingChart"></canvas></div>
                             </div>
                         </div>
                     </div>
@@ -1831,6 +1837,8 @@ Summarization Instructions:
                 const transcriptionUserStats = ref([]);
                 const dailyTokenChart = ref(null);
                 const monthlyTokenChart = ref(null);
+                const dailyEmbeddingChart = ref(null);
+                const monthlyEmbeddingChart = ref(null);
                 const settings = ref([]);
                 const isLoadingUsers = ref(true);
                 const isLoadingSettings = ref(false);
@@ -2026,18 +2034,15 @@ Summarization Instructions:
 
                 const loadTokenCharts = async () => {
                     try {
-                        // Load daily stats
                         const dailyResponse = await fetch('/admin/token-stats/daily?days=30');
                         if (dailyResponse.ok) {
-                            const dailyData = await dailyResponse.json();
-                            renderDailyChart(dailyData.stats);
+                            const { stats } = await dailyResponse.json();
+                            renderDailyChart(stats);
                         }
-
-                        // Load monthly stats
                         const monthlyResponse = await fetch('/admin/token-stats/monthly?months=12');
                         if (monthlyResponse.ok) {
-                            const monthlyData = await monthlyResponse.json();
-                            renderMonthlyChart(monthlyData.stats);
+                            const { stats } = await monthlyResponse.json();
+                            renderMonthlyChart(stats);
                         }
                     } catch (error) {
                         console.error('Error loading token charts:', error);
@@ -2064,84 +2069,66 @@ Summarization Instructions:
                     }
                 };
 
-                const renderDailyChart = (data) => {
-                    const ctx = document.getElementById('dailyTokenChart');
+                // Shared bar-chart factory: builds either the LLM or embedding
+                // daily chart against its own canvas. LLM and embedding tokens
+                // never share a chart since their magnitudes and per-token
+                // costs differ by orders of magnitude.
+                const _renderDailyBar = (canvasId, ref_, dataField, displayLabel, colorRgb) => {
+                    const ctx = document.getElementById(canvasId);
                     if (!ctx) return;
-
-                    // Destroy existing chart if any
-                    if (dailyTokenChart.value) {
-                        dailyTokenChart.value.destroy();
-                    }
-
-                    const labels = data.map(d => d.date);
-                    const tokens = data.map(d => d.total);
-
-                    // Detect dark mode
+                    if (ref_.value) ref_.value.destroy();
                     const isDark = document.documentElement.classList.contains('dark');
                     const textColor = isDark ? '#9ca3af' : '#6b7280';
                     const gridColor = isDark ? '#374151' : '#e5e7eb';
-
-                    dailyTokenChart.value = new Chart(ctx, {
+                    ref_.value = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: labels,
+                            labels: window._dailyLabels || [],
                             datasets: [{
-                                label: 'Tokens',
-                                data: tokens,
-                                backgroundColor: isDark ? 'rgba(99, 102, 241, 0.7)' : 'rgba(79, 70, 229, 0.7)',
-                                borderColor: isDark ? 'rgba(99, 102, 241, 1)' : 'rgba(79, 70, 229, 1)',
+                                label: displayLabel,
+                                data: window._dailyData ? window._dailyData.map(d => d[dataField] || 0) : [],
+                                backgroundColor: `rgba(${colorRgb}, ${isDark ? 0.7 : 0.7})`,
+                                borderColor: `rgba(${colorRgb}, 1)`,
                                 borderWidth: 1
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
-                            },
+                            plugins: { legend: { display: false } },
                             scales: {
-                                x: {
-                                    ticks: { color: textColor, maxRotation: 45, minRotation: 45 },
-                                    grid: { color: gridColor }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { color: textColor },
-                                    grid: { color: gridColor }
-                                }
+                                x: { ticks: { color: textColor, maxRotation: 45, minRotation: 45 }, grid: { color: gridColor } },
+                                y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
                             }
                         }
                     });
                 };
 
-                const renderMonthlyChart = (data) => {
-                    const ctx = document.getElementById('monthlyTokenChart');
+                const renderDailyChart = (data) => {
+                    window._dailyLabels = data.map(d => d.date);
+                    window._dailyData = data;
+                    _renderDailyBar('dailyTokenChart', dailyTokenChart, 'llm_tokens', 'LLM tokens', '79, 70, 229');
+                    _renderDailyBar('dailyEmbeddingChart', dailyEmbeddingChart, 'embedding_tokens', 'Embedding tokens', '34, 197, 94');
+                };
+
+                // Shared line-chart factory for monthly LLM vs embedding usage.
+                const _renderMonthlyLine = (canvasId, ref_, labels, values, displayLabel, colorRgb) => {
+                    const ctx = document.getElementById(canvasId);
                     if (!ctx) return;
-
-                    // Destroy existing chart if any
-                    if (monthlyTokenChart.value) {
-                        monthlyTokenChart.value.destroy();
-                    }
-
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const labels = data.map(d => `${monthNames[d.month - 1]} ${d.year}`);
-                    const tokens = data.map(d => d.tokens);
-
-                    // Detect dark mode
+                    if (ref_.value) ref_.value.destroy();
                     const isDark = document.documentElement.classList.contains('dark');
                     const textColor = isDark ? '#9ca3af' : '#6b7280';
                     const gridColor = isDark ? '#374151' : '#e5e7eb';
-
-                    monthlyTokenChart.value = new Chart(ctx, {
+                    ref_.value = new Chart(ctx, {
                         type: 'line',
                         data: {
                             labels: labels,
                             datasets: [{
-                                label: 'Tokens',
-                                data: tokens,
+                                label: displayLabel,
+                                data: values,
                                 fill: true,
-                                backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(22, 163, 74, 0.2)',
-                                borderColor: isDark ? 'rgba(34, 197, 94, 1)' : 'rgba(22, 163, 74, 1)',
+                                backgroundColor: `rgba(${colorRgb}, 0.2)`,
+                                borderColor: `rgba(${colorRgb}, 1)`,
                                 borderWidth: 2,
                                 tension: 0.3
                             }]
@@ -2149,22 +2136,22 @@ Summarization Instructions:
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
-                            },
+                            plugins: { legend: { display: false } },
                             scales: {
-                                x: {
-                                    ticks: { color: textColor },
-                                    grid: { color: gridColor }
-                                },
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: { color: textColor },
-                                    grid: { color: gridColor }
-                                }
+                                x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                                y: { beginAtZero: true, ticks: { color: textColor }, grid: { color: gridColor } }
                             }
                         }
                     });
+                };
+
+                const renderMonthlyChart = (data) => {
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const labels = data.map(d => `${monthNames[d.month - 1]} ${d.year}`);
+                    const llm = data.map(d => d.llm_tokens || 0);
+                    const emb = data.map(d => d.embedding_tokens || 0);
+                    _renderMonthlyLine('monthlyTokenChart', monthlyTokenChart, labels, llm, 'LLM tokens', '22, 163, 74');
+                    _renderMonthlyLine('monthlyEmbeddingChart', monthlyEmbeddingChart, labels, emb, 'Embedding tokens', '79, 70, 229');
                 };
 
                 const showEditSettingModal = ref(false);

@@ -24,8 +24,19 @@ class TokenTracker:
         'title_generation',
         'event_extraction',
         'query_routing',
-        'query_enrichment'
+        'query_enrichment',
+        'embedding',
     ]
+
+    # Token magnitudes and per-token costs differ by orders of magnitude
+    # between LLM completions and embedding calls, so dashboards must keep
+    # them in separate visualizations. Anything in EMBEDDING_OPERATIONS is
+    # bucketed apart from LLM usage.
+    EMBEDDING_OPERATIONS = frozenset({'embedding'})
+
+    @classmethod
+    def is_embedding_op(cls, operation_type):
+        return operation_type in cls.EMBEDDING_OPERATIONS
 
     def record_usage(
         self,
@@ -157,7 +168,12 @@ class TokenTracker:
             return (True, 0, None)
 
     def get_daily_stats(self, days: int = 30, user_id: int = None) -> List[Dict]:
-        """Get daily token usage for charts."""
+        """Get daily token usage for charts.
+
+        Each entry includes both a combined total and per-bucket totals
+        ('llm_tokens'/'llm_cost' vs 'embedding_tokens'/'embedding_cost') so
+        dashboards can render the two streams as independent series.
+        """
         start_date = date.today() - timedelta(days=days - 1)
 
         query = db.session.query(
@@ -177,10 +193,27 @@ class TokenTracker:
         for r in results:
             date_str = r.date.isoformat()
             if date_str not in stats:
-                stats[date_str] = {'date': date_str, 'total': 0, 'cost': 0.0, 'by_operation': {}}
-            stats[date_str]['total'] += r.tokens or 0
-            stats[date_str]['cost'] += r.cost or 0
-            stats[date_str]['by_operation'][r.operation_type] = r.tokens or 0
+                stats[date_str] = {
+                    'date': date_str,
+                    'total': 0,
+                    'cost': 0.0,
+                    'llm_tokens': 0,
+                    'llm_cost': 0.0,
+                    'embedding_tokens': 0,
+                    'embedding_cost': 0.0,
+                    'by_operation': {},
+                }
+            tokens = r.tokens or 0
+            cost = r.cost or 0
+            stats[date_str]['total'] += tokens
+            stats[date_str]['cost'] += cost
+            if self.is_embedding_op(r.operation_type):
+                stats[date_str]['embedding_tokens'] += tokens
+                stats[date_str]['embedding_cost'] += cost
+            else:
+                stats[date_str]['llm_tokens'] += tokens
+                stats[date_str]['llm_cost'] += cost
+            stats[date_str]['by_operation'][r.operation_type] = tokens
 
         # Fill in missing dates with zeros
         all_dates = []
@@ -188,33 +221,62 @@ class TokenTracker:
         while current <= date.today():
             date_str = current.isoformat()
             if date_str not in stats:
-                stats[date_str] = {'date': date_str, 'total': 0, 'cost': 0.0, 'by_operation': {}}
+                stats[date_str] = {
+                    'date': date_str,
+                    'total': 0,
+                    'cost': 0.0,
+                    'llm_tokens': 0,
+                    'llm_cost': 0.0,
+                    'embedding_tokens': 0,
+                    'embedding_cost': 0.0,
+                    'by_operation': {},
+                }
             all_dates.append(date_str)
             current += timedelta(days=1)
 
         return [stats[d] for d in sorted(all_dates)]
 
     def get_monthly_stats(self, months: int = 12) -> List[Dict]:
-        """Get monthly token usage for charts."""
+        """Get monthly token usage for charts.
+
+        Each month includes both combined totals and per-bucket totals
+        (LLM vs embedding) so the two streams can be visualised separately.
+        """
         results = db.session.query(
             extract('year', TokenUsage.date).label('year'),
             extract('month', TokenUsage.date).label('month'),
+            TokenUsage.operation_type,
             func.sum(TokenUsage.total_tokens).label('tokens'),
             func.sum(TokenUsage.cost).label('cost')
-        ).group_by('year', 'month').order_by('year', 'month').all()
+        ).group_by('year', 'month', TokenUsage.operation_type).order_by('year', 'month').all()
 
-        # Get last N months
-        monthly_data = [
-            {
-                'year': int(r.year),
-                'month': int(r.month),
-                'tokens': r.tokens or 0,
-                'cost': r.cost or 0
-            }
-            for r in results
-        ]
+        buckets = {}
+        for r in results:
+            key = (int(r.year), int(r.month))
+            if key not in buckets:
+                buckets[key] = {
+                    'year': key[0],
+                    'month': key[1],
+                    'tokens': 0,
+                    'cost': 0.0,
+                    'llm_tokens': 0,
+                    'llm_cost': 0.0,
+                    'embedding_tokens': 0,
+                    'embedding_cost': 0.0,
+                }
+            tokens = r.tokens or 0
+            cost = r.cost or 0
+            buckets[key]['tokens'] += tokens
+            buckets[key]['cost'] += cost
+            if self.is_embedding_op(r.operation_type):
+                buckets[key]['embedding_tokens'] += tokens
+                buckets[key]['embedding_cost'] += cost
+            else:
+                buckets[key]['llm_tokens'] += tokens
+                buckets[key]['llm_cost'] += cost
 
-        return monthly_data[-months:] if len(monthly_data) > months else monthly_data
+        ordered = [buckets[k] for k in sorted(buckets.keys())]
+        return ordered[-months:] if len(ordered) > months else ordered
 
     def get_user_stats(self) -> List[Dict]:
         """Get per-user token usage breakdown for current month."""
@@ -247,10 +309,11 @@ class TokenTracker:
         ]
 
     def get_today_usage(self, user_id: int = None) -> Dict:
-        """Get today's token usage."""
+        """Get today's token usage, split into LLM and embedding buckets."""
         today = date.today()
 
         query = db.session.query(
+            TokenUsage.operation_type,
             func.sum(TokenUsage.total_tokens).label('tokens'),
             func.sum(TokenUsage.cost).label('cost')
         ).filter(TokenUsage.date == today)
@@ -258,12 +321,28 @@ class TokenTracker:
         if user_id:
             query = query.filter(TokenUsage.user_id == user_id)
 
-        result = query.first()
+        rows = query.group_by(TokenUsage.operation_type).all()
 
-        return {
-            'tokens': result.tokens or 0,
-            'cost': result.cost or 0
+        out = {
+            'tokens': 0,
+            'cost': 0.0,
+            'llm_tokens': 0,
+            'llm_cost': 0.0,
+            'embedding_tokens': 0,
+            'embedding_cost': 0.0,
         }
+        for r in rows:
+            tokens = r.tokens or 0
+            cost = r.cost or 0
+            out['tokens'] += tokens
+            out['cost'] += cost
+            if self.is_embedding_op(r.operation_type):
+                out['embedding_tokens'] += tokens
+                out['embedding_cost'] += cost
+            else:
+                out['llm_tokens'] += tokens
+                out['llm_cost'] += cost
+        return out
 
 
 # Singleton instance

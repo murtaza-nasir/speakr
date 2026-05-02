@@ -449,19 +449,19 @@ def admin_get_token_stats():
         from sqlalchemy import func, extract
         from datetime import date
 
-        # Get today's usage
+        # Get today's usage (already split into llm_/embedding_ buckets)
         today_usage = token_tracker.get_today_usage()
 
-        # Get current month usage for all users
+        # Get current month usage for all users (also bucketed by the tracker)
         monthly_stats = token_tracker.get_monthly_stats(months=1)
-        current_month = monthly_stats[-1] if monthly_stats else {'tokens': 0, 'cost': 0}
+        current_month = monthly_stats[-1] if monthly_stats else {
+            'tokens': 0, 'cost': 0,
+            'llm_tokens': 0, 'llm_cost': 0,
+            'embedding_tokens': 0, 'embedding_cost': 0,
+        }
 
         # Get per-user stats for current month
         user_stats = token_tracker.get_user_stats()
-
-        # Calculate totals
-        total_monthly_tokens = current_month.get('tokens', 0)
-        total_monthly_cost = current_month.get('cost', 0)
 
         # Per-operation breakdown for the current month so the UI can show
         # how the total splits across summarization, chat, embedding, etc.
@@ -481,6 +481,7 @@ def admin_get_token_stats():
                 'tokens': int(r.tokens or 0),
                 'cost': float(r.cost or 0.0),
                 'requests': int(r.requests or 0),
+                'is_embedding': token_tracker.is_embedding_op(r.operation_type),
             }
             for r in op_rows
         ]
@@ -488,8 +489,12 @@ def admin_get_token_stats():
         return jsonify({
             'today': today_usage,
             'current_month': {
-                'tokens': total_monthly_tokens,
-                'cost': total_monthly_cost,
+                'tokens': current_month.get('tokens', 0),
+                'cost': current_month.get('cost', 0),
+                'llm_tokens': current_month.get('llm_tokens', 0),
+                'llm_cost': current_month.get('llm_cost', 0),
+                'embedding_tokens': current_month.get('embedding_tokens', 0),
+                'embedding_cost': current_month.get('embedding_cost', 0),
                 'by_operation': by_operation,
             },
             'user_count_with_usage': len([u for u in user_stats if u['current_usage'] > 0]),
