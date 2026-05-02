@@ -416,19 +416,49 @@ The override is propagated to the connector via the `model` field on `Transcript
 
 ## Configurable Embedding Model
 
-Speakr's Inquire mode (semantic search) uses [sentence-transformers](https://www.sbert.net/) to embed transcript chunks. The default model is `all-MiniLM-L6-v2` (384-dim vectors) which is fast, small, and good enough for most use cases.
+Speakr's Inquire mode (semantic search) uses [sentence-transformers](https://www.sbert.net/) to embed transcript chunks locally by default. The default model is `all-MiniLM-L6-v2` (384-dim vectors), which is fast, small, and sufficient for most use cases.
 
-If you'd prefer a more accurate model, set:
+To use a different local model, set:
 
 ```bash
-EMBEDDING_MODEL=all-mpnet-base-v2     # 768-dim, higher quality
+EMBEDDING_MODEL=all-mpnet-base-v2          # 768-dim, higher quality
 # or
 EMBEDDING_MODEL=multi-qa-MiniLM-L6-cos-v1  # tuned for question-answering
 ```
 
 Any sentence-transformers compatible model name works.
 
-**Important compatibility note**: the model name is recorded in `system_setting` on first startup. If you change `EMBEDDING_MODEL` later, Speakr logs a warning at startup and Inquire mode will return wrong results until you reprocess affected recordings (chunks embedded with the old model won't match the new model's vector space). To rebuild embeddings, reprocess each recording.
+### Remote (API-based) Embeddings
+
+If you would rather offload embeddings to an OpenAI-compatible HTTP endpoint (vLLM, OpenRouter, OpenAI, Together, or any other compatible provider), set `EMBEDDING_BASE_URL` and Speakr switches to API mode. The same `EMBEDDING_MODEL` env var becomes the model identifier sent in each request.
+
+```bash
+# OpenAI directly
+EMBEDDING_BASE_URL=https://api.openai.com/v1
+EMBEDDING_API_KEY=sk-...
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=768   # optional, only honoured by providers that support output-dim trimming
+```
+
+```bash
+# Self-hosted vLLM serving an embedding model
+EMBEDDING_BASE_URL=http://vllm-host:8000/v1
+EMBEDDING_API_KEY=not-needed
+EMBEDDING_MODEL=BAAI/bge-large-en-v1.5
+```
+
+```bash
+# OpenRouter
+EMBEDDING_BASE_URL=https://openrouter.ai/api/v1
+EMBEDDING_API_KEY=sk-or-...
+EMBEDDING_MODEL=openai/text-embedding-3-large
+```
+
+API mode does not require sentence-transformers to be installed, which makes it the natural fit for the lightweight Docker image (`learnedmachine/speakr:lite`). Semantic search still requires `scikit-learn` for cosine similarity; the lite image includes it.
+
+### Compatibility Note
+
+The active embedding identifier (provider plus model) is recorded in `system_setting` on first startup. If you later change `EMBEDDING_MODEL` or `EMBEDDING_BASE_URL`, Speakr logs a warning at startup and Inquire mode will return wrong results until you reprocess affected recordings, because chunks embedded with the previous configuration occupy a different vector space. To rebuild embeddings after a change, reprocess each recording.
 
 ## Mistral Voxtral Chunking
 

@@ -657,35 +657,41 @@ def initialize_database(app):
             )
             app.logger.info("Initialized enable_folders setting")
 
-        # Track the embedding model name in system_setting so we can warn when
-        # it changes between restarts. Issue #262 — old vectors won't match a
-        # new model's output dimensionality and inquire mode will silently
-        # return zero results until users reprocess.
+        # Track the embedding identifier (provider + model) in system_setting
+        # so we can warn when either changes between restarts. Issue #262 —
+        # old vectors will not match a new model's output dimensionality or
+        # semantic space, and inquire mode will silently return wrong results
+        # until users reprocess.
         try:
-            current_model = os.environ.get('EMBEDDING_MODEL', 'all-MiniLM-L6-v2').strip() or 'all-MiniLM-L6-v2'
-            stored_model = SystemSetting.get_setting('embedding_model_name', None)
+            from src.services.embeddings import EMBEDDING_IDENTIFIER
+            current_identifier = EMBEDDING_IDENTIFIER
+            # Read the legacy key first so existing instances upgrade smoothly.
+            stored_identifier = (
+                SystemSetting.get_setting('embedding_identifier', None)
+                or SystemSetting.get_setting('embedding_model_name', None)
+            )
             chunk_count = TranscriptChunk.query.filter(TranscriptChunk.embedding.isnot(None)).count()
-            if stored_model is None:
+            if stored_identifier is None:
                 SystemSetting.set_setting(
-                    key='embedding_model_name',
-                    value=current_model,
-                    description='Sentence-transformers model that produced the stored chunk embeddings. Used to detect dimensionality mismatches at startup.',
+                    key='embedding_identifier',
+                    value=current_identifier,
+                    description='Identifier of the embedding provider and model that produced the stored chunk vectors. Used to detect dimensionality and semantic-space mismatches at startup.',
                     setting_type='string',
                 )
                 if chunk_count:
-                    app.logger.info(f"Recorded embedding_model_name={current_model} (existing {chunk_count} chunks assumed to match)")
-            elif stored_model != current_model:
+                    app.logger.info(f"Recorded embedding_identifier={current_identifier} (existing {chunk_count} chunks assumed to match)")
+            elif stored_identifier != current_identifier:
                 if chunk_count:
                     app.logger.warning(
-                        f"EMBEDDING_MODEL changed from {stored_model!r} to {current_model!r} but {chunk_count} "
-                        "chunks were embedded with the previous model. Inquire mode will return wrong results "
-                        "until you reprocess affected recordings."
+                        f"Embedding identifier changed from {stored_identifier!r} to {current_identifier!r} "
+                        f"but {chunk_count} chunks were embedded with the previous configuration. "
+                        "Inquire mode will return wrong results until you reprocess affected recordings."
                     )
-                SystemSetting.set_setting(key='embedding_model_name', value=current_model)
-                app.logger.info(f"Updated embedding_model_name in system_setting: {stored_model!r} -> {current_model!r}")
+                SystemSetting.set_setting(key='embedding_identifier', value=current_identifier)
+                app.logger.info(f"Updated embedding_identifier in system_setting: {stored_identifier!r} -> {current_identifier!r}")
         except Exception as e:
             db.session.rollback()
-            app.logger.warning(f"embedding_model_name compatibility check skipped: {e}")
+            app.logger.warning(f"embedding_identifier compatibility check skipped: {e}")
 
         # One-shot migration: clean up legacy User.transcription_language values
         # that were stored as display names ("Français", "English") before the

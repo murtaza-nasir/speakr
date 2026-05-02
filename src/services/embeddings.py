@@ -10,33 +10,69 @@ from sqlalchemy.orm import joinedload
 try:
     from sentence_transformers import SentenceTransformer
     from sklearn.metrics.pairwise import cosine_similarity
-    EMBEDDINGS_AVAILABLE = True
+    LOCAL_EMBEDDINGS_AVAILABLE = True
 except ImportError:
-    EMBEDDINGS_AVAILABLE = False
+    LOCAL_EMBEDDINGS_AVAILABLE = False
+    SentenceTransformer = None  # type: ignore
     cosine_similarity = None
+
+# sklearn's cosine_similarity may be available even when sentence-transformers
+# is not (e.g., the lite image with API-mode embeddings). Try to import it
+# independently so semantic search can still run on API-generated vectors.
+if cosine_similarity is None:
+    try:
+        from sklearn.metrics.pairwise import cosine_similarity  # type: ignore
+    except ImportError:
+        cosine_similarity = None
 
 from src.database import db
 from src.models import Recording, TranscriptChunk, InternalShare, RecordingTag
 
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
-# Sentence-transformers model used to generate semantic-search vectors. The
-# default — all-MiniLM-L6-v2 — produces 384-dim vectors and is what older
-# Speakr instances embedded their chunks with. Changing this env var on an
-# existing instance will cause a dimensionality mismatch with stored vectors;
-# see startup warning in src/init_db.py and the docs.
+# Embedding model used to generate semantic-search vectors. By default Speakr
+# loads sentence-transformers locally; setting EMBEDDING_BASE_URL switches to
+# an OpenAI-compatible HTTP endpoint (vLLM, OpenRouter, OpenAI directly, etc.)
+# and the same EMBEDDING_MODEL value is sent as the model name in requests.
+# Changing the model or the endpoint after chunks are already embedded will
+# produce a dimensionality / semantic-space mismatch; see the startup warning
+# in src/init_db.py and the docs for guidance.
 EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'all-MiniLM-L6-v2').strip() or 'all-MiniLM-L6-v2'
+EMBEDDING_BASE_URL = os.environ.get('EMBEDDING_BASE_URL', '').strip()
+EMBEDDING_API_KEY = os.environ.get('EMBEDDING_API_KEY', '').strip()
+_dim_raw = os.environ.get('EMBEDDING_DIMENSIONS', '').strip()
+try:
+    EMBEDDING_DIMENSIONS = int(_dim_raw) if _dim_raw else None
+except (TypeError, ValueError):
+    EMBEDDING_DIMENSIONS = None
+
+# When EMBEDDING_BASE_URL is set, embeddings are produced via an OpenAI-
+# compatible /v1/embeddings call rather than locally.
+USE_API_EMBEDDINGS = bool(EMBEDDING_BASE_URL)
+
+# Identifier persisted to system_setting so the dimensionality compatibility
+# check covers both "model changed" and "provider changed" scenarios.
+EMBEDDING_IDENTIFIER = f"{EMBEDDING_BASE_URL or 'local'}::{EMBEDDING_MODEL}"
+
+# True when at least one embedding path can produce vectors. The legacy name
+# EMBEDDINGS_AVAILABLE is preserved for callers that import it elsewhere.
+EMBEDDINGS_AVAILABLE = LOCAL_EMBEDDINGS_AVAILABLE or (USE_API_EMBEDDINGS and cosine_similarity is not None)
 
 # Initialize embedding model (lazy loading)
 _embedding_model = None
+_embedding_api_client = None
 
 
 
 def get_embedding_model():
-    """Get or initialize the sentence transformer model."""
+    """Get or initialize the local sentence transformer model.
+
+    Returns None when running in API mode or when sentence-transformers is
+    not installed.
+    """
     global _embedding_model
 
-    if not EMBEDDINGS_AVAILABLE:
+    if USE_API_EMBEDDINGS or not LOCAL_EMBEDDINGS_AVAILABLE:
         return None
 
     if _embedding_model is None:
@@ -47,6 +83,52 @@ def get_embedding_model():
             current_app.logger.error(f"Failed to load embedding model {EMBEDDING_MODEL!r}: {e}")
             return None
     return _embedding_model
+
+
+def get_embedding_api_client():
+    """Get or initialize the OpenAI-compatible embeddings API client.
+
+    Returns None when API mode is disabled or the openai package is missing.
+    """
+    global _embedding_api_client
+
+    if not USE_API_EMBEDDINGS:
+        return None
+
+    if _embedding_api_client is None:
+        try:
+            from openai import OpenAI
+            from src.services.llm import llm_timeout, LLM_MAX_RETRIES, http_client_no_proxy
+            _embedding_api_client = OpenAI(
+                api_key=EMBEDDING_API_KEY or "not-needed",
+                base_url=EMBEDDING_BASE_URL,
+                http_client=http_client_no_proxy,
+                timeout=llm_timeout,
+                max_retries=LLM_MAX_RETRIES,
+            )
+            current_app.logger.info(
+                f"Embedding API client initialized: base_url={EMBEDDING_BASE_URL}, model={EMBEDDING_MODEL}"
+            )
+        except Exception as e:
+            current_app.logger.error(f"Failed to initialize embedding API client: {e}")
+            return None
+    return _embedding_api_client
+
+
+def _api_embed(texts):
+    """Call the OpenAI-compatible embeddings endpoint and return numpy vectors."""
+    client = get_embedding_api_client()
+    if client is None or not texts:
+        return []
+    try:
+        kwargs = {'input': texts, 'model': EMBEDDING_MODEL}
+        if EMBEDDING_DIMENSIONS is not None:
+            kwargs['dimensions'] = EMBEDDING_DIMENSIONS
+        response = client.embeddings.create(**kwargs)
+        return [np.array(d.embedding, dtype=np.float32) for d in response.data]
+    except Exception as e:
+        current_app.logger.error(f"Embedding API call failed: {e}")
+        return []
 
 
 
@@ -102,21 +184,31 @@ def chunk_transcription(transcription, max_chunk_length=500, overlap=50):
 def generate_embeddings(texts):
     """
     Generate embeddings for a list of texts.
-    
+
+    Routes through the OpenAI-compatible API when EMBEDDING_BASE_URL is set;
+    otherwise uses the locally loaded sentence-transformers model.
+
     Args:
         texts (list): List of text strings
-    
+
     Returns:
-        list: List of embedding vectors as numpy arrays, or empty list if embeddings unavailable
+        list: List of embedding vectors as numpy arrays, or empty list if no
+        embedding path is available.
     """
-    if not EMBEDDINGS_AVAILABLE:
+    if not texts:
+        return []
+
+    if USE_API_EMBEDDINGS:
+        return _api_embed(texts)
+
+    if not LOCAL_EMBEDDINGS_AVAILABLE:
         current_app.logger.warning("Embeddings not available - skipping embedding generation")
         return []
-        
+
     model = get_embedding_model()
-    if not model or not texts:
+    if not model:
         return []
-    
+
     try:
         embeddings = model.encode(texts)
         return [embedding.astype(np.float32) for embedding in embeddings]
@@ -341,12 +433,21 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
             current_app.logger.info("Embeddings not available - using basic text search as fallback")
             return basic_text_search_chunks(user_id, query, filters, top_k)
 
-        # Generate embedding for the query
-        model = get_embedding_model()
-        if not model:
+        if cosine_similarity is None:
+            current_app.logger.info("scikit-learn not installed - using basic text search as fallback")
             return basic_text_search_chunks(user_id, query, filters, top_k)
 
-        query_embedding = model.encode([query])[0]
+        # Generate embedding for the query (via API or local model)
+        if USE_API_EMBEDDINGS:
+            api_vectors = _api_embed([query])
+            if not api_vectors:
+                return basic_text_search_chunks(user_id, query, filters, top_k)
+            query_embedding = api_vectors[0]
+        else:
+            model = get_embedding_model()
+            if not model:
+                return basic_text_search_chunks(user_id, query, filters, top_k)
+            query_embedding = model.encode([query])[0]
 
         # Get all accessible recording IDs (own + shared)
         accessible_recording_ids = get_accessible_recording_ids(user_id)
