@@ -10,7 +10,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
     **Per-upload model selection, embedding model env var, Mistral chunking, API v1 parity, and bug fixes**
 
     - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Configurable model dropdown via `TRANSCRIPTION_MODELS_AVAILABLE`
-    - **Configurable Embedding Model** - `EMBEDDING_MODEL` env var for swapping `all-MiniLM-L6-v2`
+    - **Configurable Embedding Model** - `EMBEDDING_MODEL` for local sentence-transformers, or `EMBEDDING_BASE_URL` to offload to an OpenAI-compatible provider
     - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` for long meeting recordings
     - **API v1 Parity** - `audio_duration`, durations, folder, events, and deletion_exempt now exposed
     - **Bug Fixes** - Reprocess now respects tag/folder hotwords; legacy "français" language values normalized; Cyrillic title generation no longer leaks unicode escapes
@@ -148,7 +148,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 !!! info "Version 0.8.16-alpha - Per-Recording Model Selection & Backlog Cleanup"
     - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` to expose a model dropdown
-    - **Configurable Embedding Model** - `EMBEDDING_MODEL` env var for swapping the default sentence-transformers model
+    - **Configurable Embedding Model** - `EMBEDDING_MODEL` for local models, or `EMBEDDING_BASE_URL` to offload embeddings to an OpenAI-compatible provider (vLLM, OpenRouter, OpenAI, etc.)
     - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` opts into app-side chunking for long recordings
     - **API v1 Parity** - `audio_duration`, transcription/summarization durations, folder, events, and `deletion_exempt` exposed
     - **Bug Fixes** - Reprocess now applies tag/folder hotwords; "français" → "fr" migration; Cyrillic title fix

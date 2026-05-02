@@ -15,11 +15,11 @@ This approach goes beyond simple keyword matching. The system understands that "
 
 ## The Embedding Model
 
-Your Speakr instance uses the all-MiniLM-L6-v2 model, shown prominently in the interface. This model generates 384-dimensional vectors - imagine each chunk of text mapped to a point in 384-dimensional space where similar meanings cluster together.
+By default, Speakr uses the all-MiniLM-L6-v2 model. It generates 384-dimensional vectors and runs efficiently on CPU-only systems, which makes advanced search accessible without GPU infrastructure. The default is suitable for English-dominant deployments and small-to-medium recording libraries.
 
-This specific model was chosen carefully. Larger models exist with better accuracy, but they require GPUs and significant computational resources. The MiniLM model runs efficiently on CPU-only systems, making advanced search accessible without expensive infrastructure. It processes text quickly, understands context well, and produces compact embeddings that don't overwhelm your storage.
+For larger libraries, multilingual content, or higher-quality semantic matching, the `EMBEDDING_MODEL` environment variable accepts any sentence-transformers identifier (`all-mpnet-base-v2`, `paraphrase-multilingual-MiniLM-L12-v2`, and similar). For deployments that prefer not to load embedding models locally, setting `EMBEDDING_BASE_URL` switches Speakr to an OpenAI-compatible HTTP endpoint, allowing the use of providers such as OpenAI, OpenRouter, or a self-hosted vLLM server. See [Model Configuration → Configurable Embedding Model](model-configuration.md#configurable-embedding-model) for the full set of supported environment variables and migration guidance.
 
-The model works best with English text, as that's what dominated its training data. Other languages may work with varying success, but English content will always produce the most reliable results. This limitation is a trade-off for the model's efficiency and accessibility.
+Changing the model or provider on an existing instance produces vectors that do not match what is stored. Speakr records the active configuration in `system_setting` on first run and logs a warning at startup if it changes. After such a change, reprocess recordings to rebuild the index.
 
 ## Processing Status Overview
 

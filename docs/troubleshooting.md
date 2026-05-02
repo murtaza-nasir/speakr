@@ -229,7 +229,7 @@ A separate [upload disclaimer](admin-guide/system-settings.md#upload-disclaimer)
 
 Speakr can run completely offline as all dependencies are built into the Docker image. For offline deployments, use local models via Ollama for [text generation](features.md#automatic-summarization) and ensure your ASR endpoint is hosted locally. The system will work without internet access once properly configured.
 
-**Inquire Mode (Semantic Search)**: If you use Inquire Mode, the embedding model (all-MiniLM-L6-v2) is automatically cached in the persistent `instance/huggingface/` directory on first use. Run Speakr once with internet access to download the model, then it will load from cache on subsequent restarts - no network required.
+**Inquire Mode (Semantic Search)**: If you use Inquire Mode with the default local embedding model (all-MiniLM-L6-v2, or any value configured via `EMBEDDING_MODEL`), the model is automatically cached in the persistent `instance/huggingface/` directory on first use. Run Speakr once with internet access to download the model, then it will load from cache on subsequent restarts and no further network access is required. Configurations that use `EMBEDDING_BASE_URL` to offload embeddings to an API provider naturally require network access to that provider on every request.
 
 ### Non-Docker Installation
 

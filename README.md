@@ -184,7 +184,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 **Per-Recording Model Selection, API v1 Parity, and Backlog Cleanup**
 
 - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` and the upload form, in-app reprocess modal, and tag/folder edit forms all gain a model dropdown so different recordings can use different transcription models
-- **Configurable Embedding Model** - New `EMBEDDING_MODEL` env var lets you swap `all-MiniLM-L6-v2` for any sentence-transformers model; Speakr warns at startup if the model changes after embeddings are already stored
+- **Configurable Embedding Model** - New `EMBEDDING_MODEL` env var swaps the default `all-MiniLM-L6-v2` for any sentence-transformers model. `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, and `EMBEDDING_DIMENSIONS` route embeddings through an OpenAI-compatible API instead (vLLM, OpenRouter, OpenAI, Together, etc.). Speakr warns at startup if the model or provider changes after embeddings are already stored.
 - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` opts the Mistral connector into app-side chunking for very long meeting recordings that would otherwise time out near Voxtral's 3-hour limit
 - **API v1 Parity** - `/api/v1/recordings` and `/api/v1/recordings/{id}` now expose `audio_duration`, transcription/summarization durations, folder, events, and `deletion_exempt` for companion-app integrations
 
