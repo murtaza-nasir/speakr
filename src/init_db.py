@@ -665,12 +665,21 @@ def initialize_database(app):
         try:
             from src.services.embeddings import EMBEDDING_IDENTIFIER
             current_identifier = EMBEDDING_IDENTIFIER
-            # Read the legacy key first so existing instances upgrade smoothly.
-            stored_identifier = (
-                SystemSetting.get_setting('embedding_identifier', None)
-                or SystemSetting.get_setting('embedding_model_name', None)
-            )
+
+            stored_identifier = SystemSetting.get_setting('embedding_identifier', None)
+            # Backwards-compat path: pre-v0.8.16-alpha instances stored only the
+            # bare model name under the legacy 'embedding_model_name' key. Any
+            # such value is by definition a local sentence-transformers model,
+            # so wrap it in the new 'local::<name>' format before comparing.
+            # This prevents a false-positive warning on first upgrade.
+            legacy_model_name = SystemSetting.get_setting('embedding_model_name', None)
+            migrated_from_legacy = False
+            if stored_identifier is None and legacy_model_name:
+                stored_identifier = f"local::{legacy_model_name}"
+                migrated_from_legacy = True
+
             chunk_count = TranscriptChunk.query.filter(TranscriptChunk.embedding.isnot(None)).count()
+
             if stored_identifier is None:
                 SystemSetting.set_setting(
                     key='embedding_identifier',
@@ -680,14 +689,32 @@ def initialize_database(app):
                 )
                 if chunk_count:
                     app.logger.info(f"Recorded embedding_identifier={current_identifier} (existing {chunk_count} chunks assumed to match)")
-            elif stored_identifier != current_identifier:
+            elif stored_identifier == current_identifier:
+                if migrated_from_legacy:
+                    # Same configuration, just promote the value into the new key
+                    # so subsequent restarts skip the legacy lookup.
+                    SystemSetting.set_setting(
+                        key='embedding_identifier',
+                        value=current_identifier,
+                        description='Identifier of the embedding provider and model that produced the stored chunk vectors. Used to detect dimensionality and semantic-space mismatches at startup.',
+                        setting_type='string',
+                    )
+                    app.logger.info(
+                        f"Migrated legacy embedding_model_name={legacy_model_name!r} to embedding_identifier={current_identifier!r}"
+                    )
+            else:
                 if chunk_count:
                     app.logger.warning(
                         f"Embedding identifier changed from {stored_identifier!r} to {current_identifier!r} "
                         f"but {chunk_count} chunks were embedded with the previous configuration. "
                         "Inquire mode will return wrong results until you reprocess affected recordings."
                     )
-                SystemSetting.set_setting(key='embedding_identifier', value=current_identifier)
+                SystemSetting.set_setting(
+                    key='embedding_identifier',
+                    value=current_identifier,
+                    description='Identifier of the embedding provider and model that produced the stored chunk vectors. Used to detect dimensionality and semantic-space mismatches at startup.',
+                    setting_type='string',
+                )
                 app.logger.info(f"Updated embedding_identifier in system_setting: {stored_identifier!r} -> {current_identifier!r}")
         except Exception as e:
             db.session.rollback()
