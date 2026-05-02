@@ -53,7 +53,8 @@ export function createModalState(ref, reactive) {
         min_speakers: null,
         max_speakers: null,
         hotwords: '',
-        initial_prompt: ''
+        initial_prompt: '',
+        transcription_model: ''
     });
 
     const summaryReprocessPromptSource = ref('default');

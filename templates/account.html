@@ -2121,6 +2121,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
 
+                    <!-- Default transcription model (issue #266) — only rendered when admin set TRANSCRIPTION_MODELS_AVAILABLE -->
+                    <div id="tagTranscriptionModelSection" class="hidden">
+                        <label for="tagTranscriptionModel" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.defaultTranscriptionModel">Default transcription model</label>
+                        <select id="tagTranscriptionModel" name="default_transcription_model" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">(use admin/global default)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.defaultTranscriptionModelHelp">Override which transcription model is used for recordings with this tag.</p>
+                    </div>
+
                     <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
                     <div id="tagRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-2">
                         <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
@@ -2294,6 +2303,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
                         <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
+                    </div>
+
+                    <!-- Default transcription model (issue #266) — only rendered when admin set TRANSCRIPTION_MODELS_AVAILABLE -->
+                    <div id="folderTranscriptionModelSection" class="hidden">
+                        <label for="folderTranscriptionModel" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.defaultTranscriptionModel">Default transcription model</label>
+                        <select id="folderTranscriptionModel" name="default_transcription_model" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="">(use admin/global default)</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.defaultTranscriptionModelHelp">Override which transcription model is used for recordings in this folder.</p>
                     </div>
 
                     <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
@@ -4713,6 +4731,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (document.getElementById('tagInitialPrompt')) {
                     document.getElementById('tagInitialPrompt').value = tag.default_initial_prompt || '';
                 }
+                if (document.getElementById('tagTranscriptionModel')) {
+                    document.getElementById('tagTranscriptionModel').value = tag.default_transcription_model || '';
+                }
 
                 // Populate naming template
                 if (document.getElementById('tagNamingTemplate')) {
@@ -4954,6 +4975,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 default_max_speakers: formData.get('default_max_speakers') ? parseInt(formData.get('default_max_speakers')) : null,
                 default_hotwords: formData.get('default_hotwords') || null,
                 default_initial_prompt: formData.get('default_initial_prompt') || null,
+                default_transcription_model: formData.get('default_transcription_model') || null,
                 retention_days: retentionDays,
                 is_auto_process: document.getElementById('tagAutoProcess')?.checked || false
             };
@@ -5063,6 +5085,28 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     const exportSubtab = document.getElementById('subtab-export');
                     if (config.enable_auto_export === true && exportSubtab) {
                         exportSubtab.style.display = '';
+                    }
+
+                    // Populate the per-tag and per-folder transcription-model
+                    // dropdowns when the admin has configured a model list
+                    // (issue #266).
+                    const modelOptions = Array.isArray(config.transcription_model_options)
+                        ? config.transcription_model_options : [];
+                    if (modelOptions.length > 0) {
+                        const populate = (selectId, sectionId) => {
+                            const select = document.getElementById(selectId);
+                            const section = document.getElementById(sectionId);
+                            if (!select || !section) return;
+                            for (const opt of modelOptions) {
+                                const o = document.createElement('option');
+                                o.value = opt.value;
+                                o.textContent = opt.label || opt.value;
+                                select.appendChild(o);
+                            }
+                            section.classList.remove('hidden');
+                        };
+                        populate('tagTranscriptionModel', 'tagTranscriptionModelSection');
+                        populate('folderTranscriptionModel', 'folderTranscriptionModelSection');
                     }
                 }
             } catch (error) {
@@ -5352,6 +5396,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 if (hwField) hwField.value = folder.default_hotwords || '';
                 var ipField = document.getElementById('folderInitialPrompt');
                 if (ipField) ipField.value = folder.default_initial_prompt || '';
+                var modelField = document.getElementById('folderTranscriptionModel');
+                if (modelField) modelField.value = folder.default_transcription_model || '';
 
                 // Group selection
                 const folderGroupId = document.getElementById('folderGroupId');
@@ -5569,6 +5615,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 folderData.default_hotwords = hwEl ? hwEl.value.trim() || null : null;
                 var ipEl = document.getElementById('folderInitialPrompt');
                 folderData.default_initial_prompt = ipEl ? ipEl.value.trim() || null : null;
+                var modelEl = document.getElementById('folderTranscriptionModel');
+                folderData.default_transcription_model = modelEl ? modelEl.value.trim() || null : null;
                 var templateEl = document.getElementById('folderNamingTemplate');
                 folderData.naming_template_id = templateEl && templateEl.value ? parseInt(templateEl.value) : null;
                 var exportTemplateEl = document.getElementById('folderExportTemplate');

@@ -549,6 +549,12 @@ def initialize_database(app):
         # Add folder_id column to recording table for folders feature
         if add_column_if_not_exists(engine, 'recording', 'folder_id', 'INTEGER'):
             app.logger.info("Added folder_id column to recording table")
+
+        # Add default_transcription_model columns to tag and folder for per-tag/per-folder model selection (issue #266)
+        if add_column_if_not_exists(engine, 'tag', 'default_transcription_model', 'VARCHAR(120)'):
+            app.logger.info("Added default_transcription_model column to tag table")
+        if add_column_if_not_exists(engine, 'folder', 'default_transcription_model', 'VARCHAR(120)'):
+            app.logger.info("Added default_transcription_model column to folder table")
         # Create index for folder_id
         try:
             if create_index_if_not_exists(engine, 'ix_recording_folder_id', 'recording', 'folder_id'):

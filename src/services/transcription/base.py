@@ -75,6 +75,11 @@ class TranscriptionRequest:
     hotwords: Optional[str] = None  # Comma-separated words to bias recognition
     temperature: Optional[float] = None
 
+    # Per-request model override. When set, the connector uses this model name
+    # instead of its configured default. Only honoured if the connector supports
+    # multiple models (asr_endpoint, openai_*, mistral). Issue #266.
+    model: Optional[str] = None
+
     # Provider-specific options (passthrough)
     extra_options: Dict[str, Any] = field(default_factory=dict)
 
@@ -197,6 +202,15 @@ class BaseTranscriptionConnector(ABC):
     def supports(self, capability: TranscriptionCapability) -> bool:
         """Check if connector supports a capability."""
         return capability in self.CAPABILITIES
+
+    def _effective_model(self, request: 'TranscriptionRequest') -> str:
+        """Resolve which model to use for a given request.
+
+        Honours the per-request override (issue #266) if present, otherwise
+        falls back to the connector's configured default model.
+        """
+        override = (request.model or '').strip() if request and request.model else ''
+        return override or getattr(self, 'model', '') or ''
 
     def get_capabilities(self) -> Set[TranscriptionCapability]:
         """Get all supported capabilities."""

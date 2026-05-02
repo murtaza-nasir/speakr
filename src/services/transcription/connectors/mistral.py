@@ -109,11 +109,12 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             TranscriptionResponse with text, segments, and optional diarization
         """
         try:
+            effective_model = self._effective_model(request) or self.model
             # Build multipart form data using tuples for proper array encoding
             file_tuple = ('file', (request.filename or 'audio.wav', request.audio_file, request.mime_type or 'application/octet-stream'))
 
             fields: List[tuple] = [
-                ('model', self.model),
+                ('model', effective_model),
             ]
 
             # Language param
@@ -143,7 +144,7 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             if request.prompt:
                 logger.warning("Mistral Voxtral does not support initial_prompt parameter, ignoring")
 
-            logger.info(f"Sending request to Mistral API with model: {self.model}")
+            logger.info(f"Sending request to Mistral API with model: {effective_model}")
             response = self.client.post(
                 '/v1/audio/transcriptions',
                 files=[file_tuple] + [(name, (None, value)) for name, value in fields],
@@ -185,7 +186,7 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
                 language=detected_language,
                 speakers=speakers if speakers else None,
                 provider=self.PROVIDER_NAME,
-                model=self.model,
+                model=effective_model,
                 raw_response=result,
             )
 

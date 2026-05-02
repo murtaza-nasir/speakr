@@ -394,6 +394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const uploadMaxSpeakers = ref('');
             const uploadHotwords = ref('');
             const uploadInitialPrompt = ref('');
+            const uploadTranscriptionModel = ref('');
+            const transcriptionModelOptions = ref([]);
 
             // Tag Selection
             const availableTags = ref([]);
@@ -662,7 +664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
@@ -2304,6 +2306,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
                         maxConcurrentUploads.value = config.max_concurrent_uploads || 3;
+
+                        // Per-upload transcription model dropdown options
+                        // (issue #266). Only set when admin configured at least
+                        // one model in TRANSCRIPTION_MODELS_AVAILABLE.
+                        transcriptionModelOptions.value = Array.isArray(config.transcription_model_options)
+                            ? config.transcription_model_options
+                            : [];
 
                         // Set user's default transcription language for upload and reprocess forms
                         if (config.user_transcription_language) {

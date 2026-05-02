@@ -973,6 +973,7 @@ def reprocess_transcription(recording_id):
         max_speakers = data.get('max_speakers') or None
         hotwords = (data.get('hotwords') or '').strip() or None
         initial_prompt = (data.get('initial_prompt') or '').strip() or None
+        transcription_model = (data.get('transcription_model') or '').strip() or None
 
         # Convert to int if provided
         if min_speakers:
@@ -1002,8 +1003,10 @@ def reprocess_transcription(recording_id):
                     hotwords = tag.default_hotwords
                 if not initial_prompt and tag.default_initial_prompt:
                     initial_prompt = tag.default_initial_prompt
+                if not transcription_model and tag.default_transcription_model:
+                    transcription_model = tag.default_transcription_model
                 if (min_speakers is not None and max_speakers is not None
-                        and hotwords and initial_prompt):
+                        and hotwords and initial_prompt and transcription_model):
                     break
 
         # Folder defaults (only if recording has no tags providing the value)
@@ -1017,6 +1020,8 @@ def reprocess_transcription(recording_id):
                 hotwords = folder.default_hotwords
             if not initial_prompt and folder.default_initial_prompt:
                 initial_prompt = folder.default_initial_prompt
+            if not transcription_model and folder.default_transcription_model:
+                transcription_model = folder.default_transcription_model
 
         # Environment variable defaults
         if min_speakers is None and ASR_MIN_SPEAKERS:
@@ -1039,6 +1044,17 @@ def reprocess_transcription(recording_id):
             if not initial_prompt and owner.transcription_initial_prompt:
                 initial_prompt = owner.transcription_initial_prompt
 
+        # Validate the per-request model against the configured allowlist before
+        # passing it to the connector. If the user submitted an unknown model
+        # (e.g. via a stale UI cache), drop it rather than crashing the API.
+        if transcription_model:
+            from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
+            if TRANSCRIPTION_MODELS_AVAILABLE and transcription_model not in TRANSCRIPTION_MODELS_AVAILABLE:
+                current_app.logger.warning(
+                    f"Ignoring transcription_model={transcription_model!r} — not in TRANSCRIPTION_MODELS_AVAILABLE"
+                )
+                transcription_model = None
+
         # Enqueue the job with all parameters
         job_params = {
             'language': language,
@@ -1046,6 +1062,7 @@ def reprocess_transcription(recording_id):
             'max_speakers': max_speakers,
             'hotwords': hotwords,
             'initial_prompt': initial_prompt,
+            'transcription_model': transcription_model,
         }
 
         job_id = job_queue.enqueue(
@@ -2160,6 +2177,7 @@ def upload_file():
         max_speakers = request.form.get('max_speakers') or None
         hotwords = request.form.get('hotwords', '').strip() or None
         initial_prompt = request.form.get('initial_prompt', '').strip() or None
+        transcription_model = request.form.get('transcription_model', '').strip() or None
 
         # Convert to int if provided
         if min_speakers:
@@ -2188,6 +2206,8 @@ def upload_file():
                 hotwords = selected_folder.default_hotwords
             if not initial_prompt and selected_folder.default_initial_prompt:
                 initial_prompt = selected_folder.default_initial_prompt
+            if not transcription_model and selected_folder.default_transcription_model:
+                transcription_model = selected_folder.default_transcription_model
 
         # Apply tag defaults if tags are selected and values are not explicitly provided by user
         # Use first tag's defaults (highest priority - overrides folder)
@@ -2203,6 +2223,8 @@ def upload_file():
                 hotwords = first_tag.default_hotwords
             if not initial_prompt and first_tag.default_initial_prompt:
                 initial_prompt = first_tag.default_initial_prompt
+            if not transcription_model and first_tag.default_transcription_model:
+                transcription_model = first_tag.default_transcription_model
 
         # Apply environment variable defaults if still no values are set
         if min_speakers is None and ASR_MIN_SPEAKERS:
@@ -2296,6 +2318,18 @@ def upload_file():
 
         current_app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
+        # Validate the per-request transcription_model against the configured
+        # allowlist before passing it to the connector. If the user submitted
+        # an unknown model (e.g. via a stale UI cache), drop it rather than
+        # propagating a bad value into the worker.
+        if transcription_model:
+            from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
+            if TRANSCRIPTION_MODELS_AVAILABLE and transcription_model not in TRANSCRIPTION_MODELS_AVAILABLE:
+                current_app.logger.warning(
+                    f"Ignoring transcription_model={transcription_model!r} — not in TRANSCRIPTION_MODELS_AVAILABLE"
+                )
+                transcription_model = None
+
         # --- Queue transcription job ---
         first_tag = selected_tags[0] if selected_tags else None
         job_params = {
@@ -2305,6 +2339,7 @@ def upload_file():
             'tag_id': first_tag.id if first_tag else None,
             'hotwords': hotwords,
             'initial_prompt': initial_prompt,
+            'transcription_model': transcription_model,
         }
 
         current_app.logger.info(f"Queueing transcription for recording {recording.id} with params: {job_params}")

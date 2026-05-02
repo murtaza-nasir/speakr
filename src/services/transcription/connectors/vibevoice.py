@@ -113,6 +113,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
         The model returns a JSON array of segments with speaker, timestamps, and text.
         """
         try:
+            effective_model = self._effective_model(request) or self.model
             # Read and base64-encode the audio
             audio_bytes = request.audio_file.read()
             audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
@@ -152,7 +153,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
 
             # Build the chat completion request per VibeVoice docs
             payload = {
-                "model": self.model,
+                "model": effective_model,
                 "messages": [
                     {
                         "role": "system",
@@ -171,7 +172,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
                 "top_p": 1.0,
             }
 
-            logger.info(f"Sending request to VibeVoice at {self.base_url} (duration={duration}s, model={self.model})")
+            logger.info(f"Sending request to VibeVoice at {self.base_url} (duration={duration}s, model={effective_model})")
             response = self.client.post('/v1/chat/completions', json=payload)
 
             if response.status_code != 200:
@@ -212,7 +213,7 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
                 segments=segments,
                 speakers=speakers if speakers else None,
                 provider=self.PROVIDER_NAME,
-                model=self.model,
+                model=effective_model,
                 raw_response=result,
             )
 

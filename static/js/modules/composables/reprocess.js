@@ -38,6 +38,7 @@ export function useReprocess(state, utils) {
             asrReprocessOptions.max_speakers = '';
             asrReprocessOptions.hotwords = '';
             asrReprocessOptions.initial_prompt = '';
+            asrReprocessOptions.transcription_model = '';
         } else {
             summaryReprocessPromptSource.value = 'default';
             summaryReprocessSelectedTagId.value = '';
@@ -120,7 +121,8 @@ export function useReprocess(state, utils) {
                 asrReprocessOptions.min_speakers,
                 asrReprocessOptions.max_speakers,
                 asrReprocessOptions.hotwords,
-                asrReprocessOptions.initial_prompt
+                asrReprocessOptions.initial_prompt,
+                asrReprocessOptions.transcription_model
             );
         } else {
             await reprocessSummary(
@@ -136,7 +138,7 @@ export function useReprocess(state, utils) {
     // Transcription Reprocessing
     // =========================================
 
-    const reprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers, hotwords, initialPrompt) => {
+    const reprocessTranscription = async (recordingId, language, minSpeakers, maxSpeakers, hotwords, initialPrompt, transcriptionModel) => {
         if (!recordingId) {
             setGlobalError('No recording ID provided for reprocessing.');
             return;
@@ -151,6 +153,7 @@ export function useReprocess(state, utils) {
             if (maxSpeakers && maxSpeakers !== '') requestBody.max_speakers = parseInt(maxSpeakers);
             if (hotwords && hotwords.trim()) requestBody.hotwords = hotwords.trim();
             if (initialPrompt && initialPrompt.trim()) requestBody.initial_prompt = initialPrompt.trim();
+            if (transcriptionModel && transcriptionModel.trim()) requestBody.transcription_model = transcriptionModel.trim();
 
             const response = await fetch(`/recording/${recordingId}/reprocess_transcription`, {
                 method: 'POST',

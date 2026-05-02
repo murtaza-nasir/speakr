@@ -16,7 +16,7 @@ from src.models import *
 from src.utils import *
 from src.config.version import get_version
 from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
-from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE
+from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
 from src.services.token_tracking import token_tracker
 from src.services.transcription import TranscriptionCapability
 
@@ -179,6 +179,15 @@ def get_system_info():
 # --- Tag API Endpoints ---
 
 
+def _get_transcription_model_options():
+    """Return the configured per-upload transcription model dropdown options.
+
+    When TRANSCRIPTION_MODELS_AVAILABLE is unset the list is empty and the
+    frontend hides the dropdown. Issue #266.
+    """
+    return list(TRANSCRIPTION_MODEL_OPTIONS)
+
+
 @system_bp.route('/api/config', methods=['GET'])
 def get_config():
     """Get application configuration settings for the frontend."""
@@ -265,6 +274,7 @@ def get_config():
             'video_retention': VIDEO_RETENTION,
             'max_concurrent_uploads': MAX_CONCURRENT_UPLOADS,
             'user_transcription_language': user_transcription_language,
+            'transcription_model_options': _get_transcription_model_options(),
             **chunking_info
         })
     except Exception as e:

@@ -35,7 +35,7 @@ export function useUpload(state, utils) {
         isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
         maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, maxConcurrentUploads,
         recordings, selectedRecording, totalRecordings, globalError,
-        selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
+        selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, transcriptionModelOptions,
         useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
         dragover, availableTags, uploadTagSearchFilter,
         // Folder state
@@ -264,6 +264,7 @@ export function useUpload(state, utils) {
                         max_speakers: asrMaxSpeakers.value,
                         hotwords: uploadHotwords.value,
                         initial_prompt: uploadInitialPrompt.value,
+                        transcription_model: uploadTranscriptionModel.value,
                     };
                     item.folder_id = selectedFolderId.value;
                 }
@@ -381,6 +382,12 @@ export function useUpload(state, utils) {
             }
             if (initialPrompt && initialPrompt.trim()) {
                 formData.append('initial_prompt', initialPrompt.trim());
+            }
+
+            // Per-upload model override (issue #266)
+            const transcriptionModel = asrOpts.transcription_model || uploadTranscriptionModel.value;
+            if (transcriptionModel && transcriptionModel.trim()) {
+                formData.append('transcription_model', transcriptionModel.trim());
             }
 
             // Use XMLHttpRequest for per-file upload progress
@@ -642,6 +649,10 @@ export function useUpload(state, utils) {
             }
             if (initialPrompt && initialPrompt.trim()) {
                 formData.append('initial_prompt', initialPrompt.trim());
+            }
+            const incogModel = asrOpts.transcription_model || uploadTranscriptionModel.value;
+            if (incogModel && incogModel.trim()) {
+                formData.append('transcription_model', incogModel.trim());
             }
 
             // Request auto-summarization

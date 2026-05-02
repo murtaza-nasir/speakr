@@ -1232,7 +1232,7 @@ def merge_diarized_chunks(chunk_results):
     return merged_text, merged_segments, sorted(list(all_speakers))
 
 
-def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language, diarize=False, hotwords=None, initial_prompt=None):
+def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, language, diarize=False, hotwords=None, initial_prompt=None, transcription_model=None):
     """
     Transcribe a large audio file using chunking with the connector architecture.
 
@@ -1315,6 +1315,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                     known_speaker_references=known_speaker_refs,
                                     prompt=initial_prompt,
                                     hotwords=hotwords,
+                                    model=transcription_model,
                                 )
                             else:
                                 request = TranscriptionRequest(
@@ -1325,6 +1326,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                                     diarize=False,
                                     prompt=initial_prompt,
                                     hotwords=hotwords,
+                                    model=transcription_model,
                                 )
 
                             response = connector.transcribe(request)
@@ -1436,7 +1438,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
             raise ChunkProcessingError(f"Chunked transcription failed: {str(e)}")
 
 
-def transcribe_with_connector(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=None, min_speakers=None, max_speakers=None, tag_id=None, hotwords=None, initial_prompt=None):
+def transcribe_with_connector(app_context, recording_id, filepath, original_filename, start_time, mime_type=None, language=None, diarize=None, min_speakers=None, max_speakers=None, tag_id=None, hotwords=None, initial_prompt=None, transcription_model=None):
     """
     Transcribe audio using the new connector-based architecture.
 
@@ -1672,6 +1674,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             diarize=should_diarize,  # Pass diarization setting for speaker reference tracking
                             hotwords=hotwords,
                             initial_prompt=initial_prompt,
+                            transcription_model=transcription_model,
                         )
 
                         # Handle result based on type (TranscriptionResponse for diarized, string for plain)
@@ -1697,6 +1700,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                                 max_speakers=max_speakers,
                                 prompt=initial_prompt,
                                 hotwords=hotwords,
+                                model=transcription_model,
                             )
 
                             current_app.logger.info(f"Transcribing with connector: diarize={should_diarize}, language={language}")
@@ -1906,7 +1910,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             raise
 
 
-def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None, tag_id=None, hotwords=None, initial_prompt=None):
+def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr, start_time, language=None, min_speakers=None, max_speakers=None, tag_id=None, hotwords=None, initial_prompt=None, transcription_model=None):
     """Runs the transcription and summarization in a background thread.
 
     Uses the connector-based architecture which supports:
@@ -1955,6 +1959,7 @@ def transcribe_audio_task(app_context, recording_id, filepath, filename_for_asr,
         tag_id=tag_id,
         hotwords=hotwords,
         initial_prompt=initial_prompt,
+        transcription_model=transcription_model,
     )
 
     # After transcription completes, calculate processing time

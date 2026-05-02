@@ -89,8 +89,9 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
             TranscriptionResponse with plain text (no diarization)
         """
         try:
+            effective_model = self._effective_model(request)
             params = {
-                "model": self.model,
+                "model": effective_model,
                 "file": request.audio_file,
             }
 
@@ -111,13 +112,13 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
             if request.temperature is not None:
                 params["temperature"] = request.temperature
 
-            logger.info(f"Sending request to Whisper API with model: {self.model}")
+            logger.info(f"Sending request to Whisper API with model: {effective_model}")
             transcript = self.client.audio.transcriptions.create(**params)
 
             return TranscriptionResponse(
                 text=transcript.text,
                 provider=self.PROVIDER_NAME,
-                model=self.model
+                model=effective_model
             )
 
         except Exception as e:

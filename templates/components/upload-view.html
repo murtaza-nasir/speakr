@@ -393,6 +393,18 @@
                         <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.initialPromptHelp') }</p>
                     </div>
 
+                    <!-- Transcription Model (issue #266 — visible only when admin set TRANSCRIPTION_MODELS_AVAILABLE) -->
+                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 0">
+                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                            Transcription model
+                        </label>
+                        <select v-model="uploadTranscriptionModel"
+                                class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <option value="">(use tag/folder/global default)</option>
+                            <option v-for="opt in transcriptionModelOptions" :key="opt.value" :value="opt.value" v-text="opt.label || opt.value"></option>
+                        </select>
+                    </div>
+
                     <p class="text-xs text-[var(--text-muted)] pt-1">
                         <i class="fas fa-info-circle mr-1 text-[var(--text-accent)]"></i>
                         ${ t('upload.settingsApplyToAll') }

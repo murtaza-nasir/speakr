@@ -29,6 +29,11 @@ export function createUploadState(ref, computed) {
     const uploadMaxSpeakers = ref('');
     const uploadHotwords = ref('');
     const uploadInitialPrompt = ref('');
+    // Per-upload transcription model selection (issue #266). Empty string = no
+    // override; backend falls back to env-configured default.
+    const uploadTranscriptionModel = ref('');
+    // Populated from /api/config when admin set TRANSCRIPTION_MODELS_AVAILABLE.
+    const transcriptionModelOptions = ref([]);
 
     // --- Computed Properties ---
     const totalInQueue = computed(() => uploadQueue.value.length);
@@ -65,6 +70,8 @@ export function createUploadState(ref, computed) {
         uploadMaxSpeakers,
         uploadHotwords,
         uploadInitialPrompt,
+        uploadTranscriptionModel,
+        transcriptionModelOptions,
 
         // Computed
         totalInQueue,

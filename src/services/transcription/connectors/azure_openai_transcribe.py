@@ -176,6 +176,13 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
         try:
             url = self._build_url()
 
+            # Per-request model override (issue #266). Note: Azure routes by
+            # deployment_name (URL path), not model — overriding this only
+            # affects response_format selection (text vs diarized) and the
+            # logged model id. To run a different model the deployment itself
+            # has to point at it.
+            effective_model = self._effective_model(request) or self.model
+
             # Build form data
             data = {}
 
@@ -184,7 +191,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
                 logger.info(f"Using transcription language: {request.language}")
 
             # Handle diarization model specifics
-            is_diarize_model = 'diarize' in self.model.lower()
+            is_diarize_model = 'diarize' in effective_model.lower()
 
             if is_diarize_model:
                 # Required: chunking_strategy for audio > 30 seconds
@@ -220,7 +227,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             }
 
             logger.info(f"Sending request to Azure OpenAI: {url}")
-            logger.info(f"Model: {self.model}, Deployment: {self.deployment_name}")
+            logger.info(f"Model: {effective_model}, Deployment: {self.deployment_name}")
 
             response = self.http_client.post(url, data=data, files=files)
 
@@ -239,9 +246,9 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
 
             # Parse response based on format
             if is_diarize_model and request.diarize:
-                return self._parse_diarized_response(result)
+                return self._parse_diarized_response(result, effective_model)
             else:
-                return self._parse_response(result)
+                return self._parse_response(result, effective_model)
 
         except TranscriptionError:
             raise
@@ -250,7 +257,7 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             logger.error(f"Azure OpenAI transcription failed: {error_msg}")
             raise TranscriptionError(f"Azure OpenAI transcription failed: {error_msg}") from e
 
-    def _parse_response(self, response: Dict) -> TranscriptionResponse:
+    def _parse_response(self, response: Dict, model_used: Optional[str] = None) -> TranscriptionResponse:
         """Parse a standard (non-diarized) response."""
         text = response.get('text', '')
 
@@ -269,11 +276,11 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             segments=segments if segments else None,
             language=response.get('language'),
             provider=self.PROVIDER_NAME,
-            model=self.model,
+            model=model_used or self.model,
             raw_response=response
         )
 
-    def _parse_diarized_response(self, response: Dict) -> TranscriptionResponse:
+    def _parse_diarized_response(self, response: Dict, model_used: Optional[str] = None) -> TranscriptionResponse:
         """
         Parse diarized JSON response into standardized format.
 
@@ -325,9 +332,11 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
             speakers=sorted(list(speakers)),
             language=response.get('language'),
             provider=self.PROVIDER_NAME,
-            model=self.model,
+            model=model_used or self.model,
             raw_response=response
         )
+
+        # NB: _parse_diarized_response falls back to _parse_response above
 
     def health_check(self) -> bool:
         """Check if the connector is properly configured."""

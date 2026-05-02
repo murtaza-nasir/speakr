@@ -162,8 +162,17 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
             TranscriptionResponse, with segments if using diarization model
         """
         try:
+            effective_model = self._effective_model(request) or self.model
+            # Validate the per-request override against this connector's known
+            # model whitelist; fall back silently if the override is unknown.
+            if effective_model not in self.MODELS:
+                logger.warning(
+                    f"Per-request model override {effective_model!r} is not in this connector's MODELS map; "
+                    f"falling back to configured default {self.model!r}"
+                )
+                effective_model = self.model
             params = {
-                "model": self.model,
+                "model": effective_model,
                 "file": request.audio_file,
             }
 
@@ -172,7 +181,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                 logger.info(f"Using transcription language: {request.language}")
 
             # Handle diarization model specifics
-            if self.model == 'gpt-4o-transcribe-diarize':
+            if effective_model == 'gpt-4o-transcribe-diarize':
                 # Required: chunking_strategy for audio > 30 seconds
                 params["chunking_strategy"] = "auto"
 
@@ -210,30 +219,30 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
                 if prompt_parts:
                     params["prompt"] = ". ".join(prompt_parts)
 
-            logger.info(f"Sending request to GPT-4o Transcribe API with model: {self.model}")
+            logger.info(f"Sending request to GPT-4o Transcribe API with model: {effective_model}")
             response = self.client.audio.transcriptions.create(**params)
 
             # Parse response based on format
-            if self.model == 'gpt-4o-transcribe-diarize' and request.diarize:
-                return self._parse_diarized_response(response)
+            if effective_model == 'gpt-4o-transcribe-diarize' and request.diarize:
+                return self._parse_diarized_response(response, effective_model)
             else:
-                return self._parse_text_response(response)
+                return self._parse_text_response(response, effective_model)
 
         except Exception as e:
             error_msg = str(e)
             logger.error(f"GPT-4o transcription failed: {error_msg}")
             raise TranscriptionError(f"GPT-4o transcription failed: {error_msg}") from e
 
-    def _parse_text_response(self, response) -> TranscriptionResponse:
+    def _parse_text_response(self, response, model_used: Optional[str] = None) -> TranscriptionResponse:
         """Parse a plain text response."""
         text = response.text if hasattr(response, 'text') else str(response)
         return TranscriptionResponse(
             text=text,
             provider=self.PROVIDER_NAME,
-            model=self.model
+            model=model_used or self.model
         )
 
-    def _parse_diarized_response(self, response) -> TranscriptionResponse:
+    def _parse_diarized_response(self, response, model_used: Optional[str] = None) -> TranscriptionResponse:
         """
         Parse diarized JSON response into standardized format.
 
@@ -295,7 +304,7 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
             segments=segments,
             speakers=sorted(list(speakers)),
             provider=self.PROVIDER_NAME,
-            model=self.model,
+            model=model_used or self.model,
             raw_response=response if isinstance(response, dict) else None
         )
 
