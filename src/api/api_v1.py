@@ -1827,10 +1827,25 @@ def start_transcription(recording_id):
 
     data = request.get_json() or {}
 
+    # Apply the same per-request model override path as the upload/reprocess
+    # web endpoints (issue #266). Validate against TRANSCRIPTION_MODELS_AVAILABLE
+    # when it is set; drop unknown values silently.
+    transcription_model = (data.get('transcription_model') or '').strip() or None
+    if transcription_model:
+        from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
+        if TRANSCRIPTION_MODELS_AVAILABLE and transcription_model not in TRANSCRIPTION_MODELS_AVAILABLE:
+            current_app.logger.warning(
+                f"Ignoring transcription_model={transcription_model!r} from API v1 transcribe — not in TRANSCRIPTION_MODELS_AVAILABLE"
+            )
+            transcription_model = None
+
     params = {
         'language': data.get('language'),
         'min_speakers': data.get('min_speakers'),
-        'max_speakers': data.get('max_speakers')
+        'max_speakers': data.get('max_speakers'),
+        'hotwords': data.get('hotwords'),
+        'initial_prompt': data.get('initial_prompt'),
+        'transcription_model': transcription_model,
     }
 
     # Queue the job
