@@ -1029,7 +1029,7 @@ Summarization Instructions:
                         
                         <div v-if="inquireStatus.need_processing > 0" class="mb-4">
                             <p class="text-sm text-[var(--text-secondary)] mb-4">
-                                ${t('adminDashboard.recordingsNeedProcessing').replace('{{count}}', inquireStatus.need_processing)}
+                                ${ recordingsNeedProcessingMessage }
                             </p>
                             
                             <div class="flex flex-wrap gap-3">
@@ -3182,6 +3182,16 @@ Summarization Instructions:
                     if (total === 0) return 100;
                     return Math.round((inquireStatus.value.processed_for_inquire / total) * 100);
                 };
+
+                // Built outside the template so the inline ${...} interpolation
+                // does not have to contain a JS object literal. Vue's custom
+                // ${...} delimiter does not track nested braces, so embedding
+                // `{ count: ... }` inside the interpolation breaks compilation.
+                const recordingsNeedProcessingMessage = computed(() =>
+                    t('adminDashboard.recordingsNeedProcessing', {
+                        count: inquireStatus.value.need_processing || 0,
+                    })
+                );
                 
                 // Lifecycle hooks - MUST be registered before any await statements
                 onMounted(async () => {
@@ -3360,6 +3370,7 @@ Summarization Instructions:
                     filteredUsers,
                     availableUsers,
                     getProcessingProgress,
+                    recordingsNeedProcessingMessage,
 
                     // Methods
                     loadUsers,
