@@ -464,6 +464,25 @@
                                 </div>
                             </div>
 
+                            <!-- Operation breakdown for the current month -->
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm lg:col-span-2">
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Tokens by Operation (This Month)</h5>
+                                <div v-if="(tokenStats.current_month?.by_operation || []).length === 0" class="text-sm text-[var(--text-muted)]">
+                                    No usage recorded yet this month.
+                                </div>
+                                <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div v-for="op in (tokenStats.current_month?.by_operation || [])"
+                                         :key="op.operation_type"
+                                         class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                                        <p class="text-xs text-[var(--text-muted)] capitalize">${ op.operation_type.replace('_', ' ') }</p>
+                                        <p class="text-base font-semibold text-[var(--text-primary)]">${ op.tokens.toLocaleString() }</p>
+                                        <p class="text-xs text-[var(--text-muted)]">
+                                            ${ op.requests } req<span v-if="op.cost > 0"> · $${ op.cost.toFixed(4) }</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Per-User Token Usage -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                                 <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">User Token Usage (This Month)</h5>

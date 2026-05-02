@@ -445,6 +445,10 @@ def admin_get_token_stats():
         return jsonify({'error': 'Unauthorized'}), 403
 
     try:
+        from src.models import TokenUsage
+        from sqlalchemy import func, extract
+        from datetime import date
+
         # Get today's usage
         today_usage = token_tracker.get_today_usage()
 
@@ -459,11 +463,34 @@ def admin_get_token_stats():
         total_monthly_tokens = current_month.get('tokens', 0)
         total_monthly_cost = current_month.get('cost', 0)
 
+        # Per-operation breakdown for the current month so the UI can show
+        # how the total splits across summarization, chat, embedding, etc.
+        today = date.today()
+        op_rows = db.session.query(
+            TokenUsage.operation_type,
+            func.sum(TokenUsage.total_tokens).label('tokens'),
+            func.sum(TokenUsage.cost).label('cost'),
+            func.sum(TokenUsage.request_count).label('requests'),
+        ).filter(
+            extract('year', TokenUsage.date) == today.year,
+            extract('month', TokenUsage.date) == today.month,
+        ).group_by(TokenUsage.operation_type).all()
+        by_operation = [
+            {
+                'operation_type': r.operation_type,
+                'tokens': int(r.tokens or 0),
+                'cost': float(r.cost or 0.0),
+                'requests': int(r.requests or 0),
+            }
+            for r in op_rows
+        ]
+
         return jsonify({
             'today': today_usage,
             'current_month': {
                 'tokens': total_monthly_tokens,
-                'cost': total_monthly_cost
+                'cost': total_monthly_cost,
+                'by_operation': by_operation,
             },
             'user_count_with_usage': len([u for u in user_stats if u['current_usage'] > 0]),
             'users_over_80_percent': len([u for u in user_stats if u['percentage'] >= 80]),
