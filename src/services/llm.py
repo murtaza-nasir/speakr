@@ -5,9 +5,10 @@ LLM API integration services (OpenAI/OpenRouter).
 import os
 import re
 import json
+import time
 import logging
 import httpx
-from openai import OpenAI
+from openai import OpenAI, APITimeoutError
 
 # Use standard logging instead of current_app.logger for context independence
 logger = logging.getLogger(__name__)
@@ -48,7 +49,14 @@ ENABLE_STREAM_OPTIONS = os.environ.get("ENABLE_STREAM_OPTIONS", "true").lower() 
 # Connect/write stay short so misconfigured URLs fail fast instead of hanging
 LLM_REQUEST_TIMEOUT = int(os.environ.get("LLM_REQUEST_TIMEOUT", "600"))
 LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
-llm_timeout = httpx.Timeout(connect=30.0, read=float(LLM_REQUEST_TIMEOUT), write=30.0, pool=30.0)
+LLM_CONNECT_TIMEOUT = float(os.environ.get("LLM_CONNECT_TIMEOUT", "30"))
+LLM_WRITE_TIMEOUT = float(os.environ.get("LLM_WRITE_TIMEOUT", "30"))
+llm_timeout = httpx.Timeout(
+    connect=LLM_CONNECT_TIMEOUT,
+    read=float(LLM_REQUEST_TIMEOUT),
+    write=LLM_WRITE_TIMEOUT,
+    pool=30.0,
+)
 
 
 def get_chat_config():
@@ -96,8 +104,13 @@ try:
         timeout=llm_timeout,
         max_retries=LLM_MAX_RETRIES,
     )
-    if LLM_REQUEST_TIMEOUT != 600 or LLM_MAX_RETRIES != 2:
-        logger.info(f"LLM client timeout: {LLM_REQUEST_TIMEOUT}s, max retries: {LLM_MAX_RETRIES}")
+    # Always log the resolved timeout/retry values at startup so users can confirm
+    # their LLM_REQUEST_TIMEOUT / LLM_MAX_RETRIES env vars actually took effect.
+    logger.info(
+        f"LLM client configured: read_timeout={LLM_REQUEST_TIMEOUT}s, "
+        f"connect_timeout={LLM_CONNECT_TIMEOUT}s, write_timeout={LLM_WRITE_TIMEOUT}s, "
+        f"max_retries={LLM_MAX_RETRIES}"
+    )
 except Exception as client_init_e:
     client = None
 
@@ -231,6 +244,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if response_format:
             completion_args["response_format"] = response_format
 
+        request_started_at = time.monotonic()
         response = client.chat.completions.create(**completion_args)
 
         # Track usage for non-streaming calls
@@ -263,6 +277,17 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         return response
 
     except TokenBudgetExceeded:
+        raise
+    except APITimeoutError as e:
+        elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
+        elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
+        logger.error(
+            f"LLM request timed out after {elapsed_str} (configured read_timeout={LLM_REQUEST_TIMEOUT}s, "
+            f"max_retries={LLM_MAX_RETRIES}, model={TEXT_MODEL_NAME}). "
+            f"If the elapsed time is much shorter than the configured timeout, an upstream proxy or the "
+            f"provider is closing the connection early. For reasoning models that take longer to think, "
+            f"increase LLM_REQUEST_TIMEOUT."
+        )
         raise
     except Exception as e:
         logger.error(f"LLM API call failed: {e}")
@@ -345,6 +370,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         if response_format:
             completion_args["response_format"] = response_format
 
+        request_started_at = time.monotonic()
         response = effective_client.chat.completions.create(**completion_args)
 
         # Track usage for non-streaming calls
@@ -372,6 +398,17 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         return response
 
     except TokenBudgetExceeded:
+        raise
+    except APITimeoutError as e:
+        elapsed = time.monotonic() - request_started_at if 'request_started_at' in locals() else None
+        elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
+        logger.error(
+            f"Chat LLM request timed out after {elapsed_str} (configured read_timeout={LLM_REQUEST_TIMEOUT}s, "
+            f"max_retries={LLM_MAX_RETRIES}, model={model_name}). "
+            f"If the elapsed time is much shorter than the configured timeout, an upstream proxy or the "
+            f"provider is closing the connection early. For reasoning models that take longer to think, "
+            f"increase LLM_REQUEST_TIMEOUT."
+        )
         raise
     except Exception as e:
         logger.error(f"Chat LLM API call failed: {e}")
