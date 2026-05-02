@@ -308,6 +308,28 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
             raw_response=response if isinstance(response, dict) else None
         )
 
+    def list_models(self):
+        """Return audio-transcription-relevant models from /v1/models.
+
+        Filters to ids containing 'transcribe' or 'whisper' so the dropdown
+        only offers models that can actually run audio transcription.
+        """
+        try:
+            resp = self.client.models.list()
+            audio = []
+            for m in resp.data:
+                mid = getattr(m, 'id', '')
+                if mid and ('transcribe' in mid.lower() or 'whisper' in mid.lower()):
+                    audio.append({
+                        'id': mid,
+                        'label': mid,
+                        'owned_by': getattr(m, 'owned_by', 'openai'),
+                    })
+            return audio
+        except Exception as e:
+            logger.warning(f"openai_transcribe /v1/models probe failed: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if the connector is properly configured."""
         return bool(self.config.get('api_key'))

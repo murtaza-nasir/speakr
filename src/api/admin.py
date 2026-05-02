@@ -1096,6 +1096,153 @@ def admin_trigger_auto_process():
 
 
 
+@admin_bp.route('/admin/transcription/discover-models', methods=['GET'])
+@login_required
+def admin_discover_transcription_models():
+    """Probe the active transcription connector's /v1/models endpoint.
+
+    Used by the admin UI to populate a "models available on this provider"
+    list when curating which models users can pick from. Returns a list of
+    {id, label, owned_by} dicts. Empty list if the connector does not
+    implement list_models() or the upstream is unreachable.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        from src.services.transcription import get_registry
+        registry = get_registry()
+        connector = registry.get_active_connector()
+        if not connector:
+            return jsonify({'error': 'No active transcription connector'}), 503
+
+        connector_name = registry.get_active_connector_name()
+        try:
+            models = connector.list_models()
+        except NotImplementedError:
+            return jsonify({
+                'connector': connector_name,
+                'supported': False,
+                'models': [],
+                'message': f'{connector_name} does not expose a model discovery endpoint.',
+            })
+
+        return jsonify({
+            'connector': connector_name,
+            'supported': True,
+            'models': models or [],
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error discovering transcription models: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/transcription/visible-models', methods=['GET'])
+@login_required
+def admin_get_visible_models():
+    """Return the admin-curated list of models exposed in the user dropdown.
+
+    Falls back to the TRANSCRIPTION_MODELS_AVAILABLE env var when no DB
+    setting has been saved yet. The shape matches what /api/config returns
+    so the admin UI can pre-populate its form.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        from src.models import SystemSetting
+        from src.config.app_config import TRANSCRIPTION_MODEL_OPTIONS
+        import json as _json
+
+        raw = SystemSetting.get_setting('transcription_models_visible_json', None)
+        if raw:
+            try:
+                parsed = _json.loads(raw)
+                if isinstance(parsed, list):
+                    return jsonify({
+                        'source': 'database',
+                        'options': parsed,
+                        'default_model': SystemSetting.get_setting('transcription_default_model', None),
+                    })
+            except (ValueError, TypeError):
+                pass
+
+        return jsonify({
+            'source': 'env' if TRANSCRIPTION_MODEL_OPTIONS else 'unset',
+            'options': TRANSCRIPTION_MODEL_OPTIONS,
+            'default_model': None,
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error reading visible transcription models: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/transcription/visible-models', methods=['POST'])
+@login_required
+def admin_save_visible_models():
+    """Save the admin-curated list of user-facing transcription models.
+
+    Body: { "options": [{"value": "...", "label": "..."}, ...],
+            "default_model": "..." | null }
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        from src.models import SystemSetting
+        import json as _json
+
+        data = request.json or {}
+        options = data.get('options', [])
+        if not isinstance(options, list):
+            return jsonify({'error': 'options must be a list'}), 400
+
+        # Normalise each option into {value, label}.
+        normalised = []
+        for opt in options:
+            if isinstance(opt, str):
+                normalised.append({'value': opt, 'label': opt})
+            elif isinstance(opt, dict) and opt.get('value'):
+                normalised.append({
+                    'value': str(opt['value']).strip(),
+                    'label': str(opt.get('label') or opt['value']).strip(),
+                })
+
+        SystemSetting.set_setting(
+            key='transcription_models_visible_json',
+            value=_json.dumps(normalised),
+            description='Admin-curated list of transcription models exposed in user dropdowns. Overrides TRANSCRIPTION_MODELS_AVAILABLE env var when set.',
+            setting_type='string',
+        )
+
+        default_model = (data.get('default_model') or '').strip()
+        if default_model:
+            SystemSetting.set_setting(
+                key='transcription_default_model',
+                value=default_model,
+                description='Admin-selected default transcription model. Used when no per-upload, tag, or folder override is set.',
+                setting_type='string',
+            )
+        else:
+            existing = SystemSetting.query.filter_by(key='transcription_default_model').first()
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'options': normalised,
+            'default_model': default_model or None,
+        })
+
+    except Exception as e:
+        current_app.logger.error(f"Error saving visible transcription models: {e}")
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
 @login_required
 def admin_process_recordings_for_inquire():

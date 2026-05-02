@@ -317,6 +317,29 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
             segments.append(segment)
         return segments
 
+    def list_models(self):
+        """Return models from the vLLM /v1/models endpoint.
+
+        vLLM exposes this in OpenAI-compatible form. Whatever model the
+        VibeVoice server has loaded shows up here.
+        """
+        try:
+            resp = self.client.get('/v1/models')
+            if resp.status_code != 200:
+                return []
+            data = resp.json().get('data', [])
+            return [
+                {
+                    'id': m.get('id'),
+                    'label': m.get('id'),
+                    'owned_by': m.get('owned_by', 'vllm'),
+                }
+                for m in data if m.get('id')
+            ]
+        except Exception as e:
+            logger.warning(f"vibevoice /v1/models probe failed: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if the vLLM server is reachable."""
         try:

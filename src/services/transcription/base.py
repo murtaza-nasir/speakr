@@ -247,6 +247,18 @@ class BaseTranscriptionConnector(ABC):
         """
         return {}
 
+    def list_models(self) -> List[Dict[str, Any]]:
+        """Discover models the upstream provider exposes.
+
+        Connectors that talk to an OpenAI-compatible /v1/models endpoint
+        should override this. Each item is a dict with at minimum 'id' and
+        an optional 'label' or 'owned_by'. The default raises
+        NotImplementedError so callers can detect unsupported providers.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement list_models()"
+        )
+
     def health_check(self) -> bool:
         """
         Check if the connector is properly configured and reachable.

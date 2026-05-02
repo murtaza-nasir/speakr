@@ -126,6 +126,27 @@ class OpenAIWhisperConnector(BaseTranscriptionConnector):
             logger.error(f"Whisper transcription failed: {error_msg}")
             raise TranscriptionError(f"Whisper transcription failed: {error_msg}") from e
 
+    def list_models(self):
+        """Return audio-relevant models from OpenAI's /v1/models.
+
+        Filters the full catalog to entries whose id contains 'whisper'.
+        """
+        try:
+            resp = self.client.models.list()
+            audio = []
+            for m in resp.data:
+                mid = getattr(m, 'id', '')
+                if mid and 'whisper' in mid.lower():
+                    audio.append({
+                        'id': mid,
+                        'label': mid,
+                        'owned_by': getattr(m, 'owned_by', 'openai'),
+                    })
+            return audio
+        except Exception as e:
+            logger.warning(f"openai_whisper /v1/models probe failed: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if the connector is properly configured."""
         return bool(self.config.get('api_key'))

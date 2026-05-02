@@ -23,6 +23,54 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.config.app_config import ASR_MIN_SPEAKERS, ASR_MAX_SPEAKERS, ASR_DIARIZE, USE_NEW_TRANSCRIPTION_ARCHITECTURE
+
+
+def _resolve_transcription_model(value):
+    """Apply admin-curated allowlist + default to a candidate model name.
+
+    Resolution:
+      1. If the caller passed a non-empty value:
+         a. If the admin saved a visible-models list in system_setting and the
+            value is in it, accept.
+         b. Else if TRANSCRIPTION_MODELS_AVAILABLE is set and the value is in
+            it, accept.
+         c. Else if neither list is configured, accept (no allowlist enforced).
+         d. Otherwise, drop the value with a warning.
+      2. If the caller passed nothing, fall back to the admin-saved default
+         model (system_setting key `transcription_default_model`) when set.
+    Returns the validated model id or None.
+    """
+    from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
+    import json as _json
+
+    candidate = (value or '').strip() or None
+    visible = []
+    try:
+        raw = SystemSetting.get_setting('transcription_models_visible_json', None)
+        if raw:
+            parsed = _json.loads(raw)
+            if isinstance(parsed, list):
+                visible = [
+                    (item['value'] if isinstance(item, dict) else item)
+                    for item in parsed if item
+                ]
+    except Exception:
+        visible = []
+
+    if candidate:
+        in_db_list = bool(visible) and candidate in visible
+        in_env_list = bool(TRANSCRIPTION_MODELS_AVAILABLE) and candidate in TRANSCRIPTION_MODELS_AVAILABLE
+        if visible or TRANSCRIPTION_MODELS_AVAILABLE:
+            if not (in_db_list or in_env_list):
+                current_app.logger.warning(
+                    f"Ignoring transcription_model={candidate!r} — not in admin-curated list or TRANSCRIPTION_MODELS_AVAILABLE"
+                )
+                candidate = None
+        return candidate
+
+    # Fall back to admin-saved default when no override flowed through.
+    default = SystemSetting.get_setting('transcription_default_model', None)
+    return default or None
 from src.tasks.processing import format_transcription_for_llm
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
@@ -1044,16 +1092,9 @@ def reprocess_transcription(recording_id):
             if not initial_prompt and owner.transcription_initial_prompt:
                 initial_prompt = owner.transcription_initial_prompt
 
-        # Validate the per-request model against the configured allowlist before
-        # passing it to the connector. If the user submitted an unknown model
-        # (e.g. via a stale UI cache), drop it rather than crashing the API.
-        if transcription_model:
-            from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
-            if TRANSCRIPTION_MODELS_AVAILABLE and transcription_model not in TRANSCRIPTION_MODELS_AVAILABLE:
-                current_app.logger.warning(
-                    f"Ignoring transcription_model={transcription_model!r} — not in TRANSCRIPTION_MODELS_AVAILABLE"
-                )
-                transcription_model = None
+        # Validate against admin-curated list and apply admin default when
+        # nothing else in the chain set a model. See _resolve_transcription_model.
+        transcription_model = _resolve_transcription_model(transcription_model)
 
         # Enqueue the job with all parameters
         job_params = {
@@ -2318,17 +2359,9 @@ def upload_file():
 
         current_app.logger.info(f"Initial recording record created with ID: {recording.id}")
 
-        # Validate the per-request transcription_model against the configured
-        # allowlist before passing it to the connector. If the user submitted
-        # an unknown model (e.g. via a stale UI cache), drop it rather than
-        # propagating a bad value into the worker.
-        if transcription_model:
-            from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
-            if TRANSCRIPTION_MODELS_AVAILABLE and transcription_model not in TRANSCRIPTION_MODELS_AVAILABLE:
-                current_app.logger.warning(
-                    f"Ignoring transcription_model={transcription_model!r} — not in TRANSCRIPTION_MODELS_AVAILABLE"
-                )
-                transcription_model = None
+        # Validate against admin-curated list and apply admin default when
+        # nothing else in the chain set a model.
+        transcription_model = _resolve_transcription_model(transcription_model)
 
         # --- Queue transcription job ---
         first_tag = selected_tags[0] if selected_tags else None

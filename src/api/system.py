@@ -182,9 +182,22 @@ def get_system_info():
 def _get_transcription_model_options():
     """Return the configured per-upload transcription model dropdown options.
 
-    When TRANSCRIPTION_MODELS_AVAILABLE is unset the list is empty and the
-    frontend hides the dropdown. Issue #266.
+    Resolution order:
+      1. SystemSetting `transcription_models_visible_json` (admin UI overrides)
+      2. TRANSCRIPTION_MODELS_AVAILABLE env var
+      3. Empty list (dropdown hidden)
+    Issue #266.
     """
+    try:
+        from src.models import SystemSetting
+        import json as _json
+        raw = SystemSetting.get_setting('transcription_models_visible_json', None)
+        if raw:
+            parsed = _json.loads(raw)
+            if isinstance(parsed, list):
+                return parsed
+    except Exception:
+        pass
     return list(TRANSCRIPTION_MODEL_OPTIONS)
 
 

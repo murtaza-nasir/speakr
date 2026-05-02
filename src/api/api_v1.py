@@ -1828,16 +1828,10 @@ def start_transcription(recording_id):
     data = request.get_json() or {}
 
     # Apply the same per-request model override path as the upload/reprocess
-    # web endpoints (issue #266). Validate against TRANSCRIPTION_MODELS_AVAILABLE
-    # when it is set; drop unknown values silently.
-    transcription_model = (data.get('transcription_model') or '').strip() or None
-    if transcription_model:
-        from src.config.app_config import TRANSCRIPTION_MODELS_AVAILABLE
-        if TRANSCRIPTION_MODELS_AVAILABLE and transcription_model not in TRANSCRIPTION_MODELS_AVAILABLE:
-            current_app.logger.warning(
-                f"Ignoring transcription_model={transcription_model!r} from API v1 transcribe — not in TRANSCRIPTION_MODELS_AVAILABLE"
-            )
-            transcription_model = None
+    # web endpoints (issue #266). Validates against the admin-curated list +
+    # env allowlist and applies the admin-saved default when nothing was sent.
+    from src.api.recordings import _resolve_transcription_model
+    transcription_model = _resolve_transcription_model(data.get('transcription_model'))
 
     params = {
         'language': data.get('language'),

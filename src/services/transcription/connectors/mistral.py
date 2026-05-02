@@ -222,6 +222,31 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             segments.append(segment)
         return segments
 
+    def list_models(self):
+        """Return Voxtral models from Mistral's /v1/models endpoint.
+
+        Filters to ids containing 'voxtral' so the dropdown only offers
+        audio-capable models.
+        """
+        try:
+            resp = self.client.get('/v1/models')
+            if resp.status_code != 200:
+                return []
+            data = resp.json().get('data', [])
+            audio = []
+            for m in data:
+                mid = m.get('id', '')
+                if mid and 'voxtral' in mid.lower():
+                    audio.append({
+                        'id': mid,
+                        'label': mid,
+                        'owned_by': m.get('owned_by', 'mistralai'),
+                    })
+            return audio
+        except Exception as e:
+            logger.warning(f"mistral /v1/models probe failed: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if the connector is properly configured."""
         return bool(self.config.get('api_key'))

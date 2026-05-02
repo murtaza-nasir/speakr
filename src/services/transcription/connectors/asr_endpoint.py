@@ -300,6 +300,31 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             raw_response=data
         )
 
+    def list_models(self):
+        """Probe the ASR service's /v1/models endpoint and return the list.
+
+        The whisperx-asr-service fork (and any OpenAI-compatible variant)
+        exposes /v1/models. The upstream onerahmet/whisper-asr-webservice does
+        not, in which case we return an empty list.
+        """
+        try:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.get(f"{self.base_url}/v1/models")
+                if resp.status_code != 200:
+                    return []
+                data = resp.json().get('data', [])
+                return [
+                    {
+                        'id': m.get('id'),
+                        'label': m.get('id'),
+                        'owned_by': m.get('owned_by', 'unknown'),
+                    }
+                    for m in data if m.get('id')
+                ]
+        except Exception as e:
+            logger.warning(f"asr_endpoint /v1/models probe failed: {e}")
+            return []
+
     def health_check(self) -> bool:
         """Check if ASR endpoint is reachable."""
         try:

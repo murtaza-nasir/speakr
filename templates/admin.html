@@ -662,7 +662,69 @@
                             <i class="fas fa-sync-alt mr-2"></i> ${t('buttons.refresh')}
                         </button>
                     </div>
-                    
+
+                    <!-- Transcription Models curation -->
+                    <div class="mb-6 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 class="text-md font-semibold text-[var(--text-primary)]"><i class="fas fa-microphone-lines mr-2"></i>Transcription Models</h4>
+                                <p class="text-sm text-[var(--text-muted)] mt-1">Discover models on the active transcription provider, then choose which ones users can pick from at upload time. Saved choices override <code>TRANSCRIPTION_MODELS_AVAILABLE</code> in the environment.</p>
+                            </div>
+                            <button @click="discoverTranscriptionModels" :disabled="discoveringModels"
+                                    class="px-3 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] disabled:opacity-50">
+                                <i :class="discoveringModels ? 'fas fa-spinner fa-spin' : 'fas fa-search'" class="mr-2"></i>
+                                ${ discoveringModels ? 'Discovering...' : 'Discover models' }
+                            </button>
+                        </div>
+
+                        <div v-if="modelDiscoveryError" class="mb-3 text-sm text-[var(--text-danger-strong)]">
+                            ${ modelDiscoveryError }
+                        </div>
+
+                        <div v-if="modelDiscoveryResult" class="mb-3 text-xs text-[var(--text-muted)]">
+                            Active connector: <code>${ modelDiscoveryResult.connector }</code>
+                            <span v-if="!modelDiscoveryResult.supported"> (no model discovery API; add models manually below)</span>
+                        </div>
+
+                        <table v-if="visibleTranscriptionModels.length > 0 || (modelDiscoveryResult && modelDiscoveryResult.models && modelDiscoveryResult.models.length > 0)"
+                               class="w-full text-sm border-collapse">
+                            <thead>
+                                <tr class="text-left text-xs uppercase text-[var(--text-muted)] border-b border-[var(--border-primary)]">
+                                    <th class="py-2">Visible</th>
+                                    <th class="py-2">Default</th>
+                                    <th class="py-2">Model id</th>
+                                    <th class="py-2">Label shown to users</th>
+                                    <th class="py-2">Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="row in transcriptionModelRows" :key="row.value"
+                                    class="border-b border-[var(--border-primary)]/50">
+                                    <td class="py-2"><input type="checkbox" v-model="row.visible"></td>
+                                    <td class="py-2"><input type="radio" :value="row.value" v-model="transcriptionDefaultModel" :disabled="!row.visible"></td>
+                                    <td class="py-2 font-mono text-xs">${ row.value }</td>
+                                    <td class="py-2"><input type="text" v-model="row.label" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded"></td>
+                                    <td class="py-2 text-xs text-[var(--text-muted)]">${ row.source }</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p v-else class="text-sm text-[var(--text-muted)] mb-3">No models discovered yet. Click "Discover models" to probe the active connector, or set <code>TRANSCRIPTION_MODELS_AVAILABLE</code> in your environment.</p>
+
+                        <div class="flex items-center gap-3 mt-4">
+                            <button @click="addManualTranscriptionModel"
+                                    class="px-3 py-2 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--bg-tertiary)]">
+                                <i class="fas fa-plus mr-1"></i> Add custom model id
+                            </button>
+                            <button @click="saveVisibleTranscriptionModels" :disabled="savingModels"
+                                    class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] disabled:opacity-50">
+                                <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-2"></i>
+                                ${ savingModels ? 'Saving...' : 'Save selection' }
+                            </button>
+                            <span v-if="modelSaveMessage" class="text-sm" :class="modelSaveError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">${ modelSaveMessage }</span>
+                        </div>
+                    </div>
+
                     <!-- Settings List -->
                     <div class="space-y-4">
                         <div v-for="setting in settings" :key="setting.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
@@ -1840,6 +1902,142 @@ Summarization Instructions:
                 const dailyEmbeddingChart = ref(null);
                 const monthlyEmbeddingChart = ref(null);
                 const settings = ref([]);
+                // Transcription model curation state
+                const visibleTranscriptionModels = ref([]); // [{value, label}, ...]
+                const transcriptionDefaultModel = ref(null);
+                const transcriptionDefaultModelSaved = ref(null); // For change tracking
+                const modelDiscoveryResult = ref(null);
+                const modelDiscoveryError = ref('');
+                const discoveringModels = ref(false);
+                const savingModels = ref(false);
+                const modelSaveMessage = ref('');
+                const modelSaveError = ref(false);
+                const manualModelRows = ref([]); // for "Add custom model id" entries
+
+                // Combined view: discovered ∪ saved ∪ manual, deduped by id.
+                const transcriptionModelRows = computed(() => {
+                    const map = new Map();
+                    // Saved selections come first so order is stable.
+                    for (const opt of visibleTranscriptionModels.value) {
+                        if (opt && opt.value && !map.has(opt.value)) {
+                            map.set(opt.value, {
+                                value: opt.value,
+                                label: opt.label || opt.value,
+                                visible: true,
+                                source: 'saved',
+                            });
+                        }
+                    }
+                    // Discovery additions
+                    const discovered = (modelDiscoveryResult.value && modelDiscoveryResult.value.models) || [];
+                    for (const m of discovered) {
+                        if (!m.id) continue;
+                        if (map.has(m.id)) {
+                            const row = map.get(m.id);
+                            if (row.source === 'saved') row.source = 'saved + discovered';
+                        } else {
+                            map.set(m.id, {
+                                value: m.id,
+                                label: m.label || m.id,
+                                visible: false,
+                                source: 'discovered (' + (m.owned_by || 'unknown') + ')',
+                            });
+                        }
+                    }
+                    // Manual additions
+                    for (const m of manualModelRows.value) {
+                        if (!m.value) continue;
+                        if (!map.has(m.value)) {
+                            map.set(m.value, {
+                                value: m.value,
+                                label: m.label || m.value,
+                                visible: true,
+                                source: 'manual',
+                            });
+                        }
+                    }
+                    return Array.from(map.values());
+                });
+
+                const loadVisibleTranscriptionModels = async () => {
+                    try {
+                        const r = await fetch('/admin/transcription/visible-models');
+                        if (!r.ok) return;
+                        const data = await r.json();
+                        visibleTranscriptionModels.value = (data.options || []).map(o => ({
+                            value: o.value,
+                            label: o.label || o.value,
+                        }));
+                        transcriptionDefaultModel.value = data.default_model || null;
+                        transcriptionDefaultModelSaved.value = data.default_model || null;
+                    } catch (e) {
+                        console.error('Failed to load visible transcription models:', e);
+                    }
+                };
+
+                const discoverTranscriptionModels = async () => {
+                    discoveringModels.value = true;
+                    modelDiscoveryError.value = '';
+                    try {
+                        const r = await fetch('/admin/transcription/discover-models');
+                        const data = await r.json();
+                        if (!r.ok) {
+                            modelDiscoveryError.value = data.error || 'Discovery failed';
+                            modelDiscoveryResult.value = null;
+                        } else {
+                            modelDiscoveryResult.value = data;
+                            if (data.supported && (!data.models || data.models.length === 0)) {
+                                modelDiscoveryError.value = 'Connector reports no models. Is the upstream service running?';
+                            }
+                        }
+                    } catch (e) {
+                        modelDiscoveryError.value = 'Network error: ' + e.message;
+                    } finally {
+                        discoveringModels.value = false;
+                    }
+                };
+
+                const addManualTranscriptionModel = () => {
+                    const id = window.prompt('Enter the model id (e.g. whisper-1, large-v3, voxtral-mini-latest):');
+                    if (!id) return;
+                    manualModelRows.value.push({ value: id.trim(), label: id.trim() });
+                };
+
+                const saveVisibleTranscriptionModels = async () => {
+                    savingModels.value = true;
+                    modelSaveMessage.value = '';
+                    modelSaveError.value = false;
+                    try {
+                        const visible = transcriptionModelRows.value
+                            .filter(r => r.visible)
+                            .map(r => ({ value: r.value, label: r.label || r.value }));
+                        // Drop default if it's not in the visible list anymore
+                        const defaultModel = visible.some(o => o.value === transcriptionDefaultModel.value)
+                            ? transcriptionDefaultModel.value
+                            : null;
+                        const r = await fetch('/admin/transcription/visible-models', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            },
+                            body: JSON.stringify({ options: visible, default_model: defaultModel }),
+                        });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error || 'Save failed');
+                        visibleTranscriptionModels.value = data.options || [];
+                        transcriptionDefaultModel.value = data.default_model || null;
+                        transcriptionDefaultModelSaved.value = data.default_model || null;
+                        manualModelRows.value = [];
+                        modelSaveMessage.value = `Saved ${data.options.length} model${data.options.length === 1 ? '' : 's'}.`;
+                    } catch (e) {
+                        modelSaveMessage.value = 'Save failed: ' + e.message;
+                        modelSaveError.value = true;
+                    } finally {
+                        savingModels.value = false;
+                    }
+                };
+
                 const isLoadingUsers = ref(true);
                 const isLoadingSettings = ref(false);
                 const userSearchQuery = ref('');
@@ -3207,6 +3405,7 @@ Summarization Instructions:
                             await loadSettings();
                         }
                         loadDefaultPrompt();
+                        loadVisibleTranscriptionModels();
 
                         if (inquireModeEnabled.value) {
                             loadInquireStatus();
@@ -3424,7 +3623,22 @@ Summarization Instructions:
                     processAllRecordings,
                     processBatchRecordings,
                     reembedAllRecordings,
-                    
+
+                    // Transcription model curation
+                    visibleTranscriptionModels,
+                    transcriptionDefaultModel,
+                    modelDiscoveryResult,
+                    modelDiscoveryError,
+                    discoveringModels,
+                    savingModels,
+                    modelSaveMessage,
+                    modelSaveError,
+                    transcriptionModelRows,
+                    discoverTranscriptionModels,
+                    addManualTranscriptionModel,
+                    saveVisibleTranscriptionModels,
+                    loadVisibleTranscriptionModels,
+
                     // Default Prompts methods
                     loadDefaultPrompt,
                     saveDefaultPrompt,
