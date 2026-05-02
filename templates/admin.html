@@ -857,11 +857,45 @@ Summarization Instructions:
                             </div>
                             <div>
                                 <span class="text-[var(--text-muted)]">${t('adminDashboard.embeddingModel')}:</span>
-                                <span class="ml-2 text-[var(--text-primary)]">all-MiniLM-L6-v2</span>
+                                <span class="ml-2 text-[var(--text-primary)] break-all">${ inquireStatus.embedding_model || 'all-MiniLM-L6-v2' }</span>
                             </div>
                             <div>
+                                <span class="text-[var(--text-muted)]">Provider:</span>
+                                <span class="ml-2 text-[var(--text-primary)]">
+                                    <template v-if="inquireStatus.embedding_provider === 'api'">
+                                        API (${ inquireStatus.embedding_base_url })
+                                    </template>
+                                    <template v-else>
+                                        Local (sentence-transformers)
+                                    </template>
+                                </span>
+                            </div>
+                            <div v-if="inquireStatus.embedding_dimensions_override">
                                 <span class="text-[var(--text-muted)]">${t('adminDashboard.vectorDimensions')}:</span>
-                                <span class="ml-2 text-[var(--text-primary)]">384</span>
+                                <span class="ml-2 text-[var(--text-primary)]">${ inquireStatus.embedding_dimensions_override }</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Identifier mismatch alert: chunks were embedded with a previous configuration -->
+                    <div v-if="inquireStatus.embedding_identifier_mismatch" class="mb-6 p-4 rounded-lg bg-[var(--bg-warning-light)] border border-[var(--border-warning)]">
+                        <div class="flex items-start">
+                            <i class="fas fa-exclamation-triangle text-[var(--text-warning-strong)] mt-0.5 mr-3"></i>
+                            <div class="flex-1">
+                                <p class="font-semibold text-[var(--text-warning-strong)]">Embedding configuration changed</p>
+                                <p class="text-sm text-[var(--text-secondary)] mt-1">
+                                    ${ inquireStatus.total_chunks } stored chunks were embedded with
+                                    <code class="px-1 rounded bg-[var(--bg-tertiary)]">${ inquireStatus.embedding_identifier_stored }</code>,
+                                    but the active configuration is
+                                    <code class="px-1 rounded bg-[var(--bg-tertiary)]">${ inquireStatus.embedding_identifier }</code>.
+                                    Inquire mode will return wrong results until you re-embed all recordings.
+                                </p>
+                                <button @click="reembedAllRecordings"
+                                        :disabled="isProcessingRecordings"
+                                        class="mt-3 px-4 py-2 bg-[var(--bg-warning-strong)] text-white rounded-lg shadow hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
+                                    ${ isProcessingRecordings ? 'Re-embedding...' : 'Re-embed all recordings now' }
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -937,6 +971,29 @@ Summarization Instructions:
                                 <i class="fas fa-tasks text-3xl text-[var(--text-accent)] opacity-50"></i>
                             </div>
                         </div>
+
+                        <!-- Embedding API usage (only meaningful in API mode) -->
+                        <div v-if="inquireStatus.embedding_provider === 'api'" class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Embedding API tokens</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">${ (inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_tokens || 0).toLocaleString() }</p>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1">${ inquireStatus.embedding_usage && inquireStatus.embedding_usage.request_count || 0 } API requests</p>
+                                </div>
+                                <i class="fas fa-coins text-3xl text-[var(--text-accent)] opacity-50"></i>
+                            </div>
+                        </div>
+
+                        <div v-if="inquireStatus.embedding_provider === 'api'" class="bg-[var(--bg-secondary)] p-6 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-[var(--text-muted)]">Embedding API cost</p>
+                                    <p class="text-2xl font-semibold text-[var(--text-primary)]">$${ (inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_cost || 0).toFixed(4) }</p>
+                                    <p class="text-xs text-[var(--text-muted)] mt-1" v-if="inquireStatus.embedding_usage && inquireStatus.embedding_usage.total_cost === 0">Provider did not return cost</p>
+                                </div>
+                                <i class="fas fa-dollar-sign text-3xl text-[var(--text-accent)] opacity-50"></i>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Processing Actions -->
@@ -984,6 +1041,19 @@ Summarization Instructions:
                             <i class="fas fa-check-circle text-4xl text-[var(--text-success-strong)] mb-3"></i>
                             <p class="text-[var(--text-success-strong)] font-medium">${t('adminDashboard.allRecordingsProcessed')}</p>
                             <p class="text-sm text-[var(--text-muted)] mt-1">${t('adminDashboard.vectorStoreUpToDate')}</p>
+                        </div>
+
+                        <!-- Re-embed all (always available) -->
+                        <div class="mt-6 pt-4 border-t border-[var(--border-primary)]">
+                            <p class="text-sm text-[var(--text-secondary)] mb-3">
+                                Re-embed every completed recording with the current configuration. Use this after switching <code class="px-1 rounded bg-[var(--bg-tertiary)]">EMBEDDING_MODEL</code> or <code class="px-1 rounded bg-[var(--bg-tertiary)]">EMBEDDING_BASE_URL</code>. Existing chunks are deleted and replaced.
+                            </p>
+                            <button @click="reembedAllRecordings"
+                                    :disabled="isProcessingRecordings || (inquireStatus.processed_for_inquire || 0) === 0"
+                                    class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'" class="mr-2"></i>
+                                ${ isProcessingRecordings ? 'Re-embedding...' : 'Re-embed all recordings' }
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3039,6 +3109,34 @@ Summarization Instructions:
                     }
                 };
                 
+                const reembedAllRecordings = async () => {
+                    if (isProcessingRecordings.value) return;
+                    if (!confirm('Re-embed every completed recording with the current configuration? Existing chunks will be deleted and rebuilt. This may take a while and (in API mode) will incur cost.')) {
+                        return;
+                    }
+                    isProcessingRecordings.value = true;
+                    processingResult.value = null;
+                    try {
+                        const response = await fetch('/admin/inquire/process-recordings', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({ force: true })
+                        });
+                        if (!response.ok) throw new Error('Failed to re-embed recordings');
+                        const data = await response.json();
+                        processingResult.value = data;
+                        await loadInquireStatus();
+                    } catch (error) {
+                        console.error('Error re-embedding:', error);
+                        processingResult.value = { success: false, message: 'Failed to re-embed recordings.' };
+                    } finally {
+                        isProcessingRecordings.value = false;
+                    }
+                };
+
                 const processBatchRecordings = async (batchSize) => {
                     if (isProcessingRecordings.value) return;
                     
@@ -3308,6 +3406,7 @@ Summarization Instructions:
                     loadInquireStatus,
                     processAllRecordings,
                     processBatchRecordings,
+                    reembedAllRecordings,
                     
                     // Default Prompts methods
                     loadDefaultPrompt,

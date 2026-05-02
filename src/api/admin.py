@@ -1067,69 +1067,111 @@ def admin_trigger_auto_process():
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
 @login_required
 def admin_process_recordings_for_inquire():
-    """Process all remaining recordings for inquire mode (chunk and embed them)."""
+    """Process recordings for inquire mode (chunk and embed them).
+
+    Default behaviour processes only recordings that do not yet have chunks.
+    Pass ``force=true`` in the JSON body to re-embed every completed
+    recording regardless of existing chunks. This is the migration path after
+    swapping ``EMBEDDING_MODEL`` or ``EMBEDDING_BASE_URL``: the old vectors
+    are deleted and replaced with vectors from the new configuration.
+
+    Body fields:
+        force (bool, optional, default false): re-embed all recordings
+        batch_size (int, optional, default 10): commit cadence
+        max_recordings (int, optional): cap the number processed in one call
+    """
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     try:
-        # Get optional parameters from request
         data = request.json or {}
-        batch_size = data.get('batch_size', 10)
+        batch_size = int(data.get('batch_size', 10) or 10)
         max_recordings = data.get('max_recordings', None)
-        
-        # Find recordings that need processing
-        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
-        recordings_needing_processing = []
-        
-        for recording in completed_recordings:
-            if recording.transcription:  # Has transcription
-                chunk_count = TranscriptChunk.query.filter_by(recording_id=recording.id).count()
-                if chunk_count == 0:  # No chunks yet
-                    recordings_needing_processing.append(recording)
-                    if max_recordings and len(recordings_needing_processing) >= max_recordings:
-                        break
-        
+        force = bool(data.get('force', False))
+
+        if force:
+            # Re-embed every completed recording with a transcription.
+            recordings_query = Recording.query.filter(
+                Recording.status == 'COMPLETED',
+                Recording.transcription.isnot(None),
+                Recording.transcription != ''
+            )
+            recordings_needing_processing = recordings_query.all()
+        else:
+            # Only process recordings that have no chunks yet.
+            recordings_with_chunks = db.session.query(TranscriptChunk.recording_id).distinct()
+            recordings_needing_processing = Recording.query.filter(
+                Recording.status == 'COMPLETED',
+                Recording.transcription.isnot(None),
+                Recording.transcription != '',
+                ~Recording.id.in_(recordings_with_chunks)
+            ).all()
+
+        if max_recordings:
+            recordings_needing_processing = recordings_needing_processing[:int(max_recordings)]
+
         total_to_process = len(recordings_needing_processing)
-        
+
         if total_to_process == 0:
             return jsonify({
                 'success': True,
-                'message': 'All recordings are already processed for inquire mode.',
+                'message': (
+                    'No recordings to re-embed.' if force
+                    else 'All recordings are already processed for inquire mode.'
+                ),
                 'processed': 0,
-                'total': 0
+                'total': 0,
+                'force': force,
             })
-        
-        # Process recordings in batches
+
         processed = 0
         failed = []
-        
+
         for recording in recordings_needing_processing:
             try:
                 success = process_recording_chunks(recording.id)
                 if success:
                     processed += 1
-                    current_app.logger.info(f"Admin API: Processed chunks for recording: {recording.title} ({recording.id})")
+                    current_app.logger.info(
+                        f"Admin API: {'Re-embedded' if force else 'Processed chunks for'} "
+                        f"recording: {recording.title} ({recording.id})"
+                    )
                 else:
                     failed.append({'id': recording.id, 'title': recording.title, 'reason': 'Processing returned false'})
             except Exception as e:
                 current_app.logger.error(f"Admin API: Failed to process recording {recording.id}: {e}")
                 failed.append({'id': recording.id, 'title': recording.title, 'reason': str(e)})
-            
-            # Commit after each batch
+
             if processed % batch_size == 0:
                 db.session.commit()
-        
-        # Final commit
+
         db.session.commit()
-        
+
+        # On a successful force re-embed, refresh the stored identifier so the
+        # mismatch warning clears.
+        if force and processed > 0 and not failed:
+            try:
+                from src.models import SystemSetting
+                from src.services.embeddings import EMBEDDING_IDENTIFIER
+                SystemSetting.set_setting(
+                    key='embedding_identifier',
+                    value=EMBEDDING_IDENTIFIER,
+                    description='Identifier of the embedding provider and model that produced the stored chunk vectors. Used to detect dimensionality and semantic-space mismatches at startup.',
+                    setting_type='string',
+                )
+            except Exception as e:
+                current_app.logger.warning(f"Failed to refresh embedding_identifier after re-embed: {e}")
+
+        verb = 'Re-embedded' if force else 'Processed'
         return jsonify({
             'success': True,
-            'message': f'Processed {processed} out of {total_to_process} recordings.',
+            'message': f'{verb} {processed} out of {total_to_process} recordings.',
             'processed': processed,
             'total': total_to_process,
-            'failed': failed
+            'failed': failed,
+            'force': force,
         })
-        
+
     except Exception as e:
         current_app.logger.error(f"Error in admin process recordings endpoint: {e}")
         db.session.rollback()
@@ -1138,48 +1180,84 @@ def admin_process_recordings_for_inquire():
 
 
 @admin_bp.route('/admin/inquire/status', methods=['GET'])
-@login_required  
+@login_required
 def admin_inquire_status():
     """Get the status of recordings for inquire mode."""
     if not current_user.is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     try:
+        from src.services.embeddings import (
+            EMBEDDING_MODEL, EMBEDDING_BASE_URL, EMBEDDING_IDENTIFIER,
+            USE_API_EMBEDDINGS, EMBEDDING_DIMENSIONS,
+        )
+        from src.models import SystemSetting, TokenUsage
+        from sqlalchemy import func
+
         # Count total completed recordings
         total_completed = Recording.query.filter_by(status='COMPLETED').count()
-        
+
         # Count recordings with transcriptions
         recordings_with_transcriptions = Recording.query.filter(
             Recording.status == 'COMPLETED',
             Recording.transcription.isnot(None),
             Recording.transcription != ''
         ).count()
-        
+
         # Count recordings that have been processed for inquire mode
         processed_recordings = db.session.query(Recording.id).join(
             TranscriptChunk, Recording.id == TranscriptChunk.recording_id
         ).distinct().count()
-        
-        # Count recordings that still need processing
-        completed_recordings = Recording.query.filter_by(status='COMPLETED').all()
-        need_processing = 0
-        
-        for recording in completed_recordings:
-            if recording.transcription:  # Has transcription
-                chunk_count = TranscriptChunk.query.filter_by(recording_id=recording.id).count()
-                if chunk_count == 0:  # No chunks yet
-                    need_processing += 1
-        
-        # Get total chunks and embeddings count
+
+        # Count recordings that still need processing (have transcription but no chunks)
+        need_processing = db.session.query(func.count(Recording.id)).filter(
+            Recording.status == 'COMPLETED',
+            Recording.transcription.isnot(None),
+            Recording.transcription != '',
+            ~Recording.id.in_(db.session.query(TranscriptChunk.recording_id).distinct())
+        ).scalar() or 0
+
+        # Total chunks across the system
         total_chunks = TranscriptChunk.query.count()
-        
+
+        # Detect embedded chunks that pre-date the current configuration. The
+        # stored identifier is what produced the existing vectors; if it does
+        # not match the current EMBEDDING_IDENTIFIER, those chunks are stale
+        # and Inquire mode will return wrong results until they are re-embedded.
+        stored_identifier = SystemSetting.get_setting('embedding_identifier', None)
+        if stored_identifier is None:
+            legacy = SystemSetting.get_setting('embedding_model_name', None)
+            stored_identifier = f"local::{legacy}" if legacy else None
+
+        identifier_mismatch = bool(
+            stored_identifier and stored_identifier != EMBEDDING_IDENTIFIER and total_chunks > 0
+        )
+
+        # Embedding-API usage aggregates (lifetime totals across all users).
+        usage_rows = TokenUsage.query.filter_by(operation_type='embedding').all()
+        embedding_usage = {
+            'total_tokens': sum(u.total_tokens for u in usage_rows),
+            'total_cost': sum((u.cost or 0.0) for u in usage_rows),
+            'request_count': sum(u.request_count for u in usage_rows),
+        }
+
         return jsonify({
             'total_completed_recordings': total_completed,
             'recordings_with_transcriptions': recordings_with_transcriptions,
             'processed_for_inquire': processed_recordings,
             'need_processing': need_processing,
             'total_chunks': total_chunks,
-            'embeddings_available': EMBEDDINGS_AVAILABLE
+            'embeddings_available': EMBEDDINGS_AVAILABLE,
+            # Embedding configuration surfaced to the UI
+            'embedding_model': EMBEDDING_MODEL,
+            'embedding_provider': 'api' if USE_API_EMBEDDINGS else 'local',
+            'embedding_base_url': EMBEDDING_BASE_URL or None,
+            'embedding_dimensions_override': EMBEDDING_DIMENSIONS,
+            'embedding_identifier': EMBEDDING_IDENTIFIER,
+            'embedding_identifier_stored': stored_identifier,
+            'embedding_identifier_mismatch': identifier_mismatch,
+            # Embedding-API usage (only meaningful in API mode; local mode = 0)
+            'embedding_usage': embedding_usage,
         })
 
     except Exception as e:

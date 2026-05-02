@@ -115,8 +115,15 @@ def get_embedding_api_client():
     return _embedding_api_client
 
 
-def _api_embed(texts):
-    """Call the OpenAI-compatible embeddings endpoint and return numpy vectors."""
+def _api_embed(texts, user_id=None):
+    """Call the OpenAI-compatible embeddings endpoint and return numpy vectors.
+
+    When ``user_id`` is provided and the response includes a ``usage`` block,
+    record the call against the daily token-usage aggregate so admins can see
+    embedding cost alongside chat/summarization. Cost is captured when the
+    provider returns it (OpenRouter populates ``usage.cost``); for providers
+    that omit it, only token counts are recorded.
+    """
     client = get_embedding_api_client()
     if client is None or not texts:
         return []
@@ -125,6 +132,29 @@ def _api_embed(texts):
         if EMBEDDING_DIMENSIONS is not None:
             kwargs['dimensions'] = EMBEDDING_DIMENSIONS
         response = client.embeddings.create(**kwargs)
+
+        if user_id is not None and getattr(response, 'usage', None) is not None:
+            try:
+                usage = response.usage
+                # Pydantic v2 stores non-schema fields under model_extra; fall
+                # back to attribute access for SDKs that surface them directly.
+                extras = getattr(usage, 'model_extra', None) or {}
+                prompt_tokens = getattr(usage, 'prompt_tokens', 0) or 0
+                total_tokens = getattr(usage, 'total_tokens', prompt_tokens) or prompt_tokens
+                cost = extras.get('cost') if 'cost' in extras else getattr(usage, 'cost', None)
+                from src.services.token_tracking import token_tracker
+                token_tracker.record_usage(
+                    user_id=user_id,
+                    operation_type='embedding',
+                    prompt_tokens=int(prompt_tokens),
+                    completion_tokens=0,
+                    total_tokens=int(total_tokens),
+                    model_name=EMBEDDING_MODEL,
+                    cost=float(cost) if cost is not None else None,
+                )
+            except Exception as track_err:
+                current_app.logger.warning(f"Failed to record embedding usage: {track_err}")
+
         return [np.array(d.embedding, dtype=np.float32) for d in response.data]
     except Exception as e:
         current_app.logger.error(f"Embedding API call failed: {e}")
@@ -181,7 +211,7 @@ def chunk_transcription(transcription, max_chunk_length=500, overlap=50):
 
 
 
-def generate_embeddings(texts):
+def generate_embeddings(texts, user_id=None):
     """
     Generate embeddings for a list of texts.
 
@@ -190,6 +220,9 @@ def generate_embeddings(texts):
 
     Args:
         texts (list): List of text strings
+        user_id (int, optional): User to attribute the API call to for token
+            and cost tracking. Local-mode calls do not consume billable usage
+            and ignore this argument.
 
     Returns:
         list: List of embedding vectors as numpy arrays, or empty list if no
@@ -199,7 +232,7 @@ def generate_embeddings(texts):
         return []
 
     if USE_API_EMBEDDINGS:
-        return _api_embed(texts)
+        return _api_embed(texts, user_id=user_id)
 
     if not LOCAL_EMBEDDINGS_AVAILABLE:
         current_app.logger.warning("Embeddings not available - skipping embedding generation")
@@ -275,18 +308,18 @@ def process_recording_chunks(recording_id):
         recording = db.session.get(Recording, recording_id)
         if not recording or not recording.transcription:
             return False
-        
+
         # Delete existing chunks for this recording
         TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
-        
+
         # Create chunks
         chunks = chunk_transcription(recording.transcription)
-        
+
         if not chunks:
             return True
-        
-        # Generate embeddings
-        embeddings = generate_embeddings(chunks)
+
+        # Generate embeddings (recording owner gets billed for API-mode usage)
+        embeddings = generate_embeddings(chunks, user_id=recording.user_id)
         
         # Store chunks in database
         for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
@@ -437,9 +470,11 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
             current_app.logger.info("scikit-learn not installed - using basic text search as fallback")
             return basic_text_search_chunks(user_id, query, filters, top_k)
 
-        # Generate embedding for the query (via API or local model)
+        # Generate embedding for the query (via API or local model). Attribute
+        # the API call to the searching user so embedding cost tracking shows
+        # who issued the query.
         if USE_API_EMBEDDINGS:
-            api_vectors = _api_embed([query])
+            api_vectors = _api_embed([query], user_id=user_id)
             if not api_vectors:
                 return basic_text_search_chunks(user_id, query, filters, top_k)
             query_embedding = api_vectors[0]
