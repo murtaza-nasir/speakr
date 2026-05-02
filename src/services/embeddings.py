@@ -20,6 +20,13 @@ from src.models import Recording, TranscriptChunk, InternalShare, RecordingTag
 
 ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').lower() == 'true'
 
+# Sentence-transformers model used to generate semantic-search vectors. The
+# default — all-MiniLM-L6-v2 — produces 384-dim vectors and is what older
+# Speakr instances embedded their chunks with. Changing this env var on an
+# existing instance will cause a dimensionality mismatch with stored vectors;
+# see startup warning in src/init_db.py and the docs.
+EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'all-MiniLM-L6-v2').strip() or 'all-MiniLM-L6-v2'
+
 # Initialize embedding model (lazy loading)
 _embedding_model = None
 
@@ -28,16 +35,16 @@ _embedding_model = None
 def get_embedding_model():
     """Get or initialize the sentence transformer model."""
     global _embedding_model
-    
+
     if not EMBEDDINGS_AVAILABLE:
         return None
-        
+
     if _embedding_model is None:
         try:
-            _embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            current_app.logger.info("Embedding model loaded successfully")
+            _embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+            current_app.logger.info(f"Embedding model loaded successfully: {EMBEDDING_MODEL}")
         except Exception as e:
-            current_app.logger.error(f"Failed to load embedding model: {e}")
+            current_app.logger.error(f"Failed to load embedding model {EMBEDDING_MODEL!r}: {e}")
             return None
     return _embedding_model
 
