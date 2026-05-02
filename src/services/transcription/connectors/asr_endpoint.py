@@ -162,6 +162,15 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             if request.hotwords:
                 params['hotwords'] = request.hotwords
 
+            # Per-request model override (issue #266). The whisperx-asr-service
+            # fork accepts a `model` query parameter (e.g. large-v3,
+            # distil-medium.en) and switches the loaded Whisper model
+            # on demand. The upstream onerahmet/whisper-asr-webservice
+            # ignores unknown params, so this is safe in both cases.
+            if request.model:
+                params['model'] = request.model
+                logger.info(f"Using per-request model override: {request.model}")
+
             content_type = request.mime_type or 'application/octet-stream'
             files = {
                 'audio_file': (request.filename, request.audio_file, content_type)

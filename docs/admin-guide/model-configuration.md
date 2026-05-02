@@ -412,7 +412,7 @@ Resolution order at upload time:
 
 If the override isn't in `TRANSCRIPTION_MODELS_AVAILABLE`, it's silently dropped and Speakr falls back to the global default — useful as a safety net against stale browser caches sending old model ids.
 
-The override is propagated to the connector via the `model` field on `TranscriptionRequest`. Connectors that key on a model name (OpenAI Whisper / Transcribe, Mistral, VibeVoice) honour it directly. The `asr_endpoint` connector ignores it — its model is configured server-side on the WhisperX/whisper-asr-webservice container.
+The override is propagated to the connector via the `model` field on `TranscriptionRequest`. Connectors that key on a model name (OpenAI Whisper / Transcribe, Mistral, VibeVoice) honour it directly. The `asr_endpoint` connector forwards the override as a `model=` query parameter; the [whisperx-asr-service](https://github.com/murtaza-nasir/whisperx-asr-service) fork uses it to switch the loaded Whisper model on demand, while the upstream `ahmetoner/whisper-asr-webservice` ignores unknown query parameters, so the override is safe in either case.
 
 ## Configurable Embedding Model
 
