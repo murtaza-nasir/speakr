@@ -220,7 +220,11 @@ export function useReprocess(state, utils) {
                 const selectedTag = availableTags.value.find(t => t.id == selectedTagId);
                 if (selectedTag && selectedTag.custom_prompt) {
                     requestBody.custom_prompt = selectedTag.custom_prompt;
-                    requestBody.prompt_mode = mode;
+                    // A tag selection always fully replaces the resolved
+                    // default; Append/Replace is offered only for custom
+                    // prompts, so force replace here even if the ref still
+                    // holds an older mode value.
+                    requestBody.prompt_mode = 'replace';
                 }
             } else if (promptSource === 'custom' && customPrompt) {
                 requestBody.custom_prompt = customPrompt;

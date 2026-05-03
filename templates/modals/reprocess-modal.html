@@ -188,8 +188,10 @@
                         <textarea id="reprocess-custom-prompt" v-model="summaryReprocessCustomPrompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Enter your custom summarization instructions..."></textarea>
                     </div>
 
-                    <!-- Apply mode toggle for tag and custom prompt sources -->
-                    <div v-if="summaryReprocessPromptSource === 'tag' || summaryReprocessPromptSource === 'custom'">
+                    {# Apply mode toggle only for custom prompts. A selected tag
+                       fully replaces the resolved default by definition, so
+                       offering Append vs Replace there is misleading. #}
+                    <div v-if="summaryReprocessPromptSource === 'custom'">
                         <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">${ t('summaryMode.applyMode') }</label>
                         <div class="grid grid-cols-2 gap-2 p-1 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
                             <label

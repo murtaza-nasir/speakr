@@ -666,6 +666,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             const reprocessAvailableVariables = computed(() => {
                 if (!selectedRecording.value) return [];
                 const recording = selectedRecording.value;
+                // Surface the variables that match the prompt source the user
+                // is about to run. Otherwise the panel keeps showing the
+                // recording's *original* tag's variables even after the user
+                // picks a different tag, which is confusing when the chosen
+                // tag has no placeholders.
+                const source = summaryReprocessPromptSource.value;
+                if (source === 'tag') {
+                    const tagId = summaryReprocessSelectedTagId.value;
+                    if (!tagId) return [];
+                    const tag = (availableTags.value || []).find(t => t.id == tagId);
+                    if (!tag || !tag.custom_prompt) return [];
+                    return buildVariableList({
+                        tagsWithPrompts: [tag],
+                        folder: null,
+                        userPrompt: '',
+                        adminPrompt: '',
+                    });
+                }
+                if (source === 'custom') {
+                    const text = summaryReprocessCustomPrompt.value || '';
+                    if (!text.trim()) return [];
+                    return buildVariableList({
+                        tagsWithPrompts: [{ name: 'Custom prompt', custom_prompt: text }],
+                        folder: null,
+                        userPrompt: '',
+                        adminPrompt: '',
+                    });
+                }
+                // source === 'default' — fall through to the standard priority
+                // chain that the backend will resolve at task time.
                 return buildVariableList({
                     tagsWithPrompts: Array.isArray(recording.tags) ? recording.tags : [],
                     folder: recording.folder || null,
