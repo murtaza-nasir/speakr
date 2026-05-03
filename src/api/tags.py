@@ -227,6 +227,7 @@ def create_tag():
         default_max_speakers=data.get('default_max_speakers'),
         default_hotwords=data.get('default_hotwords'),
         default_initial_prompt=data.get('default_initial_prompt'),
+        default_transcription_model=data.get('default_transcription_model'),
         protect_from_deletion=protect_from_deletion,
         retention_days=retention_days,
         auto_share_on_apply=data.get('auto_share_on_apply', True) if group_id else True,
@@ -328,6 +329,8 @@ def update_tag(tag_id):
         tag.default_hotwords = data['default_hotwords'] or None
     if 'default_initial_prompt' in data:
         tag.default_initial_prompt = data['default_initial_prompt'] or None
+    if 'default_transcription_model' in data:
+        tag.default_transcription_model = data['default_transcription_model'] or None
 
     # Handle retention_days: -1 means protected from deletion
     if 'retention_days' in data:
@@ -508,6 +511,7 @@ def create_group_tag(group_id):
         default_max_speakers=data.get('default_max_speakers'),
         default_hotwords=data.get('default_hotwords'),
         default_initial_prompt=data.get('default_initial_prompt'),
+        default_transcription_model=data.get('default_transcription_model'),
         protect_from_deletion=data.get('protect_from_deletion', False),
         retention_days=data.get('retention_days'),
         auto_share_on_apply=data.get('auto_share_on_apply', True),  # Default to True for group tags
