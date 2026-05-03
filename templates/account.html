@@ -2230,11 +2230,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         <textarea id="tagCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings with this tag" data-i18n-placeholder="editTagModal.customPromptPlaceholder"></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="editTagModal.leaveBlankPrompt">Leave blank to use your default summary prompt</p>
 
-                        <!-- Warning when this tag uses {{...}} variables AND is configured as a watch-folder (auto-process) tag.
-                             Drop-folder ingest has no UI for users to fill values, so placeholders silently substitute to empty strings. -->
+                        {# Warning when this tag uses placeholder variables AND is configured as a watch-folder (auto-process) tag.
+                           Drop-folder ingest has no UI for users to fill values, so placeholders silently substitute to empty strings. #}
                         <div id="tagAutoProcessVariableWarning" class="hidden mt-2 flex items-start gap-2 p-2.5 bg-[var(--bg-warning-light)] border border-[var(--border-warning)] rounded-md text-xs text-[var(--text-warning-strong)]">
                             <i class="fas fa-exclamation-triangle mt-0.5"></i>
-                            <span>This tag is set up as a watch folder and the prompt contains <code>{{...}}</code> placeholders. Recordings ingested through the auto-process directory have no UI for users to fill those values, so the placeholders will substitute to empty strings on the first summary run. Either remove the placeholders or fill the values via reprocess after upload.</span>
+                            <span>This tag is set up as a watch folder and the prompt contains {% raw %}<code>{{...}}</code>{% endraw %} placeholders. Recordings ingested through the auto-process directory have no UI for users to fill those values, so the placeholders will substitute to empty strings on the first summary run. Either remove the placeholders or fill the values via reprocess after upload.</span>
                         </div>
                     </div>
                     <div>
@@ -5272,9 +5272,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
         };
 
+        {% raw %}
         // Detect `{{name}}` placeholders so config-time guards can warn when
         // the prompt source has no UI for users to fill the values.
         const _PROMPT_VAR_RE = /\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\}/;
+        {% endraw %}
         function promptHasVariables(text) {
             return typeof text === 'string' && _PROMPT_VAR_RE.test(text);
         }
