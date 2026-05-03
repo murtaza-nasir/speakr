@@ -449,6 +449,7 @@ class FairJobQueue:
             current_app._get_current_object().app_context(),
             recording.id,
             custom_prompt_override=params.get('custom_prompt'),
+            custom_prompt_append=params.get('custom_prompt_append', False),
             user_id=params.get('user_id')
         )
 

@@ -143,6 +143,29 @@
                         <textarea id="reprocess-custom-prompt" v-model="summaryReprocessCustomPrompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Enter your custom summarization instructions..."></textarea>
                     </div>
 
+                    <!-- Apply mode toggle for tag and custom prompt sources -->
+                    <div v-if="summaryReprocessPromptSource === 'tag' || summaryReprocessPromptSource === 'custom'">
+                        <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">Apply mode</label>
+                        <div class="grid grid-cols-2 gap-2 p-1 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
+                            <label
+                                :class="['flex items-start gap-2 p-2 rounded cursor-pointer transition-colors', summaryReprocessPromptMode === 'append' ? 'bg-[var(--bg-secondary)] border border-[var(--border-accent)] shadow-sm' : 'border border-transparent hover:bg-[var(--bg-secondary)]']">
+                                <input type="radio" v-model="summaryReprocessPromptMode" value="append" class="mt-0.5 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                <span class="flex-1">
+                                    <span class="block text-sm font-medium text-[var(--text-primary)]">Append</span>
+                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5">Use the default prompt and add this as extra context.</span>
+                                </span>
+                            </label>
+                            <label
+                                :class="['flex items-start gap-2 p-2 rounded cursor-pointer transition-colors', summaryReprocessPromptMode === 'replace' ? 'bg-[var(--bg-secondary)] border border-[var(--border-accent)] shadow-sm' : 'border border-transparent hover:bg-[var(--bg-secondary)]']">
+                                <input type="radio" v-model="summaryReprocessPromptMode" value="replace" class="mt-0.5 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                <span class="flex-1">
+                                    <span class="block text-sm font-medium text-[var(--text-primary)]">Replace</span>
+                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5">Use only this text as the summarisation instructions.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Info message when no tags with custom prompts exist -->
                     <div v-if="summaryReprocessPromptSource === 'tag' && tagsWithCustomPrompts.length === 0" class="text-xs text-[var(--text-muted)] italic">
                         No tags with custom prompts available. Create tags with custom prompts in the Account Settings.

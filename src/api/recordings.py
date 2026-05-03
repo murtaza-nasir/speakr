@@ -1188,13 +1188,20 @@ def reprocess_summary(recording_id):
         if client is None:
             return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
 
-        # Get custom prompt from request if provided
+        # Get custom prompt + mode from request if provided
         data = request.get_json() or {}
         custom_prompt = data.get('custom_prompt', '').strip() if data.get('custom_prompt') else None
+        prompt_mode = (data.get('prompt_mode') or 'replace').strip().lower()
+        if prompt_mode not in ('replace', 'append'):
+            prompt_mode = 'replace'
+        custom_prompt_append = bool(custom_prompt) and prompt_mode == 'append'
 
         # Debug logging
         if custom_prompt:
-            current_app.logger.info(f"Received custom prompt override for recording {recording_id} (length: {len(custom_prompt)})")
+            current_app.logger.info(
+                f"Received custom prompt override for recording {recording_id} "
+                f"(mode={prompt_mode}, length={len(custom_prompt)})"
+            )
         else:
             current_app.logger.info(f"No custom prompt override provided for recording {recording_id}, will use default priority")
 
@@ -1212,6 +1219,7 @@ def reprocess_summary(recording_id):
         # Queue summary generation job
         job_params = {
             'custom_prompt': custom_prompt,
+            'custom_prompt_append': custom_prompt_append,
             'user_id': current_user.id
         }
         job_queue.enqueue(

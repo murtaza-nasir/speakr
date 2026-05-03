@@ -13,6 +13,7 @@ export function useReprocess(state, utils) {
         reprocessRecording, recordingToReset, selectedRecording,
         recordings, asrReprocessOptions, summaryReprocessPromptSource,
         summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
+        summaryReprocessPromptMode,
         availableTags, processingProgress, processingMessage,
         currentlyProcessingFile, uploadQueue, userTranscriptionLanguage,
         showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode
@@ -130,7 +131,8 @@ export function useReprocess(state, utils) {
                 recordingId,
                 summaryReprocessPromptSource.value,
                 summaryReprocessSelectedTagId.value,
-                summaryReprocessCustomPrompt.value
+                summaryReprocessCustomPrompt.value,
+                summaryReprocessPromptMode.value
             );
         }
     };
@@ -191,7 +193,7 @@ export function useReprocess(state, utils) {
     // Summary Reprocessing
     // =========================================
 
-    const reprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt) => {
+    const reprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt, promptMode) => {
         if (!recordingId) {
             setGlobalError('No recording ID provided for reprocessing.');
             return;
@@ -200,14 +202,17 @@ export function useReprocess(state, utils) {
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             const requestBody = { reprocess_summary: true };
+            const mode = promptMode === 'append' ? 'append' : 'replace';
 
             if (promptSource === 'tag' && selectedTagId) {
                 const selectedTag = availableTags.value.find(t => t.id == selectedTagId);
                 if (selectedTag && selectedTag.custom_prompt) {
                     requestBody.custom_prompt = selectedTag.custom_prompt;
+                    requestBody.prompt_mode = mode;
                 }
             } else if (promptSource === 'custom' && customPrompt) {
                 requestBody.custom_prompt = customPrompt;
+                requestBody.prompt_mode = mode;
             }
 
             const response = await fetch(`/recording/${recordingId}/reprocess_summary`, {

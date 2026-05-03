@@ -464,6 +464,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const summaryReprocessPromptSource = ref('default');
             const summaryReprocessSelectedTagId = ref('');
             const summaryReprocessCustomPrompt = ref('');
+            const summaryReprocessPromptMode = ref('append');  // 'append' | 'replace'
             const speakerMap = ref({});
             const speakerColorMap = ref({}); // Stable mapping of speaker ID → color class
             const modalSpeakers = ref([]);
@@ -727,7 +728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 userShares, isLoadingShares, copiedShareId,
                 shareToDelete, showShareDeleteModal, recordingToDelete, recordingToReset,
                 reprocessType, reprocessRecording, isAutoIdentifying, asrReprocessOptions,
-                summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
+                summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt, summaryReprocessPromptMode,
                 speakerMap, speakerColorMap, modalSpeakers, speakerDisplayMap, regenerateSummaryAfterSpeakerUpdate, speakerSuggestions,
                 loadingSuggestions, activeSpeakerInput, voiceSuggestions, loadingVoiceSuggestions,
 
