@@ -565,17 +565,24 @@ def account():
 
         # Check if this is the account information form (has user_name field)
         if 'user_name' in request.form:
-            # Handle personal information updates
+            # Handle personal information updates only -- language preferences
+            # have moved to the Preferences tab and are handled below.
             user_name = request.form.get('user_name')
             user_job_title = request.form.get('user_job_title')
             user_company = request.form.get('user_company')
-            ui_lang = request.form.get('ui_language')
-            transcription_lang = request.form.get('transcription_language')
-            output_lang = request.form.get('output_language')
 
             current_user.name = user_name if user_name else None
             current_user.job_title = user_job_title if user_job_title else None
             current_user.company = user_company if user_company else None
+
+        # Check if this is the preferences form (UI/display + language settings)
+        elif 'preferences_form' in request.form:
+            current_user.show_timestamps_simple_view = 'show_timestamps_simple_view' in request.form
+            current_user.editor_autosave = 'editor_autosave' in request.form
+
+            ui_lang = request.form.get('ui_language')
+            transcription_lang = request.form.get('transcription_language')
+            output_lang = request.form.get('output_language')
             current_user.ui_language = ui_lang if ui_lang else 'en'
             # Normalize transcription_language so legacy display-name values
             # ("Français", "Deutsch", ...) can't reach the ASR call (issue #256).

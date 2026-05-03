@@ -12,9 +12,7 @@ The Account Information tab presents a comprehensive view of your profile, stati
 
 On the left side, you'll find fields to update your full name, job title, and company or organization. These details help identify you in collaborative environments and provide context for your recordings. Keeping these current ensures colleagues can recognize your contributions and administrators can manage users effectively.
 
-### Language Preferences
-
-Three distinct language settings shape your entire Speakr experience. The interface language dropdown immediately transforms all menus, buttons, and messages to your chosen language - English, Spanish, French, Chinese, or German. The transcription language field accepts ISO language codes like "en" or "es" to optimize recognition accuracy, though leaving it blank enables automatic detection for multilingual content. The preferred chatbot and summarization language ensures all AI-generated content appears in your chosen language, regardless of the source audio's language.
+Language preferences (interface language, default transcription language, and preferred output language) live on the **Preferences** tab. See the [Preferences Tab](#preferences-tab) section below.
 
 ### Account Statistics
 
@@ -92,6 +90,24 @@ Craft prompts based on how you actually use summaries. Do you extract action ite
 ### Tips for Better Prompts
 
 The expandable tips section provides guidance on crafting better instructions. Focus on clarity, structure your requests with sections or bullet points, and be specific about the level of detail you need. Remember that your prompt applies to all recordings without tag-specific prompts, so design for versatility.
+
+## Preferences Tab
+
+The Preferences tab is the home for display and editor behaviour settings that should follow you across devices.
+
+### Language Preferences
+
+Three language settings shape your Speakr experience. The interface language dropdown immediately transforms all menus, buttons, and messages to your chosen language; the transcription language field sets a default ISO 639-1 code that the recognition service uses to optimise accuracy when auto-detect is too slow or ambiguous; and the preferred output language controls the language of titles, summaries, and chat responses regardless of the source audio's language. Leaving the transcription language on **Auto-detect** is the right default for multilingual content.
+
+These settings used to live on the Account Information tab. They moved here so all preferences that affect your day-to-day Speakr experience live in one place.
+
+### Transcript Display
+
+**Show timestamps in simple view.** When enabled, a compact `mm:ss` (or `h:mm:ss` for long recordings) timestamp appears next to each speaker label in the simple transcript view, making it easier to navigate long meetings. The bubble view is unaffected. Off by default to keep the existing aesthetic for users who prefer a clean read.
+
+### Transcript Editor
+
+**Auto-save edits in the transcript editor.** When enabled, edits made in the transcript editor are saved automatically a couple of seconds after you stop typing, with a small `Saved` indicator to confirm. When disabled (the default), saves are explicit via the Save buttons or the `Ctrl+S` keyboard shortcut. Auto-save is useful for long editing sessions where the risk of losing work outweighs the predictability of explicit writes.
 
 ## Shared Transcripts Tab
 

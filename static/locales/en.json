@@ -112,6 +112,7 @@
     "customPrompts": "Custom Prompts",
     "folderManagement": "Folder Management",
     "namingTemplates": "Naming",
+    "preferences": "Preferences",
     "promptOptions": "Prompt Options",
     "sharedTranscripts": "Shared Transcripts",
     "speakersManagement": "Speakers Management",
@@ -1147,6 +1148,15 @@
     "placeholder": "Add your notes here...",
     "saveNotes": "Save Notes",
     "title": "Notes"
+  },
+  "preferences": {
+    "description": "Display and editor behaviour preferences. These settings are saved to your account and apply across devices.",
+    "editorAutosave": "Auto-save edits in the transcript editor",
+    "editorAutosaveHelp": "When enabled, edits in the transcript editor are saved automatically a couple of seconds after you stop typing. When disabled (default), you save explicitly via the Save buttons or Ctrl+S.",
+    "showTimestampsSimpleView": "Show timestamps in simple view",
+    "showTimestampsSimpleViewHelp": "Display a compact mm:ss timestamp next to each speaker label in the simple transcript view. The bubble view is unaffected.",
+    "transcriptDisplay": "Transcript display",
+    "transcriptEditor": "Transcript editor"
   },
   "pwa": {
     "installApp": "Install App",
