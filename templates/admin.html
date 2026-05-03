@@ -806,15 +806,6 @@
                                 class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
                                 :placeholder="t('form.summaryPromptPlaceholder')">
                             </textarea>
-                            <!-- Warning when the admin default contains {{...}} placeholders.
-                                 The upload form only surfaces variables from selected tags
-                                 and folders, not from the admin default, so users would not
-                                 know to fill them and the placeholders would silently
-                                 substitute to empty strings on every fresh upload. -->
-                            <div v-if="adminDefaultPromptHasVariables" class="mt-2 flex items-start gap-2 p-2.5 bg-[var(--bg-warning-light)] border border-[var(--border-warning)] rounded-md text-xs text-[var(--text-warning-strong)]">
-                                <i class="fas fa-exclamation-triangle mt-0.5"></i>
-                                <span>This prompt contains <code>{{...}}</code> placeholders. The upload form does not surface variables from the admin default, so users will not be prompted to fill them and the placeholders will substitute to empty strings on uploads that fall through to this prompt. Move templated content into a tag or folder custom prompt so it is filled at upload time.</span>
-                            </div>
                         </div>
                         
                         <div class="flex justify-between items-center">
@@ -2125,12 +2116,6 @@ Summarization Instructions:
                 const promptSaveMessage = ref('');
                 const promptSaveError = ref(false);
                 const showFullPromptStructure = ref(false);
-                // True when the admin default contains {{...}} placeholders.
-                // Drives the inline warning under the textarea.
-                const adminDefaultPromptHasVariables = computed(() => {
-                    const v = defaultSummaryPrompt.value;
-                    return typeof v === 'string' && /\{\{\s*[A-Za-z_][A-Za-z0-9_]*\s*\}\}/.test(v);
-                });
                 const originalDefaultPrompt = `Generate a comprehensive summary that includes the following sections:
 - **Key Issues Discussed**: A bulleted list of the main topics
 - **Key Decisions Made**: A bulleted list of any decisions reached
@@ -3574,7 +3559,6 @@ Summarization Instructions:
 
                     // Default Prompts state
                     defaultSummaryPrompt,
-                    adminDefaultPromptHasVariables,
                     isSavingPrompt,
                     promptSaveMessage,
                     promptSaveError,

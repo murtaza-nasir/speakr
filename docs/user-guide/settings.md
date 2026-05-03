@@ -221,7 +221,9 @@ Tag and folder custom prompts may contain `{{name}}` placeholders that are fille
 
 **Editing values after upload.** Stored variable values are not yet editable from the recording detail or reprocess modal. To change a value, re-upload the recording or wait for that capability in a future release.
 
-**Where variables are surfaced.** The upload form scans the custom prompts on every selected tag and on the chosen folder, and renders an input for each `{{name}}` it finds. Variables in the user's personal default summary prompt and in the admin's default summary prompt are technically substituted at summarisation time but are not surfaced on the upload form: the form does not know which fallback prompt would win the priority chain. Account Settings warns when these prompts contain placeholders, recommending that templated content live on a tag or folder instead. The Tag Management form also warns when a tag is configured as a watch-folder (auto-process) tag and its prompt contains placeholders, since drop-folder ingest has no UI for users to fill values.
+**Where variables are surfaced.** The upload form mirrors the same priority chain that the summarisation task uses to pick a prompt. The first non-empty layer wins and its variables become inputs on the form: selected tags first, then the selected folder, then your personal summary prompt, then the site default set by the admin. Lower layers are not scanned because their prompt would not run.
+
+**Drop-folder ingest is the exception.** Recordings ingested through the auto-process watch directory bypass the upload form entirely, so any tag prompt with placeholders attached to such a recording silently substitutes to empty strings. Tag Management surfaces a warning when a tag is configured as a watch-folder tag and its custom prompt contains `{{...}}` placeholders. Either keep watch-folder tags variable-free, or reprocess after upload to fill the values.
 
 ### ASR Defaults
 

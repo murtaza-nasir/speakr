@@ -389,6 +389,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Advanced Options for ASR
             const showAdvancedOptions = ref(false);
             const userTranscriptionLanguage = ref('');  // User's default from account settings
+            // Personal and site-default summary prompts. Used by the upload
+            // form to surface `{{variable}}` placeholders that would otherwise
+            // substitute to empty strings.
+            const userSummaryPrompt = ref('');
+            const adminDefaultSummaryPrompt = ref('');
             const uploadLanguage = ref('');
             const uploadMinSpeakers = ref('');
             const uploadMaxSpeakers = ref('');
@@ -656,22 +661,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 };
 
-                // Tags: scan custom_prompt of every selected tag.
+                // Mirror the task-side priority chain so the inputs shown match
+                // whichever prompt would actually be used at summarisation time:
+                //   tags (stack, highest priority) -> folder -> user default -> admin default
+                // The first non-empty layer wins; lower-priority layers are not
+                // scanned because their prompt would not run.
+
+                let anyTagHasPrompt = false;
                 if (Array.isArray(selectedTagIds.value) && Array.isArray(availableTags.value)) {
                     for (const id of selectedTagIds.value) {
                         const tag = availableTags.value.find(t => t.id === id);
                         if (tag && tag.custom_prompt) {
                             addVars(tag.custom_prompt, tag.name, 'tag');
+                            anyTagHasPrompt = true;
                         }
                     }
                 }
 
-                // Folder: scan custom_prompt of the selected folder.
-                if (selectedFolderId.value && Array.isArray(availableFolders.value)) {
+                let folderHasPrompt = false;
+                if (!anyTagHasPrompt && selectedFolderId.value && Array.isArray(availableFolders.value)) {
                     const folder = availableFolders.value.find(f => f.id === selectedFolderId.value);
                     if (folder && folder.custom_prompt) {
                         addVars(folder.custom_prompt, folder.name, 'folder');
+                        folderHasPrompt = true;
                     }
+                }
+
+                let userPromptHasContent = false;
+                if (!anyTagHasPrompt && !folderHasPrompt && userSummaryPrompt.value) {
+                    addVars(userSummaryPrompt.value, 'Your default prompt', 'user');
+                    userPromptHasContent = true;
+                }
+
+                if (!anyTagHasPrompt && !folderHasPrompt && !userPromptHasContent && adminDefaultSummaryPrompt.value) {
+                    addVars(adminDefaultSummaryPrompt.value, 'Site default prompt', 'admin');
                 }
 
                 return Array.from(acc.values());
@@ -2419,6 +2442,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             userTranscriptionLanguage.value = config.user_transcription_language;
                             uploadLanguage.value = config.user_transcription_language;
                         }
+
+                        // Capture the user's personal summary prompt and the
+                        // site-wide admin default so the upload form can scan
+                        // them for `{{variable}}` placeholders when no tag /
+                        // folder prompt is active.
+                        userSummaryPrompt.value = config.user_summary_prompt || '';
+                        adminDefaultSummaryPrompt.value = config.admin_default_summary_prompt || '';
 
                         // Restore saved folder selection from localStorage
                         if (foldersEnabled.value) {

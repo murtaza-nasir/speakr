@@ -345,7 +345,12 @@
                             <span class="ml-1 text-[10px] text-[var(--text-muted)] font-normal">
                                 <span v-for="(src, i) in variable.sources" :key="i">
                                     <span v-if="i > 0">, </span>
-                                    <i :class="src.type === 'folder' ? 'fas fa-folder' : 'fas fa-tag'" class="mr-0.5"></i>${ src.name }
+                                    <i :class="{
+                                        'fas fa-folder': src.type === 'folder',
+                                        'fas fa-tag': src.type === 'tag',
+                                        'fas fa-user': src.type === 'user',
+                                        'fas fa-cog': src.type === 'admin'
+                                    }" class="mr-0.5"></i>${ src.name }
                                 </span>
                             </span>
                         </label>

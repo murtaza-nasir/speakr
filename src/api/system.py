@@ -264,12 +264,21 @@ def get_config():
 
         # Get user's default transcription language if authenticated
         user_transcription_language = ''
+        user_summary_prompt = ''
         try:
             from flask_login import current_user
-            if current_user and current_user.is_authenticated and current_user.transcription_language:
-                user_transcription_language = current_user.transcription_language
+            if current_user and current_user.is_authenticated:
+                if current_user.transcription_language:
+                    user_transcription_language = current_user.transcription_language
+                if current_user.summary_prompt:
+                    user_summary_prompt = current_user.summary_prompt
         except:
             pass
+
+        # Admin-defined default summary prompt. Used by the upload form to
+        # surface `{{name}}` placeholders that would otherwise substitute to
+        # empty strings on uploads that fall through to this prompt.
+        admin_default_summary_prompt = SystemSetting.get_setting('admin_default_summary_prompt', '') or ''
 
         return jsonify({
             'max_file_size_mb': max_file_size_mb,
@@ -293,6 +302,8 @@ def get_config():
             'video_retention': VIDEO_RETENTION,
             'max_concurrent_uploads': MAX_CONCURRENT_UPLOADS,
             'user_transcription_language': user_transcription_language,
+            'user_summary_prompt': user_summary_prompt,
+            'admin_default_summary_prompt': admin_default_summary_prompt,
             'transcription_model_options': _get_transcription_model_options(),
             **chunking_info
         })

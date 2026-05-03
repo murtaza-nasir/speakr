@@ -702,14 +702,6 @@
                                     placeholder="Describe how you want your summaries structured. Leave blank to use the admin's default prompt."
                                     data-i18n-placeholder="customPrompts.promptPlaceholder"
                                     class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">{{ current_user.summary_prompt or '' }}</textarea>
-                                <!-- Warning when this prompt contains {{...}} placeholders. The upload form scans
-                                     selected tags and folders for variables, but not the user's personal default
-                                     prompt, so placeholders here would silently substitute to empty strings on
-                                     uploads that fall through to this prompt. -->
-                                <div id="userSummaryPromptVariableWarning" class="hidden mt-2 flex items-start gap-2 p-2.5 bg-[var(--bg-warning-light)] border border-[var(--border-warning)] rounded-md text-xs text-[var(--text-warning-strong)]">
-                                    <i class="fas fa-exclamation-triangle mt-0.5"></i>
-                                    <span>This prompt contains <code>{{...}}</code> placeholders. The upload form does not surface variables from the personal default prompt, so values will substitute to empty strings on any upload that falls through to this prompt. Move the placeholders into a tag or folder custom prompt to have them filled in at upload time.</span>
-                                </div>
                                 <p class="text-xs text-[var(--text-light)] mt-2">
                                     <span data-i18n="customPrompts.promptDescription">This prompt will be used to generate summaries for your transcriptions. It overrides the admin's default prompt.</span>
                                 </p>
@@ -5302,28 +5294,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             warningEl.classList.toggle('hidden', !shouldShow);
         }
 
-        // User-level summary_prompt: warn when it contains {{...}} placeholders.
-        // The upload form does not surface variables from the personal default
-        // prompt, so they would silently substitute to empty strings.
-        function refreshUserSummaryPromptVariableWarning() {
-            const warningEl = document.getElementById('userSummaryPromptVariableWarning');
-            const promptEl = document.getElementById('summary_prompt_custom');
-            if (!warningEl || !promptEl) return;
-            warningEl.classList.toggle('hidden', !promptHasVariables(promptEl.value));
-        }
-
         document.addEventListener('input', (e) => {
-            if (!e.target) return;
-            if (e.target.id === 'tagCustomPrompt') refreshTagAutoProcessVariableWarning();
-            if (e.target.id === 'summary_prompt_custom') refreshUserSummaryPromptVariableWarning();
+            if (e.target && e.target.id === 'tagCustomPrompt') {
+                refreshTagAutoProcessVariableWarning();
+            }
         });
         document.addEventListener('change', (e) => {
             if (e.target && e.target.id === 'tagAutoProcess') {
                 refreshTagAutoProcessVariableWarning();
             }
         });
-        // Initial render: account page may load with a saved value already in place.
-        refreshUserSummaryPromptVariableWarning();
 
         // Load folders from API
         async function loadFolders() {
