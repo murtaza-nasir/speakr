@@ -96,6 +96,7 @@ class I18n {
             { code: 'fr', name: 'French', nativeName: 'Français' },
             { code: 'zh', name: 'Chinese', nativeName: '中文' },
             { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+            { code: 'pt-BR', name: 'Portuguese (Brazil)', nativeName: 'Português (Brasil)' },
         ];
     }
 

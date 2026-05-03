@@ -72,7 +72,8 @@
                     'fr': 'Français (French)',
                     'zh': '中文 (Chinese)',
                     'de': 'Deutsch (German)',
-                    'ru': 'Русский (Russian)'
+                    'ru': 'Русский (Russian)',
+                    'pt-BR': 'Português (Brasil)'
                 };
                 
                 Array.from(langSelect.options).forEach(option => {
@@ -847,6 +848,7 @@
                                             <option value="es" {% if current_user.ui_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
                                             <option value="fr" {% if current_user.ui_language == 'fr' %}selected{% endif %}>Français (French)</option>
                                             <option value="ru" {% if current_user.ui_language == 'ru' %}selected{% endif %}>Русский (Russian)</option>
+                                            <option value="pt-BR" {% if current_user.ui_language == 'pt-BR' %}selected{% endif %}>Português (Brasil)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
                                     </div>
@@ -874,6 +876,7 @@
                                             <option value="tr" data-i18n="languages.tr" {% if current_user.transcription_language == 'tr' %}selected{% endif %}>Turkish</option>
                                             <option value="id" data-i18n="languages.id" {% if current_user.transcription_language == 'id' %}selected{% endif %}>Indonesian</option>
                                             <option value="sv" data-i18n="languages.sv" {% if current_user.transcription_language == 'sv' %}selected{% endif %}>Swedish</option>
+                                            <option value="pt-BR" data-i18n="languages.pt-BR" {% if current_user.transcription_language == 'pt-BR' %}selected{% endif %}>Portuguese (Brazilian)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Select auto-detect to let the transcription service determine the language.</p>
                                     </div>
@@ -901,6 +904,7 @@
                                             <option value="Turkish" data-i18n="languages.tr" {% if current_user.output_language == 'Turkish' %}selected{% endif %}>Turkish</option>
                                             <option value="Indonesian" data-i18n="languages.id" {% if current_user.output_language == 'Indonesian' %}selected{% endif %}>Indonesian</option>
                                             <option value="Swedish" data-i18n="languages.sv" {% if current_user.output_language == 'Swedish' %}selected{% endif %}>Swedish</option>
+                                            <option value="Portuguese (Brazilian)" data-i18n="languages.pt-BR" {% if current_user.output_language == 'Portuguese (Brazilian)' %}selected{% endif %}>Portuguese (Brazilian)</option>
                                         </select>
                                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave on Default to follow the model's own behaviour.</p>
                                     </div>
