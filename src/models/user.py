@@ -62,6 +62,9 @@ class User(db.Model, UserMixin):
     transcription_hotwords = db.Column(db.Text, nullable=True)
     transcription_initial_prompt = db.Column(db.Text, nullable=True)
 
+    # UI/display preferences
+    show_timestamps_simple_view = db.Column(db.Boolean, default=False)
+
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
 

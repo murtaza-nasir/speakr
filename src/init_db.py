@@ -290,6 +290,10 @@ def initialize_database(app):
             app.logger.info("Added transcription_hotwords column to user table")
         if add_column_if_not_exists(engine, 'user', 'transcription_initial_prompt', 'TEXT'):
             app.logger.info("Added transcription_initial_prompt column to user table")
+
+        # UI/display preferences
+        if add_column_if_not_exists(engine, 'user', 'show_timestamps_simple_view', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added show_timestamps_simple_view column to user table")
         if add_column_if_not_exists(engine, 'tag', 'default_hotwords', 'TEXT'):
             app.logger.info("Added default_hotwords column to tag table")
         if add_column_if_not_exists(engine, 'tag', 'default_initial_prompt', 'TEXT'):
