@@ -110,6 +110,7 @@ OPENAPI_SPEC = {
                     "is_inbox": {"type": "boolean"},
                     "is_highlighted": {"type": "boolean"},
                     "deletion_exempt": {"type": "boolean", "description": "If true, recording is exempt from auto-deletion"},
+                    "prompt_variables": {"type": "object", "description": "Per-recording {{name}} substitutions used when summarising"},
                     "folder_id": {"type": "integer", "nullable": True},
                     "folder": {"type": "object", "nullable": True, "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
                     "events": {"type": "array", "description": "Calendar events extracted from the recording (detail endpoint only)", "items": {"type": "object"}},
@@ -314,6 +315,7 @@ OPENAPI_SPEC = {
                                     "hotwords": {"type": "string"},
                                     "initial_prompt": {"type": "string"},
                                     "transcription_model": {"type": "string"},
+                                    "prompt_variables": {"type": "string", "description": "JSON object of {variable_name: value} substituted into {{name}} placeholders in the summary prompt"},
                                     "folder_id": {"type": "integer"},
                                     "tag_id": {"type": "integer"},
                                     "tag_ids[0]": {"type": "integer"},
@@ -2578,6 +2580,9 @@ def upload_recording():
       - hotwords (optional)
       - initial_prompt (optional)
       - transcription_model (optional, validated against admin-curated list)
+      - prompt_variables (optional, JSON object of `{variable_name: value}`
+        substituted into `{{name}}` placeholders in the resolved summary
+        prompt at summarisation time)
       - folder_id (optional)
       - tag_ids[0], tag_ids[1], ... (optional)
       - tag_id (optional, legacy)

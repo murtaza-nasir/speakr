@@ -207,6 +207,10 @@ Creating a new tag happens through the prominent "Create Tag" button. The system
 
 Tag prompts stack intelligently when multiple tags are applied. If you tag a recording with both "BSB Meetings" and "Student Meetings," both prompts combine, creating a comprehensive summary that addresses all specified requirements. This powerful stacking eliminates the need for complex single prompts trying to anticipate every combination.
 
+### Prompt Variables
+
+Tag and folder custom prompts may contain `{{name}}` placeholders that are filled in per recording at upload time. A "Council Meetings" tag whose prompt reads `Generate minutes for this council meeting. Agenda: {{agenda}}. Attendees: {{attendees}}.` will cause Speakr's upload form to display two input fields ("Agenda", "Attendees") whenever that tag is selected. The values are stored on the recording and substituted into the prompt at summarisation time, including on reprocessing. Variable names follow identifier rules (letters, digits, and underscores; must start with a letter or underscore). Labels are derived from the name automatically (`meeting_date` becomes "Meeting date").
+
 ### ASR Defaults
 
 The ASR defaults feature is particularly valuable for consistent meeting types. Setting "Max 10" for a "Court Action" tag ensures the transcription service looks for up to 10 distinct speakers, improving accuracy for multi-party proceedings. A "One-on-One" tag might default to exactly 2 speakers, while a "Webinar" tag could specify 1-3 speakers.
