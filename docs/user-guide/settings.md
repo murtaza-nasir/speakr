@@ -221,6 +221,8 @@ Tag and folder custom prompts may contain `{{name}}` placeholders that are fille
 
 **Editing values after upload.** Stored variable values are not yet editable from the recording detail or reprocess modal. To change a value, re-upload the recording or wait for that capability in a future release.
 
+**Where variables are surfaced.** The upload form scans the custom prompts on every selected tag and on the chosen folder, and renders an input for each `{{name}}` it finds. Variables in the user's personal default summary prompt and in the admin's default summary prompt are technically substituted at summarisation time but are not surfaced on the upload form: the form does not know which fallback prompt would win the priority chain. Account Settings warns when these prompts contain placeholders, recommending that templated content live on a tag or folder instead. The Tag Management form also warns when a tag is configured as a watch-folder (auto-process) tag and its prompt contains placeholders, since drop-folder ingest has no UI for users to fill values.
+
 ### ASR Defaults
 
 The ASR defaults feature is particularly valuable for consistent meeting types. Setting "Max 10" for a "Court Action" tag ensures the transcription service looks for up to 10 distinct speakers, improving accuracy for multi-party proceedings. A "One-on-One" tag might default to exactly 2 speakers, while a "Webinar" tag could specify 1-3 speakers.
