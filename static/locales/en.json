@@ -741,6 +741,8 @@
     "enterNotesMarkdown": "Enter notes in Markdown format...",
     "enterSummaryMarkdown": "Enter summary in Markdown format...",
     "folder": "Folder",
+    "defaultTranscriptionModel": "Default transcription model",
+    "defaultTranscriptionModelHelp": "Override which transcription model is used for recordings with this tag or folder.",
     "hotwords": "Hotwords",
     "hotwordsHelp": "Comma-separated words to improve recognition of domain-specific terms",
     "hotwordsPlaceholder": "e.g., Speakr, CTranslate2, PyAnnote",

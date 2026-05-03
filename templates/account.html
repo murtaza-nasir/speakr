@@ -4740,7 +4740,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     document.getElementById('tagInitialPrompt').value = tag.default_initial_prompt || '';
                 }
                 if (document.getElementById('tagTranscriptionModel')) {
-                    document.getElementById('tagTranscriptionModel').value = tag.default_transcription_model || '';
+                    const savedTagModel = tag.default_transcription_model || '';
+                    document.getElementById('tagTranscriptionModel').value = savedTagModel;
+                    if (typeof window.validateTranscriptionModelSelect === 'function') {
+                        window.validateTranscriptionModelSelect('tagTranscriptionModel', savedTagModel);
+                    }
                 }
 
                 // Populate naming template
@@ -5100,6 +5104,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     // (issue #266).
                     const modelOptions = Array.isArray(config.transcription_model_options)
                         ? config.transcription_model_options : [];
+                    window._transcriptionModelOptions = modelOptions;
                     if (modelOptions.length > 0) {
                         const populate = (selectId, sectionId) => {
                             const select = document.getElementById(selectId);
@@ -5112,6 +5117,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 select.appendChild(o);
                             }
                             section.classList.remove('hidden');
+                            select.addEventListener('change', () => {
+                                window.validateTranscriptionModelSelect(selectId);
+                            });
                         };
                         populate('tagTranscriptionModel', 'tagTranscriptionModelSection');
                         populate('folderTranscriptionModel', 'folderTranscriptionModelSection');
@@ -5122,6 +5130,60 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
         }
         checkFeaturesEnabled();
+
+        /**
+         * If a tag or folder still has a `default_transcription_model` value
+         * that has been removed from the admin-curated visible list, highlight
+         * the dropdown and surface a compact warning. The user can pick a new
+         * model or leave blank to fall back to the global default.
+         *
+         * `expectedValue` is the value the caller tried to set on the select.
+         * Pass it from editTag/editFolder because HTML <select> silently
+         * ignores a value that has no matching <option>, so reading
+         * `select.value` after the assignment would not reveal the staleness.
+         * Pass undefined or omit to validate against the current select.value
+         * (e.g. from the change listener).
+         */
+        window.validateTranscriptionModelSelect = function (selectId, expectedValue) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const validValues = new Set();
+            const visibleOptions = window._transcriptionModelOptions || [];
+            for (const opt of visibleOptions) validValues.add(opt.value);
+            validValues.add('');  // blank means "use admin/global default"
+
+            const warningId = selectId + 'StaleWarning';
+            let warning = document.getElementById(warningId);
+            const errorClasses = ['ring-1', 'ring-[var(--text-danger)]'];
+            const errorBorder = 'border-[var(--text-danger)]';
+
+            // Drop any previous synthetic option before recomputing.
+            const previousStale = select.querySelector('option[data-stale="1"]');
+            if (previousStale) previousStale.remove();
+
+            const target = (expectedValue !== undefined ? expectedValue : (select.value || '')).trim();
+            const isStale = target !== '' && !validValues.has(target);
+
+            if (isStale) {
+                const staleOption = document.createElement('option');
+                staleOption.value = target;
+                staleOption.textContent = target + ' (no longer available)';
+                staleOption.dataset.stale = '1';
+                select.appendChild(staleOption);
+                select.value = target;
+                select.classList.add(errorBorder, ...errorClasses);
+                if (!warning) {
+                    warning = document.createElement('p');
+                    warning.id = warningId;
+                    warning.className = 'text-xs text-[var(--text-danger)] mt-1';
+                    select.parentNode.insertBefore(warning, select.nextSibling);
+                }
+                warning.textContent = 'The previously selected model "' + target + '" is no longer available. Choose a different model or leave blank to use the default.';
+            } else {
+                select.classList.remove(errorBorder, ...errorClasses);
+                if (warning) warning.remove();
+            }
+        };
 
         // Load folders from API
         async function loadFolders() {
@@ -5405,7 +5467,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 var ipField = document.getElementById('folderInitialPrompt');
                 if (ipField) ipField.value = folder.default_initial_prompt || '';
                 var modelField = document.getElementById('folderTranscriptionModel');
-                if (modelField) modelField.value = folder.default_transcription_model || '';
+                if (modelField) {
+                    var savedFolderModel = folder.default_transcription_model || '';
+                    modelField.value = savedFolderModel;
+                    if (typeof window.validateTranscriptionModelSelect === 'function') {
+                        window.validateTranscriptionModelSelect('folderTranscriptionModel', savedFolderModel);
+                    }
+                }
 
                 // Group selection
                 const folderGroupId = document.getElementById('folderGroupId');
