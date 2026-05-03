@@ -270,7 +270,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const searchDebounceTimer = ref(null);
 
             // --- Enhanced Search & Organization State ---
-            const sortBy = ref('created_at');
+            // Restore the sort choice from a previous session so users do not
+            // have to switch to Meeting date every time they open the app
+            // (discussion #263). Validate against the known set so a stale or
+            // tampered localStorage value cannot put us in an unknown state.
+            const _savedSortBy = localStorage.getItem('recordingsSortBy');
+            const sortBy = ref((_savedSortBy === 'meeting_date' || _savedSortBy === 'created_at')
+                ? _savedSortBy
+                : 'created_at');
             const selectedTagFilter = ref(null);
 
             // --- UI State ---
@@ -2219,7 +2226,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
-            watch(sortBy, () => {
+            watch(sortBy, (newValue) => {
+                localStorage.setItem('recordingsSortBy', newValue);
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
