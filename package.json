@@ -1,0 +1,14 @@
+{
+  "name": "speakr-frontend-tests",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend unit tests for Speakr. Pure-helper modules in static/js/modules/utils are tested with Vitest. Vue components are still rendered server-side by Flask and Vue is loaded from CDN at runtime, so this package.json exists only to host dev-time test tooling.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

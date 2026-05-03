@@ -21,6 +21,7 @@ import { useFolders } from './modules/composables/folders.js';
 // Import utilities
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
+import { buildVariableList } from './modules/utils/prompt-variables.js';
 
 // Number of speaker colors available in CSS (must match styles.css)
 const SPEAKER_COLOR_COUNT = 16;
@@ -633,76 +634,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isMobileScreen = computed(() => windowWidth.value < 1024);
 
             // Aggregate `{{name}}` variables across the currently selected
-            // tags and folder. Returns an array of unique entries in the
-            // order they were first seen, each with the inferred label and
-            // a list of contributing sources for the UI to show next to the
-            // input.
-            const _PROMPT_VAR_RE = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
-            const _extractVariableNames = (text) => {
-                if (!text || typeof text !== 'string') return [];
-                const names = [];
-                for (const match of text.matchAll(_PROMPT_VAR_RE)) {
-                    if (!names.includes(match[1])) names.push(match[1]);
-                }
-                return names;
-            };
-            const _inferVarLabel = (name) => {
-                if (!name) return '';
-                const cleaned = name.replace(/_/g, ' ').trim();
-                if (!cleaned) return '';
-                return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-            };
+            // tags / folder / user / admin prompt chain. The pure helpers
+            // live in modules/utils/prompt-variables.js so they can be unit
+            // tested with Vitest.
             const selectedPromptVariables = computed(() => {
-                const acc = new Map();  // name -> { label, sources: [{type, name}] }
-                const addVars = (text, sourceLabel, sourceType) => {
-                    for (const name of _extractVariableNames(text)) {
-                        if (!acc.has(name)) {
-                            acc.set(name, { name, label: _inferVarLabel(name), sources: [] });
-                        }
-                        const entry = acc.get(name);
-                        if (!entry.sources.find(s => s.name === sourceLabel && s.type === sourceType)) {
-                            entry.sources.push({ type: sourceType, name: sourceLabel });
-                        }
-                    }
-                };
-
-                // Mirror the task-side priority chain so the inputs shown match
-                // whichever prompt would actually be used at summarisation time:
-                //   tags (stack, highest priority) -> folder -> user default -> admin default
-                // The first non-empty layer wins; lower-priority layers are not
-                // scanned because their prompt would not run.
-
-                let anyTagHasPrompt = false;
-                if (Array.isArray(selectedTagIds.value) && Array.isArray(availableTags.value)) {
-                    for (const id of selectedTagIds.value) {
-                        const tag = availableTags.value.find(t => t.id === id);
-                        if (tag && tag.custom_prompt) {
-                            addVars(tag.custom_prompt, tag.name, 'tag');
-                            anyTagHasPrompt = true;
-                        }
-                    }
-                }
-
-                let folderHasPrompt = false;
-                if (!anyTagHasPrompt && selectedFolderId.value && Array.isArray(availableFolders.value)) {
-                    const folder = availableFolders.value.find(f => f.id === selectedFolderId.value);
-                    if (folder && folder.custom_prompt) {
-                        addVars(folder.custom_prompt, folder.name, 'folder');
-                        folderHasPrompt = true;
-                    }
-                }
-
-                let userPromptHasContent = false;
-                if (!anyTagHasPrompt && !folderHasPrompt && userSummaryPrompt.value) {
-                    addVars(userSummaryPrompt.value, 'Your default prompt', 'user');
-                    userPromptHasContent = true;
-                }
-
-                if (!anyTagHasPrompt && !folderHasPrompt && !userPromptHasContent && adminDefaultSummaryPrompt.value) {
-                    addVars(adminDefaultSummaryPrompt.value, 'Site default prompt', 'admin');
-                }
-
-                return Array.from(acc.values());
+                const tagsWithPrompts = (Array.isArray(selectedTagIds.value) && Array.isArray(availableTags.value))
+                    ? selectedTagIds.value.map(id => availableTags.value.find(t => t.id === id)).filter(Boolean)
+                    : [];
+                const folder = (selectedFolderId.value && Array.isArray(availableFolders.value))
+                    ? (availableFolders.value.find(f => f.id === selectedFolderId.value) || null)
+                    : null;
+                return buildVariableList({
+                    tagsWithPrompts,
+                    folder,
+                    userPrompt: userSummaryPrompt.value,
+                    adminPrompt: adminDefaultSummaryPrompt.value,
+                });
             });
 
             // Same shape as selectedPromptVariables but for a recording that
@@ -712,43 +659,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const reprocessAvailableVariables = computed(() => {
                 if (!selectedRecording.value) return [];
                 const recording = selectedRecording.value;
-                const acc = new Map();
-                const addVars = (text, sourceLabel, sourceType) => {
-                    for (const name of _extractVariableNames(text)) {
-                        if (!acc.has(name)) {
-                            acc.set(name, { name, label: _inferVarLabel(name), sources: [] });
-                        }
-                        const entry = acc.get(name);
-                        if (!entry.sources.find(s => s.name === sourceLabel && s.type === sourceType)) {
-                            entry.sources.push({ type: sourceType, name: sourceLabel });
-                        }
-                    }
-                };
-
-                let anyTagHasPrompt = false;
-                if (Array.isArray(recording.tags)) {
-                    for (const tag of recording.tags) {
-                        if (tag && tag.custom_prompt) {
-                            addVars(tag.custom_prompt, tag.name, 'tag');
-                            anyTagHasPrompt = true;
-                        }
-                    }
-                }
-                let folderHasPrompt = false;
-                if (!anyTagHasPrompt && recording.folder && recording.folder.custom_prompt) {
-                    addVars(recording.folder.custom_prompt, recording.folder.name, 'folder');
-                    folderHasPrompt = true;
-                }
-                let userPromptHasContent = false;
-                if (!anyTagHasPrompt && !folderHasPrompt && userSummaryPrompt.value) {
-                    addVars(userSummaryPrompt.value, 'Your default prompt', 'user');
-                    userPromptHasContent = true;
-                }
-                if (!anyTagHasPrompt && !folderHasPrompt && !userPromptHasContent && adminDefaultSummaryPrompt.value) {
-                    addVars(adminDefaultSummaryPrompt.value, 'Site default prompt', 'admin');
-                }
-
-                return Array.from(acc.values());
+                return buildVariableList({
+                    tagsWithPrompts: Array.isArray(recording.tags) ? recording.tags : [],
+                    folder: recording.folder || null,
+                    userPrompt: userSummaryPrompt.value,
+                    adminPrompt: adminDefaultSummaryPrompt.value,
+                });
             });
             const isMobileDevice = computed(() => {
                 return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
