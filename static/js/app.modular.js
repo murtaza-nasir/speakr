@@ -639,6 +639,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ]
             };
 
+            // Compact mm:ss / h:mm:ss formatter for transcript timestamps. Returns
+            // an empty string when the input is missing so templates can render
+            // "" without a guard. Declared before `state` because state references it.
+            const formatTimestamp = (seconds) => {
+                if (seconds == null || isNaN(seconds)) return '';
+                const total = Math.max(0, Math.floor(seconds));
+                const h = Math.floor(total / 3600);
+                const m = Math.floor((total % 3600) / 60);
+                const s = total % 60;
+                const pad = (n) => n < 10 ? '0' + n : '' + n;
+                return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+            };
+
             // =========================================================================
             // COLLECT ALL STATE INTO SINGLE OBJECT FOR COMPOSABLES
             // =========================================================================
@@ -1029,19 +1042,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             // COMPUTED PROPERTIES (define before composables that need them)
             // =========================================================================
-
-            // Compact mm:ss / h:mm:ss formatter for transcript timestamps. Returns
-            // an empty string when the input is missing so templates can render
-            // "" without a guard.
-            const formatTimestamp = (seconds) => {
-                if (seconds == null || isNaN(seconds)) return '';
-                const total = Math.max(0, Math.floor(seconds));
-                const h = Math.floor(total / 3600);
-                const m = Math.floor((total % 3600) / 60);
-                const s = total % 60;
-                const pad = (n) => n < 10 ? '0' + n : '' + n;
-                return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-            };
 
             const processedTranscription = computed(() => {
                 if (!selectedRecording.value?.transcription) {
