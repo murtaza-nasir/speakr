@@ -117,7 +117,8 @@
     "speakersManagement": "Sprecher-Verwaltung",
     "tagManagement": "Tag-Verwaltung",
     "templates": "Vorlagen",
-    "transcriptTemplates": "Transkript-Vorlagen"
+    "transcriptTemplates": "Transkript-Vorlagen",
+    "preferences": "Einstellungen"
   },
   "admin": {
     "title": "Administration",
@@ -568,7 +569,8 @@
     "watchFolderGroupTagError": "Watch folders are not available for group tags",
     "watchFolderCreated": "Watch folder created",
     "watchFolderRemoved": "Watch folder removed",
-    "watchFolderError": "Could not create watch folder"
+    "watchFolderError": "Could not create watch folder",
+    "watchFolderVariableWarning": "Dieses Tag ist als Watch-Folder konfiguriert und der Prompt enthält Platzhalter-Variablen. Über das Auto-Process-Verzeichnis verarbeitete Aufnahmen haben keine Oberfläche, in der Benutzer diese Werte eingeben könnten, daher werden die Platzhalter beim ersten Zusammenfassungslauf durch leere Zeichenketten ersetzt. Entferne die Platzhalter oder fülle die Werte nach dem Hochladen über die erneute Verarbeitung aus."
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
@@ -774,7 +776,9 @@
     "transcriptionLanguage": "Transcription Language",
     "yourFullName": "Ihr vollständiger Name",
     "transcriptionModel": "Transkriptionsmodell",
-    "useResolvedDefault": "(Tag-/Ordner-/globalen Standard verwenden)"
+    "useResolvedDefault": "(Tag-/Ordner-/globalen Standard verwenden)",
+    "defaultTranscriptionModel": "Standard-Transkriptionsmodell",
+    "defaultTranscriptionModelHelp": "Überschreibt das Transkriptionsmodell für Aufnahmen mit diesem Tag oder Ordner."
   },
   "groups": {
     "addMembers": "Mitglieder hinzufügen...",
@@ -989,7 +993,16 @@
     "nl": "Niederländisch",
     "pt": "Portugiesisch",
     "ru": "Russisch",
-    "zh": "Chinesisch"
+    "zh": "Chinesisch",
+    "pl": "Polnisch",
+    "uk": "Ukrainisch",
+    "vi": "Vietnamesisch",
+    "th": "Thailändisch",
+    "tr": "Türkisch",
+    "id": "Indonesisch",
+    "sv": "Schwedisch",
+    "autoDetect": "Automatisch erkennen",
+    "defaultModelDecides": "Standard (Modell entscheidet)"
   },
   "manageSpeakersModal": {
     "created": "Erstellt",
@@ -1546,5 +1559,14 @@
     "userSupplied": "vom Benutzer beim Hochladen oder erneuten Verarbeiten angegeben",
     "userMessageHeading": "Benutzernachricht:",
     "liveUpdateNote": "Der Bereich Zusammenfassungsanweisungen aktualisiert sich, während du deinen Prompt oben bearbeitest. Platzhalter werden bei der Verarbeitung einer Aufnahme durch echte Werte ersetzt."
+  },
+  "preferences": {
+    "description": "Einstellungen zu Anzeige und Editor-Verhalten. Diese werden in deinem Konto gespeichert und gelten geräteübergreifend.",
+    "editorAutosave": "Automatisches Speichern im Transkript-Editor",
+    "editorAutosaveHelp": "Wenn aktiviert, werden Änderungen im Transkript-Editor wenige Sekunden nach Tippende automatisch gespeichert. Standardmäßig deaktiviert; speichern erfolgt explizit über die Speichern-Buttons oder Strg+S.",
+    "showTimestampsSimpleView": "Zeitstempel in der einfachen Ansicht anzeigen",
+    "showTimestampsSimpleViewHelp": "Zeigt einen kompakten Zeitstempel mm:ss neben jedem Sprechernamen in der einfachen Ansicht. Die Bubble-Ansicht ist nicht betroffen.",
+    "transcriptDisplay": "Transkriptanzeige",
+    "transcriptEditor": "Transkript-Editor"
   }
 }

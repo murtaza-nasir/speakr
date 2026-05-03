@@ -434,6 +434,9 @@ The DB-backed list (stored in the `system_setting` table) overrides `TRANSCRIPTI
 
 When a connector returns a richer model object (display name, description, supported languages), those fields are used to render the dropdown labels. Otherwise the model id is used as both id and label, the same as with `TRANSCRIPTION_MODEL_LABELS`.
 
+!!! note "Localising model labels"
+    Model identifiers are typically brand names (Whisper, GPT-4o, VibeVoice) and are not translated by Speakr's i18n system. If you want localised labels for users on a non-English UI, set `TRANSCRIPTION_MODEL_LABELS` to your translated names: the labels you provide are used verbatim in the dropdown regardless of UI language. The same applies to admin-managed lists curated from the dashboard.
+
 ## Configurable Embedding Model
 
 Speakr's Inquire mode (semantic search) uses [sentence-transformers](https://www.sbert.net/) to embed transcript chunks locally by default. The default model is `all-MiniLM-L6-v2` (384-dim vectors), which is fast, small, and sufficient for most use cases.

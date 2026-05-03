@@ -117,7 +117,8 @@
     "speakersManagement": "Gestion des Locuteurs",
     "tagManagement": "Gestion des Étiquettes",
     "templates": "Modèles",
-    "transcriptTemplates": "Modèles de Transcription"
+    "transcriptTemplates": "Modèles de Transcription",
+    "preferences": "Préférences"
   },
   "admin": {
     "title": "Administration",
@@ -568,7 +569,8 @@
     "watchFolderGroupTagError": "Watch folders are not available for group tags",
     "watchFolderCreated": "Watch folder created",
     "watchFolderRemoved": "Watch folder removed",
-    "watchFolderError": "Could not create watch folder"
+    "watchFolderError": "Could not create watch folder",
+    "watchFolderVariableWarning": "Ce tag est configuré comme dossier surveillé et l'invite contient des variables d'espace réservé. Les enregistrements traités via le répertoire d'auto-traitement n'ont pas d'interface permettant aux utilisateurs de saisir ces valeurs, donc les espaces réservés seront remplacés par des chaînes vides lors du premier résumé. Supprimez les espaces réservés ou renseignez les valeurs via le retraitement après téléversement."
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
@@ -774,7 +776,9 @@
     "transcriptionLanguage": "Transcription Language",
     "yourFullName": "Votre nom complet",
     "transcriptionModel": "Modèle de transcription",
-    "useResolvedDefault": "(utiliser la valeur par défaut tag/dossier/global)"
+    "useResolvedDefault": "(utiliser la valeur par défaut tag/dossier/global)",
+    "defaultTranscriptionModel": "Modèle de transcription par défaut",
+    "defaultTranscriptionModelHelp": "Remplace le modèle de transcription utilisé pour les enregistrements avec ce tag ou ce dossier."
   },
   "groups": {
     "addMembers": "Ajouter des membres...",
@@ -989,7 +993,16 @@
     "nl": "Néerlandais",
     "pt": "Portugais",
     "ru": "Russe",
-    "zh": "Chinois"
+    "zh": "Chinois",
+    "pl": "Polonais",
+    "uk": "Ukrainien",
+    "vi": "Vietnamien",
+    "th": "Thaï",
+    "tr": "Turc",
+    "id": "Indonésien",
+    "sv": "Suédois",
+    "autoDetect": "Détection automatique",
+    "defaultModelDecides": "Par défaut (le modèle décide)"
   },
   "manageSpeakersModal": {
     "created": "Créé",
@@ -1546,5 +1559,14 @@
     "userSupplied": "fourni par l'utilisateur lors du téléversement ou du retraitement",
     "userMessageHeading": "Message utilisateur :",
     "liveUpdateNote": "L'emplacement des instructions de résumé se met à jour pendant que vous modifiez votre invite personnalisée ci-dessus. Les espaces réservés sont remplacés par les valeurs réelles lors du traitement d'un enregistrement."
+  },
+  "preferences": {
+    "description": "Préférences d'affichage et de comportement de l'éditeur. Ces paramètres sont enregistrés sur votre compte et s'appliquent à tous les appareils.",
+    "editorAutosave": "Enregistrer automatiquement dans l'éditeur de transcription",
+    "editorAutosaveHelp": "Lorsque cette option est activée, les modifications dans l'éditeur de transcription sont enregistrées automatiquement quelques secondes après l'arrêt de la saisie. Désactivée par défaut, vous enregistrez explicitement via les boutons Enregistrer ou Ctrl+S.",
+    "showTimestampsSimpleView": "Afficher les horodatages dans la vue simple",
+    "showTimestampsSimpleViewHelp": "Affiche un horodatage compact mm:ss à côté de chaque libellé de locuteur dans la vue simple. La vue bulle n'est pas affectée.",
+    "transcriptDisplay": "Affichage de la transcription",
+    "transcriptEditor": "Éditeur de transcription"
   }
 }

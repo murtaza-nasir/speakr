@@ -569,7 +569,8 @@
     "watchFolderGroupTagError": "Watch folders are not available for group tags",
     "watchFolderCreated": "Watch folder created",
     "watchFolderRemoved": "Watch folder removed",
-    "watchFolderError": "Could not create watch folder"
+    "watchFolderError": "Could not create watch folder",
+    "watchFolderVariableWarning": "This tag is set up as a watch folder and the prompt contains placeholder variables. Recordings ingested through the auto-process directory have no UI for users to fill those values, so the placeholders will substitute to empty strings on the first summary run. Either remove the placeholders or fill the values via reprocess after upload."
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
@@ -992,7 +993,16 @@
     "nl": "Dutch",
     "pt": "Portuguese",
     "ru": "Russian",
-    "zh": "Chinese"
+    "zh": "Chinese",
+    "pl": "Polish",
+    "uk": "Ukrainian",
+    "vi": "Vietnamese",
+    "th": "Thai",
+    "tr": "Turkish",
+    "id": "Indonesian",
+    "sv": "Swedish",
+    "autoDetect": "Auto-detect",
+    "defaultModelDecides": "Default (model decides)"
   },
   "manageSpeakersModal": {
     "created": "Created",

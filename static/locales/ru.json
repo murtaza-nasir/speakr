@@ -117,7 +117,8 @@
     "speakersManagement": "Управление спикерами",
     "tagManagement": "Управление тегами",
     "templates": "Шаблоны",
-    "transcriptTemplates": "Шаблоны транскриптов"
+    "transcriptTemplates": "Шаблоны транскриптов",
+    "preferences": "Настройки"
   },
   "admin": {
     "title": "Администратор",
@@ -568,7 +569,8 @@
     "watchFolderGroupTagError": "Watch folders are not available for group tags",
     "watchFolderCreated": "Watch folder created",
     "watchFolderRemoved": "Watch folder removed",
-    "watchFolderError": "Could not create watch folder"
+    "watchFolderError": "Could not create watch folder",
+    "watchFolderVariableWarning": "Этот тег настроен как наблюдаемая папка, а подсказка содержит переменные-подстановки. У записей, обработанных через каталог автоматической обработки, нет интерфейса для заполнения этих значений, поэтому подстановки будут заменены пустыми строками при первом запуске резюмирования. Удалите подстановки или заполните значения через повторную обработку после загрузки."
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
@@ -774,7 +776,9 @@
     "transcriptionLanguage": "Transcription Language",
     "yourFullName": "Ваше полное имя",
     "transcriptionModel": "Модель транскрипции",
-    "useResolvedDefault": "(использовать стандарт тега/папки/глобальный)"
+    "useResolvedDefault": "(использовать стандарт тега/папки/глобальный)",
+    "defaultTranscriptionModel": "Модель транскрипции по умолчанию",
+    "defaultTranscriptionModelHelp": "Переопределяет модель транскрипции для записей с этим тегом или папкой."
   },
   "groups": {
     "addMembers": "Добавить участников...",
@@ -989,7 +993,16 @@
     "nl": "Нидерландский",
     "pt": "Португальский",
     "ru": "Русский",
-    "zh": "Китайский"
+    "zh": "Китайский",
+    "pl": "Польский",
+    "uk": "Украинский",
+    "vi": "Вьетнамский",
+    "th": "Тайский",
+    "tr": "Турецкий",
+    "id": "Индонезийский",
+    "sv": "Шведский",
+    "autoDetect": "Автоопределение",
+    "defaultModelDecides": "По умолчанию (выбирает модель)"
   },
   "manageSpeakersModal": {
     "created": "Создан",
@@ -1546,5 +1559,14 @@
     "userSupplied": "предоставляется пользователем при загрузке или повторной обработке",
     "userMessageHeading": "Сообщение пользователя:",
     "liveUpdateNote": "Раздел инструкций для резюме обновляется по мере редактирования вашей подсказки выше. Подстановочные знаки заменяются реальными значениями при обработке записи."
+  },
+  "preferences": {
+    "description": "Настройки отображения и поведения редактора. Эти параметры сохраняются в вашей учётной записи и применяются на всех устройствах.",
+    "editorAutosave": "Автосохранение в редакторе транскрипции",
+    "editorAutosaveHelp": "Когда включено, правки в редакторе транскрипции сохраняются автоматически через пару секунд после остановки ввода. По умолчанию выключено: сохранение явное через кнопки Сохранить или Ctrl+S.",
+    "showTimestampsSimpleView": "Показывать временные метки в простом виде",
+    "showTimestampsSimpleViewHelp": "Показывает компактную временную метку mm:ss рядом с именем каждого говорящего в простом виде. На пузырьковый вид не влияет.",
+    "transcriptDisplay": "Отображение транскрипции",
+    "transcriptEditor": "Редактор транскрипции"
   }
 }

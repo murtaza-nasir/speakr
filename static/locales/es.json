@@ -117,7 +117,8 @@
     "speakersManagement": "Gestión de Hablantes",
     "tagManagement": "Gestión de Etiquetas",
     "templates": "Plantillas",
-    "transcriptTemplates": "Plantillas de Transcripción"
+    "transcriptTemplates": "Plantillas de Transcripción",
+    "preferences": "Preferencias"
   },
   "admin": {
     "title": "Administración",
@@ -568,7 +569,8 @@
     "watchFolderGroupTagError": "Watch folders are not available for group tags",
     "watchFolderCreated": "Watch folder created",
     "watchFolderRemoved": "Watch folder removed",
-    "watchFolderError": "Could not create watch folder"
+    "watchFolderError": "Could not create watch folder",
+    "watchFolderVariableWarning": "Esta etiqueta está configurada como carpeta vigilada y el prompt contiene variables de marcador de posición. Las grabaciones procesadas a través del directorio de auto-procesamiento no tienen interfaz para que los usuarios completen esos valores, así que los marcadores se sustituirán por cadenas vacías en el primer resumen. Elimina los marcadores o completa los valores mediante reprocesamiento tras la subida."
   },
   "errors": {
     "audioExtractionFailed": "Audio Extraction Failed",
@@ -774,7 +776,9 @@
     "transcriptionLanguage": "Transcription Language",
     "yourFullName": "Su nombre completo",
     "transcriptionModel": "Modelo de transcripción",
-    "useResolvedDefault": "(usar valor por defecto de etiqueta/carpeta/global)"
+    "useResolvedDefault": "(usar valor por defecto de etiqueta/carpeta/global)",
+    "defaultTranscriptionModel": "Modelo de transcripción por defecto",
+    "defaultTranscriptionModelHelp": "Sobrescribe el modelo de transcripción usado para grabaciones con esta etiqueta o carpeta."
   },
   "groups": {
     "addMembers": "Añadir miembros...",
@@ -989,7 +993,16 @@
     "nl": "Holandés",
     "pt": "Portugués",
     "ru": "Ruso",
-    "zh": "Chino"
+    "zh": "Chino",
+    "pl": "Polaco",
+    "uk": "Ucraniano",
+    "vi": "Vietnamita",
+    "th": "Tailandés",
+    "tr": "Turco",
+    "id": "Indonesio",
+    "sv": "Sueco",
+    "autoDetect": "Detección automática",
+    "defaultModelDecides": "Por defecto (decide el modelo)"
   },
   "manageSpeakersModal": {
     "created": "Creado",
@@ -1546,5 +1559,14 @@
     "userSupplied": "proporcionado por el usuario al subir o reprocesar",
     "userMessageHeading": "Mensaje del usuario:",
     "liveUpdateNote": "La sección de instrucciones de resumen se actualiza mientras editas tu prompt personalizado arriba. Los marcadores se sustituyen por valores reales al procesar una grabación."
+  },
+  "preferences": {
+    "description": "Preferencias de visualización y comportamiento del editor. Estos ajustes se guardan en tu cuenta y se aplican en todos los dispositivos.",
+    "editorAutosave": "Guardar automáticamente en el editor de transcripción",
+    "editorAutosaveHelp": "Cuando está activado, las ediciones en el editor de transcripción se guardan automáticamente un par de segundos después de dejar de escribir. Por defecto está desactivado, y guardas explícitamente con los botones Guardar o Ctrl+S.",
+    "showTimestampsSimpleView": "Mostrar marcas de tiempo en la vista simple",
+    "showTimestampsSimpleViewHelp": "Muestra una marca de tiempo compacta mm:ss junto a cada etiqueta de hablante en la vista simple. La vista de burbujas no se ve afectada.",
+    "transcriptDisplay": "Visualización de la transcripción",
+    "transcriptEditor": "Editor de transcripción"
   }
 }
