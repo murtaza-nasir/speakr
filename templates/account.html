@@ -713,10 +713,52 @@
                                     <span data-i18n="customPrompts.currentDefaultPrompt">Current Default Prompt (Used if you leave the above blank)</span>
                                 </h4>
                                 <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
-                                    <pre class="text-xs text-[var(--text-muted)] whitespace-pre-wrap">{{ default_summary_prompt_text }}</pre>
+                                    <pre id="currentDefaultPromptDisplay" class="text-xs text-[var(--text-muted)] whitespace-pre-wrap font-mono">{{ default_summary_prompt_text }}</pre>
                                 </div>
                             </div>
-                            
+
+                            {# Full LLM prompt structure preview — mirrors the one on /admin so users
+                               can see the system message, transcript wrapper, and language directive
+                               that get prepended/appended to their summarisation instructions. #}
+                            <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
+                                <button type="button" id="toggleFullPromptStructure"
+                                        class="w-full px-4 py-3 flex justify-between items-center text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors duration-200 rounded-lg">
+                                    <span><i class="fas fa-code mr-2"></i>View Full LLM Prompt Structure</span>
+                                    <i id="fullPromptChevron" class="fas fa-chevron-down text-[var(--text-muted)]"></i>
+                                </button>
+                                <div id="fullPromptStructureBody" class="hidden border-t border-[var(--border-secondary)] p-4 space-y-4">
+                                    <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)]">
+                                        <span class="font-medium">Placeholder legend:</span>
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono">{example}</span>
+                                            <span>system-replaced (current date, transcript, tag names, etc.)</span>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono">{% raw %}{{example}}{% endraw %}</span>
+                                            <span>user-supplied at upload or reprocess</span>
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1">System Prompt:</h5>
+                                        <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
+                                            <pre id="previewSystemPrompt" class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"></pre>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1">User Message:</h5>
+                                        <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
+                                            <pre id="previewUserMessage" class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"></pre>
+                                        </div>
+                                        <p class="text-xs text-[var(--text-muted)] mt-2">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="mt-4">
                                 <details class="cursor-pointer">
                                     <summary class="text-sm text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]">
@@ -2591,6 +2633,117 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } catch (error) {
                 console.error('Error initializing i18n:', error);
             }
+
+            // ====================================================
+            // Full LLM prompt structure preview
+            // ====================================================
+            // Pure-JS render (account page is Jinja-only, no Vue). Builds the
+            // chip markup as real DOM nodes — never innerHTML — so the chip
+            // injection cannot interpret user-supplied text as HTML.
+            (function setupFullPromptPreview() {
+                const toggleBtn = document.getElementById('toggleFullPromptStructure');
+                const body = document.getElementById('fullPromptStructureBody');
+                const chevron = document.getElementById('fullPromptChevron');
+                const sysEl = document.getElementById('previewSystemPrompt');
+                const userEl = document.getElementById('previewUserMessage');
+                const customDisplay = document.getElementById('currentDefaultPromptDisplay');
+                const promptTextarea = document.getElementById('summary_prompt_custom');
+                if (!toggleBtn || !body || !sysEl || !userEl) return;
+
+                {% raw %}
+                // Match `{{user_var}}` first (longer pattern) and `{system_var}`
+                // second. Combined regex with two capture groups so we can
+                // tell which kind matched without a second pass.
+                const PLACEHOLDER_RE = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}|\{(\s*[A-Za-z_][A-Za-z0-9_]*\s*)\}/g;
+                {% endraw %}
+
+                // Build a chip span for a placeholder match. Returns a real
+                // DOM element so caller can append directly.
+                const makeChip = (kind, name) => {
+                    const span = document.createElement('span');
+                    if (kind === 'user') {
+                        span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30';
+                        span.title = 'User-supplied variable. Filled at upload or reprocess.';
+                        span.textContent = '{{' + name + '}}';
+                    } else {
+                        span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30';
+                        span.title = 'System placeholder. Replaced by the framework before the LLM call.';
+                        span.textContent = '{' + name + '}';
+                    }
+                    return span;
+                };
+
+                // Append chip-decorated text into the target element. Plain
+                // segments go in as text nodes; placeholders go in as chip
+                // spans. Caller clears target first if needed.
+                const decorateInto = (target, text) => {
+                    if (!text) return;
+                    let last = 0;
+                    for (const match of text.matchAll(PLACEHOLDER_RE)) {
+                        if (match.index > last) {
+                            target.appendChild(document.createTextNode(text.slice(last, match.index)));
+                        }
+                        if (match[1] !== undefined) {
+                            target.appendChild(makeChip('user', match[1]));
+                        } else {
+                            target.appendChild(makeChip('system', match[2]));
+                        }
+                        last = match.index + match[0].length;
+                    }
+                    if (last < text.length) {
+                        target.appendChild(document.createTextNode(text.slice(last)));
+                    }
+                };
+
+                // Decorate the small "Current Default Prompt" pre below the
+                // textarea so the admin default's placeholders show as chips.
+                const defaultPromptFallback = customDisplay ? customDisplay.textContent : '';
+                if (customDisplay) {
+                    customDisplay.textContent = '';
+                    decorateInto(customDisplay, defaultPromptFallback);
+                }
+
+                const SYSTEM_PROMPT_TEMPLATE =
+                    'You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\n' +
+                    'Context:\n' +
+                    '- Current date: {current_date}\n' +
+                    '- Recording date: {recording_date}    [if meeting date is set]\n' +
+                    '- Recording title: {recording_title}    [if title is set]\n' +
+                    '- Folder: {folder_name}    [if recording is in a folder]\n' +
+                    '- Tags applied to this transcript by the user: {tag_names}    [if tags exist]\n' +
+                    '- Information about the user: Name: {name}, Job title: {job_title}, Company: {company}    [only the fields you have filled in your account]\n\n' +
+                    'Language Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory.    [only added if your output language is set]';
+
+                const userMessageBefore =
+                    'Transcription:\n"""\n{transcript_text}\n"""\n\n' +
+                    'Summarization Instructions:\n';
+                const userMessageAfter =
+                    '\n\n{language_directive}    [resolves to: "IMPORTANT: You MUST provide the summary in <your-language>." — only added if language preference is set]';
+
+                const renderPreview = () => {
+                    const userPrompt = (promptTextarea && promptTextarea.value.trim())
+                        ? promptTextarea.value
+                        : defaultPromptFallback;
+                    sysEl.textContent = '';
+                    decorateInto(sysEl, SYSTEM_PROMPT_TEMPLATE);
+                    userEl.textContent = '';
+                    decorateInto(userEl, userMessageBefore);
+                    decorateInto(userEl, userPrompt);
+                    decorateInto(userEl, userMessageAfter);
+                };
+
+                renderPreview();
+
+                if (promptTextarea) {
+                    promptTextarea.addEventListener('input', renderPreview);
+                }
+
+                toggleBtn.addEventListener('click', () => {
+                    const isHidden = body.classList.toggle('hidden');
+                    chevron.classList.toggle('fa-chevron-down', isHidden);
+                    chevron.classList.toggle('fa-chevron-up', !isHidden);
+                });
+            })();
 
             // Setup auto speaker labelling toggle and dropdown
             const autoLabelToggle = document.getElementById('autoSpeakerLabellingToggle');
