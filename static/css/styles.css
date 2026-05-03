@@ -1718,20 +1718,38 @@ body {
 }
 
 /* Brief highlight shown on the ASR editor row that was the target of a
-   double-click-to-edit jump from the simple view. The animation runs on
-   every <td> in the row -- table-level box-shadow and background-color
-   render unreliably under border-collapse: collapse, so we have to drive
-   each cell directly. !important is used to win over any utility classes
-   that may set background on individual cells. */
-table.asr-editor-table tbody tr.asr-editor-row--highlighted > td,
+   double-click-to-edit jump from the simple view.
+   The editor's table sets `td { padding: 0; }` and lets inputs fill each
+   cell; those input boxes establish a stacking context that ends up
+   painting over a td-level background-color animation, which is why the
+   highlight only appeared on the action column (which has no inputs).
+   Painting a pseudo-element overlay underneath the inputs avoids the
+   issue: the overlay sits on the cell, the inputs render above it with
+   their existing transparent backgrounds. */
 .asr-editor-row--highlighted > td {
-    animation: asr-editor-row-highlight 2.8s ease-out forwards !important;
+    position: relative;
 }
 
-@keyframes asr-editor-row-highlight {
-    0%   { background-color: var(--bg-accent); box-shadow: inset 0 0 0 9999px var(--bg-accent); }
-    70%  { background-color: var(--bg-accent); box-shadow: inset 0 0 0 9999px var(--bg-accent); }
-    100% { background-color: transparent;       box-shadow: inset 0 0 0 9999px transparent; }
+.asr-editor-row--highlighted > td::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--bg-accent);
+    pointer-events: none;
+    z-index: 0;
+    animation: asr-editor-row-highlight-fade 2.8s ease-out forwards;
+}
+
+/* Make sure the cell's actual content sits above the overlay. */
+.asr-editor-row--highlighted > td > * {
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes asr-editor-row-highlight-fade {
+    0%   { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 /* Active segment highlighting - for currently playing transcript */
