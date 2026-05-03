@@ -772,7 +772,9 @@
     "summaryPromptPlaceholder": "Ingrese el prompt predeterminado de resumen...",
     "title": "Título",
     "transcriptionLanguage": "Transcription Language",
-    "yourFullName": "Su nombre completo"
+    "yourFullName": "Su nombre completo",
+    "transcriptionModel": "Modelo de transcripción",
+    "useResolvedDefault": "(usar valor por defecto de etiqueta/carpeta/global)"
   },
   "groups": {
     "addMembers": "Añadir miembros...",
@@ -1509,5 +1511,40 @@
   },
   "uploadProgress": {
     "title": "Progreso de Carga"
+  },
+  "promptVariables": {
+    "title": "Variables del prompt",
+    "infoTooltip": "Acerca de las variables del prompt",
+    "hintUpload": "La etiqueta o carpeta seleccionada usa marcadores de posición. Complétalos y se sustituirán en el prompt de resumen para esta grabación. Los valores vacíos se sustituyen por una cadena vacía. Hasta 8.000 caracteres por valor, 32.000 en total.",
+    "hintReprocess": "Estos valores se sustituyen en los marcadores de posición del prompt resuelto. Los cambios se guardan en la grabación. Los valores vacíos se sustituyen por una cadena vacía. Hasta 8.000 caracteres por valor, 32.000 en total.",
+    "placeholderPrefix": "Introducir"
+  },
+  "summaryMode": {
+    "applyMode": "Modo de aplicación",
+    "append": "Añadir",
+    "appendHelp": "Usar el prompt por defecto y añadir esto como contexto adicional.",
+    "replace": "Reemplazar",
+    "replaceHelp": "Usar únicamente este texto como instrucciones de resumen."
+  },
+  "customizeSummary": {
+    "title": "Personalizar prompt de resumen",
+    "body": "Añade contexto puntual para este resumen o reemplaza por completo el prompt resuelto.",
+    "additionalContext": "Contexto adicional",
+    "customPrompt": "Prompt personalizado",
+    "appendPlaceholder": "p. ej. El orden del día es: ...",
+    "replacePlaceholder": "Introduce un prompt de resumen completo...",
+    "generateSummary": "Generar resumen"
+  },
+  "asrEditor": {
+    "saved": "Guardado",
+    "ctrlSHint": "Ctrl+S para guardar",
+    "saveWithoutClosing": "Guardar sin cerrar (Ctrl+S)"
+  },
+  "preview": {
+    "placeholderLegend": "Leyenda de marcadores:",
+    "systemReplaced": "reemplazado por el sistema (fecha actual, transcripción, nombres de etiquetas, etc.)",
+    "userSupplied": "proporcionado por el usuario al subir o reprocesar",
+    "userMessageHeading": "Mensaje del usuario:",
+    "liveUpdateNote": "La sección de instrucciones de resumen se actualiza mientras editas tu prompt personalizado arriba. Los marcadores se sustituyen por valores reales al procesar una grabación."
   }
 }

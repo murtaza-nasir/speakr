@@ -772,7 +772,9 @@
     "summaryPromptPlaceholder": "Standard-Zusammenfassungsprompt eingeben...",
     "title": "Titel",
     "transcriptionLanguage": "Transcription Language",
-    "yourFullName": "Ihr vollständiger Name"
+    "yourFullName": "Ihr vollständiger Name",
+    "transcriptionModel": "Transkriptionsmodell",
+    "useResolvedDefault": "(Tag-/Ordner-/globalen Standard verwenden)"
   },
   "groups": {
     "addMembers": "Mitglieder hinzufügen...",
@@ -1509,5 +1511,40 @@
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"
+  },
+  "promptVariables": {
+    "title": "Prompt-Variablen",
+    "infoTooltip": "Über Prompt-Variablen",
+    "hintUpload": "Das ausgewählte Tag oder der Ordner verwendet Platzhalter im Prompt. Fülle sie aus und sie werden in den Zusammenfassungs-Prompt für diese Aufnahme eingesetzt. Leere Werte werden zu einer leeren Zeichenkette. Bis zu 8.000 Zeichen pro Wert, 32.000 insgesamt.",
+    "hintReprocess": "Diese Werte werden in die Platzhalter im aufgelösten Prompt eingesetzt. Änderungen werden in der Aufnahme gespeichert. Leere Werte werden zu einer leeren Zeichenkette. Bis zu 8.000 Zeichen pro Wert, 32.000 insgesamt.",
+    "placeholderPrefix": "Eingeben"
+  },
+  "summaryMode": {
+    "applyMode": "Anwendungsmodus",
+    "append": "Anhängen",
+    "appendHelp": "Standard-Prompt verwenden und dies als zusätzlichen Kontext hinzufügen.",
+    "replace": "Ersetzen",
+    "replaceHelp": "Nur diesen Text als Zusammenfassungsanweisungen verwenden."
+  },
+  "customizeSummary": {
+    "title": "Zusammenfassungs-Prompt anpassen",
+    "body": "Einmaligen Kontext für diese Zusammenfassung hinzufügen oder den aufgelösten Prompt vollständig ersetzen.",
+    "additionalContext": "Zusätzlicher Kontext",
+    "customPrompt": "Benutzerdefinierter Prompt",
+    "appendPlaceholder": "z. B. Die heutige Tagesordnung ist: ...",
+    "replacePlaceholder": "Vollständigen Zusammenfassungs-Prompt eingeben...",
+    "generateSummary": "Zusammenfassung generieren"
+  },
+  "asrEditor": {
+    "saved": "Gespeichert",
+    "ctrlSHint": "Strg+S zum Speichern",
+    "saveWithoutClosing": "Speichern ohne Schließen (Strg+S)"
+  },
+  "preview": {
+    "placeholderLegend": "Platzhalter-Legende:",
+    "systemReplaced": "vom System ersetzt (aktuelles Datum, Transkript, Tag-Namen usw.)",
+    "userSupplied": "vom Benutzer beim Hochladen oder erneuten Verarbeiten angegeben",
+    "userMessageHeading": "Benutzernachricht:",
+    "liveUpdateNote": "Der Bereich Zusammenfassungsanweisungen aktualisiert sich, während du deinen Prompt oben bearbeitest. Platzhalter werden bei der Verarbeitung einer Aufnahme durch echte Werte ersetzt."
   }
 }

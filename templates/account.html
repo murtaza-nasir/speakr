@@ -723,37 +723,37 @@
                             <div class="mt-4 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-secondary)]">
                                 <button type="button" id="toggleFullPromptStructure"
                                         class="w-full px-4 py-3 flex justify-between items-center text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors duration-200 rounded-lg">
-                                    <span><i class="fas fa-code mr-2"></i>View Full LLM Prompt Structure</span>
+                                    <span><i class="fas fa-code mr-2"></i><span data-i18n="adminDashboard.viewFullPromptStructure">View Full LLM Prompt Structure</span></span>
                                     <i id="fullPromptChevron" class="fas fa-chevron-down text-[var(--text-muted)]"></i>
                                 </button>
                                 <div id="fullPromptStructureBody" class="hidden border-t border-[var(--border-secondary)] p-4 space-y-4">
                                     <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)]">
-                                        <span class="font-medium">Placeholder legend:</span>
+                                        <span class="font-medium" data-i18n="preview.placeholderLegend">Placeholder legend:</span>
                                         <span class="inline-flex items-center gap-1.5">
                                             <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono">{example}</span>
-                                            <span>system-replaced (current date, transcript, tag names, etc.)</span>
+                                            <span data-i18n="preview.systemReplaced">system-replaced (current date, transcript, tag names, etc.)</span>
                                         </span>
                                         <span class="inline-flex items-center gap-1.5">
                                             <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono">{% raw %}{{example}}{% endraw %}</span>
-                                            <span>user-supplied at upload or reprocess</span>
+                                            <span data-i18n="preview.userSupplied">user-supplied at upload or reprocess</span>
                                         </span>
                                     </div>
 
                                     <div>
-                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1">System Prompt:</h5>
+                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1" data-i18n="adminDashboard.systemPrompt">System Prompt:</h5>
                                         <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
                                             <pre id="previewSystemPrompt" class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"></pre>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1">User Message:</h5>
+                                        <h5 class="text-xs font-semibold text-[var(--text-accent)] mb-1" data-i18n="preview.userMessageHeading">User Message:</h5>
                                         <div class="bg-[var(--bg-primary)] p-3 rounded border border-[var(--border-primary)]">
                                             <pre id="previewUserMessage" class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"></pre>
                                         </div>
                                         <p class="text-xs text-[var(--text-muted)] mt-2">
                                             <i class="fas fa-info-circle mr-1"></i>
-                                            The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed.
+                                            <span data-i18n="preview.liveUpdateNote">The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed.</span>
                                         </p>
                                     </div>
                                 </div>

@@ -864,14 +864,14 @@
                             <div class="p-6 space-y-6">
                                 <!-- Placeholder legend so the two distinct syntaxes in the previews below are unambiguous. -->
                                 <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)] -mt-2">
-                                    <span class="font-medium">Placeholder legend:</span>
+                                    <span class="font-medium">${ t('preview.placeholderLegend') }</span>
                                     <span class="inline-flex items-center gap-1.5">
                                         <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono">{example}</span>
-                                        <span>system-replaced (current date, transcript, tag names, etc.)</span>
+                                        <span>${ t('preview.systemReplaced') }</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1.5">
                                         <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono">{{example}}</span>
-                                        <span>user-supplied at upload or reprocess</span>
+                                        <span>${ t('preview.userSupplied') }</span>
                                     </span>
                                 </div>
 

@@ -849,7 +849,9 @@
     "summaryPromptPlaceholder": "输入默认摘要提示...",
     "title": "标题",
     "transcriptionLanguage": "Transcription Language",
-    "yourFullName": "您的全名"
+    "yourFullName": "您的全名",
+    "transcriptionModel": "转录模型",
+    "useResolvedDefault": "（使用标签/文件夹/全局默认）"
   },
   "groups": {
     "addMembers": "添加成员...",
@@ -1660,5 +1662,40 @@
   },
   "uploadProgress": {
     "title": "上传进度"
+  },
+  "promptVariables": {
+    "title": "提示变量",
+    "infoTooltip": "关于提示变量",
+    "hintUpload": "所选标签或文件夹使用提示占位符。填写后将替换到此录音的摘要提示中。空值替换为空字符串。每个值最多 8,000 字符，全部变量合计最多 32,000 字符。",
+    "hintReprocess": "这些值会替换已解析提示中的占位符。此处的修改会保存到录音中。空值替换为空字符串。每个值最多 8,000 字符，全部变量合计最多 32,000 字符。",
+    "placeholderPrefix": "输入"
+  },
+  "summaryMode": {
+    "applyMode": "应用模式",
+    "append": "追加",
+    "appendHelp": "使用默认提示，并将此内容作为额外上下文。",
+    "replace": "替换",
+    "replaceHelp": "仅使用此文本作为摘要指令。"
+  },
+  "customizeSummary": {
+    "title": "自定义摘要提示",
+    "body": "为此摘要添加一次性上下文，或完全替换已解析的提示。",
+    "additionalContext": "附加上下文",
+    "customPrompt": "自定义提示",
+    "appendPlaceholder": "例如：今天的议程是：…",
+    "replacePlaceholder": "输入完整的摘要提示…",
+    "generateSummary": "生成摘要"
+  },
+  "asrEditor": {
+    "saved": "已保存",
+    "ctrlSHint": "Ctrl+S 保存",
+    "saveWithoutClosing": "保存但不关闭 (Ctrl+S)"
+  },
+  "preview": {
+    "placeholderLegend": "占位符图例：",
+    "systemReplaced": "由系统替换（当前日期、转录、标签名称等）",
+    "userSupplied": "上传或重新处理时由用户提供",
+    "userMessageHeading": "用户消息：",
+    "liveUpdateNote": "上方编辑自定义提示时，摘要指令区会实时更新。处理录音时，占位符将被替换为真实值。"
   }
 }

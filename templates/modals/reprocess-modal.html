@@ -94,9 +94,9 @@
                          Only show when there are at least 2 visible models; a single
                          visible model means there is no real choice to offer. -->
                     <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1">
-                        <label for="asr-model-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Transcription model</label>
+                        <label for="asr-model-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">${ t('form.transcriptionModel') }</label>
                         <select id="asr-model-reprocess" v-model="asrReprocessOptions.transcription_model" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">(use tag/folder/global default)</option>
+                            <option value="">${ t('form.useResolvedDefault') }</option>
                             <option v-for="opt in transcriptionModelOptions" :key="opt.value" :value="opt.value" v-text="opt.label || opt.value"></option>
                         </select>
                     </div>
@@ -106,15 +106,15 @@
                 <div v-if="reprocessType === 'summary' && reprocessAvailableVariables.length > 0" class="space-y-3 pt-4 border-t border-[var(--border-primary)]">
                     <h4 class="text-md font-semibold text-[var(--text-secondary)] flex items-center gap-2">
                         <i class="fas fa-keyboard text-[var(--text-muted)] text-xs"></i>
-                        Prompt variables
+                        ${ t('promptVariables.title') }
                         <details class="relative">
                             <summary
-                                title="About prompt variables"
+                                :title="t('promptVariables.infoTooltip')"
                                 class="list-none cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors">
                                 <i class="fas fa-info-circle text-xs"></i>
                             </summary>
                             <div class="absolute left-0 top-full mt-1 z-20 w-64 p-3 text-[11px] font-normal text-[var(--text-secondary)] leading-snug bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg">
-                                These values are substituted into {{ '{{name}}' }} placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.
+                                ${ t('promptVariables.hintReprocess') }
                             </div>
                         </details>
                     </h4>
@@ -139,7 +139,7 @@
                             @input="reprocessPromptVariables[variable.name] = $event.target.value"
                             rows="2"
                             maxlength="8000"
-                            :placeholder="'Enter ' + variable.label.toLowerCase() + '...'"
+                            :placeholder="t('promptVariables.placeholderPrefix') + ' ' + variable.label.toLowerCase() + '...'"
                             class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--border-focus)] resize-y font-mono"></textarea>
                         <div class="flex justify-end text-[10px] text-[var(--text-muted)] font-mono">
                             ${ (reprocessPromptVariables[variable.name] || '').length } / 8000
@@ -190,22 +190,22 @@
 
                     <!-- Apply mode toggle for tag and custom prompt sources -->
                     <div v-if="summaryReprocessPromptSource === 'tag' || summaryReprocessPromptSource === 'custom'">
-                        <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">Apply mode</label>
+                        <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">${ t('summaryMode.applyMode') }</label>
                         <div class="grid grid-cols-2 gap-2 p-1 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
                             <label
                                 :class="['flex items-start gap-2 p-2 rounded cursor-pointer transition-colors', summaryReprocessPromptMode === 'append' ? 'bg-[var(--bg-secondary)] border border-[var(--border-accent)] shadow-sm' : 'border border-transparent hover:bg-[var(--bg-secondary)]']">
                                 <input type="radio" v-model="summaryReprocessPromptMode" value="append" class="mt-0.5 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
                                 <span class="flex-1">
-                                    <span class="block text-sm font-medium text-[var(--text-primary)]">Append</span>
-                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5">Use the default prompt and add this as extra context.</span>
+                                    <span class="block text-sm font-medium text-[var(--text-primary)]">${ t('summaryMode.append') }</span>
+                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5">${ t('summaryMode.appendHelp') }</span>
                                 </span>
                             </label>
                             <label
                                 :class="['flex items-start gap-2 p-2 rounded cursor-pointer transition-colors', summaryReprocessPromptMode === 'replace' ? 'bg-[var(--bg-secondary)] border border-[var(--border-accent)] shadow-sm' : 'border border-transparent hover:bg-[var(--bg-secondary)]']">
                                 <input type="radio" v-model="summaryReprocessPromptMode" value="replace" class="mt-0.5 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
                                 <span class="flex-1">
-                                    <span class="block text-sm font-medium text-[var(--text-primary)]">Replace</span>
-                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5">Use only this text as the summarisation instructions.</span>
+                                    <span class="block text-sm font-medium text-[var(--text-primary)]">${ t('summaryMode.replace') }</span>
+                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5">${ t('summaryMode.replaceHelp') }</span>
                                 </span>
                             </label>
                         </div>

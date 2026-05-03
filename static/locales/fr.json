@@ -772,7 +772,9 @@
     "summaryPromptPlaceholder": "Entrez l'invite de résumé par défaut...",
     "title": "Titre",
     "transcriptionLanguage": "Transcription Language",
-    "yourFullName": "Votre nom complet"
+    "yourFullName": "Votre nom complet",
+    "transcriptionModel": "Modèle de transcription",
+    "useResolvedDefault": "(utiliser la valeur par défaut tag/dossier/global)"
   },
   "groups": {
     "addMembers": "Ajouter des membres...",
@@ -1509,5 +1511,40 @@
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
+  },
+  "promptVariables": {
+    "title": "Variables de l'invite",
+    "infoTooltip": "À propos des variables de l'invite",
+    "hintUpload": "Le tag ou le dossier sélectionné utilise des espaces réservés. Renseignez-les et ils seront substitués dans l'invite de résumé pour cet enregistrement. Les valeurs vides sont remplacées par une chaîne vide. Jusqu'à 8 000 caractères par valeur, 32 000 au total.",
+    "hintReprocess": "Ces valeurs sont substituées aux espaces réservés dans l'invite résolue. Les modifications sont enregistrées sur l'enregistrement. Les valeurs vides sont remplacées par une chaîne vide. Jusqu'à 8 000 caractères par valeur, 32 000 au total.",
+    "placeholderPrefix": "Entrer"
+  },
+  "summaryMode": {
+    "applyMode": "Mode d'application",
+    "append": "Ajouter",
+    "appendHelp": "Utiliser l'invite par défaut et ajouter ceci comme contexte supplémentaire.",
+    "replace": "Remplacer",
+    "replaceHelp": "Utiliser uniquement ce texte comme instructions de résumé."
+  },
+  "customizeSummary": {
+    "title": "Personnaliser l'invite de résumé",
+    "body": "Ajoutez un contexte ponctuel pour ce résumé ou remplacez entièrement l'invite résolue.",
+    "additionalContext": "Contexte supplémentaire",
+    "customPrompt": "Invite personnalisée",
+    "appendPlaceholder": "ex. L'ordre du jour est : ...",
+    "replacePlaceholder": "Saisissez une invite de résumé complète...",
+    "generateSummary": "Générer le résumé"
+  },
+  "asrEditor": {
+    "saved": "Enregistré",
+    "ctrlSHint": "Ctrl+S pour enregistrer",
+    "saveWithoutClosing": "Enregistrer sans fermer (Ctrl+S)"
+  },
+  "preview": {
+    "placeholderLegend": "Légende des espaces réservés :",
+    "systemReplaced": "remplacé par le système (date du jour, transcription, noms des tags, etc.)",
+    "userSupplied": "fourni par l'utilisateur lors du téléversement ou du retraitement",
+    "userMessageHeading": "Message utilisateur :",
+    "liveUpdateNote": "L'emplacement des instructions de résumé se met à jour pendant que vous modifiez votre invite personnalisée ci-dessus. Les espaces réservés sont remplacés par les valeurs réelles lors du traitement d'un enregistrement."
   }
 }

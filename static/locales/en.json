@@ -775,7 +775,9 @@
     "summaryPromptPlaceholder": "Enter the default summarization prompt...",
     "title": "Title",
     "transcriptionLanguage": "Transcription Language",
-    "yourFullName": "Your full name"
+    "yourFullName": "Your full name",
+    "transcriptionModel": "Transcription model",
+    "useResolvedDefault": "(use tag/folder/global default)"
   },
   "groups": {
     "addMembers": "Add members...",
@@ -1521,5 +1523,40 @@
   },
   "uploadProgress": {
     "title": "Upload Progress"
+  },
+  "promptVariables": {
+    "title": "Prompt variables",
+    "infoTooltip": "About prompt variables",
+    "hintUpload": "The selected tag or folder uses prompt placeholders. Fill these in and they'll be substituted into the summarisation prompt for this recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.",
+    "hintReprocess": "These values are substituted into placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.",
+    "placeholderPrefix": "Enter"
+  },
+  "summaryMode": {
+    "applyMode": "Apply mode",
+    "append": "Append",
+    "appendHelp": "Use the default prompt and add this as extra context.",
+    "replace": "Replace",
+    "replaceHelp": "Use only this text as the summarisation instructions."
+  },
+  "customizeSummary": {
+    "title": "Customise summary prompt",
+    "body": "Add one-off context for this summary, or replace the resolved prompt entirely.",
+    "additionalContext": "Additional context",
+    "customPrompt": "Custom prompt",
+    "appendPlaceholder": "e.g. Today's agenda is: ...",
+    "replacePlaceholder": "Enter a complete summarisation prompt...",
+    "generateSummary": "Generate Summary"
+  },
+  "asrEditor": {
+    "saved": "Saved",
+    "ctrlSHint": "Ctrl+S to save",
+    "saveWithoutClosing": "Save without closing (Ctrl+S)"
+  },
+  "preview": {
+    "placeholderLegend": "Placeholder legend:",
+    "systemReplaced": "system-replaced (current date, transcript, tag names, etc.)",
+    "userSupplied": "user-supplied at upload or reprocess",
+    "userMessageHeading": "User Message:",
+    "liveUpdateNote": "The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed."
   }
 }
