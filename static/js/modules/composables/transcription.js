@@ -18,7 +18,7 @@ export function useTranscription(state, utils) {
         showTextEditorModal, showAsrEditorModal, selectedRecording,
         editingTranscriptionContent, editingSegments, availableSpeakers,
         recordings, dropdownPositions, openAsrDropdownIndex,
-        asrEditorRef, asrEditorSaveFlash
+        asrEditorRef, asrEditorSaveFlash, editorAutosave
     } = state;
 
     const { showToast, setGlobalError, nextTick } = utils;
@@ -98,6 +98,10 @@ export function useTranscription(state, utils) {
 
             showAsrEditorModal.value = true;
 
+            // Reset autosave state for the new editing session.
+            _resetAutosave();
+            _primeAutosaveAfterOpen();
+
             // Reset virtual scroll state for fresh modal render. After it
             // initialises, either scroll to a specific segment (when the
             // modal was opened from a double-click on a simple-view row) or
@@ -137,6 +141,9 @@ export function useTranscription(state, utils) {
     };
 
     const closeAsrEditorModal = () => {
+        // Cancel any pending autosave so we don't issue a write after close.
+        _resetAutosave();
+
         // Save scroll position so reopening the same recording within this
         // session lands the user back where they were.
         if (selectedRecording.value && asrEditorRef && asrEditorRef.value) {
@@ -192,6 +199,44 @@ export function useTranscription(state, utils) {
     };
     if (typeof window !== 'undefined') {
         window.addEventListener('keydown', handleAsrEditorKeydown);
+    }
+
+    // Autosave -- when the user has opted in via the Preferences tab, debounce
+    // a save 2s after the last edit. The debounce prevents thrashing the API
+    // on every keystroke. The "primed" flag suppresses the initial firing
+    // when segments are first hydrated on modal open.
+    let _autosaveTimer = null;
+    let _autosavePrimed = false;
+
+    const _resetAutosave = () => {
+        if (_autosaveTimer) {
+            clearTimeout(_autosaveTimer);
+            _autosaveTimer = null;
+        }
+        _autosavePrimed = false;
+    };
+
+    const _primeAutosaveAfterOpen = () => {
+        // Defer priming until after the modal hydration tick so we don't
+        // mistake the initial editingSegments assignment for a user edit.
+        setTimeout(() => { _autosavePrimed = true; }, 500);
+    };
+
+    if (typeof Vue !== 'undefined' && Vue.watch) {
+        Vue.watch(
+            editingSegments,
+            () => {
+                if (!showAsrEditorModal.value) return;
+                if (!editorAutosave || !editorAutosave.value) return;
+                if (!_autosavePrimed) return;
+                if (_autosaveTimer) clearTimeout(_autosaveTimer);
+                _autosaveTimer = setTimeout(() => {
+                    _autosaveTimer = null;
+                    saveAsrTranscription(true);
+                }, 2000);
+            },
+            { deep: true }
+        );
     }
 
     // =========================================
