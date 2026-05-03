@@ -18,6 +18,8 @@ class TranscriptionCapability(Enum):
     KNOWN_SPEAKERS = auto()        # Support for known speaker references (future)
     SPEAKER_EMBEDDINGS = auto()    # Return speaker embeddings
     SPEAKER_COUNT_CONTROL = auto() # Support for min/max speaker count parameters
+    HOTWORDS = auto()              # Hotword/keyword biasing (or prompt-based equivalent)
+    INITIAL_PROMPT = auto()        # Free-text initial prompt / context hint
     STREAMING = auto()             # Real-time streaming transcription
 
 
@@ -230,6 +232,16 @@ class BaseTranscriptionConnector(ABC):
     def supports_speaker_count_control(self) -> bool:
         """Check if connector supports min/max speaker count parameters."""
         return TranscriptionCapability.SPEAKER_COUNT_CONTROL in self.CAPABILITIES
+
+    @property
+    def supports_hotwords(self) -> bool:
+        """Check if connector accepts hotword/keyword biasing input."""
+        return TranscriptionCapability.HOTWORDS in self.CAPABILITIES
+
+    @property
+    def supports_initial_prompt(self) -> bool:
+        """Check if connector accepts an initial prompt / context hint."""
+        return TranscriptionCapability.INITIAL_PROMPT in self.CAPABILITIES
 
     @property
     def specifications(self) -> ConnectorSpecifications:

@@ -2250,6 +2250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     useAsrEndpoint.value = appElement.dataset.useAsrEndpoint === 'True';
                     connectorSupportsDiarization.value = appElement.dataset.connectorSupportsDiarization === 'True';
                     connectorSupportsSpeakerCount.value = appElement.dataset.connectorSupportsSpeakerCount === 'True';
+                    connectorSupportsHotwords.value = appElement.dataset.connectorSupportsHotwords === 'True';
+                    connectorSupportsInitialPrompt.value = appElement.dataset.connectorSupportsInitialPrompt === 'True';
                     currentUserName.value = appElement.dataset.currentUserName || '';
                 }
 

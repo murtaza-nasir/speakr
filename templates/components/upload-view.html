@@ -370,7 +370,7 @@
                     </div>
 
                     <!-- Hotwords -->
-                    <div>
+                    <div v-if="connectorSupportsHotwords">
                         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                             ${ t('form.hotwords') }
                         </label>
@@ -382,7 +382,7 @@
                     </div>
 
                     <!-- Initial Prompt -->
-                    <div>
+                    <div v-if="connectorSupportsInitialPrompt">
                         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                             ${ t('form.initialPrompt') }
                         </label>

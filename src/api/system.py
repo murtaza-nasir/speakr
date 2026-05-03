@@ -242,6 +242,8 @@ def get_config():
         # Defaults to USE_ASR_ENDPOINT for backwards compatibility
         connector_supports_diarization = USE_ASR_ENDPOINT
         connector_supports_speaker_count = USE_ASR_ENDPOINT  # ASR endpoint supports min/max speakers
+        connector_supports_hotwords = USE_ASR_ENDPOINT
+        connector_supports_initial_prompt = USE_ASR_ENDPOINT
         is_asr_connector = False
         if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
             try:
@@ -251,6 +253,8 @@ def get_config():
                 if connector:
                     connector_supports_diarization = connector.supports_diarization
                     connector_supports_speaker_count = connector.supports_speaker_count_control
+                    connector_supports_hotwords = connector.supports_hotwords
+                    connector_supports_initial_prompt = connector.supports_initial_prompt
                     is_asr_connector = registry.get_active_connector_name() == 'asr_endpoint'
             except Exception as e:
                 current_app.logger.warning(f"Could not get connector capabilities: {e}")
@@ -275,6 +279,8 @@ def get_config():
             'use_asr_endpoint': asr_enabled,  # Derived from connector or legacy env var
             'connector_supports_diarization': connector_supports_diarization,  # Connector capability
             'connector_supports_speaker_count': connector_supports_speaker_count,  # Min/max speakers
+            'connector_supports_hotwords': connector_supports_hotwords,
+            'connector_supports_initial_prompt': connector_supports_initial_prompt,
             'enable_internal_sharing': ENABLE_INTERNAL_SHARING,
             'enable_archive_toggle': enable_archive_toggle,
             'show_usernames_in_ui': SHOW_USERNAMES_IN_UI,

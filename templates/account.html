@@ -2110,16 +2110,20 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% endif %}
 
                     <!-- Hotwords & Initial Prompt -->
+                    {% if connector_supports_hotwords %}
                     <div>
                         <label for="tagHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.hotwords">Hotwords</label>
                         <input type="text" id="tagHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.hotwordsPlaceholder" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.hotwordsHelp">Comma-separated words to improve recognition of domain-specific terms</p>
                     </div>
+                    {% endif %}
+                    {% if connector_supports_initial_prompt %}
                     <div>
                         <label for="tagInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
                         <textarea id="tagInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
+                    {% endif %}
 
                     <!-- Default transcription model (issue #266) — only rendered when admin set TRANSCRIPTION_MODELS_AVAILABLE -->
                     <div id="tagTranscriptionModelSection" class="hidden">
@@ -2294,16 +2298,20 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% endif %}
 
                     <!-- Hotwords & Initial Prompt -->
+                    {% if connector_supports_hotwords %}
                     <div>
                         <label for="folderHotwords" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.hotwords">Hotwords</label>
                         <input type="text" id="folderHotwords" name="default_hotwords" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.hotwordsPlaceholder" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.hotwordsHelp">Comma-separated words to improve recognition of domain-specific terms</p>
                     </div>
+                    {% endif %}
+                    {% if connector_supports_initial_prompt %}
                     <div>
                         <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
                         <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
+                    {% endif %}
 
                     <!-- Default transcription model (issue #266) — only rendered when admin set TRANSCRIPTION_MODELS_AVAILABLE -->
                     <div id="folderTranscriptionModelSection" class="hidden">

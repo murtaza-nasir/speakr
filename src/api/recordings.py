@@ -1313,6 +1313,8 @@ def index():
     # Defaults to USE_ASR_ENDPOINT for backwards compatibility
     connector_supports_diarization = USE_ASR_ENDPOINT
     connector_supports_speaker_count = USE_ASR_ENDPOINT  # ASR endpoint supports min/max speakers
+    connector_supports_hotwords = USE_ASR_ENDPOINT
+    connector_supports_initial_prompt = USE_ASR_ENDPOINT
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
@@ -1321,6 +1323,8 @@ def index():
             if connector:
                 connector_supports_diarization = connector.supports_diarization
                 connector_supports_speaker_count = connector.supports_speaker_count_control
+                connector_supports_hotwords = connector.supports_hotwords
+                connector_supports_initial_prompt = connector.supports_initial_prompt
         except Exception as e:
             current_app.logger.warning(f"Could not get connector capabilities: {e}")
 
@@ -1328,6 +1332,8 @@ def index():
                          use_asr_endpoint=USE_ASR_ENDPOINT,  # Backwards compat
                          connector_supports_diarization=connector_supports_diarization,
                          connector_supports_speaker_count=connector_supports_speaker_count,
+                         connector_supports_hotwords=connector_supports_hotwords,
+                         connector_supports_initial_prompt=connector_supports_initial_prompt,
                          inquire_mode_enabled=ENABLE_INQUIRE_MODE,
                          enable_archive_toggle=enable_archive_toggle,
                          enable_internal_sharing=ENABLE_INTERNAL_SHARING,

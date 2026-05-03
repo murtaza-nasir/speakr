@@ -37,6 +37,8 @@ class AzureOpenAITranscribeConnector(BaseTranscriptionConnector):
     CAPABILITIES: Set[TranscriptionCapability] = {
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        TranscriptionCapability.HOTWORDS,
+        TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "azure_openai_transcribe"
 

@@ -635,8 +635,10 @@ def account():
     ASR_RETURN_SPEAKER_EMBEDDINGS = os.environ.get('ASR_RETURN_SPEAKER_EMBEDDINGS', 'false').lower() == 'true'
     ENABLE_AUTO_EXPORT = os.environ.get('ENABLE_AUTO_EXPORT', 'false').lower() == 'true'
 
-    # Get connector diarization support (new architecture)
+    # Get connector capabilities (new architecture)
     connector_supports_diarization = USE_ASR_ENDPOINT  # Default to USE_ASR_ENDPOINT for backwards compat
+    connector_supports_hotwords = USE_ASR_ENDPOINT
+    connector_supports_initial_prompt = USE_ASR_ENDPOINT
     if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
         try:
             from src.services.transcription import get_registry
@@ -644,8 +646,10 @@ def account():
             connector = registry.get_active_connector()
             if connector:
                 connector_supports_diarization = connector.supports_diarization
+                connector_supports_hotwords = connector.supports_hotwords
+                connector_supports_initial_prompt = connector.supports_initial_prompt
         except Exception as e:
-            current_app.logger.warning(f"Could not get connector diarization support: {e}")
+            current_app.logger.warning(f"Could not get connector capabilities: {e}")
 
     # Check if user is a team admin and get their admin groups
     admin_memberships = GroupMembership.query.filter_by(
@@ -684,6 +688,8 @@ def account():
                            default_summary_prompt_text=default_summary_prompt_text,
                            use_asr_endpoint=USE_ASR_ENDPOINT,
                            connector_supports_diarization=connector_supports_diarization,
+                           connector_supports_hotwords=connector_supports_hotwords,
+                           connector_supports_initial_prompt=connector_supports_initial_prompt,
                            enable_auto_deletion=ENABLE_AUTO_DELETION,
                            enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                            user_admin_groups=user_admin_groups,

@@ -32,6 +32,8 @@ class ASREndpointConnector(BaseTranscriptionConnector):
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
         TranscriptionCapability.SPEAKER_COUNT_CONTROL,  # Supports min/max speakers
+        TranscriptionCapability.HOTWORDS,
+        TranscriptionCapability.INITIAL_PROMPT,
     }
     PROVIDER_NAME = "asr_endpoint"
 

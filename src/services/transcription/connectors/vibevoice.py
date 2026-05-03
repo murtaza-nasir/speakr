@@ -35,6 +35,9 @@ class VibeVoiceTranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.DIARIZATION,
         TranscriptionCapability.TIMESTAMPS,
         TranscriptionCapability.LANGUAGE_DETECTION,
+        # Hotwords are embedded as "extra info" in the multimodal text prompt.
+        # Initial prompt is not accepted -- VibeVoice builds its own text prompt.
+        TranscriptionCapability.HOTWORDS,
     }
     PROVIDER_NAME = "vibevoice"
 

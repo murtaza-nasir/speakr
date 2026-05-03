@@ -41,6 +41,8 @@ export function createCoreState(ref, computed) {
     const useAsrEndpoint = ref(false);
     const connectorSupportsDiarization = ref(false);  // Connector capability for diarization UI
     const connectorSupportsSpeakerCount = ref(false);  // Connector capability for min/max speakers
+    const connectorSupportsHotwords = ref(false);     // Connector accepts hotword/keyword biasing
+    const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
     const currentUserName = ref('');
     const canDeleteRecordings = ref(true);
     const enableInternalSharing = ref(false);
@@ -132,6 +134,8 @@ export function createCoreState(ref, computed) {
         useAsrEndpoint,
         connectorSupportsDiarization,
         connectorSupportsSpeakerCount,
+        connectorSupportsHotwords,
+        connectorSupportsInitialPrompt,
         currentUserName,
         canDeleteRecordings,
         enableInternalSharing,
