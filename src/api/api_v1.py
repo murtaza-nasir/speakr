@@ -103,9 +103,16 @@ OPENAPI_SPEC = {
                     "created_at": {"type": "string", "format": "date-time"},
                     "meeting_date": {"type": "string", "format": "date-time"},
                     "file_size": {"type": "integer"},
+                    "audio_duration": {"type": "number", "description": "Audio duration in seconds"},
+                    "transcription_duration_seconds": {"type": "integer", "description": "Wall-clock seconds spent transcribing"},
+                    "summarization_duration_seconds": {"type": "integer", "description": "Wall-clock seconds spent summarizing"},
                     "participants": {"type": "string"},
                     "is_inbox": {"type": "boolean"},
                     "is_highlighted": {"type": "boolean"},
+                    "deletion_exempt": {"type": "boolean", "description": "If true, recording is exempt from auto-deletion"},
+                    "folder_id": {"type": "integer", "nullable": True},
+                    "folder": {"type": "object", "nullable": True, "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
+                    "events": {"type": "array", "description": "Calendar events extracted from the recording (detail endpoint only)", "items": {"type": "object"}},
                     "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}}
                 }
             },
@@ -118,7 +125,10 @@ OPENAPI_SPEC = {
                     "custom_prompt": {"type": "string"},
                     "default_language": {"type": "string"},
                     "default_min_speakers": {"type": "integer"},
-                    "default_max_speakers": {"type": "integer"}
+                    "default_max_speakers": {"type": "integer"},
+                    "default_hotwords": {"type": "string"},
+                    "default_initial_prompt": {"type": "string"},
+                    "default_transcription_model": {"type": "string"}
                 }
             },
             "Speaker": {
@@ -211,7 +221,7 @@ OPENAPI_SPEC = {
             "get": {"tags": ["Recordings"], "summary": "Get processing status", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Status with queue position"}}}
         },
         "/recordings/{id}/transcribe": {
-            "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Job queued"}}}
+            "post": {"tags": ["Processing"], "summary": "Queue transcription", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"language": {"type": "string"}, "min_speakers": {"type": "integer"}, "max_speakers": {"type": "integer"}, "hotwords": {"type": "string", "description": "Connectors that accept hotword biasing route this to their native parameter (WhisperX hotwords, Mistral context_bias, OpenAI prompt, etc.). Connectors that ignore it drop it silently."}, "initial_prompt": {"type": "string", "description": "Free-text context hint. Same per-connector behaviour as hotwords."}, "transcription_model": {"type": "string", "description": "Per-request model override. Validated against the admin-curated visible-models list. Falls back to the configured default if absent or invalid."}}}}}}, "responses": {"200": {"description": "Job queued"}}}
         },
         "/recordings/{id}/summarize": {
             "post": {"tags": ["Processing"], "summary": "Queue summarization", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"custom_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Job queued"}}}
@@ -275,10 +285,16 @@ OPENAPI_SPEC = {
                                 "properties": {
                                     "file": {"type": "string", "format": "binary"},
                                     "notes": {"type": "string"},
+                                    "title": {"type": "string"},
+                                    "meeting_date": {"type": "string", "format": "date-time"},
                                     "file_last_modified": {"type": "string"},
                                     "language": {"type": "string"},
                                     "min_speakers": {"type": "integer"},
                                     "max_speakers": {"type": "integer"},
+                                    "hotwords": {"type": "string"},
+                                    "initial_prompt": {"type": "string"},
+                                    "transcription_model": {"type": "string"},
+                                    "folder_id": {"type": "integer"},
                                     "tag_id": {"type": "integer"},
                                     "tag_ids[0]": {"type": "integer"},
                                     "tag_ids[1]": {"type": "integer"}
@@ -2286,10 +2302,16 @@ def upload_recording():
     Multipart form-data fields:
       - file (required)
       - notes (optional)
+      - title (optional)
+      - meeting_date (optional, ISO 8601)
       - file_last_modified (optional, ms epoch)
       - language (optional)
       - min_speakers (optional)
       - max_speakers (optional)
+      - hotwords (optional)
+      - initial_prompt (optional)
+      - transcription_model (optional, validated against admin-curated list)
+      - folder_id (optional)
       - tag_ids[0], tag_ids[1], ... (optional)
       - tag_id (optional, legacy)
     """
