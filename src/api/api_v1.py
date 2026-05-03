@@ -131,6 +131,26 @@ OPENAPI_SPEC = {
                     "default_transcription_model": {"type": "string"}
                 }
             },
+            "Folder": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "name": {"type": "string"},
+                    "color": {"type": "string"},
+                    "group_id": {"type": "integer", "nullable": True},
+                    "is_group_folder": {"type": "boolean"},
+                    "custom_prompt": {"type": "string"},
+                    "default_language": {"type": "string"},
+                    "default_min_speakers": {"type": "integer"},
+                    "default_max_speakers": {"type": "integer"},
+                    "default_hotwords": {"type": "string"},
+                    "default_initial_prompt": {"type": "string"},
+                    "default_transcription_model": {"type": "string"},
+                    "protect_from_deletion": {"type": "boolean"},
+                    "retention_days": {"type": "integer", "nullable": True},
+                    "recording_count": {"type": "integer"}
+                }
+            },
             "Speaker": {
                 "type": "object",
                 "properties": {
@@ -314,6 +334,62 @@ OPENAPI_SPEC = {
             "put": {"tags": ["Tags"], "summary": "Update tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}}}}}}, "responses": {"200": {"description": "Tag updated"}}},
             "delete": {"tags": ["Tags"], "summary": "Delete tag", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Tag deleted"}}}
         },
+        "/folders": {
+            "get": {"tags": ["Folders"], "summary": "List folders", "responses": {"200": {"description": "Array of folders the user can access", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Folder"}}}}}}},
+            "post": {"tags": ["Folders"], "summary": "Create folder", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "group_id": {"type": "integer", "nullable": True}, "custom_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"201": {"description": "Folder created"}}}
+        },
+        "/folders/{id}": {
+            "get": {"tags": ["Folders"], "summary": "Get folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Folder"}}}}}},
+            "patch": {"tags": ["Folders"], "summary": "Update folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"name": {"type": "string"}, "color": {"type": "string"}, "custom_prompt": {"type": "string"}, "default_language": {"type": "string"}, "default_min_speakers": {"type": "integer"}, "default_max_speakers": {"type": "integer"}, "default_hotwords": {"type": "string"}, "default_initial_prompt": {"type": "string"}, "default_transcription_model": {"type": "string"}, "retention_days": {"type": "integer"}}}}}}, "responses": {"200": {"description": "Folder updated"}}},
+            "delete": {"tags": ["Folders"], "summary": "Delete folder", "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}], "responses": {"200": {"description": "Folder deleted"}}}
+        },
+        "/transcription": {
+            "get": {
+                "tags": ["Transcription"],
+                "summary": "Discover the active transcription connector and its accepted models",
+                "description": "Returns the active connector name, a map of capability flags, the admin-curated model list, and the configured default model. Use this to drive client UIs and to know which values are valid for the `transcription_model` override on /recordings/{id}/transcribe and /recordings/upload.",
+                "responses": {
+                    "200": {
+                        "description": "Connector info",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "connector": {"type": "string", "nullable": True, "description": "Active connector name (e.g. asr_endpoint, openai_transcribe, mistral, vibevoice)"},
+                                        "capabilities": {
+                                            "type": "object",
+                                            "description": "Boolean flags indicating which optional fields the connector accepts",
+                                            "properties": {
+                                                "diarization": {"type": "boolean"},
+                                                "speaker_count_control": {"type": "boolean"},
+                                                "hotwords": {"type": "boolean"},
+                                                "initial_prompt": {"type": "boolean"},
+                                                "timestamps": {"type": "boolean"},
+                                                "language_detection": {"type": "boolean"},
+                                                "chunking": {"type": "boolean"}
+                                            }
+                                        },
+                                        "models": {
+                                            "type": "array",
+                                            "description": "Models the admin has marked visible to users (or TRANSCRIPTION_MODELS_AVAILABLE entries when no DB list is set)",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "value": {"type": "string"},
+                                                    "label": {"type": "string"}
+                                                }
+                                            }
+                                        },
+                                        "default_model": {"type": "string", "nullable": True}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/speakers": {
             "get": {"tags": ["Speakers"], "summary": "List speakers", "responses": {"200": {"description": "List of speakers"}}},
             "post": {"tags": ["Speakers"], "summary": "Create speaker", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}}}}, "responses": {"201": {"description": "Speaker created"}}}
@@ -340,6 +416,8 @@ OPENAPI_SPEC = {
         {"name": "Events", "description": "Calendar events"},
         {"name": "Audio", "description": "Audio file operations"},
         {"name": "Tags", "description": "Tag management"},
+        {"name": "Folders", "description": "Folder management"},
+        {"name": "Transcription", "description": "Transcription connector and model discovery"},
         {"name": "Speakers", "description": "Speaker management"},
         {"name": "Batch", "description": "Batch operations"},
         {"name": "Settings", "description": "User settings"}
@@ -1419,6 +1497,195 @@ def remove_tag_from_recording(recording_id, tag_id):
     db.session.commit()
 
     return jsonify({'success': True, 'message': 'Tag removed'})
+
+
+# =============================================================================
+# Folder Management
+#
+# These endpoints delegate to the existing web handlers in src/api/folders.py
+# so permission semantics (group folders, member vs admin) match the web UI
+# exactly. The web handlers already return jsonified, API-shaped responses
+# (`folder.to_dict()` for success, `{"error": "..."}` for errors), so the
+# delegation produces clean API output.
+#
+# Contract dependency: the v1 API's response shape on these routes is whatever
+# the corresponding handler in folders.py returns. Changing those return
+# shapes silently changes this API. A future cleanup should extract a
+# services/folder.py layer that returns data dicts, with both the web and v1
+# endpoints thin-wrapping with jsonify; that decouples the API contract from
+# the web response framing.
+# =============================================================================
+
+@api_v1_bp.route('/folders', methods=['GET'])
+@login_required
+def list_folders():
+    """List folders the user can access (personal + group folders)."""
+    from src.api.folders import get_folders as _web_get_folders
+    return _web_get_folders()
+
+
+@api_v1_bp.route('/folders', methods=['POST'])
+@login_required
+def create_folder():
+    """Create a new folder. Accepts the same JSON body as the web endpoint."""
+    from src.api.folders import create_folder as _web_create_folder
+    return _web_create_folder()
+
+
+@api_v1_bp.route('/folders/<int:folder_id>', methods=['GET'])
+@login_required
+def get_folder(folder_id):
+    """Get a single folder by id."""
+    from src.models.organization import Folder, GroupMembership
+
+    folder = db.session.get(Folder, folder_id)
+    if not folder:
+        return jsonify({'error': 'Folder not found'}), 404
+
+    # Personal folders: must own it. Group folders: must be a member.
+    if folder.group_id is None:
+        if folder.user_id != current_user.id:
+            return jsonify({'error': 'Permission denied'}), 403
+    else:
+        membership = GroupMembership.query.filter_by(
+            user_id=current_user.id, group_id=folder.group_id
+        ).first()
+        if not membership:
+            return jsonify({'error': 'Permission denied'}), 403
+
+    folder_dict = folder.to_dict()
+    if folder.group_id is None:
+        folder_dict['can_edit'] = True
+    else:
+        membership = GroupMembership.query.filter_by(
+            user_id=current_user.id, group_id=folder.group_id
+        ).first()
+        folder_dict['can_edit'] = bool(membership and membership.role == 'admin')
+    return jsonify(folder_dict)
+
+
+@api_v1_bp.route('/folders/<int:folder_id>', methods=['PATCH', 'PUT'])
+@login_required
+def update_folder(folder_id):
+    """Update a folder. Same JSON body as the web endpoint."""
+    from src.api.folders import update_folder as _web_update_folder
+    return _web_update_folder(folder_id)
+
+
+@api_v1_bp.route('/folders/<int:folder_id>', methods=['DELETE'])
+@login_required
+def delete_folder(folder_id):
+    """Delete a folder. Recordings in it are unassigned."""
+    from src.api.folders import delete_folder as _web_delete_folder
+    return _web_delete_folder(folder_id)
+
+
+# =============================================================================
+# Transcription Connector & Model Discovery
+# =============================================================================
+
+@api_v1_bp.route('/transcription', methods=['GET'])
+@login_required
+def get_transcription_info():
+    """
+    Return information about the active transcription connector so API
+    clients can know which fields are accepted and which model values are
+    valid for `transcription_model` overrides.
+
+    Response shape:
+      {
+        "connector": "openai_transcribe",
+        "capabilities": {
+          "diarization": true,
+          "speaker_count_control": false,
+          "hotwords": true,
+          "initial_prompt": true,
+          "timestamps": true,
+          "language_detection": true,
+          "chunking": false
+        },
+        "models": [
+          {"value": "gpt-4o-transcribe-diarize", "label": "GPT-4o Diarize"},
+          ...
+        ],
+        "default_model": "gpt-4o-transcribe-diarize"
+      }
+    """
+    from src.models import SystemSetting
+    from src.config.app_config import (
+        TRANSCRIPTION_MODEL,
+        USE_NEW_TRANSCRIPTION_ARCHITECTURE,
+        USE_ASR_ENDPOINT,
+    )
+
+    connector_name = None
+    capabilities = {
+        'diarization': USE_ASR_ENDPOINT,
+        'speaker_count_control': USE_ASR_ENDPOINT,
+        'hotwords': USE_ASR_ENDPOINT,
+        'initial_prompt': USE_ASR_ENDPOINT,
+        'timestamps': True,
+        'language_detection': True,
+        'chunking': False,
+    }
+    if USE_NEW_TRANSCRIPTION_ARCHITECTURE:
+        try:
+            from src.services.transcription import get_registry
+            registry = get_registry()
+            connector_name = registry.get_active_connector_name()
+            connector = registry.get_active_connector()
+            if connector:
+                capabilities = {
+                    'diarization': connector.supports_diarization,
+                    'speaker_count_control': connector.supports_speaker_count_control,
+                    'hotwords': connector.supports_hotwords,
+                    'initial_prompt': connector.supports_initial_prompt,
+                    'timestamps': True,
+                    'language_detection': True,
+                    'chunking': connector.supports_chunking,
+                }
+        except Exception as e:
+            current_app.logger.warning(f"Could not read connector capabilities: {e}")
+
+    # Visible models: admin-curated DB list takes precedence over the
+    # TRANSCRIPTION_MODELS_AVAILABLE env var.
+    models = []
+    raw = SystemSetting.get_setting('transcription_models_visible_json', None)
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                for item in parsed:
+                    if isinstance(item, dict) and item.get('value'):
+                        models.append({
+                            'value': item['value'],
+                            'label': item.get('label') or item['value'],
+                        })
+                    elif isinstance(item, str) and item:
+                        models.append({'value': item, 'label': item})
+        except Exception:
+            models = []
+    if not models:
+        from src.config.app_config import (
+            TRANSCRIPTION_MODELS_AVAILABLE,
+            TRANSCRIPTION_MODEL_LABELS,
+        )
+        if TRANSCRIPTION_MODELS_AVAILABLE:
+            labels = TRANSCRIPTION_MODEL_LABELS or []
+            for i, value in enumerate(TRANSCRIPTION_MODELS_AVAILABLE):
+                models.append({
+                    'value': value,
+                    'label': labels[i] if i < len(labels) else value,
+                })
+
+    default_model = SystemSetting.get_setting('transcription_default_model', None) or TRANSCRIPTION_MODEL or None
+
+    return jsonify({
+        'connector': connector_name,
+        'capabilities': capabilities,
+        'models': models,
+        'default_model': default_model,
+    })
 
 
 # =============================================================================
