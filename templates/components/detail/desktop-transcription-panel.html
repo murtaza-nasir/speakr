@@ -207,6 +207,8 @@
                          :key="`seg-${index}-${segment.startTime}`"
                          :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
                          @click="seekAudioFromEvent"
+                         @dblclick.stop="openAsrEditorAtSegment(index)"
+                         :title="'Double-click to edit this segment'"
                          :data-start-time="segment.startTime"
                          :data-segment-index="index">
                         <div v-if="segment.showSpeaker" class="speaker-segment-header">
@@ -229,6 +231,8 @@
                              :key="`seg-${index}-${segment.startTime}`"
                              :class="['transcript-segment cursor-pointer hover:bg-[var(--bg-accent-hover)] p-2 rounded transition-colors', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
                              @click="seekAudioFromEvent"
+                             @dblclick.stop="openAsrEditorAtSegment(index)"
+                             :title="'Double-click to edit this segment'"
                              :data-start-time="segment.startTime"
                              :data-segment-index="index">
                             <span v-if="showTimestampsSimpleView"

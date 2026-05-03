@@ -610,6 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const speakerModalTranscriptRef = ref(null);
             const mainTranscriptRef = ref(null);
             const asrEditorRef = ref(null);
+            const asrEditorSaveFlash = ref(false);  // Brief "Saved" indicator after Save (without close)
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
@@ -762,7 +763,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentSpeakerGroupIndex, speakerGroups,
 
                 // Virtual Scroll
-                speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef
+                speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef, asrEditorSaveFlash
             };
 
             // =========================================================================
@@ -1412,6 +1413,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
             utils.resetModalAudioState = resetModalAudioState;
             utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
+            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(index, 'auto');
+            utils.setAsrEditorScrollTop = (scrollTop) => {
+                if (asrEditorRef.value) {
+                    asrEditorRef.value.scrollTop = scrollTop;
+                }
+            };
             utils.resetSpeakerModalScroll = () => speakerModalVirtualScroll.reset();
             utils.getSpeakerModalVisibleRange = () => speakerModalVirtualScroll.visibleRange.value;
 
@@ -2580,6 +2587,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 speakerModalTranscriptRef,
                 mainTranscriptRef,
                 asrEditorRef,
+                asrEditorSaveFlash,
                 speakerModalVisibleSegments: speakerModalVirtualScroll.visibleItems,
                 speakerModalSpacerBefore: speakerModalVirtualScroll.spacerBefore,
                 speakerModalSpacerAfter: speakerModalVirtualScroll.spacerAfter,

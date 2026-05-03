@@ -3,11 +3,22 @@
  * Handles ASR editor, text editor, and segment management
  */
 
+// Module-scoped scroll-position memory for the ASR editor. Keyed by recording
+// id so users editing a long transcript can close and reopen the modal within
+// the same session and land back where they left off. Cleared implicitly when
+// the page reloads.
+const _asrEditorScrollMemory = new Map();
+
+// Pending segment index to scroll to when the editor next opens. Used by the
+// double-click-on-simple-view-segment path. null means "restore last scroll".
+let _asrEditorPendingScrollIndex = null;
+
 export function useTranscription(state, utils) {
     const {
         showTextEditorModal, showAsrEditorModal, selectedRecording,
         editingTranscriptionContent, editingSegments, availableSpeakers,
-        recordings, dropdownPositions, openAsrDropdownIndex
+        recordings, dropdownPositions, openAsrDropdownIndex,
+        asrEditorRef, asrEditorSaveFlash
     } = state;
 
     const { showToast, setGlobalError, nextTick } = utils;
@@ -87,17 +98,54 @@ export function useTranscription(state, utils) {
 
             showAsrEditorModal.value = true;
 
-            // Reset virtual scroll state for fresh modal render
+            // Reset virtual scroll state for fresh modal render. After it
+            // initialises, either scroll to a specific segment (when the
+            // modal was opened from a double-click on a simple-view row) or
+            // restore the last scroll position for this recording.
             if (utils.resetAsrEditorScroll) {
                 utils.resetAsrEditorScroll();
             }
+            const recordingId = selectedRecording.value.id;
+            const targetIndex = _asrEditorPendingScrollIndex;
+            _asrEditorPendingScrollIndex = null;
+            await nextTick();
+            // requestAnimationFrame defers past the virtualScroll's own
+            // post-mount initialisation tick.
+            requestAnimationFrame(() => {
+                if (targetIndex != null) {
+                    if (utils.scrollAsrEditorToIndex) {
+                        utils.scrollAsrEditorToIndex(targetIndex);
+                    }
+                } else {
+                    const saved = _asrEditorScrollMemory.get(recordingId);
+                    if (saved != null && utils.setAsrEditorScrollTop) {
+                        utils.setAsrEditorScrollTop(saved);
+                    }
+                }
+            });
         } catch (e) {
             console.error("Could not parse transcription as JSON for ASR editor:", e);
             setGlobalError("This transcription is not in the correct format for the ASR editor.");
         }
     };
 
+    // Open the editor and scroll to a specific segment index. Used by the
+    // double-click-on-simple-view-row affordance.
+    const openAsrEditorAtSegment = (segmentIndex) => {
+        _asrEditorPendingScrollIndex = segmentIndex;
+        return openAsrEditorModal();
+    };
+
     const closeAsrEditorModal = () => {
+        // Save scroll position so reopening the same recording within this
+        // session lands the user back where they were.
+        if (selectedRecording.value && asrEditorRef && asrEditorRef.value) {
+            _asrEditorScrollMemory.set(
+                selectedRecording.value.id,
+                asrEditorRef.value.scrollTop
+            );
+        }
+
         // Pause any playing modal audio before closing
         const modalAudio = document.querySelector('.fixed.z-50 audio') || document.querySelector('.fixed.z-50 video');
         if (modalAudio) {
@@ -112,15 +160,39 @@ export function useTranscription(state, utils) {
         editingSegments.value = [];
     };
 
-    const saveAsrTranscription = async () => {
+    const saveAsrTranscription = async (keepOpen = false) => {
         if (!selectedRecording.value) return;
 
         // Remove extra UI fields and save the rest
         const contentToSave = JSON.stringify(editingSegments.value.map(({ id, showSuggestions, filteredSpeakers, ...rest }) => rest));
 
         await saveTranscriptionContent(contentToSave);
-        closeAsrEditorModal();
+
+        if (keepOpen) {
+            // Briefly flash a "Saved" indicator so the user knows the write
+            // succeeded without the modal closing.
+            if (asrEditorSaveFlash) {
+                asrEditorSaveFlash.value = true;
+                setTimeout(() => { asrEditorSaveFlash.value = false; }, 1800);
+            }
+        } else {
+            closeAsrEditorModal();
+        }
     };
+
+    // Ctrl+S / Cmd+S handler -- saves without closing while the editor modal
+    // is open. preventDefault stops the browser's "save page" dialog.
+    const handleAsrEditorKeydown = (event) => {
+        if (!showAsrEditorModal.value) return;
+        const isSaveShortcut = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+        if (isSaveShortcut) {
+            event.preventDefault();
+            saveAsrTranscription(true);
+        }
+    };
+    if (typeof window !== 'undefined') {
+        window.addEventListener('keydown', handleAsrEditorKeydown);
+    }
 
     // =========================================
     // Segment Management
@@ -457,6 +529,7 @@ export function useTranscription(state, utils) {
 
         // ASR editor
         openAsrEditorModal,
+        openAsrEditorAtSegment,
         closeAsrEditorModal,
         saveAsrTranscription,
 
