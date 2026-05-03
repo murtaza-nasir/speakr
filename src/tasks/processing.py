@@ -395,13 +395,18 @@ Title:"""
         return None
 
 
-def generate_summary_only_task(app_context, recording_id, custom_prompt_override=None, user_id=None):
+def generate_summary_only_task(app_context, recording_id, custom_prompt_override=None, custom_prompt_append=False, user_id=None):
     """Generates only a summary for a recording (no title, no JSON response).
 
     Args:
         app_context: Flask app context
         recording_id: ID of the recording
-        custom_prompt_override: Optional custom prompt that overrides all other prompts (for reprocessing)
+        custom_prompt_override: Optional user-supplied summarization instructions.
+            By default this REPLACES the resolved default prompt (tag/folder/user/admin).
+            When ``custom_prompt_append`` is True, it is appended to the resolved
+            default as additional context instead.
+        custom_prompt_append: When True, append ``custom_prompt_override`` to the
+            resolved default prompt rather than replacing it.
         user_id: Optional user ID to filter tag visibility (defaults to recording owner)
     """
     with app_context:
@@ -506,10 +511,11 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 
         language_directive = f"IMPORTANT: You MUST provide the summary in {user_output_language}. The entire response must be in {user_output_language}." if user_output_language else ""
 
-        # Determine which summarization instructions to use
-        # Priority order: custom_prompt_override > tag custom prompt > folder custom prompt > user summary prompt > admin default prompt > hardcoded fallback
+        # Determine which summarization instructions to use.
+        # Priority order: custom_prompt_override > tag custom prompt > folder custom prompt > user summary prompt > admin default prompt > hardcoded fallback.
+        # When custom_prompt_append is True the override is appended to the resolved default rather than replacing it.
         summarization_instructions = ""
-        if custom_prompt_override:
+        if custom_prompt_override and not custom_prompt_append:
             current_app.logger.info(f"Using custom prompt override for recording {recording_id} (length: {len(custom_prompt_override)})")
             summarization_instructions = custom_prompt_override
         elif tag_custom_prompt:
@@ -534,6 +540,19 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 - **Key Decisions Made**: A bulleted list of any decisions reached
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
                 current_app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
+
+        # Append the user's per-run additions on top of the resolved default
+        # (issue / discussion #253). This is how a user supplies a meeting agenda
+        # or one-off context without rewriting their saved summary prompt.
+        if custom_prompt_override and custom_prompt_append:
+            current_app.logger.info(
+                f"Appending custom prompt to resolved default for recording {recording_id} "
+                f"(append length: {len(custom_prompt_override)})"
+            )
+            summarization_instructions = (
+                f"{summarization_instructions}\n\n"
+                f"Additional context for this recording:\n{custom_prompt_override}"
+            )
 
         # Build context information
         current_date = datetime.now().strftime("%B %d, %Y")

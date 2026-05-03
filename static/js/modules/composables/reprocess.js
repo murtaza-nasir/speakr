@@ -14,7 +14,8 @@ export function useReprocess(state, utils) {
         recordings, asrReprocessOptions, summaryReprocessPromptSource,
         summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
         availableTags, processingProgress, processingMessage,
-        currentlyProcessingFile, uploadQueue, userTranscriptionLanguage
+        currentlyProcessingFile, uploadQueue, userTranscriptionLanguage,
+        showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode
     } = state;
 
     const { showToast, setGlobalError, onChatComplete } = utils;
@@ -244,8 +245,35 @@ export function useReprocess(state, utils) {
     // Generate Summary
     // =========================================
 
-    const generateSummary = async () => {
+    // Open the "customise summarisation prompt" modal pre-populated with the
+    // user's saved summary prompt (or the admin default if the user hasn't
+    // set one). The user can then add or replace before generating.
+    const openCustomizeSummaryModal = () => {
         if (!selectedRecording.value) return;
+        // Default mode: append. Most users want to add agenda/context to
+        // their saved prompt rather than replace it.
+        customizeSummaryMode.value = 'append';
+        // Start with an empty textarea so the user types just the additional
+        // context. They can switch to replace mode and write a full prompt.
+        customizeSummaryPrompt.value = '';
+        showCustomizeSummaryModal.value = true;
+    };
+
+    const closeCustomizeSummaryModal = () => {
+        showCustomizeSummaryModal.value = false;
+    };
+
+    const submitCustomizeSummaryModal = async () => {
+        const prompt = (customizeSummaryPrompt.value || '').trim();
+        const mode = customizeSummaryMode.value === 'replace' ? 'replace' : 'append';
+        showCustomizeSummaryModal.value = false;
+        await generateSummary({ customPrompt: prompt, promptMode: mode });
+    };
+
+    const generateSummary = async (options = {}) => {
+        if (!selectedRecording.value) return;
+        const customPrompt = (options.customPrompt || '').trim();
+        const promptMode = options.promptMode === 'append' ? 'append' : 'replace';
 
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -281,13 +309,20 @@ export function useReprocess(state, utils) {
                 return;
             }
 
-            // Regular recording - use existing flow
+            // Regular recording - use existing flow. Forward an optional
+            // user-supplied custom prompt + mode (issue / discussion #253).
+            const body = {};
+            if (customPrompt) {
+                body.custom_prompt = customPrompt;
+                body.prompt_mode = promptMode;
+            }
             const response = await fetch(`/recording/${selectedRecording.value.id}/generate_summary`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
-                }
+                },
+                body: JSON.stringify(body),
             });
 
             const data = await response.json();
@@ -451,6 +486,9 @@ export function useReprocess(state, utils) {
         // Summary
         reprocessSummary,
         generateSummary,
+        openCustomizeSummaryModal,
+        closeCustomizeSummaryModal,
+        submitCustomizeSummaryModal,
 
         // Polling
         startReprocessingPoll,

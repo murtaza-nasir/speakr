@@ -422,6 +422,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showSharesListModal = ref(false);
             const showTextEditorModal = ref(false);
             const showAsrEditorModal = ref(false);
+            const showCustomizeSummaryModal = ref(false);
+            const customizeSummaryPrompt = ref('');
+            const customizeSummaryMode = ref('append');  // 'append' | 'replace'
             const editingRecording = ref(null);
             const editingTranscriptionContent = ref('');
             const editingSegments = ref([]);
@@ -715,7 +718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
                 editingSegments, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,

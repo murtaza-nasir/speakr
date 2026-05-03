@@ -1,0 +1,64 @@
+<!-- Customise Summary Prompt Modal -->
+<div v-if="showCustomizeSummaryModal" @click.self="closeCustomizeSummaryModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+        <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-magic text-[var(--text-accent)]"></i>
+                <h3 class="text-lg font-semibold text-[var(--text-primary)]">Customise summary prompt</h3>
+            </div>
+            <button @click="closeCustomizeSummaryModal" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="px-6 py-5 overflow-y-auto flex-1 space-y-4">
+            <p class="text-sm text-[var(--text-muted)]">
+                Add an agenda, list of attendees, or any other context you want the model to consider when summarising this recording. The text below is combined with the saved summary prompt unless you switch the mode.
+            </p>
+
+            <div class="grid grid-cols-2 gap-2 p-1 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg">
+                <label
+                    :class="['flex items-start gap-2 p-3 rounded-md cursor-pointer transition-colors', customizeSummaryMode === 'append' ? 'bg-[var(--bg-secondary)] border border-[var(--border-accent)] shadow-sm' : 'border border-transparent hover:bg-[var(--bg-secondary)]']">
+                    <input type="radio" value="append" v-model="customizeSummaryMode" class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                    <span class="flex-1">
+                        <span class="block text-sm font-medium text-[var(--text-primary)]">Append</span>
+                        <span class="block text-xs text-[var(--text-muted)] mt-0.5">Use my saved prompt and add this as extra context.</span>
+                    </span>
+                </label>
+                <label
+                    :class="['flex items-start gap-2 p-3 rounded-md cursor-pointer transition-colors', customizeSummaryMode === 'replace' ? 'bg-[var(--bg-secondary)] border border-[var(--border-accent)] shadow-sm' : 'border border-transparent hover:bg-[var(--bg-secondary)]']">
+                    <input type="radio" value="replace" v-model="customizeSummaryMode" class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                    <span class="flex-1">
+                        <span class="block text-sm font-medium text-[var(--text-primary)]">Replace</span>
+                        <span class="block text-xs text-[var(--text-muted)] mt-0.5">Use only this text as the summarisation instructions.</span>
+                    </span>
+                </label>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1.5 uppercase tracking-wide">
+                    <span v-if="customizeSummaryMode === 'append'">Additional context</span>
+                    <span v-else>Custom prompt</span>
+                </label>
+                <textarea
+                    v-model="customizeSummaryPrompt"
+                    rows="10"
+                    :placeholder="customizeSummaryMode === 'append' ? 'e.g.\nAgenda:\n1. Budget review\n2. Q3 hiring plan\n3. New product launch' : 'Write the full summarisation instructions you want the model to follow...'"
+                    class="w-full px-3 py-2 text-sm bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] resize-y font-mono"></textarea>
+            </div>
+        </div>
+
+        <div class="bg-[var(--bg-tertiary)] px-6 py-4 flex justify-end gap-3 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
+            <button @click="closeCustomizeSummaryModal"
+                    class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                Cancel
+            </button>
+            <button @click="submitCustomizeSummaryModal"
+                    :disabled="!customizeSummaryPrompt.trim()"
+                    :class="['px-4 py-2 rounded-lg flex items-center gap-2 transition-all', customizeSummaryPrompt.trim() ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-md hover:from-blue-700 hover:to-purple-700' : 'bg-[var(--bg-secondary)] text-[var(--text-muted)] border border-[var(--border-secondary)] cursor-not-allowed']">
+                <i class="fas fa-magic text-xs"></i>
+                <span>Generate Summary</span>
+            </button>
+        </div>
+    </div>
+</div>

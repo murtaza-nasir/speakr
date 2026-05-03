@@ -620,7 +620,14 @@ def download_notes_word(recording_id):
 @recordings_bp.route('/recording/<int:recording_id>/generate_summary', methods=['POST'])
 @login_required
 def generate_summary_endpoint(recording_id):
-    """Generate summary for a recording that doesn't have one."""
+    """Generate summary for a recording that doesn't have one.
+
+    Optional JSON body:
+      - custom_prompt (string): user-supplied summarization instructions.
+      - prompt_mode ('replace' | 'append', default 'replace'): in 'replace'
+        mode the custom prompt overrides the resolved default; in 'append'
+        mode it is appended after the resolved default as additional context.
+    """
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording:
@@ -645,14 +652,31 @@ def generate_summary_endpoint(recording_id):
         if client is None:
             return jsonify({'error': 'Summary service is not available (OpenRouter client not configured)'}), 503
 
-        current_app.logger.info(f"Queueing summary generation for recording {recording_id}")
+        # Optional custom prompt + mode (issue / discussion #253)
+        data = request.get_json(silent=True) or {}
+        raw_prompt = data.get('custom_prompt')
+        custom_prompt = raw_prompt.strip() if isinstance(raw_prompt, str) and raw_prompt.strip() else None
+        prompt_mode = (data.get('prompt_mode') or 'replace').strip().lower()
+        if prompt_mode not in ('replace', 'append'):
+            prompt_mode = 'replace'
+        custom_prompt_append = bool(custom_prompt) and prompt_mode == 'append'
+
+        current_app.logger.info(
+            f"Queueing summary generation for recording {recording_id}"
+            + (f" with custom prompt (mode={prompt_mode}, length={len(custom_prompt)})" if custom_prompt else "")
+        )
 
         # Queue summary generation job
+        job_params = {'user_id': current_user.id}
+        if custom_prompt:
+            job_params['custom_prompt'] = custom_prompt
+            job_params['custom_prompt_append'] = custom_prompt_append
+
         job_queue.enqueue(
             user_id=current_user.id,
             recording_id=recording.id,
             job_type='summarize',
-            params={'user_id': current_user.id}
+            params=job_params,
         )
 
         return jsonify({
