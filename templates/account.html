@@ -2640,6 +2640,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // Pure-JS render (account page is Jinja-only, no Vue). Builds the
             // chip markup as real DOM nodes — never innerHTML — so the chip
             // injection cannot interpret user-supplied text as HTML.
+            // Wrapped in {% raw %} because the function body contains JS like
+            // `'{{' + name + '}}'` which Jinja would otherwise parse as
+            // expression delimiters and replace with empty / literal strings.
+            {% raw %}
             (function setupFullPromptPreview() {
                 const toggleBtn = document.getElementById('toggleFullPromptStructure');
                 const body = document.getElementById('fullPromptStructureBody');
@@ -2650,12 +2654,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const promptTextarea = document.getElementById('summary_prompt_custom');
                 if (!toggleBtn || !body || !sysEl || !userEl) return;
 
-                {% raw %}
                 // Match `{{user_var}}` first (longer pattern) and `{system_var}`
                 // second. Combined regex with two capture groups so we can
                 // tell which kind matched without a second pass.
                 const PLACEHOLDER_RE = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}|\{(\s*[A-Za-z_][A-Za-z0-9_]*\s*)\}/g;
-                {% endraw %}
 
                 // Build a chip span for a placeholder match. Returns a real
                 // DOM element so caller can append directly.
@@ -2744,6 +2746,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     chevron.classList.toggle('fa-chevron-up', !isHidden);
                 });
             })();
+            {% endraw %}
 
             // Setup auto speaker labelling toggle and dropdown
             const autoLabelToggle = document.getElementById('autoSpeakerLabellingToggle');
