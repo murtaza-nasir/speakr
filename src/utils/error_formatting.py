@@ -299,8 +299,10 @@ def format_error_for_storage(error_text: str) -> str:
         'k': formatted['is_known'],
     }
 
-    # Only include technical details if it adds value
-    if formatted['technical'] and formatted['technical'] != formatted['message']:
+    # Always include the raw technical detail when present, so the UI's
+    # "Technical details" panel has something to show even for unknown errors
+    # where the user-facing message is the same as the raw text.
+    if formatted['technical']:
         error_data['d'] = formatted['technical'][:500]  # Limit technical detail length
 
     try:

@@ -215,9 +215,26 @@ class ASREndpointConnector(BaseTranscriptionConnector):
             return self._parse_response(data)
 
         except httpx.HTTPStatusError as e:
-            logger.error(f"ASR request failed with status {e.response.status_code}")
+            # Capture the upstream response body so the actual error message
+            # (e.g. faster-whisper's "Invalid model size 'whisper-tiny'") is
+            # preserved instead of being collapsed to just a status code.
+            try:
+                body = e.response.text
+            except Exception:
+                body = ''
+            body_excerpt = body.strip()
+            if len(body_excerpt) > 800:
+                body_excerpt = body_excerpt[:800] + '...'
+            logger.error(
+                f"ASR request failed with status {e.response.status_code}: {body_excerpt}"
+            )
+            detail = (
+                f"ASR request failed with status {e.response.status_code}: {body_excerpt}"
+                if body_excerpt
+                else f"ASR request failed with status {e.response.status_code}"
+            )
             raise ProviderError(
-                f"ASR request failed with status {e.response.status_code}",
+                detail,
                 provider=self.PROVIDER_NAME,
                 status_code=e.response.status_code
             ) from e
