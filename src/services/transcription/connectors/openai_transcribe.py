@@ -86,6 +86,12 @@ class OpenAITranscribeConnector(BaseTranscriptionConnector):
             'max_duration_seconds': 1400,  # ~23 minutes (more restrictive)
             'recommended_chunk_seconds': 1200,  # 20 minutes
             'description': 'Speaker diarization with labels A, B, C, D'
+        },
+        'whisper-1': {
+            'supports_diarization': False,
+            'max_duration_seconds': 1500,  # 25 minutes (same 25MB API limit)
+            'recommended_chunk_seconds': 1200,  # 20 minutes
+            'description': 'Legacy Whisper API (no diarization)'
         }
     }
 
