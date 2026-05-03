@@ -395,6 +395,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const uploadHotwords = ref('');
             const uploadInitialPrompt = ref('');
             const uploadTranscriptionModel = ref('');
+            const uploadPromptVariables = reactive({});  // {variableName: value}
+            const showPromptVariablesPanel = ref(true);  // expander state
             const transcriptionModelOptions = ref([]);
 
             // Tag Selection
@@ -619,6 +621,61 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
+
+            // Aggregate `{{name}}` variables across the currently selected
+            // tags and folder. Returns an array of unique entries in the
+            // order they were first seen, each with the inferred label and
+            // a list of contributing sources for the UI to show next to the
+            // input.
+            const _PROMPT_VAR_RE = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g;
+            const _extractVariableNames = (text) => {
+                if (!text || typeof text !== 'string') return [];
+                const names = [];
+                for (const match of text.matchAll(_PROMPT_VAR_RE)) {
+                    if (!names.includes(match[1])) names.push(match[1]);
+                }
+                return names;
+            };
+            const _inferVarLabel = (name) => {
+                if (!name) return '';
+                const cleaned = name.replace(/_/g, ' ').trim();
+                if (!cleaned) return '';
+                return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+            };
+            const selectedPromptVariables = computed(() => {
+                const acc = new Map();  // name -> { label, sources: [{type, name}] }
+                const addVars = (text, sourceLabel, sourceType) => {
+                    for (const name of _extractVariableNames(text)) {
+                        if (!acc.has(name)) {
+                            acc.set(name, { name, label: _inferVarLabel(name), sources: [] });
+                        }
+                        const entry = acc.get(name);
+                        if (!entry.sources.find(s => s.name === sourceLabel && s.type === sourceType)) {
+                            entry.sources.push({ type: sourceType, name: sourceLabel });
+                        }
+                    }
+                };
+
+                // Tags: scan custom_prompt of every selected tag.
+                if (Array.isArray(selectedTagIds.value) && Array.isArray(availableTags.value)) {
+                    for (const id of selectedTagIds.value) {
+                        const tag = availableTags.value.find(t => t.id === id);
+                        if (tag && tag.custom_prompt) {
+                            addVars(tag.custom_prompt, tag.name, 'tag');
+                        }
+                    }
+                }
+
+                // Folder: scan custom_prompt of the selected folder.
+                if (selectedFolderId.value && Array.isArray(availableFolders.value)) {
+                    const folder = availableFolders.value.find(f => f.id === selectedFolderId.value);
+                    if (folder && folder.custom_prompt) {
+                        addVars(folder.custom_prompt, folder.name, 'folder');
+                    }
+                }
+
+                return Array.from(acc.values());
+            });
             const isMobileDevice = computed(() => {
                 return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                        ('ontouchstart' in window) ||
@@ -691,7 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, transcriptionModelOptions,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 

@@ -35,7 +35,7 @@ export function useUpload(state, utils) {
         isProcessingActive, pollInterval, progressPopupMinimized, progressPopupClosed,
         maxFileSizeMB, chunkingEnabled, chunkingMode, chunkingLimit, maxConcurrentUploads,
         recordings, selectedRecording, totalRecordings, globalError,
-        selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, transcriptionModelOptions,
+        selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, uploadPromptVariables, transcriptionModelOptions,
         useAsrEndpoint, connectorSupportsDiarization, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
         dragover, availableTags, uploadTagSearchFilter,
         // Folder state
@@ -265,6 +265,7 @@ export function useUpload(state, utils) {
                         hotwords: uploadHotwords.value,
                         initial_prompt: uploadInitialPrompt.value,
                         transcription_model: uploadTranscriptionModel.value,
+                        prompt_variables: { ...uploadPromptVariables },
                     };
                     item.folder_id = selectedFolderId.value;
                 }
@@ -388,6 +389,22 @@ export function useUpload(state, utils) {
             const transcriptionModel = asrOpts.transcription_model || uploadTranscriptionModel.value;
             if (transcriptionModel && transcriptionModel.trim()) {
                 formData.append('transcription_model', transcriptionModel.trim());
+            }
+
+            // Per-recording prompt template variables (issue #253). Carry the
+            // values either from a queued item's saved options or from the
+            // current upload-form state. The server sanitises before storing.
+            const promptVariables = asrOpts.prompt_variables || uploadPromptVariables;
+            if (promptVariables && typeof promptVariables === 'object') {
+                const cleaned = {};
+                for (const [key, value] of Object.entries(promptVariables)) {
+                    if (value !== undefined && value !== null && String(value).trim() !== '') {
+                        cleaned[key] = String(value);
+                    }
+                }
+                if (Object.keys(cleaned).length > 0) {
+                    formData.append('prompt_variables', JSON.stringify(cleaned));
+                }
             }
 
             // Use XMLHttpRequest for per-file upload progress
