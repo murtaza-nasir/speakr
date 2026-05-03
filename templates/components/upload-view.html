@@ -394,7 +394,9 @@
                     </div>
 
                     <!-- Transcription Model (issue #266 — visible only when admin set TRANSCRIPTION_MODELS_AVAILABLE) -->
-                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 0">
+                    <!-- Only show the dropdown when there are at least 2 visible models;
+                         a single visible model means there is no real choice to offer. -->
+                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1">
                         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                             Transcription model
                         </label>

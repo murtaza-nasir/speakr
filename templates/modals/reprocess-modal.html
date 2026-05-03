@@ -90,8 +90,10 @@
                         <textarea id="asr-initial-prompt-reprocess" v-model="asrReprocessOptions.initial_prompt" rows="2" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)] resize-y" :placeholder="t('form.initialPromptPlaceholder')"></textarea>
                         <p class="text-[10px] text-[var(--text-muted)] mt-0.5" v-text="t('form.initialPromptHelp')"></p>
                     </div>
-                    <!-- Per-reprocess transcription model (issue #266) -->
-                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 0">
+                    <!-- Per-reprocess transcription model (issue #266).
+                         Only show when there are at least 2 visible models; a single
+                         visible model means there is no real choice to offer. -->
+                    <div v-if="transcriptionModelOptions && transcriptionModelOptions.length > 1">
                         <label for="asr-model-reprocess" class="block text-sm font-medium text-[var(--text-muted)]">Transcription model</label>
                         <select id="asr-model-reprocess" v-model="asrReprocessOptions.transcription_model" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
                             <option value="">(use tag/folder/global default)</option>
