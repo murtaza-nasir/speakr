@@ -789,6 +789,7 @@
                         <p class="text-sm text-[var(--text-muted)] mb-6" data-i18n="preferences.description">Display and editor behaviour preferences. These settings are saved to your account and apply across devices.</p>
 
                         <form id="preferencesForm" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="preferences_form" value="1">
 
                             <!-- Left column: Language Preferences -->
