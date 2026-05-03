@@ -209,7 +209,17 @@ Tag prompts stack intelligently when multiple tags are applied. If you tag a rec
 
 ### Prompt Variables
 
-Tag and folder custom prompts may contain `{{name}}` placeholders that are filled in per recording at upload time. A "Council Meetings" tag whose prompt reads `Generate minutes for this council meeting. Agenda: {{agenda}}. Attendees: {{attendees}}.` will cause Speakr's upload form to display two input fields ("Agenda", "Attendees") whenever that tag is selected. The values are stored on the recording and substituted into the prompt at summarisation time, including on reprocessing. Variable names follow identifier rules (letters, digits, and underscores; must start with a letter or underscore). Labels are derived from the name automatically (`meeting_date` becomes "Meeting date").
+Tag and folder custom prompts may contain `{{name}}` placeholders that are filled in per recording at upload time. A "Council Meetings" tag whose prompt reads `Generate minutes for this council meeting. Agenda: {{agenda}}. Attendees: {{attendees}}.` will cause Speakr's upload form to display two input fields ("Agenda", "Attendees") whenever that tag is selected. The values are stored on the recording and substituted into the prompt at summarisation time, including on reprocessing.
+
+**Naming rules.** Variable names use ASCII identifier characters only (letters, digits, and underscores; must start with a letter or underscore). Names with non-ASCII characters such as `{{дата}}` are not recognised as placeholders and remain in the prompt as literal text. Labels in the upload form are derived automatically (`meeting_date` becomes "Meeting date").
+
+**Limits.** Up to 50 variables per recording, 8000 characters per value, 32000 characters total. Excess input is truncated server-side.
+
+**Single-pass substitution.** Variables are replaced once. A value that itself contains `{{anothervar}}` is treated as literal text rather than recursively expanded.
+
+**Drop-folder uploads.** Recordings ingested through the auto-process watch directory bypass the upload form and therefore have no opportunity to fill variables. Their stored `prompt_variables` is empty and any placeholders substitute to empty strings on the first summary run. Reprocess after upload to fill values, or use only non-templated prompts on tags applied to drop-folder content.
+
+**Editing values after upload.** Stored variable values are not yet editable from the recording detail or reprocess modal. To change a value, re-upload the recording or wait for that capability in a future release.
 
 ### ASR Defaults
 

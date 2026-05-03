@@ -541,10 +541,26 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
                 current_app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
 
-        # Substitute {{variable}} placeholders in the resolved prompt with the
-        # values the user supplied at upload time (or via a later edit). This
-        # turns tag/folder prompts that contain `{{agenda}}` etc. into concrete
-        # instructions for this specific recording.
+        # Append the user's per-run additions on top of the resolved default
+        # (issue / discussion #253). This is how a user supplies a meeting agenda
+        # or one-off context without rewriting their saved summary prompt.
+        # The append must happen BEFORE variable substitution so the appended
+        # text's own placeholders get substituted along with the resolved
+        # prompt's placeholders.
+        if custom_prompt_override and custom_prompt_append:
+            current_app.logger.info(
+                f"Appending custom prompt to resolved default for recording {recording_id} "
+                f"(append length: {len(custom_prompt_override)})"
+            )
+            summarization_instructions = (
+                f"{summarization_instructions}\n\n"
+                f"Additional context for this recording:\n{custom_prompt_override}"
+            )
+
+        # Substitute {{variable}} placeholders in the final composed prompt
+        # with the values the user supplied at upload time (or via a later
+        # edit). Running this AFTER the append step lets the appended text
+        # use the same variables as the resolved prompt.
         from src.utils.prompt_variables import (
             extract_template_variables,
             substitute_template_variables,
@@ -561,19 +577,6 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                 )
             summarization_instructions = substitute_template_variables(
                 summarization_instructions, prompt_variables
-            )
-
-        # Append the user's per-run additions on top of the resolved default
-        # (issue / discussion #253). This is how a user supplies a meeting agenda
-        # or one-off context without rewriting their saved summary prompt.
-        if custom_prompt_override and custom_prompt_append:
-            current_app.logger.info(
-                f"Appending custom prompt to resolved default for recording {recording_id} "
-                f"(append length: {len(custom_prompt_override)})"
-            )
-            summarization_instructions = (
-                f"{summarization_instructions}\n\n"
-                f"Additional context for this recording:\n{custom_prompt_override}"
             )
 
         # Build context information
