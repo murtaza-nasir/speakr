@@ -2638,11 +2638,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // Full LLM prompt structure preview
             // ====================================================
             // Pure-JS render (account page is Jinja-only, no Vue). Builds the
-            // chip markup as real DOM nodes — never innerHTML — so the chip
-            // injection cannot interpret user-supplied text as HTML.
-            // Wrapped in {% raw %} because the function body contains JS like
-            // `'{{' + name + '}}'` which Jinja would otherwise parse as
-            // expression delimiters and replace with empty / literal strings.
+            // chip markup as real DOM nodes - never innerHTML - so the chip
+            // injection cannot interpret user-supplied text as HTML. The whole
+            // function body is inside a Jinja raw block because it contains
+            // literal double-brace strings that Jinja would otherwise eat.
             {% raw %}
             (function setupFullPromptPreview() {
                 const toggleBtn = document.getElementById('toggleFullPromptStructure');
