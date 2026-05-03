@@ -1717,6 +1717,19 @@ body {
     margin-right: 0.5rem;
 }
 
+/* Brief highlight shown on the ASR editor row that was the target of a
+   double-click-to-edit jump from the simple view. Theme-apt: tints the row
+   with the accent colour at low alpha and fades out gracefully. */
+.asr-editor-row--highlighted {
+    animation: asr-editor-row-highlight 2.8s ease-out forwards;
+}
+
+@keyframes asr-editor-row-highlight {
+    0%   { box-shadow: inset 4px 0 0 var(--border-accent), inset 0 0 0 9999px rgba(99, 102, 241, 0.18); }
+    60%  { box-shadow: inset 4px 0 0 var(--border-accent), inset 0 0 0 9999px rgba(99, 102, 241, 0.12); }
+    100% { box-shadow: inset 0 0 0 transparent, inset 0 0 0 9999px transparent; }
+}
+
 /* Active segment highlighting - for currently playing transcript */
 .speaker-segment.active-playing-segment,
 .transcript-segment.active-playing-segment {

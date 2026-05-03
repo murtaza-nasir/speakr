@@ -18,7 +18,7 @@ export function useTranscription(state, utils) {
         showTextEditorModal, showAsrEditorModal, selectedRecording,
         editingTranscriptionContent, editingSegments, availableSpeakers,
         recordings, dropdownPositions, openAsrDropdownIndex,
-        asrEditorRef, asrEditorSaveFlash, editorAutosave
+        asrEditorRef, asrEditorSaveFlash, asrEditorHighlightIndex, editorAutosave
     } = state;
 
     const { showToast, setGlobalError, nextTick } = utils;
@@ -134,15 +134,28 @@ export function useTranscription(state, utils) {
     };
 
     // Open the editor and scroll to a specific segment index. Used by the
-    // double-click-on-simple-view-row affordance.
+    // double-click-on-simple-view-row affordance. Also briefly highlights
+    // the target row so the user can see where they landed.
     const openAsrEditorAtSegment = (segmentIndex) => {
         _asrEditorPendingScrollIndex = segmentIndex;
+        if (asrEditorHighlightIndex) {
+            asrEditorHighlightIndex.value = segmentIndex;
+            // The CSS animation handles the visual fade; clearing the index
+            // after the animation completes keeps the DOM clean.
+            setTimeout(() => {
+                if (asrEditorHighlightIndex.value === segmentIndex) {
+                    asrEditorHighlightIndex.value = null;
+                }
+            }, 3000);
+        }
         return openAsrEditorModal();
     };
 
     const closeAsrEditorModal = () => {
         // Cancel any pending autosave so we don't issue a write after close.
         _resetAutosave();
+        // Clear any pending row highlight.
+        if (asrEditorHighlightIndex) asrEditorHighlightIndex.value = null;
 
         // Save scroll position so reopening the same recording within this
         // session lands the user back where they were.
