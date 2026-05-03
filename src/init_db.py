@@ -181,6 +181,10 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'recording', 'speaker_embeddings', 'JSON'):
             app.logger.info("Added speaker_embeddings column to recording table")
 
+        # Per-recording prompt-template variables (e.g. {"agenda": "...", "attendees": "..."})
+        if add_column_if_not_exists(engine, 'recording', 'prompt_variables', 'JSON'):
+            app.logger.info("Added prompt_variables column to recording table")
+
         # Add speaker voice profile embedding fields
         if add_column_if_not_exists(engine, 'speaker', 'average_embedding', 'BLOB'):
             app.logger.info("Added average_embedding column to speaker table")

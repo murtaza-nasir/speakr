@@ -50,6 +50,10 @@ class Recording(db.Model):
     # Speaker embeddings from diarization (JSON dict mapping speaker IDs to 256-dimensional vectors)
     speaker_embeddings = db.Column(db.JSON, nullable=True)
 
+    # Per-recording prompt-template variables (e.g. {"agenda": "...", "attendees": "..."}).
+    # Substituted into {{name}} placeholders in the resolved summary prompt at summarisation time.
+    prompt_variables = db.Column(db.JSON, nullable=True)
+
     # Folder relationship (one-to-many: a recording belongs to at most one folder)
     folder_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True, index=True)
 
