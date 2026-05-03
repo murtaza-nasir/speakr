@@ -1666,6 +1666,29 @@ body {
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Header row that pairs the speaker tablet with an optional timestamp.
+   Only rendered when the user has enabled `show_timestamps_simple_view`. */
+.speaker-segment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.speaker-segment-timestamp {
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    user-select: none;
+}
+
+/* Inline variant -- used in the no-dialogue branch where the timestamp sits
+   on the same line as the sentence text. */
+.speaker-segment-timestamp--inline {
+    margin-right: 0.5rem;
+}
+
 /* Active segment highlighting - for currently playing transcript */
 .speaker-segment.active-playing-segment,
 .transcript-segment.active-playing-segment {

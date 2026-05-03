@@ -54,6 +54,8 @@
          data-enable-internal-sharing="{{ enable_internal_sharing }}"
          data-current-user-name="{{ (current_user.name or current_user.username) if current_user.is_authenticated else '' }}"
          data-user-language="{{ user_language }}"
+         data-show-timestamps-simple-view="{{ 'True' if (current_user.is_authenticated and current_user.show_timestamps_simple_view) else 'False' }}"
+         data-editor-autosave="{{ 'True' if (current_user.is_authenticated and current_user.editor_autosave) else 'False' }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">
 
         <!-- Header -->

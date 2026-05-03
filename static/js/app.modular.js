@@ -578,6 +578,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const connectorSupportsSpeakerCount = ref(false);  // Connector capability for min/max speakers
             const connectorSupportsHotwords = ref(false);     // Connector accepts hotword/keyword biasing
             const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
+            const showTimestampsSimpleView = ref(false);     // User pref: display timestamps in simple view
+            const editorAutosave = ref(false);                // User pref: autosave transcript editor
             const currentUserName = ref('');
             const canDeleteRecordings = ref(true);
             const enableInternalSharing = ref(false);
@@ -746,7 +748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAsrDropdownIndex,
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsHotwords, connectorSupportsInitialPrompt, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -1026,6 +1028,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             // COMPUTED PROPERTIES (define before composables that need them)
             // =========================================================================
+
+            // Compact mm:ss / h:mm:ss formatter for transcript timestamps. Returns
+            // an empty string when the input is missing so templates can render
+            // "" without a guard.
+            const formatTimestamp = (seconds) => {
+                if (seconds == null || isNaN(seconds)) return '';
+                const total = Math.max(0, Math.floor(seconds));
+                const h = Math.floor(total / 3600);
+                const m = Math.floor((total % 3600) / 60);
+                const s = total % 60;
+                const pad = (n) => n < 10 ? '0' + n : '' + n;
+                return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+            };
+
             const processedTranscription = computed(() => {
                 if (!selectedRecording.value?.transcription) {
                     return { hasDialogue: false, content: '', speakers: [], simpleSegments: [], bubbleRows: [], isError: false };
@@ -2254,6 +2270,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     connectorSupportsSpeakerCount.value = appElement.dataset.connectorSupportsSpeakerCount === 'True';
                     connectorSupportsHotwords.value = appElement.dataset.connectorSupportsHotwords === 'True';
                     connectorSupportsInitialPrompt.value = appElement.dataset.connectorSupportsInitialPrompt === 'True';
+                    showTimestampsSimpleView.value = appElement.dataset.showTimestampsSimpleView === 'True';
+                    editorAutosave.value = appElement.dataset.editorAutosave === 'True';
                     currentUserName.value = appElement.dataset.currentUserName || '';
                 }
 

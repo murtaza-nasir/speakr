@@ -209,9 +209,14 @@
                          @click="seekAudioFromEvent"
                          :data-start-time="segment.startTime"
                          :data-segment-index="index">
-                        <div v-if="segment.showSpeaker"
-                             :class="['speaker-tablet', segment.color]">
-                            ${segment.speaker}
+                        <div v-if="segment.showSpeaker" class="speaker-segment-header">
+                            <div :class="['speaker-tablet', segment.color]">
+                                ${segment.speaker}
+                            </div>
+                            <span v-if="showTimestampsSimpleView"
+                                  class="speaker-segment-timestamp">
+                                ${ formatTimestamp(segment.startTime) }
+                            </span>
                         </div>
                         <div class="speaker-text">
                             ${segment.sentence}
@@ -226,7 +231,10 @@
                              @click="seekAudioFromEvent"
                              :data-start-time="segment.startTime"
                              :data-segment-index="index">
-                            ${segment.sentence}
+                            <span v-if="showTimestampsSimpleView"
+                                  class="speaker-segment-timestamp speaker-segment-timestamp--inline">
+                                ${ formatTimestamp(segment.startTime) }
+                            </span>${segment.sentence}
                         </div>
                     </div>
                     <div v-else class="whitespace-pre-wrap">
