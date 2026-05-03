@@ -723,17 +723,6 @@ For production deployments, running Speakr behind a reverse proxy is essential f
 Here's a complete nginx configuration for Speakr:
 
 ```nginx
-# Maps to set the Connection header conditionally. Place this inside the
-# `http` block of your nginx.conf (typically alongside other top-level
-# directives). It forwards `Connection: upgrade` only when the client
-# actually requested an upgrade. Setting `Connection: upgrade`
-# unconditionally on every request, including plain POST uploads, can
-# cause Gunicorn (Speakr's WSGI server) to return 500 errors on uploads.
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
 server {
     listen 443 ssl http2;
     server_name speakr.yourdomain.com;
@@ -762,12 +751,15 @@ server {
         # that would otherwise exhaust the proxy's temp space.
         proxy_request_buffering off;
 
-        # WebSocket support for live features. The Connection header uses
-        # the $connection_upgrade variable defined in the `map` above so it
-        # is only set to `upgrade` for actual WebSocket handshakes.
+        # WebSocket support for live features. Forward the client's
+        # Connection header verbatim ($http_connection) so a regular POST
+        # upload keeps `Connection: keep-alive` and an actual WebSocket
+        # handshake keeps `Connection: upgrade`. Setting it to a literal
+        # "upgrade" on every request causes Gunicorn (Speakr's WSGI server)
+        # to return 500 errors on uploads.
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection $http_connection;
 
         # Timeouts for large file uploads
         proxy_read_timeout 300s;
@@ -784,7 +776,7 @@ server {
 ```
 
 !!! warning "If your existing nginx config sets `Connection: "upgrade"` unconditionally"
-    A common pitfall: setting `proxy_set_header Connection "upgrade"` directly inside `location /` forwards `Connection: upgrade` on every request, including plain POST uploads. Gunicorn does not handle this gracefully on non-WebSocket requests and may return 500 errors with "Service unavailable" when uploading files through the proxy. The fix is the `map $http_upgrade $connection_upgrade` block shown above, which makes `upgrade` conditional on the client actually requesting one. This pitfall affected earlier versions of this guide; if you copied an older example, update the Connection line.
+    A common pitfall: setting `proxy_set_header Connection "upgrade"` directly inside `location /` forwards `Connection: upgrade` on every request, including plain POST uploads. Gunicorn does not handle this gracefully on non-WebSocket requests and may return 500 errors with "Service unavailable" when uploading files through the proxy. The fix is to forward the client's actual Connection header instead: change the line to `proxy_set_header Connection $http_connection;` (a single-word change). An equivalent and slightly stricter alternative is the `map $http_upgrade $connection_upgrade { default upgrade; '' close; }` block in the http section paired with `proxy_set_header Connection $connection_upgrade;` inside `location /`. Both approaches work; the `$http_connection` form is what Nginx Proxy Manager uses internally and needs no http-block changes.
 
 The WebSocket configuration is important for real-time features in Speakr. The timeout settings ensure large file uploads don't get interrupted. You can obtain free SSL certificates from Let's Encrypt using Certbot, making HTTPS accessible for everyone.
 
