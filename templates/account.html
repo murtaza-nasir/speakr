@@ -450,11 +450,11 @@
                         <a href="#" id="tab-account" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-[var(--border-accent)] text-[var(--text-accent)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-user-circle mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="account.title">Account</span>
                         </a>
-                        <a href="#" id="tab-prompts" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                            <i class="fas fa-cog mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.promptOptions">Prompts</span>
-                        </a>
                         <a href="#" id="tab-preferences" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-sliders-h mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.preferences">Preferences</span>
+                        </a>
+                        <a href="#" id="tab-prompts" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-cog mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.promptOptions">Prompts</span>
                         </a>
                         <a href="#" id="tab-shares" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-share-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.sharedTranscripts">Shares</span>
@@ -788,76 +788,105 @@
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-2" data-i18n="accountTabs.preferences">Preferences</h2>
                         <p class="text-sm text-[var(--text-muted)] mb-6" data-i18n="preferences.description">Display and editor behaviour preferences. These settings are saved to your account and apply across devices.</p>
 
-                        <form id="preferencesForm" class="space-y-4 max-w-2xl">
+                        <form id="preferencesForm" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                             <input type="hidden" name="preferences_form" value="1">
 
-                            <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide" data-i18n="account.languagePreferences">Language Preferences</h3>
-                            <div class="space-y-4 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
-                                <div>
-                                    <label for="ui_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.interfaceLanguage">Interface Language</label>
-                                    <select name="ui_language" id="ui_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <option value="en" {% if current_user.ui_language == 'en' or not current_user.ui_language %}selected{% endif %}>English</option>
-                                        <option value="zh" {% if current_user.ui_language == 'zh' %}selected{% endif %}>中文 (Chinese)</option>
-                                        <option value="de" {% if current_user.ui_language == 'de' %}selected{% endif %}>Deutsch (German)</option>
-                                        <option value="es" {% if current_user.ui_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
-                                        <option value="fr" {% if current_user.ui_language == 'fr' %}selected{% endif %}>Français (French)</option>
-                                        <option value="ru" {% if current_user.ui_language == 'ru' %}selected{% endif %}>Русский (Russian)</option>
-                                    </select>
-                                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
-                                </div>
-                                <div>
-                                    <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription Language</label>
-                                    <select name="transcription_language" id="transcription_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                        <option value="" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
-                                        <option value="en" {% if current_user.transcription_language == 'en' %}selected{% endif %}>English</option>
-                                        <option value="es" {% if current_user.transcription_language == 'es' %}selected{% endif %}>Spanish</option>
-                                        <option value="fr" {% if current_user.transcription_language == 'fr' %}selected{% endif %}>French</option>
-                                        <option value="de" {% if current_user.transcription_language == 'de' %}selected{% endif %}>German</option>
-                                        <option value="it" {% if current_user.transcription_language == 'it' %}selected{% endif %}>Italian</option>
-                                        <option value="pt" {% if current_user.transcription_language == 'pt' %}selected{% endif %}>Portuguese</option>
-                                        <option value="nl" {% if current_user.transcription_language == 'nl' %}selected{% endif %}>Dutch</option>
-                                        <option value="ru" {% if current_user.transcription_language == 'ru' %}selected{% endif %}>Russian</option>
-                                        <option value="zh" {% if current_user.transcription_language == 'zh' %}selected{% endif %}>Chinese</option>
-                                        <option value="ja" {% if current_user.transcription_language == 'ja' %}selected{% endif %}>Japanese</option>
-                                        <option value="ko" {% if current_user.transcription_language == 'ko' %}selected{% endif %}>Korean</option>
-                                        <option value="ar" {% if current_user.transcription_language == 'ar' %}selected{% endif %}>Arabic</option>
-                                        <option value="hi" {% if current_user.transcription_language == 'hi' %}selected{% endif %}>Hindi</option>
-                                        <option value="pl" {% if current_user.transcription_language == 'pl' %}selected{% endif %}>Polish</option>
-                                        <option value="uk" {% if current_user.transcription_language == 'uk' %}selected{% endif %}>Ukrainian</option>
-                                        <option value="vi" {% if current_user.transcription_language == 'vi' %}selected{% endif %}>Vietnamese</option>
-                                        <option value="th" {% if current_user.transcription_language == 'th' %}selected{% endif %}>Thai</option>
-                                        <option value="tr" {% if current_user.transcription_language == 'tr' %}selected{% endif %}>Turkish</option>
-                                        <option value="id" {% if current_user.transcription_language == 'id' %}selected{% endif %}>Indonesian</option>
-                                        <option value="sv" {% if current_user.transcription_language == 'sv' %}selected{% endif %}>Swedish</option>
-                                    </select>
-                                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Select auto-detect to let the transcription service determine the language.</p>
-                                </div>
-                                <div>
-                                    <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.preferredOutputLanguage">Preferred Output Language</label>
-                                    <input type="text" name="output_language" id="output_language" value="{{ current_user.output_language or '' }}" placeholder="e.g., English, Spanish, Chinese" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave blank for default (default behavior of your chosen model).</p>
+                            <!-- Left column: Language Preferences -->
+                            <div class="space-y-4">
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide" data-i18n="account.languagePreferences">Language Preferences</h3>
+                                <div class="space-y-4 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md">
+                                    <div>
+                                        <label for="ui_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.interfaceLanguage">Interface Language</label>
+                                        <select name="ui_language" id="ui_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="en" {% if current_user.ui_language == 'en' or not current_user.ui_language %}selected{% endif %}>English</option>
+                                            <option value="zh" {% if current_user.ui_language == 'zh' %}selected{% endif %}>中文 (Chinese)</option>
+                                            <option value="de" {% if current_user.ui_language == 'de' %}selected{% endif %}>Deutsch (German)</option>
+                                            <option value="es" {% if current_user.ui_language == 'es' %}selected{% endif %}>Español (Spanish)</option>
+                                            <option value="fr" {% if current_user.ui_language == 'fr' %}selected{% endif %}>Français (French)</option>
+                                            <option value="ru" {% if current_user.ui_language == 'ru' %}selected{% endif %}>Русский (Russian)</option>
+                                        </select>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.chooseLanguageForInterface">Choose the language for the application interface.</p>
+                                    </div>
+                                    <div>
+                                        <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription Language</label>
+                                        <select name="transcription_language" id="transcription_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
+                                            <option value="en" {% if current_user.transcription_language == 'en' %}selected{% endif %}>English</option>
+                                            <option value="es" {% if current_user.transcription_language == 'es' %}selected{% endif %}>Spanish</option>
+                                            <option value="fr" {% if current_user.transcription_language == 'fr' %}selected{% endif %}>French</option>
+                                            <option value="de" {% if current_user.transcription_language == 'de' %}selected{% endif %}>German</option>
+                                            <option value="it" {% if current_user.transcription_language == 'it' %}selected{% endif %}>Italian</option>
+                                            <option value="pt" {% if current_user.transcription_language == 'pt' %}selected{% endif %}>Portuguese</option>
+                                            <option value="nl" {% if current_user.transcription_language == 'nl' %}selected{% endif %}>Dutch</option>
+                                            <option value="ru" {% if current_user.transcription_language == 'ru' %}selected{% endif %}>Russian</option>
+                                            <option value="zh" {% if current_user.transcription_language == 'zh' %}selected{% endif %}>Chinese</option>
+                                            <option value="ja" {% if current_user.transcription_language == 'ja' %}selected{% endif %}>Japanese</option>
+                                            <option value="ko" {% if current_user.transcription_language == 'ko' %}selected{% endif %}>Korean</option>
+                                            <option value="ar" {% if current_user.transcription_language == 'ar' %}selected{% endif %}>Arabic</option>
+                                            <option value="hi" {% if current_user.transcription_language == 'hi' %}selected{% endif %}>Hindi</option>
+                                            <option value="pl" {% if current_user.transcription_language == 'pl' %}selected{% endif %}>Polish</option>
+                                            <option value="uk" {% if current_user.transcription_language == 'uk' %}selected{% endif %}>Ukrainian</option>
+                                            <option value="vi" {% if current_user.transcription_language == 'vi' %}selected{% endif %}>Vietnamese</option>
+                                            <option value="th" {% if current_user.transcription_language == 'th' %}selected{% endif %}>Thai</option>
+                                            <option value="tr" {% if current_user.transcription_language == 'tr' %}selected{% endif %}>Turkish</option>
+                                            <option value="id" {% if current_user.transcription_language == 'id' %}selected{% endif %}>Indonesian</option>
+                                            <option value="sv" {% if current_user.transcription_language == 'sv' %}selected{% endif %}>Swedish</option>
+                                        </select>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.leaveBlankForAutoDetect">Select auto-detect to let the transcription service determine the language.</p>
+                                    </div>
+                                    <div>
+                                        <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.preferredOutputLanguage">Preferred Output Language</label>
+                                        <select name="output_language" id="output_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                            <option value="" {% if not current_user.output_language %}selected{% endif %}>Default (model decides)</option>
+                                            <option value="English" {% if current_user.output_language == 'English' %}selected{% endif %}>English</option>
+                                            <option value="Spanish" {% if current_user.output_language == 'Spanish' %}selected{% endif %}>Spanish</option>
+                                            <option value="French" {% if current_user.output_language == 'French' %}selected{% endif %}>French</option>
+                                            <option value="German" {% if current_user.output_language == 'German' %}selected{% endif %}>German</option>
+                                            <option value="Italian" {% if current_user.output_language == 'Italian' %}selected{% endif %}>Italian</option>
+                                            <option value="Portuguese" {% if current_user.output_language == 'Portuguese' %}selected{% endif %}>Portuguese</option>
+                                            <option value="Dutch" {% if current_user.output_language == 'Dutch' %}selected{% endif %}>Dutch</option>
+                                            <option value="Russian" {% if current_user.output_language == 'Russian' %}selected{% endif %}>Russian</option>
+                                            <option value="Chinese" {% if current_user.output_language == 'Chinese' %}selected{% endif %}>Chinese</option>
+                                            <option value="Japanese" {% if current_user.output_language == 'Japanese' %}selected{% endif %}>Japanese</option>
+                                            <option value="Korean" {% if current_user.output_language == 'Korean' %}selected{% endif %}>Korean</option>
+                                            <option value="Arabic" {% if current_user.output_language == 'Arabic' %}selected{% endif %}>Arabic</option>
+                                            <option value="Hindi" {% if current_user.output_language == 'Hindi' %}selected{% endif %}>Hindi</option>
+                                            <option value="Polish" {% if current_user.output_language == 'Polish' %}selected{% endif %}>Polish</option>
+                                            <option value="Ukrainian" {% if current_user.output_language == 'Ukrainian' %}selected{% endif %}>Ukrainian</option>
+                                            <option value="Vietnamese" {% if current_user.output_language == 'Vietnamese' %}selected{% endif %}>Vietnamese</option>
+                                            <option value="Thai" {% if current_user.output_language == 'Thai' %}selected{% endif %}>Thai</option>
+                                            <option value="Turkish" {% if current_user.output_language == 'Turkish' %}selected{% endif %}>Turkish</option>
+                                            <option value="Indonesian" {% if current_user.output_language == 'Indonesian' %}selected{% endif %}>Indonesian</option>
+                                            <option value="Swedish" {% if current_user.output_language == 'Swedish' %}selected{% endif %}>Swedish</option>
+                                        </select>
+                                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="account.languageForSummaries">Language for titles, summaries, and chat. Leave on Default to follow the model's own behaviour.</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.transcriptDisplay">Transcript display</h3>
-                            <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
-                                <input type="checkbox" id="prefShowTimestampsSimpleView" name="show_timestamps_simple_view" {% if current_user.show_timestamps_simple_view %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
-                                <span class="flex-1">
-                                    <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.showTimestampsSimpleView">Show timestamps in simple view</span>
-                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.showTimestampsSimpleViewHelp">Display a compact <code>mm:ss</code> timestamp next to each speaker label in the simple transcript view. The bubble view is unaffected.</span>
-                                </span>
-                            </label>
+                            <!-- Right column: Display + Editor toggles -->
+                            <div class="space-y-4">
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide" data-i18n="preferences.transcriptDisplay">Transcript display</h3>
+                                <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                    <input type="checkbox" id="prefShowTimestampsSimpleView" name="show_timestamps_simple_view" {% if current_user.show_timestamps_simple_view %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
+                                    <span class="flex-1">
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.showTimestampsSimpleView">Show timestamps in simple view</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.showTimestampsSimpleViewHelp">Display a compact <code>mm:ss</code> timestamp next to each speaker label in the simple transcript view. The bubble view is unaffected.</span>
+                                    </span>
+                                </label>
 
-                            <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.transcriptEditor">Transcript editor</h3>
-                            <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
-                                <input type="checkbox" id="prefEditorAutosave" name="editor_autosave" {% if current_user.editor_autosave %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
-                                <span class="flex-1">
-                                    <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.editorAutosave">Auto-save edits in the transcript editor</span>
-                                    <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.editorAutosaveHelp">When enabled, edits in the transcript editor are saved automatically a couple of seconds after you stop typing. When disabled (default), you save explicitly via the Save buttons or <code>Ctrl+S</code>.</span>
-                                </span>
-                            </label>
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="preferences.transcriptEditor">Transcript editor</h3>
+                                <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                    <input type="checkbox" id="prefEditorAutosave" name="editor_autosave" {% if current_user.editor_autosave %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)] bg-[var(--bg-input)]">
+                                    <span class="flex-1">
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="preferences.editorAutosave">Auto-save edits in the transcript editor</span>
+                                        <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.editorAutosaveHelp">When enabled, edits in the transcript editor are saved automatically a couple of seconds after you stop typing. When disabled (default), you save explicitly via the Save buttons or <code>Ctrl+S</code>.</span>
+                                    </span>
+                                </label>
+                            </div>
 
-                            <div class="flex justify-end pt-2">
+                            <!-- Save button spans both columns -->
+                            <div class="lg:col-span-2 flex justify-end pt-2">
                                 <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
                                 </button>
@@ -2853,8 +2882,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
             const tabs = [
                 { tab: tabAccount, content: contentAccount, name: 'account' },
-                { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabPreferences, content: contentPreferences, name: 'preferences' },
+                { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
                 { tab: tabFolders, content: contentFolders, name: 'folders' },
@@ -2901,6 +2930,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 switchToTab('account');
             }
 
+            function showPreferencesTab() {
+                switchToTab('preferences');
+            }
+
             function showPromptsTab() {
                 switchToTab('prompts');
             }
@@ -2937,6 +2970,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 e.preventDefault();
                 showAccountTab();
             });
+
+            if (tabPreferences) {
+                tabPreferences.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showPreferencesTab();
+                });
+            }
 
             tabPrompts.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -5917,7 +5957,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         
         // Check for URL hash and show appropriate tab
         const urlHash = window.location.hash.substring(1); // Remove the '#' symbol
-        if (urlHash === 'prompts') {
+        if (urlHash === 'preferences') {
+            showPreferencesTab();
+        } else if (urlHash === 'prompts') {
             showPromptsTab();
         } else if (urlHash === 'tags') {
             showTagsTab();
@@ -5927,7 +5969,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             showAboutTab();
         } else if (storedTab) {
             // Restore previously active tab after language change
-            if (storedTab === 'prompts') {
+            if (storedTab === 'preferences') {
+                showPreferencesTab();
+            } else if (storedTab === 'prompts') {
                 showPromptsTab();
             } else if (storedTab === 'tags') {
                 showTagsTab();
