@@ -576,6 +576,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const useAsrEndpoint = ref(false);
             const connectorSupportsDiarization = ref(false);  // Connector capability for diarization UI
             const connectorSupportsSpeakerCount = ref(false);  // Connector capability for min/max speakers
+            const connectorSupportsHotwords = ref(false);     // Connector accepts hotword/keyword biasing
+            const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
             const currentUserName = ref('');
             const canDeleteRecordings = ref(true);
             const enableInternalSharing = ref(false);
@@ -744,7 +746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAsrDropdownIndex,
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsHotwords, connectorSupportsInitialPrompt, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
