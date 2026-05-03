@@ -2258,6 +2258,22 @@ def upload_file():
         initial_prompt = request.form.get('initial_prompt', '').strip() or None
         transcription_model = request.form.get('transcription_model', '').strip() or None
 
+        # Per-recording prompt-template variables. Sent as a JSON string from
+        # the upload form so multiple values fit in a single form field. The
+        # sanitiser enforces identifier-shaped keys and per-value / total
+        # size caps so an arbitrary JSON blob cannot bloat the column.
+        from src.utils.prompt_variables import sanitize_variable_values
+        prompt_variables = None
+        raw_prompt_variables = request.form.get('prompt_variables')
+        if raw_prompt_variables:
+            try:
+                parsed_vars = json.loads(raw_prompt_variables)
+                prompt_variables = sanitize_variable_values(parsed_vars)
+            except (TypeError, ValueError):
+                current_app.logger.warning(
+                    f"Could not parse prompt_variables form field as JSON: {raw_prompt_variables[:200]}"
+                )
+
         # Convert to int if provided
         if min_speakers:
             try:
@@ -2375,7 +2391,8 @@ def upload_file():
             notes=notes,
             folder_id=selected_folder.id if selected_folder else None,
             processing_source='upload',  # Track that this was manually uploaded
-            file_hash=file_hash
+            file_hash=file_hash,
+            prompt_variables=prompt_variables,
         )
         db.session.add(recording)
         db.session.commit()

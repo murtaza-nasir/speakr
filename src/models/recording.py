@@ -289,6 +289,7 @@ class Recording(db.Model):
             'folder': self.folder.to_dict() if self.folder else None,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'events': [event.to_dict() for event in self.events] if self.events else [],
+            'prompt_variables': self.prompt_variables or {},
             'duplicate_info': self.get_duplicate_info(),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count

@@ -541,6 +541,28 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
                 current_app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
 
+        # Substitute {{variable}} placeholders in the resolved prompt with the
+        # values the user supplied at upload time (or via a later edit). This
+        # turns tag/folder prompts that contain `{{agenda}}` etc. into concrete
+        # instructions for this specific recording.
+        from src.utils.prompt_variables import (
+            extract_template_variables,
+            substitute_template_variables,
+        )
+        prompt_variables = recording.prompt_variables or {}
+        used_variables = extract_template_variables(summarization_instructions)
+        if used_variables:
+            missing = [v for v in used_variables if not prompt_variables.get(v)]
+            if missing:
+                current_app.logger.warning(
+                    f"Recording {recording_id} prompt references {len(used_variables)} "
+                    f"variable(s); {len(missing)} have no value: {missing}. "
+                    f"Empty strings will be substituted."
+                )
+            summarization_instructions = substitute_template_variables(
+                summarization_instructions, prompt_variables
+            )
+
         # Append the user's per-run additions on top of the resolved default
         # (issue / discussion #253). This is how a user supplies a meeting agenda
         # or one-off context without rewriting their saved summary prompt.
