@@ -462,6 +462,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recordingToReset = ref(null);
             const reprocessType = ref(null);
             const reprocessRecording = ref(null);
+            // Working copy of prompt-template variable values for the reprocess
+            // summary modal. Hydrated from `selectedRecording.prompt_variables`
+            // when the modal opens; the user can edit them and the values are
+            // persisted on the recording when reprocess is submitted.
+            const reprocessPromptVariables = reactive({});
             const isAutoIdentifying = ref(false);
             const asrReprocessOptions = reactive({
                 language: '',
@@ -699,6 +704,52 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 return Array.from(acc.values());
             });
+
+            // Same shape as selectedPromptVariables but for a recording that
+            // already has its tags/folder assigned. Used by the reprocess
+            // summary modal to render input fields pre-populated from the
+            // recording's stored values.
+            const reprocessAvailableVariables = computed(() => {
+                if (!selectedRecording.value) return [];
+                const recording = selectedRecording.value;
+                const acc = new Map();
+                const addVars = (text, sourceLabel, sourceType) => {
+                    for (const name of _extractVariableNames(text)) {
+                        if (!acc.has(name)) {
+                            acc.set(name, { name, label: _inferVarLabel(name), sources: [] });
+                        }
+                        const entry = acc.get(name);
+                        if (!entry.sources.find(s => s.name === sourceLabel && s.type === sourceType)) {
+                            entry.sources.push({ type: sourceType, name: sourceLabel });
+                        }
+                    }
+                };
+
+                let anyTagHasPrompt = false;
+                if (Array.isArray(recording.tags)) {
+                    for (const tag of recording.tags) {
+                        if (tag && tag.custom_prompt) {
+                            addVars(tag.custom_prompt, tag.name, 'tag');
+                            anyTagHasPrompt = true;
+                        }
+                    }
+                }
+                let folderHasPrompt = false;
+                if (!anyTagHasPrompt && recording.folder && recording.folder.custom_prompt) {
+                    addVars(recording.folder.custom_prompt, recording.folder.name, 'folder');
+                    folderHasPrompt = true;
+                }
+                let userPromptHasContent = false;
+                if (!anyTagHasPrompt && !folderHasPrompt && userSummaryPrompt.value) {
+                    addVars(userSummaryPrompt.value, 'Your default prompt', 'user');
+                    userPromptHasContent = true;
+                }
+                if (!anyTagHasPrompt && !folderHasPrompt && !userPromptHasContent && adminDefaultSummaryPrompt.value) {
+                    addVars(adminDefaultSummaryPrompt.value, 'Site default prompt', 'admin');
+                }
+
+                return Array.from(acc.values());
+            });
             const isMobileDevice = computed(() => {
                 return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                        ('ontouchstart' in window) ||
@@ -771,7 +822,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, transcriptionModelOptions,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
@@ -807,7 +858,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 generatedShareLink, existingShareDetected, recordingPublicShares, isLoadingPublicShares,
                 userShares, isLoadingShares, copiedShareId,
                 shareToDelete, showShareDeleteModal, recordingToDelete, recordingToReset,
-                reprocessType, reprocessRecording, isAutoIdentifying, asrReprocessOptions,
+                reprocessType, reprocessRecording, reprocessPromptVariables, isAutoIdentifying, asrReprocessOptions,
                 summaryReprocessPromptSource, summaryReprocessSelectedTagId, summaryReprocessCustomPrompt, summaryReprocessPromptMode,
                 speakerMap, speakerColorMap, modalSpeakers, speakerDisplayMap, regenerateSummaryAfterSpeakerUpdate, speakerSuggestions,
                 loadingSuggestions, activeSpeakerInput, voiceSuggestions, loadingVoiceSuggestions,

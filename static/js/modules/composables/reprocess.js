@@ -13,7 +13,7 @@ export function useReprocess(state, utils) {
         reprocessRecording, recordingToReset, selectedRecording,
         recordings, asrReprocessOptions, summaryReprocessPromptSource,
         summaryReprocessSelectedTagId, summaryReprocessCustomPrompt,
-        summaryReprocessPromptMode,
+        summaryReprocessPromptMode, reprocessPromptVariables,
         availableTags, processingProgress, processingMessage,
         currentlyProcessingFile, uploadQueue, userTranscriptionLanguage,
         showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode
@@ -45,6 +45,17 @@ export function useReprocess(state, utils) {
             summaryReprocessPromptSource.value = 'default';
             summaryReprocessSelectedTagId.value = '';
             summaryReprocessCustomPrompt.value = '';
+
+            // Hydrate the reprocess prompt-variables form from the recording's
+            // saved values so the user starts with what they had at upload.
+            // Drop any existing keys first to keep the reactive object tidy.
+            for (const k of Object.keys(reprocessPromptVariables)) {
+                delete reprocessPromptVariables[k];
+            }
+            const stored = (reprocessRecording.value && reprocessRecording.value.prompt_variables) || {};
+            for (const [k, v] of Object.entries(stored)) {
+                reprocessPromptVariables[k] = v == null ? '' : String(v);
+            }
         }
     };
 
@@ -132,7 +143,8 @@ export function useReprocess(state, utils) {
                 summaryReprocessPromptSource.value,
                 summaryReprocessSelectedTagId.value,
                 summaryReprocessCustomPrompt.value,
-                summaryReprocessPromptMode.value
+                summaryReprocessPromptMode.value,
+                { ...reprocessPromptVariables }
             );
         }
     };
@@ -193,7 +205,7 @@ export function useReprocess(state, utils) {
     // Summary Reprocessing
     // =========================================
 
-    const reprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt, promptMode) => {
+    const reprocessSummary = async (recordingId, promptSource, selectedTagId, customPrompt, promptMode, promptVariables) => {
         if (!recordingId) {
             setGlobalError('No recording ID provided for reprocessing.');
             return;
@@ -213,6 +225,18 @@ export function useReprocess(state, utils) {
             } else if (promptSource === 'custom' && customPrompt) {
                 requestBody.custom_prompt = customPrompt;
                 requestBody.prompt_mode = mode;
+            }
+
+            // Carry the user-edited prompt-variable values so the recording's
+            // stored map gets updated before the summary task runs.
+            if (promptVariables && typeof promptVariables === 'object') {
+                const cleaned = {};
+                for (const [key, value] of Object.entries(promptVariables)) {
+                    if (value !== undefined && value !== null && String(value).trim() !== '') {
+                        cleaned[key] = String(value);
+                    }
+                }
+                requestBody.prompt_variables = cleaned;
             }
 
             const response = await fetch(`/recording/${recordingId}/reprocess_summary`, {

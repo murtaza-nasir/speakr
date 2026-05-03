@@ -1205,6 +1205,13 @@ def reprocess_summary(recording_id):
         else:
             current_app.logger.info(f"No custom prompt override provided for recording {recording_id}, will use default priority")
 
+        # Per-recording prompt-template variables. Sanitised through the same
+        # helper used at upload time so reprocess can't bypass the caps.
+        from src.utils.prompt_variables import sanitize_variable_values
+        raw_prompt_variables = data.get('prompt_variables')
+        if raw_prompt_variables is not None:
+            recording.prompt_variables = sanitize_variable_values(raw_prompt_variables)
+
         # Clear existing summary (status will be set to QUEUED by job_queue.enqueue)
         recording.summary = None
 
