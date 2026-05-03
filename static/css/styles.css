@@ -1718,16 +1718,22 @@ body {
 }
 
 /* Brief highlight shown on the ASR editor row that was the target of a
-   double-click-to-edit jump from the simple view. Theme-apt: tints the row
-   with the accent colour at low alpha and fades out gracefully. */
-.asr-editor-row--highlighted {
+   double-click-to-edit jump from the simple view. Animation lives on the
+   <td> cells rather than the <tr> because box-shadow and background-color
+   on table rows render unreliably under border-collapse: collapse. The
+   first cell additionally carries a left accent bar. */
+.asr-editor-row--highlighted > td {
     animation: asr-editor-row-highlight 2.8s ease-out forwards;
 }
 
+.asr-editor-row--highlighted > td:first-child {
+    box-shadow: inset 4px 0 0 var(--border-accent);
+}
+
 @keyframes asr-editor-row-highlight {
-    0%   { box-shadow: inset 4px 0 0 var(--border-accent), inset 0 0 0 9999px rgba(99, 102, 241, 0.18); }
-    60%  { box-shadow: inset 4px 0 0 var(--border-accent), inset 0 0 0 9999px rgba(99, 102, 241, 0.12); }
-    100% { box-shadow: inset 0 0 0 transparent, inset 0 0 0 9999px transparent; }
+    0%   { background-color: var(--bg-accent); }
+    70%  { background-color: var(--bg-accent); }
+    100% { background-color: transparent; }
 }
 
 /* Active segment highlighting - for currently playing transcript */
