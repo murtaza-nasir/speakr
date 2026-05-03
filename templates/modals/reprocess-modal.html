@@ -109,7 +109,7 @@
                         Prompt variables
                     </h4>
                     <p class="text-xs text-[var(--text-muted)] leading-snug">
-                        These values are substituted into <code>{{ '{{name}}' }}</code> placeholders in the resolved prompt. Edits here are saved on the recording.
+                        These values are substituted into <code>{{ '{{name}}' }}</code> placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.
                     </p>
                     <div v-for="variable in reprocessAvailableVariables" :key="variable.name" class="space-y-1">
                         <label class="block text-xs font-medium text-[var(--text-secondary)]" :for="'rpv-' + variable.name">
@@ -131,8 +131,12 @@
                             :value="reprocessPromptVariables[variable.name] || ''"
                             @input="reprocessPromptVariables[variable.name] = $event.target.value"
                             rows="2"
+                            maxlength="8000"
                             :placeholder="'Enter ' + variable.label.toLowerCase() + '...'"
                             class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-secondary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--border-focus)] resize-y font-mono"></textarea>
+                        <div class="flex justify-end text-[10px] text-[var(--text-muted)] font-mono">
+                            ${ (reprocessPromptVariables[variable.name] || '').length } / 8000
+                        </div>
                     </div>
                 </div>
 
