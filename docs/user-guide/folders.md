@@ -34,15 +34,16 @@ Each folder can have custom settings that apply to recordings placed in it:
 
 | Setting | Description |
 |---------|-------------|
-| **Custom Prompt** | AI summarization instructions specific to this folder |
+| **Custom Prompt** | AI summarization instructions specific to this folder. May include `{{name}}` placeholders that are filled at upload time — see [Prompt Variables](settings.md#prompt-variables) |
 | **Default Language** | Transcription language for new recordings |
+| **Default Transcription Model** | Model the transcription connector should use when an admin has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a list from the admin dashboard) |
 | **Min/Max Speakers** | Speaker count hints for ASR diarization |
 | **Hotwords** | Comma-separated vocabulary hints for transcription accuracy |
 | **Initial Prompt** | Context description to guide transcription |
 | **Retention Days** | Override global retention for recordings in this folder |
 | **Protection** | Exempt folder contents from auto-deletion |
 
-These settings work like tag settings - when you add a recording to a folder, the folder's custom prompt and ASR settings are applied during processing.
+These settings work like tag settings - when you add a recording to a folder, the folder's custom prompt and ASR settings are applied during processing. Tag-level defaults take precedence over folder-level defaults; per-upload selections take precedence over both.
 
 ## Using Folders
 

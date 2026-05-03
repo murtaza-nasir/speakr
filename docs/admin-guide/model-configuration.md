@@ -376,6 +376,13 @@ SUMMARY_MAX_TOKENS=8000
 # Optional: Maximum tokens for chat responses (default: 2000)
 CHAT_MAX_TOKENS=2000
 
+# Optional: Maximum tokens for AI title generation (default: 100)
+# Bump for reasoning models (o1, Kimi 2.5, etc.) that consume budget on hidden thinking tokens
+TITLE_MAX_TOKENS=200
+
+# Optional: Maximum tokens for event extraction from transcripts (default: 4000)
+EVENT_MAX_TOKENS=4000
+
 # GPT-5 specific (only used with GPT-5 models and OpenAI API)
 GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
 GPT5_VERBOSITY=medium          # low, medium, high
@@ -418,6 +425,14 @@ The override is propagated to the connector via the `model` field on `Transcript
     The dropdown changes the model name **within the currently active connector**; it does not switch between providers. Speakr selects exactly one connector at startup based on `TRANSCRIPTION_CONNECTOR`, `USE_ASR_ENDPOINT`, and `TRANSCRIPTION_BASE_URL`, and every transcription request is routed there. If the list contains a model name the active connector does not recognise (for example, putting `gpt-4o-transcribe` in the list while `USE_ASR_ENDPOINT=true` is set), requests for that model fail with a 500 from the upstream service.
 
     For a WhisperX backend, list Whisper variants (`large-v3`, `medium`, `distil-medium.en`, etc.). For OpenAI's API, list `whisper-1`, `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `gpt-4o-transcribe-diarize`. Mixing providers in one dropdown is a planned feature for a future release.
+
+### Admin-Managed Model List with `/v1/models` Discovery
+
+For connectors that expose an OpenAI-compatible `/v1/models` endpoint (OpenAI, Azure OpenAI, vLLM, and the WhisperX ASR service when configured to advertise its loaded models), admins can curate the available list directly from the **Default Prompts → Transcription Models** section of the admin dashboard rather than via env var. Click "Refresh from connector" to query `/v1/models`, tick the models you want users to see, and save.
+
+The DB-backed list (stored in the `system_setting` table) overrides `TRANSCRIPTION_MODELS_AVAILABLE` when set. To revert to env-var control, clear the list in the dashboard. The env var is still useful for installations where the connector does not advertise its models or where you want config-as-code behaviour.
+
+When a connector returns a richer model object (display name, description, supported languages), those fields are used to render the dropdown labels. Otherwise the model id is used as both id and label, the same as with `TRANSCRIPTION_MODEL_LABELS`.
 
 ## Configurable Embedding Model
 

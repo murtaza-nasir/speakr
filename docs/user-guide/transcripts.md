@@ -62,6 +62,20 @@ The ASR editor maintains the JSON structure of your transcription, which is esse
 
 Your edits are saved to the database when you click "Save Changes". The system maintains a record that the transcription has been manually edited, which is useful for quality control and audit purposes. Note that if you reprocess the transcription later with full transcription reprocessing, your manual edits will be overwritten. To preserve your edits while updating the summary, use summary-only reprocessing instead.
 
+#### Editor Productivity Features
+
+The ASR editor includes several quality-of-life features for working through long transcripts:
+
+**Autosave**: When enabled in your account preferences (`Account → Preferences → Autosave editor`), edits are saved automatically two seconds after the last keystroke. The Save indicator briefly flashes "Saved" each time a save completes. Autosave is opt-in so users who prefer explicit control over save points can leave it off.
+
+**Save Without Closing**: The save button next to the close button keeps the editor open after saving, useful when you want to commit progress mid-edit without losing your scroll position.
+
+**Ctrl+S**: Pressing `Ctrl+S` (or `Cmd+S` on macOS) anywhere in the editor saves without closing. Equivalent to clicking the save-without-closing button.
+
+**Scroll Memory**: The editor remembers your scroll position when you close it. Reopening the editor for the same recording returns you to where you were instead of jumping to the top.
+
+**Double-Click to Edit**: Double-clicking any segment in the simple transcript view opens the ASR editor and scrolls directly to that segment. The target row is briefly highlighted so it stands out among the others.
+
 ## View Options
 
 The transcription panel offers two display modes to suit different preferences:
@@ -69,6 +83,8 @@ The transcription panel offers two display modes to suit different preferences:
 ### Simple View
 
 The default simple view presents the transcription as flowing text with inline speaker labels. This format is ideal for reading through content quickly and copying text for use in other applications. The clean, document-like appearance makes it easy to focus on the content without visual distractions.
+
+When the **Show timestamps in simple view** preference is on (`Account → Preferences → Transcript Display`), each segment is preceded by a compact `mm:ss` (or `h:mm:ss` for longer recordings) timestamp paired with the speaker label as a two-part pill. The leading segment displays "Start" instead of `00:00` to read as a label rather than a bare number. Double-clicking the pill or its row opens the ASR editor at that segment.
 
 ### Bubble View
 
@@ -155,11 +171,21 @@ The summary is fully editable using a markdown editor similar to the one in the 
 
 You can export the summary in multiple ways. The copy button copies the entire summary to your clipboard in markdown format, ready to paste into emails, documents, or other applications. The download button exports the summary as a Microsoft Word (.docx) file, preserving formatting and making it easy to share with colleagues who prefer traditional documents. The downloaded file is named using the recording title and date for easy identification.
 
+### Customise Summary Prompt at Generation Time
+
+For recordings without a summary yet, the **Generate Summary** button is paired with a small slider icon. Clicking the slider opens a Customise summary prompt modal that lets you supply one-off context (an agenda, a specific focus, additional constraints) before the first summary is generated. The modal supports two modes:
+
+**Append**: combines your saved prompt (or the resolved tag/folder/user/admin prompt) with the text you paste. Useful when you want your usual structure plus extra per-recording context. This is the default mode because most ad-hoc context is additive.
+
+**Replace**: uses only the text you paste, ignoring all higher-priority prompts for this single generation.
+
+The modal is the recommended way to add a meeting agenda or one-off instructions when you don't want to create a tag for it. If you turn off auto-summarisation in account preferences, the workflow becomes: upload, wait for transcription, click the slider next to Generate Summary, paste your context, and submit.
+
 ### Reprocessing Summaries with Custom Prompts
 
 Speakr provides powerful flexibility when you need to regenerate a summary with different instructions. The summary reprocessing feature allows you to experiment with various prompts without permanently changing your recording's configuration.
 
-To reprocess a summary, click the reprocess button in the summary toolbar. This opens the reprocessing modal, which offers three distinct prompt options:
+To reprocess a summary, click the reprocess button in the summary toolbar. This opens the reprocessing modal, which offers three distinct prompt options plus an Append/Replace mode toggle:
 
 **Use Default Prompt**: This option applies the standard prompt hierarchy based on your current settings—using tag prompts if present, falling back to your personal prompt, then the admin default, and finally the system fallback. This is useful when you want to update the summary using your standard configuration, perhaps after editing the transcription.
 
@@ -167,11 +193,17 @@ To reprocess a summary, click the reprocess button in the summary toolbar. This 
 
 When you select a tag, a preview displays the first portion of that tag's custom prompt, helping you confirm you've chosen the right one. This preview is especially helpful when you've created multiple tags with similar names but different focuses.
 
-**Enter Custom Prompt**: For complete control, you can enter a one-time custom prompt directly in the reprocessing modal. This freeform text field lets you provide specific instructions for this single regeneration without saving the prompt anywhere. This is ideal for edge cases where you need a unique perspective on the content—perhaps "Extract all technical terms and their definitions" or "Create a summary focusing only on budget discussions" or "List all mentioned deadlines in chronological order." Your custom prompt completely overrides all other prompts, giving the AI entirely new instructions for how to process the transcription.
+**Enter Custom Prompt**: For complete control, you can enter a one-time custom prompt directly in the reprocessing modal. This freeform text field lets you provide specific instructions for this single regeneration without saving the prompt anywhere. This is ideal for edge cases where you need a unique perspective on the content—perhaps "Extract all technical terms and their definitions" or "Create a summary focusing only on budget discussions" or "List all mentioned deadlines in chronological order."
+
+**Append vs Replace mode**: when a tag prompt or custom prompt is selected, you can choose whether it **Replaces** the resolved default (the historic behaviour) or is **Appended** as additional context after the resolved default. Append mode is useful when your standard prompt produces good structure but you want to nudge a specific run toward a particular focus without rewriting the whole prompt.
 
 The custom prompt option is temporary and won't affect future regenerations or other recordings. If you find yourself using the same custom prompt repeatedly, consider creating a new tag with that prompt in your account settings so you can easily reuse it.
 
 After selecting your prompt source and any additional options, the system processes only the summary—your transcription remains untouched. This means you can experiment freely with different summary approaches without any risk to your original content. The reprocessing respects your current transcription, including any manual edits you've made, and generates a fresh summary based solely on the prompt you've chosen.
+
+#### Editing Stored Prompt Variables on Reprocess
+
+If the recording was uploaded with a tag, folder, or user-default prompt that uses `{{name}}` placeholders, the values you supplied at upload time are stored on the recording and pre-filled into the reprocess modal. You can edit them before regenerating. Updated values are persisted on the recording so subsequent reprocesses (and exports referencing the variables) see the new values. See the [Prompt Variables guide](settings.md#prompt-variables) for the full feature.
 
 ## Event Extraction
 

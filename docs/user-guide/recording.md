@@ -132,6 +132,16 @@ The **Initial Prompt** field provides context to the transcription engine about 
 
 Both fields follow a precedence hierarchy: values you set in the upload form override tag defaults, which override folder defaults, which override your personal defaults in [account settings](settings.md#custom-prompts-tab). If you regularly transcribe similar content, set your defaults at the tag or user level so you don't have to enter them every time.
 
+#### Transcription Model
+
+When your administrator has configured `TRANSCRIPTION_MODELS_AVAILABLE` (or curated a model list from the admin dashboard), the upload form gains a **Transcription model** dropdown that lets you pick the specific model used for this recording. The default option uses whichever model the resolved tag, folder, or admin default specifies. The dropdown is hidden if only one option would be available, since there is no real choice to offer.
+
+Like hotwords and initial prompt, the resolved model follows the precedence chain: per-upload selection beats tag default beats folder default beats the admin default. This is useful when you want to use a higher-quality model for an important recording without changing your defaults, or to fall back to a faster model for a quick transcript.
+
+#### Prompt Variables
+
+If a selected tag, folder, or your account default summary prompt contains `{{name}}` placeholders (for example `{{agenda}}` or `{{location}}`), the upload form shows a **Prompt variables** panel under the tag picker with one input per placeholder. Values entered here are stored on the recording and substituted into the summary prompt at summarisation time. See the [Prompt Variables guide](settings.md#prompt-variables) for the full feature.
+
 ### Final Actions
 
 At the bottom of the modal, you have three options for proceeding. The "Upload" or "Start Processing" button begins transcription immediately with your selected settings. The recording will appear in your library with a processing indicator while transcription runs in the background. The "Discard" option deletes the recording without saving, useful if you made a test recording or captured the wrong content. Some configurations may also offer a "Save Draft" option to store the recording without processing it immediately.

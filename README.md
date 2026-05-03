@@ -181,23 +181,74 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 ## Latest Release (v0.8.16-alpha)
 
-**Per-Recording Model Selection, API v1 Parity, and Backlog Cleanup**
+**Prompt Templating, Transcription UX Polish, Per-Recording Model Selection, and Observability**
 
-- **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` and the upload form, in-app reprocess modal, and tag/folder edit forms all gain a model dropdown so different recordings can use different transcription models
-- **Configurable Embedding Model** - New `EMBEDDING_MODEL` env var swaps the default `all-MiniLM-L6-v2` for any sentence-transformers model. `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, and `EMBEDDING_DIMENSIONS` route embeddings through an OpenAI-compatible API instead (vLLM, OpenRouter, OpenAI, Together, etc.). Speakr warns at startup if the model or provider changes after embeddings are already stored.
-- **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` opts the Mistral connector into app-side chunking for very long meeting recordings that would otherwise time out near Voxtral's 3-hour limit
-- **API v1 Parity** - `/api/v1/recordings` and `/api/v1/recordings/{id}` now expose `audio_duration`, transcription/summarization durations, folder, events, and `deletion_exempt` for companion-app integrations
+**Prompt templating and summary control**
 
-**Bug Fixes**
+- **Prompt Template Variables** - Tag, folder, user-default, and admin-default summary prompts can contain `{{name}}` placeholders. Selecting a tag with `{{agenda}}` exposes an agenda input on the upload form; the value is stored on the recording, substituted into the prompt at summarisation time, and remains editable from the reprocess summary modal. Caps: 8,000 chars per value, 32,000 total. Single-pass `re.sub` substitution so values cannot introduce new placeholders or reach Python attributes.
+- **Append vs Replace Mode** - The reprocess summary modal and the new "Customise summary prompt" modal each let you Append text to the resolved prompt (combine your saved prompt with extra context) or Replace it entirely (use only the text you paste). Append mode runs variable substitution after the append step so appended text can use the same `{{var}}` placeholders.
+- **Customise Summary Prompt Split-Button** - A new control next to **Generate Summary** opens the Append/Replace modal for recordings that don't have a summary yet, so one-off context (an agenda, custom focus instructions) can be passed in without rewriting your saved prompt.
+- **Full LLM Prompt Structure Preview** - Both the admin Default Prompts page and the user Customise-prompts tab now show the complete two-message payload (system prompt with context block, user message with transcription wrapper and language directive). Placeholder chips colour-code system tokens (blue, replaced by the framework) versus user-supplied variables (amber). The user-side preview re-renders live as you type into your custom prompt.
 
-- Reprocessing now applies tag/folder/user default hotwords + initial_prompt (previously only worked at upload time)
-- Legacy user records with `transcription_language="français"` are normalised to ISO 639-1 codes on upgrade — no more 500s from WhisperX rejecting display names
-- Title generation no longer leaks `\\uXXXX` escape sequences into the LLM prompt for non-ASCII transcripts (truncation order bug)
+**Per-recording transcription control**
+
+- **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` and the upload form, reprocess modal, and tag/folder edit forms all gain a model dropdown. Tag and folder edit forms warn if a previously-selected default is no longer in the configured list. The dropdown is hidden when only one option would be visible.
+- **Admin-Managed Transcription Model List** - When the connector exposes `/v1/models` discovery, admins can curate the list from the dashboard rather than via env var. Stored in the database; overrides `TRANSCRIPTION_MODELS_AVAILABLE` when set.
+- **Per-Connector Capability Gating** - The hotwords, initial-prompt, and speaker-count UI elements are now hidden for connectors that don't support them, instead of accepting input that is silently ignored.
+- **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` (with `MISTRAL_MAX_DURATION_SECONDS`) opts the Mistral connector into app-side chunking for recordings approaching Voxtral's 3-hour timeout.
+
+**ASR transcript editor**
+
+- **Autosave** - Saves edits 2 seconds after the last keystroke when the user opts in (`Account → Preferences → Autosave editor`).
+- **Save Without Closing + Ctrl+S** - New button keeps the editor open after saving; Ctrl+S triggers a save from anywhere in the editor.
+- **Scroll Memory** - Reopening the editor restores the previous scroll position instead of jumping to the top.
+- **Double-Click to Edit** - Double-clicking a transcript row in the simple view jumps into the editor with that segment highlighted.
+- **Row Highlight After Jump** - Briefly tints the row when navigating into it from the simple view so the target is obvious.
+
+**Account preferences**
+
+- **Preferences Tab** - Account settings has a new **Preferences** tab (split from the language settings) using a two-column layout for transcript display, editor behaviour, and language preferences.
+- **Compact Timestamps** - Optional `mm:ss` (or `h:mm:ss`) timestamps in the simple transcript view, rendered as a two-part pill alongside the speaker label. The leading segment shows "Start" instead of `00:00`.
+- **Persist Recording-List Sort** - The Created date / Meeting date toggle now sticks across reloads and sessions on the same browser (#263).
+
+**Embeddings and inquire mode**
+
+- **Configurable Embedding Model** - `EMBEDDING_MODEL` swaps `all-MiniLM-L6-v2` for any sentence-transformers model.
+- **API-Mode Embeddings** - `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, and `EMBEDDING_DIMENSIONS` route embeddings through any OpenAI-compatible provider (vLLM, OpenRouter, OpenAI, Together, etc.). Inquire startup banner reflects the active provider.
+- **Embedding Token Tracking + Re-Embed-All** - The Vector Store admin tab now tracks embedding API token usage and cost separately from LLM usage, and exposes a "Re-embed all" action for after a model or dimensionality change. Speakr warns at startup if the embedding identifier changed since data was stored.
+
+**Observability and admin**
+
+- **Per-Operation Token Stats** - Admin token statistics now break out title, summary, chat, event extraction, and embeddings as separate categories with their own cards and charts. Embedding usage is shown as a distinct cost line.
+- **Granular Token Budgets** - `TITLE_MAX_TOKENS` and `EVENT_MAX_TOKENS` join the existing `SUMMARY_MAX_TOKENS` / `CHAT_MAX_TOKENS` so reasoning models that consume budget on hidden thinking tokens can be tuned per operation. The resolved `max_tokens` is logged with each LLM call.
+- **LLM Timeout Visibility** - The configured `LLM_REQUEST_TIMEOUT` is logged at startup, and `APITimeoutError` log entries now include elapsed time so it is clear whether the timeout was the actual bound that fired.
+
+**API v1**
+
+- **Folder CRUD** - New `/api/v1/folders` endpoints for list, create, update, delete.
+- **Connector Discovery** - New endpoint exposing the active transcription connector and its capabilities for companion-app integrations.
+- **Recording Field Parity** - `/api/v1/recordings` and `/api/v1/recordings/{id}` now expose `audio_duration`, transcription/summarization durations, folder, events (detail only), `deletion_exempt`, `prompt_variables`, and the per-recording transcription model.
+- **Forwarded Per-Request Overrides** - The `/api/v1/transcribe` endpoint now forwards `transcription_model`, `hotwords`, and `initial_prompt`. The custom-ASR-endpoint connector forwards a `?model=` query param so WhisperX runtime model switching works through the API.
+
+**Bug fixes**
+
+- Reprocessing now applies tag/folder/user default hotwords + initial_prompt (#265, previously only at upload time)
+- Legacy user records with `transcription_language="français"` are normalised to ISO 639-1 codes on upgrade so WhisperX no longer 500s on display names (#256)
+- Title generation no longer leaks `\\uXXXX` escape sequences into the LLM prompt for non-ASCII transcripts; truncation now happens after `format_transcription_for_llm` (#260)
+- The Vector Store "recordings to process" message now uses the i18n params API instead of inline brace replace
+- CSRF token added to the Preferences form so submissions are accepted
+
+**Infrastructure**
+
+- **Vitest Frontend Tests** - Pure-helper modules in `static/js/modules/utils/` are now covered by Vitest. Run `npm test`. Currently exercises the prompt-variable extraction and priority-chain logic.
 
 **Docs**
 
 - nginx reverse-proxy `proxy_request_buffering off` and `client_max_body_size` notes for large uploads
 - Google Gemini OpenAI-compatible endpoint setup example
+- Prompt template variables guide
+- Per-upload / per-tag / per-folder model selection documentation
+- `EMBEDDING_BASE_URL` API mode documentation across inquire-mode, vector-store, and troubleshooting
 
 ### Previous Release (v0.8.15-alpha)
 

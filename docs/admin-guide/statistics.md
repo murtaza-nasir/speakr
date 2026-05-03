@@ -36,9 +36,11 @@ Use these insights proactively. If you see storage growing at 50GB monthly and y
 
 ## Token Usage Statistics
 
-The Token Usage section provides visibility into LLM API consumption across your instance. Four summary cards show today's usage, monthly totals, estimated costs, and any users approaching their budget limits.
+The Token Usage section provides visibility into LLM API consumption across your instance. Two cards split usage between **LLM operations** (title generation, summarization, chat, event extraction) and **embeddings** (Inquire mode), since they typically come from different providers and the embedding cost is otherwise easy to miss.
 
-**Daily and Monthly Charts**: Interactive charts display token consumption trends over the last 30 days and 12 months. These visualizations help identify usage patterns and predict future costs.
+**Per-Operation Breakdown**: LLM token usage is broken down by operation type so you can see where the spend is going. Title generation, summarization, chat, and event extraction each get their own line with input tokens, output tokens, and estimated cost. Embedding usage is shown as a separate card with its own daily/monthly chart, so a model swap or a re-embed-all run is visible without polluting the LLM-side numbers. This separation matters because the embedding API price (per million tokens) is usually orders of magnitude lower than chat-completion pricing, and mixing them makes both numbers harder to read.
+
+**Daily and Monthly Charts**: Interactive charts display token consumption trends over the last 30 days and 12 months for both LLM and embedding usage. These visualisations help identify usage patterns and predict future costs.
 
 **Per-User Breakdown**: A detailed table shows each user's monthly token consumption alongside their budget limit (if set). Progress bars indicate how much of their budget has been used:
 
@@ -46,7 +48,7 @@ The Token Usage section provides visibility into LLM API consumption across your
 - Yellow: Between 80-100% (warning zone)
 - Red: At or over 100% (blocked)
 
-**Cost Tracking**: When using OpenRouter or other providers that return cost information, the statistics include estimated costs based on actual API responses. This helps with budgeting and identifying high-cost operations.
+**Cost Tracking**: When using OpenRouter or other providers that return cost information, the statistics include estimated costs based on actual API responses. For embeddings, the cost is calculated from the configured per-million-token price for the active embedding provider. This helps with budgeting and identifying high-cost operations.
 
 Use token statistics to identify heavy users, validate budget allocations, and forecast API costs. If certain users consistently hit their limits, you may need to increase their budgets or investigate their usage patterns. See [Token Budget Management](user-management.md#token-budget-management) for setting individual user limits.
 

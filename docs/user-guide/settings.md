@@ -235,7 +235,13 @@ Tags can also carry default **hotwords** and an **initial prompt** to improve tr
 
 For example, a "Medical Rounds" tag might include hotwords like `epinephrine, tachycardia, intubation` and an initial prompt like "This is a medical team discussion about patient care in an ICU setting." When you upload a recording with this tag, these hints are automatically applied during transcription.
 
-These values follow a precedence hierarchy: upload form values take highest priority, then tag defaults, then folder defaults, then your personal defaults in [account settings](#custom-prompts-tab).
+These values follow a precedence hierarchy: upload form values take highest priority, then tag defaults, then folder defaults, then your personal defaults in [account settings](#custom-prompts-tab). They apply both at initial upload and when reprocessing the transcription, so changes you make to a tag's defaults will affect future reprocesses of recordings carrying that tag.
+
+### Default Transcription Model
+
+When your administrator has configured a transcription model list (via `TRANSCRIPTION_MODELS_AVAILABLE` or the admin dashboard), tag and folder edit forms gain a **Default transcription model** dropdown. Recordings with that tag will use the chosen model unless the upload form, folder default, or admin default overrides it. The precedence chain mirrors hotwords and initial prompt: per-upload selection beats tag default beats folder default beats admin default.
+
+If a tag has a default model set and the model is later removed from the configured list, the edit form shows a compact warning so you know to pick a replacement. The default itself is preserved in the database in case the model is added back, and the precedence chain falls through to the next available layer in the meantime.
 
 ### Managing Tags
 

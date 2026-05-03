@@ -146,13 +146,60 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.8.16-alpha - Per-Recording Model Selection & Backlog Cleanup"
-    - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` to expose a model dropdown
-    - **Configurable Embedding Model** - `EMBEDDING_MODEL` for local models, or `EMBEDDING_BASE_URL` to offload embeddings to an OpenAI-compatible provider (vLLM, OpenRouter, OpenAI, etc.)
+!!! info "Version 0.8.16-alpha - Prompt Templating, Transcription UX, and Observability"
+    **Prompt templating and summary control**
+
+    - **Prompt Template Variables** - `{{name}}` placeholders in tag, folder, user-default, and admin-default summary prompts; values entered on the upload form, stored on the recording, and editable via reprocess
+    - **Append vs Replace Mode** - Reprocess summary modal and the new Customise summary prompt modal each let you Append to or Replace the resolved prompt
+    - **Customise Summary Prompt Split-Button** - A control next to **Generate Summary** opens the Append/Replace modal for recordings without a summary yet
+    - **Full LLM Prompt Structure Preview** - Admin and account pages show the complete two-message payload with chip-coded placeholders (blue for system tokens, amber for user variables); the user-side preview re-renders live as you type
+
+    **Per-recording transcription control**
+
+    - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - `TRANSCRIPTION_MODELS_AVAILABLE` exposes a model dropdown across upload, reprocess, and tag/folder edit forms
+    - **Admin-Managed Model List** - Connectors with `/v1/models` discovery let admins curate the list from the dashboard
+    - **Per-Connector Capability Gating** - Hotwords, initial-prompt, and speaker-count UI hidden for connectors that don't support them
     - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` opts into app-side chunking for long recordings
-    - **API v1 Parity** - `audio_duration`, transcription/summarization durations, folder, events, and `deletion_exempt` exposed
-    - **Bug Fixes** - Reprocess now applies tag/folder hotwords; "français" → "fr" migration; Cyrillic title fix
-    - **Docs** - nginx large-upload settings, Google Gemini OpenAI-compatible setup
+
+    **ASR transcript editor**
+
+    - **Autosave** - Saves 2s after the last keystroke when opted in
+    - **Save Without Closing + Ctrl+S** - New button keeps the editor open; Ctrl+S triggers save from anywhere in the editor
+    - **Scroll Memory** - Reopening the editor restores the previous scroll position
+    - **Double-Click to Edit** - Double-clicking a transcript row jumps into the editor with that segment highlighted
+
+    **Account preferences**
+
+    - **Preferences Tab** - New tab (split from Languages) with two-column layout for transcript display, editor behaviour, and language preferences
+    - **Compact Timestamps** - Opt-in `mm:ss` timestamps as two-part pill with speaker label; "Start" label on the leading segment
+    - **Persist Recording-List Sort** - Created/Meeting date toggle persists across sessions per browser (#263)
+
+    **Embeddings and inquire mode**
+
+    - **Configurable Embedding Model** - `EMBEDDING_MODEL` for local models
+    - **API-Mode Embeddings** - `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, `EMBEDDING_DIMENSIONS` route embeddings through any OpenAI-compatible provider
+    - **Embedding Token Tracking + Re-Embed-All** - Vector Store tab tracks embedding API cost separately and exposes a re-embed action
+
+    **Observability and admin**
+
+    - **Per-Operation Token Stats** - Title, summary, chat, event extraction, and embeddings as separate cards and charts
+    - **Granular Token Budgets** - `TITLE_MAX_TOKENS` and `EVENT_MAX_TOKENS` join the existing `SUMMARY_MAX_TOKENS` / `CHAT_MAX_TOKENS`
+    - **LLM Timeout Visibility** - Configured timeout logged at startup; `APITimeoutError` log entries include elapsed time
+
+    **API v1**
+
+    - **Folder CRUD** + **Connector Discovery** endpoints
+    - **Recording Field Parity** - `audio_duration`, durations, folder, events, `deletion_exempt`, `prompt_variables`, transcription model
+    - **Forwarded Overrides** - `/api/v1/transcribe` forwards `transcription_model`, `hotwords`, `initial_prompt`; custom-ASR connector forwards `?model=` for WhisperX runtime switching
+
+    **Bug fixes**
+
+    - Reprocess now applies tag/folder/user default hotwords + initial_prompt (#265)
+    - Legacy `transcription_language="français"` normalised to ISO 639-1 on upgrade (#256)
+    - Title generation no longer leaks `\\uXXXX` escapes for non-ASCII transcripts (#260)
+    - CSRF token on Preferences form
+
+    **Docs** - prompt template variables guide; per-upload/tag/folder model selection; `EMBEDDING_BASE_URL` API mode across inquire-mode/vector-store/troubleshooting; nginx large-upload settings; Google Gemini OpenAI-compatible setup
 
 !!! info "Version 0.8.15-alpha - New Transcription Connectors & Upload API"
     - **Mistral/Voxtral Connector** - Cloud-based transcription with built-in speaker diarization via Mistral's Voxtral models
