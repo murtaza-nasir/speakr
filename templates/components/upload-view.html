@@ -326,19 +326,28 @@
 
             <!-- Prompt template variables (from selected tag/folder custom prompts) -->
             <div v-if="selectedPromptVariables.length > 0" class="mt-4">
-                <button type="button" @click="showPromptVariablesPanel = !showPromptVariablesPanel"
-                        class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
-                    <span class="flex items-center gap-2 text-[var(--text-secondary)]">
-                        <i class="fas fa-keyboard text-[var(--text-muted)]"></i>
-                        <span>Prompt variables</span>
-                        <span class="text-[10px] text-[var(--text-muted)]">(${ selectedPromptVariables.length })</span>
-                    </span>
-                    <i :class="['fas text-[var(--text-muted)]', showPromptVariablesPanel ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
-                </button>
+                <div class="flex items-stretch gap-1">
+                    <button type="button" @click="showPromptVariablesPanel = !showPromptVariablesPanel"
+                            class="flex-1 flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                        <span class="flex items-center gap-2 text-[var(--text-secondary)]">
+                            <i class="fas fa-keyboard text-[var(--text-muted)]"></i>
+                            <span>Prompt variables</span>
+                            <span class="text-[10px] text-[var(--text-muted)]">(${ selectedPromptVariables.length })</span>
+                        </span>
+                        <i :class="['fas text-[var(--text-muted)]', showPromptVariablesPanel ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+                    </button>
+                    <details class="relative">
+                        <summary
+                            title="About prompt variables"
+                            class="list-none cursor-pointer flex items-center justify-center px-3 h-full bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors">
+                            <i class="fas fa-info-circle text-xs"></i>
+                        </summary>
+                        <div class="absolute right-0 top-full mt-1 z-20 w-64 p-3 text-[11px] text-[var(--text-secondary)] leading-snug bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg">
+                            The selected tag or folder uses prompt placeholders. Fill these in and they'll be substituted into the summarisation prompt for this recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.
+                        </div>
+                    </details>
+                </div>
                 <div v-show="showPromptVariablesPanel" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3 border border-[var(--border-secondary)]">
-                    <p class="text-[11px] text-[var(--text-muted)] leading-snug">
-                        The selected tag or folder uses prompt placeholders. Fill these in and they'll be substituted into the summarisation prompt for this recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.
-                    </p>
                     <div v-for="variable in selectedPromptVariables" :key="variable.name" class="space-y-1">
                         <label class="block text-xs font-medium text-[var(--text-secondary)]" :for="'pv-' + variable.name">
                             ${ variable.label }

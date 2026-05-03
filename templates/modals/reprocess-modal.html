@@ -107,10 +107,17 @@
                     <h4 class="text-md font-semibold text-[var(--text-secondary)] flex items-center gap-2">
                         <i class="fas fa-keyboard text-[var(--text-muted)] text-xs"></i>
                         Prompt variables
+                        <details class="relative">
+                            <summary
+                                title="About prompt variables"
+                                class="list-none cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors">
+                                <i class="fas fa-info-circle text-xs"></i>
+                            </summary>
+                            <div class="absolute left-0 top-full mt-1 z-20 w-64 p-3 text-[11px] font-normal text-[var(--text-secondary)] leading-snug bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg">
+                                These values are substituted into {{ '{{name}}' }} placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.
+                            </div>
+                        </details>
                     </h4>
-                    <p class="text-xs text-[var(--text-muted)] leading-snug">
-                        These values are substituted into <code>{{ '{{name}}' }}</code> placeholders in the resolved prompt. Edits here are saved on the recording. Empty values substitute to an empty string. Up to 8,000 characters per value, 32,000 across all variables.
-                    </p>
                     <div v-for="variable in reprocessAvailableVariables" :key="variable.name" class="space-y-1">
                         <label class="block text-xs font-medium text-[var(--text-secondary)]" :for="'rpv-' + variable.name">
                             ${ variable.label }
