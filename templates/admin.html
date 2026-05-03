@@ -862,26 +862,39 @@
                         
                         <div v-show="showFullPromptStructure" class="border-t border-[var(--border-primary)]">
                             <div class="p-6 space-y-6">
+                                <!-- Placeholder legend so the two distinct syntaxes in the previews below are unambiguous. -->
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)] -mt-2">
+                                    <span class="font-medium">Placeholder legend:</span>
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono">{example}</span>
+                                        <span>system-replaced (current date, transcript, tag names, etc.)</span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono">{{example}}</span>
+                                        <span>user-supplied at upload or reprocess</span>
+                                    </span>
+                                </div>
+
                                 <div>
                                     <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.systemPrompt')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
-                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.
+                                        <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono"><span v-html="formatPromptPreview('You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly.\n\nContext:\n- Current date: {current_date}')"></span>
+<span v-html="formatPromptPreview('- Recording date: {recording_date}')"></span> <span class="text-[var(--text-muted)]">(if meeting date is set)</span>
+<span v-html="formatPromptPreview('- Recording title: {recording_title}')"></span> <span class="text-[var(--text-muted)]">(if title is set)</span>
+<span v-html="formatPromptPreview('- Folder: {folder_name}')"></span> <span class="text-[var(--text-muted)]">(if recording is in a folder)</span>
+<span v-html="formatPromptPreview('- Tags applied to this transcript by the user: {tag_names}')"></span> <span class="text-[var(--text-muted)]">(if tags exist)</span>
+<span v-html="formatPromptPreview('- Information about the user: Name: {name}, Job title: {job_title}, Company: {company}')"></span> <span class="text-[var(--text-muted)]">(only the fields the user has filled in their account)</span>
 
-Context:
-- Current date: {current_date}
-- Tags applied to this transcript by the user: {tag_names} <span class="text-[var(--text-muted)]">(if tags exist)</span>
-- Information about the user: Name: {name}, Job title: {job_title}, Company: {company} <span class="text-[var(--text-muted)]">(if provided)</span>
-
-<span class="text-[var(--text-muted)]">Language Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory. (if language preference is set)</span></pre>
+<span class="text-[var(--text-muted)]"><span v-html="formatPromptPreview('Language Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory.')"></span> (if language preference is set)</span></pre>
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <h5 class="text-sm font-semibold text-[var(--text-accent)] mb-2">${t('adminDashboard.userMessageTemplate')}:</h5>
                                     <div class="bg-[var(--bg-secondary)] p-4 rounded-md border border-[var(--border-secondary)]">
                                         <pre class="text-xs text-[var(--text-secondary)] whitespace-pre-wrap font-mono">Transcription:
 """
-{transcript_text}
+<span v-html="formatPromptPreview('{transcript_text}')"></span>
 """
 
 Summarization Instructions:
@@ -890,9 +903,9 @@ Summarization Instructions:
    2. User's personal summarization prompt (if set in account settings)
    3. Admin default prompt (shown below)
    4. System fallback prompt */</span>
-<span v-if="defaultSummaryPrompt || originalDefaultPrompt">${ defaultSummaryPrompt || originalDefaultPrompt }</span>
+<span v-if="defaultSummaryPrompt || originalDefaultPrompt" v-html="formatPromptPreview(defaultSummaryPrompt || originalDefaultPrompt)"></span>
 
-<span class="text-[var(--text-muted)]">{language_directive} (e.g., "Ensure your response is in {language}." if language is set)</span></pre>
+<span class="text-[var(--text-muted)]"><span v-html="formatPromptPreview('{language_directive}')"></span> (e.g., "IMPORTANT: You MUST provide the summary in English. The entire response must be in English." — only added if language preference is set)</span></pre>
                                     </div>
                                     <p class="text-xs text-[var(--text-muted)] mt-2">
                                         <i class="fas fa-info-circle mr-1"></i>
@@ -2120,6 +2133,30 @@ Summarization Instructions:
 - **Key Issues Discussed**: A bulleted list of the main topics
 - **Key Decisions Made**: A bulleted list of any decisions reached
 - **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned`;
+
+                {% raw %}
+                // Render a prompt-preview string with placeholder chips:
+                //   { var }   -> blue chip ("system-replaced", e.g. {transcript_text})
+                //   {{ var }} -> amber chip ("user value at upload time")
+                // HTML-escape the source first so any stray markup is rendered as text.
+                const _escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+                }[c]));
+                const formatPromptPreview = (text) => {
+                    if (!text) return '';
+                    return _escapeHtml(text)
+                        // Amber for {{user_var}} — substituted at upload/reprocess time. Match
+                        // first because it is the longer pattern; prevents single-brace pass
+                        // from biting into the inner {var}.
+                        .replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g,
+                            '<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30" title="User-supplied variable. Filled at upload or reprocess.">{{$1}}</span>')
+                        // Blue for {system_var} — replaced by the framework (current_date,
+                        // tag_names, transcript_text, ...). Only match identifier-shaped
+                        // names so we don't mangle JSON-looking literals.
+                        .replace(/\{(\s*[A-Za-z_][A-Za-z0-9_]*\s*)\}/g,
+                            '<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30" title="System placeholder. Replaced by the framework before the LLM call.">{$1}</span>');
+                };
+                {% endraw %}
                 
                 // Computed properties
                 const filteredUsers = computed(() => {
@@ -3564,6 +3601,7 @@ Summarization Instructions:
                     promptSaveError,
                     showFullPromptStructure,
                     originalDefaultPrompt,
+                    formatPromptPreview,
                     
                     // Computed
                     filteredUsers,
