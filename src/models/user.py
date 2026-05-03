@@ -64,6 +64,7 @@ class User(db.Model, UserMixin):
 
     # UI/display preferences
     show_timestamps_simple_view = db.Column(db.Boolean, default=False)
+    editor_autosave = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"
