@@ -1719,37 +1719,30 @@ body {
 
 /* Brief highlight shown on the ASR editor row that was the target of a
    double-click-to-edit jump from the simple view.
-   The editor's table sets `td { padding: 0; }` and lets inputs fill each
-   cell; those input boxes establish a stacking context that ends up
-   painting over a td-level background-color animation, which is why the
-   highlight only appeared on the action column (which has no inputs).
-   Painting a pseudo-element overlay underneath the inputs avoids the
-   issue: the overlay sits on the cell, the inputs render above it with
-   their existing transparent backgrounds. */
-.asr-editor-row--highlighted > td {
-    position: relative;
+   The editor's table sets `td { padding: 0; }` so the inputs fill each
+   cell. Form controls (inputs, textareas) paint their own widget surface
+   over any td-level background, which is why earlier attempts at
+   td-background or td::before only painted the action column (the only
+   cell without an input filler). The reliable fix is to colour the
+   inputs/textareas themselves and the action cell's td. */
+
+.asr-editor-row--highlighted input,
+.asr-editor-row--highlighted textarea {
+    background-color: var(--bg-accent) !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    transition: background-color 0.6s ease-out;
 }
 
-.asr-editor-row--highlighted > td::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-color: var(--bg-accent);
-    pointer-events: none;
-    z-index: 0;
-    animation: asr-editor-row-highlight-fade 2.8s ease-out forwards;
+/* Action cell has no input filler, so paint the td directly. */
+.asr-editor-row--highlighted > td:last-child {
+    background-color: var(--bg-accent) !important;
+    transition: background-color 0.6s ease-out;
 }
 
-/* Make sure the cell's actual content sits above the overlay. */
-.asr-editor-row--highlighted > td > * {
-    position: relative;
-    z-index: 1;
-}
-
-@keyframes asr-editor-row-highlight-fade {
-    0%   { opacity: 1; }
-    70%  { opacity: 1; }
-    100% { opacity: 0; }
+/* Left accent bar on the first cell as an additional visual cue. */
+.asr-editor-row--highlighted > td:first-child {
+    box-shadow: inset 4px 0 0 var(--border-accent) !important;
 }
 
 /* Active segment highlighting - for currently playing transcript */

@@ -140,8 +140,9 @@ export function useTranscription(state, utils) {
         _asrEditorPendingScrollIndex = segmentIndex;
         if (asrEditorHighlightIndex) {
             asrEditorHighlightIndex.value = segmentIndex;
-            // The CSS animation handles the visual fade; clearing the index
-            // after the animation completes keeps the DOM clean.
+            // Hold the highlight for ~3s so the user has time to register
+            // the target row before it fades. The CSS handles the visual
+            // transition when the class is removed.
             setTimeout(() => {
                 if (asrEditorHighlightIndex.value === segmentIndex) {
                     asrEditorHighlightIndex.value = null;
