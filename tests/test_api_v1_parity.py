@@ -146,6 +146,13 @@ def cleanup_test_users():
         db.session.commit()
 
 
+def teardown_module(module):
+    """pytest auto-calls this after the last test in the module finishes.
+    Required because pytest does not invoke ``main()``, so the cleanup in
+    its ``finally`` block never runs under ``pytest tests/``."""
+    cleanup_test_users()
+
+
 def main():
     print("=== Issue #274: API v1 parity ===\n")
     try:
