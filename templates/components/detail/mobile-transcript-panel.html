@@ -105,10 +105,13 @@
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'" class="transcription-simple-view">
                 <div v-if="processedTranscription.hasDialogue">
                     <div v-for="(segment, index) in processedTranscription.simpleSegments" :key="`seg-${index}-${segment.startTime}`" :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]" @click="seekAudioFromEvent" @dblclick.stop="openAsrEditorAtSegment(index)" :data-start-time="segment.startTime" :data-segment-index="index">
-                        <div v-if="segment.showSpeaker" class="speaker-segment-header">
-                            <div :class="['speaker-tablet', segment.color]">${segment.speaker}</div>
-                            <span v-if="showTimestampsSimpleView" class="speaker-segment-timestamp">${ formatTimestamp(segment.startTime) }</span>
-                        </div>
+                        <template v-if="segment.showSpeaker">
+                            <div v-if="showTimestampsSimpleView" :class="['speaker-tablet-group', segment.color]">
+                                <span class="speaker-tablet-time">${ formatTimestamp(segment.startTime) }</span>
+                                <span class="speaker-tablet-name">${segment.speaker}</span>
+                            </div>
+                            <div v-else :class="['speaker-tablet', segment.color]">${segment.speaker}</div>
+                        </template>
                         <div class="speaker-text">${segment.sentence}</div>
                     </div>
                 </div>

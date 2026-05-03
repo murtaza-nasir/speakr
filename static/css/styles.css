@@ -1666,26 +1666,54 @@ body {
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Header row that pairs the speaker tablet with an optional timestamp.
-   Only rendered when the user has enabled `show_timestamps_simple_view`. */
-.speaker-segment-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
+/* Two-part pill that combines a timestamp and a speaker label into a single
+   visual unit. Only rendered when `show_timestamps_simple_view` is on.
+   The `.speaker-color-N` class lives on this wrapper so both halves inherit
+   the same base colour; the time half is slightly darkened with a uniform
+   black overlay so it reads as a different shade in both light and dark
+   themes without needing separate per-mode rules. */
+.speaker-tablet-group {
+    display: inline-flex;
+    align-items: stretch;
+    margin: 0 0.5rem 0.5rem 0;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
 }
 
-.speaker-segment-timestamp {
+.speaker-tablet-group .speaker-tablet-time {
+    padding: 0.25rem 0.55rem;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-weight: 500;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    user-select: none;
+    /* Tint the half by overlaying a uniform translucent black layer. The
+       inherited speaker-color background shows through and the result reads
+       as a darker shade of the same colour in both themes. */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
+    display: inline-flex;
+    align-items: center;
+}
+
+.speaker-tablet-group .speaker-tablet-name {
+    padding: 0.25rem 0.55rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Inline timestamp for the no-dialogue branch (single-speaker transcripts).
+   Sits at the start of each sentence in compact mono. */
+.speaker-segment-timestamp--inline {
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
     font-size: 0.7rem;
     color: var(--text-muted);
     letter-spacing: 0.02em;
     user-select: none;
-}
-
-/* Inline variant -- used in the no-dialogue branch where the timestamp sits
-   on the same line as the sentence text. */
-.speaker-segment-timestamp--inline {
     margin-right: 0.5rem;
 }
 
