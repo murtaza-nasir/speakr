@@ -611,6 +611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mainTranscriptRef = ref(null);
             const asrEditorRef = ref(null);
             const asrEditorSaveFlash = ref(false);  // Brief "Saved" indicator after Save (without close)
+            const asrEditorHighlightIndex = ref(null);  // Segment index briefly highlighted after double-click open
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
@@ -640,11 +641,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             // Compact mm:ss / h:mm:ss formatter for transcript timestamps. Returns
-            // an empty string when the input is missing so templates can render
-            // "" without a guard. Declared before `state` because state references it.
+            // "Start" for the recording's first segment (any value below half a
+            // second) so the leading pill reads as a label rather than a bare
+            // 00:00. Returns an empty string when the input is missing so
+            // templates can render "" without a guard. Declared before `state`
+            // because state references it.
             const formatTimestamp = (seconds) => {
                 if (seconds == null || isNaN(seconds)) return '';
-                const total = Math.max(0, Math.floor(seconds));
+                if (seconds < 0.5) return 'Start';
+                const total = Math.floor(seconds);
                 const h = Math.floor(total / 3600);
                 const m = Math.floor((total % 3600) / 60);
                 const s = total % 60;
@@ -776,7 +781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentSpeakerGroupIndex, speakerGroups,
 
                 // Virtual Scroll
-                speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef, asrEditorSaveFlash
+                speakerModalTranscriptRef, mainTranscriptRef, asrEditorRef, asrEditorSaveFlash, asrEditorHighlightIndex
             };
 
             // =========================================================================
@@ -1113,8 +1118,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         speakerId: segment.speaker,
                         speaker: speakerMap.value[segment.speaker]?.name || segment.speaker,
                         sentence: segment.sentence,
-                        startTime: segment.start_time || segment.startTime,
-                        endTime: segment.end_time || segment.endTime,
+                        // Use nullish coalescing so a real 0 (recording's first segment)
+                        // is preserved rather than falling through to segment.startTime.
+                        startTime: segment.start_time ?? segment.startTime,
+                        endTime: segment.end_time ?? segment.endTime,
                         color: speakerColors[segment.speaker] || 'speaker-color-1'
                     }));
 
@@ -1413,7 +1420,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
             utils.resetModalAudioState = resetModalAudioState;
             utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
-            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(index, 'auto');
+            // Scroll to the target row but offset upward so the row lands
+            // comfortably below the sticky table header (~2 rows of clearance)
+            // instead of being clipped at the top.
+            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(Math.max(0, index - 2), 'auto');
             utils.setAsrEditorScrollTop = (scrollTop) => {
                 if (asrEditorRef.value) {
                     asrEditorRef.value.scrollTop = scrollTop;
