@@ -1718,22 +1718,20 @@ body {
 }
 
 /* Brief highlight shown on the ASR editor row that was the target of a
-   double-click-to-edit jump from the simple view. Animation lives on the
-   <td> cells rather than the <tr> because box-shadow and background-color
-   on table rows render unreliably under border-collapse: collapse. The
-   first cell additionally carries a left accent bar. */
+   double-click-to-edit jump from the simple view. The animation runs on
+   every <td> in the row -- table-level box-shadow and background-color
+   render unreliably under border-collapse: collapse, so we have to drive
+   each cell directly. !important is used to win over any utility classes
+   that may set background on individual cells. */
+table.asr-editor-table tbody tr.asr-editor-row--highlighted > td,
 .asr-editor-row--highlighted > td {
-    animation: asr-editor-row-highlight 2.8s ease-out forwards;
-}
-
-.asr-editor-row--highlighted > td:first-child {
-    box-shadow: inset 4px 0 0 var(--border-accent);
+    animation: asr-editor-row-highlight 2.8s ease-out forwards !important;
 }
 
 @keyframes asr-editor-row-highlight {
-    0%   { background-color: var(--bg-accent); }
-    70%  { background-color: var(--bg-accent); }
-    100% { background-color: transparent; }
+    0%   { background-color: var(--bg-accent); box-shadow: inset 0 0 0 9999px var(--bg-accent); }
+    70%  { background-color: var(--bg-accent); box-shadow: inset 0 0 0 9999px var(--bg-accent); }
+    100% { background-color: transparent;       box-shadow: inset 0 0 0 9999px transparent; }
 }
 
 /* Active segment highlighting - for currently playing transcript */

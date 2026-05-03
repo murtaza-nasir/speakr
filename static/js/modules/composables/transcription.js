@@ -183,6 +183,14 @@ export function useTranscription(state, utils) {
     const saveAsrTranscription = async (keepOpen = false) => {
         if (!selectedRecording.value) return;
 
+        // Cancel any pending autosave so it doesn't fire a redundant write
+        // on top of this manual save (which would surface as two "Saved"
+        // toasts a couple of seconds apart).
+        if (_autosaveTimer) {
+            clearTimeout(_autosaveTimer);
+            _autosaveTimer = null;
+        }
+
         // Remove extra UI fields and save the rest
         const contentToSave = JSON.stringify(editingSegments.value.map(({ id, showSuggestions, filteredSpeakers, ...rest }) => rest));
 
