@@ -3,6 +3,8 @@ Embedding generation and semantic search services.
 """
 
 import os
+import time
+import random
 import numpy as np
 from flask import current_app
 from sqlalchemy.orm import joinedload
@@ -115,50 +117,103 @@ def get_embedding_api_client():
     return _embedding_api_client
 
 
+_API_EMBED_MAX_ATTEMPTS = int(os.environ.get('EMBEDDING_API_MAX_RETRIES', '3'))
+_API_EMBED_BASE_BACKOFF_SECONDS = float(os.environ.get('EMBEDDING_API_BACKOFF_SECONDS', '1.5'))
+
+# Substrings of error messages that suggest the failure is transient and
+# worth retrying. Auth and model-not-found errors do not match and fail fast.
+_TRANSIENT_ERROR_HINTS = (
+    'timeout', 'timed out', 'connection', 'connect',
+    'rate limit', 'rate_limit', 'too many requests', '429',
+    '500', '502', '503', '504',
+    'temporarily unavailable', 'service unavailable',
+    'overloaded', 'try again',
+)
+
+
+def _is_transient_embedding_error(exc):
+    """Decide whether an embedding-API error is worth retrying."""
+    msg = str(exc).lower()
+    return any(hint in msg for hint in _TRANSIENT_ERROR_HINTS)
+
+
 def _api_embed(texts, user_id=None):
     """Call the OpenAI-compatible embeddings endpoint and return numpy vectors.
 
-    When ``user_id`` is provided and the response includes a ``usage`` block,
-    record the call against the daily token-usage aggregate so admins can see
-    embedding cost alongside chat/summarization. Cost is captured when the
-    provider returns it (OpenRouter populates ``usage.cost``); for providers
-    that omit it, only token counts are recorded.
+    Retries on transient errors (rate limits, timeouts, 5xx, connection
+    blips) with exponential backoff. Auth or model-not-found errors fail
+    fast since retrying will not help. On permanent failure, returns an
+    empty list so callers see a clear sentinel; ``process_recording_chunks``
+    treats a length mismatch between input and output as a failure and
+    rolls back, so the recording's existing chunks are preserved instead
+    of being silently deleted with nothing inserted in their place.
+
+    Retry parameters are tunable via ``EMBEDDING_API_MAX_RETRIES`` (default
+    3) and ``EMBEDDING_API_BACKOFF_SECONDS`` (default 1.5).
+
+    When ``user_id`` is provided and the response includes a ``usage``
+    block, record the call against the daily token-usage aggregate.
     """
     client = get_embedding_api_client()
     if client is None or not texts:
         return []
-    try:
-        kwargs = {'input': texts, 'model': EMBEDDING_MODEL}
-        if EMBEDDING_DIMENSIONS is not None:
-            kwargs['dimensions'] = EMBEDDING_DIMENSIONS
-        response = client.embeddings.create(**kwargs)
 
-        if user_id is not None and getattr(response, 'usage', None) is not None:
-            try:
-                usage = response.usage
-                # Pydantic v2 stores non-schema fields under model_extra; fall
-                # back to attribute access for SDKs that surface them directly.
-                extras = getattr(usage, 'model_extra', None) or {}
-                prompt_tokens = getattr(usage, 'prompt_tokens', 0) or 0
-                total_tokens = getattr(usage, 'total_tokens', prompt_tokens) or prompt_tokens
-                cost = extras.get('cost') if 'cost' in extras else getattr(usage, 'cost', None)
-                from src.services.token_tracking import token_tracker
-                token_tracker.record_usage(
-                    user_id=user_id,
-                    operation_type='embedding',
-                    prompt_tokens=int(prompt_tokens),
-                    completion_tokens=0,
-                    total_tokens=int(total_tokens),
-                    model_name=EMBEDDING_MODEL,
-                    cost=float(cost) if cost is not None else None,
+    kwargs = {'input': texts, 'model': EMBEDDING_MODEL}
+    if EMBEDDING_DIMENSIONS is not None:
+        kwargs['dimensions'] = EMBEDDING_DIMENSIONS
+
+    last_exc = None
+    for attempt in range(1, _API_EMBED_MAX_ATTEMPTS + 1):
+        try:
+            response = client.embeddings.create(**kwargs)
+
+            if user_id is not None and getattr(response, 'usage', None) is not None:
+                try:
+                    usage = response.usage
+                    # Pydantic v2 stores non-schema fields under model_extra;
+                    # fall back to attribute access for SDKs that surface them
+                    # directly.
+                    extras = getattr(usage, 'model_extra', None) or {}
+                    prompt_tokens = getattr(usage, 'prompt_tokens', 0) or 0
+                    total_tokens = getattr(usage, 'total_tokens', prompt_tokens) or prompt_tokens
+                    cost = extras.get('cost') if 'cost' in extras else getattr(usage, 'cost', None)
+                    from src.services.token_tracking import token_tracker
+                    token_tracker.record_usage(
+                        user_id=user_id,
+                        operation_type='embedding',
+                        prompt_tokens=int(prompt_tokens),
+                        completion_tokens=0,
+                        total_tokens=int(total_tokens),
+                        model_name=EMBEDDING_MODEL,
+                        cost=float(cost) if cost is not None else None,
+                    )
+                except Exception as track_err:
+                    current_app.logger.warning(f"Failed to record embedding usage: {track_err}")
+
+            return [np.array(d.embedding, dtype=np.float32) for d in response.data]
+
+        except Exception as e:
+            last_exc = e
+            transient = _is_transient_embedding_error(e)
+            if not transient or attempt == _API_EMBED_MAX_ATTEMPTS:
+                current_app.logger.error(
+                    f"Embedding API call failed (attempt {attempt}/{_API_EMBED_MAX_ATTEMPTS}, "
+                    f"transient={transient}): {e}"
                 )
-            except Exception as track_err:
-                current_app.logger.warning(f"Failed to record embedding usage: {track_err}")
+                return []
+            # Exponential backoff with light jitter so concurrent retries
+            # do not all hit the provider at the same instant.
+            backoff = _API_EMBED_BASE_BACKOFF_SECONDS * (2 ** (attempt - 1))
+            backoff *= 0.85 + 0.3 * random.random()
+            current_app.logger.warning(
+                f"Embedding API transient error (attempt {attempt}/{_API_EMBED_MAX_ATTEMPTS}), "
+                f"retrying in {backoff:.1f}s: {e}"
+            )
+            time.sleep(backoff)
 
-        return [np.array(d.embedding, dtype=np.float32) for d in response.data]
-    except Exception as e:
-        current_app.logger.error(f"Embedding API call failed: {e}")
-        return []
+    # Loop exhausted without returning a result.
+    current_app.logger.error(f"Embedding API call exhausted retries: {last_exc}")
+    return []
 
 
 
@@ -302,25 +357,49 @@ def get_accessible_recording_ids(user_id):
 def process_recording_chunks(recording_id):
     """
     Process a recording by creating chunks and generating embeddings.
-    This should be called after a recording is transcribed.
+
+    Returns True on full success, False on any failure including the case
+    where embedding generation returned fewer vectors than there were
+    chunks. On failure the transaction is rolled back so the recording's
+    existing chunks are preserved; this prevents the "old chunks deleted,
+    new chunks not inserted" silent-failure mode that occurs when the
+    embedding API blips mid-run.
     """
     try:
         recording = db.session.get(Recording, recording_id)
         if not recording or not recording.transcription:
             return False
 
-        # Delete existing chunks for this recording
+        # Delete existing chunks for this recording. The deletion is staged
+        # in this transaction; if anything below fails we rollback and the
+        # old chunks survive. Only the final commit makes the swap
+        # permanent.
         TranscriptChunk.query.filter_by(recording_id=recording_id).delete()
 
         # Create chunks
         chunks = chunk_transcription(recording.transcription)
 
         if not chunks:
+            db.session.commit()
             return True
 
         # Generate embeddings (recording owner gets billed for API-mode usage)
         embeddings = generate_embeddings(chunks, user_id=recording.user_id)
-        
+
+        # Verify we got one embedding per chunk. _api_embed returns [] on
+        # exhausted retries, and a partial provider response could return
+        # fewer than expected. Either case is a failure: rolling back keeps
+        # the recording's old chunks intact so the admin retry pass (or a
+        # later Re-embed all) can try again.
+        if len(embeddings) != len(chunks):
+            db.session.rollback()
+            current_app.logger.error(
+                f"Embedding generation returned {len(embeddings)} vectors for "
+                f"{len(chunks)} chunks on recording {recording_id}; rolling "
+                f"back to preserve existing chunks."
+            )
+            return False
+
         # Store chunks in database
         for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
             chunk = TranscriptChunk(
@@ -331,11 +410,11 @@ def process_recording_chunks(recording_id):
                 embedding=serialize_embedding(embedding) if embedding is not None else None
             )
             db.session.add(chunk)
-        
+
         db.session.commit()
         current_app.logger.info(f"Created {len(chunks)} chunks for recording {recording_id}")
         return True
-        
+
     except Exception as e:
         current_app.logger.error(f"Error processing chunks for recording {recording_id}: {e}")
         db.session.rollback()

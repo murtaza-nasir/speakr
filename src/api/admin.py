@@ -1320,23 +1320,75 @@ def admin_process_recordings_for_inquire():
         processed = 0
         failed = []
 
-        for recording in recordings_needing_processing:
+        # Number of times to retry each recording after the first pass. The
+        # underlying _api_embed already retries transient errors; this layer
+        # catches whole-pipeline failures (DB lock contention, partial
+        # provider responses, anything that produced a False return).
+        retry_passes = max(0, int(data.get('retry_passes', 2)))
+
+        def _attempt_recording(recording, attempt_label):
+            """Run process_recording_chunks for one recording.
+
+            Returns ``(success: bool, error: Optional[str])``. Any exception
+            is caught and converted to an error string so a single bad row
+            cannot abort the whole sweep.
+            """
             try:
-                success = process_recording_chunks(recording.id)
-                if success:
-                    processed += 1
-                    current_app.logger.info(
-                        f"Admin API: {'Re-embedded' if force else 'Processed chunks for'} "
-                        f"recording: {recording.title} ({recording.id})"
-                    )
-                else:
-                    failed.append({'id': recording.id, 'title': recording.title, 'reason': 'Processing returned false'})
-            except Exception as e:
-                current_app.logger.error(f"Admin API: Failed to process recording {recording.id}: {e}")
-                failed.append({'id': recording.id, 'title': recording.title, 'reason': str(e)})
+                ok = process_recording_chunks(recording.id)
+            except Exception as exc:
+                current_app.logger.error(
+                    f"Admin API: Failed to process recording {recording.id} "
+                    f"({attempt_label}): {exc}"
+                )
+                return False, str(exc)
+            if ok:
+                current_app.logger.info(
+                    f"Admin API: {'Re-embedded' if force else 'Processed chunks for'} "
+                    f"recording ({attempt_label}): {recording.title} ({recording.id})"
+                )
+                return True, None
+            return False, 'Processing returned false'
+
+        # First pass: try every recording once.
+        retry_queue = []
+        for recording in recordings_needing_processing:
+            ok, err = _attempt_recording(recording, 'pass 1')
+            if ok:
+                processed += 1
+            else:
+                retry_queue.append((recording, err))
 
             if processed % batch_size == 0:
                 db.session.commit()
+
+        # Subsequent passes: retry any recording that did not succeed.
+        # Backoff between passes lets a temporarily overloaded provider
+        # recover before we hammer it again.
+        for pass_num in range(2, retry_passes + 2):
+            if not retry_queue:
+                break
+            import time as _t
+            _t.sleep(min(15, 2 ** (pass_num - 1)))
+            current_app.logger.info(
+                f"Admin API: retry pass {pass_num} on {len(retry_queue)} recordings"
+            )
+            still_failing = []
+            for recording, prev_err in retry_queue:
+                ok, err = _attempt_recording(recording, f'pass {pass_num}')
+                if ok:
+                    processed += 1
+                else:
+                    still_failing.append((recording, err or prev_err))
+            retry_queue = still_failing
+
+        # Anything still in retry_queue after the last pass is recorded as failed.
+        for recording, err in retry_queue:
+            failed.append({
+                'id': recording.id,
+                'title': recording.title,
+                'reason': err or 'Processing returned false',
+                'attempts': retry_passes + 1,
+            })
 
         db.session.commit()
 
