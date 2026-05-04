@@ -146,6 +146,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.8.19-alpha - Inquire-mode performance and re-embed reliability"
+    Patch release on top of v0.8.18-alpha. No new features, no breaking changes.
+
+    - Vectorised chunk similarity search. Per-query Inquire search drops from 13-20s to under 1s on a ~17k-chunk library. A 4-enriched-query inquire turn now completes in 2-3s instead of ~60s.
+    - Embedding API retries on transient errors (rate limits, timeouts, 5xx, connection blips) with exponential backoff. Tunable via `EMBEDDING_API_MAX_RETRIES` and `EMBEDDING_API_BACKOFF_SECONDS`.
+    - `process_recording_chunks` rolls back when `generate_embeddings` returns fewer vectors than expected, preserving existing chunks instead of silently deleting them. Fixes the silent partial-failure mode that produced stale chunks across embedding-model swaps.
+    - Re-embed all loop has retry passes (default 2) and now picks up any recording with chunks in the table, regardless of current status.
+
 !!! info "Version 0.8.18-alpha - API v1 folder operations"
     Patch release on top of v0.8.17-alpha. Closes the gap from #274 follow-up where folder CRUD shipped in v0.8.16-alpha but recordings could not actually be moved between folders via the API.
 

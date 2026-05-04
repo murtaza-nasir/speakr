@@ -179,7 +179,19 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.18-alpha)
+## Latest Release (v0.8.19-alpha)
+
+**Inquire-mode performance and re-embed reliability.** Patch release on top of v0.8.18-alpha.
+
+- **Vectorised chunk similarity search.** The Inquire-mode chunk search previously called sklearn's `cosine_similarity` once per chunk in a Python loop, costing 13-20 seconds per enriched query on a ~17k-chunk library. Replaced with a single batched matrix multiply over all chunks, plus `np.argpartition` for top-k. Per-query search drops to under one second; a 4-enriched-query inquire turn now completes in 2-3 seconds instead of ~60. Eliminates the chat UI timeout that users with large libraries or slower embedding endpoints were hitting.
+- **Embedding API retries.** `_api_embed` retries transient errors (rate limits, timeouts, 5xx, connection blips) with exponential backoff and jitter. Defaults to 3 attempts, configurable via `EMBEDDING_API_MAX_RETRIES` and `EMBEDDING_API_BACKOFF_SECONDS`. Auth and model-not-found errors still fail fast.
+- **Re-embed pipeline never silently drops chunks.** When `generate_embeddings` returns fewer vectors than there were chunks (transient API failure, partial provider response), `process_recording_chunks` now rolls back the transaction so the recording's existing chunks are preserved. Previously the old chunks were deleted before embedding generation and the function returned True even when no new chunks could be inserted.
+- **Re-embed all retry passes.** The admin Re-embed all loop now does up to two retry passes over any recordings that fail in the first pass, with backoff between passes. Tunable via `retry_passes` in the request body.
+- **Stale-chunk recordings included in Re-embed all.** Re-embed all picks up any recording that has chunks in the table regardless of current status, not just `COMPLETED`. Closes the failure mode where a recording mid-reprocess (or in any non-COMPLETED state) at click time was skipped, leaving stale vectors behind.
+
+No breaking changes.
+
+### Previous Release (v0.8.18-alpha)
 
 **API v1 folder operations.** Patch release on top of v0.8.17-alpha (#274 follow-up).
 
