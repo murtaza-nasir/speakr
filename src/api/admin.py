@@ -1269,13 +1269,27 @@ def admin_process_recordings_for_inquire():
         force = bool(data.get('force', False))
 
         if force:
-            # Re-embed every completed recording with a transcription.
-            recordings_query = Recording.query.filter(
-                Recording.status == 'COMPLETED',
-                Recording.transcription.isnot(None),
-                Recording.transcription != ''
-            )
-            recordings_needing_processing = recordings_query.all()
+            # Re-embed every recording that has a usable transcription, plus
+            # any recording that already has chunks stored. The chunks-already-
+            # stored case matters because a recording can be in a non-COMPLETED
+            # state (PROCESSING, SUMMARIZING, FAILED) while still holding stale
+            # vectors from the previous embedding configuration. Filtering on
+            # status alone leaves those ghost chunks behind and produces the
+            # "X.shape[1] == new while Y.shape[1] == old" warnings on every
+            # subsequent search until they are cleaned up.
+            recordings_with_chunks_subq = db.session.query(
+                TranscriptChunk.recording_id
+            ).distinct()
+            recordings_needing_processing = Recording.query.filter(
+                db.or_(
+                    db.and_(
+                        Recording.status == 'COMPLETED',
+                        Recording.transcription.isnot(None),
+                        Recording.transcription != '',
+                    ),
+                    Recording.id.in_(recordings_with_chunks_subq),
+                )
+            ).all()
         else:
             # Only process recordings that have no chunks yet.
             recordings_with_chunks = db.session.query(TranscriptChunk.recording_id).distinct()
