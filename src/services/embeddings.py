@@ -614,25 +614,61 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
         
         if not chunks:
             return []
-        
-        # Calculate similarities
-        chunk_similarities = []
+
+        # Calculate similarities. Previously this iterated chunk-by-chunk and
+        # called sklearn's cosine_similarity on a 1xN vs 1xN pair for every
+        # chunk, which on a library of ~17k chunks took 15-20 seconds per
+        # query because of Python-call overhead per chunk. Stacking all
+        # chunk vectors into one matrix and doing a single vectorised dot
+        # product brings that down by two to three orders of magnitude.
+        expected_dim = int(query_embedding.shape[0])
+        kept_chunks = []
+        kept_vectors = []
+        skipped_dim_mismatch = 0
         for chunk in chunks:
-            try:
-                chunk_embedding = deserialize_embedding(chunk.embedding)
-                if chunk_embedding is not None:
-                    similarity = cosine_similarity(
-                        query_embedding.reshape(1, -1),
-                        chunk_embedding.reshape(1, -1)
-                    )[0][0]
-                    chunk_similarities.append((chunk, float(similarity)))
-            except Exception as e:
-                current_app.logger.warning(f"Error calculating similarity for chunk {chunk.id}: {e}")
+            if chunk.embedding is None:
                 continue
-        
-        # Sort by similarity and return top k
-        chunk_similarities.sort(key=lambda x: x[1], reverse=True)
-        return chunk_similarities[:top_k]
+            try:
+                v = deserialize_embedding(chunk.embedding)
+            except Exception as e:
+                current_app.logger.warning(f"Error deserialising chunk {chunk.id}: {e}")
+                continue
+            if v is None:
+                continue
+            if v.shape[0] != expected_dim:
+                # Stale vector from a previous embedding configuration.
+                # Skip silently in batch rather than warning per chunk so a
+                # large library cannot flood the log on every search.
+                skipped_dim_mismatch += 1
+                continue
+            kept_chunks.append(chunk)
+            kept_vectors.append(v)
+
+        if skipped_dim_mismatch:
+            current_app.logger.warning(
+                f"Skipped {skipped_dim_mismatch} chunks with mismatched "
+                f"embedding dimensions (expected {expected_dim}). Run "
+                f"Re-embed all to refresh them."
+            )
+
+        if not kept_vectors:
+            return []
+
+        # One sklearn call instead of len(chunks). Returns shape (1, N).
+        embeddings_matrix = np.vstack(kept_vectors)
+        similarities = cosine_similarity(
+            query_embedding.reshape(1, -1),
+            embeddings_matrix,
+        )[0]
+
+        # Top-k via argpartition is faster than a full sort for large N.
+        if top_k >= len(kept_chunks):
+            order = np.argsort(-similarities)
+        else:
+            top_idx = np.argpartition(-similarities, top_k)[:top_k]
+            order = top_idx[np.argsort(-similarities[top_idx])]
+
+        return [(kept_chunks[i], float(similarities[i])) for i in order]
         
     except Exception as e:
         current_app.logger.error(f"Error in semantic search: {e}")
