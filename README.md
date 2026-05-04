@@ -179,7 +179,18 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.17-alpha)
+## Latest Release (v0.8.18-alpha)
+
+**API v1 folder operations.** Patch release on top of v0.8.17-alpha (#274 follow-up).
+
+- `GET /api/v1/recordings?folder_id=<id>` (or `?folder_id=none`) filters list responses by folder
+- `PATCH /api/v1/recordings/{id}` accepts `folder_id` to move a recording (or `null` to remove it from any folder)
+- `PATCH /api/v1/recordings/batch` accepts `folder_id` inside `updates` for bulk moves
+- OpenAPI schema documents all of the above plus the previously-undocumented batch fields (`is_inbox`, `is_highlighted`, `add_tag_ids`, `remove_tag_ids`)
+
+No breaking changes. The folder *resource* endpoints (CRUD on `/api/v1/folders`) shipped in v0.8.16-alpha; this release lets recordings actually be moved into and out of those folders.
+
+### Previous Release (v0.8.17-alpha)
 
 **Bug fixes and CI maintenance.** Patch release on top of v0.8.16-alpha.
 

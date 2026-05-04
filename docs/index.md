@@ -146,6 +146,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.8.18-alpha - API v1 folder operations"
+    Patch release on top of v0.8.17-alpha. Closes the gap from #274 follow-up where folder CRUD shipped in v0.8.16-alpha but recordings could not actually be moved between folders via the API.
+
+    - `GET /api/v1/recordings?folder_id=<id>` (or `?folder_id=none`) filters list responses by folder
+    - `PATCH /api/v1/recordings/{id}` accepts `folder_id` (null to remove from any folder)
+    - `PATCH /api/v1/recordings/batch` accepts `folder_id` inside `updates`
+    - OpenAPI schema documents these plus previously-undocumented batch fields
+
 !!! info "Version 0.8.17-alpha - Bug fixes and CI maintenance"
     Patch release on top of v0.8.16-alpha. No new features, no breaking changes.
 
