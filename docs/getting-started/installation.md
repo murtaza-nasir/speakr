@@ -782,10 +782,11 @@ The WebSocket configuration is important for real-time features in Speakr. The t
 
 #### Nginx Proxy Manager
 
-Nginx Proxy Manager handles the WebSocket-upgrade and request-size knobs for you in its default templates, so a vanilla NPM proxy host pointed at `http://<speakr-host>:8899` typically works without any custom nginx tuning. Two notes worth knowing:
+Nginx Proxy Manager handles the WebSocket-upgrade pattern correctly in its default templates (it uses `proxy_set_header Connection $http_connection` in each generated proxy host), so a vanilla NPM proxy host pointed at `http://<speakr-host>:8899` typically works without any custom nginx tuning. Three notes worth knowing:
 
-- NPM ships with `client_max_body_size 0` (unlimited) by default, so the request size limit is whatever you configured inside Speakr (admin settings → max file size).
-- If you need to add directives anyway (for example `proxy_request_buffering off` for a constrained proxy host), use the **Advanced** tab on the proxy host. Anything you paste there is rendered into the proxy's per-host `.conf` file. Global tweaks across every host go into the files under `data/nginx/custom/` (`http.conf` for the http block, `server_proxy.conf` for inside every proxy host).
+- NPM bakes `client_max_body_size 2000m` into its main `nginx.conf`, so every proxy host inherits a 2 GB default unless you override it. Plenty for normal Speakr uploads. If you need higher (or unlimited), put `client_max_body_size 0;` in the **Advanced** tab on the Speakr proxy host.
+- Anything pasted into a proxy host's Advanced tab is rendered into the per-host `.conf` file under `/data/nginx/proxy_host/`. Use this for per-host tweaks like `proxy_request_buffering off;` on a constrained proxy host.
+- Global tweaks across every host go into the files under `/data/nginx/custom/`: `http_top.conf` for the http block, `server_proxy.conf` for directives inside every proxy host's server block. Useful for headers and rate limiting that should apply everywhere.
 
 If you prefer Apache, here's an equivalent configuration:
 
