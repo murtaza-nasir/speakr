@@ -189,6 +189,7 @@ OPENAPI_SPEC = {
                     {"name": "sort_by", "in": "query", "schema": {"type": "string", "enum": ["created_at", "meeting_date", "title", "file_size"]}},
                     {"name": "sort_order", "in": "query", "schema": {"type": "string", "enum": ["asc", "desc"]}},
                     {"name": "tag_id", "in": "query", "schema": {"type": "integer"}},
+                    {"name": "folder_id", "in": "query", "schema": {"type": "string"}, "description": "Filter by folder. Pass an integer folder id to list recordings in that folder, or the literal 'none' to list recordings not in any folder. Omit for no filter."},
                     {"name": "q", "in": "query", "schema": {"type": "string"}, "description": "Search query"}
                 ],
                 "responses": {"200": {"description": "Paginated list of recordings"}}
@@ -209,8 +210,8 @@ OPENAPI_SPEC = {
                 "tags": ["Recordings"],
                 "summary": "Update recording",
                 "parameters": [{"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}}],
-                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"title": {"type": "string"}, "participants": {"type": "string"}, "notes": {"type": "string"}, "summary": {"type": "string"}, "meeting_date": {"type": "string"}, "is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}}}}}},
-                "responses": {"200": {"description": "Updated recording"}}
+                "requestBody": {"content": {"application/json": {"schema": {"type": "object", "properties": {"title": {"type": "string"}, "participants": {"type": "string"}, "notes": {"type": "string"}, "summary": {"type": "string"}, "meeting_date": {"type": "string"}, "is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}, "folder_id": {"type": "integer", "nullable": True, "description": "Move recording to this folder, or null to remove from any folder. Caller must have access to the target folder."}}}}}},
+                "responses": {"200": {"description": "Updated recording"}, "403": {"description": "No access to target folder"}, "404": {"description": "Recording or folder not found"}}
             },
             "delete": {
                 "tags": ["Recordings"],
@@ -287,7 +288,7 @@ OPENAPI_SPEC = {
             }
         },
         "/recordings/batch": {
-            "patch": {"tags": ["Batch"], "summary": "Batch update recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids", "updates"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}, "updates": {"type": "object"}}}}}}, "responses": {"200": {"description": "Batch results"}}},
+            "patch": {"tags": ["Batch"], "summary": "Batch update recordings", "description": "Apply the same set of updates to multiple recordings in one call. Supported fields inside `updates`: `is_inbox`, `is_highlighted`, `add_tag_ids` (array of tag ids to add), `remove_tag_ids` (array of tag ids to remove), `folder_id` (move all to this folder, or null to remove from any folder).", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids", "updates"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}, "updates": {"type": "object", "properties": {"is_inbox": {"type": "boolean"}, "is_highlighted": {"type": "boolean"}, "add_tag_ids": {"type": "array", "items": {"type": "integer"}}, "remove_tag_ids": {"type": "array", "items": {"type": "integer"}}, "folder_id": {"type": "integer", "nullable": True, "description": "Target folder id, or null to remove all selected recordings from their folders. Caller must have access."}}}}}}}}, "responses": {"200": {"description": "Batch results"}, "403": {"description": "No access to target folder"}, "404": {"description": "Target folder not found"}}},
             "delete": {"tags": ["Batch"], "summary": "Batch delete recordings", "requestBody": {"content": {"application/json": {"schema": {"type": "object", "required": ["recording_ids"], "properties": {"recording_ids": {"type": "array", "items": {"type": "integer"}}}}}}}, "responses": {"200": {"description": "Batch results"}}}
         },
         "/recordings/batch/transcribe": {
@@ -680,6 +681,7 @@ def list_recordings():
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     tag_id = request.args.get('tag_id', type=int)
+    folder_filter = request.args.get('folder_id', '').strip()
     search_query = request.args.get('q', '').strip()
     inbox_filter = request.args.get('inbox')
     starred_filter = request.args.get('starred')
@@ -716,6 +718,18 @@ def list_recordings():
     # Tag filter
     if tag_id:
         query = query.join(RecordingTag).filter(RecordingTag.tag_id == tag_id)
+
+    # Folder filter. Accepts an integer folder id, or the literal "none" to
+    # return recordings that are not in any folder. Anything else is ignored.
+    if folder_filter:
+        if folder_filter.lower() == 'none':
+            query = query.filter(Recording.folder_id.is_(None))
+        else:
+            try:
+                folder_id_int = int(folder_filter)
+                query = query.filter(Recording.folder_id == folder_id_int)
+            except ValueError:
+                pass
 
     # Search filter
     if search_query:
@@ -1010,7 +1024,8 @@ def update_recording(recording_id):
         "summary": "Updated summary...",
         "meeting_date": "2024-01-15T09:00:00Z",
         "is_inbox": false,
-        "is_highlighted": true
+        "is_highlighted": true,
+        "folder_id": 5            // or null to remove the recording from its folder
     }
     """
     recording = db.session.get(Recording, recording_id)
@@ -1045,6 +1060,26 @@ def update_recording(recording_id):
         recording.is_inbox = bool(data['is_inbox'])
     if 'is_highlighted' in data:
         recording.is_highlighted = bool(data['is_highlighted'])
+    if 'folder_id' in data:
+        new_folder_id = data['folder_id']
+        if new_folder_id is None:
+            recording.folder_id = None
+        else:
+            from src.models.organization import Folder, GroupMembership
+            target = db.session.get(Folder, new_folder_id)
+            if not target:
+                return jsonify({'error': f'Folder {new_folder_id} not found'}), 404
+            # Personal folders: must own. Group folders: must be a member.
+            if target.group_id is None:
+                if target.user_id != current_user.id:
+                    return jsonify({'error': 'No access to target folder'}), 403
+            else:
+                membership = GroupMembership.query.filter_by(
+                    user_id=current_user.id, group_id=target.group_id
+                ).first()
+                if not membership:
+                    return jsonify({'error': 'No access to target folder'}), 403
+            recording.folder_id = new_folder_id
 
     db.session.commit()
 
@@ -1058,7 +1093,8 @@ def update_recording(recording_id):
             'summary': recording.summary,
             'meeting_date': recording.meeting_date.isoformat() if recording.meeting_date else None,
             'is_inbox': recording.is_inbox,
-            'is_highlighted': recording.is_highlighted
+            'is_highlighted': recording.is_highlighted,
+            'folder_id': recording.folder_id
         }
     })
 
@@ -2380,6 +2416,28 @@ def batch_update_recordings():
     if not recording_ids:
         return jsonify({'error': 'recording_ids required'}), 400
 
+    # If folder_id is being set on the batch, validate target folder access
+    # once up front. The same destination folder applies to every recording
+    # in the batch, so the permission check is identical for all of them.
+    target_folder_id = None
+    if 'folder_id' in updates:
+        new_folder_id = updates['folder_id']
+        if new_folder_id is not None:
+            from src.models.organization import Folder, GroupMembership
+            target = db.session.get(Folder, new_folder_id)
+            if not target:
+                return jsonify({'error': f'Folder {new_folder_id} not found'}), 404
+            if target.group_id is None:
+                if target.user_id != current_user.id:
+                    return jsonify({'error': 'No access to target folder'}), 403
+            else:
+                membership = GroupMembership.query.filter_by(
+                    user_id=current_user.id, group_id=target.group_id
+                ).first()
+                if not membership:
+                    return jsonify({'error': 'No access to target folder'}), 403
+            target_folder_id = new_folder_id
+
     results = []
     for recording_id in recording_ids:
         recording = db.session.get(Recording, recording_id)
@@ -2396,6 +2454,10 @@ def batch_update_recordings():
                 recording.is_inbox = bool(updates['is_inbox'])
             if 'is_highlighted' in updates:
                 recording.is_highlighted = bool(updates['is_highlighted'])
+            if 'folder_id' in updates:
+                # `target_folder_id` already validated above (None to remove,
+                # or a valid folder id the caller has access to).
+                recording.folder_id = target_folder_id
 
             # Handle tag additions
             if 'add_tag_ids' in updates:
