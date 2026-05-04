@@ -146,6 +146,13 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
+!!! info "Version 0.8.17-alpha - Bug fixes and CI maintenance"
+    Patch release on top of v0.8.16-alpha. No new features, no breaking changes.
+
+    - Reprocess summary modal: prompt-variables panel and Append/Replace toggle now reflect the prompt source the user picked, rather than the recording's original tag
+    - Docs: corrected reverse-proxy nginx example (`Connection` header forwarded conditionally to avoid 500s on uploads through the proxy with Gunicorn). New Nginx Proxy Manager section.
+    - CI: bumped all GitHub Actions to Node 24 versions to clear deprecation warnings
+
 !!! info "Version 0.8.16-alpha - Prompt Templating, Transcription UX, and Observability"
     **Prompt templating and summary control**
 

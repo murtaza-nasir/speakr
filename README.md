@@ -179,7 +179,17 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.16-alpha)
+## Latest Release (v0.8.17-alpha)
+
+**Bug fixes and CI maintenance.** Patch release on top of v0.8.16-alpha.
+
+- Reprocess summary modal: prompt-variables panel and Append/Replace toggle now reflect the prompt source the user actually picked (was showing the recording's original tag variables and offering Append/Replace for tag-source prompts where it does not apply)
+- Docs: corrected reverse-proxy nginx example so the WebSocket `Connection: upgrade` header is forwarded conditionally rather than set unconditionally (caused 500s on file uploads through the proxy with Gunicorn). Added a Nginx Proxy Manager section noting that NPM's default `client_max_body_size` is `2000m` and that the `Advanced` tab is the right place for per-host overrides.
+- CI: bumped all GitHub Actions to Node 24 versions to clear deprecation warnings.
+
+No new features, no breaking changes.
+
+### Previous Release (v0.8.16-alpha)
 
 **Prompt Templating, Transcription UX Polish, Per-Recording Model Selection, and Observability**
 
