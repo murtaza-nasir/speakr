@@ -6,8 +6,7 @@ This module provides security-related utility functions for the application.
 
 import re
 from wtforms.validators import ValidationError
-from urllib.parse import urlparse, urljoin
-from flask import request
+from urllib.parse import urlparse
 
 
 def password_check(form, field):
@@ -44,7 +43,25 @@ def password_check(form, field):
 # --- URL Security ---
 
 def is_safe_url(target):
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+    """Return True only for local relative paths.
+
+    Rejects scheme-relative URLs (``//evil.com``), backslash-prefixed URLs
+    (``\\evil.com``), absolute URLs, and anything with a scheme or netloc.
+    The validator runs against the raw value so the same string can be passed
+    to ``redirect()`` without the parser-mismatch open-redirect class.
+    """
+    if not target or not isinstance(target, str):
+        return False
+    if not target.startswith('/'):
+        return False
+    if target.startswith('//') or target.startswith('/\\'):
+        return False
+    if '\\' in target:
+        return False
+    if any(ord(ch) < 0x20 for ch in target):
+        return False
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc:
+        return False
+    return True
 
