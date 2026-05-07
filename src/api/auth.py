@@ -14,12 +14,11 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from werkzeug.security import generate_password_hash, check_password_hash
-from urllib.parse import urlparse, urljoin
 import markdown
 
 from src.database import db
 from src.models import User, SystemSetting, GroupMembership
-from src.utils import password_check
+from src.utils import password_check, is_safe_url
 from src.auth.sso import (
     init_sso_client,
     is_sso_enabled,
@@ -109,12 +108,6 @@ class LoginForm(FlaskForm):
 
 
 # --- Helper Functions ---
-
-def is_safe_url(target):
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
-
 
 def is_registration_domain_allowed(email: str) -> bool:
     """Check if email domain is allowed for registration.
