@@ -148,9 +148,17 @@ def setup_recording(*, user_input=None, tag_model=None, folder_model=None,
     return user, rec
 
 
-def call_reprocess(client, recording_id, body, available_models=None):
-    """POST to the reprocess endpoint and capture job_params."""
+def call_reprocess(client, recording_id, body, available_models=None,
+                   admin_default_model=None, admin_visible_models_json=None):
+    """POST to the reprocess endpoint and capture job_params.
+
+    By default this isolates the call from any admin-saved
+    ``transcription_default_model`` / ``transcription_models_visible_json``
+    SystemSetting rows that may exist in the dev DB. Tests that exercise the
+    admin-default path can pass values explicitly.
+    """
     from src.services import job_queue as jq_module
+    from src.models import SystemSetting
 
     captured = {}
 
@@ -158,13 +166,25 @@ def call_reprocess(client, recording_id, body, available_models=None):
         captured.update(kwargs)
         return 999
 
+    real_get_setting = SystemSetting.get_setting
+
+    def fake_get_setting(key, default=None):
+        if key == 'transcription_default_model':
+            return admin_default_model if admin_default_model is not None else default
+        if key == 'transcription_models_visible_json':
+            return admin_visible_models_json if admin_visible_models_json is not None else default
+        return real_get_setting(key, default)
+
     original_enqueue = jq_module.job_queue.enqueue
     jq_module.job_queue.enqueue = fake_enqueue
     try:
-        # Patch the allowlist used by the endpoint.
+        # Patch the allowlist used by the endpoint and the admin-saved
+        # SystemSetting lookups so the test does not pick up dev-DB state.
         with patch("src.api.recordings.os.path.exists", return_value=True), \
              patch("src.config.app_config.TRANSCRIPTION_MODELS_AVAILABLE",
-                   list(available_models) if available_models is not None else []):
+                   list(available_models) if available_models is not None else []), \
+             patch("src.api.recordings.SystemSetting.get_setting",
+                   side_effect=fake_get_setting):
             resp = client.post(
                 f"/recording/{recording_id}/reprocess_transcription",
                 data=json.dumps(body),
