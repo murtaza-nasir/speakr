@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.19--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.20--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -179,17 +179,19 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.19-alpha)
+## Latest Release (v0.8.20-alpha)
 
-**Inquire-mode performance and re-embed reliability.** Patch release on top of v0.8.18-alpha.
+**Security: open-redirect fix in `is_safe_url` (CWE-601).** Patch release on top of v0.8.19-alpha.
 
-- **Vectorised chunk similarity search.** The Inquire-mode chunk search previously called sklearn's `cosine_similarity` once per chunk in a Python loop, costing 13-20 seconds per enriched query on a ~17k-chunk library. Replaced with a single batched matrix multiply over all chunks, plus `np.argpartition` for top-k. Per-query search drops to under one second; a 4-enriched-query inquire turn now completes in 2-3 seconds instead of ~60. Eliminates the chat UI timeout that users with large libraries or slower embedding endpoints were hitting.
-- **Embedding API retries.** `_api_embed` retries transient errors (rate limits, timeouts, 5xx, connection blips) with exponential backoff and jitter. Defaults to 3 attempts, configurable via `EMBEDDING_API_MAX_RETRIES` and `EMBEDDING_API_BACKOFF_SECONDS`. Auth and model-not-found errors still fail fast.
-- **Re-embed pipeline never silently drops chunks.** When `generate_embeddings` returns fewer vectors than there were chunks (transient API failure, partial provider response), `process_recording_chunks` now rolls back the transaction so the recording's existing chunks are preserved. Previously the old chunks were deleted before embedding generation and the function returned True even when no new chunks could be inserted.
-- **Re-embed all retry passes.** The admin Re-embed all loop now does up to two retry passes over any recordings that fail in the first pass, with backoff between passes. Tunable via `retry_passes` in the request body.
-- **Stale-chunk recordings included in Re-embed all.** Re-embed all picks up any recording that has chunks in the table regardless of current status, not just `COMPLETED`. Closes the failure mode where a recording mid-reprocess (or in any non-COMPLETED state) at click time was skipped, leaving stale vectors behind.
+- The `is_safe_url()` helper validated `urljoin(request.host_url, target)` while `redirect()` was called with the raw `target`. A scheme-relative input such as `////evil.com` resolved to a same-host URL during validation but was emitted verbatim in the `Location` header, where browsers interpret it as a network-path-relative redirect to an attacker-controlled host.
+- `is_safe_url()` now validates the raw target against a local-path allowlist: leading `/` required, scheme-relative URLs (`//`, `/\`), backslashes, control characters, and any value with a scheme or netloc are rejected. The duplicate copy in `src/api/auth.py` was removed; password login and the SSO `next` / callback flow share one validator.
+- Reported by **RacerZ and Fushuling**. Tracked as a GitHub Security Advisory; CVE pending. Users on v0.8.19-alpha or earlier should upgrade promptly.
 
-No breaking changes.
+No new features, no breaking changes.
+
+### Previous Release (v0.8.19-alpha)
+
+**Inquire-mode performance and re-embed reliability.** Patch release on top of v0.8.18-alpha. Vectorised chunk similarity search (60s → 2-3s on large libraries), embedding API retries with backoff, transactional rollback when a partial embedding response would otherwise drop chunks, and Re-embed all retry passes that include stale-chunk recordings regardless of status.
 
 ### Previous Release (v0.8.18-alpha)
 
