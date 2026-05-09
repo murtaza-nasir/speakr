@@ -6,14 +6,12 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! info "Latest Release: v0.8.16-alpha - Per-Recording Model Selection & Backlog Cleanup"
-    **Per-upload model selection, embedding model env var, Mistral chunking, API v1 parity, and bug fixes**
+!!! warning "Latest Release: v0.8.20-alpha - Security Patch (Open Redirect)"
+    **Open-redirect fix in `is_safe_url` (CWE-601).** Users on v0.8.19-alpha or earlier should upgrade promptly.
 
-    - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Configurable model dropdown via `TRANSCRIPTION_MODELS_AVAILABLE`
-    - **Configurable Embedding Model** - `EMBEDDING_MODEL` for local sentence-transformers, or `EMBEDDING_BASE_URL` to offload to an OpenAI-compatible provider
-    - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` for long meeting recordings
-    - **API v1 Parity** - `audio_duration`, durations, folder, events, and deletion_exempt now exposed
-    - **Bug Fixes** - Reprocess now respects tag/folder hotwords; legacy "français" language values normalized; Cyrillic title generation no longer leaks unicode escapes
+    - The validator previously checked `urljoin`-normalised URLs while `redirect()` used the raw value, so `next=////evil.com` could redirect users off-site after sign-in.
+    - `is_safe_url()` now validates the raw target against a local-path allowlist; the SSO `next` / callback flow and password login share one validator.
+    - Reported by **RacerZ and Fushuling**. Tracked as a GitHub Security Advisory; CVE pending.
 
 ## Quick Navigation
 
