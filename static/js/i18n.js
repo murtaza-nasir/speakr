@@ -92,6 +92,7 @@ class I18n {
     getAvailableLocales() {
         return [
             { code: 'en', name: 'English', nativeName: 'English' },
+            { code: 'fa', name: 'Persian', nativeName: 'فارسی' },
             { code: 'es', name: 'Spanish', nativeName: 'Español' },
             { code: 'fr', name: 'French', nativeName: 'Français' },
             { code: 'zh', name: 'Chinese', nativeName: '中文' },
