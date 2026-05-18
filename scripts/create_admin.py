@@ -81,7 +81,7 @@ def create_admin_user():
     # Create user
     with app.app_context():
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-        new_user = User(username=username, email=email, password=hashed_password, is_admin=True)
+        new_user = User(username=username, email=email, password=hashed_password, is_admin=True, email_verified=True)
         db.session.add(new_user)
         db.session.commit()
         
