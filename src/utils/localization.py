@@ -120,6 +120,7 @@ def format_date_localized(dt: datetime, language: str) -> str:
         'es': '%d de %B de %Y',       # 15 de enero de 2026
         'zh': '%Y年%m月%d日',          # 2026年01月15日
         'ru': '%d %B %Y г.',          # 15 января 2026 г.
+        'pl': '%d %B %Y',             # 18 maja 2026
     }
 
     # Month names for different languages
@@ -147,6 +148,12 @@ def format_date_localized(dt: datetime, language: str) -> str:
             'April': 'апреля', 'May': 'мая', 'June': 'июня',
             'July': 'июля', 'August': 'августа', 'September': 'сентября',
             'October': 'октября', 'November': 'ноября', 'December': 'декабря'
+        },
+        'pl': {
+            'January': 'stycznia', 'February': 'lutego', 'March': 'marca',
+            'April': 'kwietnia', 'May': 'maja', 'June': 'czerwca',
+            'July': 'lipca', 'August': 'sierpnia', 'September': 'września',
+            'October': 'października', 'November': 'listopada', 'December': 'grudnia'
         }
     }
 
@@ -188,6 +195,7 @@ def format_datetime_localized(dt: datetime, language: str) -> str:
         'es': '%H:%M',          # 14:30
         'zh': '%H:%M',          # 14:30
         'ru': '%H:%M',          # 14:30
+        'pl': '%H:%M',          # 14:30
     }
 
     time_format = time_formats.get(language, time_formats['en'])
@@ -201,6 +209,7 @@ def format_datetime_localized(dt: datetime, language: str) -> str:
         'es': ' a las ',
         'zh': ' ',
         'ru': ' в ',
+        'pl': ' o ',
     }
 
     connector = connectors.get(language, ' at ')
