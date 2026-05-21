@@ -50,39 +50,46 @@ def download_file(url, filepath):
         # Write file
         with open(filepath, 'wb') as f:
             f.write(response.content)
-        print(f"  ✓ Downloaded {filepath.name}")
+        print(f"  [OK] Downloaded {filepath.name}")
         return True
     except Exception as e:
-        print(f"  ✗ Failed to download {url}: {e}")
+        print(f"  [FAIL] Failed to download {url}: {e}")
         return False
 
 def main():
     print("Downloading offline dependencies...")
     print(f"Vendor directory: {VENDOR_DIR}")
-    
+
     # Check if we're in production mode
     is_production = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('PRODUCTION') == '1'
-    
+
     if is_production:
-        print("⚙️  PRODUCTION MODE: Using production builds")
-        # Replace Vue.js development build with production build
+        print("PRODUCTION MODE: Using production builds")
         DEPENDENCIES['js']['vue.global.js'] = "https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"
     else:
-        print("⚙️  DEVELOPMENT MODE: Using development builds")
+        print("DEVELOPMENT MODE: Using development builds")
+
+    failed = []
 
     # Download CSS and JS files
     for file_type, files in DEPENDENCIES.items():
         print(f"\n{file_type.upper()} Files:")
         for filename, url in files.items():
             filepath = VENDOR_DIR / file_type / filename
-            download_file(url, filepath)
+            if not download_file(url, filepath):
+                failed.append(filename)
 
     # Download Font Awesome fonts
     print("\nFont Awesome Webfonts:")
     for url in FONTAWESOME_FONTS:
         filename = url.split("/")[-1]
         filepath = VENDOR_DIR / "fonts" / "webfonts" / filename
-        download_file(url, filepath)
+        if not download_file(url, filepath):
+            failed.append(filename)
+
+    if failed:
+        print(f"\nERROR: Failed to download {len(failed)} files: {', '.join(failed)}")
+        exit(1)
 
     # Update Font Awesome CSS to use local fonts
     fa_css_path = VENDOR_DIR / "css" / "fontawesome.min.css"

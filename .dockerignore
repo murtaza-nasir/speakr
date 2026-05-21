@@ -61,3 +61,18 @@ tests/
 !requirements*.txt
 LICENSE
 CLAUDE.md
+
+# Pre-downloaded models (mounted as volume at runtime)
+model/
+FunAudioLLM/
+
+# Build artifacts
+build.log
+package.json
+vitest.config.js
+
+# Config examples (not needed in image)
+config/
+
+# Offline deployment (not needed for Docker)
+deployment/

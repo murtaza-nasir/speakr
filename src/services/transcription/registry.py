@@ -47,6 +47,7 @@ class ConnectorRegistry:
         from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
         from .connectors.mistral import MistralTranscriptionConnector
         from .connectors.vibevoice import VibeVoiceTranscriptionConnector
+        from .connectors.sensevoice import SenseVoiceConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
@@ -54,6 +55,7 @@ class ConnectorRegistry:
         self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
         self.register('mistral', MistralTranscriptionConnector)
         self.register('vibevoice', VibeVoiceTranscriptionConnector)
+        self.register('sensevoice', SenseVoiceConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -160,7 +162,12 @@ class ConnectorRegistry:
             elif transcription_model and 'gpt-4o' in transcription_model:
                 connector_name = 'openai_transcribe'
                 logger.info(f"Auto-detected OpenAI Transcribe from TRANSCRIPTION_MODEL={transcription_model}")
-            # Priority 4 & 5: OpenAI Whisper (with custom or default model)
+            # Priority 4: SenseVoice local ASR (default when no explicit model set)
+            elif not (transcription_model or whisper_model):
+                connector_name = 'sensevoice'
+                model = os.environ.get('SENSEVOICE_MODEL', 'FunAudioLLM/SenseVoiceSmall')
+                logger.info(f"Using SenseVoice connector with model: {model}")
+            # Priority 5: OpenAI Whisper (with custom or default model)
             else:
                 connector_name = 'openai_whisper'
                 model = transcription_model or whisper_model or 'whisper-1'
@@ -287,6 +294,16 @@ class ConnectorRegistry:
                 'base_url': base_url,
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'microsoft/VibeVoice-ASR'),
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+            }
+
+        elif connector_name == 'sensevoice':
+            return {
+                'model_name': os.environ.get('SENSEVOICE_MODEL', 'FunAudioLLM/SenseVoiceSmall'),
+                'model_dir': os.environ.get('SENSEVOICE_MODEL_DIR', None),
+                'device': os.environ.get('SENSEVOICE_DEVICE', 'cuda'),
+                'ncpu_thread': int(os.environ.get('SENSEVOICE_CPU_THREAD', '4')),
+                'disable_update': os.environ.get('SENSEVOICE_DISABLE_UPDATE', 'true').lower() == 'true',
+                'model_cache_dir': os.environ.get('SENSEVOICE_CACHE_DIR', None),
             }
 
         else:  # openai_whisper (default)
