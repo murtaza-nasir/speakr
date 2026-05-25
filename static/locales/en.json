@@ -146,7 +146,7 @@
     "confirmPasswordLabel": "Confirm Password",
     "contextNotes": {
       "jsonConversion": "JSON transcripts are converted to clean text format before sending",
-      "modelConfig": "The model used is configured via TEXT_MODEL_NAME environment variable",
+      "modelConfig": "The model used is configured via the admin UI (Settings tab > LLM Model Configuration) or falls back to TEXT_MODEL_NAME environment variable",
       "tagPrompts": "If multiple tag prompts exist, they are merged in the order tags were added",
       "transcriptLimit": "Transcripts are limited to a configurable character count (default: 30,000)"
     },
@@ -280,6 +280,15 @@
     "vectorStore": "Vector Store",
     "vectorStoreManagement": "Vector Store Management",
     "vectorStoreUpToDate": "The vector store is up to date.",
+    "llmCurrentModel": "Model",
+    "llmCurrentEndpoint": "Endpoint",
+    "llmRestartRequired": "LLM base URL has been changed via the admin UI. A restart is required for the new endpoint to take effect.",
+    "llmDiscoverModels": "Discover models",
+    "llmDiscovering": "Discovering...",
+    "llmSelectModel": "Select",
+    "llmAddCustom": "Add custom model id",
+    "llmSaving": "Saving...",
+    "llmSaveSelection": "Save selection",
     "viewFullPromptStructure": "View Full LLM Prompt Structure",
     "warning": "warning",
     "yes": "Yes"

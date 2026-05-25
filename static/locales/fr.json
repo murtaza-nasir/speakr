@@ -146,7 +146,7 @@
     "confirmPasswordLabel": "Confirmer le mot de passe",
     "contextNotes": {
       "jsonConversion": "Les transcriptions JSON sont converties en format texte brut avant l'envoi",
-      "modelConfig": "Le modèle utilisé est configuré via la variable d'environnement TEXT_MODEL_NAME",
+      "modelConfig": "Le modèle utilisé est configuré via l'interface d'administration (onglet Settings > LLM Model Configuration) ou utilise la variable d'environnement TEXT_MODEL_NAME en secours",
       "tagPrompts": "Si plusieurs invites d'étiquettes existent, elles sont fusionnées dans l'ordre où les étiquettes ont été ajoutées",
       "transcriptLimit": "Les transcriptions sont limitées à un nombre configurable de caractères (par défaut : 30 000)"
     },
@@ -280,6 +280,15 @@
     "vectorStore": "Magasin Vectoriel",
     "vectorStoreManagement": "Gestion du Magasin Vectoriel",
     "vectorStoreUpToDate": "Le magasin de vecteurs est à jour.",
+    "llmCurrentModel": "Modèle",
+    "llmCurrentEndpoint": "Point de terminaison",
+    "llmRestartRequired": "L'URL de base du LLM a été modifiée via l'interface d'administration. Un redémarrage est requis pour que le nouveau point de terminaison prenne effet.",
+    "llmDiscoverModels": "Découvrir les modèles",
+    "llmDiscovering": "Découverte...",
+    "llmSelectModel": "Sélectionner",
+    "llmAddCustom": "Ajouter un ID de modèle personnalisé",
+    "llmSaving": "Enregistrement...",
+    "llmSaveSelection": "Enregistrer la sélection",
     "viewFullPromptStructure": "Voir la Structure Complète de l'Invite LLM",
     "warning": "avertissement",
     "yes": "Oui"

@@ -1243,6 +1243,126 @@ def admin_save_visible_models():
         return jsonify({'error': str(e)}), 500
 
 
+# --- LLM Model Configuration ---
+
+
+@admin_bp.route('/admin/llm/model-config', methods=['GET'])
+@login_required
+def admin_get_llm_model_config():
+    """Return the current LLM model configuration.
+
+    Resolution order: SystemSetting > env var.
+    Returns ``requires_restart`` when DB base_url differs from env var.
+    Full-admin only.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        from src.services.llm import resolve_llm_config, TEXT_MODEL_API_KEY as _env_key
+        config = resolve_llm_config()
+        # Indicate whether an API key is configured (from env)
+        config['api_key_configured'] = bool(_env_key)
+        return jsonify(config)
+    except Exception as e:
+        current_app.logger.error(f"Error reading LLM model config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/llm/model-config', methods=['POST'])
+@login_required
+def admin_save_llm_model_config():
+    """Save the admin-selected LLM model name and/or base URL.
+
+    Body fields (all optional):
+        model_name (str, optional)
+        base_url   (str, optional)
+
+    Saving ``base_url`` sets a restart flag because the OpenAI client is
+    created at startup with a fixed endpoint.  Model-name changes take effect
+    on the next LLM call without restart.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        data = request.json or {}
+        model_name = (data.get('model_name') or '').strip()
+        base_url = (data.get('base_url') or '').strip()
+
+        if not model_name and not base_url:
+            return jsonify({'error': 'At least one of model_name or base_url is required'}), 400
+
+        # Validate base_url format if provided
+        if base_url:
+            from urllib.parse import urlparse
+            parsed = urlparse(base_url)
+            if not parsed.scheme or not parsed.netloc:
+                return jsonify({'error': 'base_url must be a valid URL (include http:// or https://)'}), 400
+
+        # Save to SystemSetting
+        if model_name:
+            SystemSetting.set_setting(
+                key='llm_model_name',
+                value=model_name,
+                description='Admin-selected LLM model name. Overrides TEXT_MODEL_NAME env var when set.',
+                setting_type='string',
+            )
+
+        if base_url:
+            # Clean trailing slash and fragment
+            base_url = base_url.rstrip('/')
+            SystemSetting.set_setting(
+                key='llm_base_url',
+                value=base_url,
+                description='Admin-selected LLM API base URL. Overrides TEXT_MODEL_BASE_URL env var when set.',
+                setting_type='string',
+            )
+
+        # Check if restart is needed (DB base_url differs from env)
+        requires_restart = False
+        db_base_val = SystemSetting.get_setting('llm_base_url', None)
+        env_base_val = os.environ.get('TEXT_MODEL_BASE_URL', '')
+        if db_base_val and env_base_val:
+            requires_restart = db_base_val.rstrip('/') != env_base_val.rstrip('/')
+
+        # Reload config to return updated state
+        from src.services.llm import resolve_llm_config, TEXT_MODEL_API_KEY as _env_key
+        config = resolve_llm_config()
+        config['api_key_configured'] = bool(_env_key)
+        config['requires_restart'] = requires_restart
+        config['saved_model_name'] = model_name or None
+        config['saved_base_url'] = base_url or None
+
+        return jsonify(config)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error saving LLM model config: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/llm/discover-models', methods=['GET'])
+@login_required
+def admin_discover_llm_models():
+    """Probe the active LLM provider's /v1/models endpoint.
+
+    Used by the admin UI to populate a "models available on this provider"
+    list when curating which models users can pick from. Returns a list of
+    {id, label, owned_by} dicts. Empty list if the provider does not expose
+    discovery or is unreachable.
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    try:
+        from src.services.llm import discover_llm_models
+        result = discover_llm_models()
+        return jsonify(result)
+    except Exception as e:
+        current_app.logger.error(f"Error discovering LLM models: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/admin/inquire/process-recordings', methods=['POST'])
 @login_required
 def admin_process_recordings_for_inquire():

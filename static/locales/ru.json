@@ -146,7 +146,7 @@
     "confirmPasswordLabel": "Подтвердите пароль",
     "contextNotes": {
       "jsonConversion": "JSON-транскрипты конвертируются в чистый текст перед отправкой",
-      "modelConfig": "Используемая модель задаётся через переменную окружения TEXT_MODEL_NAME",
+      "modelConfig": "Используемая модель задаётся через административный интерфейс (вкладка Settings > LLM Model Configuration) или возвращается к переменной окружения TEXT_MODEL_NAME",
       "tagPrompts": "Если существует несколько запросов тегов, они объединяются в порядке добавления тегов",
       "transcriptLimit": "Транскрипты ограничены настраиваемым количеством символов (по умолчанию: 30 000)"
     },
@@ -280,6 +280,15 @@
     "vectorStore": "Векторное хранилище",
     "vectorStoreManagement": "Управление векторным хранилищем",
     "vectorStoreUpToDate": "Векторное хранилище актуально.",
+    "llmCurrentModel": "Модель",
+    "llmCurrentEndpoint": "Конечная точка",
+    "llmRestartRequired": "Базовый URL LLM был изменён через административный интерфейс. Для применения нового endpoint требуется перезапуск.",
+    "llmDiscoverModels": "Обнаружить модели",
+    "llmDiscovering": "Обнаружение...",
+    "llmSelectModel": "Выбрать",
+    "llmAddCustom": "Добавить пользовательский ID модели",
+    "llmSaving": "Сохранение...",
+    "llmSaveSelection": "Сохранить выбор",
     "viewFullPromptStructure": "Показать полную структуру запросов LLM",
     "warning": "предупреждение",
     "yes": "Да"

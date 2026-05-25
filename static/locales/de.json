@@ -146,7 +146,7 @@
     "confirmPasswordLabel": "Passwort Bestätigen",
     "contextNotes": {
       "jsonConversion": "JSON-Transkripte werden vor dem Senden in ein sauberes Textformat konvertiert",
-      "modelConfig": "Das verwendete Modell wird über die Umgebungsvariable TEXT_MODEL_NAME konfiguriert",
+      "modelConfig": "Das verwendete Modell wird über die Admin-Oberfläche (Settings-Tab > LLM Model Configuration) konfiguriert oder fällt zurück auf die Umgebungsvariable TEXT_MODEL_NAME",
       "tagPrompts": "Wenn mehrere Tag-Prompts existieren, werden sie in der Reihenfolge zusammengeführt, in der die Tags hinzugefügt wurden",
       "transcriptLimit": "Transkripte sind auf eine konfigurierbare Zeichenanzahl begrenzt (Standard: 30.000)"
     },
@@ -280,6 +280,15 @@
     "vectorStore": "Vektorspeicher",
     "vectorStoreManagement": "Vektorspeicher-Verwaltung",
     "vectorStoreUpToDate": "Der Vektorspeicher ist auf dem neuesten Stand.",
+    "llmCurrentModel": "Modell",
+    "llmCurrentEndpoint": "Endpunkt",
+    "llmRestartRequired": "Die LLM-Basis-URL wurde über die Admin-Oberfläche geändert. Ein Neustart ist erforderlich, damit der neue Endpunkt wirksam wird.",
+    "llmDiscoverModels": "Modelle entdecken",
+    "llmDiscovering": "Entdecken...",
+    "llmSelectModel": "Auswählen",
+    "llmAddCustom": "Benutzermodell-ID hinzufügen",
+    "llmSaving": "Speichern...",
+    "llmSaveSelection": "Auswahl speichern",
     "viewFullPromptStructure": "Vollständige LLM-Prompt-Struktur anzeigen",
     "warning": "Warnung",
     "yes": "Ja"

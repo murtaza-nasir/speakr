@@ -725,6 +725,92 @@
                         </div>
                     </div>
 
+                    <!-- LLM Model Configuration -->
+                    <div class="mb-6 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 class="text-md font-semibold text-[var(--text-primary)]"><i class="fas fa-robot mr-2"></i>LLM Model Configuration</h4>
+                                <p class="text-sm text-[var(--text-muted)] mt-1">Select the AI model used for summarization, chat, and title generation. Changes to base URL require a restart; model name changes take effect immediately.</p>
+                            </div>
+                        </div>
+
+                        <!-- Current config display -->
+                        <div class="mb-3 p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <span class="text-[var(--text-muted)]">${t('adminDashboard.llmCurrentModel')}: </span>
+                                    <code class="font-mono text-xs">${ llmConfig.model_name || '—' }</code>
+                                    <span v-if="llmConfig.model_source" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-accent)]">${ llmConfig.model_source }</span>
+                                </div>
+                                <div>
+                                    <span class="text-[var(--text-muted)]">${t('adminDashboard.llmCurrentEndpoint')}: </span>
+                                    <code class="font-mono text-xs break-all">${ llmConfig.base_url || '—' }</code>
+                                    <span v-if="llmConfig.base_source" class="ml-1 text-xs px-1.5 py-0.5 rounded bg-[var(--bg-accent)] text-[var(--text-accent)]">${ llmConfig.base_source }</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Restart warning -->
+                        <div v-if="llmConfig.requires_restart" class="mb-3 p-3 bg-[var(--bg-warn-light)] border border-[var(--text-warn-strong)] rounded-lg text-sm">
+                            <i class="fas fa-exclamation-triangle mr-1"></i> ${t('adminDashboard.llmRestartRequired')}
+                        </div>
+
+                        <!-- Discover models -->
+                        <div class="flex items-center gap-3 mb-3">
+                            <button @click="discoverLlmModels" :disabled="llmDiscovering"
+                                    class="px-3 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] disabled:opacity-50">
+                                <i :class="llmDiscovering ? 'fas fa-spinner fa-spin' : 'fas fa-search'" class="mr-2"></i>
+                                ${ llmDiscovering ? t('adminDashboard.llmDiscovering') : t('adminDashboard.llmDiscoverModels') }
+                            </button>
+                        </div>
+
+                        <div v-if="llmDiscoveryError" class="mb-3 text-sm text-[var(--text-danger-strong)]">
+                            ${ llmDiscoveryError }
+                        </div>
+
+                        <div v-if="llmDiscoveryResult" class="mb-3 text-xs text-[var(--text-muted)]">
+                            Provider: <code>${ llmDiscoveryResult.connector }</code>
+                            <span v-if="!llmDiscoveryResult.supported"> (${ llmDiscoveryResult.message || 'no discovery API' })</span>
+                        </div>
+
+                        <!-- Discovered models table -->
+                        <table v-if="(llmDiscoveryResult && llmDiscoveryResult.models && llmDiscoveryResult.models.length > 0) || llmManualModelRows.length > 0"
+                               class="w-full text-sm border-collapse">
+                            <thead>
+                                <tr class="text-left text-xs uppercase text-[var(--text-muted)] border-b border-[var(--border-primary)]">
+                                    <th class="py-2">${t('adminDashboard.llmSelectModel')}</th>
+                                    <th class="py-2">Model id</th>
+                                    <th class="py-2">Label</th>
+                                    <th class="py-2">Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="row in llmModelRows" :key="row.value"
+                                    class="border-b border-[var(--border-primary)]/50">
+                                    <td class="py-2"><input type="radio" v-model="llmSelectedModelName" :value="row.value"></td>
+                                    <td class="py-2 font-mono text-xs">${ row.value }</td>
+                                    <td class="py-2"><input type="text" v-model="row.label" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded"></td>
+                                    <td class="py-2 text-xs text-[var(--text-muted)]">${ row.source }</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p v-if="!llmDiscoveryResult || !llmDiscoveryResult.models || llmDiscoveryResult.models.length === 0" class="text-sm text-[var(--text-muted)] mb-3">No models discovered yet. Click "Discover models" to probe the active provider, or add a custom model id below.</p>
+
+                        <div class="flex items-center gap-3 mt-4">
+                            <button @click="addManualLlmModel"
+                                    class="px-3 py-2 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--bg-tertiary)]">
+                                <i class="fas fa-plus mr-1"></i> ${t('adminDashboard.llmAddCustom')}
+                            </button>
+                            <button @click="saveLlmModelConfig" :disabled="llmSaving"
+                                    class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] disabled:opacity-50">
+                                <i :class="llmSaving ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-2"></i>
+                                ${ llmSaving ? t('adminDashboard.llmSaving') : t('adminDashboard.llmSaveSelection') }
+                            </button>
+                            <span v-if="llmSaveMessage" class="text-sm" :class="llmSaveError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">${ llmSaveMessage }</span>
+                        </div>
+                    </div>
+
                     <!-- Settings List -->
                     <div class="space-y-4">
                         <div v-for="setting in settings" :key="setting.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
@@ -1926,6 +2012,117 @@ Summarization Instructions:
                 const modelSaveMessage = ref('');
                 const modelSaveError = ref(false);
                 const manualModelRows = ref([]); // for "Add custom model id" entries
+
+                // LLM Model Configuration state
+                const llmConfig = ref({
+                    model_name: '',
+                    base_url: '',
+                    model_source: 'default',
+                    base_source: 'default',
+                    requires_restart: false,
+                    api_key_configured: false,
+                });
+                const llmDiscoveryResult = ref(null);
+                const llmDiscoveryError = ref('');
+                const llmDiscovering = ref(false);
+                const llmSaving = ref(false);
+                const llmSaveMessage = ref('');
+                const llmSaveError = ref(false);
+                const llmSelectedModelName = ref(null);
+                const llmManualModelRows = ref([]); // for "Add custom model id" entries
+
+                // Combined view: discovered ∪ manual, deduped by value.
+                const llmModelRows = computed(() => {
+                    const map = new Map();
+                    // Discovered models
+                    const discovered = (llmDiscoveryResult.value && llmDiscoveryResult.value.models) || [];
+                    for (const m of discovered) {
+                        if (!m.id) continue;
+                        map.set(m.id, {
+                            value: m.id,
+                            label: m.label || m.id,
+                            source: 'discovered (' + (m.owned_by || 'unknown') + ')',
+                        });
+                    }
+                    // Manual additions
+                    for (const m of llmManualModelRows.value) {
+                        if (!m.value) continue;
+                        if (!map.has(m.value)) {
+                            map.set(m.value, {
+                                value: m.value,
+                                label: m.label || m.value,
+                                source: 'manual',
+                            });
+                        }
+                    }
+                    return Array.from(map.values());
+                });
+
+                const loadLlmModelConfig = async () => {
+                    try {
+                        const r = await fetch('/admin/llm/model-config');
+                        if (!r.ok) return;
+                        const data = await r.json();
+                        llmConfig.value = data;
+                        llmSelectedModelName.value = data.model_name || null;
+                    } catch (e) {
+                        console.error('Failed to load LLM model config:', e);
+                    }
+                };
+
+                const discoverLlmModels = async () => {
+                    llmDiscovering.value = true;
+                    llmDiscoveryError.value = '';
+                    try {
+                        const r = await fetch('/admin/llm/discover-models');
+                        const data = await r.json();
+                        if (!r.ok) {
+                            llmDiscoveryError.value = data.error || 'Discovery failed';
+                            llmDiscoveryResult.value = null;
+                        } else {
+                            llmDiscoveryResult.value = data;
+                            if (data.supported && (!data.models || data.models.length === 0)) {
+                                llmDiscoveryError.value = 'Provider reports no models. Is the upstream service running?';
+                            }
+                        }
+                    } catch (e) {
+                        llmDiscoveryError.value = 'Network error: ' + e.message;
+                    } finally {
+                        llmDiscovering.value = false;
+                    }
+                };
+
+                const addManualLlmModel = () => {
+                    const id = window.prompt('Enter the model id (e.g. gpt-4o-mini, claude-3.5-sonnet):');
+                    if (!id) return;
+                    llmManualModelRows.value.push({ value: id.trim(), label: id.trim() });
+                };
+
+                const saveLlmModelConfig = async () => {
+                    llmSaving.value = true;
+                    llmSaveMessage.value = '';
+                    llmSaveError.value = false;
+                    try {
+                        const r = await fetch('/admin/llm/model-config', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            },
+                            body: JSON.stringify({ model_name: llmSelectedModelName.value || '' }),
+                        });
+                        const data = await r.json();
+                        if (!r.ok) throw new Error(data.error || 'Save failed');
+                        llmConfig.value = data;
+                        llmManualModelRows.value = [];
+                        llmSaveMessage.value = `LLM model set to: ${data.model_name}`;
+                    } catch (e) {
+                        llmSaveMessage.value = 'Save failed: ' + e.message;
+                        llmSaveError.value = true;
+                    } finally {
+                        llmSaving.value = false;
+                    }
+                };
 
                 // Combined view: discovered ∪ saved ∪ manual, deduped by id.
                 const transcriptionModelRows = computed(() => {
@@ -3443,6 +3640,7 @@ Summarization Instructions:
                         }
                         loadDefaultPrompt();
                         loadVisibleTranscriptionModels();
+                        loadLlmModelConfig();
 
                         if (inquireModeEnabled.value) {
                             loadInquireStatus();
@@ -3676,6 +3874,21 @@ Summarization Instructions:
                     addManualTranscriptionModel,
                     saveVisibleTranscriptionModels,
                     loadVisibleTranscriptionModels,
+
+                    // LLM Model Configuration state & methods
+                    llmConfig,
+                    llmDiscoveryResult,
+                    llmDiscoveryError,
+                    llmDiscovering,
+                    llmSaving,
+                    llmSaveMessage,
+                    llmSaveError,
+                    llmSelectedModelName,
+                    llmManualModelRows,
+                    llmModelRows,
+                    discoverLlmModels,
+                    addManualLlmModel,
+                    saveLlmModelConfig,
 
                     // Default Prompts methods
                     loadDefaultPrompt,

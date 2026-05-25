@@ -15,7 +15,7 @@ from src.database import db
 from src.models import *
 from src.utils import *
 from src.config.version import get_version
-from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME
+from src.services.llm import TEXT_MODEL_BASE_URL, TEXT_MODEL_NAME, resolve_llm_model_name, resolve_llm_base_url
 from src.config.app_config import ASR_BASE_URL, USE_NEW_TRANSCRIPTION_ARCHITECTURE, TRANSCRIPTION_MODEL_OPTIONS
 from src.services.token_tracking import token_tracker
 from src.services.transcription import TranscriptionCapability
@@ -163,8 +163,9 @@ def get_system_info():
 
         return jsonify({
             'version': version,
-            'llm_endpoint': TEXT_MODEL_BASE_URL,
-            'llm_model': TEXT_MODEL_NAME,
+            # Use resolved values (DB > env var) for accurate runtime info
+            'llm_endpoint': resolve_llm_base_url(),
+            'llm_model': resolve_llm_model_name(),
             'transcription_endpoint': active_endpoint,  # The actual endpoint being used
             'asr_enabled': asr_enabled,
             # Legacy fields for backwards compatibility

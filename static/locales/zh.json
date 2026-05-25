@@ -146,7 +146,7 @@
     "confirmPasswordLabel": "确认密码",
     "contextNotes": {
       "jsonConversion": "JSON 转录在发送前会转换为纯文本格式",
-      "modelConfig": "使用的模型通过 TEXT_MODEL_NAME 环境变量配置",
+      "modelConfig": "使用的模型通过管理界面配置（Settings 标签页 > LLM Model Configuration），或回退到 TEXT_MODEL_NAME 环境变量",
       "tagPrompts": "如果存在多个标签提示，它们将按添加标签的顺序合并",
       "transcriptLimit": "转录限制为可配置的字符数（默认：30,000）"
     },
@@ -280,6 +280,15 @@
     "vectorStore": "向量存储",
     "vectorStoreManagement": "向量存储管理",
     "vectorStoreUpToDate": "向量存储是最新的",
+    "llmCurrentModel": "模型",
+    "llmCurrentEndpoint": "端点",
+    "llmRestartRequired": "LLM 基础 URL 已通过管理界面更改。需要重启才能使新的端点生效。",
+    "llmDiscoverModels": "发现模型",
+    "llmDiscovering": "正在发现...",
+    "llmSelectModel": "选择",
+    "llmAddCustom": "添加自定义模型 ID",
+    "llmSaving": "保存中...",
+    "llmSaveSelection": "保存选择",
     "viewFullPromptStructure": "查看完整的 LLM 提示结构",
     "warning": "警告",
     "yes": "是"

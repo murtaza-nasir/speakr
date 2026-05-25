@@ -146,7 +146,7 @@
     "confirmPasswordLabel": "Confirmar contraseña",
     "contextNotes": {
       "jsonConversion": "Las transcripciones JSON se convierten a formato de texto limpio antes de enviar",
-      "modelConfig": "El modelo utilizado se configura a través de la variable de entorno TEXT_MODEL_NAME",
+      "modelConfig": "El modelo utilizado se configura a través de la interfaz de administración (pestaña Settings > LLM Model Configuration) o cae en la variable de entorno TEXT_MODEL_NAME",
       "tagPrompts": "Si existen múltiples indicaciones de etiquetas, se fusionan en el orden en que se agregaron las etiquetas",
       "transcriptLimit": "Las transcripciones están limitadas a un número configurable de caracteres (predeterminado: 30,000)"
     },
@@ -280,6 +280,15 @@
     "vectorStore": "Almacén Vectorial",
     "vectorStoreManagement": "Gestión del Almacén Vectorial",
     "vectorStoreUpToDate": "El almacén de vectores está actualizado.",
+    "llmCurrentModel": "Modelo",
+    "llmCurrentEndpoint": "Punto final",
+    "llmRestartRequired": "La URL base de LLM se ha cambiado a través de la interfaz de administración. Se requiere un reinicio para que el nuevo punto final surta efecto.",
+    "llmDiscoverModels": "Descubrir modelos",
+    "llmDiscovering": "Descubriendo...",
+    "llmSelectModel": "Seleccionar",
+    "llmAddCustom": "Agregar ID de modelo personalizado",
+    "llmSaving": "Guardando...",
+    "llmSaveSelection": "Guardar selección",
     "viewFullPromptStructure": "Ver Estructura Completa del Prompt LLM",
     "warning": "advertencia",
     "yes": "Sí"

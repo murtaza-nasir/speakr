@@ -30,6 +30,177 @@ if TEXT_MODEL_BASE_URL:
     TEXT_MODEL_BASE_URL = TEXT_MODEL_BASE_URL.split('#')[0].strip()
 TEXT_MODEL_NAME = os.environ.get("TEXT_MODEL_NAME", "openai/gpt-3.5-turbo")
 
+
+def _resolve_db_setting(key, default=None):
+    """Resolve a setting from the database SystemSetting table.
+
+    Returns (value, source) where *source* is ``'database'`` or ``None`` when
+    no DB entry exists (meaning we should fall back to the env-var value).
+    """
+    try:
+        # Avoid circular import at module level – import lazily
+        from src.models import SystemSetting
+        raw = SystemSetting.get_setting(key, None)
+        if raw is not None and str(raw).strip():
+            return str(raw).strip(), 'database'
+    except Exception as exc:
+        logger.debug(f"Could not read SystemSetting {key}: {exc}")
+    return default, None
+
+
+def resolve_llm_model_name():
+    """Return the effective LLM model name.
+
+    Resolution order:
+      1. SystemSetting ``llm_model_name`` (admin UI override)
+      2. TEXT_MODEL_NAME env var (module-level constant)
+      3. Hard-coded default ``openai/gpt-3.5-turbo``
+    """
+    val, source = _resolve_db_setting('llm_model_name')
+    if val:
+        return val
+    return TEXT_MODEL_NAME
+
+
+def resolve_llm_base_url():
+    """Return the effective LLM base URL.
+
+    Resolution order:
+      1. SystemSetting ``llm_base_url`` (admin UI override)
+      2. TEXT_MODEL_BASE_URL env var (module-level constant)
+      3. Hard-coded default ``https://openrouter.ai/api/v1``
+    """
+    val, source = _resolve_db_setting('llm_base_url')
+    if val:
+        return val
+    base = TEXT_MODEL_BASE_URL or "https://openrouter.ai/api/v1"
+    if base:
+        base = base.split('#')[0].strip()
+    return base
+
+
+def resolve_llm_config():
+    """Return a dict with the effective LLM configuration.
+
+    Keys: ``model_name``, ``base_url``, ``source`` (one of 'database', 'env', 'default').
+    Also returns ``requires_restart`` when DB and env values differ for base_url.
+    """
+    db_model, _ = _resolve_db_setting('llm_model_name')
+    db_base, _ = _resolve_db_setting('llm_base_url')
+
+    model_source = 'database' if db_model else ('env' if os.environ.get('TEXT_MODEL_NAME') else 'default')
+    base_source = 'database' if db_base else ('env' if os.environ.get('TEXT_MODEL_BASE_URL') else 'default')
+
+    effective_model = db_model or TEXT_MODEL_NAME
+    effective_base = (db_base or TEXT_MODEL_BASE_URL or "https://openrouter.ai/api/v1")
+    if effective_base:
+        effective_base = effective_base.split('#')[0].strip()
+
+    requires_restart = False
+    if db_base and os.environ.get('TEXT_MODEL_BASE_URL'):
+        db_clean = db_base.split('#')[0].strip()
+        env_clean = (os.environ.get('TEXT_MODEL_BASE_URL') or '').split('#')[0].strip()
+        requires_restart = db_clean != env_clean
+
+    return {
+        'model_name': effective_model,
+        'base_url': effective_base,
+        'model_source': model_source,
+        'base_source': base_source,
+        'requires_restart': requires_restart,
+    }
+
+
+def discover_llm_models():
+    """Probe the active LLM provider's /v1/models endpoint.
+
+    Returns a dict with ``connector``, ``supported``, and ``models`` keys.
+    Empty model list if the provider does not expose discovery or is unreachable.
+    """
+    base_url = resolve_llm_base_url()
+    api_key = TEXT_MODEL_API_KEY or CHAT_MODEL_API_KEY
+
+    connector_name = 'openrouter'
+    if 'api.openai.com' in (base_url or ''):
+        connector_name = 'openai'
+    elif 'generativelanguage.googleapis.com' in (base_url or ''):
+        connector_name = 'google-gemini'
+
+    try:
+        import httpx as _httpx
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        base = (base_url or '').rstrip('/')
+        models_path = f"{base}/v1/models" if not base.endswith('/v1') else f"{base}/models"
+        resp = _httpx.get(models_path, headers=headers, timeout=15)
+        if resp.status_code != 200:
+            body_preview = resp.text[:300]
+            return {
+                'connector': connector_name,
+                'supported': False,
+                'models': [],
+                'message': f'HTTP {resp.status_code} from /v1/models (body: {body_preview})',
+            }
+
+        data = resp.json()
+
+        # Try multiple response formats (OpenAI uses 'data', some providers use 'models')
+        raw_list = None
+        if isinstance(data, dict):
+            raw_list = data.get('data') or data.get('models') or []
+        elif isinstance(data, list):
+            raw_list = data
+
+        models = []
+        for item in (raw_list or []):
+            mid = ''
+            if isinstance(item, dict):
+                mid = item.get('id', '') or item.get('model_id', '') or item.get('name', '')
+                if mid:
+                    models.append({
+                        'id': str(mid),
+                        'label': item.get('label') or item.get('name') or str(mid),
+                        'owned_by': item.get('owned_by') or item.get('provider') or '',
+                    })
+
+        if not models:
+            body_preview = resp.text[:300]
+            return {
+                'connector': connector_name,
+                'supported': False,
+                'models': [],
+                'message': f'/v1/models returned no models (response preview: {body_preview})',
+            }
+
+        return {
+            'connector': connector_name,
+            'supported': True,
+            'models': models,
+        }
+    except httpx.ConnectError as exc:
+        logger.debug(f"LLM model discovery connection error for {base_url}: {exc}")
+        return {
+            'connector': connector_name,
+            'supported': False,
+            'models': [],
+            'message': f'Connection refused — is the upstream service running at {base_url}?',
+        }
+    except httpx.TimeoutException as exc:
+        logger.debug(f"LLM model discovery timeout for {base_url}: {exc}")
+        return {
+            'connector': connector_name,
+            'supported': False,
+            'models': [],
+            'message': f'Request timed out after 15s (provider at {base_url} not responding)',
+        }
+    except Exception as exc:
+        logger.debug(f"LLM model discovery failed for {base_url}: {exc}")
+        return {
+            'connector': connector_name,
+            'supported': False,
+            'models': [],
+            'message': f'Discovery error: {exc}',
+        }
+
 # Chat model configuration (optional - falls back to TEXT_MODEL_* if not set)
 CHAT_MODEL_API_KEY = os.environ.get("CHAT_MODEL_API_KEY")
 CHAT_MODEL_BASE_URL = os.environ.get("CHAT_MODEL_BASE_URL")
@@ -61,22 +232,42 @@ llm_timeout = httpx.Timeout(
 
 def get_chat_config():
     """
-    Get chat model configuration, falling back to TEXT_MODEL if not set.
+    Get chat model configuration, falling back to resolved TEXT_MODEL if not set.
+
+    Resolution order for fallback:
+      1. SystemSetting ``chat_model_name`` / ``chat_base_url`` (admin UI override)
+      2. CHAT_MODEL_* env vars
+      3. SystemSetting ``llm_model_name`` / ``llm_base_url`` (admin UI override)
+      4. TEXT_MODEL_* env vars
 
     Returns a dict with api_key, base_url, model_name, and GPT-5 settings.
     """
     if CHAT_MODEL_API_KEY and CHAT_MODEL_NAME:
         return {
             'api_key': CHAT_MODEL_API_KEY,
-            'base_url': CHAT_MODEL_BASE_URL or TEXT_MODEL_BASE_URL,
+            'base_url': CHAT_MODEL_BASE_URL or resolve_llm_base_url(),
             'model_name': CHAT_MODEL_NAME,
             'gpt5_reasoning_effort': CHAT_GPT5_REASONING_EFFORT or os.environ.get("GPT5_REASONING_EFFORT", "medium"),
             'gpt5_verbosity': CHAT_GPT5_VERBOSITY or os.environ.get("GPT5_VERBOSITY", "medium")
         }
+
+    # Check for chat-specific DB overrides before falling back to main LLM config
+    db_chat_model, _ = _resolve_db_setting('chat_model_name')
+    db_chat_base, _ = _resolve_db_setting('chat_base_url')
+
+    if db_chat_model:
+        return {
+            'api_key': TEXT_MODEL_API_KEY or CHAT_MODEL_API_KEY,
+            'base_url': db_chat_base or resolve_llm_base_url(),
+            'model_name': db_chat_model,
+            'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
+            'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium")
+        }
+
     return {
         'api_key': TEXT_MODEL_API_KEY,
-        'base_url': TEXT_MODEL_BASE_URL,
-        'model_name': TEXT_MODEL_NAME,
+        'base_url': resolve_llm_base_url(),
+        'model_name': resolve_llm_model_name(),
         'gpt5_reasoning_effort': os.environ.get("GPT5_REASONING_EFFORT", "medium"),
         'gpt5_verbosity': os.environ.get("GPT5_VERBOSITY", "medium")
     }
@@ -158,10 +349,12 @@ def is_using_openai_api():
     """
     Check if we're using the official OpenAI API (not OpenRouter or other providers).
 
+    Uses the resolved base URL (DB > env var) for accurate detection.
+
     Returns:
         Boolean indicating if this is the OpenAI API
     """
-    return TEXT_MODEL_BASE_URL and 'api.openai.com' in TEXT_MODEL_BASE_URL
+    return resolve_llm_base_url() and 'api.openai.com' in resolve_llm_base_url()
 
 
 
@@ -204,11 +397,14 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
             logger.warning(f"Budget check failed for user {user_id}: {e}")
 
     try:
+        # Resolve effective model name at runtime (DB > env var)
+        effective_model = resolve_llm_model_name()
+
         # Check if we're using GPT-5 with OpenAI API
-        using_gpt5 = is_gpt5_model(TEXT_MODEL_NAME) and is_using_openai_api()
+        using_gpt5 = is_gpt5_model(effective_model) and is_using_openai_api()
 
         completion_args = {
-            "model": TEXT_MODEL_NAME,
+            "model": effective_model,
             "messages": messages,
             "stream": stream
         }
@@ -221,7 +417,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if using_gpt5:
             # GPT-5 models don't support temperature, top_p, or logprobs
             # They use reasoning_effort and verbosity instead
-            logger.debug(f"Using GPT-5 model: {TEXT_MODEL_NAME} - applying GPT-5 specific parameters")
+            logger.debug(f"Using GPT-5 model: {effective_model} - applying GPT-5 specific parameters")
 
             # Get GPT-5 specific parameters from environment variables
             reasoning_effort = os.environ.get("GPT5_REASONING_EFFORT", "medium")  # minimal, low, medium, high
@@ -250,7 +446,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         # max_completion_tokens for GPT-5 and max_tokens otherwise.
         budget_key = 'max_completion_tokens' if using_gpt5 else 'max_tokens'
         logger.info(
-            f"LLM call: operation={operation_type or 'unspecified'}, model={TEXT_MODEL_NAME}, "
+            f"LLM call: operation={operation_type or 'unspecified'}, model={effective_model}, "
             f"{budget_key}={completion_args.get(budget_key, 'provider default')}"
         )
 
@@ -267,7 +463,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
                     prompt_tokens=response.usage.prompt_tokens,
                     completion_tokens=response.usage.completion_tokens,
                     total_tokens=response.usage.total_tokens,
-                    model_name=TEXT_MODEL_NAME,
+                    model_name=effective_model,
                     cost=getattr(response.usage, 'cost', None)
                 )
             except Exception as e:
@@ -277,7 +473,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if not stream and response.choices:
             content = response.choices[0].message.content
             if not content:
-                logger.warning(f"LLM returned empty content. Model: {TEXT_MODEL_NAME}, finish_reason: {response.choices[0].finish_reason}")
+                logger.warning(f"LLM returned empty content. Model: {effective_model}, finish_reason: {response.choices[0].finish_reason}")
                 # Log more details if available
                 if hasattr(response.choices[0].message, 'refusal'):
                     logger.warning(f"Refusal: {response.choices[0].message.refusal}")
@@ -293,7 +489,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         elapsed_str = f"{elapsed:.1f}s" if elapsed is not None else "unknown"
         logger.error(
             f"LLM request timed out after {elapsed_str} (configured read_timeout={LLM_REQUEST_TIMEOUT}s, "
-            f"max_retries={LLM_MAX_RETRIES}, model={TEXT_MODEL_NAME}). "
+            f"max_retries={LLM_MAX_RETRIES}, model={effective_model}). "
             f"If the elapsed time is much shorter than the configured timeout, an upstream proxy or the "
             f"provider is closing the connection early. For reasoning models that take longer to think, "
             f"increase LLM_REQUEST_TIMEOUT."
@@ -479,6 +675,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
         if hasattr(chunk, 'usage') and chunk.usage and user_id and operation_type:
             try:
                 from src.services.token_tracking import token_tracker
+                effective_model = model_name or resolve_llm_model_name()
                 # Use app context if provided (needed for generators where context may be lost)
                 if app:
                     with app.app_context():
@@ -488,7 +685,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
                             prompt_tokens=chunk.usage.prompt_tokens,
                             completion_tokens=chunk.usage.completion_tokens,
                             total_tokens=chunk.usage.total_tokens,
-                            model_name=model_name or TEXT_MODEL_NAME,
+                            model_name=effective_model,
                             cost=getattr(chunk.usage, 'cost', None)
                         )
                 else:
@@ -498,7 +695,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
                         prompt_tokens=chunk.usage.prompt_tokens,
                         completion_tokens=chunk.usage.completion_tokens,
                         total_tokens=chunk.usage.total_tokens,
-                        model_name=model_name or TEXT_MODEL_NAME,
+                        model_name=effective_model,
                         cost=getattr(chunk.usage, 'cost', None)
                     )
             except Exception as e:
