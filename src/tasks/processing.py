@@ -1323,18 +1323,45 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
     elif diarize and not supports_diarization:
         current_app.logger.warning("Diarization requested but connector doesn't support it - transcribing without diarization")
 
+    # Check GPU memory before processing (for GPU-based connectors like SenseVoice)
+    gpu_free_gb = -1.0
+    if hasattr(connector, 'get_gpu_free_memory_gb'):
+        gpu_free_gb = connector.get_gpu_free_memory_gb()
+        if gpu_free_gb > 0:
+            current_app.logger.info(f"GPU free memory before chunking: {gpu_free_gb:.2f}GB")
+
+    # If GPU memory is low, force smaller chunks to avoid OOM
+    # SenseVoice needs ~1.2GB per chunk; if free < 1.5GB, re-chunk to smaller segments
+    effective_connector_specs = connector_specs
+    if gpu_free_gb > 0 and gpu_free_gb < 1.5:
+        from src.services.transcription.base import ConnectorSpecifications
+        safe_memory = gpu_free_gb - 0.3  # 0.3GB safety margin
+        if safe_memory > 0.5:
+            max_chunk_duration = int(min(1800, (safe_memory / 1.2) * 1800))
+            max_chunk_duration = max(max_chunk_duration, 60)  # At least 60 seconds
+            current_app.logger.info(f"GPU memory low ({gpu_free_gb:.2f}GB) - forcing max chunk duration: {max_chunk_duration}s")
+            import os
+            os.environ['CHUNK_LIMIT'] = f"{max_chunk_duration}s"
+            effective_connector_specs = ConnectorSpecifications(
+                max_duration_seconds=max_chunk_duration,
+                handles_chunking_internally=False,
+                recommended_chunk_seconds=max_chunk_duration,
+            )
+        else:
+            current_app.logger.warning(f"GPU memory critically low ({gpu_free_gb:.2f}GB) - cannot safely transcribe")
+
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             # Create chunks (passes connector_specs for duration-based chunking if needed)
             current_app.logger.info(f"Creating chunks for large file: {filepath}")
-            chunks = chunking_service.create_chunks(filepath, temp_dir, connector_specs)
+            chunks = chunking_service.create_chunks(filepath, temp_dir, effective_connector_specs)
 
             if not chunks:
                 raise ChunkProcessingError("No chunks were created from the audio file")
 
             current_app.logger.info(f"Created {len(chunks)} chunks, processing each with connector...")
 
-            # Process each chunk
+            # Process each chunk - sequentially to allow GPU memory to free between chunks
             chunk_results = []
             known_speaker_names = None
             known_speaker_refs = None  # Dict of speaker label -> data URL
@@ -1441,8 +1468,11 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                             }
                             chunk_results.append(chunk_result)
 
-                # Small delay between chunks
+                # Small delay between chunks + GPU memory cleanup
                 if i < len(chunks) - 1:
+                    # Force GPU memory cleanup before next chunk
+                    if hasattr(connector, '_free_gpu_memory'):
+                        connector._free_gpu_memory()
                     time.sleep(2)
 
             # Merge transcriptions

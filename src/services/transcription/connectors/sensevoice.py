@@ -57,7 +57,40 @@ class SenseVoiceConnector(BaseTranscriptionConnector):
         self._model = None
         self._model_dir = config.get("model_dir", None)
         self._cache_dir = config.get("model_cache_dir", None)
+
+        # Auto-detect GPU memory and fallback to CPU if insufficient
+        self._check_and_adjust_device()
         self._load_model()
+
+    def _check_and_adjust_device(self):
+        """Check GPU memory and fallback to CPU if insufficient for SenseVoice."""
+        if self.device != "cuda":
+            return
+
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                logger.info("CUDA not available, falling back to CPU")
+                self.device = "cpu"
+                return
+
+            free_gb = torch.cuda.mem_get_info()[0] / (1024**3)
+            total_gb = torch.cuda.mem_get_info()[1] / (1024**3)
+            logger.info(f"GPU memory: {free_gb:.2f}GB free / {total_gb:.2f}GB total")
+
+            # SenseVoiceSmall needs ~2GB for model + ~1.2GB per chunk = ~3.5GB minimum
+            min_required_gb = 3.5
+            if free_gb < min_required_gb:
+                logger.warning(
+                    f"GPU free memory ({free_gb:.2f}GB) is below minimum required "
+                    f"({min_required_gb}GB) for SenseVoice - falling back to CPU. "
+                    f"This usually means another GPU process (e.g., CosyVoice) is using the GPU."
+                )
+                self.device = "cpu"
+            else:
+                logger.info(f"GPU has sufficient memory ({free_gb:.2f}GB free), using CUDA")
+        except Exception as e:
+            logger.warning(f"GPU memory check failed ({e}), keeping device={self.device}")
 
     def _load_model(self):
         """Load SenseVoice model, preferring local directory if available."""
@@ -125,16 +158,31 @@ class SenseVoiceConnector(BaseTranscriptionConnector):
             is_temp = True
 
         try:
+            logger.info(f"SenseVoice transcribing: {audio_path} (filename={request.filename})")
             result = self._model.generate(
                 input=audio_path,
                 language=request.language or "auto",
                 use_itn=False,
             )
 
-            return self._parse_result(result)
+            # Log raw result for debugging
+            if isinstance(result, (list, tuple)) and len(result) >= 1:
+                raw_text = result[0].get("text", "")
+            else:
+                raw_text = result.get("text", "")
+            logger.info(f"SenseVoice raw output ({len(raw_text)} chars): {raw_text[:200]}")
+
+            response = self._parse_result(result)
+            logger.info(f"SenseVoice parsed: {len(response.text)} chars, {len(response.segments)} segments: {response.text[:200]}")
+
+            # Free GPU memory after each transcription to prevent OOM on subsequent chunks
+            self._free_gpu_memory()
+
+            return response
         except Exception as e:
             error_msg = str(e)
             logger.error(f"SenseVoice transcription failed: {error_msg}")
+            self._free_gpu_memory()
             raise TranscriptionError(
                 f"SenseVoice transcription failed: {error_msg}"
             ) from e
@@ -216,6 +264,31 @@ class SenseVoiceConnector(BaseTranscriptionConnector):
             return self._model is not None
         except Exception:
             return False
+
+    def _free_gpu_memory(self):
+        """Free GPU memory after transcription to prevent OOM on subsequent chunks."""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                # Also run garbage collection to free Python-level references
+                import gc
+                gc.collect()
+                free_gb = torch.cuda.mem_get_info()[0] / (1024**3)
+                logger.info(f"GPU memory freed - free: {free_gb:.2f}GB")
+        except Exception as e:
+            logger.warning(f"Failed to free GPU memory: {e}")
+
+    def get_gpu_free_memory_gb(self) -> float:
+        """Return available GPU memory in GB, or -1 if GPU not available."""
+        try:
+            import torch
+            if torch.cuda.is_available():
+                free_bytes = torch.cuda.mem_get_info()[0]
+                return free_bytes / (1024**3)
+        except Exception:
+            pass
+        return -1.0
 
     @classmethod
     def get_config_schema(cls) -> Dict[str, Any]:

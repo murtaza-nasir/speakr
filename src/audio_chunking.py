@@ -377,15 +377,60 @@ class AudioChunkingService:
             mp3_filename = f"{base_name}_converted.mp3"
             mp3_path = os.path.join(temp_dir, mp3_filename)
 
-            # Check if input is already MP3 - skip conversion
+            # Convert to 16kHz mono MP3 for ASR compatibility + normalize volume
+            # SenseVoice/Whisper expect 16kHz mono audio for best results
             file_ext = os.path.splitext(file_path)[1].lower()
             if file_ext == '.mp3':
-                logger.info(f"Input {file_path} is already MP3, skipping conversion")
-                shutil.copy2(file_path, mp3_path)
+                logger.info(f"Input {file_path} is already MP3, re-encoding to 16kHz mono for ASR...")
             else:
-                logger.info(f"Converting {file_path} to 128kbps MP3 format for chunking...")
-                # Use centralized FFmpeg utility for conversion
-                convert_to_mp3(file_path, mp3_path)
+                logger.info(f"Converting {file_path} to 16kHz mono MP3 format for chunking...")
+
+            # Step 1: Detect current audio volume
+            detect_cmd = [
+                'ffmpeg', '-i', file_path,
+                '-af', 'volumedetect',
+                '-f', 'null', '-'
+            ]
+            detect_result = subprocess.run(detect_cmd, capture_output=True, text=True)
+            volume_db = None
+            if detect_result.returncode == 0:
+                import re
+                # ffmpeg volumedetect outputs: "mean_volume: -XX dB"
+                match = re.search(r'mean_volume:\s*(-?\d+\.?\d*)\s*dB', detect_result.stderr)
+                if match:
+                    volume_db = float(match.group(1))
+
+            # Step 2: Convert with volume normalization if needed
+            # Target: -14 dB (optimal for ASR). If audio is quieter than -20 dB, boost it.
+            af_filters = []
+            if volume_db is not None and volume_db < -20:
+                gain = min(volume_db * -1 + 5, 30)  # Boost but cap at 30dB
+                af_filters.append(f'volume={gain}dB')
+                logger.info(f"Audio volume detected: {volume_db:.1f} dB, applying {gain:.1f}dB gain")
+            elif volume_db is not None:
+                logger.info(f"Audio volume detected: {volume_db:.1f} dB, no gain needed")
+            else:
+                logger.warning("Could not detect audio volume, skipping normalization")
+
+            af_str = ','.join(af_filters) if af_filters else None
+
+            cmd = [
+                'ffmpeg', '-i', file_path,
+            ]
+            if af_str:
+                cmd.extend(['-af', af_str])
+            cmd.extend([
+                '-acodec', 'libmp3lame',
+                '-ar', '16000',
+                '-ac', '1',
+                '-b:a', '128k',
+                '-y',
+                mp3_path
+            ])
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.error(f"ffmpeg conversion failed: {result.stderr}")
+                raise ValueError(f"Failed to convert audio: {result.stderr}")
 
             if not os.path.exists(mp3_path):
                 raise ValueError("MP3 file was not created")
@@ -573,31 +618,30 @@ class AudioChunkingService:
                 logger.info(f"Created single chunk for entire file: {mp3_duration:.1f}s")
                 return chunks
             
-            # Calculate step size to create exactly num_chunks with overlap
-            # Total coverage needed: mp3_duration + (overlap * (num_chunks - 1))
-            # Each chunk covers: chunk_duration
-            # Step between chunks to get exactly num_chunks
-            if num_chunks > 1:
-                step_duration = (mp3_duration - chunk_duration) / (num_chunks - 1)
-            else:
-                step_duration = mp3_duration
-            
-            current_start = 0
-            chunk_index = 0
-            
-            logger.info(f"Splitting {file_path} into {num_chunks} chunks of ~{chunk_duration:.1f}s with {self.overlap_seconds}s overlap")
-            
+            # Calculate step size: divide total duration evenly into num_chunks
+            # Each chunk starts at step * index, and extends for chunk_duration (with overlap)
+            # Last chunk always extends to end of file
+            step_duration = mp3_duration / num_chunks
+
+            logger.info(f"Splitting {file_path} into {num_chunks} chunks of ~{chunk_duration:.1f}s (step={step_duration:.1f}s) with {self.overlap_seconds}s overlap")
+
             for chunk_index in range(num_chunks):
                 # Calculate start position for this chunk
-                if chunk_index > 0:
-                    current_start = chunk_index * step_duration
-                
+                current_start = chunk_index * step_duration
+
                 # Calculate end time for this chunk
-                chunk_end = min(current_start + chunk_duration, mp3_duration)
+                # Use chunk_duration for all chunks except the last one
+                if chunk_index == num_chunks - 1:
+                    # Last chunk: always extend to end of file
+                    chunk_end = mp3_duration
+                else:
+                    # Normal chunk: step + overlap ensures coverage
+                    chunk_end = min(current_start + chunk_duration, mp3_duration)
+
                 actual_duration = chunk_end - current_start
-                
-                # Skip very short chunks at the end (shouldn't happen with proper calculation)
-                if actual_duration < 10:  # Less than 10 seconds
+
+                # Skip very short chunks at the end
+                if actual_duration < 1:  # Less than 1 second
                     logger.warning(f"Skipping short chunk {chunk_index}: {actual_duration:.1f}s")
                     break
                 
@@ -606,13 +650,17 @@ class AudioChunkingService:
                 chunk_filename = f"{base_name}_chunk_{chunk_index:03d}.mp3"
                 chunk_path = os.path.join(temp_dir, chunk_filename)
                 
-                # Extract chunk from the converted MP3 file (more efficient than re-converting)
+                # Extract chunk - re-encode to 16kHz mono MP3 for ASR compatibility
+                # SenseVoice/Whisper expect 16kHz mono audio for best results
                 cmd = [
                     'ffmpeg', '-i', mp3_path,
                     '-ss', str(current_start),
                     '-t', str(actual_duration),
-                    '-acodec', 'copy',  # Copy codec since it's already in the right format
-                    '-y',  # Overwrite output file
+                    '-acodec', 'libmp3lame',
+                    '-ar', '16000',
+                    '-ac', '1',
+                    '-b:a', '128k',
+                    '-y',
                     chunk_path
                 ]
                 
