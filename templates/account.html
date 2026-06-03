@@ -107,12 +107,12 @@
                 // Create form data with just the language change
                 const formData = new FormData();
                 formData.append('csrf_token', csrfToken);
-                formData.append('user_name', document.getElementById('user_name').value || '');
-                formData.append('user_job_title', document.getElementById('user_job_title').value || '');
-                formData.append('user_company', document.getElementById('user_company').value || '');
+                formData.append('preferences_form', 'true');
                 formData.append('ui_language', newLanguage);
                 formData.append('transcription_language', document.getElementById('transcription_language').value || '');
                 formData.append('output_language', document.getElementById('output_language').value || '');
+                formData.append('show_timestamps_simple_view', document.getElementById('show_timestamps_simple_view')?.checked || false);
+                formData.append('editor_autosave', document.getElementById('editor_autosave')?.checked || false);
                 
                 // Send AJAX request to update language preference
                 const response = await fetch('{{ url_for("auth.account") }}', {
