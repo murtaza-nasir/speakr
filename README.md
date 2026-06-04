@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.20--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.21--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -179,15 +179,19 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.20-alpha)
+## Latest Release (v0.8.21-alpha)
 
-**Security: open-redirect fix in `is_safe_url` (CWE-601).** Patch release on top of v0.8.19-alpha.
+**Security: CSRF bypass via unauthenticated API token parameter, plus chained SSO-only account takeover (CWE-287).** Patch release on top of v0.8.20-alpha. **All users should upgrade promptly.**
 
-- The `is_safe_url()` helper validated `urljoin(request.host_url, target)` while `redirect()` was called with the raw `target`. A scheme-relative input such as `////evil.com` resolved to a same-host URL during validation but was emitted verbatim in the `Location` header, where browsers interpret it as a network-path-relative redirect to an attacker-controlled host.
-- `is_safe_url()` now validates the raw target against a local-path allowlist: leading `/` required, scheme-relative URLs (`//`, `/\`), backslashes, control characters, and any value with a scheme or netloc are rejected. The duplicate copy in `src/api/auth.py` was removed; password login and the SSO `next` / callback flow share one validator.
-- Reported by **RacerZ and Fushuling**. Tracked as a GitHub Security Advisory; CVE pending. Users on v0.8.19-alpha or earlier should upgrade promptly.
+- The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter, even with a bogus value. The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`, which validates the token against the database and only honours headers (not query strings) because a Simple Cross-Origin Request can carry one without preflight.
+- `change_password` no longer silently sets a password on an SSO-only account (where `current_user.password` is None). That branch was used in the chained-takeover proof-of-concept; SSO users now must continue to authenticate through SSO until a dedicated "add password to SSO account" flow exists.
+- Reported by **Irina Iarlykanova** (Snyk Security Labs). Tracked as a GitHub Security Advisory.
 
 No new features, no breaking changes.
+
+### Previous Release (v0.8.20-alpha)
+
+**Security: open-redirect fix in `is_safe_url` (CWE-601).** Patch release on top of v0.8.19-alpha. The `is_safe_url()` helper now validates the raw target against a local-path allowlist instead of an URL-joined form, closing the `////evil.com` bypass. Reported by RacerZ and Fushuling.
 
 ### Previous Release (v0.8.19-alpha)
 
