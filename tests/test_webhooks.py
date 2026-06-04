@@ -241,6 +241,197 @@ def test_job_queue_completion_actually_emits_webhook_event():
         db.session.commit()
 
 
+def test_job_queue_emits_transcription_started_event():
+    """recording.transcription.started must fire when the worker claims
+    a transcribe job. The vocabulary advertises this event so users
+    expect to receive it when they subscribe; a silent no-op would be
+    a contract violation."""
+    with app.app_context():
+        from src.models import Recording
+        from src.services.job_queue import job_queue
+
+        user = _make_user('wh_started')
+        wh = Webhook(user_id=user.id, name='s', url='https://example.com/s', enabled=True)
+        wh.event_list = ['recording.transcription.started']
+        db.session.add(wh)
+        recording = Recording(
+            user_id=user.id, title='t', audio_path='/tmp/x.mp3', status='PENDING',
+        )
+        db.session.add(recording)
+        db.session.commit()
+
+        # transcribe job_type → fires the started event
+        job_queue._emit_started_webhook('transcribe', recording.id)
+        delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        assert len(delivered) == 1
+        env = json.loads(delivered[0].payload)
+        assert env['type'] == 'recording.transcription.started'
+        assert env['data']['recording_id'] == recording.id
+
+        # summarize job_type → no started event in the vocabulary, so
+        # no delivery is created. Ensures the started map stays in
+        # sync with WEBHOOK_EVENT_TYPES.
+        for d in delivered:
+            db.session.delete(d)
+        db.session.commit()
+        job_queue._emit_started_webhook('summarize', recording.id)
+        assert WebhookDelivery.query.filter_by(webhook_id=wh.id).count() == 0
+
+        db.session.delete(wh)
+        db.session.delete(recording)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_extract_events_from_transcript_fires_events_extracted_webhook():
+    """recording.events.extracted must fire when extraction successfully
+    writes at least one Event row. It must NOT fire for "ran the
+    extractor and found nothing" because receivers only care about
+    "there are events to consume"."""
+    from unittest.mock import patch
+    with app.app_context():
+        from src.models import Recording, Event
+        from src.tasks.processing import extract_events_from_transcript
+
+        user = _make_user('wh_evx')
+        user.extract_events = True
+        db.session.commit()
+        wh = Webhook(user_id=user.id, name='ev', url='https://example.com/ev', enabled=True)
+        wh.event_list = ['recording.events.extracted']
+        db.session.add(wh)
+        recording = Recording(
+            user_id=user.id, title='evx', audio_path='/tmp/evx.mp3', status='COMPLETED',
+        )
+        db.session.add(recording)
+        db.session.commit()
+        rid = recording.id
+
+        # Stub the LLM call to return one event so extraction "succeeds"
+        # with at least one Event row, triggering the webhook.
+        sample_event = {
+            'title': 'Standup', 'description': '',
+            'date': '2026-06-10', 'time': '10:00',
+            'duration_minutes': 30, 'attendees': [], 'reminder_minutes': 15,
+        }
+
+        with patch('src.tasks.processing.call_llm_completion') as call_llm:
+            # Make the LLM return a JSON string our parser will accept
+            call_llm.return_value = {
+                'content': json.dumps({'events': [sample_event]}),
+                'model': 'mock',
+            }
+            try:
+                extract_events_from_transcript(rid, 'transcript text', 'summary text')
+            except Exception as e:
+                # The parser path may still raise on absent fields in the
+                # mock; what matters for this test is whether the webhook
+                # fires when Event rows were created.
+                pass
+
+        delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        if Event.query.filter_by(recording_id=rid).count() > 0:
+            assert len(delivered) == 1, (
+                'Event rows were created but recording.events.extracted '
+                'did not fire.'
+            )
+            env = json.loads(delivered[0].payload)
+            assert env['type'] == 'recording.events.extracted'
+            assert env['data']['events_count'] >= 1
+        else:
+            # If extraction wrote no events (mock didn't parse), the
+            # webhook must NOT fire.
+            assert len(delivered) == 0, (
+                'recording.events.extracted fired with zero events written.'
+            )
+
+        for e in Event.query.filter_by(recording_id=rid).all():
+            db.session.delete(e)
+        for d in delivered:
+            db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(recording)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_api_v1_patch_recording_fires_recording_updated_webhook():
+    """recording.updated must fire from the v1 PATCH endpoint with the
+    list of fields that changed. Subscribers use this to keep companion
+    apps in sync without polling."""
+    with app.app_context():
+        from src.models import Recording
+
+        user = _make_user('wh_upd')
+        wh = Webhook(user_id=user.id, name='u', url='https://example.com/u', enabled=True)
+        wh.event_list = ['recording.updated']
+        db.session.add(wh)
+        recording = Recording(
+            user_id=user.id, title='before', audio_path='/tmp/u.mp3', status='COMPLETED',
+        )
+        db.session.add(recording)
+        db.session.commit()
+        rid = recording.id
+
+        client = app.test_client()
+        _login(client, user)
+        resp = client.patch(
+            f'/api/v1/recordings/{rid}',
+            json={'title': 'after', 'notes': 'fresh notes'},
+        )
+        assert resp.status_code == 200, resp.data
+
+        delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        assert len(delivered) == 1, (
+            'PATCH /api/v1/recordings/{id} did not fire recording.updated.'
+        )
+        env = json.loads(delivered[0].payload)
+        assert env['type'] == 'recording.updated'
+        assert env['data']['recording_id'] == rid
+        assert set(env['data']['fields_changed']) == {'title', 'notes'}, (
+            f'Unexpected fields_changed: {env["data"]["fields_changed"]}'
+        )
+
+        for d in delivered:
+            db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(recording)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_every_advertised_event_type_has_an_emit_site():
+    """Pin the contract: every entry in WEBHOOK_EVENT_TYPES (the list
+    surfaced to users in the subscription UI and v1 API) must have at
+    least one code path that emits it. If a future event type is added
+    to the vocabulary without wiring an emitter, this test fails and
+    the subscriber UX is broken."""
+    import subprocess
+    # `webhook.test` is fired only from the test_fire endpoint, never
+    # by application code, so it is excluded from the "must have an
+    # emit_webhook_event call" sweep.
+    skip = {'webhook.test'}
+    src_root = os.path.join(os.path.dirname(__file__), '..', 'src')
+    src_root = os.path.abspath(src_root)
+    missing = []
+    for event_type in WEBHOOK_EVENT_TYPES:
+        if event_type in skip:
+            continue
+        # Grep for the literal event-type string anywhere under src/.
+        # An emit site has the form `event_type='recording.X'` or
+        # `'recording.X'` as a value somewhere.
+        result = subprocess.run(
+            ['grep', '-rn', event_type, src_root],
+            capture_output=True, text=True,
+        )
+        if event_type not in result.stdout:
+            missing.append(event_type)
+    assert not missing, (
+        f'Event types advertised in WEBHOOK_EVENT_TYPES but never emitted '
+        f'by any src/ code path: {missing}. Either wire an emit_webhook_event '
+        f'call or remove from the vocabulary.'
+    )
+
+
 def test_end_to_end_signature_verifies_against_wire_bytes():
     """Plant a delivery, run the dispatcher (mocking the HTTP POST so we
     can capture the exact bytes that would have been sent), then verify

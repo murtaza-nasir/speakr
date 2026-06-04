@@ -976,6 +976,30 @@ You must respond with valid JSON format only."""
         if recording:
             db.session.refresh(recording)
 
+        # Webhook fan-out (#275). Fires only if at least one event was
+        # successfully written; receivers care about "there are events
+        # to consume," not "we ran the extractor and found nothing."
+        try:
+            events_count = Event.query.filter_by(recording_id=recording_id).count()
+        except Exception:
+            events_count = 0
+        if events_count > 0 and recording is not None:
+            try:
+                from src.services.webhook_dispatch import emit_webhook_event
+                emit_webhook_event(
+                    user_id=recording.user_id,
+                    event_type='recording.events.extracted',
+                    data={
+                        'recording_id': recording.id,
+                        'title': recording.title,
+                        'events_count': events_count,
+                    },
+                )
+            except Exception as webhook_err:
+                current_app.logger.warning(
+                    f"Webhook emit (recording.events.extracted) failed for recording {recording_id}: {webhook_err}"
+                )
+
     except Exception as e:
         current_app.logger.error(f"Error extracting events for recording {recording_id}: {str(e)}")
         db.session.rollback()

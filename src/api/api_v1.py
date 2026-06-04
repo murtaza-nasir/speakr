@@ -1099,27 +1099,40 @@ def update_recording(recording_id):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Track which fields actually changed so the webhook payload tells
+    # subscribers what was touched (recording.updated event, #275).
+    # Compared against the incoming key set, not the prior value, so an
+    # explicit no-op write still surfaces as an intentional update.
+    changed_fields = []
+
     # Update fields if provided
     if 'title' in data:
         recording.title = data['title']
+        changed_fields.append('title')
     if 'participants' in data:
         recording.participants = data['participants']
+        changed_fields.append('participants')
     if 'notes' in data:
         recording.notes = data['notes']
+        changed_fields.append('notes')
     if 'summary' in data:
         recording.summary = data['summary']
+        changed_fields.append('summary')
     if 'meeting_date' in data:
         try:
             if data['meeting_date']:
                 recording.meeting_date = datetime.fromisoformat(data['meeting_date'].replace('Z', '+00:00'))
             else:
                 recording.meeting_date = None
+            changed_fields.append('meeting_date')
         except ValueError:
             return jsonify({'error': 'Invalid meeting_date format'}), 400
     if 'is_inbox' in data:
         recording.is_inbox = bool(data['is_inbox'])
+        changed_fields.append('is_inbox')
     if 'is_highlighted' in data:
         recording.is_highlighted = bool(data['is_highlighted'])
+        changed_fields.append('is_highlighted')
     if 'folder_id' in data:
         new_folder_id = data['folder_id']
         if new_folder_id is None:
@@ -1140,8 +1153,28 @@ def update_recording(recording_id):
                 if not membership:
                     return jsonify({'error': 'No access to target folder'}), 403
             recording.folder_id = new_folder_id
+        changed_fields.append('folder_id')
 
     db.session.commit()
+
+    # Webhook fan-out (#275) for `recording.updated`. Best-effort: a
+    # webhook failure must not roll back the legitimate mutation that
+    # already committed. Debouncing across rapid edits is a future
+    # improvement; for now every PATCH fires once.
+    if changed_fields:
+        try:
+            from src.services.webhook_dispatch import emit_webhook_event
+            emit_webhook_event(
+                user_id=recording.user_id,
+                event_type='recording.updated',
+                data={
+                    'recording_id': recording.id,
+                    'title': recording.title,
+                    'fields_changed': changed_fields,
+                },
+            )
+        except Exception as e:
+            current_app.logger.warning(f"Webhook emit (recording.updated) failed for recording {recording_id}: {e}")
 
     return jsonify({
         'success': True,

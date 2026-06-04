@@ -318,6 +318,14 @@ class FairJobQueue:
                 if not recording:
                     raise ValueError(f"Recording {recording_id} not found")
 
+                # Webhook fan-out for "started" events (#275). Fires once
+                # per claim, before the actual work begins. Best-effort,
+                # never blocks the job from proceeding.
+                try:
+                    self._emit_started_webhook(job_type, recording_id)
+                except Exception as e:
+                    logger.warning(f"Webhook emit on job {job_id} start failed: {e}")
+
                 # Dispatch based on job type
                 if job_type == 'transcribe':
                     self._run_transcription(job, recording, params)
@@ -708,6 +716,33 @@ class FairJobQueue:
         'reprocess_transcription': 'recording.transcription.failed',
         'reprocess_summary': 'recording.summary.failed',
     }
+
+    # No `summary.started` in the vocabulary today; if one is added later,
+    # extend this map and the dispatcher will pick it up automatically.
+    _STARTED_EVENT_MAP = {
+        'transcribe': 'recording.transcription.started',
+        'reprocess_transcription': 'recording.transcription.started',
+    }
+
+    def _emit_started_webhook(self, job_type: str, recording_id: int):
+        event_type = self._STARTED_EVENT_MAP.get(job_type)
+        if not event_type:
+            return
+        with self._app_context():
+            from src.database import db
+            from src.models import Recording
+            from src.services.webhook_dispatch import emit_webhook_event
+            recording = db.session.get(Recording, recording_id)
+            if not recording:
+                return
+            emit_webhook_event(
+                user_id=recording.user_id,
+                event_type=event_type,
+                data={
+                    'recording_id': recording.id,
+                    'title': recording.title,
+                },
+            )
 
     def _emit_completion_webhook(self, job_type: str, recording_id: int):
         event_type = self._COMPLETION_EVENT_MAP.get(job_type)
