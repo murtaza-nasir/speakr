@@ -587,11 +587,11 @@
     "connectionErrorMessage": "Não foi possível conectar ao serviço de transcrição.",
     "convertFormatGuidance": "Converta para MP3 ou WAV antes de enviar",
     "convertStandardGuidance": "Converter para formato de áudio padrão",
-    "enableChunkingGuidance": "Habilite o fragmentação nas configurações ou comprima o arquivo",
+    "enableChunkingGuidance": "Ative o chunking nas configurações de administrador, ou diminua o tamanho por chunk se já estiver ativado; caso contrário, comprima o arquivo de origem",
     "fallbackMessage": "Ocorreu um erro",
     "fallbackTitle": "Erro",
     "fileTooLarge": "Arquivo Muito Grande",
-    "fileTooLargeGuidance": "Tente ativar a fragmentação de áudio nas configurações ou compacte o arquivo de áudio antes de enviar.",
+    "fileTooLargeGuidance": "Ative o chunking de áudio nas configurações de administrador ou comprima o arquivo de áudio antes de enviar. Se o chunking já estiver ativado, o arquivo ainda pode exceder o limite por chunk.",
     "fileTooLargeMaxSize": "Arquivo muito grande. Máx: {{size}} MB.",
     "fileTooLargeMessage": "O arquivo de áudio excede o tamanho máximo permitido pelo serviço de transcrição.",
     "fileTooLargeTitle": "Arquivo Muito Grande",
@@ -633,7 +633,14 @@
     "uploadFailedWithStatus": "Falha no envio com status {{status}}",
     "uploadTimedOut": "Tempo limite de envio excedido",
     "validationError": "Erro de Validação",
-    "waitAndRetryGuidance": "Aguarde alguns minutos e tente novamente"
+    "waitAndRetryGuidance": "Aguarde alguns minutos e tente novamente",
+    "uploadBlockedByProxyTitle": "Upload bloqueado pelo proxy reverso",
+    "uploadBlockedByProxyGuidance": "Aumente o client_max_body_size no seu proxy reverso; o upload nunca chegou ao Speakr, então o chunking não se aplica",
+    "shareTargetGeneric": "Não foi possível processar o áudio compartilhado. Faça o upload diretamente.",
+    "shareTarget_missing_file": "Nenhum arquivo de áudio foi anexado ao compartilhar. Selecione o arquivo antes de compartilhar.",
+    "shareTarget_too_large": "O arquivo de áudio compartilhado excede o limite de upload do Speakr.",
+    "shareTarget_save_failed": "Speakr não conseguiu salvar o áudio compartilhado. Faça o upload diretamente.",
+    "shareTarget_queue_failed": "O áudio compartilhado foi salvo, mas não pôde ser enfileirado para transcrição."
   },
   "eventExtraction": {
     "description": "Quando ativado, a IA identificará reuniões, compromissos e prazos mencionados em suas gravações e criará eventos de calendário para inserir na agenda.",
@@ -1569,5 +1576,13 @@
     "applyMode": "Modo de aplicação",
     "replace": "Substituir",
     "replaceHelp": "Usar apenas este texto como instruções de resumo."
+  },
+  "confirms": {
+    "discardUnsavedRecording": "Você tem uma gravação não salva. Sair vai descartá-la. Continuar?"
+  },
+  "toasts": {
+    "uploadFailedDownloadedLocally": "Upload falhou. Áudio salvo na pasta Downloads para tentar novamente mais tarde.",
+    "uploadFailedNoRecovery": "Upload falhou e o áudio não pôde ser salvo localmente. Por favor, grave novamente.",
+    "shareTargetReceived": "Áudio compartilhado recebido e enfileirado para transcrição"
   }
 }

@@ -587,11 +587,11 @@
     "connectionErrorMessage": "Could not connect to the transcription service.",
     "convertFormatGuidance": "Convert to MP3 or WAV before uploading",
     "convertStandardGuidance": "Convert to standard audio format",
-    "enableChunkingGuidance": "Enable chunking in settings or compress the file",
+    "enableChunkingGuidance": "Active la fragmentación en la configuración de administrador, o reduzca el tamaño por fragmento si ya está activada; de lo contrario, comprima el archivo de origen",
     "fallbackMessage": "An error occurred",
     "fallbackTitle": "Error",
     "fileTooLarge": "文件太大",
-    "fileTooLargeGuidance": "Try enabling audio chunking in your settings, or compress the audio file before uploading.",
+    "fileTooLargeGuidance": "Active la fragmentación de audio en la configuración de administrador o comprima el archivo de audio antes de subirlo. Si la fragmentación ya está activada, el archivo puede seguir excediendo el límite por fragmento.",
     "fileTooLargeMaxSize": "File too large. Max: {{size}} MB.",
     "fileTooLargeMessage": "The audio file exceeds the maximum size allowed by the transcription service.",
     "fileTooLargeTitle": "File Too Large",
@@ -633,7 +633,14 @@
     "uploadFailedWithStatus": "Upload failed with status {{status}}",
     "uploadTimedOut": "Upload timed out",
     "validationError": "验证错误",
-    "waitAndRetryGuidance": "Wait a few minutes and try again"
+    "waitAndRetryGuidance": "Wait a few minutes and try again",
+    "uploadBlockedByProxyTitle": "Subida bloqueada por el proxy inverso",
+    "uploadBlockedByProxyGuidance": "Aumente client_max_body_size en su proxy inverso; la subida nunca llegó a Speakr, por lo que la fragmentación no aplica",
+    "shareTargetGeneric": "No se pudo procesar el audio compartido. Por favor, súbalo directamente.",
+    "shareTarget_missing_file": "No se adjuntó ningún archivo de audio al compartir. Seleccione el archivo antes de compartir.",
+    "shareTarget_too_large": "El archivo de audio compartido supera el límite de subida de Speakr.",
+    "shareTarget_save_failed": "Speakr no pudo guardar el audio compartido. Por favor, súbalo directamente.",
+    "shareTarget_queue_failed": "El audio compartido se guardó pero no se pudo poner en cola para transcripción."
   },
   "eventExtraction": {
     "description": "Cuando está habilitado, la IA identificará reuniones, citas y plazos mencionados en tus grabaciones y creará eventos de calendario descargables.",
@@ -1569,5 +1576,13 @@
     "showTimestampsSimpleViewHelp": "Muestra una marca de tiempo compacta mm:ss junto a cada etiqueta de hablante en la vista simple. La vista de burbujas no se ve afectada.",
     "transcriptDisplay": "Visualización de la transcripción",
     "transcriptEditor": "Editor de transcripción"
+  },
+  "confirms": {
+    "discardUnsavedRecording": "Tiene una grabación sin guardar. Si sale, se descartará. ¿Continuar?"
+  },
+  "toasts": {
+    "uploadFailedDownloadedLocally": "Subida fallida. El audio se guardó en la carpeta de Descargas para reintentarlo más tarde.",
+    "uploadFailedNoRecovery": "Subida fallida y el audio no pudo guardarse localmente. Por favor, vuelva a grabar.",
+    "shareTargetReceived": "Audio compartido recibido y puesto en cola para transcripción"
   }
 }

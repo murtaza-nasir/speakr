@@ -587,11 +587,11 @@
     "connectionErrorMessage": "Could not connect to the transcription service.",
     "convertFormatGuidance": "Convert to MP3 or WAV before uploading",
     "convertStandardGuidance": "Convert to standard audio format",
-    "enableChunkingGuidance": "Enable chunking in settings or compress the file",
+    "enableChunkingGuidance": "Включите разбиение на части в настройках администратора или уменьшите размер одного фрагмента, если оно уже включено; иначе сожмите исходный файл",
     "fallbackMessage": "An error occurred",
     "fallbackTitle": "Error",
     "fileTooLarge": "Файл слишком большой",
-    "fileTooLargeGuidance": "Try enabling audio chunking in your settings, or compress the audio file before uploading.",
+    "fileTooLargeGuidance": "Включите разбиение аудио на части в настройках администратора или сожмите аудиофайл перед загрузкой. Если разбиение уже включено, файл всё ещё может превышать лимит одного фрагмента.",
     "fileTooLargeMaxSize": "File too large. Max: {{size}} MB.",
     "fileTooLargeMessage": "The audio file exceeds the maximum size allowed by the transcription service.",
     "fileTooLargeTitle": "File Too Large",
@@ -633,7 +633,14 @@
     "uploadFailedWithStatus": "Upload failed with status {{status}}",
     "uploadTimedOut": "Upload timed out",
     "validationError": "Ошибка валидации",
-    "waitAndRetryGuidance": "Wait a few minutes and try again"
+    "waitAndRetryGuidance": "Wait a few minutes and try again",
+    "uploadBlockedByProxyTitle": "Загрузка заблокирована обратным прокси",
+    "uploadBlockedByProxyGuidance": "Увеличьте client_max_body_size на обратном прокси; загрузка не дошла до Speakr, поэтому разбиение на части не поможет",
+    "shareTargetGeneric": "Не удалось обработать переданное аудио. Пожалуйста, загрузите его напрямую.",
+    "shareTarget_missing_file": "К общему доступу не прикреплён аудиофайл. Выберите файл перед тем, как делиться.",
+    "shareTarget_too_large": "Переданный аудиофайл превышает лимит загрузки Speakr.",
+    "shareTarget_save_failed": "Speakr не смог сохранить переданное аудио. Пожалуйста, загрузите его напрямую.",
+    "shareTarget_queue_failed": "Переданное аудио сохранено, но не удалось поставить его в очередь на транскрипцию."
   },
   "eventExtraction": {
     "description": "При включении ИИ будет определять встречи, назначения и дедлайны, упомянутые в ваших записях, и создавать загружаемые календарные события.",
@@ -1569,5 +1576,13 @@
     "showTimestampsSimpleViewHelp": "Показывает компактную временную метку mm:ss рядом с именем каждого говорящего в простом виде. На пузырьковый вид не влияет.",
     "transcriptDisplay": "Отображение транскрипции",
     "transcriptEditor": "Редактор транскрипции"
+  },
+  "confirms": {
+    "discardUnsavedRecording": "У вас несохранённая запись. Если уйти, она будет отменена. Продолжить?"
+  },
+  "toasts": {
+    "uploadFailedDownloadedLocally": "Загрузка не удалась. Аудио сохранено в папку «Загрузки» для повторной попытки.",
+    "uploadFailedNoRecovery": "Загрузка не удалась и аудио не удалось сохранить локально. Пожалуйста, запишите снова.",
+    "shareTargetReceived": "Аудио получено через «Поделиться» и поставлено в очередь на транскрипцию"
   }
 }

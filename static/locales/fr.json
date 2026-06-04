@@ -587,11 +587,11 @@
     "connectionErrorMessage": "Could not connect to the transcription service.",
     "convertFormatGuidance": "Convert to MP3 or WAV before uploading",
     "convertStandardGuidance": "Convert to standard audio format",
-    "enableChunkingGuidance": "Enable chunking in settings or compress the file",
+    "enableChunkingGuidance": "Activez le découpage dans vos paramètres d'administration ou réduisez la taille par chunk s'il est déjà activé ; sinon, compressez le fichier source",
     "fallbackMessage": "An error occurred",
     "fallbackTitle": "Error",
     "fileTooLarge": "文件太大",
-    "fileTooLargeGuidance": "Try enabling audio chunking in your settings, or compress the audio file before uploading.",
+    "fileTooLargeGuidance": "Activez le découpage audio dans vos paramètres d'administration ou compressez le fichier audio avant l'envoi. Si le découpage est déjà activé, le fichier peut encore dépasser la limite par chunk.",
     "fileTooLargeMaxSize": "File too large. Max: {{size}} MB.",
     "fileTooLargeMessage": "The audio file exceeds the maximum size allowed by the transcription service.",
     "fileTooLargeTitle": "File Too Large",
@@ -633,7 +633,14 @@
     "uploadFailedWithStatus": "Upload failed with status {{status}}",
     "uploadTimedOut": "Upload timed out",
     "validationError": "验证错误",
-    "waitAndRetryGuidance": "Wait a few minutes and try again"
+    "waitAndRetryGuidance": "Wait a few minutes and try again",
+    "uploadBlockedByProxyTitle": "Upload bloqué par le reverse proxy",
+    "uploadBlockedByProxyGuidance": "Augmentez client_max_body_size sur votre reverse proxy ; l'upload n'a jamais atteint Speakr, donc le chunking ne s'applique pas",
+    "shareTargetGeneric": "Impossible de traiter l'audio partagé. Veuillez l'envoyer directement.",
+    "shareTarget_missing_file": "Aucun fichier audio n'était joint au partage. Sélectionnez le fichier avant de partager.",
+    "shareTarget_too_large": "Le fichier audio partagé dépasse la limite d'envoi de Speakr.",
+    "shareTarget_save_failed": "Speakr n'a pas pu enregistrer l'audio partagé. Veuillez l'envoyer directement.",
+    "shareTarget_queue_failed": "L'audio partagé a été enregistré mais n'a pas pu être mis en file pour transcription."
   },
   "eventExtraction": {
     "description": "Lorsqu'activé, l'IA identifiera les réunions, rendez-vous et échéances mentionnés dans vos enregistrements et créera des événements de calendrier téléchargeables.",
@@ -1569,5 +1576,13 @@
     "showTimestampsSimpleViewHelp": "Affiche un horodatage compact mm:ss à côté de chaque libellé de locuteur dans la vue simple. La vue bulle n'est pas affectée.",
     "transcriptDisplay": "Affichage de la transcription",
     "transcriptEditor": "Éditeur de transcription"
+  },
+  "confirms": {
+    "discardUnsavedRecording": "Vous avez un enregistrement non sauvegardé. Quitter le supprimera. Continuer ?"
+  },
+  "toasts": {
+    "uploadFailedDownloadedLocally": "Échec de l'envoi. L'audio a été enregistré dans votre dossier Téléchargements pour une nouvelle tentative.",
+    "uploadFailedNoRecovery": "Échec de l'envoi et l'audio n'a pas pu être enregistré localement. Veuillez réenregistrer.",
+    "shareTargetReceived": "Audio partagé reçu et mis en file pour transcription"
   }
 }

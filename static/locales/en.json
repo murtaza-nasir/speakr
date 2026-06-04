@@ -587,11 +587,11 @@
     "connectionErrorMessage": "Could not connect to the transcription service.",
     "convertFormatGuidance": "Convert to MP3 or WAV before uploading",
     "convertStandardGuidance": "Convert to standard audio format",
-    "enableChunkingGuidance": "Enable chunking in settings or compress the file",
+    "enableChunkingGuidance": "Enable chunking in your admin settings, or lower the per-chunk size if it is already enabled; otherwise compress the source file",
     "fallbackMessage": "An error occurred",
     "fallbackTitle": "Error",
-    "fileTooLarge": "文件太大",
-    "fileTooLargeGuidance": "Try enabling audio chunking in your settings, or compress the audio file before uploading.",
+    "fileTooLarge": "File Too Large",
+    "fileTooLargeGuidance": "Enable audio chunking in your admin settings, or compress the audio file before uploading. If chunking is already enabled the file may still exceed the per-chunk limit.",
     "fileTooLargeMaxSize": "File too large. Max: {{size}} MB.",
     "fileTooLargeMessage": "The audio file exceeds the maximum size allowed by the transcription service.",
     "fileTooLargeTitle": "File Too Large",
@@ -633,7 +633,14 @@
     "uploadFailedWithStatus": "Upload failed with status {{status}}",
     "uploadTimedOut": "Upload timed out",
     "validationError": "验证错误",
-    "waitAndRetryGuidance": "Wait a few minutes and try again"
+    "waitAndRetryGuidance": "Wait a few minutes and try again",
+    "uploadBlockedByProxyTitle": "Upload Blocked by Reverse Proxy",
+    "uploadBlockedByProxyGuidance": "Increase client_max_body_size on your reverse proxy; the upload never reached Speakr, so chunking does not apply",
+    "shareTargetGeneric": "Could not process the shared audio. Please try uploading directly.",
+    "shareTarget_missing_file": "No audio file was attached to the share. Try selecting the file before sharing.",
+    "shareTarget_too_large": "The shared audio file is larger than Speakr's upload limit.",
+    "shareTarget_save_failed": "Speakr could not save the shared audio. Please try uploading directly.",
+    "shareTarget_queue_failed": "The shared audio was saved but could not be queued for transcription."
   },
   "eventExtraction": {
     "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",
@@ -1569,5 +1576,13 @@
     "userSupplied": "user-supplied at upload or reprocess",
     "userMessageHeading": "User Message:",
     "liveUpdateNote": "The Summarization Instructions slot updates as you edit your custom prompt above. Placeholders are replaced with real values when a recording is processed."
+  },
+  "confirms": {
+    "discardUnsavedRecording": "You have an unsaved recording. Leaving will discard it. Continue?"
+  },
+  "toasts": {
+    "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
+    "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
+    "shareTargetReceived": "Shared audio received and queued for transcription"
   }
 }

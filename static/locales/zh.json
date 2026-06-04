@@ -587,11 +587,11 @@
     "connectionErrorMessage": "Could not connect to the transcription service.",
     "convertFormatGuidance": "Convert to MP3 or WAV before uploading",
     "convertStandardGuidance": "Convert to standard audio format",
-    "enableChunkingGuidance": "Enable chunking in settings or compress the file",
+    "enableChunkingGuidance": "在管理员设置中启用分块上传；如已启用,请降低每块的大小,否则请压缩源文件",
     "fallbackMessage": "An error occurred",
     "fallbackTitle": "Error",
     "fileTooLarge": "文件太大",
-    "fileTooLargeGuidance": "Try enabling audio chunking in your settings, or compress the audio file before uploading.",
+    "fileTooLargeGuidance": "在管理员设置中启用音频分块,或在上传前压缩音频文件。如已启用分块,文件可能仍超过单块限制。",
     "fileTooLargeMaxSize": "File too large. Max: {{size}} MB.",
     "fileTooLargeMessage": "The audio file exceeds the maximum size allowed by the transcription service.",
     "fileTooLargeTitle": "File Too Large",
@@ -633,7 +633,14 @@
     "uploadFailedWithStatus": "Upload failed with status {{status}}",
     "uploadTimedOut": "Upload timed out",
     "validationError": "验证错误",
-    "waitAndRetryGuidance": "Wait a few minutes and try again"
+    "waitAndRetryGuidance": "Wait a few minutes and try again",
+    "uploadBlockedByProxyTitle": "反向代理阻止了上传",
+    "uploadBlockedByProxyGuidance": "请增加反向代理的 client_max_body_size；上传未到达 Speakr，因此分块上传在此处无效",
+    "shareTargetGeneric": "无法处理共享的音频。请改为直接上传。",
+    "shareTarget_missing_file": "共享时未附加音频文件。请在共享前先选择文件。",
+    "shareTarget_too_large": "共享的音频文件超过 Speakr 的上传限制。",
+    "shareTarget_save_failed": "Speakr 无法保存共享的音频。请改为直接上传。",
+    "shareTarget_queue_failed": "共享的音频已保存,但无法加入转录队列。"
   },
   "eventExtraction": {
     "description": "启用后，AI将识别录音中提到的会议、约会和截止日期，并创建可下载的日历事件。",
@@ -1569,5 +1576,13 @@
     "showTimestampsSimpleViewHelp": "在简单视图中，每个发言人标签旁显示紧凑的 mm:ss 时间戳。气泡视图不受影响。",
     "transcriptDisplay": "转录显示",
     "transcriptEditor": "转录编辑器"
+  },
+  "confirms": {
+    "discardUnsavedRecording": "您有一段未保存的录音。离开将丢弃该录音。是否继续？"
+  },
+  "toasts": {
+    "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
+    "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
+    "shareTargetReceived": "已接收共享音频并加入转录队列"
   }
 }
