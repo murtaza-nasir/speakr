@@ -714,7 +714,9 @@ class FairJobQueue:
         if not event_type:
             return
         with self._app_context():
+            from src.database import db
             from src.models import Recording
+            from src.services.webhook_dispatch import emit_webhook_event
             recording = db.session.get(Recording, recording_id)
             if not recording:
                 return
@@ -726,7 +728,6 @@ class FairJobQueue:
                 'transcription_duration_seconds': getattr(recording, 'transcription_duration_seconds', None),
                 'summarization_duration_seconds': getattr(recording, 'summarization_duration_seconds', None),
             }
-            from src.services.webhook_dispatch import emit_webhook_event
             emit_webhook_event(
                 user_id=recording.user_id,
                 event_type=event_type,
@@ -738,11 +739,12 @@ class FairJobQueue:
         if not event_type:
             return
         with self._app_context():
+            from src.database import db
             from src.models import Recording
+            from src.services.webhook_dispatch import emit_webhook_event
             recording = db.session.get(Recording, recording_id)
             if not recording:
                 return
-            from src.services.webhook_dispatch import emit_webhook_event
             emit_webhook_event(
                 user_id=recording.user_id,
                 event_type=event_type,

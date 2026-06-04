@@ -174,6 +174,73 @@ def test_emit_and_test_fire_produce_identical_wire_format():
         db.session.commit()
 
 
+def test_job_queue_completion_actually_emits_webhook_event():
+    """Regression test: the job_queue's _emit_completion_webhook used to
+    fail silently with ``name 'db' is not defined`` because it tried to
+    use db without importing it, and the calling code swallowed the
+    error in a try/except. The mocked emit tests above did not catch
+    this because they patched emit_webhook_event out entirely. This
+    test calls the real ``_emit_completion_webhook`` against a real
+    subscribed webhook and asserts a delivery row is created.
+
+    If this test fails, every transcription/summary completion will
+    silently fail to fire a webhook in production."""
+    with app.app_context():
+        from src.models import Recording
+        from src.services.job_queue import job_queue
+
+        user = _make_user('wh_jq_emit')
+        wh = Webhook(
+            user_id=user.id,
+            name='subscriber',
+            url='https://example.com/wh',
+            enabled=True,
+        )
+        wh.event_list = ['recording.transcription.completed']
+        db.session.add(wh)
+
+        recording = Recording(
+            user_id=user.id,
+            title='test recording',
+            audio_path='/tmp/test.mp3',
+            status='COMPLETED',
+        )
+        db.session.add(recording)
+        db.session.commit()
+
+        # Call the real emit method (no mocking of emit_webhook_event)
+        job_queue._emit_completion_webhook('transcribe', recording.id)
+
+        delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        assert len(delivered) == 1, (
+            'job_queue._emit_completion_webhook did not create a delivery. '
+            'Check that all required imports (db, Recording, emit_webhook_event) '
+            'are inside the method or its app-context block.'
+        )
+        envelope = json.loads(delivered[0].payload)
+        assert envelope['type'] == 'recording.transcription.completed'
+        assert envelope['data']['recording_id'] == recording.id
+
+        # Same check for the failure path.
+        for d in delivered:
+            db.session.delete(d)
+        wh.event_list = ['recording.transcription.failed']
+        db.session.commit()
+        job_queue._emit_failure_webhook('transcribe', recording.id, 'something broke')
+        fail_delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        assert len(fail_delivered) == 1
+        env = json.loads(fail_delivered[0].payload)
+        assert env['type'] == 'recording.transcription.failed'
+        assert env['data']['error'] == 'something broke'
+
+        for d in WebhookDelivery.query.filter_by(webhook_id=wh.id).all():
+            db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(recording)
+        db.session.delete(user)
+        db.session.commit()
+
+
 def test_end_to_end_signature_verifies_against_wire_bytes():
     """Plant a delivery, run the dispatcher (mocking the HTTP POST so we
     can capture the exact bytes that would have been sent), then verify
