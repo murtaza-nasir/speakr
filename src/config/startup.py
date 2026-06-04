@@ -202,3 +202,7 @@ def run_startup_tasks(app):
 
         # Initialize recording-session cleanup scheduler (#287 c/d)
         initialize_recording_session_cleanup(app)
+
+        # Initialize webhook dispatcher (#275)
+        from src.services.webhook_dispatch import start_dispatcher_thread
+        start_dispatcher_thread(app)

@@ -340,6 +340,15 @@ class FairJobQueue:
                     db.session.commit()
                     logger.info(f"Job {job_id} completed successfully")
 
+                # Webhook fan-out (#275). One emit per job-type completion;
+                # subscribers map these to user-visible lifecycle events.
+                # Best-effort: if the webhook subsystem throws, the job is
+                # still marked completed.
+                try:
+                    self._emit_completion_webhook(job_type, recording_id)
+                except Exception as e:
+                    logger.warning(f"Webhook emit on job {job_id} completion failed: {e}")
+
             except Exception as e:
                 error_str = str(e)
                 logger.error(f"Job {job_id} failed: {e}", exc_info=True)
@@ -380,6 +389,15 @@ class FairJobQueue:
                             logger.error(f"Job {job_id} failed permanently (non-retryable error)")
                         else:
                             logger.error(f"Job {job_id} failed permanently after {MAX_RETRIES} retries")
+
+                        # Webhook fan-out for permanent failure (#275). The
+                        # retryable-failure case does not emit because the
+                        # subscriber will see the eventual success or
+                        # permanent failure that follows the retry loop.
+                        try:
+                            self._emit_failure_webhook(job_type, recording_id, error_str)
+                        except Exception as e:
+                            logger.warning(f"Webhook emit on job {job_id} failure failed: {e}")
 
                     db.session.commit()
 
@@ -673,6 +691,67 @@ class FairJobQueue:
             if deleted:
                 db.session.commit()
                 logger.info(f"Cleaned up {deleted} old jobs")
+
+
+    # --- Webhook emission helpers (#275) ---------------------------------
+
+    _COMPLETION_EVENT_MAP = {
+        'transcribe': 'recording.transcription.completed',
+        'summarize': 'recording.summary.completed',
+        'reprocess_transcription': 'recording.transcription.completed',
+        'reprocess_summary': 'recording.summary.completed',
+    }
+
+    _FAILURE_EVENT_MAP = {
+        'transcribe': 'recording.transcription.failed',
+        'summarize': 'recording.summary.failed',
+        'reprocess_transcription': 'recording.transcription.failed',
+        'reprocess_summary': 'recording.summary.failed',
+    }
+
+    def _emit_completion_webhook(self, job_type: str, recording_id: int):
+        event_type = self._COMPLETION_EVENT_MAP.get(job_type)
+        if not event_type:
+            return
+        with self._app_context():
+            from src.models import Recording
+            recording = db.session.get(Recording, recording_id)
+            if not recording:
+                return
+            data = {
+                'recording_id': recording.id,
+                'title': recording.title,
+                'language': getattr(recording, 'transcription_language', None),
+                'audio_duration_seconds': getattr(recording, 'audio_duration', None),
+                'transcription_duration_seconds': getattr(recording, 'transcription_duration_seconds', None),
+                'summarization_duration_seconds': getattr(recording, 'summarization_duration_seconds', None),
+            }
+            from src.services.webhook_dispatch import emit_webhook_event
+            emit_webhook_event(
+                user_id=recording.user_id,
+                event_type=event_type,
+                data={k: v for k, v in data.items() if v is not None},
+            )
+
+    def _emit_failure_webhook(self, job_type: str, recording_id: int, error: str):
+        event_type = self._FAILURE_EVENT_MAP.get(job_type)
+        if not event_type:
+            return
+        with self._app_context():
+            from src.models import Recording
+            recording = db.session.get(Recording, recording_id)
+            if not recording:
+                return
+            from src.services.webhook_dispatch import emit_webhook_event
+            emit_webhook_event(
+                user_id=recording.user_id,
+                event_type=event_type,
+                data={
+                    'recording_id': recording.id,
+                    'title': recording.title,
+                    'error': (error or '')[:500],
+                },
+            )
 
 
 # Global job queue instance

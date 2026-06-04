@@ -625,6 +625,7 @@ from src.api.system import system_bp, init_system_helpers
 from src.api.push_notifications import push_bp
 from src.api.api_v1 import api_v1_bp, init_api_v1_helpers
 from src.api.recording_sessions import recording_sessions_bp
+from src.api.webhooks import webhooks_bp
 
 # Database initialization (extracted to src/init_db.py)
 from src.init_db import initialize_database
@@ -677,6 +678,12 @@ csrf.exempt(api_v1_bp)  # API v1 uses token auth, not CSRF
 # chunk request is a fetch call from our own SPA, which already carries
 # the token, so no exemption is needed here.
 app.register_blueprint(recording_sessions_bp)
+
+# Webhooks (#275): under /api/v1, CSRF-exempt so API-token clients can
+# manage their endpoints programmatically. SPA callers still attach the
+# X-CSRFToken header for cookie-auth requests.
+app.register_blueprint(webhooks_bp)
+csrf.exempt(webhooks_bp)
 
 # PWA Web Share Target (issue #285): the native share sheet cannot round-trip
 # a CSRF token, so the share-target endpoint is exempted. Authentication still

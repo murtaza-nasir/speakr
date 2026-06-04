@@ -2564,6 +2564,24 @@ def upload_file():
         )
         current_app.logger.info(f"Transcription job queued for recording ID: {recording.id}")
 
+        # Webhook event (#275). Fan-out happens off-request via the
+        # dispatcher; this call only enqueues a delivery row per matching
+        # subscription, so it is cheap and safe inside the request path.
+        try:
+            from src.services.webhook_dispatch import emit_webhook_event
+            emit_webhook_event(
+                user_id=current_user.id,
+                event_type='recording.created',
+                data={
+                    'recording_id': recording.id,
+                    'title': recording.title,
+                    'file_size': recording.file_size,
+                    'original_filename': recording.original_filename,
+                },
+            )
+        except Exception as e:
+            current_app.logger.warning(f"Webhook emit (recording.created) failed: {e}")
+
         response_data = recording.to_dict(viewer_user=current_user)
         if duplicate_warning:
             response_data['duplicate_warning'] = duplicate_warning
@@ -2945,10 +2963,29 @@ def delete_recording(recording_id):
         if deleted_jobs > 0:
             current_app.logger.info(f"Deleted {deleted_jobs} processing jobs for recording {recording_id}")
 
+        # Capture identity for the webhook event before deletion drops the row.
+        _deleted_recording_id = recording.id
+        _deleted_recording_title = recording.title
+        _deleted_user_id = recording.user_id
+
         # Delete the database record (cascade will handle chunks/embeddings)
         db.session.delete(recording)
         db.session.commit()
         current_app.logger.info(f"Deleted recording record ID: {recording_id}")
+
+        # Webhook event (#275)
+        try:
+            from src.services.webhook_dispatch import emit_webhook_event
+            emit_webhook_event(
+                user_id=_deleted_user_id,
+                event_type='recording.deleted',
+                data={
+                    'recording_id': _deleted_recording_id,
+                    'title': _deleted_recording_title,
+                },
+            )
+        except Exception as e:
+            current_app.logger.warning(f"Webhook emit (recording.deleted) failed: {e}")
 
         if ENABLE_INQUIRE_MODE and chunk_count > 0:
             current_app.logger.info(f"Successfully deleted embeddings and chunks for recording {recording_id}")

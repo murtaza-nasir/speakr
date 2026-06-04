@@ -32,6 +32,13 @@ from .processing_job import ProcessingJob
 from .recording_session import RecordingSession, RECORDING_SESSION_STATUSES
 from .token_usage import TokenUsage
 from .transcription_usage import TranscriptionUsage
+from .webhook import (
+    Webhook,
+    WebhookDelivery,
+    WEBHOOK_EVENT_TYPES,
+    WEBHOOK_DELIVERY_STATUSES,
+    generate_webhook_secret,
+)
 
 # Export all models
 __all__ = [
@@ -69,4 +76,9 @@ __all__ = [
     'RECORDING_SESSION_STATUSES',
     'TokenUsage',
     'TranscriptionUsage',
+    'Webhook',
+    'WebhookDelivery',
+    'WEBHOOK_EVENT_TYPES',
+    'WEBHOOK_DELIVERY_STATUSES',
+    'generate_webhook_secret',
 ]

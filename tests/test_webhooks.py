@@ -1,0 +1,546 @@
+"""Webhook backend tests (#275).
+
+Covers:
+
+- model serialization + event_list validation
+- HMAC signature generation
+- SSRF guard (private IP block + intranet allowlist)
+- emit_webhook_event creates delivery rows for matching subscriptions
+- dispatcher pass: success path, retry-with-backoff path, permanent
+  failure path, auto-pause after N consecutive failures
+- v1 CRUD endpoints: create/list/get/patch/delete/test/rotate-secret
+- replay creates a new delivery with a fresh event_id
+"""
+
+import hashlib
+import hmac
+import json
+import os
+import sys
+import uuid
+from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.app import app, db
+from src.models import User, Webhook, WebhookDelivery, WEBHOOK_EVENT_TYPES, generate_webhook_secret
+from src.services.webhook_dispatch import (
+    sign_payload,
+    is_url_safe_for_webhook,
+    emit_webhook_event,
+    run_dispatcher_pass,
+    _delay_for_attempt,
+)
+
+
+app.config["WTF_CSRF_ENABLED"] = False
+
+
+def _make_user(prefix):
+    suffix = uuid.uuid4().hex[:8]
+    user = User(
+        username=f"{prefix}_{suffix}",
+        email=f"{prefix}_{suffix}@local.test",
+        password="x",
+    )
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def _login(client, user):
+    from flask import g
+    with client.session_transaction() as sess:
+        sess.clear()
+        sess["_user_id"] = str(user.id)
+        sess["_fresh"] = True
+    try:
+        g.pop("_login_user", None)
+    except RuntimeError:
+        pass
+
+
+# --- Model tests -----------------------------------------------------------
+
+def test_event_list_setter_dedupes_and_validates():
+    with app.app_context():
+        user = _make_user("wh_model")
+        wh = Webhook(user_id=user.id, name="t", url="https://example.com/x")
+        wh.event_list = ['recording.created', 'recording.created', 'recording.deleted']
+        assert wh.event_list == ['recording.created', 'recording.deleted']
+        try:
+            wh.event_list = ['not.a.real.event']
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_generate_webhook_secret_returns_distinct_values():
+    a = generate_webhook_secret()
+    b = generate_webhook_secret()
+    assert a and b and a != b
+    assert len(a) >= 32
+
+
+def test_to_dict_omits_secret_by_default():
+    with app.app_context():
+        user = _make_user("wh_secret")
+        wh = Webhook(user_id=user.id, name="t", url="https://example.com/x", secret="topsecret")
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+        assert 'secret' not in wh.to_dict()
+        assert wh.to_dict(include_secret=True)['secret'] == 'topsecret'
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+# --- Signature ---------------------------------------------------------------
+
+def test_sign_payload_matches_hmac_sha256():
+    body = b'{"hello":"world"}'
+    secret = 'shared-secret'
+    sig = sign_payload(secret, body)
+    expected_hex = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    assert sig == f'sha256={expected_hex}'
+
+
+# --- SSRF guard --------------------------------------------------------------
+
+def test_is_url_safe_rejects_http_when_allow_http_false():
+    ok, reason = is_url_safe_for_webhook('http://example.com/wh', allow_http=False)
+    assert not ok
+    assert 'http' in reason.lower()
+
+
+def test_is_url_safe_accepts_https_public():
+    ok, _ = is_url_safe_for_webhook('https://example.com/wh', allow_http=False)
+    assert ok
+
+
+def test_is_url_safe_rejects_private_ip():
+    # 192.168.0.0/16 is RFC1918; should be rejected by default.
+    ok, reason = is_url_safe_for_webhook('http://192.168.1.50/x', allow_http=True)
+    assert not ok
+    assert 'private' in reason.lower() or 'loopback' in reason.lower()
+
+
+def test_is_url_safe_rejects_loopback():
+    ok, reason = is_url_safe_for_webhook('http://127.0.0.1/x', allow_http=True)
+    assert not ok
+
+
+def test_is_url_safe_allowlist_overrides_private_ip():
+    # Set the env var so 192.168.1.50 is allowed.
+    with patch.dict(os.environ, {'WEBHOOK_INTRANET_HOST_ALLOWLIST': r'^192\.168\.1\.\d+$'}):
+        ok, _ = is_url_safe_for_webhook('http://192.168.1.50/x', allow_http=True)
+        assert ok
+
+
+# --- emit_webhook_event ------------------------------------------------------
+
+def test_emit_creates_delivery_row_for_matching_subscription():
+    with app.app_context():
+        user = _make_user("wh_emit")
+        wh = Webhook(user_id=user.id, name="t", url="https://example.com/wh", enabled=True)
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+
+        created = emit_webhook_event(user.id, 'recording.created', {'recording_id': 42})
+        assert created == 1
+
+        deliveries = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        assert len(deliveries) == 1
+        d = deliveries[0]
+        assert d.status == 'pending'
+        envelope = json.loads(d.payload)
+        assert envelope['type'] == 'recording.created'
+        assert envelope['user_id'] == user.id
+        assert envelope['data']['recording_id'] == 42
+
+        # Cleanup
+        for d in deliveries:
+            db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_emit_skips_unsubscribed_event():
+    with app.app_context():
+        user = _make_user("wh_unsub")
+        wh = Webhook(user_id=user.id, name="t", url="https://example.com/wh", enabled=True)
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+
+        created = emit_webhook_event(user.id, 'recording.deleted', {'recording_id': 1})
+        assert created == 0
+        assert WebhookDelivery.query.filter_by(webhook_id=wh.id).count() == 0
+
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_emit_skips_disabled_webhook():
+    with app.app_context():
+        user = _make_user("wh_disabled")
+        wh = Webhook(user_id=user.id, name="t", url="https://example.com/wh", enabled=False)
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+        created = emit_webhook_event(user.id, 'recording.created', {})
+        assert created == 0
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+# --- Dispatcher pass --------------------------------------------------------
+
+def _seed_pending(user_id, *, url='https://example.com/wh', secret='s'):
+    wh = Webhook(user_id=user_id, name="t", url=url, secret=secret, enabled=True)
+    wh.event_list = ['recording.created']
+    db.session.add(wh)
+    db.session.flush()
+    d = WebhookDelivery(
+        webhook_id=wh.id,
+        event_id=str(uuid.uuid4()),
+        event_type='recording.created',
+        payload=json.dumps({'id': 'x', 'type': 'recording.created', 'data': {}}),
+        status='pending',
+        next_retry_at=datetime.utcnow(),
+    )
+    db.session.add(d)
+    db.session.commit()
+    return wh, d
+
+
+def test_dispatcher_success_path_marks_delivered():
+    with app.app_context():
+        user = _make_user("wh_disp_ok")
+        wh, d = _seed_pending(user.id)
+
+        mock_resp = MagicMock(status_code=204, text='')
+        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp) as post:
+            counters = run_dispatcher_pass()
+            assert counters['attempted'] == 1
+            assert counters['success'] == 1
+            post.assert_called_once()
+            call = post.call_args
+            # Signature header is set
+            headers = call.kwargs['headers']
+            assert headers['Speakr-Signature'].startswith('sha256=')
+            assert headers['Speakr-Event'] == 'recording.created'
+
+        d_refreshed = db.session.get(WebhookDelivery, d.id)
+        wh_refreshed = db.session.get(Webhook, wh.id)
+        assert d_refreshed.status == 'success'
+        assert d_refreshed.attempt_count == 1
+        assert wh_refreshed.consecutive_failures == 0
+
+        db.session.delete(d_refreshed)
+        db.session.delete(wh_refreshed)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_dispatcher_retryable_failure_marks_failed_with_backoff():
+    with app.app_context():
+        user = _make_user("wh_disp_retry")
+        wh, d = _seed_pending(user.id)
+
+        mock_resp = MagicMock(status_code=502, text='bad gateway')
+        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp):
+            counters = run_dispatcher_pass()
+            assert counters['attempted'] == 1
+            assert counters['failed'] == 1
+
+        d_refreshed = db.session.get(WebhookDelivery, d.id)
+        assert d_refreshed.status == 'failed'
+        assert d_refreshed.attempt_count == 1
+        assert d_refreshed.next_retry_at is not None
+        assert d_refreshed.next_retry_at > datetime.utcnow()
+
+        db.session.delete(d_refreshed)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_dispatcher_permanent_failure_on_4xx():
+    with app.app_context():
+        user = _make_user("wh_disp_perm")
+        wh, d = _seed_pending(user.id)
+
+        mock_resp = MagicMock(status_code=400, text='bad request')
+        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp):
+            counters = run_dispatcher_pass()
+            assert counters['permanent_failure'] == 1
+
+        d_refreshed = db.session.get(WebhookDelivery, d.id)
+        assert d_refreshed.status == 'permanent_failure'
+        wh_refreshed = db.session.get(Webhook, wh.id)
+        assert wh_refreshed.consecutive_failures == 1
+
+        db.session.delete(d_refreshed)
+        db.session.delete(wh_refreshed)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_dispatcher_autopauses_after_threshold():
+    with app.app_context():
+        user = _make_user("wh_autopause")
+        wh, _ = _seed_pending(user.id)
+        # Pretend 9 consecutive failures already happened; threshold is 10.
+        wh.consecutive_failures = 9
+        db.session.commit()
+
+        # The seeded delivery is permanent-failed → 10th consecutive failure
+        # should auto-pause.
+        mock_resp = MagicMock(status_code=410, text='gone')  # 4xx permanent
+        with patch.dict(os.environ, {'WEBHOOK_AUTOPAUSE_FAILURES': '10'}):
+            with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp):
+                run_dispatcher_pass()
+
+        wh_refreshed = db.session.get(Webhook, wh.id)
+        assert wh_refreshed.enabled is False
+        assert wh_refreshed.auto_paused is True
+        assert wh_refreshed.consecutive_failures == 10
+
+        for d in WebhookDelivery.query.filter_by(webhook_id=wh.id).all():
+            db.session.delete(d)
+        db.session.delete(wh_refreshed)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_delay_for_attempt_uses_designed_schedule():
+    # Attempt 1 = immediate (0s), then 30s, 120s, 600s, 3600s, then 3600 cap.
+    assert _delay_for_attempt(1) == 0
+    assert _delay_for_attempt(2) == 30
+    assert _delay_for_attempt(3) == 120
+    assert _delay_for_attempt(4) == 600
+    assert _delay_for_attempt(5) == 3600
+    assert _delay_for_attempt(99) == 3600
+
+
+# --- v1 CRUD endpoints ------------------------------------------------------
+
+def test_create_webhook_returns_secret_once_and_omits_thereafter():
+    with app.app_context():
+        user = _make_user("wh_crud_create")
+        client = app.test_client()
+        _login(client, user)
+        resp = client.post('/api/v1/webhooks', json={
+            'name': 'n8n prod',
+            'url': 'https://example.com/hook',
+            'events': ['recording.created', 'recording.transcription.completed'],
+        })
+        assert resp.status_code == 201, resp.data
+        body = resp.get_json()
+        assert 'secret' in body and len(body['secret']) > 0
+        wh_id = body['id']
+
+        # Subsequent reads omit secret
+        get_resp = client.get(f'/api/v1/webhooks/{wh_id}')
+        assert get_resp.status_code == 200
+        assert 'secret' not in get_resp.get_json()
+
+        # Cleanup
+        client.delete(f'/api/v1/webhooks/{wh_id}')
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_create_webhook_rejects_unknown_event():
+    with app.app_context():
+        user = _make_user("wh_crud_unknown")
+        client = app.test_client()
+        _login(client, user)
+        resp = client.post('/api/v1/webhooks', json={
+            'name': 'x', 'url': 'https://e.com/h', 'events': ['nope.bad'],
+        })
+        assert resp.status_code == 400
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_create_webhook_rejects_private_url():
+    with app.app_context():
+        user = _make_user("wh_crud_private")
+        client = app.test_client()
+        _login(client, user)
+        resp = client.post('/api/v1/webhooks', json={
+            'name': 'x', 'url': 'http://192.168.0.5/h', 'allow_http': True,
+            'events': ['recording.created'],
+        })
+        assert resp.status_code == 400
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_list_only_returns_caller_webhooks():
+    with app.app_context():
+        a = _make_user("wh_list_a")
+        b = _make_user("wh_list_b")
+        wh_a = Webhook(user_id=a.id, name='A', url='https://example.com/a')
+        wh_a.event_list = ['recording.created']
+        wh_b = Webhook(user_id=b.id, name='B', url='https://example.com/b')
+        wh_b.event_list = ['recording.created']
+        db.session.add_all([wh_a, wh_b])
+        db.session.commit()
+
+        client = app.test_client()
+        _login(client, a)
+        resp = client.get('/api/v1/webhooks')
+        body = resp.get_json()
+        ids = [w['id'] for w in body['webhooks']]
+        assert wh_a.id in ids
+        assert wh_b.id not in ids
+
+        db.session.delete(wh_a); db.session.delete(wh_b)
+        db.session.delete(a); db.session.delete(b)
+        db.session.commit()
+
+
+def test_patch_webhook_updates_events_and_enabled():
+    with app.app_context():
+        user = _make_user("wh_crud_patch")
+        client = app.test_client()
+        _login(client, user)
+        wh = Webhook(user_id=user.id, name='x', url='https://example.com/h')
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+
+        resp = client.patch(f'/api/v1/webhooks/{wh.id}', json={
+            'events': ['recording.summary.completed'],
+            'enabled': False,
+        })
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['events'] == ['recording.summary.completed']
+        assert body['enabled'] is False
+
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_rotate_secret_returns_fresh_secret():
+    with app.app_context():
+        user = _make_user("wh_crud_rotate")
+        client = app.test_client()
+        _login(client, user)
+        wh = Webhook(user_id=user.id, name='x', url='https://example.com/h', secret='old-secret')
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+        old = wh.secret
+        resp = client.post(f'/api/v1/webhooks/{wh.id}/rotate-secret')
+        assert resp.status_code == 200
+        body = resp.get_json()
+        assert body['secret'] != old
+        wh_refreshed = db.session.get(Webhook, wh.id)
+        assert wh_refreshed.secret == body['secret']
+        db.session.delete(wh_refreshed)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_test_fire_enqueues_synthetic_delivery():
+    with app.app_context():
+        user = _make_user("wh_crud_test")
+        client = app.test_client()
+        _login(client, user)
+        wh = Webhook(user_id=user.id, name='x', url='https://example.com/h', enabled=True)
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+        resp = client.post(f'/api/v1/webhooks/{wh.id}/test')
+        assert resp.status_code == 202
+        d_id = resp.get_json()['id']
+        d = db.session.get(WebhookDelivery, d_id)
+        assert d.event_type == 'webhook.test'
+        assert d.status == 'pending'
+        db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_replay_creates_new_delivery_with_fresh_event_id():
+    with app.app_context():
+        user = _make_user("wh_crud_replay")
+        client = app.test_client()
+        _login(client, user)
+        wh = Webhook(user_id=user.id, name='x', url='https://example.com/h')
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.flush()
+        original = WebhookDelivery(
+            webhook_id=wh.id,
+            event_id=str(uuid.uuid4()),
+            event_type='recording.created',
+            payload=json.dumps({'id': 'orig', 'type': 'recording.created', 'data': {'r': 1}}),
+            status='permanent_failure',
+        )
+        db.session.add(original)
+        db.session.commit()
+
+        resp = client.post(f'/api/v1/webhooks/{wh.id}/deliveries/{original.id}/replay')
+        assert resp.status_code == 202
+        replay_id = resp.get_json()['id']
+        replay = db.session.get(WebhookDelivery, replay_id)
+        assert replay.id != original.id
+        assert replay.event_id != original.event_id
+        assert replay.status == 'pending'
+        env = json.loads(replay.payload)
+        assert env['replayed_from'] == original.event_id
+
+        db.session.delete(replay)
+        db.session.delete(original)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_per_user_cap_enforced():
+    with app.app_context():
+        user = _make_user("wh_crud_cap")
+        client = app.test_client()
+        _login(client, user)
+        with patch.dict(os.environ, {'WEBHOOK_MAX_PER_USER': '2'}):
+            for i in range(2):
+                r = client.post('/api/v1/webhooks', json={
+                    'name': f'h{i}', 'url': f'https://example.com/{i}',
+                    'events': ['recording.created'],
+                })
+                assert r.status_code == 201, r.data
+            r = client.post('/api/v1/webhooks', json={
+                'name': 'too-many', 'url': 'https://example.com/x',
+                'events': ['recording.created'],
+            })
+            assert r.status_code == 409
+
+        for w in Webhook.query.filter_by(user_id=user.id).all():
+            db.session.delete(w)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def teardown_module(module):
+    with app.app_context():
+        for u in User.query.filter(User.username.like("wh_%")).all():
+            for w in Webhook.query.filter_by(user_id=u.id).all():
+                db.session.delete(w)
+            db.session.delete(u)
+        db.session.commit()
