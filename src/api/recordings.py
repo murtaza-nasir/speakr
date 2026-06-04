@@ -2056,6 +2056,103 @@ def toggle_highlight(recording_id):
 
 
 
+@recordings_bp.route('/share-target', methods=['POST', 'GET'])
+@login_required
+def share_target():
+    """PWA Web Share Target receiver (issue #285).
+
+    Android Chrome / iOS Safari 16.4+ POST a multipart/form-data body to
+    this endpoint when the user picks Speakr from the native share sheet.
+    The file arrives under the field name declared in the manifest
+    (``shared_audio``). Any text/title/url params the share sheet sent
+    become the recording's notes.
+
+    CSRF is exempted at app startup (the share sheet has no way to
+    round-trip a CSRF token). Authentication still happens via the
+    session cookie carried by the browser; unauthenticated visitors hit
+    @login_required and are bounced to the login page.
+
+    Implementation: save the file to ``UPLOAD_FOLDER``, create a Recording
+    row applying the same user / folder / tag defaults as ``upload_file``
+    where they are unambiguous (no tags / folder context in a share),
+    then enqueue a transcription job through the existing job queue.
+    Redirect the browser to the SPA so the user lands on the recordings
+    list with the new row visible.
+    """
+    if request.method == 'GET':
+        # Some platforms pre-flight with GET. Just land the user on the SPA.
+        return redirect(url_for('recordings.index'))
+
+    shared = request.files.get('shared_audio') or request.files.get('file')
+    if not shared or not getattr(shared, 'filename', ''):
+        return redirect(url_for('recordings.index') + '?share_target_error=missing_file')
+
+    original_filename = shared.filename
+    safe_filename = secure_filename(original_filename) or 'shared-recording.webm'
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{timestamp}_{safe_filename}")
+
+    try:
+        shared.save(filepath)
+    except RequestEntityTooLarge:
+        return redirect(url_for('recordings.index') + '?share_target_error=too_large')
+    except Exception as save_err:
+        current_app.logger.warning(f"share-target file save failed: {save_err}")
+        return redirect(url_for('recordings.index') + '?share_target_error=save_failed')
+
+    file_size = os.path.getsize(filepath)
+
+    # Build the recording row. Tags and folder cannot be inferred from a
+    # share sheet, so we leave them empty; the user can adjust from the
+    # recording detail view. Title comes from the share sheet's title field
+    # if present, else from the filename stem.
+    share_title = (request.form.get('title') or os.path.splitext(safe_filename)[0]).strip() or 'Shared recording'
+
+    notes_parts = []
+    for key in ('title', 'text', 'url'):
+        val = (request.form.get(key) or '').strip()
+        if val:
+            notes_parts.append(val)
+    share_notes = '\n\n'.join(notes_parts) if notes_parts else None
+
+    recording = Recording(
+        audio_path=filepath,
+        original_filename=original_filename,
+        title=share_title,
+        status='PENDING',
+        user_id=current_user.id,
+        notes=share_notes,
+        file_size=file_size,
+    )
+    db.session.add(recording)
+    db.session.commit()
+
+    # Enqueue transcription with user's defaults. Mirrors the precedence
+    # chain in upload_file for the fields that apply when no tag/folder
+    # context is available.
+    job_params = {
+        'language': current_user.transcription_language,
+        'hotwords': current_user.transcription_hotwords,
+        'initial_prompt': current_user.transcription_initial_prompt,
+    }
+    try:
+        job_queue.enqueue(
+            user_id=current_user.id,
+            recording_id=recording.id,
+            job_type='transcribe',
+            params=job_params,
+            is_new_upload=True,
+        )
+    except Exception as queue_err:
+        current_app.logger.warning(f"share-target enqueue failed for recording {recording.id}: {queue_err}")
+        recording.status = 'FAILED'
+        recording.transcription = f"Processing failed: {queue_err}"
+        db.session.commit()
+        return redirect(url_for('recordings.index') + '?share_target_error=queue_failed')
+
+    return redirect(url_for('recordings.index') + f'?share_target=ok&recording_id={recording.id}')
+
+
 @recordings_bp.route('/upload', methods=['POST'])
 @login_required
 def upload_file():

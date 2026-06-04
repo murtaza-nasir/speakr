@@ -2386,6 +2386,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                 uiComposable.initializeColorScheme();
                 uiComposable.initializeSidebar();
 
+                // PWA Web Share Target feedback (issue #285). When the user
+                // shares audio from the native share sheet, the backend
+                // redirects to /?share_target=ok or /?share_target_error=...;
+                // surface a toast and strip the flag from the URL so refresh
+                // does not re-show it.
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    const shareOk = params.get('share_target');
+                    const shareErr = params.get('share_target_error');
+                    if (shareOk === 'ok') {
+                        showToast(t('toasts.shareTargetReceived') || 'Shared audio received and queued for transcription', 'fa-share');
+                    } else if (shareErr) {
+                        const errMsgKey = `errors.shareTarget_${shareErr}`;
+                        const errMsg = (t(errMsgKey) !== errMsgKey ? t(errMsgKey) : null)
+                            || t('errors.shareTargetGeneric')
+                            || `Share failed: ${shareErr}`;
+                        setGlobalError(errMsg);
+                    }
+                    if (shareOk || shareErr) {
+                        params.delete('share_target');
+                        params.delete('share_target_error');
+                        params.delete('recording_id');
+                        const cleanQuery = params.toString();
+                        const newUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '') + window.location.hash;
+                        window.history.replaceState({}, '', newUrl);
+                    }
+                } catch (e) {
+                    console.warn('[App] share-target query handling failed:', e);
+                }
+
                 // Check for recoverable recording from IndexedDB
                 try {
                     const recoverable = await audioComposable.checkForRecoverableRecording();

@@ -670,6 +670,13 @@ app.register_blueprint(push_bp)
 app.register_blueprint(api_v1_bp)
 csrf.exempt(api_v1_bp)  # API v1 uses token auth, not CSRF
 
+# PWA Web Share Target (issue #285): the native share sheet cannot round-trip
+# a CSRF token, so the share-target endpoint is exempted. Authentication still
+# happens via the session cookie carried by the browser; @login_required
+# bounces unauthenticated visitors to /login.
+from src.api.recordings import share_target as _share_target_view
+csrf.exempt(_share_target_view)
+
 # File monitor and scheduler initialization functions below
 
 # Startup functions (extracted to src/config/startup.py)

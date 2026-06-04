@@ -87,7 +87,7 @@
     }
   ],
   "share_target": {
-    "action": "/#upload",
+    "action": "/share-target",
     "method": "POST",
     "enctype": "multipart/form-data",
     "params": {
@@ -97,7 +97,7 @@
       "files": [
         {
           "name": "shared_audio",
-          "accept": ["audio/*"]
+          "accept": ["audio/*", "video/mp4", "video/quicktime", "video/x-matroska", "video/webm"]
         }
       ]
     }
