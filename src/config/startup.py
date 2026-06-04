@@ -135,6 +135,49 @@ def initialize_job_queue(app):
         app.logger.error(f"Failed to start job queue: {e}", exc_info=True)
 
 
+def initialize_recording_session_cleanup(app):
+    """Sweep expired recording sessions on a background thread.
+
+    Issue #287 (c)(d): in-progress recording sessions accumulate chunk
+    files in ``UPLOAD_FOLDER/_sessions/<id>/``. The session row's
+    ``last_seen_at`` is updated on every chunk POST; sessions that go
+    silent for longer than ``RECORDING_SESSION_TTL_HOURS`` (default 24)
+    are reaped here and their on-disk dirs removed.
+
+    Runs on the same pattern as the other schedulers in this module
+    (daemon thread with a sleep loop), with a configurable interval via
+    ``RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS`` (default 3600 = hourly).
+    """
+    import os
+    import threading
+    import time
+
+    interval = int(os.environ.get('RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS', '3600'))
+    if interval <= 0:
+        app.logger.info("Recording-session cleanup disabled (interval <= 0)")
+        return
+
+    def _loop():
+        from src.api.recording_sessions import cleanup_expired_sessions
+        app.logger.info(f"Recording-session cleanup scheduler started (interval={interval}s)")
+        # First sweep happens after the interval, not at boot, to avoid
+        # contention with other startup tasks.
+        while True:
+            try:
+                time.sleep(interval)
+                reaped = cleanup_expired_sessions(app=app)
+                if reaped:
+                    app.logger.info(f"Recording-session cleanup reaped {reaped} session(s)")
+            except Exception as e:
+                app.logger.error(f"Recording-session cleanup error: {e}", exc_info=True)
+                # Don't tight-loop on failure
+                time.sleep(60)
+
+    thread = threading.Thread(target=_loop, daemon=True, name="RecordingSessionCleanup")
+    thread.start()
+    app.logger.info("✅ Recording-session cleanup scheduler initialized")
+
+
 def run_startup_tasks(app):
     """Run all startup tasks that need to happen after app creation."""
     from src.models import SystemSetting
@@ -156,3 +199,6 @@ def run_startup_tasks(app):
 
         # Initialize auto-deletion scheduler
         initialize_auto_deletion_scheduler(app)
+
+        # Initialize recording-session cleanup scheduler (#287 c/d)
+        initialize_recording_session_cleanup(app)

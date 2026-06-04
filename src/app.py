@@ -624,6 +624,7 @@ from src.api.events import events_bp, init_events_helpers
 from src.api.system import system_bp, init_system_helpers
 from src.api.push_notifications import push_bp
 from src.api.api_v1 import api_v1_bp, init_api_v1_helpers
+from src.api.recording_sessions import recording_sessions_bp
 
 # Database initialization (extracted to src/init_db.py)
 from src.init_db import initialize_database
@@ -669,6 +670,13 @@ app.register_blueprint(system_bp)
 app.register_blueprint(push_bp)
 app.register_blueprint(api_v1_bp)
 csrf.exempt(api_v1_bp)  # API v1 uses token auth, not CSRF
+
+# Recording sessions (#287 c/d): the streaming client POSTs binary chunk
+# bodies via fetch with the session cookie. CSRF tokens are easy to attach
+# from JS, so we keep the protection on by default — but each individual
+# chunk request is a fetch call from our own SPA, which already carries
+# the token, so no exemption is needed here.
+app.register_blueprint(recording_sessions_bp)
 
 # PWA Web Share Target (issue #285): the native share sheet cannot round-trip
 # a CSRF token, so the share-target endpoint is exempted. Authentication still

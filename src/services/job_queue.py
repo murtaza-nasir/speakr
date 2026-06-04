@@ -327,6 +327,8 @@ class FairJobQueue:
                     self._run_reprocess_transcription(job, recording, params)
                 elif job_type == 'reprocess_summary':
                     self._run_reprocess_summary(job, recording, params)
+                elif job_type == 'stitch':
+                    self._run_stitch(job, recording, params)
                 else:
                     raise ValueError(f"Unknown job type: {job_type}")
 
@@ -451,6 +453,47 @@ class FairJobQueue:
             custom_prompt_override=params.get('custom_prompt'),
             custom_prompt_append=params.get('custom_prompt_append', False),
             user_id=params.get('user_id')
+        )
+
+    def _run_stitch(self, job, recording, params):
+        """Stitch in-progress recording-session chunks into a single file (#287 c/d).
+
+        On success the recording row is updated in place (audio_path,
+        file_size, status='PENDING') and a follow-up ``transcribe`` job is
+        enqueued. On failure the recording is flipped to FAILED with the
+        ffmpeg error message visible to the user.
+        """
+        from src.services.recording_stitch import (
+            stitch_recording_session,
+            kickoff_transcription_for_stitched,
+            StitchError,
+        )
+
+        session_id = (params or {}).get('session_id')
+        if not session_id:
+            raise ValueError("stitch job missing required 'session_id' param")
+
+        try:
+            recording_id, final_path, metadata = stitch_recording_session(session_id)
+        except StitchError as e:
+            # Mark the recording FAILED so the user sees the error in the UI.
+            # The session row was already flipped to 'failed' by the worker,
+            # except in cases where stitch raised before touching it; do both
+            # defensively.
+            from src.models import RecordingSession
+            recording.status = 'FAILED'
+            recording.transcription = f"Processing failed: {e}"
+            sess = db.session.get(RecordingSession, session_id)
+            if sess and sess.status not in ('finalized', 'aborted', 'expired'):
+                sess.status = 'failed'
+                sess.error_message = str(e)
+            db.session.commit()
+            raise
+
+        kickoff_transcription_for_stitched(
+            recording_id=recording_id,
+            user_id=recording.user_id,
+            metadata=metadata,
         )
 
     def enqueue(

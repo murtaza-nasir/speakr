@@ -29,6 +29,7 @@ from .system import SystemSetting
 from .audit import ShareAuditLog
 from .push_subscription import PushSubscription
 from .processing_job import ProcessingJob
+from .recording_session import RecordingSession, RECORDING_SESSION_STATUSES
 from .token_usage import TokenUsage
 from .transcription_usage import TranscriptionUsage
 
@@ -64,6 +65,8 @@ __all__ = [
     'SystemSetting',
     'PushSubscription',
     'ProcessingJob',
+    'RecordingSession',
+    'RECORDING_SESSION_STATUSES',
     'TokenUsage',
     'TranscriptionUsage',
 ]
