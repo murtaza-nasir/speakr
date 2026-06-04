@@ -178,6 +178,14 @@ OPENAPI_SPEC = {
                 "responses": {"200": {"description": "Stats object"}}
             }
         },
+        "/users/me": {
+            "get": {
+                "tags": ["Users"],
+                "summary": "Get current user profile",
+                "description": "Returns the authenticated user's profile (id, username, email, name, role flags, preferences) and group memberships.",
+                "responses": {"200": {"description": "User profile object"}}
+            }
+        },
         "/recordings": {
             "get": {
                 "tags": ["Recordings"],
@@ -647,6 +655,58 @@ def get_stats():
         }
 
     return jsonify(response)
+
+
+# =============================================================================
+# Current User
+# =============================================================================
+
+@api_v1_bp.route('/users/me', methods=['GET'])
+@login_required
+def get_current_user():
+    """
+    Return the authenticated user's profile.
+
+    Companion apps and automation flows need a way to display the current
+    user's identity (issue #281). This endpoint returns a stable subset of the
+    profile and preferences fields plus the user's group memberships.
+    """
+    memberships = []
+    for membership in (current_user.group_memberships or []):
+        if membership.group is None:
+            continue
+        memberships.append({
+            'group_id': membership.group_id,
+            'group_name': membership.group.name,
+            'role': membership.role,
+            'joined_at': membership.joined_at.isoformat() if membership.joined_at else None,
+        })
+
+    return jsonify({
+        'id': current_user.id,
+        'username': current_user.username,
+        'email': current_user.email,
+        'name': current_user.name,
+        'job_title': current_user.job_title,
+        'company': current_user.company,
+        'is_admin': bool(current_user.is_admin),
+        'email_verified': bool(current_user.email_verified),
+        'sso_provider': current_user.sso_provider,
+        'can_share_publicly': bool(current_user.can_share_publicly),
+        'preferences': {
+            'ui_language': current_user.ui_language,
+            'transcription_language': current_user.transcription_language,
+            'output_language': current_user.output_language,
+            'extract_events': bool(current_user.extract_events),
+            'auto_speaker_labelling': bool(current_user.auto_speaker_labelling),
+            'auto_speaker_labelling_threshold': current_user.auto_speaker_labelling_threshold,
+            'auto_summarization': bool(current_user.auto_summarization),
+            'show_timestamps_simple_view': bool(current_user.show_timestamps_simple_view),
+            'editor_autosave': bool(current_user.editor_autosave),
+            'diarize': bool(current_user.diarize),
+        },
+        'group_memberships': memberships,
+    })
 
 
 # =============================================================================
