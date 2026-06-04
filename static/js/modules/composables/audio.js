@@ -5,6 +5,7 @@
 
 import * as RecordingDB from '../db/recording-persistence.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
+import * as ServerSessions from '../db/server-recording-sessions.js';
 
 export function useAudio(state, utils) {
     const {
@@ -27,6 +28,32 @@ export function useAudio(state, utils) {
     // Local state for pending streams and chunk tracking
     let pendingDisplayStream = null;
     let currentChunkIndex = 0;
+
+    // Phase B: server-side chunk streaming (#287 c/d). Feature-flagged via
+    // the page-level dataset attribute `data-server-recording-chunks`
+    // (rendered by Flask from ENABLE_SERVER_RECORDING_CHUNKS). When the
+    // flag is on, every MediaRecorder chunk is also POSTed to the server
+    // via createUploader; on Stop+Upload, finalizeSession runs instead of
+    // the legacy single-shot upload path.
+    //
+    // None of this is exposed on the shared state surface yet; the UI to
+    // monitor sync backlog lands in Phase C.
+    let serverSessionId = null;
+    let serverSessionUploader = null;
+    let serverSessionMimeType = 'audio/webm';
+    let serverSessionLastError = null;
+
+    function _serverRecordingChunksEnabled() {
+        const el = document.getElementById('app');
+        if (!el || !el.dataset) return false;
+        return (el.dataset.serverRecordingChunks || '').toLowerCase() === 'true';
+    }
+
+    function _resetServerSessionState() {
+        serverSessionId = null;
+        serverSessionUploader = null;
+        serverSessionLastError = null;
+    }
 
     // iOS detection
     const isiOS = () => {
@@ -389,6 +416,32 @@ export function useAudio(state, utils) {
                 console.warn('[Recording] IndexedDB persistence failed, continuing without persistence:', dbError);
             }
 
+            // If server-side chunk streaming is enabled (#287 c/d), open the
+            // session up front so the very first ondataavailable can post
+            // straight to the server. A failure here logs and falls back to
+            // local-only recording — the user's audio is never blocked on
+            // a network round-trip.
+            if (_serverRecordingChunksEnabled()) {
+                try {
+                    serverSessionMimeType = mimeType.split(';')[0]; // strip codecs= suffix
+                    const session = await ServerSessions.createSession(serverSessionMimeType);
+                    serverSessionId = session.session_id;
+                    serverSessionUploader = ServerSessions.createUploader(serverSessionId, {
+                        onError: (info) => {
+                            serverSessionLastError = info.error;
+                            if (info.droppedFromQueue) {
+                                console.warn('[Recording] dropped chunk after max retries:', info);
+                            }
+                        },
+                    });
+                    console.log('[Recording] Opened server session', serverSessionId);
+                } catch (e) {
+                    serverSessionLastError = e;
+                    console.warn('[Recording] Could not open server session; falling back to local-only:', e);
+                    _resetServerSessionState();
+                }
+            }
+
             recorder.ondataavailable = async (event) => {
                 if (event.data.size > 0) {
                     audioChunks.value.push(event.data);
@@ -403,6 +456,15 @@ export function useAudio(state, utils) {
                         currentChunkIndex++;
                     } catch (dbError) {
                         // Don't spam console - recording continues in memory regardless
+                    }
+
+                    // Server-side streaming (Phase B of #287 c/d). The
+                    // uploader handles ordering + retries internally; we
+                    // fire-and-forget here so MediaRecorder is never
+                    // blocked on the network. Failures are surfaced via
+                    // serverSessionUploader.lastError().
+                    if (serverSessionUploader) {
+                        serverSessionUploader.enqueue(event.data);
                     }
                 }
             };
@@ -505,13 +567,6 @@ export function useAudio(state, utils) {
             setGlobalError("No recorded audio to upload.");
             return;
         }
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const _rawRecordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
-        // Prevent Vue from wrapping the binary File in a reactive proxy. See
-        // upload.js for rationale (issue #280).
-        const recordedFile = (typeof Vue !== 'undefined' && Vue.markRaw)
-            ? Vue.markRaw(_rawRecordedFile)
-            : _rawRecordedFile;
 
         // Get selected tags as objects and create a DEEP copy to prevent reactivity issues
         const selectedTagsTemp = selectedTagIds.value.map(tagId => {
@@ -521,6 +576,60 @@ export function useAudio(state, utils) {
 
         // Deep clone to completely break reactivity chain - JSON parse/stringify removes all proxies
         const selectedTags = JSON.parse(JSON.stringify(selectedTagsTemp));
+
+        // Server-side streaming path (Phase B of #287 c/d): if the recording
+        // was streamed chunk-by-chunk to the server, drain the uploader and
+        // call finalize. The backend stitches the chunks via ffmpeg concat
+        // demux into the final audio file, then enqueues a transcribe job.
+        // The legacy in-memory single-shot path below stays as fallback for
+        // recordings that were captured before this feature was enabled.
+        if (serverSessionId && serverSessionUploader) {
+            try {
+                await serverSessionUploader.drain();
+                const metadata = {
+                    title: `Recording ${new Date().toLocaleString()}`,
+                    notes: recordingNotes.value || null,
+                    folder_id: selectedFolderId.value || null,
+                    tags: selectedTags,
+                    language: asrLanguage.value || null,
+                    min_speakers: asrMinSpeakers.value || null,
+                    max_speakers: asrMaxSpeakers.value || null,
+                };
+                const result = await ServerSessions.finalizeSession(serverSessionId, metadata);
+                showToast?.((utils.t && utils.t('toasts.recordingFinalized')) || 'Recording uploaded for processing', 'fa-cloud-upload-alt');
+
+                // Tear down local state the same way the legacy path does.
+                if (audioBlobURL.value) URL.revokeObjectURL(audioBlobURL.value);
+                audioBlobURL.value = null;
+                audioChunks.value = [];
+                isRecording.value = false;
+                recordingTime.value = 0;
+                if (recordingInterval.value) clearInterval(recordingInterval.value);
+                recordingNotes.value = '';
+                selectedTagIds.value = [];
+                asrLanguage.value = '';
+                asrMinSpeakers.value = '';
+                asrMaxSpeakers.value = '';
+                await releaseWakeLock();
+                await hideRecordingNotification();
+                try { await RecordingDB.clearRecordingSession(); } catch (_) { /* ignore */ }
+                _resetServerSessionState();
+                currentView.value = 'upload';
+                return result;
+            } catch (e) {
+                console.error('[Recording] finalize failed; falling back to single-shot upload:', e);
+                setGlobalError((utils.t && utils.t('errors.recordingFinalizeFallback')) || `Server-side stitch failed (${e.message}); uploading as a single file instead.`);
+                // Fall through to the legacy upload path below.
+            }
+        }
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const _rawRecordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+        // Prevent Vue from wrapping the binary File in a reactive proxy. See
+        // upload.js for rationale (issue #280).
+        const recordedFile = (typeof Vue !== 'undefined' && Vue.markRaw)
+            ? Vue.markRaw(_rawRecordedFile)
+            : _rawRecordedFile;
 
         // Add to upload queue. The recording session in IndexedDB is
         // intentionally NOT cleared here (issue #287(b)). It is the user's
@@ -723,6 +832,18 @@ export function useAudio(state, utils) {
         asrLanguage.value = '';
         asrMinSpeakers.value = '';
         asrMaxSpeakers.value = '';
+
+        // If a server-side session was open (Phase B of #287 c/d), abort it
+        // so the chunks on disk are reaped immediately rather than waiting
+        // for the cleanup sweep.
+        if (serverSessionId) {
+            try {
+                await ServerSessions.abortSession(serverSessionId);
+            } catch (e) {
+                console.warn('[Recording] Could not abort server session during discard:', e);
+            }
+            _resetServerSessionState();
+        }
 
         // Clear IndexedDB session
         try {

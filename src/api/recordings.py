@@ -1367,6 +1367,15 @@ def index():
         except Exception as e:
             current_app.logger.warning(f"Could not get connector capabilities: {e}")
 
+    # Phase B of #287 (c)(d): server-side chunk streaming for in-app
+    # recordings. Off by default; enabling the env var flips the
+    # data-server-recording-chunks attribute and the audio composable
+    # opens an /upload/session for each in-app recording instead of
+    # accumulating the whole blob in RAM.
+    server_recording_chunks_enabled = os.environ.get(
+        'ENABLE_SERVER_RECORDING_CHUNKS', 'false'
+    ).lower() == 'true'
+
     return render_template('index.html',
                          use_asr_endpoint=USE_ASR_ENDPOINT,  # Backwards compat
                          connector_supports_diarization=connector_supports_diarization,
@@ -1377,7 +1386,8 @@ def index():
                          enable_archive_toggle=enable_archive_toggle,
                          enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                          user_language=user_language,
-                         is_team_admin=is_team_admin)
+                         is_team_admin=is_team_admin,
+                         server_recording_chunks_enabled=server_recording_chunks_enabled)
 
 
 
