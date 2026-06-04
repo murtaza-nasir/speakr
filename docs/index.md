@@ -6,12 +6,12 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! warning "Latest Release: v0.8.20-alpha - Security Patch (Open Redirect)"
-    **Open-redirect fix in `is_safe_url` (CWE-601).** Users on v0.8.19-alpha or earlier should upgrade promptly.
+!!! warning "Latest Release: v0.8.21-alpha - Security Patch (CSRF Bypass + SSO Account Takeover)"
+    **CSRF bypass via unauthenticated API token parameter, plus chained SSO-only account takeover (CWE-287).** All users should upgrade promptly.
 
-    - The validator previously checked `urljoin`-normalised URLs while `redirect()` used the raw value, so `next=////evil.com` could redirect users off-site after sign-in.
-    - `is_safe_url()` now validates the raw target against a local-path allowlist; the SSO `next` / callback flow and password login share one validator.
-    - Reported by **RacerZ and Fushuling**. Tracked as a GitHub Security Advisory; CVE pending.
+    - The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter. Replaced with a per-request, header-only, database-validated check.
+    - `change_password` no longer silently sets a password on an SSO-only account (where `current_user.password` is None); this was the chained-takeover path.
+    - Reported by **Irina Iarlykanova** (Snyk Security Labs). Tracked as a GitHub Security Advisory.
 
 ## Quick Navigation
 
