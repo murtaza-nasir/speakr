@@ -352,7 +352,12 @@ def sso_unlink():
         return redirect(url_for('auth.account'))
 
     if not current_user.password:
-        flash('Cannot unlink SSO - you have no password set. Please set a password first.', 'danger')
+        flash(
+            'Cannot unlink SSO: you have no password set. Use the Forgot Password '
+            'link on the login page with your email address to receive a reset link '
+            'that lets you set a password.',
+            'danger',
+        )
         return redirect(url_for('auth.account'))
 
     current_user.sso_provider = None
@@ -473,14 +478,18 @@ def forgot_password():
 
         # Always show the same message to prevent email enumeration
         if user:
-            # Check if user has a password (not SSO-only)
-            if user.password:
-                # Check cooldown
-                can_resend, remaining = can_resend_password_reset(user)
-                if not can_resend:
-                    flash(f'Please wait {remaining} seconds before requesting another reset email.', 'warning')
-                else:
-                    send_password_reset_email(user)
+            # Issue a reset link for both regular users and SSO-only users
+            # (whose password is None). For SSO-only users this doubles as
+            # the "add a password to my account" flow, gated by access to
+            # the user's email. The reset_password route handles either
+            # case by setting user.password from the form input; if the
+            # SSO link is also present, the user ends up with both, which
+            # is the prerequisite for sso_unlink later.
+            can_resend, remaining = can_resend_password_reset(user)
+            if not can_resend:
+                flash(f'Please wait {remaining} seconds before requesting another reset email.', 'warning')
+            else:
+                send_password_reset_email(user)
 
         flash('If an account exists with this email, a password reset link has been sent.', 'info')
         return render_template('auth/check_email.html',
@@ -778,6 +787,28 @@ def change_password():
 
     # Check if user has an existing password
     has_existing_password = bool(current_user.password)
+
+    # GHSA-x4q4-3ww4-h329 (Irina Iarlykanova) — SSO-only account takeover.
+    # When an SSO-provisioned user has no local password, the old current-
+    # password check was bypassed unconditionally, so anyone with a valid
+    # session (including via the chained CSRF bypass that was the primary
+    # finding) could silently set a password on an SSO-only account and
+    # then log in directly with the new credentials, bypassing SSO.
+    #
+    # The safe way for an SSO-only user to add a password is the
+    # password-reset flow: their email account is the proof-of-ownership
+    # gate, the same trust boundary every password-reset flow relies on.
+    # We redirect them there instead of letting this endpoint set the
+    # password without any second factor.
+    if not has_existing_password:
+        flash(
+            'This account has no local password set. To add one, use the '
+            'Forgot Password link on the login page with your email '
+            'address; the reset email will let you set a password '
+            'securely.',
+            'warning',
+        )
+        return redirect(url_for('auth.account'))
 
     # Validate form data - current password only required if user has one
     if has_existing_password and not current_password:

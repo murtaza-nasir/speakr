@@ -463,26 +463,74 @@ def exempt_status_endpoints():
 
 csrf = CSRFProtect(app)
 
+# Disable Flask-WTF's automatic CSRF check so we can run our own
+# token-aware version below. The replacement still calls csrf.protect()
+# for browser/session requests; the bypass only fires when a valid
+# API token is presented via header (never query string).
+#
+# GHSA-x4q4-3ww4-h329 (Irina Iarlykanova): the previous
+# ``csrf_exempt_for_api_tokens`` hook called ``csrf.exempt(view_func)``
+# from a request handler. That mutates Flask-WTF's process-global
+# ``_exempt_views`` set permanently, so any cross-origin request with
+# ``?token=anything`` would silently disable CSRF on the targeted
+# endpoint for the rest of the worker's lifetime, allowing follow-up
+# CSRF attacks. Replaced with a per-request decision below.
+app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
-# Exempt token-authenticated requests from CSRF protection
-@csrf.exempt
+
 @app.before_request
-def csrf_exempt_for_api_tokens():
-    """
-    Exempt API token-authenticated requests from CSRF validation.
+def csrf_token_aware_check():
+    """Per-request CSRF check that allows valid header-only API tokens
+    to bypass CSRF, without ever mutating Flask-WTF's exemption set.
 
-    This allows automation tools (n8n, Zapier, curl, etc.) to make
-    authenticated requests without needing CSRF tokens.
-    """
-    from src.utils.token_auth import is_token_authenticated
+    The check honours all the registration-time exemptions Flask-WTF
+    already knows about (``csrf.exempt(blueprint)`` and
+    ``csrf.exempt(view_func)`` called at module load time), and only
+    skips CSRF for the specific request currently being handled.
 
-    # If request has a valid token, skip CSRF check
-    if is_token_authenticated():
-        # Mark this view as CSRF exempt
-        if hasattr(request, 'endpoint') and request.endpoint:
-            view_func = app.view_functions.get(request.endpoint)
-            if view_func:
-                csrf.exempt(view_func)
+    Tokens are accepted only from the Authorization, X-API-Token, and
+    API-Token headers. The query-string token is intentionally NOT
+    honoured here because a Simple Cross-Origin Request can carry one
+    without triggering CORS preflight, which is exactly the attack
+    vector in GHSA-x4q4-3ww4-h329.
+    """
+    if not app.config.get('WTF_CSRF_ENABLED', True):
+        return
+    if request.method not in app.config.get(
+        'WTF_CSRF_METHODS', {'POST', 'PUT', 'PATCH', 'DELETE'}
+    ):
+        return
+    if not request.endpoint:
+        return
+
+    # Blueprint-level registration-time exemptions (e.g. api_v1_bp).
+    # Note that csrf._exempt_blueprints holds Blueprint OBJECTS, so we
+    # resolve the request's blueprint name through app.blueprints, the
+    # same way Flask-WTF's own protect() hook does.
+    if app.blueprints.get(request.blueprint) in csrf._exempt_blueprints:
+        return
+
+    # View-level registration-time exemptions (e.g. share_target).
+    # Flask-WTF identifies exempt views by f"{__module__}.{__name__}";
+    # match that exactly so any view registered via csrf.exempt() at
+    # import time is honoured here.
+    view = app.view_functions.get(request.endpoint)
+    if view is not None:
+        dest = f"{view.__module__}.{view.__name__}"
+        if dest in csrf._exempt_views:
+            return
+
+    # If a valid header API token is presented, this request is from a
+    # programmatic client and CSRF does not apply. The token is validated
+    # against the DB by load_user_from_token_headers_only().
+    from src.utils.token_auth import load_user_from_token_headers_only
+    if load_user_from_token_headers_only() is not None:
+        return
+
+    # Otherwise, fall through to the standard CSRF check. If validation
+    # fails, csrf.protect() raises a CSRFError which Flask-WTF's error
+    # handler turns into a 400 response.
+    csrf.protect()
 
 
 # Add context processor to make 'now' available to all templates
