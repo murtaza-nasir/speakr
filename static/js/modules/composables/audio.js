@@ -481,9 +481,26 @@ export function useAudio(state, utils) {
             // Switch to recording view immediately so pending wake-lock/notification awaits don't block Safari rendering
             currentView.value = 'recording';
 
-            // Start timer
+            // Start timer. Phase C of #287 (c)(d): hours-based hard ceiling
+            // replaces the size-based auto-stop for server-streamed
+            // recordings. Reads the cap from the page-level dataset
+            // attribute so admins can tune it via env var; defaults to 8h
+            // to backstop runaway recordings while allowing genuine
+            // long-form meetings/lectures.
+            const appEl = document.getElementById('app');
+            const maxHoursAttr = appEl?.dataset?.recordingMaxHours;
+            const recordingMaxSeconds = Math.max(60, parseFloat(maxHoursAttr || '8') * 3600);
             recordingInterval.value = setInterval(() => {
                 recordingTime.value++;
+                if (recordingTime.value >= recordingMaxSeconds) {
+                    stopRecording();
+                    showToast(
+                        (utils.t && utils.t('toasts.recordingMaxDurationReached'))
+                            || `Recording reached the maximum duration (${(recordingMaxSeconds / 3600).toFixed(1)}h) and was stopped automatically.`,
+                        'fa-stop-circle',
+                        7000
+                    );
+                }
             }, 1000);
 
             // Start size monitoring
@@ -930,20 +947,36 @@ export function useAudio(state, utils) {
             actualBitrate.value = (totalSize * 8) / recordingTime.value;
         }
 
-        // Check for size warning
+        // Phase C of #287 (c)(d): the 200 MB cap used to be a hard auto-stop
+        // because the entire blob was held in browser RAM and would crash
+        // the tab past a certain size. When server-side chunk streaming is
+        // active that constraint goes away — chunks flush to the server as
+        // they are produced. We still surface a soft warning at the same
+        // threshold so users know they are recording a large file, but the
+        // hard auto-stop is replaced by an absolute hours-based ceiling
+        // (`RECORDING_MAX_HOURS`, default 8) so a runaway recording from a
+        // misclick still has a backstop.
         const sizeMB = totalSize / (1024 * 1024);
         const warningThresholdMB = maxRecordingMB.value * 0.8;
 
         if (sizeMB > warningThresholdMB && !fileSizeWarningShown.value) {
             fileSizeWarningShown.value = true;
             showToast(
-                `Recording size is ${formatFileSize(totalSize)}. Consider stopping soon.`,
+                (utils.t && utils.t('toasts.recordingSizeSoftWarning', { size: formatFileSize(totalSize) }))
+                    || `Recording is ${formatFileSize(totalSize)}. Consider stopping when convenient.`,
                 'fa-exclamation-triangle',
                 5000
             );
         }
 
-        // Auto-stop if max size reached
+        // Server-streaming path: no client-side hard size cap. The absolute
+        // ceiling is hours-based and lives in the recording-time tick below.
+        if (serverSessionUploader) {
+            return;
+        }
+
+        // Legacy single-shot path: keep the hard auto-stop at the configured
+        // size so the in-memory blob does not run the tab out of RAM.
         if (sizeMB > maxRecordingMB.value) {
             stopRecording();
             showToast(

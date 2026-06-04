@@ -640,7 +640,8 @@
     "shareTarget_missing_file": "Aucun fichier audio n'était joint au partage. Sélectionnez le fichier avant de partager.",
     "shareTarget_too_large": "Le fichier audio partagé dépasse la limite d'envoi de Speakr.",
     "shareTarget_save_failed": "Speakr n'a pas pu enregistrer l'audio partagé. Veuillez l'envoyer directement.",
-    "shareTarget_queue_failed": "L'audio partagé a été enregistré mais n'a pas pu être mis en file pour transcription."
+    "shareTarget_queue_failed": "L'audio partagé a été enregistré mais n'a pas pu être mis en file pour transcription.",
+    "recordingFinalizeFallback": "Assemblage côté serveur en échec ; envoi en tant que fichier unique à la place."
   },
   "eventExtraction": {
     "description": "Lorsqu'activé, l'IA identifiera les réunions, rendez-vous et échéances mentionnés dans vos enregistrements et créera des événements de calendrier téléchargeables.",
@@ -1583,6 +1584,10 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Échec de l'envoi. L'audio a été enregistré dans votre dossier Téléchargements pour une nouvelle tentative.",
     "uploadFailedNoRecovery": "Échec de l'envoi et l'audio n'a pas pu être enregistré localement. Veuillez réenregistrer.",
-    "shareTargetReceived": "Audio partagé reçu et mis en file pour transcription"
+    "shareTargetReceived": "Audio partagé reçu et mis en file pour transcription",
+    "recordingSizeSoftWarning": "L'enregistrement fait {{size}}. Pensez à l'arrêter quand vous pourrez.",
+    "recordingMaxDurationReached": "L'enregistrement a atteint la durée maximale et s'est arrêté automatiquement.",
+    "recordingFinalized": "Enregistrement envoyé pour traitement",
+    "recordingResumeFound": "Un enregistrement en cours dans ce navigateur a été détecté sur le serveur. Reprendre ?"
   }
 }

@@ -640,7 +640,8 @@
     "shareTarget_missing_file": "Keine Audiodatei beim Teilen angehängt. Bitte vor dem Teilen eine Datei auswählen.",
     "shareTarget_too_large": "Die geteilte Audiodatei überschreitet Speakrs Upload-Limit.",
     "shareTarget_save_failed": "Speakr konnte die geteilte Audiodatei nicht speichern. Bitte direkt hochladen.",
-    "shareTarget_queue_failed": "Die geteilte Audiodatei wurde gespeichert, konnte aber nicht zur Transkription eingereiht werden."
+    "shareTarget_queue_failed": "Die geteilte Audiodatei wurde gespeichert, konnte aber nicht zur Transkription eingereiht werden.",
+    "recordingFinalizeFallback": "Server-seitiges Zusammenführen fehlgeschlagen; Upload als einzelne Datei stattdessen."
   },
   "eventExtraction": {
     "description": "Wenn aktiviert, identifiziert die KI Meetings, Termine und Fristen in Ihren Aufnahmen und erstellt herunterladbare Kalenderereignisse.",
@@ -1583,6 +1584,10 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Upload fehlgeschlagen. Audio wurde im Downloads-Ordner für einen späteren Versuch gespeichert.",
     "uploadFailedNoRecovery": "Upload fehlgeschlagen und Audio konnte nicht lokal gespeichert werden. Bitte erneut aufnehmen.",
-    "shareTargetReceived": "Geteilte Audiodatei empfangen und zur Transkription eingereiht"
+    "shareTargetReceived": "Geteilte Audiodatei empfangen und zur Transkription eingereiht",
+    "recordingSizeSoftWarning": "Aufnahme ist {{size}}. Erwägen Sie, sie bei Gelegenheit zu stoppen.",
+    "recordingMaxDurationReached": "Aufnahme hat die Höchstdauer erreicht und wurde automatisch gestoppt.",
+    "recordingFinalized": "Aufnahme zur Verarbeitung hochgeladen",
+    "recordingResumeFound": "Eine laufende Aufnahme aus diesem Browser wurde auf dem Server gefunden. Fortsetzen?"
   }
 }

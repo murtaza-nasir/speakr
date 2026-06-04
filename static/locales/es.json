@@ -640,7 +640,8 @@
     "shareTarget_missing_file": "No se adjuntó ningún archivo de audio al compartir. Seleccione el archivo antes de compartir.",
     "shareTarget_too_large": "El archivo de audio compartido supera el límite de subida de Speakr.",
     "shareTarget_save_failed": "Speakr no pudo guardar el audio compartido. Por favor, súbalo directamente.",
-    "shareTarget_queue_failed": "El audio compartido se guardó pero no se pudo poner en cola para transcripción."
+    "shareTarget_queue_failed": "El audio compartido se guardó pero no se pudo poner en cola para transcripción.",
+    "recordingFinalizeFallback": "El ensamblaje en el servidor falló; subiendo como un solo archivo en su lugar."
   },
   "eventExtraction": {
     "description": "Cuando está habilitado, la IA identificará reuniones, citas y plazos mencionados en tus grabaciones y creará eventos de calendario descargables.",
@@ -1583,6 +1584,10 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Subida fallida. El audio se guardó en la carpeta de Descargas para reintentarlo más tarde.",
     "uploadFailedNoRecovery": "Subida fallida y el audio no pudo guardarse localmente. Por favor, vuelva a grabar.",
-    "shareTargetReceived": "Audio compartido recibido y puesto en cola para transcripción"
+    "shareTargetReceived": "Audio compartido recibido y puesto en cola para transcripción",
+    "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",
+    "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",
+    "recordingFinalized": "Grabación subida para procesamiento",
+    "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?"
   }
 }

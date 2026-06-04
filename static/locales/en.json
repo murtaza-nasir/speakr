@@ -640,7 +640,8 @@
     "shareTarget_missing_file": "No audio file was attached to the share. Try selecting the file before sharing.",
     "shareTarget_too_large": "The shared audio file is larger than Speakr's upload limit.",
     "shareTarget_save_failed": "Speakr could not save the shared audio. Please try uploading directly.",
-    "shareTarget_queue_failed": "The shared audio was saved but could not be queued for transcription."
+    "shareTarget_queue_failed": "The shared audio was saved but could not be queued for transcription.",
+    "recordingFinalizeFallback": "Server-side stitch failed; uploading as a single file instead."
   },
   "eventExtraction": {
     "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",
@@ -1583,6 +1584,10 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
     "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
-    "shareTargetReceived": "Shared audio received and queued for transcription"
+    "shareTargetReceived": "Shared audio received and queued for transcription",
+    "recordingSizeSoftWarning": "Recording is {{size}}. Consider stopping when convenient.",
+    "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",
+    "recordingFinalized": "Recording uploaded for processing",
+    "recordingResumeFound": "An in-progress recording from this browser was detected on the server. Resume?"
   }
 }

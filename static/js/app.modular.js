@@ -2428,6 +2428,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.error('[App] Failed to check for recoverable recording:', error);
                 }
 
+                // Phase C of #287 (c)(d): also check for an in-progress
+                // server-side recording session. If localStorage remembers
+                // a session id and the server confirms it is still in the
+                // 'recording' state, surface a toast offering to abort it
+                // (the streaming client cannot resume a MediaRecorder mid-
+                // stream because the captured audio track does not survive
+                // page reload). For now we let the user confirm an abort
+                // to clean up the server-side chunks; full resume lands in
+                // a follow-up with a chunked-playback fallback.
+                try {
+                    const ServerSessions = await import('./modules/db/server-recording-sessions.js');
+                    const remembered = ServerSessions.getRememberedSession();
+                    if (remembered && remembered.session_id) {
+                        const status = await ServerSessions.getSessionStatus(remembered.session_id);
+                        if (status && status.status === 'recording' && status.chunk_count > 0) {
+                            const msg = t('toasts.recordingResumeFound') || 'An in-progress recording from this browser was detected on the server.';
+                            const confirmFinalize = window.confirm(msg);
+                            if (confirmFinalize) {
+                                // Finalize using the remembered session; the
+                                // server stitches what was already uploaded.
+                                try {
+                                    await ServerSessions.finalizeSession(remembered.session_id, {
+                                        title: `Recovered recording ${new Date().toLocaleString()}`,
+                                    });
+                                    showToast(t('toasts.recordingFinalized') || 'Recording uploaded for processing', 'fa-cloud-upload-alt');
+                                    await recordingsComposable.loadRecordings();
+                                } catch (e) {
+                                    console.warn('[App] Could not finalize recovered server session:', e);
+                                    setGlobalError(`Could not recover the session: ${e.message}`);
+                                }
+                            } else {
+                                try { await ServerSessions.abortSession(remembered.session_id); } catch (_) { /* ignore */ }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('[App] Server-session resume check failed:', error);
+                }
+
                 // Load initial data
                 await Promise.all([
                     recordingsComposable.loadRecordings(),

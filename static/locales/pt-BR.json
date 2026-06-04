@@ -640,7 +640,8 @@
     "shareTarget_missing_file": "Nenhum arquivo de áudio foi anexado ao compartilhar. Selecione o arquivo antes de compartilhar.",
     "shareTarget_too_large": "O arquivo de áudio compartilhado excede o limite de upload do Speakr.",
     "shareTarget_save_failed": "Speakr não conseguiu salvar o áudio compartilhado. Faça o upload diretamente.",
-    "shareTarget_queue_failed": "O áudio compartilhado foi salvo, mas não pôde ser enfileirado para transcrição."
+    "shareTarget_queue_failed": "O áudio compartilhado foi salvo, mas não pôde ser enfileirado para transcrição.",
+    "recordingFinalizeFallback": "Junção no servidor falhou; enviando como um único arquivo no lugar."
   },
   "eventExtraction": {
     "description": "Quando ativado, a IA identificará reuniões, compromissos e prazos mencionados em suas gravações e criará eventos de calendário para inserir na agenda.",
@@ -1583,6 +1584,10 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Upload falhou. Áudio salvo na pasta Downloads para tentar novamente mais tarde.",
     "uploadFailedNoRecovery": "Upload falhou e o áudio não pôde ser salvo localmente. Por favor, grave novamente.",
-    "shareTargetReceived": "Áudio compartilhado recebido e enfileirado para transcrição"
+    "shareTargetReceived": "Áudio compartilhado recebido e enfileirado para transcrição",
+    "recordingSizeSoftWarning": "A gravação tem {{size}}. Considere parar quando for conveniente.",
+    "recordingMaxDurationReached": "A gravação atingiu a duração máxima e foi parada automaticamente.",
+    "recordingFinalized": "Gravação enviada para processamento",
+    "recordingResumeFound": "Uma gravação em andamento deste navegador foi detectada no servidor. Retomar?"
   }
 }

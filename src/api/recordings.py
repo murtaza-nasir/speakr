@@ -1376,6 +1376,15 @@ def index():
         'ENABLE_SERVER_RECORDING_CHUNKS', 'false'
     ).lower() == 'true'
 
+    # Absolute hours ceiling on in-app recordings (Phase C of #287 c/d).
+    # Replaces the legacy hard-stop-on-size behaviour for users with
+    # server-side streaming enabled; size-based stop still applies as a
+    # fallback when streaming is off.
+    try:
+        recording_max_hours = float(os.environ.get('RECORDING_MAX_HOURS', '8'))
+    except (TypeError, ValueError):
+        recording_max_hours = 8.0
+
     return render_template('index.html',
                          use_asr_endpoint=USE_ASR_ENDPOINT,  # Backwards compat
                          connector_supports_diarization=connector_supports_diarization,
@@ -1387,7 +1396,8 @@ def index():
                          enable_internal_sharing=ENABLE_INTERNAL_SHARING,
                          user_language=user_language,
                          is_team_admin=is_team_admin,
-                         server_recording_chunks_enabled=server_recording_chunks_enabled)
+                         server_recording_chunks_enabled=server_recording_chunks_enabled,
+                         recording_max_hours=recording_max_hours)
 
 
 

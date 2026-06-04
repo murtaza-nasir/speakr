@@ -640,7 +640,8 @@
     "shareTarget_missing_file": "共享时未附加音频文件。请在共享前先选择文件。",
     "shareTarget_too_large": "共享的音频文件超过 Speakr 的上传限制。",
     "shareTarget_save_failed": "Speakr 无法保存共享的音频。请改为直接上传。",
-    "shareTarget_queue_failed": "共享的音频已保存,但无法加入转录队列。"
+    "shareTarget_queue_failed": "共享的音频已保存,但无法加入转录队列。",
+    "recordingFinalizeFallback": "服务端拼接失败,改为作为单个文件上传。"
   },
   "eventExtraction": {
     "description": "启用后，AI将识别录音中提到的会议、约会和截止日期，并创建可下载的日历事件。",
@@ -1583,6 +1584,10 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
     "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
-    "shareTargetReceived": "已接收共享音频并加入转录队列"
+    "shareTargetReceived": "已接收共享音频并加入转录队列",
+    "recordingSizeSoftWarning": "录音大小为 {{size}},可在方便时停止。",
+    "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",
+    "recordingFinalized": "录音已上传等待处理",
+    "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?"
   }
 }
