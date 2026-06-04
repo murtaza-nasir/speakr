@@ -11,7 +11,7 @@ from flask import request
 from src.models import APIToken, User
 
 
-def extract_token_from_request():
+def extract_token_from_request(headers_only=False):
     """
     Extract API token from various possible locations in the request.
 
@@ -19,7 +19,14 @@ def extract_token_from_request():
     1. Authorization header with Bearer scheme
     2. X-API-Token header
     3. API-Token header
-    4. 'token' query parameter
+    4. 'token' query parameter (only when ``headers_only=False``)
+
+    The ``headers_only`` flag exists because the query-string token can
+    be triggered by a Simple Cross-Origin Request without CORS preflight
+    (see GHSA-x4q4-3ww4-h329). Code paths that make security decisions
+    based on whether a request is API-token-authenticated MUST pass
+    ``headers_only=True`` so an attacker cannot place ``?token=...`` on
+    a victim-browser URL to fake API authentication.
 
     Returns:
         str: The extracted token, or None if not found
@@ -38,6 +45,9 @@ def extract_token_from_request():
     token = request.headers.get('API-Token')
     if token:
         return token
+
+    if headers_only:
+        return None
 
     # Check query parameter
     token = request.args.get('token')
@@ -97,12 +107,40 @@ def load_user_from_token():
     return api_token.user
 
 
-def is_token_authenticated():
-    """
-    Check if the current request is authenticated via API token.
+def load_user_from_token_headers_only():
+    """Validate a header-only API token against the database.
 
-    Returns:
-        bool: True if a valid token was provided, False otherwise
+    Same DB lookup as :func:`load_user_from_token` but ignores the
+    ``?token=`` query parameter. Used by the CSRF protection hook
+    because Simple Cross-Origin Requests can carry an attacker-supplied
+    query string without triggering CORS preflight, while the three
+    accepted headers (Authorization, X-API-Token, API-Token) all do
+    trigger preflight and so cannot be set by a CSRF attack page.
+
+    Returns the authenticated User, or None.
     """
-    token = extract_token_from_request()
-    return token is not None
+    token = extract_token_from_request(headers_only=True)
+    if not token:
+        return None
+
+    token_hash = hash_token(token)
+    api_token = APIToken.query.filter_by(token_hash=token_hash).first()
+    if not api_token or not api_token.is_valid():
+        return None
+
+    api_token.last_used_at = datetime.utcnow()
+    from src.database import db
+    db.session.commit()
+    return api_token.user
+
+
+def is_token_authenticated():
+    """Deprecated stub kept only for inbound import compatibility.
+
+    The original implementation returned True on the mere PRESENCE of a
+    token-looking parameter, which was the root cause of GHSA-x4q4-3ww4-h329.
+    It is no longer used by the CSRF protection hook; the replacement is
+    :func:`load_user_from_token_headers_only` plus the
+    :func:`src.app.csrf_token_aware_check` before_request handler.
+    """
+    return load_user_from_token_headers_only() is not None
