@@ -212,9 +212,8 @@ def test_fire(webhook_id):
     if not wh.enabled:
         return jsonify({'error': 'Webhook is disabled; enable it first'}), 409
 
-    import json
     import uuid
-    from src.services.webhook_dispatch import _build_envelope  # internal helper reuse
+    from src.services.webhook_dispatch import _build_envelope, serialize_envelope
     event_id = str(uuid.uuid4())
     envelope = _build_envelope(event_id, 'webhook.test', current_user.id, {
         'reason': 'manual test from /api/v1/webhooks/{id}/test',
@@ -224,7 +223,7 @@ def test_fire(webhook_id):
         webhook_id=wh.id,
         event_id=event_id,
         event_type='webhook.test',
-        payload=json.dumps(envelope),
+        payload=serialize_envelope(envelope),
         status='pending',
         next_retry_at=datetime.utcnow(),
     )
@@ -284,15 +283,16 @@ def replay_delivery(webhook_id, delivery_id):
         return jsonify({'error': 'Delivery not found'}), 404
 
     import uuid
+    import json as _json
+    from src.services.webhook_dispatch import serialize_envelope
     new_event_id = str(uuid.uuid4())
     # Update the envelope's id field so the receiver sees a fresh delivery id.
     try:
-        import json as _json
         envelope = _json.loads(src.payload)
         envelope['id'] = new_event_id
         envelope['timestamp'] = datetime.utcnow().isoformat() + 'Z'
         envelope['replayed_from'] = src.event_id
-        new_payload = _json.dumps(envelope)
+        new_payload = serialize_envelope(envelope)
     except Exception:
         new_payload = src.payload
 

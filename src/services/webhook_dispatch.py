@@ -196,6 +196,23 @@ def _build_envelope(event_id: str, event_type: str, user_id: int, data: dict):
     }
 
 
+def serialize_envelope(envelope: dict) -> str:
+    """Canonical JSON serialization for webhook payloads.
+
+    Compact form (no whitespace after ``,`` or ``:``) so receivers
+    debugging with tools like webhook.site can copy-paste the displayed
+    body and compute a matching HMAC without canonicalisation pitfalls.
+    The wire format is also what other webhook providers (Stripe,
+    GitHub, Mux) use, which means common signature-verification
+    libraries Just Work.
+
+    All three webhook payload producers (emit_webhook_event,
+    test_fire, replay_delivery) MUST go through this function so the
+    bytes signed are always the bytes sent.
+    """
+    return json.dumps(envelope, separators=(',', ':'), ensure_ascii=False)
+
+
 # ---- Public entry point: enqueue ------------------------------------------
 
 def emit_webhook_event(user_id: int, event_type: str, data: dict, *, app=None) -> int:
@@ -231,7 +248,7 @@ def emit_webhook_event(user_id: int, event_type: str, data: dict, *, app=None) -
                 webhook_id=wh.id,
                 event_id=event_id,
                 event_type=event_type,
-                payload=json.dumps(envelope),
+                payload=serialize_envelope(envelope),
                 status='pending',
                 next_retry_at=first_attempt_at,
             )

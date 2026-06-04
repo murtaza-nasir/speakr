@@ -109,6 +109,114 @@ def test_sign_payload_matches_hmac_sha256():
     assert sig == f'sha256={expected_hex}'
 
 
+def test_serialize_envelope_uses_compact_json():
+    """The wire body must be compact JSON (no spaces after ``:`` or ``,``).
+
+    This matches what most webhook debugging tools (webhook.site,
+    Postman, RequestBin) display, so receivers copy-pasting the body
+    can compute a matching HMAC without canonicalisation footguns.
+    Stripe / GitHub / Mux all use the same wire format.
+
+    If this test fails, signature verification will silently break for
+    every receiver that re-encodes the displayed body.
+    """
+    from src.services.webhook_dispatch import serialize_envelope
+    envelope = {'id': 'x', 'type': 'recording.created', 'data': {'a': 1, 'b': 2}}
+    serialized = serialize_envelope(envelope)
+    # No space after either separator.
+    assert ', ' not in serialized, f'wire body contains a space after a comma: {serialized!r}'
+    assert ': ' not in serialized, f'wire body contains a space after a colon: {serialized!r}'
+    # And it must still round-trip cleanly.
+    import json
+    assert json.loads(serialized) == envelope
+
+
+def test_emit_and_test_fire_produce_identical_wire_format():
+    """Both code paths that create WebhookDelivery rows must produce
+    payload bytes in the same canonical form, otherwise a delivery
+    written by one path and verified against the format of the other
+    will fail HMAC verification."""
+    import json as _json
+    with app.app_context():
+        user = _make_user('wh_canonical')
+        wh = Webhook(user_id=user.id, name='c', url='https://example.com/c', enabled=True)
+        wh.event_list = ['recording.created']
+        db.session.add(wh)
+        db.session.commit()
+
+        # Path 1: emit_webhook_event
+        emit_webhook_event(user.id, 'recording.created', {'recording_id': 1})
+        emitted = WebhookDelivery.query.filter_by(webhook_id=wh.id).first()
+        assert emitted is not None
+        assert ', ' not in emitted.payload
+        assert ': ' not in emitted.payload
+
+        # Path 2: test_fire endpoint
+        client = app.test_client()
+        _login(client, user)
+        resp = client.post(f'/api/v1/webhooks/{wh.id}/test')
+        assert resp.status_code == 202, resp.data
+        # The most recent delivery is the test fire
+        test_fired = (
+            WebhookDelivery.query
+            .filter_by(webhook_id=wh.id)
+            .order_by(WebhookDelivery.id.desc())
+            .first()
+        )
+        assert test_fired.event_type == 'webhook.test'
+        assert ', ' not in test_fired.payload
+        assert ': ' not in test_fired.payload
+
+        for d in WebhookDelivery.query.filter_by(webhook_id=wh.id).all():
+            db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_end_to_end_signature_verifies_against_wire_bytes():
+    """Plant a delivery, run the dispatcher (mocking the HTTP POST so we
+    can capture the exact bytes that would have been sent), then verify
+    the signature computed over those bytes matches the
+    Speakr-Signature header value.
+
+    This is the property the receiver depends on. If it breaks, every
+    webhook receiver in the wild stops being able to verify deliveries."""
+    with app.app_context():
+        user = _make_user('wh_sig_e2e')
+        wh, d = _seed_pending(user.id, secret='end-to-end-test-secret')
+
+        captured = {}
+
+        def fake_post(url, **kwargs):
+            captured['body'] = kwargs.get('data')
+            captured['headers'] = kwargs.get('headers')
+            return MagicMock(status_code=204, text='')
+
+        with patch('src.services.webhook_dispatch.requests.post', side_effect=fake_post):
+            run_dispatcher_pass()
+
+        body = captured['body']
+        headers = captured['headers']
+        assert body is not None and headers is not None
+
+        # Receiver-side verification: recompute HMAC over the EXACT body
+        # that was sent, with the shared secret.
+        signature_header = headers['Speakr-Signature']
+        assert signature_header.startswith('sha256=')
+        expected = hmac.new(b'end-to-end-test-secret', body, hashlib.sha256).hexdigest()
+        assert signature_header == f'sha256={expected}', (
+            'Speakr-Signature header does not match HMAC of the wire body; '
+            'receivers will reject every delivery.'
+        )
+
+        d_refreshed = db.session.get(WebhookDelivery, d.id)
+        db.session.delete(d_refreshed)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
 # --- SSRF guard --------------------------------------------------------------
 
 def test_is_url_safe_rejects_http_when_allow_http_false():
