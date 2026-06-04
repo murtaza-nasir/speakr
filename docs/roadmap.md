@@ -38,47 +38,32 @@ These are landed locally and waiting on release:
   no longer requires an email-verification round-trip
   (issue #288, PR #289 by checkmeck).
 
-## Designed, implementation pending
+## Built, awaiting release
 
-These have a complete architecture proposal and a phasing plan. Each one
-is a multi-day effort and will land in its own release once started.
+Both of the features that used to live in this section have been
+implemented and are waiting on the next tagged release:
 
-### Server-side recording chunks (issue #287 c/d)
+### Server-side recording chunks (issue #287 c/d) — built
 
-Stream recording chunks to the server during recording instead of
-holding the entire audio blob in browser RAM. Removes the current 200 MB
-client-side cap, makes browser-crash recovery reliable on arbitrarily
-long recordings, and replaces the soft-stop behaviour with a quota
-based on per-user server-side storage.
+Streams recording chunks to the server during recording. The 200 MB
+cap is replaced by a configurable hours-based ceiling. Crash recovery
+on reload prompts the user to finalize whatever was already uploaded.
+Off by default until enabled with `ENABLE_SERVER_RECORDING_CHUNKS=true`.
 
-**Scope:** new `recording_session` table; `/upload/session*` endpoints
-for create / chunk-POST / status / finalize / abort; APScheduler-driven
-cleanup of expired sessions; client rewire of the recording stack to
-stream chunks with retry; resume-on-reload prompt; replacement of the
-hard 200 MB cap with a soft warning + absolute hours ceiling.
+Full setup, env-var reference, reverse-proxy guidance, and on-disk
+layout in [Recording Sessions](admin-guide/recording-sessions.md).
 
-**Estimated effort:** 3 phases, roughly 5-7 days of focused work.
+### Webhooks (issue #275) — built
 
-### Webhooks (issue #275)
+Push-based notifications on recording lifecycle events. Each user
+manages their own webhook endpoints from Account settings → Webhooks
+(or programmatically via `/api/v1/webhooks`). HMAC-SHA256 signatures,
+SSRF guard against private IPs, exponential-backoff retries with
+auto-pause after 10 consecutive failures.
 
-Push-based notifications on recording lifecycle events. Eliminates
-polling for companion apps (n8n flows, home dashboards, automation
-scripts).
-
-**Scope:** per-user webhook endpoints model (multiple per user, named,
-toggleable, per-event subscription); HMAC-SHA256 signing with
-`Speakr-Signature` / `Speakr-Delivery-Id` headers; retry policy with
-exponential backoff and auto-pause; SSRF guard against internal URLs;
-account-settings UI for create/edit/test-fire/recent-deliveries; admin
-overview; v1 CRUD API with OpenAPI parity.
-
-**Event vocabulary (initial set):** `recording.created`,
-`recording.transcription.started`, `recording.transcription.completed`,
-`recording.transcription.failed`, `recording.summary.completed`,
-`recording.summary.failed`, `recording.events.extracted`,
-`recording.updated`, `recording.deleted`.
-
-**Estimated effort:** 3 phases, roughly 2.5 days of focused work.
+Event types, signature verification examples in Python/Node/bash,
+retry schedule, and env-var reference in
+[Webhooks](admin-guide/webhooks.md).
 
 ## Open ideas (not yet designed)
 

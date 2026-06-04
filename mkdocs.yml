@@ -178,6 +178,7 @@ nav:
     - Default Prompts: admin-guide/prompts.md
     - Vector Store: admin-guide/vector-store.md
     - Recording Sessions: admin-guide/recording-sessions.md
+    - Webhooks: admin-guide/webhooks.md
     - Migration Guide: admin-guide/migration-guide.md
   
   - Troubleshooting: troubleshooting.md
