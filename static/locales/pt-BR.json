@@ -118,7 +118,8 @@
     "tagManagement": "Gerenciamento de Etiquetas",
     "templates": "Modelos",
     "transcriptTemplates": "Modelos de Transcrição",
-    "preferences": "Preferências"
+    "preferences": "Preferências",
+    "webhooks": "Webhooks"
   },
   "admin": {
     "title": "Admin",
@@ -1589,5 +1590,22 @@
     "recordingMaxDurationReached": "A gravação atingiu a duração máxima e foi parada automaticamente.",
     "recordingFinalized": "Gravação enviada para processamento",
     "recordingResumeFound": "Uma gravação em andamento deste navegador foi detectada no servidor. Retomar?"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Receba notificações HTTP quando gravações mudarem. Cada endpoint é assinado com HMAC-SHA256 para que receptores possam verificar a autenticidade.",
+    "addNew": "Adicionar webhook",
+    "loading": "Carregando...",
+    "modalTitleNew": "Novo webhook",
+    "modalTitleEdit": "Editar webhook",
+    "nameLabel": "Nome",
+    "urlLabel": "URL",
+    "allowHttp": "Permitir http:// (somente endpoints de intranet)",
+    "eventsLabel": "Eventos",
+    "enabled": "Ativado",
+    "saveButton": "Salvar webhook",
+    "secretBannerTitle": "Copie este segredo agora — não será mostrado de novo",
+    "secretBannerHint": "Assine cada requisição do receptor: HMAC-SHA256 do corpo bruto usando este segredo. Cabeçalho: Speakr-Signature: sha256=<hex>",
+    "copy": "Copiar"
   }
 }

@@ -475,6 +475,9 @@
                         <a href="#" id="tab-tokens" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-key mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.apiTokens">API Tokens</span>
                         </a>
+                        <a href="#" id="tab-webhooks" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
+                            <i class="fas fa-link mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.webhooks">Webhooks</span>
+                        </a>
                         <a href="#" id="tab-about" class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)] rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
                             <i class="fas fa-info-circle mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span data-i18n="accountTabs.about">About</span>
                         </a>
@@ -1581,6 +1584,78 @@ curl -H "API-Token: YOUR_TOKEN_HERE" ...
 
 # Query parameter
 curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Webhooks Tab Content -->
+                    <div id="content-webhooks" class="hidden tab-content pt-6">
+                        <div class="space-y-6">
+                            <div class="flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="webhooks.title">Webhooks</h2>
+                                    <p class="text-sm text-[var(--text-muted)] mt-1" data-i18n="webhooks.subtitle">Receive HTTP notifications when recordings change. Each endpoint is signed with HMAC-SHA256 so receivers can verify authenticity.</p>
+                                </div>
+                                <button id="webhook-create-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm">
+                                    <i class="fas fa-plus"></i><span data-i18n="webhooks.addNew">Add webhook</span>
+                                </button>
+                            </div>
+
+                            <div id="webhook-list" class="space-y-3">
+                                <p class="text-sm text-[var(--text-muted)]" data-i18n="webhooks.loading">Loading...</p>
+                            </div>
+
+                            <!-- Add/edit modal -->
+                            <div id="webhook-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+                                <div class="bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-lg max-w-xl w-full max-h-[90vh] overflow-y-auto">
+                                    <div class="flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
+                                        <h3 id="webhook-modal-title" class="text-lg font-medium text-[var(--text-primary)]" data-i18n="webhooks.modalTitleNew">New webhook</h3>
+                                        <button id="webhook-modal-close" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]" aria-label="Close"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <form id="webhook-form" class="p-4 space-y-4">
+                                        <input type="hidden" id="webhook-id-input" value="">
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="webhooks.nameLabel">Name</label>
+                                            <input id="webhook-name-input" type="text" required maxlength="100" placeholder="n8n production" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="webhooks.urlLabel">URL</label>
+                                            <input id="webhook-url-input" type="url" required maxlength="500" placeholder="https://n8n.example.com/webhook/..." class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-input)] text-[var(--text-primary)] focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm">
+                                            <label class="mt-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                                                <input id="webhook-allow-http-input" type="checkbox" class="rounded border-[var(--border-secondary)]">
+                                                <span data-i18n="webhooks.allowHttp">Allow http:// (intranet endpoints only)</span>
+                                            </label>
+                                        </div>
+                                        <div>
+                                            <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="webhooks.eventsLabel">Events</span>
+                                            <div id="webhook-events-checkboxes" class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                                        </div>
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input id="webhook-enabled-input" type="checkbox" checked class="rounded border-[var(--border-secondary)]">
+                                            <span data-i18n="webhooks.enabled">Enabled</span>
+                                        </label>
+                                        <div class="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border-primary)]">
+                                            <button type="button" id="webhook-modal-cancel" class="px-3 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-i18n="buttons.cancel">Cancel</button>
+                                            <button type="submit" class="px-3 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm" data-i18n="webhooks.saveButton">Save webhook</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- One-time secret display -->
+                            <div id="webhook-secret-banner" class="hidden p-4 bg-[var(--bg-success-light)] border border-[var(--border-success)] rounded-lg">
+                                <div class="flex items-start gap-3">
+                                    <i class="fas fa-key text-[var(--text-success-strong)] mt-1"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-[var(--text-success-strong)]" data-i18n="webhooks.secretBannerTitle">Copy this secret now — it will not be shown again</p>
+                                        <p class="text-xs text-[var(--text-muted)] mt-1" data-i18n="webhooks.secretBannerHint">Sign every receiver request: HMAC-SHA256 of the raw body using this secret. Header: Speakr-Signature: sha256=&lt;hex&gt;</p>
+                                        <div class="mt-2 flex items-center gap-2">
+                                            <code id="webhook-secret-value" class="flex-1 px-2 py-1 bg-[var(--bg-tertiary)] text-[var(--text-primary)] rounded text-xs font-mono break-all"></code>
+                                            <button id="webhook-secret-copy" class="px-3 py-1 text-xs bg-[var(--bg-button)] text-[var(--text-button)] rounded hover:bg-[var(--bg-button-hover)]" data-i18n="webhooks.copy">Copy</button>
+                                            <button id="webhook-secret-dismiss" class="px-3 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]" data-i18n="buttons.close">Close</button>
                                         </div>
                                     </div>
                                 </div>
@@ -3029,6 +3104,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabTags = document.getElementById('tab-tags');
             const tabTemplates = document.getElementById('tab-templates');
             const tabTokens = document.getElementById('tab-tokens');
+            const tabWebhooks = document.getElementById('tab-webhooks');
             const tabAbout = document.getElementById('tab-about');
             const tabPreferences = document.getElementById('tab-preferences');
             const contentAccount = document.getElementById('content-account');
@@ -3040,6 +3116,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const contentTags = document.getElementById('content-tags');
             const contentTemplates = document.getElementById('content-templates');
             const contentTokens = document.getElementById('content-tokens');
+            const contentWebhooks = document.getElementById('content-webhooks');
             const contentAbout = document.getElementById('content-about');
             const sharesContainer = document.getElementById('shares-container');
 
@@ -3057,6 +3134,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 { tab: tabTags, content: contentTags, name: 'tags' },
                 { tab: tabTemplates, content: contentTemplates, name: 'templates' },
                 { tab: tabTokens, content: contentTokens, name: 'tokens' },
+                { tab: tabWebhooks, content: contentWebhooks, name: 'webhooks' },
                 { tab: tabAbout, content: contentAbout, name: 'about' }
             ];
 
@@ -3088,6 +3166,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadTemplates();
                 } else if (targetName === 'tokens') {
                     loadTokensTab();
+                } else if (targetName === 'webhooks') {
+                    loadWebhooks();
                 } else if (targetName === 'about') {
                     loadSystemInfo();
                 }
@@ -3181,6 +3261,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 e.preventDefault();
                 showTokensTab();
             });
+
+            if (tabWebhooks) {
+                tabWebhooks.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchToTab('webhooks');
+                });
+            }
 
             tabAbout.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -7507,6 +7594,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         }
     });
     </script>
+
+    <!-- Webhooks tab logic (#275) -->
+    <script src="{{ url_for('static', filename='js/account-webhooks.js') }}"></script>
 
 </body>
 </html>

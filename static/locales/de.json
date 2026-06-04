@@ -118,7 +118,8 @@
     "tagManagement": "Tag-Verwaltung",
     "templates": "Vorlagen",
     "transcriptTemplates": "Transkript-Vorlagen",
-    "preferences": "Einstellungen"
+    "preferences": "Einstellungen",
+    "webhooks": "Webhooks"
   },
   "admin": {
     "title": "Administration",
@@ -1589,5 +1590,22 @@
     "recordingMaxDurationReached": "Aufnahme hat die Höchstdauer erreicht und wurde automatisch gestoppt.",
     "recordingFinalized": "Aufnahme zur Verarbeitung hochgeladen",
     "recordingResumeFound": "Eine laufende Aufnahme aus diesem Browser wurde auf dem Server gefunden. Fortsetzen?"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "HTTP-Benachrichtigungen empfangen, wenn sich Aufnahmen ändern. Jeder Endpunkt wird mit HMAC-SHA256 signiert, damit Empfänger die Echtheit prüfen können.",
+    "addNew": "Webhook hinzufügen",
+    "loading": "Lädt...",
+    "modalTitleNew": "Neuer Webhook",
+    "modalTitleEdit": "Webhook bearbeiten",
+    "nameLabel": "Name",
+    "urlLabel": "URL",
+    "allowHttp": "http:// erlauben (nur Intranet-Endpunkte)",
+    "eventsLabel": "Ereignisse",
+    "enabled": "Aktiv",
+    "saveButton": "Webhook speichern",
+    "secretBannerTitle": "Geheimnis jetzt kopieren — es wird nicht erneut angezeigt",
+    "secretBannerHint": "Signieren Sie jede Empfänger-Anfrage: HMAC-SHA256 des Rohkörpers mit diesem Geheimnis. Header: Speakr-Signature: sha256=<hex>",
+    "copy": "Kopieren"
   }
 }

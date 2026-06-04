@@ -118,7 +118,8 @@
     "speakersManagement": "Speakers Management",
     "tagManagement": "Tag Management",
     "templates": "Templates",
-    "transcriptTemplates": "Transcript Templates"
+    "transcriptTemplates": "Transcript Templates",
+    "webhooks": "Webhooks"
   },
   "admin": {
     "title": "Admin",
@@ -1589,5 +1590,22 @@
     "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",
     "recordingFinalized": "Recording uploaded for processing",
     "recordingResumeFound": "An in-progress recording from this browser was detected on the server. Resume?"
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "subtitle": "Receive HTTP notifications when recordings change. Each endpoint is signed with HMAC-SHA256 so receivers can verify authenticity.",
+    "addNew": "Add webhook",
+    "loading": "Loading...",
+    "modalTitleNew": "New webhook",
+    "modalTitleEdit": "Edit webhook",
+    "nameLabel": "Name",
+    "urlLabel": "URL",
+    "allowHttp": "Allow http:// (intranet endpoints only)",
+    "eventsLabel": "Events",
+    "enabled": "Enabled",
+    "saveButton": "Save webhook",
+    "secretBannerTitle": "Copy this secret now — it will not be shown again",
+    "secretBannerHint": "Sign every receiver request: HMAC-SHA256 of the raw body using this secret. Header: Speakr-Signature: sha256=<hex>",
+    "copy": "Copy"
   }
 }

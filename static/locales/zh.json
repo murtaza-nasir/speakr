@@ -118,7 +118,8 @@
     "tagManagement": "标签管理",
     "templates": "模板",
     "transcriptTemplates": "转录模板",
-    "preferences": "偏好设置"
+    "preferences": "偏好设置",
+    "webhooks": "Webhook"
   },
   "admin": {
     "title": "管理员",
@@ -1589,5 +1590,22 @@
     "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",
     "recordingFinalized": "录音已上传等待处理",
     "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?"
+  },
+  "webhooks": {
+    "title": "Webhook",
+    "subtitle": "在录音发生变化时接收 HTTP 通知。每个端点使用 HMAC-SHA256 签名,接收方可以验证真实性。",
+    "addNew": "添加 Webhook",
+    "loading": "加载中...",
+    "modalTitleNew": "新建 Webhook",
+    "modalTitleEdit": "编辑 Webhook",
+    "nameLabel": "名称",
+    "urlLabel": "URL",
+    "allowHttp": "允许 http:// (仅限内网端点)",
+    "eventsLabel": "事件",
+    "enabled": "已启用",
+    "saveButton": "保存 Webhook",
+    "secretBannerTitle": "立即复制此密钥 — 不会再次显示",
+    "secretBannerHint": "用此密钥对每个接收方请求进行签名: 原始正文的 HMAC-SHA256。请求头: Speakr-Signature: sha256=<hex>",
+    "copy": "复制"
   }
 }
