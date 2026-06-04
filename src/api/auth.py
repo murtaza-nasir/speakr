@@ -70,16 +70,6 @@ def rate_limit(limit_string):
     return decorator
 
 
-def csrf_exempt(f):
-    """Decorator placeholder for CSRF exemption - applied after initialization."""
-    from functools import wraps
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        return f(*args, **kwargs)
-    wrapper._csrf_exempt = True
-    return wrapper
-
-
 # --- Forms ---
 
 class RegistrationForm(FlaskForm):
@@ -368,8 +358,12 @@ def sso_unlink():
 
 
 @auth_bp.route('/logout')
-@csrf_exempt
 def logout():
+    # /logout is GET-only, so Flask-WTF's CSRF check (which runs only on
+    # state-changing methods) does not apply. No explicit exemption is
+    # needed. A future hardening pass should move logout to POST so a
+    # CSRF-redirected GET can't log a victim out, but that is a behaviour
+    # change deferred from this security release.
     logout_user()
     return redirect(url_for('auth.login'))
 

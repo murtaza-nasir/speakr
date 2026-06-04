@@ -39,7 +39,7 @@ from .token_auth import (
     extract_token_from_request,
     hash_token,
     load_user_from_token,
-    is_token_authenticated
+    load_user_from_token_headers_only,
 )
 
 from .error_formatting import (
@@ -71,7 +71,7 @@ __all__ = [
     'extract_token_from_request',
     'hash_token',
     'load_user_from_token',
-    'is_token_authenticated',
+    'load_user_from_token_headers_only',
     # Error formatting
     'is_transcription_error',
     'format_error_for_user',

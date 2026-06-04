@@ -57,15 +57,6 @@ def init_system_helpers(**kwargs):
     chunking_service = kwargs.get('chunking_service')
 
 
-def csrf_exempt(f):
-    """Decorator placeholder for CSRF exemption - applied after initialization."""
-    from functools import wraps
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        return f(*args, **kwargs)
-    wrapper._csrf_exempt = True
-    return wrapper
-
 
 # --- Routes ---
 
@@ -315,7 +306,6 @@ def get_config():
 
 
 @system_bp.route('/api/csrf-token', methods=['GET'])
-@csrf_exempt  # Exempt this endpoint from CSRF protection since it's providing tokens
 def get_csrf_token():
     """Get a fresh CSRF token for the frontend."""
     try:

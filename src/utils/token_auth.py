@@ -134,13 +134,3 @@ def load_user_from_token_headers_only():
     return api_token.user
 
 
-def is_token_authenticated():
-    """Deprecated stub kept only for inbound import compatibility.
-
-    The original implementation returned True on the mere PRESENCE of a
-    token-looking parameter, which was the root cause of GHSA-x4q4-3ww4-h329.
-    It is no longer used by the CSRF protection hook; the replacement is
-    :func:`load_user_from_token_headers_only` plus the
-    :func:`src.app.csrf_token_aware_check` before_request handler.
-    """
-    return load_user_from_token_headers_only() is not None

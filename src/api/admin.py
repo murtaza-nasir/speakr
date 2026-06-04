@@ -48,15 +48,6 @@ def init_admin_helpers(**kwargs):
     limiter = kwargs.get('limiter')
 
 
-def csrf_exempt(f):
-    """Decorator placeholder for CSRF exemption - applied after initialization."""
-    from functools import wraps
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        return f(*args, **kwargs)
-    wrapper._csrf_exempt = True
-    return wrapper
-
 
 # --- Routes ---
 
@@ -754,7 +745,6 @@ def admin_update_setting():
 
 @admin_bp.route('/admin/auto-deletion/run', methods=['POST'])
 @login_required
-@csrf_exempt  # Exempt since already protected by admin authentication
 def run_auto_deletion():
     """Admin endpoint to manually trigger auto-deletion process."""
     if not current_user.is_admin:
