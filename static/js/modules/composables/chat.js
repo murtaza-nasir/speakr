@@ -211,9 +211,21 @@ export function useChat(state, utils) {
 
         } catch (error) {
             console.error('Chat Error:', error);
+            // Preserve any partial assistant content that was already streamed
+            // before the connection dropped (issue #282). Reverse-proxy read
+            // timeouts on long-thinking responses used to wipe the visible
+            // response entirely; now we keep what arrived and append an error
+            // note below it so the user can still copy what they got.
             if (assistantMessage) {
-                assistantMessage.content = `Error: ${error.message}`;
-                assistantMessage.html = `<span class="text-red-500">Error: ${error.message}</span>`;
+                const partial = (assistantMessage.content || '').trim();
+                const errSuffix = `\n\n_⚠️ Connection ended before the response completed: ${error.message}_`;
+                if (partial) {
+                    assistantMessage.content = partial + errSuffix;
+                    assistantMessage.html = marked.parse(assistantMessage.content);
+                } else {
+                    assistantMessage.content = `Error: ${error.message}`;
+                    assistantMessage.html = `<span class="text-red-500">Error: ${error.message}</span>`;
+                }
             } else {
                 chatMessages.value.push({
                     role: 'assistant',

@@ -241,6 +241,37 @@ export const clearAllFailedUploads = async () => {
 };
 
 /**
+ * Last-resort safety net: trigger a browser-side download of the audio blob so
+ * the user keeps a local copy even if neither the upload nor IndexedDB
+ * persistence succeeded. Returns true if the download was triggered, false if
+ * we could not build a downloadable URL (e.g. blob revoked, empty data).
+ */
+export const triggerLocalDownload = (file, suggestedName) => {
+    if (!file || !file.size) {
+        return false;
+    }
+    try {
+        const url = URL.createObjectURL(file);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = suggestedName || file.name || `speakr-recording-${Date.now()}.webm`;
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        // Revoke after a delay so the browser has time to start the download
+        setTimeout(() => {
+            try { URL.revokeObjectURL(url); } catch (_) { /* ignore */ }
+        }, 60_000);
+        console.warn('[FailedUploadsDB] Triggered local download as safety fallback');
+        return true;
+    } catch (error) {
+        console.error('[FailedUploadsDB] Local download fallback failed:', error);
+        return false;
+    }
+};
+
+/**
  * Get count of failed uploads
  */
 export const getFailedUploadCount = async () => {

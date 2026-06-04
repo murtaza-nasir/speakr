@@ -136,8 +136,23 @@ export function useUI(state, utils, processedTranscription) {
         }
     };
 
-    // Switch to upload view
+    // Switch to upload view. Guarded against silently abandoning an unsaved
+    // in-app recording (issue #287(a)): if a recording is in progress or
+    // stopped-but-not-yet-uploaded, confirm before leaving the recording view.
     const switchToUploadView = () => {
+        const isRecording = state.isRecording;
+        const audioBlobURL = state.audioBlobURL;
+        const hasUnsaved = currentView.value === 'recording'
+            && ((isRecording && isRecording.value === true)
+                || (audioBlobURL && audioBlobURL.value));
+        if (hasUnsaved) {
+            const tFn = utils.t || ((key) => key);
+            const message = tFn('confirms.discardUnsavedRecording')
+                || 'You have an unsaved recording. Are you sure you want to leave?';
+            if (!window.confirm(message)) {
+                return;
+            }
+        }
         currentView.value = 'upload';
         if (isMobileScreen.value) {
             isSidebarCollapsed.value = true;

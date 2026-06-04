@@ -506,7 +506,12 @@ export function useAudio(state, utils) {
             return;
         }
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const recordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+        const _rawRecordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+        // Prevent Vue from wrapping the binary File in a reactive proxy. See
+        // upload.js for rationale (issue #280).
+        const recordedFile = (typeof Vue !== 'undefined' && Vue.markRaw)
+            ? Vue.markRaw(_rawRecordedFile)
+            : _rawRecordedFile;
 
         // Get selected tags as objects and create a DEEP copy to prevent reactivity issues
         const selectedTagsTemp = selectedTagIds.value.map(tagId => {
@@ -517,7 +522,12 @@ export function useAudio(state, utils) {
         // Deep clone to completely break reactivity chain - JSON parse/stringify removes all proxies
         const selectedTags = JSON.parse(JSON.stringify(selectedTagsTemp));
 
-        // Add to upload queue
+        // Add to upload queue. The recording session in IndexedDB is
+        // intentionally NOT cleared here (issue #287(b)). It is the user's
+        // crash-recovery copy; we only clear it once the upload has reached
+        // the server successfully. The clientId on the queue item is what the
+        // upload-success handler uses to find and clear the matching session.
+        const queueClientId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         uploadQueue.value.push({
             file: recordedFile,
             notes: recordingNotes.value,
@@ -531,19 +541,30 @@ export function useAudio(state, utils) {
             },
             status: 'queued',
             recordingId: null,
-            clientId: `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            clientId: queueClientId,
+            fromInProgressRecording: true,  // marker: upload-success handler clears RecordingDB session
             error: null,
             willAutoSummarize: false // Server will tell us via SUMMARIZING status
         });
 
-        // Clear IndexedDB session after successful queue
-        try {
-            await RecordingDB.clearRecordingSession();
-        } catch (dbError) {
-            console.warn('[Recording] Failed to clear IndexedDB session:', dbError);
+        // Release the in-memory audio resources so the recording view does not
+        // keep showing the old waveform, but DO NOT clear the IndexedDB session
+        // (that happens only on upload success — see upload.js).
+        if (audioBlobURL.value) {
+            URL.revokeObjectURL(audioBlobURL.value);
         }
-
-        discardRecording();
+        audioBlobURL.value = null;
+        audioChunks.value = [];
+        isRecording.value = false;
+        recordingTime.value = 0;
+        if (recordingInterval.value) clearInterval(recordingInterval.value);
+        recordingNotes.value = '';
+        selectedTagIds.value = [];
+        asrLanguage.value = '';
+        asrMinSpeakers.value = '';
+        asrMaxSpeakers.value = '';
+        await releaseWakeLock();
+        await hideRecordingNotification();
 
         // Return to upload view (main UI)
         currentView.value = 'upload';
@@ -572,7 +593,12 @@ export function useAudio(state, utils) {
         }
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const recordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+        const _rawRecordedFile = new File(audioChunks.value, `recording-${timestamp}.webm`, { type: 'audio/webm' });
+        // Prevent Vue from wrapping the binary File in a reactive proxy. See
+        // upload.js for rationale (issue #280).
+        const recordedFile = (typeof Vue !== 'undefined' && Vue.markRaw)
+            ? Vue.markRaw(_rawRecordedFile)
+            : _rawRecordedFile;
 
         incognitoProcessing.value = true;
         processingMessage.value = 'Processing recording in incognito mode...';

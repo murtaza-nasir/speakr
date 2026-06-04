@@ -5,6 +5,7 @@
 
 import * as FailedUploads from '../db/failed-uploads.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
+import * as RecordingDB from '../db/recording-persistence.js';
 
 // Parse error message and return friendly error info
 function getFriendlyError(errorMessage, t) {
@@ -12,7 +13,11 @@ function getFriendlyError(errorMessage, t) {
     if (!errorMessage) return { title: _t('errors.processingError'), message: _t('errors.processingErrorMessage') };
     const lowerText = errorMessage.toLowerCase();
     const patterns = [
-        { patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'], title: _t('errors.fileTooLargeTitle'), guidance: _t('errors.enableChunkingGuidance') },
+        // Reverse-proxy 413 (nginx / NPM default). Must match BEFORE the
+        // generic 413 pattern below; the proxy rejects the request body before
+        // Speakr sees it, so enabling chunking on the Speakr side will not help.
+        { patterns: ['request entity too large', 'request body is too large', '413 request entity too large'], title: _t('errors.uploadBlockedByProxyTitle'), guidance: _t('errors.uploadBlockedByProxyGuidance') },
+        { patterns: ['maximum content size limit', 'file too large', 'payload too large', 'exceeded', 'content too large'], title: _t('errors.fileTooLargeTitle'), guidance: _t('errors.enableChunkingGuidance') },
         { patterns: ['timed out', 'timeout', 'deadline exceeded'], title: _t('errors.processingTimeout'), guidance: _t('errors.splitAudioGuidance') },
         { patterns: ['401', 'unauthorized', 'invalid api key', 'authentication failed', 'incorrect api key'], title: _t('errors.authenticationError'), guidance: _t('errors.checkApiKeyGuidance') },
         { patterns: ['rate limit', 'too many requests', '429', 'quota exceeded'], title: _t('errors.rateLimitExceeded'), guidance: _t('errors.waitAndRetryGuidance') },
@@ -48,7 +53,7 @@ export function useUpload(state, utils) {
         uploadDisclaimer, showUploadDisclaimerModal
     } = state;
 
-    const { computed, nextTick, ref } = Vue;
+    const { computed, nextTick, ref, markRaw } = Vue;
 
     const { setGlobalError, showToast, formatFileSize, onChatComplete, t } = utils;
 
@@ -195,8 +200,13 @@ export function useUpload(state, utils) {
 
                 const clientId = `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
+                // markRaw prevents Vue from wrapping the File in a reactive
+                // proxy. Vue's proxy walks object properties when accessed,
+                // which is extremely expensive for binary File/Blob payloads
+                // and was a likely cause of the UI freeze seen when 10+ files
+                // were queued at once (issue #280).
                 uploadQueue.value.push({
-                    file: fileObject,
+                    file: markRaw ? markRaw(fileObject) : fileObject,
                     notes: notes,
                     tags: tags,
                     asrOptions: asrOptions,
@@ -468,6 +478,18 @@ export function useUpload(state, utils) {
             fileItem.recordingId = data.id;
             fileItem.progress = 100;
 
+            // The in-progress recording session is now safe to clear (issue
+            // #287(b)): the audio is on the server. Only do this for queue
+            // items that came from an in-app recording, to avoid touching the
+            // session for file-drag-drop uploads that never wrote one.
+            if (fileItem.fromInProgressRecording) {
+                try {
+                    await RecordingDB.clearRecordingSession();
+                } catch (dbError) {
+                    console.warn('[Upload] Failed to clear recording session after successful upload:', dbError);
+                }
+            }
+
             // Add to recordings list
             recordings.value.unshift(data);
             totalRecordings.value++;
@@ -496,7 +518,15 @@ export function useUpload(state, utils) {
             const friendlyErr = getFriendlyError(error.message, t);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
 
-            // Store failed upload in IndexedDB for background sync retry
+            // Defense-in-depth recovery (issue #297, #287):
+            //   1. Persist the file to IndexedDB so background sync can retry.
+            //   2. If IndexedDB persistence fails (quota exceeded, private mode,
+            //      missing IndexedDB), fall back to triggering a browser-side
+            //      download so the user keeps a local copy of the audio. The
+            //      worst possible outcome is permanent audio loss on upload
+            //      failure, so we treat both layers as best-effort and only
+            //      stop trying once one succeeded.
+            let persistedToIndexedDB = false;
             try {
                 await FailedUploads.storeFailedUpload({
                     file: fileItem.file,
@@ -508,14 +538,42 @@ export function useUpload(state, utils) {
                     asrOptions: fileItem.asrOptions,
                     error: error.message
                 });
+                persistedToIndexedDB = true;
+            } catch (dbError) {
+                console.warn('[Upload] IndexedDB persistence failed for failed upload:', dbError);
+            }
 
-                if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
-                    const registration = await navigator.serviceWorker.ready;
-                    await registration.sync.register('sync-uploads');
-                    console.log('[Upload] Registered background sync for failed upload');
+            if (persistedToIndexedDB) {
+                try {
+                    if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+                        const registration = await navigator.serviceWorker.ready;
+                        await registration.sync.register('sync-uploads');
+                        console.log('[Upload] Registered background sync for failed upload');
+                    }
+                } catch (syncError) {
+                    console.warn('[Upload] Failed to register background sync:', syncError);
                 }
-            } catch (syncError) {
-                console.warn('[Upload] Failed to register background sync:', syncError);
+            } else {
+                // IndexedDB rejected the failed-upload write. Last-resort:
+                // hand the audio back to the user as a browser download so it
+                // survives a tab close.
+                const downloaded = FailedUploads.triggerLocalDownload(
+                    fileItem.file,
+                    fileItem.file?.name || `speakr-recording-${Date.now()}.webm`
+                );
+                if (downloaded) {
+                    showToast?.(
+                        (t && t('toasts.uploadFailedDownloadedLocally'))
+                            || 'Upload failed. Audio saved to your Downloads folder for retry.',
+                        'fa-file-download'
+                    );
+                } else {
+                    showToast?.(
+                        (t && t('toasts.uploadFailedNoRecovery'))
+                            || 'Upload failed and audio could not be saved locally. Please record again.',
+                        'fa-triangle-exclamation'
+                    );
+                }
             }
         } finally {
             fileItem._xhr = null;

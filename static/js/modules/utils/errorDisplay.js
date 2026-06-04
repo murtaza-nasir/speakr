@@ -63,10 +63,27 @@ function parseUnformattedError(text) {
     // Known error patterns
     const patterns = [
         {
-            patterns: ['maximum content size limit', 'file too large', '413', 'payload too large', 'exceeded'],
+            // Reverse-proxy 413 (nginx default "Request Entity Too Large", Apache
+            // "Request body is too large", Nginx Proxy Manager defaults). The
+            // request never reached Speakr, so enabling chunking on the Speakr
+            // side cannot help; the proxy must allow a larger body. Match this
+            // BEFORE the generic 413/file-too-large pattern below.
+            patterns: ['request entity too large', 'request body is too large', '413 request entity too large'],
+            title: 'Upload Blocked by Reverse Proxy',
+            message: 'The reverse proxy in front of Speakr rejected the upload before it reached Speakr.',
+            guidance: 'Increase the client body size limit on your reverse proxy. For nginx, set client_max_body_size to a value larger than your audio file. For Nginx Proxy Manager the default is 2000m and is adjustable per host in the Advanced tab. The chunking and compression options in Speakr do not apply here because the upload is rejected before Speakr sees it.',
+            icon: 'fa-shield-halved',
+            type: 'proxy_limit'
+        },
+        {
+            // Speakr's own MAX_FILE_SIZE_MB rejection (returns JSON with a
+            // specific "File too large. Max: N MB" payload) and downstream
+            // transcription-service size limits (e.g. OpenAI Whisper 25 MB).
+            // Both are addressable from the Speakr side via chunking.
+            patterns: ['maximum content size limit', 'file too large', 'payload too large', 'exceeded', 'content too large'],
             title: 'File Too Large',
             message: 'The audio file exceeds the maximum size allowed by the transcription service.',
-            guidance: 'Try enabling audio chunking in your settings, or compress the audio file before uploading.',
+            guidance: 'Enable audio chunking in your admin settings if it is off, or compress the audio file before uploading. If chunking is already enabled, the file may still exceed the per-chunk limit; lower the chunk size or compress the source.',
             icon: 'fa-file-audio',
             type: 'size_limit'
         },
