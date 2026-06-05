@@ -241,6 +241,103 @@ def test_job_queue_completion_actually_emits_webhook_event():
         db.session.commit()
 
 
+def test_job_queue_failure_map_covers_all_advertised_failure_events():
+    """Every entry in the failure-event map must actually fire when the
+    matching job_type encounters a failure. Without this, a worker that
+    raises an exception on summarize would silently fail to notify
+    subscribers, defeating the value of subscribing to .failed at all.
+
+    The completion test covers `transcribe` failure already; this test
+    pins the remaining three (summarize, reprocess_transcription,
+    reprocess_summary) and asserts the error payload is preserved."""
+    cases = [
+        ('summarize', 'recording.summary.failed', 'mock LLM error'),
+        ('reprocess_transcription', 'recording.transcription.failed', 'asr 500'),
+        ('reprocess_summary', 'recording.summary.failed', 'LLM unavailable'),
+    ]
+    with app.app_context():
+        from src.models import Recording
+        from src.services.job_queue import job_queue
+
+        for job_type, expected_event_type, error_text in cases:
+            user = _make_user(f'wh_fail_{job_type[:8]}')
+            wh = Webhook(
+                user_id=user.id,
+                name=f'sub_{job_type}',
+                url=f'https://example.com/{job_type}',
+                enabled=True,
+            )
+            wh.event_list = [expected_event_type]
+            db.session.add(wh)
+            recording = Recording(
+                user_id=user.id,
+                title=f'fail-{job_type}',
+                audio_path=f'/tmp/{job_type}.mp3',
+                status='COMPLETED',
+            )
+            db.session.add(recording)
+            db.session.commit()
+
+            job_queue._emit_failure_webhook(job_type, recording.id, error_text)
+
+            delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+            assert len(delivered) == 1, (
+                f'{job_type} -> {expected_event_type} did not fire: got '
+                f'{len(delivered)} deliveries.'
+            )
+            env = json.loads(delivered[0].payload)
+            assert env['type'] == expected_event_type, (
+                f'Wrong event type for {job_type}: {env["type"]}'
+            )
+            assert env['data']['recording_id'] == recording.id
+            assert env['data']['error'] == error_text, (
+                f'Error text not propagated for {job_type}: '
+                f'expected {error_text!r}, got {env["data"].get("error")!r}'
+            )
+
+            for d in delivered:
+                db.session.delete(d)
+            db.session.delete(wh)
+            db.session.delete(recording)
+            db.session.delete(user)
+            db.session.commit()
+
+
+def test_failure_event_error_text_truncated_to_500_chars():
+    """The error string from a job failure is included in the payload
+    so receivers can route on it. We cap at 500 chars to prevent a
+    runaway traceback or pathological provider message from blowing
+    up the webhook body."""
+    with app.app_context():
+        from src.models import Recording
+        from src.services.job_queue import job_queue
+
+        user = _make_user('wh_fail_long')
+        wh = Webhook(user_id=user.id, name='long', url='https://example.com/long', enabled=True)
+        wh.event_list = ['recording.transcription.failed']
+        db.session.add(wh)
+        recording = Recording(
+            user_id=user.id, title='t', audio_path='/tmp/t.mp3', status='COMPLETED',
+        )
+        db.session.add(recording)
+        db.session.commit()
+
+        huge_error = 'x' * 5000
+        job_queue._emit_failure_webhook('transcribe', recording.id, huge_error)
+
+        delivered = WebhookDelivery.query.filter_by(webhook_id=wh.id).all()
+        assert len(delivered) == 1
+        env = json.loads(delivered[0].payload)
+        assert len(env['data']['error']) == 500
+
+        for d in delivered:
+            db.session.delete(d)
+        db.session.delete(wh)
+        db.session.delete(recording)
+        db.session.delete(user)
+        db.session.commit()
+
+
 def test_job_queue_emits_transcription_started_event():
     """recording.transcription.started must fire when the worker claims
     a transcribe job. The vocabulary advertises this event so users

@@ -65,6 +65,13 @@ Event types, signature verification examples in Python/Node/bash,
 retry schedule, and env-var reference in
 [Webhooks](admin-guide/webhooks.md).
 
+**Known follow-up — debounce `recording.updated`.** Rapid edits
+(notes autosave, retitling, tag changes) currently emit one
+`recording.updated` event per mutation. A 30s per-recording debounce
+window was in the original design and is planned for a later release.
+Receivers that want to deduplicate today can group on
+`(recording_id, fields_changed)` within a short window.
+
 ## Open ideas (not yet designed)
 
 Feature requests that are on the radar but have not been worked through
