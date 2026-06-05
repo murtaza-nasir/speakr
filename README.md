@@ -185,7 +185,7 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 - The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter, even with a bogus value. The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`, which validates the token against the database and only honours headers (not query strings) because a Simple Cross-Origin Request can carry one without preflight.
 - `change_password` no longer silently sets a password on an SSO-only account (where `current_user.password` is None). That branch was used in the chained-takeover proof-of-concept; SSO users now must continue to authenticate through SSO until a dedicated "add password to SSO account" flow exists.
-- Reported by **Irina Iarlykanova** (Snyk Security Labs). Tracked as a GitHub Security Advisory.
+- Reported by **@Irench1k**. Tracked as a GitHub Security Advisory.
 
 No new features, no breaking changes.
 
