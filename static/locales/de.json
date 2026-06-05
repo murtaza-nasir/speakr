@@ -237,7 +237,8 @@
       "recordingDisclaimerDesc": "Rechtlicher Hinweis, der Benutzern vor Beginn der Aufnahme angezeigt wird. Unterstützt Markdown-Formatierung. Leer lassen zum Deaktivieren.",
       "uploadDisclaimerDesc": "Rechtlicher Hinweis, der vor dem Hochladen von Dateien angezeigt wird. Unterstützt Markdown. Leer lassen zum Deaktivieren.",
       "customBannerDesc": "Benutzerdefiniertes Banner oben auf der Seite. Unterstützt Markdown. Leer lassen zum Deaktivieren.",
-      "transcriptLengthLimitDesc": "Maximale Anzahl von Zeichen, die vom Transkript an das LLM für Zusammenfassung und Chat gesendet werden. Verwenden Sie -1 für kein Limit."
+      "transcriptLengthLimitDesc": "Maximale Anzahl von Zeichen, die vom Transkript an das LLM für Zusammenfassung und Chat gesendet werden. Verwenden Sie -1 für kein Limit.",
+      "maxAudioOnlyVideoSizeDesc": "Maximale Dateigröße (in MB) für Video-Uploads im Nur-Audio-Modus. Nur das extrahierte Audio wird gespeichert, daher kann der Upload selbst größer als das normale Limit sein."
     },
     "storageUsed": "GENUTZTER SPEICHER",
     "summarizationInstructions": "Zusammenfassungsanweisungen",
@@ -1530,7 +1531,11 @@
     "uploadNFiles": "{{count}} Datei(en) hochladen",
     "uploadProgress": "Upload-Fortschritt",
     "videoRetained": "Video für Wiedergabe beibehalten",
-    "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst"
+    "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst",
+    "keepAudioOnly": "Nur Audio behalten",
+    "keepAudioOnlyHelp": "Verwirft den Videostream für diesen Upload. Ermöglicht das Hochladen größerer Videos als das normale Limit, solange das extrahierte Audio in das normale Limit passt.",
+    "videoAudioOnlyAuto": "Der Videostream wird nicht beibehalten.",
+    "videoExceedsAudioOnlyMaxSize": "Video „{{name}}“ überschreitet das Audio-only-Limit von {{size}} MB und wurde übersprungen."
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

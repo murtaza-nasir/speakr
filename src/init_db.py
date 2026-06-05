@@ -162,6 +162,8 @@ def initialize_database(app):
             app.logger.info("Added processing_source column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'error_message', 'TEXT'):
             app.logger.info("Added error_message column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'keep_audio_only', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added keep_audio_only column to recording table")
             
         # Add columns to recording_tags for order tracking
         if add_column_if_not_exists(engine, 'recording_tags', 'added_at', 'DATETIME'):
@@ -590,6 +592,23 @@ def initialize_database(app):
                 setting_type='integer'
             )
             app.logger.info("Initialized default max_file_size_mb setting")
+
+        if not SystemSetting.query.filter_by(key='max_audio_only_video_size_mb').first():
+            # Default to 4x the regular limit so a default deployment lets
+            # ~1 GB videos through when only the extracted audio will be
+            # kept. The actual transcribed/stored audio is still bounded by
+            # max_file_size_mb via the post-extraction size guard.
+            try:
+                base_mb = int(SystemSetting.get_setting('max_file_size_mb', '250'))
+            except (TypeError, ValueError):
+                base_mb = 250
+            SystemSetting.set_setting(
+                key='max_audio_only_video_size_mb',
+                value=str(base_mb * 4),
+                description='Maximum file size for video uploads in audio-only mode. Only the extracted audio is stored, so the upload itself can be much larger than max_file_size_mb.',
+                setting_type='integer'
+            )
+            app.logger.info("Initialized default max_audio_only_video_size_mb setting")
         
         if not SystemSetting.query.filter_by(key='asr_timeout_seconds').first():
             SystemSetting.set_setting(

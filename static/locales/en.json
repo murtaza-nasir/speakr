@@ -237,7 +237,8 @@
       "recordingDisclaimerDesc": "Legal disclaimer shown to users before recording starts. Supports Markdown formatting. Leave empty to disable.",
       "uploadDisclaimerDesc": "Legal disclaimer shown before file uploads. Supports Markdown. Leave empty to disable.",
       "customBannerDesc": "Custom banner shown at the top of the page. Supports Markdown. Leave empty to disable.",
-      "transcriptLengthLimitDesc": "Maximum number of characters to send from transcript to LLM for summarization and chat. Use -1 for no limit."
+      "transcriptLengthLimitDesc": "Maximum number of characters to send from transcript to LLM for summarization and chat. Use -1 for no limit.",
+      "maxAudioOnlyVideoSizeDesc": "Maximum file size (in MB) for video uploads in audio-only mode. Only the extracted audio is stored, so the upload itself can be larger than the regular file-size limit."
     },
     "storageUsed": "STORAGE USED",
     "summarizationInstructions": "Summarization Instructions",
@@ -1539,7 +1540,11 @@
     "uploadNFiles": "Upload {{count}} File(s)",
     "uploadProgress": "Upload Progress",
     "videoRetained": "Video preserved for playback",
-    "willAutoSummarize": "Will auto-summarize after transcription"
+    "willAutoSummarize": "Will auto-summarize after transcription",
+    "keepAudioOnly": "Keep audio only",
+    "keepAudioOnlyHelp": "Drop the video stream from this upload. Lets you upload videos larger than the regular size limit, as long as the extracted audio fits.",
+    "videoAudioOnlyAuto": "Video stream will not be kept.",
+    "videoExceedsAudioOnlyMaxSize": "Video \"{{name}}\" exceeds the audio-only maximum of {{size}} MB and was skipped."
   },
   "uploadProgress": {
     "title": "Upload Progress"

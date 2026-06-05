@@ -183,10 +183,22 @@ def run_startup_tasks(app):
     from src.models import SystemSetting
 
     with app.app_context():
-        # Set dynamic MAX_CONTENT_LENGTH based on database setting
-        max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)
-        app.config['MAX_CONTENT_LENGTH'] = max_file_size_mb * 1024 * 1024
-        app.logger.info(f"Set MAX_CONTENT_LENGTH to {max_file_size_mb}MB from database setting")
+        # Set dynamic MAX_CONTENT_LENGTH from DB settings. The Werkzeug
+        # ceiling is the higher of the two limits because audio-only video
+        # uploads can exceed max_file_size_mb (only the extracted audio
+        # has to fit that). The view-level handler re-checks each request
+        # against the right effective limit.
+        max_file_size_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
+        max_audio_only_video_mb = int(
+            SystemSetting.get_setting('max_audio_only_video_size_mb', max_file_size_mb * 4)
+        )
+        wsgi_ceiling_mb = max(max_file_size_mb, max_audio_only_video_mb)
+        app.config['MAX_CONTENT_LENGTH'] = wsgi_ceiling_mb * 1024 * 1024
+        app.logger.info(
+            f"Set MAX_CONTENT_LENGTH to {wsgi_ceiling_mb}MB "
+            f"(max_file_size_mb={max_file_size_mb}, "
+            f"max_audio_only_video_size_mb={max_audio_only_video_mb})"
+        )
 
         # Initialize job queue for background processing
         initialize_job_queue(app)

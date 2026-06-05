@@ -328,7 +328,8 @@ OPENAPI_SPEC = {
                                     "folder_id": {"type": "integer"},
                                     "tag_id": {"type": "integer"},
                                     "tag_ids[0]": {"type": "integer"},
-                                    "tag_ids[1]": {"type": "integer"}
+                                    "tag_ids[1]": {"type": "integer"},
+                                    "keep_audio_only": {"type": "boolean", "description": "If true, the server discards the video stream and stores only the extracted audio. Allows uploads up to max_audio_only_video_size_mb (vs max_file_size_mb) for video files, as long as the extracted audio still fits the regular limit."}
                                 }
                             }
                         }

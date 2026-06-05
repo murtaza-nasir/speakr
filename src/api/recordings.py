@@ -2188,10 +2188,41 @@ def upload_file():
         safe_filename = secure_filename(original_filename)
         filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}")
 
+        # Per-upload override for VIDEO_RETENTION. When True, the
+        # processing pipeline extracts audio and discards the video stream
+        # regardless of the server's VIDEO_RETENTION env var. Also signals
+        # that this upload is allowed to exceed max_file_size_mb because
+        # only the extracted audio needs to fit that limit. Sent by the
+        # frontend either explicitly (toggle) or implicitly when
+        # VIDEO_RETENTION is off and the queued file is video.
+        keep_audio_only_flag = request.form.get('keep_audio_only', 'false').lower() == 'true'
+        effective_audio_only = keep_audio_only_flag or not VIDEO_RETENTION
+
+        # Detect "this looks like a video" by extension up front so the
+        # size-gate can pick the right limit before reading any bytes.
+        # ffprobe runs later and is authoritative for the keep-video
+        # decision; the extension list here is a pre-save heuristic.
+        _VIDEO_EXTS = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
+        _ext_lower = os.path.splitext(original_filename)[1].lower()
+        is_likely_video_by_ext = _ext_lower in _VIDEO_EXTS
+
         # Get original file size
         file.seek(0, os.SEEK_END)
         original_file_size = file.tell()
         file.seek(0)
+
+        # Resolve effective size limit. Audio-only video uploads use a
+        # separate, larger limit because only the extracted audio is
+        # stored. Regular limit applies to everything else.
+        regular_limit_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
+        audio_only_limit_mb = int(
+            SystemSetting.get_setting('max_audio_only_video_size_mb', regular_limit_mb * 4)
+        )
+        if effective_audio_only and is_likely_video_by_ext:
+            effective_limit_mb = audio_only_limit_mb
+        else:
+            effective_limit_mb = regular_limit_mb
+        effective_limit_bytes = effective_limit_mb * 1024 * 1024
 
         # Check size limit before saving - only enforce if chunking is disabled or connector handles it
         max_content_length = current_app.config.get('MAX_CONTENT_LENGTH')
@@ -2222,7 +2253,14 @@ def upload_file():
                 else:
                     current_app.logger.info(f"Duration-based chunking enabled ({chunking_config.limit_value}s, source={chunking_config.source}) - skipping {original_file_size/1024/1024:.1f}MB size limit check")
 
-        if should_enforce_size_limit and max_content_length and original_file_size > max_content_length:
+        # Two ceilings to consider. The Werkzeug `max_content_length` is
+        # the WSGI hard cap; the smaller `effective_limit_bytes` is the
+        # per-request policy cap (which differs between regular and
+        # audio-only-video uploads). Reject if EITHER fires.
+        if should_enforce_size_limit and (
+            (max_content_length and original_file_size > max_content_length)
+            or original_file_size > effective_limit_bytes
+        ):
             raise RequestEntityTooLarge()
 
         file.save(filepath)
@@ -2290,7 +2328,14 @@ def upload_file():
                     f"Probe failed but file extension '{file_ext}' indicates video — "
                     f"treating as video for {'VIDEO_PASSTHROUGH_ASR' if VIDEO_PASSTHROUGH_ASR else 'VIDEO_RETENTION'}"
                 )
-        if (VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video:
+        # Per-upload `keep_audio_only` overrides VIDEO_RETENTION for this
+        # request. VIDEO_PASSTHROUGH_ASR is an admin escape hatch that
+        # sends video directly to the ASR endpoint — left untouched here.
+        keep_video_for_this_upload = (
+            ((VIDEO_RETENTION and not keep_audio_only_flag) or VIDEO_PASSTHROUGH_ASR)
+            and has_video
+        )
+        if keep_video_for_this_upload:
             current_app.logger.info(f"Video {'passthrough' if VIDEO_PASSTHROUGH_ASR else 'retention'}: keeping original video, skipping conversion")
         else:
             # Use shared conversion utility - handles ALL conversion needs (codec conversion + compression)
@@ -2321,6 +2366,37 @@ def upload_file():
 
         # Get final file size (of original or converted file)
         final_file_size = os.path.getsize(filepath)
+
+        # Post-extraction size guard. When the upload exceeded the regular
+        # max_file_size_mb under the "audio-only video" exception, the
+        # stored file (after audio extraction) must still fit the regular
+        # limit. If it does not, the user picked a video whose audio track
+        # alone is enormous; reject the upload, clean up, and let them know.
+        if (
+            effective_audio_only
+            and is_likely_video_by_ext
+            and original_file_size > regular_limit_mb * 1024 * 1024
+            and final_file_size > regular_limit_mb * 1024 * 1024
+        ):
+            try:
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+            except OSError:
+                pass
+            current_app.logger.warning(
+                f"Audio-only extraction left {final_file_size/1024/1024:.1f}MB of audio, "
+                f"which exceeds regular limit {regular_limit_mb}MB. Rejecting upload."
+            )
+            return jsonify({
+                'error': (
+                    f'The extracted audio is {final_file_size / 1024 / 1024:.0f} MB, '
+                    f'larger than the {regular_limit_mb} MB stored-file limit. '
+                    f'Try a lower-bitrate video or shorten the recording.'
+                ),
+                'max_size_mb': float(regular_limit_mb),
+                'extracted_audio_mb': round(final_file_size / 1024 / 1024, 1),
+                'audio_only_mode': True,
+            }), 413
 
         # (file_hash and duplicate_warning already computed above, before conversion)
 
@@ -2517,6 +2593,11 @@ def upload_file():
             processing_source='upload',  # Track that this was manually uploaded
             file_hash=file_hash,
             prompt_variables=prompt_variables,
+            # Per-upload override: record the effective audio-only flag so
+            # the processing task knows whether to drop the video stream
+            # regardless of the server's VIDEO_RETENTION setting. True when
+            # the user explicitly toggled it or when VIDEO_RETENTION is off.
+            keep_audio_only=effective_audio_only,
         )
         db.session.add(recording)
         db.session.commit()
@@ -2588,11 +2669,26 @@ def upload_file():
         return jsonify(response_data), 202
 
     except RequestEntityTooLarge:
-        max_size_mb = current_app.config['MAX_CONTENT_LENGTH'] / (1024 * 1024)
-        current_app.logger.warning(f"Upload failed: File too large (>{max_size_mb}MB)")
+        # Report the effective limit that fired (regular vs audio-only)
+        # so the frontend can show the right message. effective_limit_mb
+        # is set at the top of the function before the size check.
+        try:
+            limit_mb = float(effective_limit_mb)
+        except (NameError, TypeError, ValueError):
+            limit_mb = float(current_app.config['MAX_CONTENT_LENGTH']) / (1024 * 1024)
+        audio_only_mode = False
+        try:
+            audio_only_mode = bool(effective_audio_only) and bool(is_likely_video_by_ext)
+        except NameError:
+            pass
+        current_app.logger.warning(
+            f"Upload failed: File too large (>{limit_mb}MB, audio_only={audio_only_mode})"
+        )
         return jsonify({
-            'error': f'File too large. Maximum size is {max_size_mb:.0f} MB.',
-            'max_size_mb': max_size_mb
+            'error': f'File too large. Maximum size is {limit_mb:.0f} MB.',
+            'max_size_mb': limit_mb,
+            'effective_limit_mb': limit_mb,
+            'audio_only_mode': audio_only_mode,
         }), 413
     except Exception as e:
         db.session.rollback()

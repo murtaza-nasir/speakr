@@ -1551,6 +1551,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             current_app.logger.error(f"Error: Recording {recording_id} not found for transcription.")
             return
 
+        # Per-upload override: if keep_audio_only is set on the recording,
+        # treat VIDEO_RETENTION as off for this run regardless of the env
+        # var. Set at upload time (web or v1 API) and persists with the
+        # recording so re-processing/reprocess honours it too.
+        effective_video_retention = VIDEO_RETENTION and not getattr(recording, 'keep_audio_only', False)
+
         try:
             current_app.logger.info(f"Starting connector-based transcription for recording {recording_id}...")
             recording.status = 'PROCESSING'
@@ -1608,12 +1614,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     # Video passthrough: send original video directly to ASR without audio extraction
                     current_app.logger.info(f"Video passthrough: sending original video to ASR (no audio extraction)")
                     actual_filepath = filepath  # Send video as-is to connector
-                    if VIDEO_RETENTION:
+                    if effective_video_retention:
                         # Also keep the video for playback
                         recording.audio_path = filepath
                         recording.mime_type = mimetypes.guess_type(filepath)[0] or 'video/mp4'
                         db.session.commit()
-                elif VIDEO_RETENTION:
+                elif effective_video_retention:
                     # Video retention: keep original video, extract audio to temp for transcription only
                     current_app.logger.info(f"Video container detected, retaining video and extracting audio to temp...")
                     try:
@@ -1855,7 +1861,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     pass  # Best effort cleanup
 
             # Clean up temp audio extracted from video when video retention is enabled
-            if is_video and VIDEO_RETENTION and audio_filepath and audio_filepath != filepath:
+            if is_video and effective_video_retention and audio_filepath and audio_filepath != filepath:
                 try:
                     if os.path.exists(audio_filepath):
                         os.remove(audio_filepath)

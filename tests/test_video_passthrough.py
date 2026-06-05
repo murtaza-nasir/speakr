@@ -134,10 +134,10 @@ class TestProcessingMainPath(unittest.TestCase):
 
         after_video = PROCESSING_MAIN[video_block_start:]
         passthrough_pos = after_video.find('if VIDEO_PASSTHROUGH_ASR:')
-        retention_pos = after_video.find('elif VIDEO_RETENTION:')
+        retention_pos = after_video.find('elif effective_video_retention:')
 
         self.assertNotEqual(passthrough_pos, -1, "Missing VIDEO_PASSTHROUGH_ASR check in is_video block")
-        self.assertNotEqual(retention_pos, -1, "Missing elif VIDEO_RETENTION check")
+        self.assertNotEqual(retention_pos, -1, "Missing elif effective_video_retention check")
         self.assertLess(passthrough_pos, retention_pos,
                         "VIDEO_PASSTHROUGH_ASR should be checked before VIDEO_RETENTION")
 
@@ -146,7 +146,7 @@ class TestProcessingMainPath(unittest.TestCase):
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         # Find the passthrough branch (from `if VIDEO_PASSTHROUGH_ASR:` to `elif VIDEO_RETENTION:`)
         pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
-        pt_end = video_block.find('elif VIDEO_RETENTION:')
+        pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertNotIn('extract_audio_from_video', passthrough_block,
                           "Passthrough branch should NOT extract audio")
@@ -155,7 +155,7 @@ class TestProcessingMainPath(unittest.TestCase):
         """Passthrough sets actual_filepath = filepath (the original video)."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
-        pt_end = video_block.find('elif VIDEO_RETENTION:')
+        pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('actual_filepath = filepath', passthrough_block)
 
@@ -163,9 +163,9 @@ class TestProcessingMainPath(unittest.TestCase):
         """When both passthrough and retention are on, recording.audio_path is set."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
-        pt_end = video_block.find('elif VIDEO_RETENTION:')
+        pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
-        self.assertIn('if VIDEO_RETENTION:', passthrough_block,
+        self.assertIn('if effective_video_retention:', passthrough_block,
                        "Passthrough branch should conditionally handle retention")
         self.assertIn('recording.audio_path = filepath', passthrough_block)
         self.assertIn("mimetypes.guess_type(filepath)", passthrough_block)
@@ -215,7 +215,7 @@ class TestRetentionNotBroken(unittest.TestCase):
     def test_retention_branch_still_extracts_audio(self):
         """elif VIDEO_RETENTION branch still calls extract_audio_from_video."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
-        ret_start = video_block.find('elif VIDEO_RETENTION:')
+        ret_start = video_block.find('elif effective_video_retention:')
         # Find next else: at the same indent level
         after_ret = video_block[ret_start:]
         else_pos = after_ret.find('\n                else:')
@@ -230,8 +230,11 @@ class TestRetentionNotBroken(unittest.TestCase):
         self.assertIn('extract_audio_from_video(filepath)', video_block)
 
     def test_temp_audio_cleanup_still_present(self):
-        """Temp audio from retention is still cleaned up after transcription."""
-        self.assertIn('is_video and VIDEO_RETENTION and audio_filepath', PROCESSING_MAIN)
+        """Temp audio from retention is still cleaned up after transcription.
+        After the per-upload keep_audio_only override landed, the cleanup
+        branch checks effective_video_retention (env var AND per-recording
+        flag) rather than VIDEO_RETENTION directly."""
+        self.assertIn('is_video and effective_video_retention and audio_filepath', PROCESSING_MAIN)
         self.assertIn('Cleaned up temp audio from video retention', PROCESSING_MAIN)
 
 
@@ -285,11 +288,25 @@ class TestUploadHandlerPassthrough(unittest.TestCase):
     """Test recordings.py upload handler respects VIDEO_PASSTHROUGH_ASR."""
 
     def test_skip_conversion_for_passthrough_video(self):
-        """Upload handler skips conversion when passthrough or retention + video."""
-        self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video', RECORDINGS)
+        """Upload handler skips conversion when passthrough is on OR
+        retention is on AND the per-upload keep_audio_only override is
+        off, and the file has video. The decision shape changed when
+        the per-upload override landed."""
+        # The new decision string keeps VIDEO_PASSTHROUGH_ASR as an
+        # admin-level escape hatch and gates retention on the per-upload
+        # keep_audio_only flag.
+        self.assertIn('VIDEO_PASSTHROUGH_ASR', RECORDINGS)
+        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', RECORDINGS)
+        # The extension fallback (used when ffprobe fails) still uses
+        # the original `or` shape since it predates the upload decision.
+        self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR', RECORDINGS)
 
     def test_extension_fallback_checks_passthrough(self):
-        """Extension-based video detection also fires for VIDEO_PASSTHROUGH_ASR."""
+        """Extension-based video detection also fires for VIDEO_PASSTHROUGH_ASR.
+        This check predates the keep_audio_only override and stays as-is
+        because the extension fallback only decides whether `has_video`
+        should be treated as True when ffprobe failed; the per-upload
+        keep_audio_only logic runs afterwards."""
         self.assertIn('VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR', RECORDINGS)
 
     def test_convert_if_needed_still_in_else(self):
@@ -411,7 +428,7 @@ class TestInteractionMatrix(unittest.TestCase):
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         # All three branches present in order
         pt_pos = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
-        ret_pos = video_block.find('elif VIDEO_RETENTION:')
+        ret_pos = video_block.find('elif effective_video_retention:')
         else_pos = video_block.find('\n                else:', ret_pos)
         self.assertNotEqual(pt_pos, -1)
         self.assertNotEqual(ret_pos, -1)

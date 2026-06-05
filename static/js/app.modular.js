@@ -381,6 +381,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const incognitoRecording = ref(null);
             const incognitoProcessing = ref(false);
 
+            // --- Video / Audio-Only Upload State ---
+            // Server config: whether VIDEO_RETENTION is enabled. Controls
+            // toggle visibility (when on, the toggle is shown for video
+            // files; when off, the system always extracts audio and the
+            // toggle stays hidden — the larger size limit applies
+            // implicitly to video files).
+            const videoRetentionEnabled = ref(false);
+            // Per-upload override (toggle in the upload form). Sent as
+            // form field `keep_audio_only=true` when on, recorded on the
+            // Recording row, consumed by the processing pipeline.
+            const keepAudioOnly = ref(false);
+            // Server config: cap for audio-only-mode video uploads, in MB.
+            const maxAudioOnlyVideoSizeMB = ref(1000);
+
             // --- Bulk Selection State ---
             const selectionMode = ref(false);
             const selectedRecordingIds = ref(new Set());
@@ -796,6 +810,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Incognito Mode
                 enableIncognitoMode, incognitoMode, incognitoRecording, incognitoProcessing,
+                videoRetentionEnabled, keepAudioOnly, maxAudioOnlyVideoSizeMB,
 
                 // Bulk Selection
                 selectionMode, selectedRecordingIds, bulkActionInProgress,
@@ -2503,6 +2518,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         enableIncognitoMode.value = config.enable_incognito_mode === true;
                         foldersEnabled.value = config.enable_folders === true;
                         maxConcurrentUploads.value = config.max_concurrent_uploads || 3;
+                        // Video / audio-only upload config. videoRetention from
+                        // the server controls whether the "Keep audio only"
+                        // toggle is shown; max_audio_only_video_size_mb sets
+                        // the larger limit applied to video uploads in
+                        // audio-only mode.
+                        videoRetentionEnabled.value = config.video_retention === true;
+                        if (typeof config.max_audio_only_video_size_mb === 'number') {
+                            maxAudioOnlyVideoSizeMB.value = config.max_audio_only_video_size_mb;
+                        } else if (config.max_audio_only_video_size_mb) {
+                            maxAudioOnlyVideoSizeMB.value = parseInt(config.max_audio_only_video_size_mb, 10) || 1000;
+                        }
 
                         // Per-upload transcription model dropdown options
                         // (issue #266). Only set when admin configured at least

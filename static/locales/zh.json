@@ -237,7 +237,8 @@
       "recordingDisclaimerDesc": "录音开始前向用户显示的法律免责声明。支持 Markdown 格式。留空以禁用。",
       "uploadDisclaimerDesc": "文件上传前显示的法律免责声明。支持 Markdown。留空以禁用。",
       "customBannerDesc": "页面顶部显示的自定义横幅。支持 Markdown。留空以禁用。",
-      "transcriptLengthLimitDesc": "从转录发送到 LLM 进行摘要和聊天的最大字符数。使用 -1 表示无限制。"
+      "transcriptLengthLimitDesc": "从转录发送到 LLM 进行摘要和聊天的最大字符数。使用 -1 表示无限制。",
+      "maxAudioOnlyVideoSizeDesc": "仅音频模式下视频上传的最大文件大小（MB）。仅保留提取出的音频，因此上传文件本身可以大于常规限制。"
     },
     "storageUsed": "已用存储",
     "summarizationInstructions": "摘要说明",
@@ -1530,7 +1531,11 @@
     "uploadNFiles": "Upload {{count}} File(s)",
     "uploadProgress": "上传进度",
     "videoRetained": "视频已保留供播放",
-    "willAutoSummarize": "转录后将自动生成摘要"
+    "willAutoSummarize": "转录后将自动生成摘要",
+    "keepAudioOnly": "仅保留音频",
+    "keepAudioOnlyHelp": "在本次上传中丢弃视频流。只要提取出的音频未超过常规限制，就可以上传体积远大于常规限制的视频。",
+    "videoAudioOnlyAuto": "不会保留视频流。",
+    "videoExceedsAudioOnlyMaxSize": "视频 “{{name}}” 超出仅音频上限 {{size}} MB，已跳过。"
   },
   "uploadProgress": {
     "title": "上传进度"

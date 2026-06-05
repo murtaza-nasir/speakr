@@ -237,7 +237,8 @@
       "recordingDisclaimerDesc": "Aviso legal mostrado a los usuarios antes de comenzar la grabación. Admite formato Markdown. Dejar vacío para desactivar.",
       "uploadDisclaimerDesc": "Aviso legal mostrado antes de subir archivos. Admite Markdown. Dejar vacío para desactivar.",
       "customBannerDesc": "Banner personalizado mostrado en la parte superior de la página. Admite Markdown. Dejar vacío para desactivar.",
-      "transcriptLengthLimitDesc": "Número máximo de caracteres a enviar desde la transcripción al LLM para resumen y chat. Use -1 para sin límite."
+      "transcriptLengthLimitDesc": "Número máximo de caracteres a enviar desde la transcripción al LLM para resumen y chat. Use -1 para sin límite.",
+      "maxAudioOnlyVideoSizeDesc": "Tamaño máximo (en MB) para subidas de vídeo en modo solo audio. Solo se almacena el audio extraído, por lo que la subida en sí puede ser mayor que el límite habitual."
     },
     "storageUsed": "ALMACENAMIENTO USADO",
     "summarizationInstructions": "Instrucciones de Resumen",
@@ -1530,7 +1531,11 @@
     "uploadNFiles": "Upload {{count}} File(s)",
     "uploadProgress": "Progreso de Carga",
     "videoRetained": "Video conservado para reproducción",
-    "willAutoSummarize": "Se resumirá automáticamente después de la transcripción"
+    "willAutoSummarize": "Se resumirá automáticamente después de la transcripción",
+    "keepAudioOnly": "Conservar solo el audio",
+    "keepAudioOnlyHelp": "Descarta el flujo de vídeo de esta subida. Permite cargar vídeos más grandes que el límite habitual, siempre que el audio extraído no lo supere.",
+    "videoAudioOnlyAuto": "El flujo de vídeo no se conservará.",
+    "videoExceedsAudioOnlyMaxSize": "El vídeo «{{name}}» supera el máximo de solo audio de {{size}} MB y se omitió."
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

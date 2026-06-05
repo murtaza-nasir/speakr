@@ -78,9 +78,24 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
         """When VIDEO_RETENTION=False, extract_audio_from_video is called with default cleanup."""
         self.assertIn('extract_audio_from_video(filepath)', self.content)
 
+    def test_effective_video_retention_combines_env_and_per_recording_flag(self):
+        """The processing task derives `effective_video_retention` from
+        BOTH the env var AND the per-recording keep_audio_only flag.
+        This is what lets a single upload opt out of retention even when
+        VIDEO_RETENTION is on globally."""
+        self.assertIn(
+            "effective_video_retention = VIDEO_RETENTION and not getattr(recording, 'keep_audio_only', False)",
+            self.content,
+        )
+
     def test_temp_audio_cleanup_after_transcription(self):
-        """Temp audio from video retention is cleaned up after transcription."""
-        self.assertIn('is_video and VIDEO_RETENTION and audio_filepath', self.content)
+        """Temp audio from video retention is cleaned up after transcription.
+
+        After the per-upload keep_audio_only override was added, the
+        cleanup branch checks the effective (per-recording) retention
+        flag rather than the global env var directly.
+        """
+        self.assertIn('is_video and effective_video_retention and audio_filepath', self.content)
         self.assertIn('Cleaned up temp audio from video retention', self.content)
 
     def test_audio_filepath_initialized_to_none(self):
@@ -107,9 +122,52 @@ class TestUploadHandlerVideoRetention(unittest.TestCase):
         with open(os.path.join(PROJECT_ROOT, 'src/api/recordings.py'), 'r') as f:
             cls.content = f.read()
 
+    def test_upload_handler_parses_keep_audio_only_form_field(self):
+        """The new per-upload `keep_audio_only` form field is parsed at
+        the top of the upload handler. Without this parse, the override
+        is silently ignored."""
+        self.assertIn(
+            "request.form.get('keep_audio_only', 'false').lower() == 'true'",
+            self.content,
+        )
+        self.assertIn('keep_audio_only_flag', self.content)
+        self.assertIn('effective_audio_only', self.content)
+
+    def test_upload_handler_uses_separate_size_limit_for_audio_only_video(self):
+        """When the upload is in audio-only mode AND the file extension
+        looks like video, the size gate uses max_audio_only_video_size_mb
+        instead of max_file_size_mb. The post-extraction guard then
+        ensures the stored audio still fits the regular limit."""
+        # The audio-only-video limit must be read from the SystemSetting,
+        # not hardcoded.
+        self.assertIn(
+            "SystemSetting.get_setting('max_audio_only_video_size_mb'",
+            self.content,
+        )
+        # Effective limit must split on the (audio_only AND video) condition.
+        self.assertIn('effective_audio_only and is_likely_video_by_ext', self.content)
+        # And the post-extraction size guard must still cap the stored
+        # audio against the regular limit.
+        self.assertIn('regular_limit_mb * 1024 * 1024', self.content)
+        self.assertIn('extracted_audio_mb', self.content)
+
+    def test_upload_handler_persists_keep_audio_only_on_recording(self):
+        """The recording row stores the effective audio-only flag so the
+        processing task and reprocess flows honour it."""
+        self.assertIn('keep_audio_only=effective_audio_only', self.content)
+
     def test_upload_handler_skips_conversion_for_video_retention(self):
-        """Upload handler skips convert_if_needed for videos when retention is on."""
-        self.assertIn('(VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video', self.content)
+        """Upload handler skips convert_if_needed for videos when retention
+        is on AND the per-upload keep_audio_only override is off.
+
+        The exact decision string changed when the per-upload override
+        landed; this test pins the new shape.
+        """
+        # The decision must factor in keep_audio_only_flag so a single
+        # upload can opt out of retention even when VIDEO_RETENTION=True.
+        self.assertIn('VIDEO_RETENTION and not keep_audio_only_flag', self.content)
+        # And the "skip conversion" log line is still the marker that
+        # the keep-video branch was taken.
         self.assertIn('skipping conversion', self.content)
 
     def test_upload_handler_has_video_from_codec_info(self):
@@ -312,21 +370,30 @@ class TestVideoRetentionMatrix(unittest.TestCase):
             return f.read()
 
     def test_processing_has_both_branches(self):
-        """processing.py has both VIDEO_RETENTION=True and False branches for video."""
+        """processing.py has both retention=on and retention=off branches
+        for video. After the per-upload keep_audio_only override landed,
+        the decision is `effective_video_retention` (derived from the env
+        var AND the recording's keep_audio_only field) rather than
+        VIDEO_RETENTION directly.
+        """
         content = self._read_file('src/tasks/processing.py')
-        # Should have if VIDEO_RETENTION: ... else: ... inside if is_video:
-        self.assertIn('if VIDEO_RETENTION:', content)
-        # After the retention block, should have else for the default behavior
+        # The effective flag must be derived from both the env var and
+        # the per-recording override.
+        self.assertIn('effective_video_retention = VIDEO_RETENTION and not', content)
+        # And it must be the gate inside the is_video block.
+        self.assertIn('elif effective_video_retention:', content)
+        # The else branch (extract audio + delete original) must still
+        # follow somewhere.
         lines = content.split('\n')
-        found_retention_if = False
+        found_retention_branch = False
         found_else_after = False
         for line in lines:
-            if 'if VIDEO_RETENTION:' in line:
-                found_retention_if = True
-            elif found_retention_if and line.strip().startswith('else:'):
+            if 'elif effective_video_retention:' in line:
+                found_retention_branch = True
+            elif found_retention_branch and line.strip().startswith('else:'):
                 found_else_after = True
                 break
-        self.assertTrue(found_else_after, "Missing else branch after VIDEO_RETENTION check in processing.py")
+        self.assertTrue(found_else_after, "Missing else branch after effective_video_retention check in processing.py")
 
     def test_file_monitor_has_both_branches(self):
         """file_monitor.py has both video retention skip and normal conversion paths."""
@@ -346,11 +413,17 @@ class TestVideoRetentionMatrix(unittest.TestCase):
                         "VIDEO_RETENTION should not be referenced in incognito processing")
 
     def test_all_three_entry_points_skip_for_video_retention(self):
-        """All entry points (upload, file monitor, processing) handle VIDEO_RETENTION."""
+        """All entry points (upload, file monitor, processing) honour
+        video retention. The web upload and the processing task also
+        honour the per-recording keep_audio_only override; file monitor
+        does not (it has no per-file override surface)."""
         for rel_path, marker in [
-            ('src/api/recordings.py', '(VIDEO_RETENTION or VIDEO_PASSTHROUGH_ASR) and has_video'),
+            # Upload handler: per-upload override factored in.
+            ('src/api/recordings.py', 'VIDEO_RETENTION and not keep_audio_only_flag'),
+            # File monitor: still global-only, no per-file override.
             ('src/file_monitor.py', '(VIDEO_PASSTHROUGH_ASR or VIDEO_RETENTION) and has_video'),
-            ('src/tasks/processing.py', 'if VIDEO_RETENTION:'),
+            # Processing task: effective flag (env var AND per-recording).
+            ('src/tasks/processing.py', 'elif effective_video_retention:'),
         ]:
             content = self._read_file(rel_path)
             self.assertIn(marker, content, f"Missing video retention guard in {rel_path}")

@@ -47,6 +47,8 @@ export function useUpload(state, utils) {
         availableFolders, selectedFolderId,
         // Incognito mode state
         incognitoMode, incognitoRecording, incognitoProcessing,
+        // Video / audio-only upload state
+        videoRetentionEnabled, keepAudioOnly, maxAudioOnlyVideoSizeMB,
         // View state
         currentView,
         // Upload disclaimer state
@@ -192,9 +194,25 @@ export function useUpload(state, utils) {
             );
 
             if (isAudioFile) {
-                // Only check general file size limit
-                if (fileObject.size > maxFileSizeMB.value * 1024 * 1024) {
-                    setGlobalError(t('upload.fileExceedsMaxSize', { name: fileObject.name, size: maxFileSizeMB.value }));
+                // Per-file effective size limit. A video file uploaded in
+                // audio-only mode (toggle on, or VIDEO_RETENTION off at
+                // the server) uses the larger limit, since only the
+                // extracted audio is stored. Everything else uses the
+                // regular limit.
+                const isVideoExt = /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(fileObject.name);
+                const audioOnlyForThisFile = (
+                    (videoRetentionEnabled && videoRetentionEnabled.value)
+                        ? (keepAudioOnly && keepAudioOnly.value)
+                        : true
+                );
+                const effectiveLimitMB = (isVideoExt && audioOnlyForThisFile && maxAudioOnlyVideoSizeMB)
+                    ? maxAudioOnlyVideoSizeMB.value
+                    : maxFileSizeMB.value;
+                if (fileObject.size > effectiveLimitMB * 1024 * 1024) {
+                    const errKey = (isVideoExt && audioOnlyForThisFile)
+                        ? 'upload.videoExceedsAudioOnlyMaxSize'
+                        : 'upload.fileExceedsMaxSize';
+                    setGlobalError(t(errKey, { name: fileObject.name, size: effectiveLimitMB }));
                     continue;
                 }
 
@@ -415,6 +433,22 @@ export function useUpload(state, utils) {
                 if (Object.keys(cleaned).length > 0) {
                     formData.append('prompt_variables', JSON.stringify(cleaned));
                 }
+            }
+
+            // Per-upload "keep audio only" override. True when the user
+            // toggled it explicitly (only visible when VIDEO_RETENTION is
+            // on at the server) OR implicitly when VIDEO_RETENTION is
+            // off AND the file is a video — in both cases the upload is
+            // allowed up to the larger audio-only video limit and the
+            // server discards the video stream.
+            const isVideoExt = /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(fileItem.file.name);
+            const keepAudioOnlyForThisFile = (
+                (videoRetentionEnabled && videoRetentionEnabled.value)
+                    ? !!(keepAudioOnly && keepAudioOnly.value)
+                    : isVideoExt
+            );
+            if (keepAudioOnlyForThisFile) {
+                formData.append('keep_audio_only', 'true');
             }
 
             // Use XMLHttpRequest for per-file upload progress

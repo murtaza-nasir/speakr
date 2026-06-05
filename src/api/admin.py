@@ -725,12 +725,21 @@ def admin_update_setting():
     try:
         setting = SystemSetting.set_setting(key, value, description, setting_type)
 
-        # Update Flask's MAX_CONTENT_LENGTH immediately when file size limit changes
-        if key == 'max_file_size_mb' and value:
+        # Recompute the Werkzeug ceiling whenever either upload limit
+        # changes. The WSGI ceiling must be the higher of the two so that
+        # audio-only video uploads can exceed max_file_size_mb.
+        if key in ('max_file_size_mb', 'max_audio_only_video_size_mb') and value:
             try:
-                new_limit = int(value) * 1024 * 1024
-                current_app.config['MAX_CONTENT_LENGTH'] = new_limit
-                current_app.logger.info(f"Updated MAX_CONTENT_LENGTH to {value}MB")
+                regular_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
+                audio_only_mb = int(
+                    SystemSetting.get_setting('max_audio_only_video_size_mb', regular_mb * 4)
+                )
+                ceiling_mb = max(regular_mb, audio_only_mb)
+                current_app.config['MAX_CONTENT_LENGTH'] = ceiling_mb * 1024 * 1024
+                current_app.logger.info(
+                    f"Updated MAX_CONTENT_LENGTH to {ceiling_mb}MB "
+                    f"(regular={regular_mb}, audio_only={audio_only_mb})"
+                )
             except (ValueError, TypeError):
                 pass
 

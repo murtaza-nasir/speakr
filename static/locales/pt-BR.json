@@ -237,7 +237,8 @@
       "recordingDisclaimerDesc": "Aviso legal mostrado aos usuários antes do início da gravação. Suporta formatação Markdown. Deixe em branco para desabilitar.",
       "uploadDisclaimerDesc": "Aviso legal mostrado antes dos uploads de arquivo. Suporta Markdown. Deixe em branco para desabilitar.",
       "customBannerDesc": "Banner personalizado mostrado no topo da página. Suporta Markdown. Deixe em branco para desabilitar.",
-      "transcriptLengthLimitDesc": "Número máximo de caracteres para enviar da transcrição ao LLM para resumo e chat. Use -1 para nenhum limite."
+      "transcriptLengthLimitDesc": "Número máximo de caracteres para enviar da transcrição ao LLM para resumo e chat. Use -1 para nenhum limite.",
+      "maxAudioOnlyVideoSizeDesc": "Tamanho máximo (em MB) para envios de vídeo em modo apenas-áudio. Apenas o áudio extraído é armazenado, portanto o envio em si pode ser maior que o limite habitual."
     },
     "storageUsed": "ARMAZENAMENTO USADO",
     "summarizationInstructions": "Instruções de Resumo",
@@ -1530,7 +1531,11 @@
     "uploadNFiles": "Enviar {{count}} Arquivo(s)",
     "uploadProgress": "Progresso do Envio",
     "videoRetained": "Vídeo preservado para reprodução",
-    "willAutoSummarize": "Será resumido automaticamente após a transcrição"
+    "willAutoSummarize": "Será resumido automaticamente após a transcrição",
+    "keepAudioOnly": "Manter apenas o áudio",
+    "keepAudioOnlyHelp": "Descartar o fluxo de vídeo neste envio. Permite enviar vídeos maiores que o limite habitual, contanto que o áudio extraído caiba no limite.",
+    "videoAudioOnlyAuto": "O fluxo de vídeo não será mantido.",
+    "videoExceedsAudioOnlyMaxSize": "O vídeo “{{name}}” excede o máximo apenas-áudio de {{size}} MB e foi ignorado."
   },
   "uploadProgress": {
     "title": "Progresso do Envio"

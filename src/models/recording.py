@@ -43,6 +43,13 @@ class Recording(db.Model):
     error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
     file_hash = db.Column(db.String(64), nullable=True)  # SHA-256 hash for duplicate detection
 
+    # Per-upload override for VIDEO_RETENTION. When True, the processing
+    # pipeline extracts audio and discards the video stream even if the
+    # server's VIDEO_RETENTION is on. Also signals that the upload was
+    # allowed to exceed max_file_size_mb because only the extracted audio
+    # has to fit that limit. See docs/admin-guide/configuration.md.
+    keep_audio_only = db.Column(db.Boolean, default=False, nullable=False)
+
     # Auto-deletion and archival fields
     audio_deleted_at = db.Column(db.DateTime, nullable=True)  # When audio file was deleted (null = not deleted)
     deletion_exempt = db.Column(db.Boolean, default=False)  # Manual exemption from auto-deletion

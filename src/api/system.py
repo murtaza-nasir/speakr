@@ -198,6 +198,15 @@ def get_config():
     try:
         # Get configurable file size limit
         max_file_size_mb = SystemSetting.get_setting('max_file_size_mb', 250)
+        # Audio-only video uploads: only the extracted audio is stored, so
+        # the upload itself can be larger than max_file_size_mb. Used by
+        # the frontend pre-check when "Keep audio only" is on (explicitly
+        # via toggle when VIDEO_RETENTION=true, or implicitly when
+        # VIDEO_RETENTION=false).
+        max_audio_only_video_size_mb = SystemSetting.get_setting(
+            'max_audio_only_video_size_mb',
+            int(max_file_size_mb) * 4 if max_file_size_mb else 1000,
+        )
 
         # Get chunking configuration (supports both legacy and new formats)
         chunking_info = {}
@@ -291,6 +300,7 @@ def get_config():
             'enable_folders': SystemSetting.get_setting('enable_folders', False) == True,
             'enable_auto_export': ENABLE_AUTO_EXPORT,
             'video_retention': VIDEO_RETENTION,
+            'max_audio_only_video_size_mb': max_audio_only_video_size_mb,
             'max_concurrent_uploads': MAX_CONCURRENT_UPLOADS,
             'user_transcription_language': user_transcription_language,
             'user_summary_prompt': user_summary_prompt,
