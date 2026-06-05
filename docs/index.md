@@ -11,7 +11,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 
     - The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter. Replaced with a per-request, header-only, database-validated check.
     - `change_password` no longer silently sets a password on an SSO-only account (where `current_user.password` is None); this was the chained-takeover path.
-    - Reported by **Irina Iarlykanova** (Snyk Security Labs). Tracked as a GitHub Security Advisory.
+    - Reported by **@Irench1k**. Tracked as a GitHub Security Advisory.
 
 ## Quick Navigation
 
