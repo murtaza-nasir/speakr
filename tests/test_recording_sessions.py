@@ -233,6 +233,98 @@ def test_finalize_creates_recording_and_enqueues_stitch_job():
     shutil.rmtree(upload_folder, ignore_errors=True)
 
 
+def test_finalize_rejects_finalizing_into_other_users_personal_folder():
+    """IDOR regression. Without folder-access validation in finalize,
+    user A could submit a personal folder_id belonging to user B and the
+    new recording would be linked to B's folder. Mirrors the validation
+    in update_recording (src/api/api_v1.py). Reported by the background
+    security review on 2026-06-05."""
+    from src.models.organization import Folder
+
+    upload_folder = _make_tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        victim = _setup_user("sess_idor_victim")
+        attacker = _setup_user("sess_idor_attacker")
+        victim_folder = Folder(name="victim-private", user_id=victim.id)
+        db.session.add(victim_folder)
+        db.session.commit()
+
+        client = app.test_client()
+        _login(client, attacker)
+        sid = client.post("/upload/session", json={"mime_type": "audio/webm"}).get_json()["session_id"]
+        client.post(
+            f"/upload/session/{sid}/chunks/1",
+            data=b"\x00" * 100,
+            content_type="application/octet-stream",
+        )
+
+        r = client.post(
+            f"/upload/session/{sid}/finalize",
+            json={"title": "exploit", "folder_id": victim_folder.id},
+        )
+        assert r.status_code == 403, (
+            f"Cross-tenant folder finalize must be rejected; got "
+            f"{r.status_code} body={r.data!r}"
+        )
+
+        # The victim's folder must still belong to the victim; no
+        # recording from the attacker may exist with folder_id set.
+        from sqlalchemy import select
+        attacker_recs = db.session.execute(
+            select(Recording).where(
+                Recording.user_id == attacker.id,
+                Recording.folder_id == victim_folder.id,
+            )
+        ).scalars().all()
+        assert not attacker_recs
+
+        # Cleanup
+        sess = db.session.get(RecordingSession, sid)
+        if sess:
+            sess.status = "aborted"
+            db.session.commit()
+            client.delete(f"/upload/session/{sid}")
+        db.session.delete(victim_folder)
+        db.session.delete(victim)
+        db.session.delete(attacker)
+        db.session.commit()
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
+def test_finalize_returns_404_for_nonexistent_folder():
+    """The folder-access check uses 404 vs 403 to distinguish missing
+    from forbidden, matching update_recording's behaviour. A made-up
+    folder_id should 404, not silently succeed."""
+    upload_folder = _make_tmp_upload_folder()
+    with app.app_context():
+        app.config["UPLOAD_FOLDER"] = upload_folder
+        user = _setup_user("sess_bad_folder")
+        client = app.test_client()
+        _login(client, user)
+        sid = client.post("/upload/session", json={"mime_type": "audio/webm"}).get_json()["session_id"]
+        client.post(
+            f"/upload/session/{sid}/chunks/1",
+            data=b"\x00" * 100,
+            content_type="application/octet-stream",
+        )
+
+        r = client.post(
+            f"/upload/session/{sid}/finalize",
+            json={"folder_id": 999_999_999},
+        )
+        assert r.status_code == 404
+
+        sess = db.session.get(RecordingSession, sid)
+        if sess:
+            sess.status = "aborted"
+            db.session.commit()
+            client.delete(f"/upload/session/{sid}")
+        db.session.delete(user)
+        db.session.commit()
+    shutil.rmtree(upload_folder, ignore_errors=True)
+
+
 def test_finalize_rejects_when_no_chunks():
     upload_folder = _make_tmp_upload_folder()
     with app.app_context():

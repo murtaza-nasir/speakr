@@ -303,12 +303,34 @@ def finalize_session(session_id):
     if folder_id in ('', 'none', 'null'):
         folder_id = None
 
+    # Authorize folder access (#287 c/d, mirrors update_recording in
+    # src/api/api_v1.py). Without this check, an attacker could finalize
+    # a session targeting another user's folder, and the resulting
+    # recording would be linked to it. Personal folders require
+    # ownership; group folders require membership.
+    resolved_folder_id = None
+    if isinstance(folder_id, int):
+        from src.models.organization import Folder, GroupMembership
+        target = db.session.get(Folder, folder_id)
+        if not target:
+            return jsonify({'error': f'Folder {folder_id} not found'}), 404
+        if target.group_id is None:
+            if target.user_id != current_user.id:
+                return jsonify({'error': 'No access to target folder'}), 403
+        else:
+            membership = GroupMembership.query.filter_by(
+                user_id=current_user.id, group_id=target.group_id
+            ).first()
+            if not membership:
+                return jsonify({'error': 'No access to target folder'}), 403
+        resolved_folder_id = target.id
+
     recording = Recording(
         user_id=current_user.id,
         title=title[:200],
         status='STITCHING',
         notes=notes,
-        folder_id=folder_id if isinstance(folder_id, int) else None,
+        folder_id=resolved_folder_id,
         processing_source='recording_session',
         mime_type=session.mime_type,
     )
