@@ -18,7 +18,11 @@ export function useUI(state, utils, processedTranscription) {
         recordingNotes, showDownloadMenu, currentPlayingSegmentIndex, followPlayerMode,
         playbackRate, showSpeedMenu, playbackSpeeds, modalPlaybackRate, speedMenuPosition,
         videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
-        regeneratingTitle
+        regeneratingTitle,
+        // Sidebar folder filter and upload-form folder selection — used by
+        // switchToUploadView to seed the new-recording dialog from the
+        // currently-selected sidebar folder.
+        filterFolder, selectedFolderId,
     } = state;
 
     const autoSaveDelay = 2000; // 2 seconds
@@ -151,6 +155,25 @@ export function useUI(state, utils, processedTranscription) {
                 || 'You have an unsaved recording. Are you sure you want to leave?';
             if (!window.confirm(message)) {
                 return;
+            }
+        }
+        // Mirror the sidebar's folder context into the upload-form folder
+        // picker so opening the new-recording dialog always reflects where
+        // the user thinks they are:
+        //   - sidebar set to a real folder -> form pre-fills to it
+        //   - sidebar set to All Recordings or Unfiled -> form clears,
+        //     so a stale selection from a previous visit doesn't carry
+        //     over and a new recording added now will end up unfiled
+        //     unless the user explicitly picks something.
+        if (filterFolder && selectedFolderId) {
+            const fid = filterFolder.value;
+            if (fid !== '' && fid !== 'none' && fid != null) {
+                const numeric = typeof fid === 'number' ? fid : parseInt(fid, 10);
+                if (Number.isFinite(numeric) && numeric > 0) {
+                    selectedFolderId.value = numeric;
+                }
+            } else {
+                selectedFolderId.value = null;
             }
         }
         currentView.value = 'upload';
