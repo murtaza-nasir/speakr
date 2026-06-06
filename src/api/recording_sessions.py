@@ -85,6 +85,20 @@ def _max_chunk_bytes():
     return int(os.environ.get('RECORDING_SESSION_MAX_CHUNK_BYTES', str(16 * 1024 * 1024)))
 
 
+def _commit_batch_size():
+    """How many chunks to accumulate before committing session bookkeeping.
+
+    Default 1 = commit every chunk (the previous behaviour). Higher
+    values reduce fsync overhead on slow or network-backed storage at
+    the cost of stale chunk_count/bytes_received between commits if
+    the process is killed. Finalize and abort always force a commit.
+    """
+    try:
+        return max(1, int(os.environ.get('RECORDING_SESSION_COMMIT_BATCH_SIZE', '1')))
+    except (TypeError, ValueError):
+        return 1
+
+
 # --- Helpers ----------------------------------------------------------------
 
 def _ensure_owned(session):
@@ -257,7 +271,19 @@ def upload_chunk(session_id, chunk_index):
     session.chunk_count = chunk_index
     session.bytes_received = (session.bytes_received or 0) + len(chunk_bytes)
     session.last_seen_at = datetime.utcnow()
-    db.session.commit()
+    # Commit every chunk by default. Opt-in batching is available via
+    # RECORDING_SESSION_COMMIT_BATCH_SIZE for deployments on slow or
+    # network-backed storage where per-chunk fsync is the bottleneck.
+    # The chunk file itself is already written to disk above; what
+    # batching skips is the in-row bookkeeping commit. If the process
+    # restarts between commits, chunk_count and bytes_received fall
+    # back to the last committed value, but the chunk files survive
+    # and finalize re-derives the count from disk (see _stitch path).
+    batch_size = _commit_batch_size()
+    if batch_size <= 1 or (chunk_index % batch_size) == 0:
+        db.session.commit()
+    else:
+        db.session.flush()
 
     # Manifest is best-effort; missing it doesn't break the flow.
     _write_session_manifest(session)
