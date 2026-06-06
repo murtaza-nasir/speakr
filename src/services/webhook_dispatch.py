@@ -463,12 +463,52 @@ _dispatcher_thread_started = False
 _dispatcher_thread_lock = threading.Lock()
 
 
+def _recover_stuck_pending_deliveries(app, stale_after_seconds: int = 300):
+    """On dispatcher startup, reset deliveries that look orphaned.
+
+    If the dispatcher died between fetching a delivery and committing
+    its outcome, the row stays ``status='pending'`` with attempts > 0
+    and ``next_retry_at`` either None or in the past. Without
+    intervention the next dispatcher pass would already pick those up
+    (status='pending' qualifies), but the ``created_at`` ordering means
+    if the worker died on a specific row mid-update, the stale
+    in-memory state can leave the row neither picked up nor cleaned.
+    Scan once at startup and forcibly schedule them for immediate retry.
+    """
+    with app.app_context():
+        try:
+            cutoff = datetime.utcnow() - timedelta(seconds=stale_after_seconds)
+            stuck = WebhookDelivery.query.filter(
+                WebhookDelivery.status == 'pending',
+                WebhookDelivery.attempt_count > 0,
+                WebhookDelivery.created_at < cutoff,
+            ).all()
+            if not stuck:
+                return 0
+            now = datetime.utcnow()
+            for d in stuck:
+                d.next_retry_at = now
+            db.session.commit()
+            app.logger.info(
+                f"Webhook dispatcher: reset {len(stuck)} stuck pending deliveries at startup"
+            )
+            return len(stuck)
+        except Exception as e:
+            app.logger.warning(f"Webhook stuck-delivery recovery failed: {e}", exc_info=True)
+            return 0
+
+
 def start_dispatcher_thread(app):
     """Spawn the daemon dispatcher thread (idempotent)."""
     global _dispatcher_thread_started
     with _dispatcher_thread_lock:
         if _dispatcher_thread_started:
             return
+
+        # Recover any deliveries left in a half-processed pending state
+        # by a previous dispatcher that died mid-pass.
+        _recover_stuck_pending_deliveries(app)
+
         interval = _dispatcher_interval()
 
         def _loop():
