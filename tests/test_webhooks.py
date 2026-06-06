@@ -638,6 +638,59 @@ def test_is_url_safe_unanchored_allowlist_no_longer_skips_ip_check():
         assert 'private/loopback' in reason
 
 
+def test_autopaused_webhook_resumes_on_successful_trial_delivery():
+    """Regression: previously auto-pause was terminal — once a webhook
+    crossed the failure threshold the only recovery was manual
+    re-enable in the UI. Now the dispatcher fires one trial delivery
+    per WEBHOOK_TRIAL_INTERVAL_SECONDS (default 1h); a success unpauses
+    the webhook and the rest of its queue flushes on subsequent passes."""
+    from unittest.mock import patch, MagicMock
+    with app.app_context():
+        user = _make_user('autopause_resume')
+        wh = Webhook(
+            user_id=user.id, name='paused', url='https://example.com/w', enabled=True,
+        )
+        wh.event_list = ['recording.created']
+        # Simulate an already auto-paused webhook with a queued delivery
+        # whose retry has come due (trial moment).
+        wh.enabled = False
+        wh.auto_paused = True
+        wh.consecutive_failures = 10
+        db.session.add(wh)
+        db.session.commit()
+
+        # Seed a pending delivery due now (the "trial").
+        envelope = '{"id":"x","type":"recording.created","timestamp":"now","user_id":0,"data":{}}'
+        d = WebhookDelivery(
+            webhook_id=wh.id,
+            event_id='trial-1',
+            event_type='recording.created',
+            payload=envelope,
+            status='pending',
+            next_retry_at=datetime.utcnow() - timedelta(seconds=1),
+        )
+        db.session.add(d)
+        db.session.commit()
+        d_id = d.id
+
+        # Mock the outbound POST to succeed.
+        with patch('src.services.webhook_dispatch.requests.post') as mock_post:
+            mock_post.return_value = MagicMock(status_code=204, text='')
+            run_dispatcher_pass()
+
+        db.session.expire_all()
+        wh_after = db.session.get(Webhook, wh.id)
+        assert wh_after.enabled is True, 'Successful trial should re-enable webhook'
+        assert wh_after.auto_paused is False, 'Successful trial should clear auto_paused'
+        assert wh_after.consecutive_failures == 0
+        assert db.session.get(WebhookDelivery, d_id).status == 'success'
+
+        WebhookDelivery.query.filter_by(webhook_id=wh.id).delete()
+        db.session.delete(wh_after)
+        db.session.delete(user)
+        db.session.commit()
+
+
 def test_is_url_safe_inspects_all_resolved_addresses():
     """Sanity: even when the hostname is fine, every resolved address
     must be inspected. Tested by mocking getaddrinfo to return mixed

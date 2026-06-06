@@ -74,6 +74,20 @@ def _autopause_failures() -> int:
         return 10
 
 
+def _trial_interval_seconds() -> int:
+    """How often an auto-paused webhook gets a trial-fire delivery.
+
+    Defaults to one hour: long enough that a flapping endpoint doesn't
+    flood the receiver, short enough that a recovered endpoint resumes
+    within a working day. Set 0 to disable trial-fires entirely (the
+    webhook then stays paused until the user manually re-enables).
+    """
+    try:
+        return max(0, int(os.environ.get('WEBHOOK_TRIAL_INTERVAL_SECONDS', '3600')))
+    except (TypeError, ValueError):
+        return 3600
+
+
 def _dispatcher_interval() -> int:
     try:
         return max(1, int(os.environ.get('WEBHOOK_DISPATCHER_INTERVAL_SECONDS', '5')))
@@ -376,14 +390,32 @@ def run_dispatcher_pass(app=None, limit: int = 100) -> dict:
         attempted = 0
         outcomes = {'success': 0, 'failed': 0, 'permanent_failure': 0}
         autopause_thresh = _autopause_failures()
+        trial_interval_s = _trial_interval_seconds()
+        # Track which auto-paused webhooks have already been trialed
+        # this pass so we attempt at most one delivery per webhook per
+        # interval (the rest of their queue waits for the trial result).
+        trialed_this_pass = set()
         for delivery in due:
             webhook = delivery.webhook
-            if webhook is None or not webhook.enabled:
-                # Parent disabled while we were queued. Mark permanent so
-                # we stop re-evaluating this row.
+            if webhook is None:
                 delivery.status = 'permanent_failure'
                 delivery.next_retry_at = None
                 continue
+            if not webhook.enabled:
+                if not webhook.auto_paused:
+                    # User explicitly disabled; abandon queued rows.
+                    delivery.status = 'permanent_failure'
+                    delivery.next_retry_at = None
+                    continue
+                # Auto-paused webhook. Try at most ONE delivery per
+                # pass as a trial. Subsequent queued deliveries for the
+                # same webhook are pushed past the trial interval so
+                # we recheck them after the next trial window.
+                if webhook.id in trialed_this_pass:
+                    delivery.next_retry_at = now + timedelta(seconds=trial_interval_s)
+                    delivery.status = 'failed'
+                    continue
+                trialed_this_pass.add(webhook.id)
             status_code, body_preview, error = _post_delivery(delivery, webhook)
             outcome = _apply_attempt_result(delivery, status_code, body_preview, error)
             attempted += 1
@@ -392,16 +424,30 @@ def run_dispatcher_pass(app=None, limit: int = 100) -> dict:
             # Update the parent webhook's health counters.
             webhook.last_delivery_at = datetime.utcnow()
             if outcome == 'success':
+                # Successful delivery resets failure counter AND
+                # unpauses an auto-paused webhook so its remaining
+                # queue can flush on subsequent passes.
                 webhook.consecutive_failures = 0
-                webhook.auto_paused = False
+                if webhook.auto_paused:
+                    webhook.enabled = True
+                    webhook.auto_paused = False
             else:
                 if outcome == 'permanent_failure':
                     webhook.consecutive_failures = (webhook.consecutive_failures or 0) + 1
-                    if webhook.consecutive_failures >= autopause_thresh:
+                    if webhook.consecutive_failures >= autopause_thresh and not webhook.auto_paused:
+                        # First time crossing the threshold: pause and
+                        # schedule the next trial 1h out (configurable
+                        # via WEBHOOK_TRIAL_INTERVAL_SECONDS).
                         webhook.enabled = False
                         webhook.auto_paused = True
+                        delivery.status = 'failed'
+                        delivery.next_retry_at = now + timedelta(seconds=trial_interval_s)
+                elif webhook.auto_paused:
+                    # Failed trial of an already-paused webhook: push
+                    # next trial forward by the interval.
+                    delivery.next_retry_at = now + timedelta(seconds=trial_interval_s)
 
-        if attempted:
+        if attempted or trialed_this_pass:
             db.session.commit()
         return {'attempted': attempted, **outcomes}
 
