@@ -58,17 +58,29 @@
                     <span class="floating-chat-dock-divider"></span>
                     <!-- Split dock button: main half toggles dock with
                          last-chosen target; caret opens dropdown to
-                         pick a different target. -->
+                         pick a different target. Icons: a 2-cell
+                         rectangle with the active half filled. -->
                     <div class="floating-chat-dock-split">
                         <button @click="toggleChatDockToLast"
                                 class="btn btn--icon btn--sm floating-chat-dock-main"
                                 :class="{ 'is-active': chatPanelState === ('dock-' + chatLastDock) }"
-                                :title="chatPanelState === ('dock-' + chatLastDock) ? 'Undock' : ('Dock to ' + chatLastDock)">
-                            <i v-if="chatLastDock === 'left'"  class="fas fa-table-columns" style="transform: scaleX(1);"></i>
-                            <i v-else-if="chatLastDock === 'right'" class="fas fa-table-columns" style="transform: scaleX(-1);"></i>
-                            <i v-else class="fas fa-expand"></i>
+                                :title="chatPanelState === ('dock-' + chatLastDock) ? 'Undock' : (chatLastDock === 'left' ? 'Dock left' : chatLastDock === 'right' ? 'Dock right' : 'Dock full')">
+                            <!-- Dock-left icon (left half filled) -->
+                            <svg v-if="chatLastDock === 'left'" width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                                <rect x="0.5" y="0.5" width="6" height="9" fill="currentColor"/>
+                                <rect x="7.5" y="0.5" width="6" height="9" fill="none" stroke="currentColor"/>
+                            </svg>
+                            <!-- Dock-right icon (right half filled) -->
+                            <svg v-else-if="chatLastDock === 'right'" width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                                <rect x="0.5" y="0.5" width="6" height="9" fill="none" stroke="currentColor"/>
+                                <rect x="7.5" y="0.5" width="6" height="9" fill="currentColor"/>
+                            </svg>
+                            <!-- Dock-full icon (whole rect filled) -->
+                            <svg v-else width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                                <rect x="0.5" y="0.5" width="13" height="9" fill="currentColor"/>
+                            </svg>
                         </button>
-                        <button @click="chatDockMenuOpen = !chatDockMenuOpen"
+                        <button @click.stop="chatDockMenuOpen = !chatDockMenuOpen"
                                 class="btn btn--icon btn--sm floating-chat-dock-caret"
                                 title="Choose dock target">
                             <i class="fas fa-caret-down" style="font-size: 10px;"></i>
@@ -79,20 +91,28 @@
                             <button @click="dockChatPanel('left')"
                                     class="floating-chat-dock-menu-item"
                                     :class="{ 'is-active': chatPanelState === 'dock-left' }">
-                                <i class="fas fa-table-columns" style="transform: scaleX(1);"></i>
-                                <span>Dock to transcript column</span>
+                                <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                                    <rect x="0.5" y="0.5" width="6" height="9" fill="currentColor"/>
+                                    <rect x="7.5" y="0.5" width="6" height="9" fill="none" stroke="currentColor"/>
+                                </svg>
+                                <span>Dock left</span>
                             </button>
                             <button @click="dockChatPanel('full')"
                                     class="floating-chat-dock-menu-item"
                                     :class="{ 'is-active': chatPanelState === 'dock-full' }">
-                                <i class="fas fa-expand"></i>
-                                <span>Dock full width</span>
+                                <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                                    <rect x="0.5" y="0.5" width="13" height="9" fill="currentColor"/>
+                                </svg>
+                                <span>Dock full</span>
                             </button>
                             <button @click="dockChatPanel('right')"
                                     class="floating-chat-dock-menu-item"
                                     :class="{ 'is-active': chatPanelState === 'dock-right' }">
-                                <i class="fas fa-table-columns" style="transform: scaleX(-1);"></i>
-                                <span>Dock to right rail</span>
+                                <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true">
+                                    <rect x="0.5" y="0.5" width="6" height="9" fill="none" stroke="currentColor"/>
+                                    <rect x="7.5" y="0.5" width="6" height="9" fill="currentColor"/>
+                                </svg>
+                                <span>Dock right</span>
                             </button>
                         </div>
                     </div>

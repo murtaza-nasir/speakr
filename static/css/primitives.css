@@ -1179,11 +1179,14 @@ textarea:focus-visible {
     color: var(--text-accent);
     background: var(--bg-tertiary);
 }
-.floating-chat-dock-menu-item i {
+.floating-chat-dock-menu-item i,
+.floating-chat-dock-menu-item svg {
     width: 18px;
     color: var(--text-muted);
+    flex-shrink: 0;
 }
-.floating-chat-dock-menu-item.is-active i {
+.floating-chat-dock-menu-item.is-active i,
+.floating-chat-dock-menu-item.is-active svg {
     color: var(--text-accent);
 }
 
