@@ -1,27 +1,23 @@
-<!-- Edit Modal -->
+<!-- Edit Recording Modal (design system v1) -->
 <div v-if="showEditModal" @click.self="cancelEdit" class="modal-overlay">
     <div class="modal-panel modal-panel--md">
-        <div class="p-6 border-b border-[var(--border-primary)] flex items-center justify-between">
-            <h3 class="text-lg font-semibold" v-text="t('modal.editRecording')"></h3>
-            <button @click="cancelEdit" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                <i class="fas fa-times text-xl"></i>
-            </button>
+        <div class="modal-header">
+            <h3 class="modal-title" v-text="t('modal.editRecording')"></h3>
+            <button @click="cancelEdit" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-6 space-y-4">
+        <div class="modal-body space-y-4">
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('form.title')"></label>
-                <input v-model="editingRecording.title"
-                       class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                <input v-model="editingRecording.title" class="field">
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('form.participants')"></label>
-                <input v-model="editingRecording.participants"
-                       class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                <input v-model="editingRecording.participants" class="field">
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('form.meetingDate')"></label>
                 <div @click="openDateTimePicker('edit_modal_meeting_date', editingRecording.meeting_date, (isoString) => { editingRecording.meeting_date = isoString; })"
-                     class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg cursor-pointer hover:border-[var(--border-focus)] transition-colors flex items-center justify-between">
+                     class="field cursor-pointer hover:border-[var(--border-focus)] flex items-center justify-between">
                     <span :class="editingRecording.meeting_date ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
                         ${editingRecording.meeting_date ? formatDisplayDate(editingRecording.meeting_date) : 'Select date and time...'}
                     </span>
@@ -30,21 +26,12 @@
             </div>
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('form.notes')"></label>
-                <textarea v-model="editingRecording.notes"
-                          rows="4"
-                          class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
-                </textarea>
+                <textarea v-model="editingRecording.notes" rows="4" class="field" style="min-height: 96px;"></textarea>
             </div>
         </div>
-        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end gap-3">
-            <button @click="cancelEdit"
-                    class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
-                Cancel
-            </button>
-            <button @click="saveEdit"
-                    class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
-                Save Changes
-            </button>
+        <div class="modal-footer">
+            <button @click="cancelEdit" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+            <button @click="saveEdit" class="btn btn--primary">${ t('buttons.save') || 'Save Changes' }</button>
         </div>
     </div>
 </div>

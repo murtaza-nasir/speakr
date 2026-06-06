@@ -1,32 +1,19 @@
-<!-- Simple Transcription Editor Modal -->
+<!-- Simple Transcription Editor Modal (design system v1) -->
 <div v-if="showTextEditorModal" @click.self="closeTextEditorModal" class="modal-overlay">
-    <div class="modal-panel modal-panel--lg max-h-[90vh flex flex">
-        <div class="p-6 border-b border-[var(--border-primary)]">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold" v-text="t('modal.editTranscription')"></h3>
-                <button @click="closeTextEditorModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
+    <div class="modal-panel modal-panel--lg">
+        <div class="modal-header">
+            <h3 class="modal-title" v-text="t('modal.editTranscription')"></h3>
+            <button @click="closeTextEditorModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-6 space-y-4 overflow-y-auto flex-1">
+        <div class="modal-body">
             <div>
                 <label class="block text-sm font-medium mb-2" v-text="t('transcription.title')"></label>
-                <textarea v-model="editingTranscriptionContent"
-                          rows="15"
-                          class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] font-mono text-sm">
-                </textarea>
+                <textarea v-model="editingTranscriptionContent" rows="15" class="field font-mono" style="min-height: 320px;"></textarea>
             </div>
         </div>
-        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end gap-3">
-            <button @click="closeTextEditorModal"
-                    class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
-                Cancel
-            </button>
-            <button @click="saveTranscription"
-                    class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
-                Save Changes
-            </button>
+        <div class="modal-footer">
+            <button @click="closeTextEditorModal" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+            <button @click="saveTranscription" class="btn btn--primary">${ t('buttons.save') || 'Save Changes' }</button>
         </div>
     </div>
 </div>
