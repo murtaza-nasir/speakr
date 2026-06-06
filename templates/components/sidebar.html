@@ -354,24 +354,28 @@
                              :key="recording.id"
                              @click="selectionMode ? toggleSelection(recording.id) : selectRecording(recording)"
                              :class="[
-                                 'p-3 rounded-lg cursor-pointer transition-all duration-200 border-2',
+                                 'recording-row relative px-3 py-2.5 rounded-md cursor-pointer transition-colors border',
                                  selectionMode && isSelected(recording.id)
                                      ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
                                      : selectedRecording?.id === recording.id && !selectionMode
                                          ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
-                                         : recording.is_shared
-                                             ? 'bg-[var(--bg-secondary)] border-[var(--bg-tertiary)] hover:bg-[var(--bg-accent-hover)]'
-                                             : 'bg-[var(--bg-tertiary)] border-transparent hover:bg-[var(--bg-accent-hover)]'
+                                         : 'bg-transparent border-transparent hover:bg-[var(--bg-tertiary)]'
                              ]">
+                            <!-- Selection checkbox: absolutely positioned in
+                                 the top-right corner so it doesn't reflow
+                                 the title or change card heights when the
+                                 user toggles selection mode. -->
+                            <div v-if="selectionMode"
+                                 @click.stop="toggleSelection(recording.id)"
+                                 class="absolute top-2 right-2 z-10">
+                                <input type="checkbox"
+                                       :checked="isSelected(recording.id)"
+                                       class="selection-checkbox"
+                                       @click.stop="toggleSelection(recording.id)">
+                            </div>
                             <!-- Title and Status Row -->
-                            <div class="flex items-center justify-between mb-1">
-                                <!-- Checkbox for selection mode -->
-                                <div v-if="selectionMode" @click.stop="toggleSelection(recording.id)" class="flex-shrink-0 mr-2">
-                                    <input type="checkbox"
-                                           :checked="isSelected(recording.id)"
-                                           class="selection-checkbox"
-                                           @click.stop="toggleSelection(recording.id)">
-                                </div>
+                            <div class="flex items-center justify-between mb-1"
+                                 :class="{ 'pr-7': selectionMode }">
                                 <h4 class="font-medium text-sm truncate flex-1 mr-2" :class="selectedRecording?.id === recording.id && !selectionMode ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
                                     ${ recording.title || t('common.untitled') }
                                 </h4>

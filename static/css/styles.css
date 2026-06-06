@@ -3999,14 +3999,17 @@ textarea[ref="recordingNotesEditor"]:focus {
 
 /* Sidebar Container */
 .sidebar {
-    position: fixed; /* Changed to fixed to overlay correctly */
-    top: 69px; /* Height of the header */
+    position: fixed;
+    /* Top matches the consolidated header height (56px min-height +
+       2px*2 padding ≈ 56-60px). Use a CSS variable so a future change
+       to the header height only needs to update one number. */
+    top: var(--app-header-height, 56px);
     left: 0;
     bottom: 0;
-    width: 320px; /* w-80 */
+    width: 320px;
     background-color: var(--bg-secondary);
     border-right: 1px solid var(--border-primary);
-    z-index: 50; /* Higher z-index to be above backdrop */
+    z-index: 50;
     transform: translateX(0);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
