@@ -931,24 +931,33 @@ You must respond with valid JSON format only."""
                     try:
                         # Try ISO format first
                         start_dt = datetime.fromisoformat(event_data['start_datetime'].replace('Z', '+00:00'))
-                    except:
-                        # Try other common formats
+                    except (ValueError, TypeError, AttributeError) as iso_err:
+                        # Try other common formats via dateutil.
                         from dateutil import parser
                         try:
                             start_dt = parser.parse(event_data['start_datetime'])
-                        except:
-                            current_app.logger.warning(f"Could not parse start_datetime: {event_data['start_datetime']}")
+                        except (ValueError, TypeError, parser.ParserError) as parse_err:
+                            current_app.logger.warning(
+                                f"Could not parse start_datetime "
+                                f"{event_data.get('start_datetime')!r}: "
+                                f"iso={iso_err!r}, dateutil={parse_err!r}"
+                            )
                             continue  # Skip this event if we can't parse the date
 
                 if 'end_datetime' in event_data and event_data['end_datetime']:
                     try:
                         end_dt = datetime.fromisoformat(event_data['end_datetime'].replace('Z', '+00:00'))
-                    except:
+                    except (ValueError, TypeError, AttributeError):
                         from dateutil import parser
                         try:
                             end_dt = parser.parse(event_data['end_datetime'])
-                        except:
-                            pass  # End time is optional
+                        except (ValueError, TypeError, parser.ParserError) as parse_err:
+                            # End time is optional; log instead of swallowing
+                            # so a systematically-bad LLM output surfaces.
+                            current_app.logger.warning(
+                                f"Could not parse end_datetime "
+                                f"{event_data.get('end_datetime')!r}: {parse_err!r}"
+                            )
 
                 # Create event record
                 event = Event(
