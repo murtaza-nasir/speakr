@@ -654,6 +654,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
 
+            // Word-count meta surfaced in the right-rail tab labels. We
+            // strip HTML and collapse whitespace before counting so
+            // markdown-rendered summary HTML doesn't inflate the count.
+            const _countWords = (raw) => {
+                if (!raw) return 0;
+                const text = String(raw).replace(/<[^>]*>/g, ' ').trim();
+                if (!text) return 0;
+                return text.split(/\s+/).length;
+            };
+            const _formatCount = (n) => {
+                if (n < 1000) return String(n);
+                if (n < 10000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+                return Math.round(n / 1000) + 'k';
+            };
+            const summaryWordCount = computed(() => {
+                if (!selectedRecording.value) return '';
+                const n = _countWords(selectedRecording.value.summary);
+                return n ? _formatCount(n) : '';
+            });
+            const notesWordCount = computed(() => {
+                if (!selectedRecording.value) return '';
+                const n = _countWords(selectedRecording.value.notes);
+                return n ? _formatCount(n) : '';
+            });
+
             // Aggregate `{{name}}` variables across the currently selected
             // tags / folder / user / admin prompt chain. The pure helpers
             // live in modules/utils/prompt-variables.js so they can be unit
@@ -781,6 +806,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
+                summaryWordCount, notesWordCount,
 
                 // Upload
                 uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,

@@ -224,39 +224,64 @@
         </div>
     </div>
 
-    <!-- Summary/Notes Tabs -->
+    <!-- Right-rail tab strip + per-tab action toolbar (design system v1).
+         One row carries tab navigation on the left and per-tab actions on
+         the right. No card chrome around the content — sections live
+         directly on the rail surface. -->
     <div :class="{'flex-1': !isChatMaximized, 'flex-none': isChatMaximized}" class="flex flex-col overflow-hidden">
-        <!-- Tab Navigation -->
-        <div class="bg-[var(--bg-tertiary)] border-b border-[var(--border-primary)] flex">
-            <button @click="selectedTab = 'summary'"
-                    :class="[
-                        'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                        selectedTab === 'summary'
-                            ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                    ]">
-                ${ t('summary.title') }
-            </button>
-            <button @click="selectedTab = 'notes'"
-                    :class="[
-                        'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                        selectedTab === 'notes'
-                            ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                    ]">
-                ${ t('notes.title') }
-            </button>
-            <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
-                    @click="selectedTab = 'events'"
-                    :class="[
-                        'flex-1 px-4 py-3 text-sm font-medium transition-colors',
-                        selectedTab === 'events'
-                            ? 'bg-[var(--bg-secondary)] text-[var(--text-accent)] border-b-2 border-[var(--border-focus)]'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                    ]">
-                <i class="fas fa-calendar-alt mr-1"></i>
-                ${ t('events.title') } (${ selectedRecording.events.length })
-            </button>
+        <div class="tabs-bar px-4">
+            <div class="tabs">
+                <button @click="selectedTab = 'summary'"
+                        class="tab"
+                        :class="{'is-active': selectedTab === 'summary'}">
+                    <span>${ t('summary.title') }</span>
+                    <span v-if="summaryWordCount" class="tab__count">${ summaryWordCount }</span>
+                </button>
+                <button @click="selectedTab = 'notes'"
+                        class="tab"
+                        :class="{'is-active': selectedTab === 'notes'}">
+                    <span>${ t('notes.title') }</span>
+                    <span v-if="notesWordCount" class="tab__count">${ notesWordCount }</span>
+                </button>
+                <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
+                        @click="selectedTab = 'events'"
+                        class="tab"
+                        :class="{'is-active': selectedTab === 'events'}">
+                    <span>${ t('events.title') }</span>
+                    <span class="tab__count">${ selectedRecording.events.length }</span>
+                </button>
+            </div>
+
+            <!-- Per-tab action toolbar. Each tab surfaces its own contextual
+                 actions. While editing, the same slot carries Cancel/Save. -->
+            <div class="tabs-bar__actions">
+                <!-- Summary actions -->
+                <template v-if="selectedTab === 'summary' && selectedRecording.summary">
+                    <template v-if="!editingSummary">
+                        <button class="btn btn--icon" @click="copySummary" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
+                        <button class="btn btn--icon" @click="downloadSummary" :title="t('buttons.downloadSummary')"><i class="fas fa-download"></i></button>
+                        <button class="btn btn--icon" @click="toggleEditSummary" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
+                        <button class="btn btn--icon" @click="openCustomizeSummaryModal" :title="t('summary.customizePrompt') || 'Customize prompt'"><i class="fas fa-sliders-h"></i></button>
+                    </template>
+                    <template v-else>
+                        <button class="btn btn--sm btn--ghost" @click="cancelEditSummary">${ t('buttons.cancel') }</button>
+                        <button class="btn btn--sm btn--primary" @click="saveEditSummary">${ t('buttons.save') }</button>
+                    </template>
+                </template>
+
+                <!-- Notes actions -->
+                <template v-else-if="selectedTab === 'notes'">
+                    <template v-if="!editingNotes">
+                        <button v-if="selectedRecording.notes" class="btn btn--icon" @click="copyNotes" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
+                        <button v-if="selectedRecording.notes" class="btn btn--icon" @click="downloadNotes" :title="t('buttons.downloadNotes')"><i class="fas fa-download"></i></button>
+                        <button class="btn btn--icon" @click="toggleEditNotes" :title="t('buttons.editNotes')"><i class="fas fa-pen"></i></button>
+                    </template>
+                    <template v-else>
+                        <button class="btn btn--sm btn--ghost" @click="cancelEditNotes">${ t('buttons.cancel') }</button>
+                        <button class="btn btn--sm btn--primary" @click="saveEditNotes">${ t('buttons.save') }</button>
+                    </template>
+                </template>
+            </div>
         </div>
 
         <!-- Tab Content -->

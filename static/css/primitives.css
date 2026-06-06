@@ -538,6 +538,152 @@ html.dark {
 .banner--danger   { background: var(--bg-danger-light);  border-color: var(--border-danger); color: var(--text-danger-strong, var(--text-danger)); }
 
 
+/* ---- Modal / dialog ----------------------------------------------------
+ *
+ * Standard modal grammar:
+ *
+ *   <div class="modal-overlay" @click.self="close">
+ *     <div class="modal-panel modal-panel--md">
+ *       <div class="modal-header">
+ *         <h3 class="modal-title">Title</h3>
+ *         <button class="modal-close" @click="close"><i class="fas fa-times"></i></button>
+ *       </div>
+ *       <div class="modal-body">…</div>
+ *       <div class="modal-footer">
+ *         <button class="btn btn--ghost">Cancel</button>
+ *         <button class="btn btn--primary">Save</button>
+ *       </div>
+ *     </div>
+ *   </div>
+ *
+ * Size variants: --xs (320), --sm (440), --md (560), --lg (760), --xl (980),
+ * --full (95vw). All scroll within the body region if content overflows.
+ * --------------------------------------------------------------------- */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-4);
+    z-index: 50;
+    animation: modalFadeIn 140ms ease-out;
+}
+
+html.dark .modal-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-panel {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 560px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalPanelIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPanelIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-panel--xs   { max-width: 320px; }
+.modal-panel--sm   { max-width: 440px; }
+.modal-panel--md   { max-width: 560px; }
+.modal-panel--lg   { max-width: 760px; }
+.modal-panel--xl   { max-width: 980px; }
+.modal-panel--full { max-width: 95vw; max-height: 95vh; }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    flex: 0 0 auto;
+}
+
+.modal-title {
+    flex: 1;
+    font-size: var(--fs-subhead);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: var(--lh-tight);
+    margin: 0;
+}
+
+.modal-subtitle {
+    font-size: var(--fs-meta);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.modal-close {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--t-fast) ease, color var(--t-fast) ease;
+}
+.modal-close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: var(--sp-5);
+    overflow-y: auto;
+    flex: 1 1 auto;
+    font-size: var(--fs-body);
+    line-height: var(--lh-base);
+}
+
+.modal-body--flush {
+    padding: 0;
+}
+
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-5);
+    border-top: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-tertiary);
+    flex: 0 0 auto;
+}
+
+.modal-footer--between {
+    justify-content: space-between;
+}
+
+/* Variant: danger-leaning modals get a subtle danger accent on the title */
+.modal-panel--danger .modal-header { border-bottom-color: var(--border-danger); }
+.modal-panel--danger .modal-title { color: var(--text-danger); }
+
+
 /* ---- Floating panel (chat, dropdown body) ------------------------------ */
 
 .float-panel {
@@ -577,6 +723,81 @@ html.dark {
     padding: var(--sp-2) var(--sp-3);
     border-top: var(--border-hairline) solid var(--border-primary);
     background: var(--bg-tertiary);
+}
+
+
+/* ---- Prose surfaces (flush) --------------------------------------------
+ *
+ * Replaces the legacy .summary-box / .notes-box card chrome in the
+ * recording-detail right rail. Content lives directly on the rail
+ * surface; structure comes from the surrounding tab strip + headings.
+ * --------------------------------------------------------------------- */
+
+.prose-flush {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    min-width: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    line-height: var(--lh-base);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.prose-flush h1, .prose-flush h2, .prose-flush h3, .prose-flush h4 {
+    color: var(--text-primary);
+    font-weight: 600;
+    line-height: var(--lh-snug);
+    margin-top: var(--sp-5);
+    margin-bottom: var(--sp-2);
+}
+.prose-flush h1 { font-size: 1.25rem; letter-spacing: -0.01em; }
+.prose-flush h2 { font-size: 1.125rem; }
+.prose-flush h3 { font-size: 1rem; }
+.prose-flush h4 { font-size: 0.95rem; }
+.prose-flush p { margin: 0 0 var(--sp-3) 0; }
+.prose-flush ul, .prose-flush ol { margin: 0 0 var(--sp-3) var(--sp-5); padding: 0; }
+.prose-flush li { margin: 0 0 var(--sp-1) 0; }
+.prose-flush strong { color: var(--text-primary); font-weight: 600; }
+.prose-flush em { color: var(--text-primary); }
+.prose-flush code {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 0.1em 0.35em;
+    border-radius: var(--radius-sm);
+    font-size: 0.92em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.prose-flush pre {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: var(--sp-3);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    margin: 0 0 var(--sp-3) 0;
+    font-size: 0.9em;
+}
+.prose-flush a {
+    color: var(--text-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+.prose-flush blockquote {
+    border-left: 3px solid var(--border-accent);
+    margin: 0 0 var(--sp-3) 0;
+    padding-left: var(--sp-3);
+    color: var(--text-muted);
+}
+.prose-flush hr {
+    border: none;
+    border-top: var(--border-hairline) solid var(--border-primary);
+    margin: var(--sp-5) 0;
 }
 
 
