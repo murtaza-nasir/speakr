@@ -1,30 +1,22 @@
-<!-- System Audio Help Modal -->
-<div v-if="showSystemAudioHelp" @click.self="showSystemAudioHelp = false" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-        <div class="p-6 border-b border-[var(--border-primary)]">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold" v-text="t('help.systemAudioHelp')"></h3>
-                <button @click="showSystemAudioHelp = false" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
+<!-- System Audio Help Modal (design system v1) -->
+<div v-if="showSystemAudioHelp" @click.self="showSystemAudioHelp = false" class="modal-overlay">
+    <div class="modal-panel modal-panel--md">
+        <div class="modal-header">
+            <h3 class="modal-title" v-text="t('help.systemAudioHelp')"></h3>
+            <button @click="showSystemAudioHelp = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-6 space-y-4">
-            <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div class="flex items-start gap-3">
-                    <i class="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-                    <div>
-                        <p class="font-medium text-blue-800 dark:text-blue-300 mb-2">Browser Compatibility</p>
-                        <p class="text-sm text-blue-700 dark:text-blue-400">
-                            System audio recording works best in Chrome, Edge, and Brave. Firefox is supported but requires the tab to be actively playing audio. Not supported on Safari or mobile devices.
-                        </p>
-                    </div>
+        <div class="modal-body">
+            <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-4);">
+                <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Browser Compatibility</div>
+                    <div class="t-meta">System audio recording works best in Chrome, Edge, and Brave. Firefox is supported but requires the tab to be actively playing audio. Not supported on Safari or mobile devices.</div>
                 </div>
             </div>
 
-            <div>
-                <h4 class="font-medium mb-2">How to record system audio:</h4>
-                <ol class="list-decimal list-inside space-y-2 text-sm text-[var(--text-secondary)]">
+            <div style="margin-bottom: var(--sp-4);">
+                <div class="t-body-strong" style="margin-bottom: var(--sp-2);">How to record system audio:</div>
+                <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
                     <li>Click "System Audio" or "Mic + System" button</li>
                     <li>A screen sharing dialog will appear</li>
                     <li>Select a tab or window that is <strong>actively playing audio</strong></li>
@@ -34,8 +26,8 @@
             </div>
 
             <div>
-                <h4 class="font-medium mb-2">Troubleshooting:</h4>
-                <ul class="list-disc list-inside space-y-1 text-sm text-[var(--text-muted)]">
+                <div class="t-body-strong" style="margin-bottom: var(--sp-2);">Troubleshooting:</div>
+                <ul class="list-disc list-inside space-y-1 t-meta">
                     <li><strong>Important:</strong> The tab/window must be playing audio when you share it</li>
                     <li>Check that "Share audio" checkbox is checked in the sharing dialog</li>
                     <li>In Firefox, start playing audio first, then click record</li>
@@ -44,10 +36,8 @@
                 </ul>
             </div>
         </div>
-        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end">
-            <button @click="showSystemAudioHelp = false" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
-                Got it
-            </button>
+        <div class="modal-footer">
+            <button @click="showSystemAudioHelp = false" class="btn btn--primary">Got it</button>
         </div>
     </div>
 </div>
