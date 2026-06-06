@@ -560,6 +560,16 @@ def initialize_database(app):
         except Exception as e:
             app.logger.warning(f"Could not create index on recording (user_id, file_hash): {e}")
 
+        # Composite index that backs the webhook dispatcher's main query:
+        # `status IN ('pending','failed') AND next_retry_at <= now`.
+        # Without this the dispatcher scans the full webhook_delivery
+        # table every poll once a few thousand deliveries accumulate.
+        try:
+            if create_index_if_not_exists(engine, 'idx_delivery_status_retry', 'webhook_delivery', 'status, next_retry_at'):
+                app.logger.info("Created composite index idx_delivery_status_retry on webhook_delivery (status, next_retry_at)")
+        except Exception as e:
+            app.logger.warning(f"Could not create composite index on webhook_delivery: {e}")
+
         # Add folder_id column to recording table for folders feature
         if add_column_if_not_exists(engine, 'recording', 'folder_id', 'INTEGER'):
             app.logger.info("Added folder_id column to recording table")

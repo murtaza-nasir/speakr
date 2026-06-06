@@ -199,6 +199,15 @@ class WebhookDelivery(db.Model):
 
     webhook = db.relationship('Webhook', back_populates='deliveries')
 
+    # Composite index for the dispatcher's main query: due deliveries
+    # are those with status in ('pending', 'failed') AND
+    # next_retry_at <= now (or null). The single-column indexes don't
+    # help much on a multi-thousand-row delivery table; this composite
+    # makes the dispatcher sweep O(log n) instead of a scan.
+    __table_args__ = (
+        db.Index('idx_delivery_status_retry', 'status', 'next_retry_at'),
+    )
+
     def __repr__(self):  # pragma: no cover
         return f'<WebhookDelivery {self.id} webhook={self.webhook_id} status={self.status}>'
 
