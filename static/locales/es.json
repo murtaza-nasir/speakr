@@ -1537,7 +1537,8 @@
     "videoExceedsAudioOnlyMaxSize": "El vídeo «{{name}}» supera el máximo de solo audio de {{size}} MB y se omitió.",
     "keepAudioOnlySubtitleOff": "Descartar el vídeo",
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
-    "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes"
+    "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes",
+    "enableKeepAudioOnlyForLargeVideo": "Supera el límite habitual de {{regular}} MB. Activa «Conservar solo el audio» abajo para subir este vídeo."
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

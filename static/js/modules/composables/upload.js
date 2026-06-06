@@ -194,22 +194,27 @@ export function useUpload(state, utils) {
             );
 
             if (isAudioFile) {
-                // Per-file effective size limit. A video file uploaded in
-                // audio-only mode (toggle on, or VIDEO_RETENTION off at
-                // the server) uses the larger limit, since only the
-                // extracted audio is stored. Everything else uses the
-                // regular limit.
+                // Per-file effective size limit. Audio files always use
+                // the regular limit. Video files use the audio-only-mode
+                // limit unconditionally at the precheck so the file can
+                // land in the queue and the "Keep audio only" toggle
+                // becomes visible. Three reasons:
+                //   1. With VIDEO_RETENTION=off, the server always
+                //      extracts audio, so the larger limit is the right
+                //      ceiling anyway.
+                //   2. With VIDEO_RETENTION=on and the toggle off, the
+                //      backend would still 413 a file over the regular
+                //      limit; we surface that with an inline warning
+                //      below rather than blocking the file at the door.
+                //   3. The toggle component only renders once a video
+                //      is already in the queue, so blocking video files
+                //      at precheck creates a chicken-and-egg loop.
                 const isVideoExt = /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(fileObject.name);
-                const audioOnlyForThisFile = (
-                    (videoRetentionEnabled && videoRetentionEnabled.value)
-                        ? (keepAudioOnly && keepAudioOnly.value)
-                        : true
-                );
-                const effectiveLimitMB = (isVideoExt && audioOnlyForThisFile && maxAudioOnlyVideoSizeMB)
-                    ? maxAudioOnlyVideoSizeMB.value
+                const effectiveLimitMB = isVideoExt
+                    ? (maxAudioOnlyVideoSizeMB && maxAudioOnlyVideoSizeMB.value) || maxFileSizeMB.value
                     : maxFileSizeMB.value;
                 if (fileObject.size > effectiveLimitMB * 1024 * 1024) {
-                    const errKey = (isVideoExt && audioOnlyForThisFile)
+                    const errKey = isVideoExt
                         ? 'upload.videoExceedsAudioOnlyMaxSize'
                         : 'upload.fileExceedsMaxSize';
                     setGlobalError(t(errKey, { name: fileObject.name, size: effectiveLimitMB }));

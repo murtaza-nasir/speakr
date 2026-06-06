@@ -1537,7 +1537,8 @@
     "videoExceedsAudioOnlyMaxSize": "Видео «{{name}}» превышает лимит только для аудио в {{size}} МБ и было пропущено.",
     "keepAudioOnlySubtitleOff": "Отбросить видео",
     "keepAudioOnlySubtitleOn": "Видео отброшено",
-    "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки"
+    "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки",
+    "enableKeepAudioOnlyForLargeVideo": "Превышает обычный лимит в {{regular}} МБ. Включите «Сохранить только аудио» ниже, чтобы загрузить это видео."
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

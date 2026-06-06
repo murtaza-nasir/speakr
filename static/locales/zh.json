@@ -1537,7 +1537,8 @@
     "videoExceedsAudioOnlyMaxSize": "视频 “{{name}}” 超出仅音频上限 {{size}} MB，已跳过。",
     "keepAudioOnlySubtitleOff": "丢弃视频流",
     "keepAudioOnlySubtitleOn": "已丢弃视频",
-    "keepAudioOnlyLargerAllowed": "允许更大文件"
+    "keepAudioOnlyLargerAllowed": "允许更大文件",
+    "enableKeepAudioOnlyForLargeVideo": "超过 {{regular}} MB 的常规限制。请在下方启用“仅保留音频”后再上传此视频。"
   },
   "uploadProgress": {
     "title": "上传进度"

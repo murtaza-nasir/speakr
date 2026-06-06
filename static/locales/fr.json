@@ -1537,7 +1537,8 @@
     "videoExceedsAudioOnlyMaxSize": "La vidéo « {{name}} » dépasse le maximum audio uniquement de {{size}} Mo et a été ignorée.",
     "keepAudioOnlySubtitleOff": "Supprimer le flux vidéo",
     "keepAudioOnlySubtitleOn": "Vidéo supprimée",
-    "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés"
+    "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés",
+    "enableKeepAudioOnlyForLargeVideo": "Dépasse la limite normale de {{regular}} Mo. Activez « Conserver uniquement l’audio » ci-dessous pour envoyer cette vidéo."
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
