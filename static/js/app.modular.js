@@ -589,6 +589,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             const chatLayoutTick = ref(0);  // bumped on resize/sidebar-toggle
             const chatDragActive = ref(false);
             const chatResizeActive = ref(false);
+            // Last user-chosen dock target — remembered across sessions
+            // so the single dock button can re-dock to wherever the
+            // user prefers without re-picking from the dropdown.
+            const chatLastDock = ref(
+                (typeof localStorage !== 'undefined' && localStorage.getItem('chat_last_dock')) || 'right'
+            );
+            const chatDockMenuOpen = ref(false);
+            const setChatLastDock = (target) => {
+                chatLastDock.value = target;
+                try { localStorage.setItem('chat_last_dock', target); } catch (e) { /* ignore */ }
+            };
             let chatDragStartX = 0;
             let chatDragStartY = 0;
             let chatDragInitialX = 0;
@@ -765,9 +776,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dockChatPanel = (target) => {
                 // target: 'left' | 'right' | 'full' | 'floating'
                 if (target === 'floating' && chatPanelX.value == null) {
-                    // First entry into floating from a dock — seat in
-                    // the panel's current docked rect so it doesn't
-                    // jump to (0,0).
                     const panelEl = document.querySelector('.floating-chat-panel');
                     if (panelEl) {
                         const rect = panelEl.getBoundingClientRect();
@@ -776,7 +784,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
                 chatPanelState.value = target === 'floating' ? 'floating' : ('dock-' + target);
+                // Remember non-floating dock choices for the split button.
+                if (target !== 'floating') setChatLastDock(target);
+                chatDockMenuOpen.value = false;
                 saveChatPanelPosition();
+            };
+            const toggleChatDockToLast = () => {
+                // Primary action of the split button: if currently
+                // docked to chatLastDock, undock back to floating;
+                // otherwise dock to the last-used target.
+                const currentDock = chatPanelState.value.startsWith('dock-')
+                    ? chatPanelState.value.slice(5) : null;
+                if (currentDock === chatLastDock.value) {
+                    dockChatPanel('floating');
+                } else {
+                    dockChatPanel(chatLastDock.value);
+                }
             };
             const toggleChatPanelMax = () => {
                 // Backward-compatible alias used by old template; toggle full vs floating
@@ -855,31 +878,37 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const w = chatPanelW.value;
                     const h = chatPanelH.value;
 
-                    if (mainRect) {
+                    // Use the actual #mainContentColumns rect for
+                    // clamping, NOT main.main-content. The <main>
+                    // element has padding-left: 320px when the sidebar
+                    // is open, but getBoundingClientRect includes the
+                    // padding region, so clamping to main.rect.left
+                    // would happily let the panel slip behind the
+                    // sidebar. #mainContentColumns is the column-split
+                    // area only — its left edge is the actual start of
+                    // content, its right is the viewport right edge,
+                    // its top/bottom are below the meta strip and
+                    // above the bottom audio bar.
+                    const cols = _rect('#mainContentColumns');
+                    if (cols) {
                         const CORNER_SNAP = 80;
-                        const distL = Math.abs(chatPanelX.value - mainRect.left);
-                        const distR = Math.abs(chatPanelX.value + w - mainRect.right);
-                        const distT = Math.abs(chatPanelY.value - mainRect.top);
-                        const distB = Math.abs(chatPanelY.value + h - mainRect.bottom);
+                        const distL = Math.abs(chatPanelX.value - cols.left);
+                        const distR = Math.abs(chatPanelX.value + w - cols.right);
+                        const distT = Math.abs(chatPanelY.value - cols.top);
+                        const distB = Math.abs(chatPanelY.value + h - cols.bottom);
+                        if (distL < CORNER_SNAP) chatPanelX.value = cols.left + 12;
+                        else if (distR < CORNER_SNAP) chatPanelX.value = cols.right - w - 12;
+                        if (distT < CORNER_SNAP) chatPanelY.value = cols.top + 12;
+                        else if (distB < CORNER_SNAP) chatPanelY.value = cols.bottom - h - 12;
 
-                        // Hard-snap if within CORNER_SNAP px of any
-                        // main-area edge.
-                        if (distL < CORNER_SNAP) chatPanelX.value = mainRect.left + 12;
-                        else if (distR < CORNER_SNAP) chatPanelX.value = mainRect.right - w - 12;
-                        if (distT < CORNER_SNAP) chatPanelY.value = mainRect.top + 12;
-                        else if (distB < CORNER_SNAP) {
-                            // Leave room for the bottom audio bar (~64px)
-                            chatPanelY.value = mainRect.bottom - h - 80;
-                        }
-
-                        // Final clamp — never let the panel slip off-screen.
+                        // Final hard clamp inside the columns area.
                         chatPanelX.value = Math.max(
-                            mainRect.left + 8,
-                            Math.min(chatPanelX.value, mainRect.right - w - 8)
+                            cols.left + 8,
+                            Math.min(chatPanelX.value, cols.right - w - 8)
                         );
                         chatPanelY.value = Math.max(
-                            mainRect.top + 8,
-                            Math.min(chatPanelY.value, mainRect.bottom - h - 8)
+                            cols.top + 8,
+                            Math.min(chatPanelY.value, cols.bottom - h - 8)
                         );
                     }
                     saveChatPanelPosition();
@@ -898,6 +927,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const _bumpChatLayout = () => { chatLayoutTick.value += 1; };
             if (typeof window !== 'undefined') {
                 window.addEventListener('resize', _bumpChatLayout);
+                // Close the floating-chat dock dropdown on any outside click.
+                document.addEventListener('click', (e) => {
+                    if (!chatDockMenuOpen.value) return;
+                    if (!e.target.closest('.floating-chat-dock-split')) {
+                        chatDockMenuOpen.value = false;
+                    }
+                });
             }
 
             // Restore chat panel position whenever the selected recording changes.
@@ -1228,8 +1264,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef,
                 chatPanelState, chatPanelX, chatPanelY, chatPanelW, chatPanelH,
                 chatDragActive, chatResizeActive, floatingChatPanelStyle,
+                chatLastDock, chatDockMenuOpen,
                 openChatPanel, collapseChatPanel, toggleChatPanelMax,
                 startChatPanelDrag, startChatPanelResize, dockChatPanel,
+                toggleChatDockToLast,
 
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,

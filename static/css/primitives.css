@@ -1127,6 +1127,66 @@ textarea:focus-visible {
     background: var(--bg-tertiary);
 }
 
+/* Split dock button (main + caret + dropdown) */
+.floating-chat-dock-split {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: var(--radius-sm);
+    overflow: visible;
+}
+.floating-chat-dock-main {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+.floating-chat-dock-caret {
+    width: 18px !important;
+    min-width: 18px;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-left: 1px solid var(--border-primary);
+    margin-left: -1px;
+}
+.floating-chat-dock-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 220px;
+    padding: var(--sp-1);
+    z-index: 50;
+    animation: chatPanelIn 140ms ease-out;
+}
+.floating-chat-dock-menu-item {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: var(--fs-meta);
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-sm);
+    width: 100%;
+    text-align: left;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    cursor: pointer;
+    transition: background var(--t-fast) ease, color var(--t-fast) ease;
+}
+.floating-chat-dock-menu-item:hover {
+    background: var(--bg-tertiary);
+}
+.floating-chat-dock-menu-item.is-active {
+    color: var(--text-accent);
+    background: var(--bg-tertiary);
+}
+.floating-chat-dock-menu-item i {
+    width: 18px;
+    color: var(--text-muted);
+}
+.floating-chat-dock-menu-item.is-active i {
+    color: var(--text-accent);
+}
+
 /* SE-corner resize handle (only shown in floating state) */
 .floating-chat-resize-handle {
     position: absolute;

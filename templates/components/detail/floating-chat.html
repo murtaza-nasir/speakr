@@ -56,24 +56,46 @@
                         <i class="fas fa-eraser"></i>
                     </button>
                     <span class="floating-chat-dock-divider"></span>
-                    <button @click="dockChatPanel('left')"
-                            class="btn btn--icon btn--sm"
-                            :class="{ 'is-active': chatPanelState === 'dock-left' }"
-                            title="Dock to transcript column">
-                        <i class="fas fa-square" style="font-size: 9px; transform: translateX(-3px);"></i><i class="fas fa-square-o" style="font-size: 9px; transform: translateX(-1px); opacity: 0.3;"></i>
-                    </button>
-                    <button @click="dockChatPanel('full')"
-                            class="btn btn--icon btn--sm"
-                            :class="{ 'is-active': chatPanelState === 'dock-full' }"
-                            title="Dock full width">
-                        <i class="fas fa-expand"></i>
-                    </button>
-                    <button @click="dockChatPanel('right')"
-                            class="btn btn--icon btn--sm"
-                            :class="{ 'is-active': chatPanelState === 'dock-right' }"
-                            title="Dock to right rail">
-                        <i class="fas fa-square-o" style="font-size: 9px; transform: translateX(-3px); opacity: 0.3;"></i><i class="fas fa-square" style="font-size: 9px; transform: translateX(-1px);"></i>
-                    </button>
+                    <!-- Split dock button: main half toggles dock with
+                         last-chosen target; caret opens dropdown to
+                         pick a different target. -->
+                    <div class="floating-chat-dock-split">
+                        <button @click="toggleChatDockToLast"
+                                class="btn btn--icon btn--sm floating-chat-dock-main"
+                                :class="{ 'is-active': chatPanelState === ('dock-' + chatLastDock) }"
+                                :title="chatPanelState === ('dock-' + chatLastDock) ? 'Undock' : ('Dock to ' + chatLastDock)">
+                            <i v-if="chatLastDock === 'left'"  class="fas fa-table-columns" style="transform: scaleX(1);"></i>
+                            <i v-else-if="chatLastDock === 'right'" class="fas fa-table-columns" style="transform: scaleX(-1);"></i>
+                            <i v-else class="fas fa-expand"></i>
+                        </button>
+                        <button @click="chatDockMenuOpen = !chatDockMenuOpen"
+                                class="btn btn--icon btn--sm floating-chat-dock-caret"
+                                title="Choose dock target">
+                            <i class="fas fa-caret-down" style="font-size: 10px;"></i>
+                        </button>
+                        <div v-if="chatDockMenuOpen"
+                             class="floating-chat-dock-menu surface-raised"
+                             @click.stop>
+                            <button @click="dockChatPanel('left')"
+                                    class="floating-chat-dock-menu-item"
+                                    :class="{ 'is-active': chatPanelState === 'dock-left' }">
+                                <i class="fas fa-table-columns" style="transform: scaleX(1);"></i>
+                                <span>Dock to transcript column</span>
+                            </button>
+                            <button @click="dockChatPanel('full')"
+                                    class="floating-chat-dock-menu-item"
+                                    :class="{ 'is-active': chatPanelState === 'dock-full' }">
+                                <i class="fas fa-expand"></i>
+                                <span>Dock full width</span>
+                            </button>
+                            <button @click="dockChatPanel('right')"
+                                    class="floating-chat-dock-menu-item"
+                                    :class="{ 'is-active': chatPanelState === 'dock-right' }">
+                                <i class="fas fa-table-columns" style="transform: scaleX(-1);"></i>
+                                <span>Dock to right rail</span>
+                            </button>
+                        </div>
+                    </div>
                     <span class="floating-chat-dock-divider"></span>
                     <button @click="collapseChatPanel"
                             class="btn btn--icon btn--sm"
