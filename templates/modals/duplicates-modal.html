@@ -1,6 +1,6 @@
 <!-- Duplicates List Modal -->
-<div v-if="showDuplicatesModal && duplicatesModalData" @click.self="showDuplicatesModal = false" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-sm">
+<div v-if="showDuplicatesModal && duplicatesModalData" @click.self="showDuplicatesModal = false" class="modal-overlay">
+    <div class="modal-panel modal-panel--xs">
         <div class="p-5">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2.5">

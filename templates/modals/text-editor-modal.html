@@ -1,6 +1,6 @@
 <!-- Simple Transcription Editor Modal -->
-<div v-if="showTextEditorModal" @click.self="closeTextEditorModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+<div v-if="showTextEditorModal" @click.self="closeTextEditorModal" class="modal-overlay">
+    <div class="modal-panel modal-panel--lg max-h-[90vh flex flex">
         <div class="p-6 border-b border-[var(--border-primary)]">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold" v-text="t('modal.editTranscription')"></h3>

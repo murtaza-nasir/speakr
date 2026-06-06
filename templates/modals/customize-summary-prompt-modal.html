@@ -1,6 +1,6 @@
 <!-- Customise Summary Prompt Modal -->
-<div v-if="showCustomizeSummaryModal" @click.self="closeCustomizeSummaryModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[85vh]">
+<div v-if="showCustomizeSummaryModal" @click.self="closeCustomizeSummaryModal" class="modal-overlay">
+    <div class="modal-panel modal-panel--lg flex flex max-h-[85vh">
         <div class="p-5 border-b border-[var(--border-primary)] flex-shrink-0 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <i class="fas fa-magic text-[var(--text-accent)]"></i>

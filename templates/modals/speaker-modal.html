@@ -1,6 +1,6 @@
 <!-- Speaker Identification Modal -->
 <div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
-    <div @click="closeSpeakerSuggestionsOnClick" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-[95vh] sm:h-[85vh]">
+    <div @click="closeSpeakerSuggestionsOnClick" class="modal-panel modal-panel--xl flex flex">
         <!-- Header -->
         <div class="p-3 sm:p-5 border-b border-[var(--border-primary)] flex-shrink-0">
             <div class="flex items-center justify-between">

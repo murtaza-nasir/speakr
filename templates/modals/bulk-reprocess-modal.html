@@ -1,6 +1,6 @@
 <!-- Bulk Reprocess Modal -->
-<div v-if="showBulkReprocessModal" @click.self="closeBulkReprocessModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+<div v-if="showBulkReprocessModal" @click.self="closeBulkReprocessModal" class="modal-overlay">
+    <div class="modal-panel modal-panel--sm">
         <div class="p-6 border-b border-[var(--border-primary)]">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">

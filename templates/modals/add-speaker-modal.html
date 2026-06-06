@@ -1,6 +1,6 @@
 <!-- Add Speaker Modal -->
-<div v-if="showAddSpeakerModal" @click.self="closeAddSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md">
+<div v-if="showAddSpeakerModal" @click.self="closeAddSpeakerModal" class="modal-overlay">
+    <div class="modal-panel modal-panel--sm">
         <div class="p-6 border-b border-[var(--border-primary)]">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.addSpeaker')"></h3>

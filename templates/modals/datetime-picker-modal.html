@@ -1,6 +1,6 @@
 <!-- DateTime Picker Modal -->
-<div v-if="showDateTimePicker" @click.self="closeDateTimePicker" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-    <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+<div v-if="showDateTimePicker" @click.self="closeDateTimePicker" class="modal-overlay">
+    <div class="modal-panel modal-panel--xs overflow-hidden">
         <!-- Header -->
         <div class="p-4 border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
             <div class="flex items-center justify-between">
