@@ -135,6 +135,13 @@ def initialize_job_queue(app):
         app.logger.error(f"Failed to start job queue: {e}", exc_info=True)
 
 
+# Module-level guard so reloads (Flask --reload, gunicorn --reload,
+# container restart-on-change) don't spawn a second cleanup thread on
+# every reinit. The webhook dispatcher in src/services/webhook_dispatch.py
+# uses the same pattern.
+_cleanup_thread_started = False
+
+
 def initialize_recording_session_cleanup(app):
     """Sweep expired recording sessions on a background thread.
 
@@ -151,6 +158,12 @@ def initialize_recording_session_cleanup(app):
     import os
     import threading
     import time
+
+    global _cleanup_thread_started
+    if _cleanup_thread_started:
+        # Reload or duplicate init; the existing daemon is fine.
+        app.logger.info("Recording-session cleanup thread already running; skipping duplicate init")
+        return
 
     interval = int(os.environ.get('RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS', '3600'))
     if interval <= 0:
@@ -175,6 +188,7 @@ def initialize_recording_session_cleanup(app):
 
     thread = threading.Thread(target=_loop, daemon=True, name="RecordingSessionCleanup")
     thread.start()
+    _cleanup_thread_started = True
     app.logger.info("✅ Recording-session cleanup scheduler initialized")
 
 
