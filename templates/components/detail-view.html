@@ -25,13 +25,15 @@
         </div>
     </div>
 
-    <!-- Mobile View -->
+    <!-- Mobile View — bottom-nav shell.
+         Top: compact header (mobile-header.html)
+         Middle: tab content (single panel visible)
+         Above bottom nav: persistent mini-player (compact audio strip)
+         Bottom: tab navigation (Summary / Transcript / Chat / More) -->
     <div v-if="isMobile" class="flex flex-col h-full overflow-hidden">
         {% include 'components/detail/mobile-header.html' %}
-        {% include 'components/detail/audio-player.html' %}
-        {% include 'components/detail/tab-navigation.html' %}
 
-        <!-- Mobile Tab Content -->
+        <!-- Mobile Tab Content (single panel) -->
         <div class="flex-1 overflow-y-auto p-4">
             {% include 'components/detail/mobile-transcript-panel.html' %}
             {% include 'components/detail/mobile-summary-panel.html' %}
@@ -39,6 +41,12 @@
             {% include 'components/detail/mobile-chat-panel.html' %}
             {% include 'components/detail/mobile-events-panel.html' %}
         </div>
+
+        <!-- Persistent mini-player (compact strip) -->
+        {% include 'components/detail/audio-player.html' %}
+
+        <!-- Bottom nav -->
+        {% include 'components/detail/tab-navigation.html' %}
     </div>
 
     <!-- Desktop View -->

@@ -295,7 +295,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currentColorScheme = ref('blue');
             const showColorSchemeModal = ref(false);
             const windowWidth = ref(window.innerWidth);
-            const mobileTab = ref('transcript');
+            const mobileTab = ref('summary');  // default landing tab post-transcription
+            const mobileMoreOpen = ref(false);  // bottom-nav More overflow sheet
             const isMetadataExpanded = ref(false);
             const expandedSection = ref('settings');  // 'notes' or 'settings' for recording view accordion
             const showSortOptions = ref(false);
@@ -803,7 +804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // UI
                 browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, tokenBudget, isDarkMode,
-                currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, isMetadataExpanded, expandedSection,
+                currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, mobileMoreOpen, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
                 summaryWordCount, notesWordCount,

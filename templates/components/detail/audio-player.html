@@ -1,5 +1,8 @@
-<!-- Audio Player Component (Mobile) -->
-<div class="bg-[var(--bg-secondary)] px-4 py-3 border-b border-[var(--border-primary)] flex-shrink-0">
+<!-- Audio Player Component (Mobile) — sits above the bottom nav as a
+     persistent mini-player. Top border separates it from the content
+     above; padding tightened so it doesn't shove the bottom-nav too
+     far up. -->
+<div class="bg-[var(--bg-secondary)] px-3 py-2 border-t border-[var(--border-primary)] flex-shrink-0">
     <!-- Show message if audio has been deleted -->
     <div v-if="selectedRecording.audio_deleted_at"
          class="text-[var(--text-muted)] text-sm flex items-center gap-2">

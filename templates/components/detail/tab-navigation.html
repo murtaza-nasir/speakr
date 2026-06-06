@@ -1,34 +1,70 @@
-<!-- Mobile Tab Navigation (design system v1) — uses the same tabs
-     primitive as desktop so the mobile shell shares the same language. -->
-<div class="flex-shrink-0">
-    <div class="tabs px-2 overflow-x-auto">
-        <button @click="mobileTab = 'summary'"
-                class="tab"
-                :class="{'is-active': mobileTab === 'summary'}">
-            <span v-text="t('summary.title')"></span>
-        </button>
-        <button @click="mobileTab = 'transcript'"
-                class="tab"
-                :class="{'is-active': mobileTab === 'transcript'}">
-            <span v-text="t('transcription.title')"></span>
-        </button>
-        <button @click="mobileTab = 'notes'"
-                class="tab"
-                :class="{'is-active': mobileTab === 'notes'}">
-            <span v-text="t('notes.title')"></span>
-        </button>
-        <button @click="mobileTab = 'chat'"
-                class="tab"
-                :class="{'is-active': mobileTab === 'chat'}">
-            <span v-text="t('chat.title')"></span>
-        </button>
-        <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
-                @click="mobileTab = 'events'"
-                class="tab"
-                :class="{'is-active': mobileTab === 'events'}">
-            <i class="fas fa-calendar-alt" style="font-size: 11px;"></i>
-            <span v-text="t('events.title')"></span>
-            <span class="tab__count">${ selectedRecording.events.length }</span>
-        </button>
-    </div>
+<!-- Mobile Bottom Tab Navigation (design system v1).
+     Three primary tabs (Summary / Transcript / Chat) plus a More overflow
+     menu that surfaces Notes / Events / Settings. 56px tall to comfortably
+     accommodate icon + label + 44×44 touch target per HIG. -->
+<div class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-stretch" style="min-height: 56px;">
+    <button @click="mobileTab = 'summary'"
+            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
+            :class="mobileTab === 'summary' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+        <i class="fas fa-file-alt text-base"></i>
+        <span class="text-[10px] font-medium" v-text="t('summary.title')"></span>
+    </button>
+    <button @click="mobileTab = 'transcript'"
+            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
+            :class="mobileTab === 'transcript' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+        <i class="fas fa-align-left text-base"></i>
+        <span class="text-[10px] font-medium" v-text="t('transcription.title')"></span>
+    </button>
+    <button @click="mobileTab = 'chat'"
+            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
+            :class="mobileTab === 'chat' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+        <i class="fas fa-comments text-base"></i>
+        <span class="text-[10px] font-medium" v-text="t('chat.title')"></span>
+        <span v-if="chatMessages && chatMessages.length > 0"
+              class="absolute top-1 right-3 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold rounded-full"
+              style="background: var(--text-accent); color: var(--bg-secondary);">
+            ${chatMessages.length}
+        </span>
+    </button>
+    <!-- More menu (overflow): houses Notes, Events, etc. -->
+    <button @click="mobileMoreOpen = !mobileMoreOpen"
+            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
+            :class="['notes','events'].includes(mobileTab) ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+        <i class="fas fa-ellipsis-h text-base"></i>
+        <span class="text-[10px] font-medium">More</span>
+        <!-- Indicator when an overflow tab is active -->
+        <span v-if="['notes','events'].includes(mobileTab)"
+              class="absolute top-1 right-3 inline-flex items-center justify-center w-1.5 h-1.5 rounded-full"
+              style="background: var(--text-accent);"></span>
+    </button>
+
+    <!-- More popup (slides up over the nav). Bottom-sheet feel. -->
+    <Teleport to="body">
+        <div v-if="mobileMoreOpen" class="fixed inset-0 z-[60] flex flex-col">
+            <!-- Backdrop -->
+            <div class="flex-1" style="background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(2px);" @click="mobileMoreOpen = false"></div>
+            <!-- Sheet -->
+            <div class="surface-raised flex-shrink-0" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom);">
+                <div class="flex justify-center py-2">
+                    <span style="width: 36px; height: 4px; border-radius: 2px; background: var(--border-primary);"></span>
+                </div>
+                <div class="px-2 pb-3 space-y-1">
+                    <button @click="mobileTab = 'notes'; mobileMoreOpen = false"
+                            class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="mobileTab === 'notes' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                        <i class="fas fa-sticky-note w-5 text-center"></i>
+                        <span class="font-medium" v-text="t('notes.title')"></span>
+                    </button>
+                    <button v-if="selectedRecording && selectedRecording.events && selectedRecording.events.length > 0"
+                            @click="mobileTab = 'events'; mobileMoreOpen = false"
+                            class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="mobileTab === 'events' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                        <i class="fas fa-calendar-alt w-5 text-center"></i>
+                        <span class="font-medium" v-text="t('events.title')"></span>
+                        <span class="ml-auto pill-status pill-status--info">${selectedRecording.events.length}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
 </div>
