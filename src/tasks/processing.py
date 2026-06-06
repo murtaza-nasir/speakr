@@ -45,6 +45,35 @@ ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').low
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 
 
+# Maximum length for user-visible error_message text. The Recording.error_message
+# column is TEXT (unbounded) but the UI shows the value verbatim; capping avoids
+# scrolling-banner text from a runaway ffmpeg traceback or pathological provider
+# message. The full error continues to be logged at error level.
+_ERROR_MESSAGE_MAX_CHARS = 500
+
+
+def _sanitize_error_message(text):
+    """Trim and redact a raw exception string before persisting on a
+    Recording so it stays useful but doesn't leak deployment paths or
+    fill the UI with a giant traceback.
+
+    - Replaces absolute paths under common storage roots with ``<path>``
+      so the operator's directory layout doesn't reach end-users.
+    - Collapses runs of whitespace to keep the message single-paragraph.
+    - Hard-caps the length at _ERROR_MESSAGE_MAX_CHARS.
+    """
+    if not text:
+        return text
+    s = str(text)
+    # Redact paths under common upload / temp roots.
+    s = re.sub(r'(/data/uploads|/data/exports|/data/instance|/tmp|/var/tmp)/\S+', r'\1/<path>', s)
+    # Collapse all whitespace runs.
+    s = re.sub(r'\s+', ' ', s).strip()
+    if len(s) > _ERROR_MESSAGE_MAX_CHARS:
+        s = s[: _ERROR_MESSAGE_MAX_CHARS - 1].rstrip() + '…'
+    return s
+
+
 def apply_team_tag_auto_shares(recording_id):
     """
     Apply auto-shares for all group tags on a recording after processing completes.
@@ -1589,7 +1618,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             if not can_proceed:
                 current_app.logger.warning(f"User {recording.user_id} exceeded transcription budget: {budget_msg}")
                 recording.status = 'FAILED'
-                recording.error_message = budget_msg
+                recording.error_message = _sanitize_error_message(budget_msg)
                 db.session.commit()
                 return
             elif budget_msg:
@@ -1646,7 +1675,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
-                        recording.error_message = f"Audio extraction failed: {str(e)}"
+                        recording.error_message = _sanitize_error_message(f"Audio extraction failed: {str(e)}")
                         db.session.commit()
                         raise
                 else:
@@ -1665,7 +1694,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
-                        recording.error_message = f"Audio extraction failed: {str(e)}"
+                        recording.error_message = _sanitize_error_message(f"Audio extraction failed: {str(e)}")
                         db.session.commit()
                         raise  # Re-raise so job queue marks the job as failed
 
