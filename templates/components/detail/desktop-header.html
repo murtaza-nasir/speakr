@@ -55,7 +55,7 @@
                 <template v-if="!selectedRecording.incognito">
                     <!-- Folder Assignment (icon-only dropdown matching other buttons) -->
                     <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
-                         class="relative p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                         class="btn btn--icon relative"
                          :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
                         <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
                                 :value="selectedRecording.folder_id || ''"
@@ -69,29 +69,29 @@
                            :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
                     </div>
                     <button @click="toggleInbox(selectedRecording)"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
                             :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
                         <i class="fas fa-inbox"></i>
                     </button>
                     <button @click="toggleHighlight(selectedRecording)"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
                             :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
                         <i class="fas fa-star"></i>
                     </button>
                     <button @click="editRecordingTags(selectedRecording)"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :title="t('buttons.editTags')">
                         <i class="fas fa-tags"></i>
                     </button>
                     <button @click="confirmReprocess('transcription', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
                         <i class="fas fa-redo-alt"></i>
                     </button>
                     <button @click="confirmReprocess('summary', selectedRecording)" v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :title="t('buttons.reprocessSummary')">
                         <i class="fas fa-sync-alt"></i>
                     </button>
@@ -101,18 +101,18 @@
                         <i class="fas fa-undo"></i>
                     </button>
                     <button @click="openSpeakerModal" v-if="processedTranscription.hasDialogue"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :title="t('buttons.identifySpeakers')">
                         <i class="fas fa-user-tag"></i>
                     </button>
                     <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
                             @click="openUnifiedShareModal(selectedRecording)"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                            class="btn btn--icon"
                             :title="t('buttons.shareRecording')">
                         <i class="fas fa-share-alt"></i>
                     </button>
                     <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false" @click="confirmDelete(selectedRecording)"
-                            class="p-2 rounded-lg hover:bg-[var(--bg-danger-light)] text-[var(--text-danger)] transition-colors">
+                            class="btn btn--icon" style="color: var(--text-danger);">
                         <i class="fas fa-trash"></i>
                     </button>
                 </template>
