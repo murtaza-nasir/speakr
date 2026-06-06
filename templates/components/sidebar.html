@@ -446,8 +446,23 @@
                                 </div>
                             </div>
 
-                            <!-- Tags -->
-                            <div v-if="getRecordingTags(recording).length > 0 || recording.duplicate_info" class="flex flex-wrap items-center gap-1 mt-1">
+                            <!-- Folder + Tags row. The folder pill (folder-colour bg
+                                 + small folder icon) only shows when the user is in
+                                 the "All Recordings" view (filterFolder is falsy);
+                                 when a specific folder is already selected, every
+                                 visible recording is in it and the pill would be
+                                 redundant. Hidden for incognito recordings (no
+                                 folder association). -->
+                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || getRecordingTags(recording).length > 0 || recording.duplicate_info"
+                                 class="flex flex-wrap items-center gap-1 mt-1">
+                                <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito"
+                                        @click.stop="filterFolder = recording.folder_id"
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
+                                        :style="{ backgroundColor: getFolderColor(recording.folder_id), color: getContrastTextColor(getFolderColor(recording.folder_id)) }"
+                                        :title="'Folder: ' + getFolderName(recording.folder_id)">
+                                    <i class="fas fa-folder mr-1" style="font-size: 9px; vertical-align: middle; line-height: 0;"></i>
+                                    <span v-text="getFolderName(recording.folder_id)"></span>
+                                </button>
                                 <button v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id"
                                         @click.stop="filterByTag(tag)"
                                         class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
