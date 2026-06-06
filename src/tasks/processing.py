@@ -1580,7 +1580,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             if not can_proceed:
                 current_app.logger.warning(f"User {recording.user_id} exceeded transcription budget: {budget_msg}")
                 recording.status = 'FAILED'
-                recording.error_msg = budget_msg
+                recording.error_message = budget_msg
                 db.session.commit()
                 return
             elif budget_msg:
@@ -1637,7 +1637,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
-                        recording.error_msg = f"Audio extraction failed: {str(e)}"
+                        recording.error_message = f"Audio extraction failed: {str(e)}"
                         db.session.commit()
                         raise
                 else:
@@ -1656,7 +1656,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     except Exception as e:
                         current_app.logger.error(f"Failed to extract audio from video: {str(e)}")
                         recording.status = 'FAILED'
-                        recording.error_msg = f"Audio extraction failed: {str(e)}"
+                        recording.error_message = f"Audio extraction failed: {str(e)}"
                         db.session.commit()
                         raise  # Re-raise so job queue marks the job as failed
 
