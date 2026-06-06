@@ -273,7 +273,11 @@ class TestFrontendTemplates(unittest.TestCase):
     """Test that frontend templates correctly switch between video and audio."""
 
     TEMPLATE_FILES = [
-        'templates/components/detail/desktop-right-panel.html',
+        # The recording-detail desktop audio player now lives in
+        # desktop-bottom-player.html (persistent bottom bar), pulled
+        # out of desktop-right-panel.html during the UX redesign so it
+        # spans the full content width below the columns.
+        'templates/components/detail/desktop-bottom-player.html',
         'templates/components/detail/audio-player.html',
         'templates/modals/speaker-modal.html',
         'templates/share.html',
@@ -301,23 +305,34 @@ class TestFrontendTemplates(unittest.TestCase):
 
             # Each template should have component :is but no bare <audio for the main player
             self.assertGreater(component_count, 0, f"No <component :is> in {tmpl}")
-            # Desktop right panel and audio player should have 0 bare audio tags
-            if 'desktop-right-panel' in tmpl or 'audio-player' in tmpl:
+            # Desktop bottom player and the mobile audio-player both
+            # should have 0 bare audio tags (the dynamic component
+            # carries video/audio switching).
+            if 'desktop-bottom-player' in tmpl or 'audio-player' in tmpl:
                 self.assertEqual(audio_count, 0, f"Unexpected bare <audio> in {tmpl}")
 
     def test_video_element_gets_visible_styling(self):
-        """When mime_type is video/, the element should be visible (not hidden)."""
+        """When mime_type is video/, the element should be visible (not hidden).
+
+        desktop-bottom-player.html is a single-row controls bar with no
+        room for inline video; video playback there is fullscreen-only,
+        so the inline-styling assertion doesn't apply to it.
+        """
         for tmpl in self.TEMPLATE_FILES:
             content = self._read_template(tmpl)
-            # Should have conditional class that shows video and hides audio
-            self.assertIn("'w-full rounded-lg", content, f"Missing video styling in {tmpl}")
+            # Should always have a hidden fallback for the audio case
             self.assertIn("'hidden'", content, f"Missing hidden fallback for audio in {tmpl}")
+            # Inline video styling only applies to templates that render
+            # video inline (not the bottom-bar player).
+            if 'desktop-bottom-player' not in tmpl:
+                self.assertIn("'w-full rounded-lg", content, f"Missing video styling in {tmpl}")
 
     def test_template_div_balance(self):
         """Verify player-specific templates have balanced div tags."""
         # Only check templates we fully control (not share.html which has pre-existing imbalance)
         balanced_templates = [
             'templates/components/detail/desktop-right-panel.html',
+            'templates/components/detail/desktop-bottom-player.html',
             'templates/components/detail/audio-player.html',
             'templates/modals/speaker-modal.html',
         ]
