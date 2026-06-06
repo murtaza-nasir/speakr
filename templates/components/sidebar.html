@@ -345,12 +345,15 @@
                     </div>
                 </div>
 
-                <!-- Section group. Header gets the same left padding as
-                     the rows so titles don't appear indented vs the
-                     section label — the hierarchy reads through type
-                     weight / case / colour, not through indentation. -->
-                <div v-for="group in groupedRecordings" :key="group.title" class="mb-5">
-                    <h3 class="t-label px-3 mb-1.5">
+                <!-- Section group. Section header gets a subtle tinted
+                     background so the time-window boundaries
+                     (TODAY / THIS WEEK / etc.) read as structural
+                     dividers, not just small captions. Rows use
+                     tighter horizontal padding (px-2) so titles get
+                     more room to breathe; the section header matches
+                     so labels align with row content. -->
+                <div v-for="group in groupedRecordings" :key="group.title" class="mb-3">
+                    <h3 class="recording-group-header">
                         ${group.title}
                     </h3>
                     <div class="recording-group">
@@ -358,7 +361,7 @@
                              :key="recording.id"
                              @click="selectionMode ? toggleSelection(recording.id) : selectRecording(recording)"
                              :class="[
-                                 'recording-row relative px-3 py-2.5 cursor-pointer transition-colors',
+                                 'recording-row relative px-2 py-2.5 cursor-pointer transition-colors',
                                  selectionMode && isSelected(recording.id)
                                      ? 'bg-[var(--bg-accent)] is-active'
                                      : selectedRecording?.id === recording.id && !selectionMode

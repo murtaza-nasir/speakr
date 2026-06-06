@@ -4369,6 +4369,24 @@ select:disabled {
 
 /* ---- Sidebar recording rows ------------------------------------------ */
 
+/* Section header (TODAY / THIS WEEK / LAST MONTH / OLDER) sits above
+   each group with a subtle tinted background + thin top + bottom rule
+   so the time-window boundary reads as a real structural divider
+   instead of a tiny caption that floats over the list. */
+.recording-group-header {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-primary);
+    border-bottom: 1px solid var(--border-primary);
+    padding: 6px var(--sp-2);
+    margin: 0 calc(-1 * var(--sp-2)) 0 calc(-1 * var(--sp-2));
+    line-height: var(--lh-tight);
+}
+
 /* Each section group wraps its rows so we can draw subtle hairlines
    between siblings without dealing with first/last-child quirks on the
    loop's v-for. */
@@ -4377,20 +4395,12 @@ select:disabled {
     flex-direction: column;
 }
 
-/* Subtle separator between consecutive rows. Uses a 1px inset shadow on
-   the inner edge so the line never extends past the row's padded area
-   and never doubles up with the row's own border. */
+/* Uniform 1px hairline between every consecutive pair of rows. Active
+   and hovered rows do NOT hide the adjacent hairlines — keeping the
+   rhythm uniform prevents the "some-rows-have-lines-some-don't"
+   appearance that read as an inconsistent design. */
 .recording-group > .recording-row + .recording-row {
     border-top: 1px solid var(--border-primary);
-}
-
-/* The hairline disappears once a row enters the active or hover state
-   so the selection feels continuous and uninterrupted. */
-.recording-group > .recording-row.is-active,
-.recording-group > .recording-row:hover,
-.recording-group > .recording-row.is-active + .recording-row,
-.recording-group > .recording-row:hover + .recording-row {
-    border-top-color: transparent;
 }
 
 .recording-row {
