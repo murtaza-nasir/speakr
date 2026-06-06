@@ -1,17 +1,19 @@
-<!-- Mobile Chat Panel -->
-<div v-if="mobileTab === 'chat'" class="h-full flex flex-col rounded-lg border border-[var(--border-primary)] overflow-hidden relative">
-    <!-- Clear button - fixed at top right -->
+<!-- Mobile Chat Panel (design system v1) -->
+<div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden relative">
+    <!-- Clear button -->
     <button v-if="chatMessages.length > 0"
             @click="clearChat"
-            class="absolute top-2 right-2 p-1 text-[var(--text-muted)] opacity-60 hover:opacity-100 hover:text-[var(--text-danger)] rounded transition-all duration-200 z-20"
+            class="btn btn--icon btn--sm absolute"
+            style="top: var(--sp-2); right: var(--sp-2); z-index: 20; color: var(--text-muted);"
             title="Clear chat">
-        <i class="fas fa-times text-xs"></i>
+        <i class="fas fa-times"></i>
     </button>
 
-    <div ref="chatMessagesRef" class="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-secondary)]">
-        <div v-if="chatMessages.length === 0" class="text-center py-8">
-            <i class="fas fa-robot text-3xl text-[var(--text-muted)] mb-3"></i>
-            <p class="text-[var(--text-muted)]" v-text="t('help.askAboutTranscription')"></p>
+    <div ref="chatMessagesRef" class="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        <div v-if="chatMessages.length === 0" class="empty">
+            <div class="empty__icon"><i class="fas fa-robot"></i></div>
+            <div class="empty__title" v-text="t('help.askAboutTranscription')"></div>
+            <div class="empty__body">Type a question below. Markdown supported.</div>
         </div>
         <div v-for="(message, index) in chatMessages" :key="index"
              :class="['message relative group', message.role === 'user' ? 'user-message ml-auto' : 'ai-message',
@@ -19,11 +21,12 @@
             <!-- Copy button for assistant messages -->
             <button v-if="message.role === 'assistant'"
                     @click="copyMessage(message.content, $event)"
-                    class="absolute top-2 right-2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] rounded transition-all duration-200"
+                    class="btn btn--icon btn--sm absolute"
+                    style="top: var(--sp-2); right: var(--sp-2);"
                     :title="t('buttons.copyMessage')">
-                <i class="fas fa-copy text-sm"></i>
+                <i class="fas fa-copy"></i>
             </button>
-            <!-- Show thinking content if available -->
+            <!-- Thinking content -->
             <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
                 <button @click="message.thinkingExpanded = !message.thinkingExpanded"
                         class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
@@ -32,7 +35,7 @@
                     <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
                 </button>
                 <div v-if="message.thinkingExpanded"
-                     class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-lg text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
+                     class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-md text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
                     <pre class="whitespace-pre-wrap font-mono">${message.thinking}</pre>
                 </div>
             </div>
@@ -40,20 +43,30 @@
             <div v-if="message.html" v-html="message.html"></div>
             <div v-else class="whitespace-pre-wrap">${message.content}</div>
         </div>
-        <div v-if="isChatLoading" class="ai-message">
-            <i class="fas fa-spinner fa-spin mr-2"></i> ${ t('chat.thinking') }
+        <div v-if="isChatLoading" class="ai-message flex items-center gap-2">
+            <div class="spinner"></div>
+            <span v-text="t('chat.thinking')"></span>
         </div>
     </div>
-    <div class="border-t border-[var(--border-primary)] p-4 bg-[var(--bg-tertiary)]">
-        <div class="flex gap-2">
-            <textarea v-model="chatInput" ref="chatInputRef" @keydown="handleChatKeydown" :disabled="selectedRecording.status !== 'COMPLETED' || processedTranscription.isError" :placeholder="t('chat.placeholder')" class="flex-1 px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" rows="2"></textarea>
-            <button @click="sendChatMessage" :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+    <div class="border-t border-[var(--border-primary)] px-3 py-3">
+        <div class="flex gap-2 items-end">
+            <textarea v-model="chatInput"
+                      ref="chatInputRef"
+                      @keydown="handleChatKeydown"
+                      :disabled="selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
+                      :placeholder="t('chat.placeholder')"
+                      class="field"
+                      style="resize: none;"
+                      rows="2"></textarea>
+            <button @click="sendChatMessage"
+                    :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
+                    class="btn btn--primary btn--icon btn--lg">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
-        <p v-if="processedTranscription.isError" class="text-xs text-amber-500 mt-2">
-            <i class="fas fa-exclamation-triangle mr-1"></i>
-            ${ t('chat.cannotChatTranscriptionFailed') }
-        </p>
+        <div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5" style="color: var(--text-danger);">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span v-text="t('chat.cannotChatTranscriptionFailed')"></span>
+        </div>
     </div>
 </div>

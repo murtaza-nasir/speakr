@@ -1,53 +1,50 @@
-<!-- Mobile Summary Panel -->
-<div v-if="mobileTab === 'summary'" class="h-full flex flex-col space-y-4">
-    <div class="flex items-center justify-end gap-2 flex-shrink-0 pr-3">
-        <button @click="copySummary" class="copy-btn" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
-        <button @click="downloadSummary" class="copy-btn" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
-        <button @click="toggleEditSummary" class="copy-btn" :title="t('buttons.editSummary')"><i class="fas fa-edit"></i></button>
+<!-- Mobile Summary Panel (design system v1) -->
+<div v-if="mobileTab === 'summary'" class="h-full flex flex-col">
+    <!-- Action toolbar -->
+    <div class="flex items-center justify-end gap-1 flex-shrink-0 px-3 py-2">
+        <button v-if="selectedRecording.summary" @click="copySummary" class="btn btn--icon" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
+        <button v-if="selectedRecording.summary" @click="downloadSummary" class="btn btn--icon" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+        <button @click="toggleEditSummary" class="btn btn--icon" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
     </div>
-    <div class="flex-grow overflow-y-auto mobile-content-box">
+    <div class="flex-grow overflow-y-auto px-3 pb-3">
         <div v-if="editingSummary" class="h-full flex flex-col">
-            <div class="markdown-editor-container flex-1">
-                <textarea ref="summaryMarkdownEditor" v-model="selectedRecording.summary"></textarea>
-            </div>
+            <textarea ref="summaryMarkdownEditor"
+                      v-model="selectedRecording.summary"
+                      class="field flex-1"
+                      style="resize: none; padding: var(--sp-3);"></textarea>
             <div class="flex justify-end gap-2 mt-2">
-                <button @click="cancelEditSummary" class="px-3 py-1 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded hover:bg-[var(--bg-tertiary)]" v-text="t('common.cancel')"></button>
-                <button @click="saveEditSummary" class="px-3 py-1 text-sm bg-[var(--bg-button)] text-[var(--text-button)] border border-transparent rounded hover:bg-[var(--bg-button-hover)]" v-text="t('common.save')"></button>
+                <button @click="cancelEditSummary" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
+                <button @click="saveEditSummary" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>
             </div>
         </div>
         <div v-else>
-            <div v-if="selectedRecording.status === 'SUMMARIZING'" class="text-center py-8">
-                <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                <p class="mt-2 text-[var(--text-muted)]" v-text="t('help.generatingSummary')"></p>
+            <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
+                <div class="spinner spinner--lg"></div>
+                <div class="empty__title" v-text="t('help.generatingSummary')"></div>
             </div>
-            <div v-else-if="!selectedRecording.summary" class="text-center py-8">
-                <i class="fas fa-file-alt text-3xl text-[var(--text-muted)] mb-3"></i>
-                <p class="text-[var(--text-muted)] mb-4" v-text="t('summary.noSummary')"></p>
-                <!-- Show message if transcription is an error -->
-                <p v-if="processedTranscription.isError" class="text-sm text-amber-500 mb-2">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    Cannot generate summary: transcription failed
-                </p>
-                <div :class="['inline-flex rounded-lg shadow-lg transition-all duration-200 overflow-hidden', processedTranscription.isError ? '' : 'hover:shadow-xl']">
-                    <button @click="generateSummary()"
-                            :disabled="processedTranscription.isError"
-                            :class="[
-                                'px-6 py-3 font-medium transition-colors duration-200',
-                                processedTranscription.isError
-                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                                    : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700'
-                            ]">
-                        <i class="fas fa-magic mr-2"></i>Generate Summary
+            <div v-else-if="!selectedRecording.summary" class="empty">
+                <div class="empty__icon"><i class="fas fa-file-alt"></i></div>
+                <div class="empty__title" v-text="t('summary.noSummary')"></div>
+                <div v-if="processedTranscription.isError" class="banner banner--warn">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Cannot generate summary: transcription failed</span>
+                </div>
+                <div class="flex items-center gap-2" style="margin-top: var(--sp-3);">
+                    <button class="btn btn--primary"
+                            @click="generateSummary()"
+                            :disabled="processedTranscription.isError">
+                        <i class="fas fa-magic"></i>
+                        <span>Generate Summary</span>
                     </button>
                     <button v-if="!processedTranscription.isError"
+                            class="btn btn--ghost btn--icon"
                             @click="openCustomizeSummaryModal"
-                            title="Customise the summarisation prompt"
-                            class="px-3 py-3 font-medium text-white bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 transition-colors duration-200 border-l border-white/20">
-                        <i class="fas fa-sliders-h text-sm"></i>
+                            title="Customise prompt">
+                        <i class="fas fa-sliders-h"></i>
                     </button>
                 </div>
             </div>
-            <div v-else class="summary-box h-full" v-html="selectedRecording.summary_html || selectedRecording.summary"></div>
+            <div v-else class="prose-flush h-full" v-html="selectedRecording.summary_html || selectedRecording.summary"></div>
         </div>
     </div>
 </div>
