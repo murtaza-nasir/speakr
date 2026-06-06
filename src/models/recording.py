@@ -256,7 +256,9 @@ class Recording(db.Model):
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'duplicate_info': self.get_duplicate_info(),
             'shared_with_count': shared_with_count,
-            'public_share_count': public_share_count
+            'public_share_count': public_share_count,
+            'audio_duration': self.get_audio_duration(),
+            'keep_audio_only': self.keep_audio_only,
         }
 
     def to_dict(self, include_html=True, viewer_user=None):
@@ -317,7 +319,8 @@ class Recording(db.Model):
             'prompt_variables': self.prompt_variables or {},
             'duplicate_info': self.get_duplicate_info(),
             'shared_with_count': shared_with_count,
-            'public_share_count': public_share_count
+            'public_share_count': public_share_count,
+            'keep_audio_only': self.keep_audio_only,
         }
 
         # Only compute expensive HTML conversions when explicitly requested

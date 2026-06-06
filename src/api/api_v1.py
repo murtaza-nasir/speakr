@@ -114,7 +114,8 @@ OPENAPI_SPEC = {
                     "folder_id": {"type": "integer", "nullable": True},
                     "folder": {"type": "object", "nullable": True, "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}},
                     "events": {"type": "array", "description": "Calendar events extracted from the recording (detail endpoint only)", "items": {"type": "object"}},
-                    "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}}
+                    "tags": {"type": "array", "items": {"$ref": "#/components/schemas/Tag"}},
+                    "keep_audio_only": {"type": "boolean", "description": "True if the upload was processed in audio-only mode (video stream discarded). Set at upload time; immutable via PATCH."}
                 }
             },
             "Tag": {
@@ -856,7 +857,8 @@ def list_recordings():
             'folder': {'id': r.folder.id, 'name': r.folder.name} if r.folder else None,
             'deletion_exempt': r.deletion_exempt,
             'error_message': r.error_message if r.status == 'FAILED' else None,
-            'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags]
+            'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in r.tags],
+            'keep_audio_only': r.keep_audio_only,
         })
 
     return jsonify({
@@ -922,7 +924,8 @@ def get_recording(recording_id):
         'events': [e.to_dict() for e in recording.events] if hasattr(recording, 'events') else [],
         'error_message': recording.error_message if recording.status == 'FAILED' else None,
         'tags': [{'id': t.id, 'name': t.name, 'color': t.color} for t in recording.tags],
-        'duplicate_info': recording.get_duplicate_info()
+        'duplicate_info': recording.get_duplicate_info(),
+        'keep_audio_only': recording.keep_audio_only,
     }
 
     # Include large text fields based on params
@@ -1099,6 +1102,16 @@ def update_recording(recording_id):
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
+
+    # `keep_audio_only` is set at upload time and dictates whether the
+    # processing pipeline retained the video stream. Allowing PATCH to
+    # mutate it after the fact would create a misleading record (the
+    # file was already processed one way or the other). Reject explicitly
+    # rather than silently dropping so misuse surfaces in client logs.
+    if 'keep_audio_only' in data:
+        return jsonify({
+            'error': 'keep_audio_only is set at upload time and cannot be changed afterwards.'
+        }), 400
 
     # Track which fields actually changed so the webhook payload tells
     # subscribers what was touched (recording.updated event, #275).
