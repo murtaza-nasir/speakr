@@ -349,7 +349,9 @@
     "saveSettings": "Save Settings",
     "shareRecording": "Share recording",
     "toggleTheme": "Toggle theme",
-    "updateTag": "Update Tag"
+    "updateTag": "Update Tag",
+    "delete": "Delete",
+    "save": "Save"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirm New Password",

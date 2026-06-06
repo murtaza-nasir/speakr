@@ -349,7 +349,9 @@
     "saveSettings": "Сохранить настройки",
     "shareRecording": "Поделиться записью",
     "toggleTheme": "Переключить тему",
-    "updateTag": "Обновить тег"
+    "updateTag": "Обновить тег",
+    "delete": "Удалить",
+    "save": "Сохранить"
   },
   "changePasswordModal": {
     "confirmPassword": "Подтвердите новый пароль",

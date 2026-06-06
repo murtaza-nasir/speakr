@@ -349,7 +349,9 @@
     "saveSettings": "Enregistrer les Paramètres",
     "shareRecording": "Partager l'Enregistrement",
     "toggleTheme": "Changer de thème",
-    "updateTag": "Mettre à jour le tag"
+    "updateTag": "Mettre à jour le tag",
+    "delete": "Supprimer",
+    "save": "Enregistrer"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmer le Nouveau Mot de Passe",

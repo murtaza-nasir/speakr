@@ -349,7 +349,9 @@
     "saveSettings": "保存设置",
     "shareRecording": "分享录音",
     "toggleTheme": "切换主题",
-    "updateTag": "更新标签"
+    "updateTag": "更新标签",
+    "delete": "删除",
+    "save": "保存"
   },
   "changePasswordModal": {
     "confirmPassword": "确认新密码",

@@ -349,7 +349,9 @@
     "saveSettings": "Salvar Configurações",
     "shareRecording": "Compartilhar gravação",
     "toggleTheme": "Alternar tema",
-    "updateTag": "Atualizar Etiqueta"
+    "updateTag": "Atualizar Etiqueta",
+    "delete": "Excluir",
+    "save": "Salvar"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmar Nova Senha",

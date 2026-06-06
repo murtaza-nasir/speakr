@@ -349,7 +349,9 @@
     "saveSettings": "Einstellungen Speichern",
     "shareRecording": "Aufnahme teilen",
     "toggleTheme": "Design umschalten",
-    "updateTag": "Tag aktualisieren"
+    "updateTag": "Tag aktualisieren",
+    "delete": "Löschen",
+    "save": "Speichern"
   },
   "changePasswordModal": {
     "confirmPassword": "Neues Passwort Bestätigen",
