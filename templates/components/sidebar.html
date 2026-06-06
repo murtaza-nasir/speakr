@@ -35,20 +35,20 @@
                     </button>
                     <button v-if="selectionMode"
                             @click="exitSelectionMode"
-                            class="h-9 px-3 flex items-center bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:opacity-80 transition-opacity text-sm"
+                            class="btn btn--primary"
                             title="Exit selection mode">
                         <i class="fas fa-times mr-1"></i>Done
                     </button>
                     <!-- New button - compact when folders enabled -->
                     <button v-if="!selectionMode && foldersEnabled && availableFolders.length > 0"
                             @click="switchToUploadView"
-                            class="w-9 h-9 flex items-center justify-center bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors"
+                            class="btn btn--primary btn--icon"
                             title="New Recording">
                         <i class="fas fa-plus"></i>
                     </button>
                     <button v-else-if="!selectionMode"
                             @click="switchToUploadView"
-                            class="h-9 px-3 flex items-center bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors text-sm">
+                            class="btn btn--primary">
                         <i class="fas fa-plus mr-1"></i><span v-text="t('common.new')"></span>
                     </button>
                 </div>

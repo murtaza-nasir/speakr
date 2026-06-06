@@ -167,7 +167,7 @@
                     <!-- Normal Upload Button (when not in incognito mode or feature disabled) -->
                     <button v-if="!incognitoMode || !enableIncognitoMode"
                             @click="startUpload"
-                            class="w-full px-4 py-2.5 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors flex items-center justify-center gap-2 font-medium text-sm">
+                            class="btn btn--lg btn--primary w-full">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <span v-text="t('upload.uploadNFiles', { count: pendingQueueFiles.length })"></span>
                     </button>
