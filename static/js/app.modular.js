@@ -1642,11 +1642,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }));
 
                     const processedSimpleSegments = [];
+                    // Group consecutive same-speaker segments into runs
+                    // so the sticky speaker tablet at the top of each
+                    // run sticks for the entire run, not just the first
+                    // segment. Each run is { speaker, color, startTime,
+                    // speakerId, segments: [original simpleSegments] }.
+                    const simpleSegmentRuns = [];
                     let lastSpeakerId = null;
-                    simpleSegments.forEach(segment => {
+                    let runOffset = 0;  // index of the first segment in the current run
+                    simpleSegments.forEach((segment, idx) => {
+                        const isNewSpeaker = segment.speakerId !== lastSpeakerId;
                         processedSimpleSegments.push({
                             ...segment,
-                            showSpeaker: segment.speakerId !== lastSpeakerId
+                            showSpeaker: isNewSpeaker
+                        });
+                        if (isNewSpeaker) {
+                            simpleSegmentRuns.push({
+                                speaker: segment.speaker,
+                                color: segment.color,
+                                speakerId: segment.speakerId,
+                                startTime: segment.startTime || segment.start_time,
+                                runOffset: idx,
+                                segments: []
+                            });
+                            runOffset = idx;
+                        }
+                        simpleSegmentRuns[simpleSegmentRuns.length - 1].segments.push({
+                            ...segment,
+                            originalIndex: idx
                         });
                         lastSpeakerId = segment.speakerId;
                     });
@@ -1675,6 +1698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         isJson: true,
                         segments: simpleSegments,
                         simpleSegments: processedSimpleSegments,
+                        simpleSegmentRuns: simpleSegmentRuns,
                         bubbleRows: bubbleRows,
                         speakers: speakers.map(speaker => ({
                             name: speakerMap.value[speaker]?.name || speaker,

@@ -205,27 +205,33 @@
             <!-- Simple View -->
             <div v-if="!processedTranscription.hasDialogue || transcriptionViewMode === 'simple'"
                  class="transcription-simple-view">
+                <!-- Speaker runs (consecutive same-speaker segments
+                     grouped into one container) so the sticky speaker
+                     tablet at the top of each run sticks for the WHOLE
+                     run, not just the first segment. -->
                 <div v-if="processedTranscription.hasDialogue">
-                    <div v-for="(segment, index) in processedTranscription.simpleSegments"
-                         :key="`seg-${index}-${segment.startTime}`"
-                         :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === index }]"
-                         @click="seekAudioFromEvent"
-                         @dblclick.stop="openAsrEditorAtSegment(index)"
-                         :title="'Double-click to edit this segment'"
-                         :data-start-time="segment.startTime"
-                         :data-segment-index="index">
-                        <template v-if="segment.showSpeaker">
-                            <div v-if="showTimestampsSimpleView"
-                                 :class="['speaker-tablet-group', segment.color]">
-                                <span class="speaker-tablet-time">${ formatTimestamp(segment.startTime) }</span>
-                                <span class="speaker-tablet-name">${segment.speaker}</span>
+                    <div v-for="(run, runIndex) in processedTranscription.simpleSegmentRuns"
+                         :key="`run-${runIndex}-${run.startTime}`"
+                         class="speaker-run">
+                        <div v-if="showTimestampsSimpleView"
+                             :class="['speaker-tablet-group', run.color]">
+                            <span class="speaker-tablet-time">${ formatTimestamp(run.startTime) }</span>
+                            <span class="speaker-tablet-name">${run.speaker}</span>
+                        </div>
+                        <div v-else :class="['speaker-tablet', run.color]">
+                            ${run.speaker}
+                        </div>
+                        <div v-for="(segment, segIndex) in run.segments"
+                             :key="`seg-${segment.originalIndex}-${segment.startTime}`"
+                             :class="['speaker-segment', { 'active-playing-segment': currentPlayingSegmentIndex === segment.originalIndex }]"
+                             @click="seekAudioFromEvent"
+                             @dblclick.stop="openAsrEditorAtSegment(segment.originalIndex)"
+                             :title="'Double-click to edit this segment'"
+                             :data-start-time="segment.startTime"
+                             :data-segment-index="segment.originalIndex">
+                            <div class="speaker-text">
+                                ${segment.sentence}
                             </div>
-                            <div v-else :class="['speaker-tablet', segment.color]">
-                                ${segment.speaker}
-                            </div>
-                        </template>
-                        <div class="speaker-text">
-                            ${segment.sentence}
                         </div>
                     </div>
                 </div>

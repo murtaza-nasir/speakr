@@ -1542,27 +1542,44 @@ export function useUI(state, utils, processedTranscription) {
                 templates = await templatesResponse.json();
             }
 
-            // If there are templates, show a selection dialog
+            // If there are templates, show a selection dialog (built as
+            // a programmatic modal — uses the same modal-overlay /
+            // modal-panel / modal-header / modal-body / modal-footer
+            // primitives as Vue-rendered modals so the chrome matches).
             let templateId = null;
             if (templates.length > 0) {
-                // Create a simple modal for template selection
+                // Escape user-supplied template name/description before
+                // injection. Translations and is_default flag are
+                // controlled values; template id is constrained by the
+                // DOM data attribute.
+                const _esc = (s) => String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
                 const modal = document.createElement('div');
-                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.className = 'modal-overlay';
                 modal.innerHTML = `
-                    <div class="bg-[var(--bg-secondary)] rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 class="text-lg font-semibold mb-4">${t('transcriptTemplates.selectTemplate')}</h3>
-                        <div class="space-y-2 max-h-60 overflow-y-auto">
-                            ${templates.map(tmpl => `
-                                <button class="template-option w-full text-left p-3 rounded border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] ${tmpl.is_default ? 'ring-2 ring-[var(--ring-focus)]' : ''}" data-template-id="${tmpl.id}">
-                                    <div class="font-medium">${tmpl.name}</div>
-                                    ${tmpl.description ? `<div class="text-sm text-[var(--text-muted)]">${tmpl.description}</div>` : ''}
-                                    ${tmpl.is_default ? `<div class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>${t('transcriptTemplates.default')}</div>` : ''}
-                                </button>
-                            `).join('')}
+                    <div class="modal-panel modal-panel--sm">
+                        <div class="modal-header">
+                            <h3 class="modal-title">${_esc(t('transcriptTemplates.selectTemplate'))}</h3>
+                            <button class="modal-close cancel-btn" title="Close"><i class="fas fa-times"></i></button>
                         </div>
-                        <div class="mt-4 flex gap-2">
-                            <button class="cancel-btn px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded hover:bg-[var(--bg-accent-light)]">${t('transcriptTemplates.cancel')}</button>
-                            <button class="download-without-template-btn px-4 py-2 bg-[var(--bg-accent)] text-white rounded hover:bg-[var(--bg-accent-hover)]">${t('transcriptTemplates.downloadWithoutTemplate')}</button>
+                        <div class="modal-body" style="padding: var(--sp-2);">
+                            <div class="space-y-1 max-h-60 overflow-y-auto">
+                                ${templates.map(tmpl => `
+                                    <button class="template-option w-full text-left p-3 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors ${tmpl.is_default ? 'ring-1 ring-[var(--text-accent)]' : ''}" data-template-id="${_esc(tmpl.id)}">
+                                        <div class="t-body-strong">${_esc(tmpl.name)}</div>
+                                        ${tmpl.description ? `<div class="t-meta">${_esc(tmpl.description)}</div>` : ''}
+                                        ${tmpl.is_default ? `<div class="t-meta mt-1" style="color: var(--text-accent);"><i class="fas fa-star mr-1"></i>${_esc(t('transcriptTemplates.default'))}</div>` : ''}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="cancel-btn btn btn--ghost">${_esc(t('transcriptTemplates.cancel'))}</button>
+                            <button class="download-without-template-btn btn btn--primary">${_esc(t('transcriptTemplates.downloadWithoutTemplate'))}</button>
                         </div>
                     </div>
                 `;

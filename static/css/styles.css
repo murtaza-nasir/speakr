@@ -1666,55 +1666,22 @@ body {
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Sticky speaker labels: as the user scrolls past a speaker segment,
- * its speaker label pin to the top of the transcript scroll area so the
- * current speaker is always visible. Implemented per-segment via
- * position:sticky so the natural reading flow is preserved (no JS).
- * Activates a small gradient backdrop when the tablet is stuck so it
- * stays legible against transcript prose. */
-.speaker-segment .speaker-tablet,
-.speaker-segment .speaker-tablet-group {
+/* Speaker run: wraps consecutive same-speaker segments so the sticky
+ * speaker tablet at the top of the run sticks for the entire run.
+ * Without this grouping, each segment was its own sticky scope and the
+ * tablet would disappear as soon as the first segment scrolled past. */
+.speaker-run {
+    position: relative;
+    margin-bottom: 1.25rem;
+}
+
+/* Sticky speaker tablet — pinned to the top of its .speaker-run so it
+ * stays visible across all the run's segments. Pure CSS, no JS. */
+.speaker-run > .speaker-tablet,
+.speaker-run > .speaker-tablet-group {
     position: sticky;
     top: 0;
     z-index: 5;
-}
-
-/* Soft gradient backdrop behind the sticky tablet so prose underneath
- * doesn't read through the label. Uses the rail surface so it adapts to
- * theme. */
-.speaker-segment .speaker-tablet::before,
-.speaker-segment .speaker-tablet-group::before {
-    content: '';
-    position: absolute;
-    inset: -2px -8px -2px -8px;
-    background: linear-gradient(
-        to bottom,
-        var(--bg-primary) 0%,
-        var(--bg-primary) 60%,
-        rgba(0, 0, 0, 0) 100%
-    );
-    z-index: -1;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-}
-
-/* The "stuck" detection trick: when the parent .speaker-segment is
- * being scrolled past, the sticky element's offsetTop equals the
- * scroll container's scrollTop. We can't detect this in pure CSS, so
- * we use a subtle box-shadow that appears whenever the sticky element
- * is at top:0 of the viewport. position:sticky doesn't expose a
- * "stuck" state to CSS, but the gradient is visible only when the
- * tablet sits above content; harmless cosmetic otherwise. */
-.speaker-segment .speaker-tablet:not(:first-child)::before,
-.speaker-segment .speaker-tablet-group:not(:first-child)::before {
-    opacity: 1;
-}
-
-/* The tablet itself needs a small visual indication so the "this is the
- * current speaker" anchor stays subtly highlighted while stuck. */
-.speaker-segment .speaker-tablet,
-.speaker-segment .speaker-tablet-group {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 

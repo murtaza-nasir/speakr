@@ -57,3 +57,7 @@ final-*.png
 # Session-internal scratch (UX redesign notes etc.). These live in
 # temp/ so you can read them locally, but they shouldn't be tracked.
 temp/ux-redesign-*.md
+
+# Internal-only documentation (design system, working notes, etc.).
+# Lives on disk for local reference but is never tracked.
+internal-docs/
