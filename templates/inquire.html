@@ -498,8 +498,8 @@
         </div>
 
         <!-- Shares List Modal -->
-        <div v-if="showSharesListModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <div v-if="showSharesListModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--lg max-h-[80vh flex flex">
                 <div class="p-6 border-b border-[var(--border-primary)] flex justify-between items-center">
                     <h3 class="text-lg font-semibold" v-text="t('modal.sharedTranscripts')"></h3>
                     <button @click="closeSharesList" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">

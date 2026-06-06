@@ -436,7 +436,7 @@
         </header>
 
         <main class="flex-grow flex flex-col">
-            <div class="bg-[var(--bg-secondary)] rounded-xl shadow-lg border border-[var(--border-primary)] flex flex-col flex-grow overflow-hidden">
+            <div class="modal-panel modal-panel--md flex flex flex overflow-hidden">
                 <div class="border-b border-[var(--border-primary)]">
                     <div class="relative">
                         <!-- Scroll gradient indicators -->
@@ -1888,8 +1888,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Change Password Modal -->
-    <div id="changePasswordModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+    <div id="changePasswordModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</h3>
                 <button id="closeModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
@@ -1924,8 +1924,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Manage Speakers Modal -->
-    <div id="manageSpeakersModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <div id="manageSpeakersModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--lg max-h-[80vh overflow-hidden">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.manageSpeakers">Manage Speakers</h3>
                 <button id="closeSpeakersModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
@@ -1978,8 +1978,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Delete All Speakers Confirmation Modal -->
-    <div id="deleteAllSpeakersModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+    <div id="deleteAllSpeakersModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm">
             <div class="flex items-center mb-4">
                 <i class="fas fa-exclamation-triangle text-[var(--text-danger)] text-2xl mr-3"></i>
                 <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="buttons.deleteAll">Delete All Speakers</h3>
@@ -1999,8 +1999,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Delete Selected Speakers Confirmation Modal -->
-    <div id="deleteSelectedSpeakersModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm hidden">
-        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+    <div id="deleteSelectedSpeakersModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm transform transition-all duration-300 ease-in-out">
             <!-- Header -->
             <div class="p-6 border-b border-[var(--border-primary)]">
                 <div class="flex items-center gap-4">
@@ -2052,8 +2052,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Clear Voice Profiles Confirmation Modal -->
-    <div id="clearVoiceProfilesModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm hidden">
-        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+    <div id="clearVoiceProfilesModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm transform transition-all duration-300 ease-in-out">
             <!-- Header -->
             <div class="bg-gradient-to-r from-orange-500 to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
                 <div class="flex items-center">
@@ -2119,8 +2119,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Merge Speakers Modal -->
-    <div id="mergeSpeakersModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-60 p-4 backdrop-blur-sm hidden">
-        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col transform transition-all duration-300 ease-in-out">
+    <div id="mergeSpeakersModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--md max-h-[80vh flex flex transform transition-all duration-300 ease-in-out">
             <!-- Header -->
             <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center justify-between flex-shrink-0">
                 <div class="flex items-center">
@@ -2171,8 +2171,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Edit Speaker Modal -->
-    <div id="editSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-60 p-4 backdrop-blur-sm hidden">
-        <div class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-md transform transition-all duration-300 ease-in-out">
+    <div id="editSpeakerModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm transform transition-all duration-300 ease-in-out">
             <!-- Header -->
             <div class="p-5 border-b border-[var(--border-primary)]">
                 <div class="flex items-center justify-between">
@@ -2213,8 +2213,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Create/Edit Tag Modal -->
-    <div id="tagModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div id="tagModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--md max-h-[90vh overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 id="tagModalTitle" class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="editTagModal.createTitle">Create Tag</h3>
                 <button id="closeTagModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
@@ -2425,8 +2425,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Create/Edit Folder Modal -->
-    <div id="folderModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div id="folderModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--md max-h-[90vh overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
                 <h3 id="folderModalTitle" class="text-xl font-semibold text-[var(--text-primary)]">Create Folder</h3>
                 <button id="closeFolderModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
@@ -2613,8 +2613,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Create API Token Modal -->
-    <div id="createTokenModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+    <div id="createTokenModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-[var(--text-primary)]">
                     <i class="fas fa-key mr-2 text-[var(--text-accent)]"></i>Create API Token
@@ -2663,8 +2663,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     </div>
 
     <!-- Token Secret Modal (shown after creation) -->
-    <div id="tokenSecretModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-        <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+    <div id="tokenSecretModal" class="modal-overlay hidden">
+        <div class="modal-panel modal-panel--sm">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-[var(--text-primary)]">
                     <i class="fas fa-check-circle mr-2 text-green-500"></i>Token Created!

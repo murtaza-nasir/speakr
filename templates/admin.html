@@ -1233,8 +1233,8 @@ Summarization Instructions:
         </footer>
 
         <!-- Add User Modal -->
-        <div v-if="showAddUserModal" @click.self="showAddUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showAddUserModal" @click.self="showAddUserModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">${t('adminDashboard.addNewUser')}</h3>
                     <button @click="showAddUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1282,8 +1282,8 @@ Summarization Instructions:
         </div>
 
         <!-- Edit User Modal -->
-        <div v-if="showEditUserModal" @click.self="showEditUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showEditUserModal" @click.self="showEditUserModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">${t('adminDashboard.editUser')}</h3>
                     <button @click="showEditUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1345,8 +1345,8 @@ Summarization Instructions:
         </div>
 
         <!-- Delete User Confirmation Modal -->
-        <div v-if="showDeleteUserModal" @click.self="showDeleteUserModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showDeleteUserModal" @click.self="showDeleteUserModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Confirm Delete</h3>
                     <button @click="showDeleteUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1360,8 +1360,8 @@ Summarization Instructions:
         </div>
         
         <!-- Edit System Setting Modal -->
-        <div v-if="showEditSettingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] rounded-lg shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+        <div v-if="showEditSettingModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--md max-h-[85vh flex flex overflow-hidden">
                 <div class="flex-shrink-0 flex justify-between items-center p-6 pb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Edit System Setting</h3>
                     <button @click="showEditSettingModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-2xl leading-none">&times;</button>
@@ -1498,8 +1498,8 @@ Summarization Instructions:
         </div>
 
         <!-- Create/Edit Group Modal -->
-        <div v-if="showTeamModal" @click.self="closeTeamModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showTeamModal" @click.self="closeTeamModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
                     <button @click="closeTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1537,8 +1537,8 @@ Summarization Instructions:
         </div>
 
         <!-- Manage Group Members Modal -->
-        <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--lg max-h-[90vh overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Group: ${ currentTeam?.name }</h3>
                     <button @click="closeManageTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1621,8 +1621,8 @@ Summarization Instructions:
         </div>
 
         <!-- Sync Group Shares Confirmation Modal -->
-        <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Sync Group Shares</h3>
                     <button @click="showSyncSharesModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1644,8 +1644,8 @@ Summarization Instructions:
         </div>
 
         <!-- Sync Results Modal -->
-        <div v-if="showSyncResultsModal" @click.self="showSyncResultsModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showSyncResultsModal" @click.self="showSyncResultsModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">
                         <i class="fas fa-check-circle text-green-500 mr-2"></i>Sync Complete
@@ -1671,8 +1671,8 @@ Summarization Instructions:
         </div>
 
         <!-- Delete Group Confirmation Modal -->
-        <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Delete Group</h3>
                     <button @click="showDeleteTeamModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
@@ -1686,8 +1686,8 @@ Summarization Instructions:
         </div>
 
         <!-- Manage Group Tags Modal -->
-        <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--lg max-h-[90vh overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Tags for ${ currentTeam?.name }</h3>
                     <button @click="closeManageTeamTagsModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
