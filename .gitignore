@@ -53,3 +53,7 @@ package-lock.json
 pass-*.png
 page-*.png
 final-*.png
+
+# Session-internal scratch (UX redesign notes etc.). These live in
+# temp/ so you can read them locally, but they shouldn't be tracked.
+temp/ux-redesign-*.md
