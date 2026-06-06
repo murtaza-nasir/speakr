@@ -1,12 +1,15 @@
-<!-- Floating Dockable Chat Panel (design system v1).
+<!-- Floating Dockable Chat Panel (design system v1, redesigned).
      States:
-       - 'collapsed': FAB only, bottom-right
-       - 'floating' : 380×500 panel at user-saved position
-       - 'docked-{ne,nw,se,sw}': snapped to a corner
-       - 'maximized': fills available space
-     Drag the header to move. Drop within 100px of a viewport corner →
-     snaps to that corner. Position persisted in localStorage per
-     recording id. Teleported to <body> so it floats above all content. -->
+       - 'collapsed'  : FAB only (bottom-right of viewport)
+       - 'floating'   : free-positioned 480×640 (default), draggable, resizable
+       - 'dock-left'  : overlays the transcript column
+       - 'dock-right' : overlays the right rail
+       - 'dock-full'  : overlays both content columns (never under the
+                       sidebar or bottom audio player)
+
+     Header carries the dock targets (◧ left, ▢ full, ◨ right) plus a
+     close button. A SE-corner resize handle is shown in floating mode.
+-->
 <Teleport to="body">
     <div v-if="currentView === 'detail' && selectedRecording" class="floating-chat-root">
         <!-- FAB (collapsed) -->
@@ -20,12 +23,16 @@
             </span>
         </button>
 
-        <!-- Panel (floating/docked/maximized) -->
+        <!-- Panel (any non-collapsed state) -->
         <div v-else
              class="floating-chat-panel"
-             :class="['is-' + chatPanelState]"
+             :class="[
+                 'is-' + chatPanelState,
+                 chatDragActive ? 'is-dragging' : '',
+                 chatResizeActive ? 'is-resizing' : ''
+             ]"
              :style="floatingChatPanelStyle">
-            <!-- Header (drag handle) -->
+            <!-- Header — drag handle + dock targets + close -->
             <div class="floating-chat-header"
                  @mousedown="startChatPanelDrag"
                  @touchstart.passive="startChatPanelDrag">
@@ -34,26 +41,41 @@
                     <span>${ t('chat.chatWithTranscription') }</span>
                     <span v-if="chatMessages && chatMessages.length > 0" class="tab__count">${chatMessages.length}</span>
                 </div>
-                <div class="floating-chat-header-actions">
+                <div class="floating-chat-header-actions" @mousedown.stop @touchstart.stop>
                     <button v-if="chatMessages.length > 0"
-                            @click.stop="downloadChat"
+                            @click="downloadChat"
                             class="btn btn--icon btn--sm"
                             :title="t('buttons.downloadChat')">
                         <i class="fas fa-download"></i>
                     </button>
                     <button v-if="chatMessages.length > 0"
-                            @click.stop="clearChat"
+                            @click="clearChat"
                             class="btn btn--icon btn--sm"
                             style="color: var(--text-muted);"
                             title="Clear chat">
                         <i class="fas fa-eraser"></i>
                     </button>
-                    <button @click.stop="toggleChatPanelMax"
+                    <span class="floating-chat-dock-divider"></span>
+                    <button @click="dockChatPanel('left')"
                             class="btn btn--icon btn--sm"
-                            :title="chatPanelState === 'maximized' ? t('tooltips.restoreChat') : t('tooltips.maximizeChat')">
-                        <i :class="['fas', chatPanelState === 'maximized' ? 'fa-compress' : 'fa-expand']"></i>
+                            :class="{ 'is-active': chatPanelState === 'dock-left' }"
+                            title="Dock to transcript column">
+                        <i class="fas fa-square" style="font-size: 9px; transform: translateX(-3px);"></i><i class="fas fa-square-o" style="font-size: 9px; transform: translateX(-1px); opacity: 0.3;"></i>
                     </button>
-                    <button @click.stop="collapseChatPanel"
+                    <button @click="dockChatPanel('full')"
+                            class="btn btn--icon btn--sm"
+                            :class="{ 'is-active': chatPanelState === 'dock-full' }"
+                            title="Dock full width">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button @click="dockChatPanel('right')"
+                            class="btn btn--icon btn--sm"
+                            :class="{ 'is-active': chatPanelState === 'dock-right' }"
+                            title="Dock to right rail">
+                        <i class="fas fa-square-o" style="font-size: 9px; transform: translateX(-3px); opacity: 0.3;"></i><i class="fas fa-square" style="font-size: 9px; transform: translateX(-1px);"></i>
+                    </button>
+                    <span class="floating-chat-dock-divider"></span>
+                    <button @click="collapseChatPanel"
                             class="btn btn--icon btn--sm"
                             :title="t('buttons.close')">
                         <i class="fas fa-times"></i>
@@ -127,6 +149,14 @@
                 <div v-else-if="selectedRecording.status !== 'COMPLETED'" class="t-meta mt-2">
                     <span v-text="t('chat.availableAfterTranscription')"></span>
                 </div>
+            </div>
+
+            <!-- Resize handle (floating mode only) -->
+            <div v-if="chatPanelState === 'floating'"
+                 class="floating-chat-resize-handle"
+                 @mousedown="startChatPanelResize"
+                 @touchstart.passive="startChatPanelResize"
+                 title="Drag to resize">
             </div>
         </div>
     </div>

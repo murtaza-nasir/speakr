@@ -575,27 +575,94 @@ document.addEventListener('DOMContentLoaded', async () => {
             const chatInputRef = ref(null);
 
             // --- Floating Chat Panel State ---
-            // 'collapsed' (FAB only) | 'floating' (free-positioned) |
-            // 'docked-{ne,nw,se,sw}' (snapped to viewport corner) |
-            // 'maximized' (fills viewport less header)
+            // 'collapsed'    – FAB only (bottom-right of viewport)
+            // 'floating'     – free-positioned panel (user x,y; persisted)
+            // 'dock-left'    – overlays the transcript column
+            // 'dock-right'   – overlays the right rail
+            // 'dock-full'    – overlays both columns (never under the sidebar
+            //                  or bottom audio player)
             const chatPanelState = ref('collapsed');
             const chatPanelX = ref(null);
             const chatPanelY = ref(null);
-            // Drag state — not persisted, just runtime
+            const chatPanelW = ref(480);  // user-resizable default
+            const chatPanelH = ref(640);
+            const chatLayoutTick = ref(0);  // bumped on resize/sidebar-toggle
             const chatDragActive = ref(false);
+            const chatResizeActive = ref(false);
             let chatDragStartX = 0;
             let chatDragStartY = 0;
             let chatDragInitialX = 0;
             let chatDragInitialY = 0;
 
+            // Pull the bounding rect of a target element. Returns null
+            // if the element isn't in the DOM (panel hasn't mounted yet).
+            const _rect = (sel) => {
+                const el = document.querySelector(sel);
+                return el ? el.getBoundingClientRect() : null;
+            };
+
+            // Compute the panel's inline style for the active state.
+            // Reactive on chatLayoutTick so resize / sidebar toggle
+            // trigger recompute.
             const floatingChatPanelStyle = computed(() => {
+                // Touch the tick to register reactivity for resize updates.
+                void chatLayoutTick.value;
+
                 if (chatPanelState.value === 'floating' && chatPanelX.value != null) {
                     return {
                         top: chatPanelY.value + 'px',
                         left: chatPanelX.value + 'px',
+                        width: chatPanelW.value + 'px',
+                        height: chatPanelH.value + 'px',
                         right: 'auto',
                         bottom: 'auto'
                     };
+                }
+                if (chatPanelState.value === 'dock-left') {
+                    const r = _rect('#leftMainColumn');
+                    if (r && r.width > 0) {
+                        return {
+                            left: r.left + 'px',
+                            top: r.top + 'px',
+                            width: r.width + 'px',
+                            height: r.height + 'px',
+                            right: 'auto',
+                            bottom: 'auto',
+                            borderRadius: '0',
+                        };
+                    }
+                }
+                if (chatPanelState.value === 'dock-right') {
+                    const r = _rect('#rightMainColumn');
+                    if (r && r.width > 0) {
+                        return {
+                            left: r.left + 'px',
+                            top: r.top + 'px',
+                            width: r.width + 'px',
+                            height: r.height + 'px',
+                            right: 'auto',
+                            bottom: 'auto',
+                            borderRadius: '0',
+                        };
+                    }
+                }
+                if (chatPanelState.value === 'dock-full') {
+                    // Span both content columns. Use the parent
+                    // #mainContentColumns rect so the panel naturally
+                    // stays within the content area (right of sidebar,
+                    // above bottom audio player).
+                    const r = _rect('#mainContentColumns');
+                    if (r && r.width > 0) {
+                        return {
+                            left: r.left + 'px',
+                            top: r.top + 'px',
+                            width: r.width + 'px',
+                            height: r.height + 'px',
+                            right: 'auto',
+                            bottom: 'auto',
+                            borderRadius: '0',
+                        };
+                    }
                 }
                 return {};
             });
@@ -613,71 +680,160 @@ document.addEventListener('DOMContentLoaded', async () => {
                         state: chatPanelState.value,
                         x: chatPanelX.value,
                         y: chatPanelY.value,
+                        w: chatPanelW.value,
+                        h: chatPanelH.value,
                     }));
-                } catch (e) { /* quota exceeded etc — ignore */ }
+                } catch (e) { /* ignore */ }
             };
             const restoreChatPanelPosition = () => {
                 const key = _chatPanelStorageKey();
                 if (!key) return;
                 try {
                     const raw = localStorage.getItem(key);
-                    if (!raw) {
-                        chatPanelState.value = 'collapsed';
-                        return;
-                    }
+                    if (!raw) { chatPanelState.value = 'collapsed'; return; }
                     const data = JSON.parse(raw);
-                    chatPanelState.value = data.state || 'collapsed';
+                    // Migrate legacy state values from the previous
+                    // panel design (docked-ne/nw/se/sw, maximized) to
+                    // the new state vocabulary.
+                    const validStates = ['collapsed', 'floating', 'dock-left', 'dock-right', 'dock-full'];
+                    let s = data.state || 'collapsed';
+                    if (!validStates.includes(s)) {
+                        // Any legacy value → collapse so the user opens fresh.
+                        s = 'collapsed';
+                    }
+                    chatPanelState.value = s;
                     chatPanelX.value = data.x;
                     chatPanelY.value = data.y;
+                    if (data.w) chatPanelW.value = data.w;
+                    if (data.h) chatPanelH.value = data.h;
                 } catch (e) {
                     chatPanelState.value = 'collapsed';
                 }
             };
 
             const openChatPanel = () => {
-                chatPanelState.value = 'docked-se';
+                if (chatPanelState.value === 'collapsed') {
+                    const main = document.querySelector('main.main-content');
+                    const r = main ? main.getBoundingClientRect() : null;
+                    chatPanelState.value = 'floating';
+                    chatPanelX.value = r ? (r.right - chatPanelW.value - 24) : (window.innerWidth - chatPanelW.value - 24);
+                    chatPanelY.value = r ? (r.bottom - chatPanelH.value - 80) : (window.innerHeight - chatPanelH.value - 80);
+                }
                 saveChatPanelPosition();
+            };
+
+            // South-east corner resize handle drag — only active in
+            // floating mode. Touch-friendly.
+            const startChatPanelResize = (event) => {
+                if (chatPanelState.value !== 'floating') return;
+                const isTouch = event.touches != null;
+                const point = isTouch ? event.touches[0] : event;
+                chatResizeActive.value = true;
+                const startW = chatPanelW.value;
+                const startH = chatPanelH.value;
+                const startPX = point.clientX;
+                const startPY = point.clientY;
+
+                const MIN_W = 320, MIN_H = 360;
+                const MAX_W = Math.min(window.innerWidth - chatPanelX.value - 16, 1200);
+                const MAX_H = Math.min(window.innerHeight - chatPanelY.value - 16, 900);
+
+                const moveHandler = (e) => {
+                    const p = e.touches ? e.touches[0] : e;
+                    chatPanelW.value = Math.max(MIN_W, Math.min(MAX_W, startW + (p.clientX - startPX)));
+                    chatPanelH.value = Math.max(MIN_H, Math.min(MAX_H, startH + (p.clientY - startPY)));
+                };
+                const endHandler = () => {
+                    chatResizeActive.value = false;
+                    document.removeEventListener('mousemove', moveHandler);
+                    document.removeEventListener('mouseup', endHandler);
+                    document.removeEventListener('touchmove', moveHandler);
+                    document.removeEventListener('touchend', endHandler);
+                    saveChatPanelPosition();
+                };
+                document.addEventListener('mousemove', moveHandler);
+                document.addEventListener('mouseup', endHandler);
+                document.addEventListener('touchmove', moveHandler, { passive: true });
+                document.addEventListener('touchend', endHandler);
+                event.preventDefault();
+                event.stopPropagation();
             };
             const collapseChatPanel = () => {
                 chatPanelState.value = 'collapsed';
                 saveChatPanelPosition();
             };
-            const toggleChatPanelMax = () => {
-                if (chatPanelState.value === 'maximized') {
-                    chatPanelState.value = 'docked-se';
-                } else {
-                    chatPanelState.value = 'maximized';
+            const dockChatPanel = (target) => {
+                // target: 'left' | 'right' | 'full' | 'floating'
+                if (target === 'floating' && chatPanelX.value == null) {
+                    // First entry into floating from a dock — seat in
+                    // the panel's current docked rect so it doesn't
+                    // jump to (0,0).
+                    const panelEl = document.querySelector('.floating-chat-panel');
+                    if (panelEl) {
+                        const rect = panelEl.getBoundingClientRect();
+                        chatPanelX.value = rect.left;
+                        chatPanelY.value = rect.top;
+                    }
                 }
+                chatPanelState.value = target === 'floating' ? 'floating' : ('dock-' + target);
                 saveChatPanelPosition();
             };
+            const toggleChatPanelMax = () => {
+                // Backward-compatible alias used by old template; toggle full vs floating
+                if (chatPanelState.value === 'dock-full') {
+                    dockChatPanel('floating');
+                } else {
+                    dockChatPanel('full');
+                }
+            };
 
-            // Drag-to-snap: header pointer-down → track mouse → on
-            // release, if released within 100px of a corner, snap to
-            // that corner; otherwise stay free-floating.
             const startChatPanelDrag = (event) => {
-                if (chatPanelState.value === 'maximized') return;
+                // Click vs drag: don't enter drag until pointer moves
+                // beyond DRAG_THRESHOLD. A pure click on the header is
+                // a no-op (no accidental docking / floating switch).
+                const DRAG_THRESHOLD = 6;
                 const isTouch = event.touches != null;
                 const point = isTouch ? event.touches[0] : event;
-                chatDragActive.value = true;
+                const startX = point.clientX;
+                const startY = point.clientY;
+                let dragStarted = false;
+                let startedFromState = chatPanelState.value;
 
-                // If the panel was docked, switch to floating with the
-                // current rendered position before the user starts
-                // moving it (otherwise dragging from a docked corner
-                // would snap weirdly).
-                const panelEl = event.currentTarget.closest('.floating-chat-panel');
-                if (panelEl) {
-                    const rect = panelEl.getBoundingClientRect();
-                    chatPanelX.value = rect.left;
-                    chatPanelY.value = rect.top;
+                const ensureDragStarted = (p) => {
+                    if (dragStarted) return;
+                    if (Math.abs(p.clientX - startX) < DRAG_THRESHOLD &&
+                        Math.abs(p.clientY - startY) < DRAG_THRESHOLD) {
+                        return;
+                    }
+                    dragStarted = true;
+                    chatDragActive.value = true;
+
+                    // If panel was docked, pop out into floating mode
+                    // at the cursor position with the user's preferred
+                    // floating size.
+                    if (startedFromState !== 'floating') {
+                        chatPanelX.value = Math.max(0, p.clientX - 100);
+                        chatPanelY.value = Math.max(0, p.clientY - 18);
+                    } else {
+                        // Use current panel rect so it doesn't jump.
+                        const panelEl = document.querySelector('.floating-chat-panel');
+                        if (panelEl) {
+                            const r = panelEl.getBoundingClientRect();
+                            chatPanelX.value = r.left;
+                            chatPanelY.value = r.top;
+                        }
+                    }
                     chatPanelState.value = 'floating';
-                }
-                chatDragStartX = point.clientX;
-                chatDragStartY = point.clientY;
-                chatDragInitialX = chatPanelX.value || 0;
-                chatDragInitialY = chatPanelY.value || 0;
+                    chatDragStartX = p.clientX;
+                    chatDragStartY = p.clientY;
+                    chatDragInitialX = chatPanelX.value || 0;
+                    chatDragInitialY = chatPanelY.value || 0;
+                };
 
                 const moveHandler = (e) => {
                     const p = e.touches ? e.touches[0] : e;
+                    ensureDragStarted(p);
+                    if (!dragStarted) return;
                     chatPanelX.value = chatDragInitialX + (p.clientX - chatDragStartX);
                     chatPanelY.value = chatDragInitialY + (p.clientY - chatDragStartY);
                 };
@@ -687,31 +843,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.removeEventListener('mouseup', endHandler);
                     document.removeEventListener('touchmove', moveHandler);
                     document.removeEventListener('touchend', endHandler);
+                    if (!dragStarted) return; // Pure click — no-op.
 
-                    // Snap to corner if released within snap radius.
-                    const SNAP = 100;
-                    const vw = window.innerWidth;
-                    const vh = window.innerHeight;
-                    const panelW = 380;
-                    const panelH = 520;
-                    const x = chatPanelX.value;
-                    const y = chatPanelY.value;
-                    // Use the panel's centroid for snap detection.
-                    const cx = x + panelW / 2;
-                    const cy = y + panelH / 2;
-                    const nearLeft   = cx < SNAP + panelW / 2;
-                    const nearRight  = cx > vw - SNAP - panelW / 2;
-                    const nearTop    = cy < SNAP + panelH / 2;
-                    const nearBottom = cy > vh - SNAP - panelH / 2;
-                    if (nearLeft && nearTop)         chatPanelState.value = 'docked-nw';
-                    else if (nearRight && nearTop)   chatPanelState.value = 'docked-ne';
-                    else if (nearLeft && nearBottom) chatPanelState.value = 'docked-sw';
-                    else if (nearRight && nearBottom) chatPanelState.value = 'docked-se';
-                    // Else stay 'floating' with the x/y we have.
-                    // Clamp into viewport so it can't be dragged off-screen.
-                    if (chatPanelState.value === 'floating') {
-                        chatPanelX.value = Math.max(0, Math.min(chatPanelX.value, vw - panelW));
-                        chatPanelY.value = Math.max(0, Math.min(chatPanelY.value, vh - panelH));
+                    // On release: snap to a corner of the main content
+                    // area if released near one. Otherwise stay floating
+                    // clamped inside the main content rect. We never
+                    // auto-dock to a column on drop — that's an
+                    // explicit user action via the dock buttons.
+                    const main = document.querySelector('main.main-content');
+                    const mainRect = main ? main.getBoundingClientRect() : null;
+                    const w = chatPanelW.value;
+                    const h = chatPanelH.value;
+
+                    if (mainRect) {
+                        const CORNER_SNAP = 80;
+                        const distL = Math.abs(chatPanelX.value - mainRect.left);
+                        const distR = Math.abs(chatPanelX.value + w - mainRect.right);
+                        const distT = Math.abs(chatPanelY.value - mainRect.top);
+                        const distB = Math.abs(chatPanelY.value + h - mainRect.bottom);
+
+                        // Hard-snap if within CORNER_SNAP px of any
+                        // main-area edge.
+                        if (distL < CORNER_SNAP) chatPanelX.value = mainRect.left + 12;
+                        else if (distR < CORNER_SNAP) chatPanelX.value = mainRect.right - w - 12;
+                        if (distT < CORNER_SNAP) chatPanelY.value = mainRect.top + 12;
+                        else if (distB < CORNER_SNAP) {
+                            // Leave room for the bottom audio bar (~64px)
+                            chatPanelY.value = mainRect.bottom - h - 80;
+                        }
+
+                        // Final clamp — never let the panel slip off-screen.
+                        chatPanelX.value = Math.max(
+                            mainRect.left + 8,
+                            Math.min(chatPanelX.value, mainRect.right - w - 8)
+                        );
+                        chatPanelY.value = Math.max(
+                            mainRect.top + 8,
+                            Math.min(chatPanelY.value, mainRect.bottom - h - 8)
+                        );
                     }
                     saveChatPanelPosition();
                 };
@@ -719,13 +888,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.addEventListener('mouseup', endHandler);
                 document.addEventListener('touchmove', moveHandler, { passive: true });
                 document.addEventListener('touchend', endHandler);
-                event.preventDefault();
+                // Don't preventDefault — we need to allow click on
+                // children (close button etc) to work if the user
+                // didn't actually drag.
             };
+
+            // Bump the layout tick on window resize / sidebar toggle so
+            // the docked positioning style recomputes.
+            const _bumpChatLayout = () => { chatLayoutTick.value += 1; };
+            if (typeof window !== 'undefined') {
+                window.addEventListener('resize', _bumpChatLayout);
+            }
 
             // Restore chat panel position whenever the selected recording changes.
             watch(selectedRecording, (newRec) => {
                 if (newRec) {
                     restoreChatPanelPosition();
+                    nextTick(_bumpChatLayout);
                 }
             }, { immediate: false });
 
@@ -1037,8 +1216,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Chat
                 showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef,
-                chatPanelState, chatPanelX, chatPanelY, chatDragActive, floatingChatPanelStyle,
-                openChatPanel, collapseChatPanel, toggleChatPanelMax, startChatPanelDrag,
+                chatPanelState, chatPanelX, chatPanelY, chatPanelW, chatPanelH,
+                chatDragActive, chatResizeActive, floatingChatPanelStyle,
+                openChatPanel, collapseChatPanel, toggleChatPanelMax,
+                startChatPanelDrag, startChatPanelResize, dockChatPanel,
 
                 // Audio Player
                 playerVolume, audioIsPlaying, audioCurrentTime, audioDuration, audioIsMuted, audioIsLoading, asrEditorAudio,

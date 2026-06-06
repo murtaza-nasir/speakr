@@ -962,10 +962,17 @@ textarea:focus-visible {
  * Floating, dockable chat surface for the recording-detail screen.
  * Lives at z-index 40 (above content but below modals at 50).
  *
- * States — keyed by the chat-panel--{state} class:
- *   .is-floating       free-positioned, drag to move
- *   .is-docked-ne/nw/se/sw    snapped to a viewport corner
- *   .is-maximized      fills the viewport less the global header
+ * States — keyed by .is-{state} on the panel:
+ *   .is-floating    free-positioned, draggable, resizable
+ *   .is-dock-left   overlays the transcript column (#leftMainColumn)
+ *   .is-dock-right  overlays the right rail (#rightMainColumn)
+ *   .is-dock-full   overlays both content columns (never under sidebar
+ *                   or bottom audio player; positioned by JS using the
+ *                   #mainContentColumns bounding rect)
+ *
+ * Sizing in floating mode is driven by JS-bound width/height (user
+ * resize via the SE-corner handle). Docked states use computed style
+ * pulled from the live column rect.
  * --------------------------------------------------------------------- */
 
 .floating-chat-root {
@@ -978,7 +985,7 @@ textarea:focus-visible {
 /* FAB (collapsed) */
 .floating-chat-fab {
     position: fixed;
-    bottom: 84px; /* above the persistent bottom audio player */
+    bottom: 84px;
     right: 24px;
     width: 56px;
     height: 56px;
@@ -1016,13 +1023,9 @@ textarea:focus-visible {
     justify-content: center;
 }
 
-/* Panel (floating / docked / maximized) */
+/* Panel base (positioning + sizing set inline by Vue for all states) */
 .floating-chat-panel {
     position: fixed;
-    width: 380px;
-    height: 520px;
-    max-width: calc(100vw - 32px);
-    max-height: calc(100vh - 80px);
     background: var(--bg-secondary);
     color: var(--text-primary);
     border: var(--border-hairline) solid var(--border-primary);
@@ -1034,29 +1037,32 @@ textarea:focus-visible {
     pointer-events: auto;
     backdrop-filter: blur(6px);
     animation: chatPanelIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: box-shadow var(--t-fast) ease;
 }
 
 @keyframes chatPanelIn {
-    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Docked corners */
-.floating-chat-panel.is-docked-se { bottom: 84px; right: 24px; top: auto; left: auto; }
-.floating-chat-panel.is-docked-sw { bottom: 84px; left: 24px;  top: auto; right: auto; }
-.floating-chat-panel.is-docked-ne { top: 80px;   right: 24px; bottom: auto; left: auto; }
-.floating-chat-panel.is-docked-nw { top: 80px;   left: 24px;  bottom: auto; right: auto; }
+/* Dock states drop ALL shadow + corner radius so they read as part of
+ * the column layout (and never have a visible curve at the sidebar
+ * edge). Border-left/right kept as a hairline so the panel still has
+ * a definite visual edge against the column it overlays. */
+.floating-chat-panel.is-dock-left,
+.floating-chat-panel.is-dock-right,
+.floating-chat-panel.is-dock-full {
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    animation: none;
+}
 
-/* Maximized */
-.floating-chat-panel.is-maximized {
-    width: calc(100vw - 48px);
-    height: calc(100vh - 120px);
-    top: 80px;
-    left: 24px;
-    right: 24px;
-    bottom: auto;
-    max-width: none;
-    max-height: none;
+/* While actively dragging or resizing, give a subtle ring so the user
+ * sees the interaction. Only applies in floating state. */
+.floating-chat-panel.is-floating.is-dragging,
+.floating-chat-panel.is-floating.is-resizing {
+    box-shadow: var(--shadow-lg), 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
 /* Header (drag handle) */
@@ -1105,6 +1111,54 @@ textarea:focus-visible {
     padding: var(--sp-2) var(--sp-3);
     background: var(--bg-secondary);
 }
+
+/* Dock-target divider in the header actions row */
+.floating-chat-dock-divider {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: var(--border-primary);
+    margin: 0 var(--sp-1);
+}
+
+/* Dock-target active button (highlights the currently-active dock) */
+.floating-chat-header-actions .btn.is-active {
+    color: var(--text-accent);
+    background: var(--bg-tertiary);
+}
+
+/* SE-corner resize handle (only shown in floating state) */
+.floating-chat-resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+    pointer-events: auto;
+    user-select: none;
+    touch-action: none;
+    background:
+        linear-gradient(
+            135deg,
+            transparent 0,
+            transparent 50%,
+            var(--text-muted) 50%,
+            var(--text-muted) 52%,
+            transparent 52%,
+            transparent 60%,
+            var(--text-muted) 60%,
+            var(--text-muted) 62%,
+            transparent 62%,
+            transparent 70%,
+            var(--text-muted) 70%,
+            var(--text-muted) 72%,
+            transparent 72%
+        );
+    opacity: 0.5;
+    transition: opacity var(--t-fast) ease;
+}
+.floating-chat-resize-handle:hover { opacity: 0.9; }
 
 @media (max-width: 768px) {
     .floating-chat-fab { display: none; }
