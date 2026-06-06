@@ -4365,3 +4365,47 @@ select:disabled {
     background: rgba(255, 255, 255, 0.3);
     border-radius: 2px;
 }
+
+
+/* ---- Sidebar recording rows ------------------------------------------ */
+
+/* Each section group wraps its rows so we can draw subtle hairlines
+   between siblings without dealing with first/last-child quirks on the
+   loop's v-for. */
+.recording-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Subtle separator between consecutive rows. Uses a 1px inset shadow on
+   the inner edge so the line never extends past the row's padded area
+   and never doubles up with the row's own border. */
+.recording-group > .recording-row + .recording-row {
+    border-top: 1px solid var(--border-primary);
+}
+
+/* The hairline disappears once a row enters the active or hover state
+   so the selection feels continuous and uninterrupted. */
+.recording-group > .recording-row.is-active,
+.recording-group > .recording-row:hover,
+.recording-group > .recording-row.is-active + .recording-row,
+.recording-group > .recording-row:hover + .recording-row {
+    border-top-color: transparent;
+}
+
+/* Active row gets a left accent bar in the gutter so the selection
+   reads from the eye-track of the sidebar even when scrolled. */
+.recording-row {
+    border-radius: var(--radius-sm);
+    position: relative;
+}
+.recording-row.is-active::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--text-accent);
+}

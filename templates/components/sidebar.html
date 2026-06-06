@@ -345,21 +345,25 @@
                     </div>
                 </div>
 
-                <div v-for="group in groupedRecordings" :key="group.title" class="mb-6">
-                    <h3 class="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-2">
+                <!-- Section group. Header gets the same left padding as
+                     the rows so titles don't appear indented vs the
+                     section label — the hierarchy reads through type
+                     weight / case / colour, not through indentation. -->
+                <div v-for="group in groupedRecordings" :key="group.title" class="mb-5">
+                    <h3 class="t-label px-3 mb-1.5">
                         ${group.title}
                     </h3>
-                    <div class="space-y-1">
+                    <div class="recording-group">
                         <div v-for="recording in group.items"
                              :key="recording.id"
                              @click="selectionMode ? toggleSelection(recording.id) : selectRecording(recording)"
                              :class="[
-                                 'recording-row relative px-3 py-2.5 rounded-md cursor-pointer transition-colors border',
+                                 'recording-row relative px-3 py-2.5 cursor-pointer transition-colors',
                                  selectionMode && isSelected(recording.id)
-                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
+                                     ? 'bg-[var(--bg-accent)] is-active'
                                      : selectedRecording?.id === recording.id && !selectionMode
-                                         ? 'bg-[var(--bg-accent)] border-[var(--border-accent)]'
-                                         : 'bg-transparent border-transparent hover:bg-[var(--bg-tertiary)]'
+                                         ? 'bg-[var(--bg-accent)] is-active'
+                                         : 'bg-transparent hover:bg-[var(--bg-tertiary)]'
                              ]">
                             <!-- Selection checkbox: absolutely positioned in
                                  the top-right corner so it doesn't reflow
