@@ -118,11 +118,24 @@ def admin_get_users():
 
     users = User.query.all()
     user_data = []
-    
+
+    # Aggregate recordings_count and storage_used in two grouped queries
+    # so the page doesn't re-query the recording table once per user.
+    # Previously: 100 users -> ~200 lazy SELECTs from user.recordings.
+    counts_by_uid = dict(
+        db.session.query(Recording.user_id, db.func.count(Recording.id))
+        .group_by(Recording.user_id)
+        .all()
+    )
+    sizes_by_uid = dict(
+        db.session.query(Recording.user_id, db.func.sum(Recording.file_size))
+        .group_by(Recording.user_id)
+        .all()
+    )
+
     for user in users:
-        # Get recordings count and storage used
-        recordings_count = len(user.recordings)
-        storage_used = sum(r.file_size for r in user.recordings if r.file_size) or 0
+        recordings_count = counts_by_uid.get(user.id, 0)
+        storage_used = sizes_by_uid.get(user.id) or 0
 
         # Get current month token usage
         current_usage = token_tracker.get_monthly_usage(user.id)
