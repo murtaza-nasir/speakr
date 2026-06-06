@@ -158,6 +158,31 @@ def stitch_recording_session(session_id: str) -> Tuple[int, str]:
 
     file_size = os.path.getsize(final_path)
 
+    # Validate the stitched output before claiming success. ffmpeg can
+    # exit 0 while writing a truncated file (disk full, OOM kill mid-
+    # write); re-probe so we surface a clean failure here instead of a
+    # confusing "audio unreadable" error during downstream transcription.
+    try:
+        from src.utils.ffprobe import get_codec_info
+        probe = get_codec_info(final_path, timeout=10)
+        probed_duration = probe.get('duration') if probe else None
+    except Exception as e:
+        logger.warning(f"Post-stitch probe failed for {final_path}: {e}")
+        probe = None
+        probed_duration = None
+    if file_size <= 0 or (probe is not None and probed_duration is not None and probed_duration <= 0.5):
+        # Try to clean up the bad output so a retry has a clean slate.
+        try:
+            if os.path.exists(final_path):
+                os.remove(final_path)
+        except OSError:
+            pass
+        raise StitchError(
+            f'stitched output for session {session_id} is invalid '
+            f'(size={file_size}, duration={probed_duration}); ffmpeg may have '
+            'been killed mid-write or run out of disk space'
+        )
+
     # Update the recording row in place. We don't change the title - the
     # finalize endpoint set it.
     recording.audio_path = final_path
