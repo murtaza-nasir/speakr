@@ -939,6 +939,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const leftColumnWidth = ref(60);
             const rightColumnWidth = ref(40);
             const isResizing = ref(false);
+            // Re-flow the docked chat panel whenever the columns resize
+            // (otherwise the chat keeps the previous column width).
+            watch([leftColumnWidth, rightColumnWidth], () => {
+                chatLayoutTick.value += 1;
+            });
+            // Also re-flow when the sidebar toggles, since the main
+            // content area shifts.
+            watch(isSidebarCollapsed, () => {
+                nextTick(() => { chatLayoutTick.value += 1; });
+            });
 
             // --- Dropdown Positioning ---
             const dropdownPositions = ref({});
