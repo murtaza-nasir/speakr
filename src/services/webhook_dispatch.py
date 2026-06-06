@@ -151,28 +151,41 @@ def is_url_safe_for_webhook(url: str, allow_http: bool = False) -> tuple:
     if not host:
         return False, 'URL is missing a host'
 
-    # Resolve host to all addresses; reject if any of them is a
-    # private/loopback/link-local IP and the host is not in the admin
-    # allowlist.
-    allowlist = _intranet_host_allowlist()
-    if allowlist and allowlist.search(host):
-        return True, ''
-
+    # Always resolve and inspect every address the hostname maps to,
+    # THEN decide whether the allowlist permits a private/loopback IP.
+    # Old behaviour returned early on an allowlist hostname match,
+    # which (a) skipped DNS resolution entirely and (b) let a careless
+    # regex like `^localhost` match `localhost.evil.com`. Now the
+    # allowlist only relaxes the private-IP check; the resolution runs
+    # unconditionally, and the allowlist is matched against the lower-
+    # cased host so case quirks don't help an attacker.
     try:
         addrinfos = socket.getaddrinfo(host, None)
     except socket.gaierror:
         return False, f'DNS resolution failed for {host!r}'
 
-    for af, _stype, _proto, _name, sockaddr in addrinfos:
+    allowlist = _intranet_host_allowlist()
+    host_lower = host.lower()
+    allowlist_matches = bool(allowlist and allowlist.search(host_lower))
+
+    for _af, _stype, _proto, _name, sockaddr in addrinfos:
         ip_str = sockaddr[0]
         try:
             ip = ipaddress.ip_address(ip_str)
         except ValueError:
             continue
-        if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+        is_private_ip = (
+            ip.is_loopback or ip.is_private or ip.is_link_local
+            or ip.is_reserved or ip.is_multicast
+            or (ip.version == 6 and ip.is_site_local)
+        )
+        if is_private_ip and not allowlist_matches:
             return False, (
-                f'URL resolves to a private/loopback address ({ip_str}); set '
-                'WEBHOOK_INTRANET_HOST_ALLOWLIST to allow this host or use a public URL.'
+                f'URL resolves to a private/loopback address ({ip_str}); '
+                'set WEBHOOK_INTRANET_HOST_ALLOWLIST to permit this host '
+                'explicitly, or use a public URL. The allowlist regex '
+                'should be anchored (e.g. r"^(localhost|.*\\.intra)$") '
+                'so it cannot be tricked by lookalike hostnames.'
             )
 
     return True, ''

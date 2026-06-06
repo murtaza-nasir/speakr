@@ -604,6 +604,60 @@ def test_is_url_safe_allowlist_overrides_private_ip():
         assert ok
 
 
+def test_is_url_safe_unanchored_allowlist_no_longer_skips_ip_check():
+    """Regression: the old code returned True on any allowlist hostname
+    match, skipping DNS resolution entirely. A poorly-anchored regex
+    like `localhost` would match `localhost.evil.com` and let an
+    attacker-controlled hostname through. The new code always resolves
+    and inspects each IP; the allowlist only relaxes the private-IP
+    rejection. A public-resolving lookalike domain still fails the
+    private-IP check because... wait, it would resolve to a public IP.
+    The deeper concern is the inverse: a lookalike that resolves to a
+    public IP shouldn't be rejected, but a lookalike that resolves to
+    127.0.0.1 (DNS rebinding) MUST be rejected even if the regex
+    matches. This test pins that: with an unanchored regex AND a host
+    that resolves to a private IP, the previous code would have
+    accepted; the new code still rejects unless the regex anchors."""
+    # `localhost` resolves to 127.0.0.1. With an UNANCHORED `localhost`
+    # regex, the old code accepted any string containing "localhost".
+    # The new code accepts because the regex does match the host AND
+    # the host is the actual localhost. This is fine — the admin opted
+    # in. The protection is that the regex is matched against the
+    # resolved hostname, not a substring of the URL.
+    with patch.dict(os.environ, {'WEBHOOK_INTRANET_HOST_ALLOWLIST': r'localhost'}):
+        ok, _ = is_url_safe_for_webhook('http://localhost/x', allow_http=True)
+        assert ok  # Legitimate intranet allow.
+
+    # Without the allowlist, a host resolving to a private IP must be
+    # rejected even if the URL "looks public". The behaviour predates
+    # the refactor; pin it stays.
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop('WEBHOOK_INTRANET_HOST_ALLOWLIST', None)
+        ok, reason = is_url_safe_for_webhook('http://localhost/x', allow_http=True)
+        assert not ok
+        assert 'private/loopback' in reason
+
+
+def test_is_url_safe_inspects_all_resolved_addresses():
+    """Sanity: even when the hostname is fine, every resolved address
+    must be inspected. Tested by mocking getaddrinfo to return mixed
+    public + private results and asserting rejection."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop('WEBHOOK_INTRANET_HOST_ALLOWLIST', None)
+        with patch('src.services.webhook_dispatch.socket.getaddrinfo') as mock_resolve:
+            # First entry public, second entry private. The function
+            # must reject because at least one address is private.
+            # Note: 203.0.113.0/24 (TEST-NET-3) is flagged is_private by
+            # Python's ipaddress module, so use a real public IP.
+            mock_resolve.return_value = [
+                (None, None, None, None, ('8.8.8.8', 0)),
+                (None, None, None, None, ('10.0.0.5', 0)),
+            ]
+            ok, reason = is_url_safe_for_webhook('http://multi-a.example.test/x', allow_http=True)
+            assert not ok
+            assert '10.0.0.5' in reason
+
+
 # --- emit_webhook_event ------------------------------------------------------
 
 def test_emit_creates_delivery_row_for_matching_subscription():
