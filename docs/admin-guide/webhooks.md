@@ -13,19 +13,27 @@ or programmatically via the `/api/v1/webhooks` API.
 | Event | Fired when | Payload `data` fields |
 |---|---|---|
 | `recording.created` | A recording row is created (upload arrived) | `recording_id`, `title`, `file_size`, `original_filename` |
+| `recording.transcription.started` | Worker picks up a transcribe or reprocess-transcription job and the audio file is on disk | `recording_id`, `title` |
 | `recording.transcription.completed` | Transcription job finished successfully | `recording_id`, `title`, `language`, `audio_duration_seconds`, `transcription_duration_seconds` |
 | `recording.transcription.failed` | Transcription failed permanently (retries exhausted) | `recording_id`, `title`, `error` |
 | `recording.summary.completed` | Summary generated successfully | `recording_id`, `title`, `summarization_duration_seconds` |
 | `recording.summary.failed` | Summary failed permanently | `recording_id`, `title`, `error` |
-| `recording.events.extracted` | Calendar event extraction finished and produced at least one event | `recording_id`, `events_count` |
-| `recording.updated` | Title, tags, folder, notes, or speakers changed (debounced; one per recording per 30 s) | `recording_id`, `fields_changed` |
+| `recording.events.extracted` | Calendar event extraction finished and produced at least one event | `recording_id`, `title`, `events_count` |
+| `recording.updated` | Title, participants, notes, summary, meeting_date, is_inbox, is_highlighted, or folder_id changed via `PATCH /api/v1/recordings/{id}` | `recording_id`, `title`, `fields_changed` (list of strings) |
 | `recording.deleted` | Recording removed | `recording_id`, `title` |
 | `webhook.test` | Synthetic event from the **Test** button or `POST /api/v1/webhooks/{id}/test` | `reason`, `webhook_id` |
 
-Only `recording.created`, `recording.transcription.*`, `recording.summary.*`,
-and `recording.deleted` are wired in the current backend. The remaining
-events are reserved in the vocabulary and will fire as the corresponding
-code paths gain webhook emission.
+All events listed above fire in the current backend. The
+`recording.transcription.started` event fires only after the audio
+file's existence on disk is confirmed, so subscribers don't see
+misleading started→failed sequences for jobs that abort immediately
+(e.g. the audio file was deleted between upload and worker pickup).
+
+The `recording.updated` event is **not currently debounced**. Rapid
+edits (e.g. notes autosave, drag-drop tag changes) emit one event per
+mutation. Receivers that want to coalesce can deduplicate on
+`(recording_id, fields_changed)` within a short window. A built-in
+debounce is planned for a later release (see `docs/roadmap.md`).
 
 ## Envelope
 
