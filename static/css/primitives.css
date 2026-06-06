@@ -1,0 +1,631 @@
+/* ============================================================================
+ * Speakr Design System – Primitives
+ * ============================================================================
+ *
+ * Layers a small, opinionated component vocabulary on top of styles.css.
+ * Every primitive obeys these rules:
+ *
+ *   1. One elevated surface per region. Inside a region, structure comes
+ *      from hairline dividers + small uppercase section labels.
+ *   2. Type and weight carry hierarchy. Background colour does not.
+ *   3. Generous outer margins, restrained inner padding.
+ *   4. Every colour reference is a CSS variable so light/dark + all six
+ *      theme variants work without per-rule branching.
+ *
+ * Spacing scale (use these everywhere):
+ *   4 · 8 · 12 · 16 · 24 · 32 · 48 · 64  (also exposed as --sp-1..--sp-8)
+ *
+ * Type scale (token classes are .t-{label,meta,body,body-strong,subhead,heading,title}):
+ *   label       11px / 600 / uppercase / muted
+ *   meta        13px / 400 / muted
+ *   body        14px / 400
+ *   body-strong 14px / 600
+ *   subhead     16px / 600
+ *   heading     20px / 600
+ *   title       28px / 700
+ * ========================================================================= */
+
+
+/* ---- Tokens (additive to styles.css color variables) -------------------- */
+
+:root {
+    /* Spacing scale */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 24px;
+    --sp-6: 32px;
+    --sp-7: 48px;
+    --sp-8: 64px;
+
+    /* Radii */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 999px;
+
+    /* Elevation (used sparingly; only on floating/dropdown surfaces) */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+
+    /* Type sizes */
+    --fs-label: 11px;
+    --fs-meta: 13px;
+    --fs-body: 14px;
+    --fs-subhead: 16px;
+    --fs-heading: 20px;
+    --fs-title: 28px;
+
+    /* Line heights */
+    --lh-tight: 1.25;
+    --lh-snug: 1.4;
+    --lh-base: 1.55;
+
+    /* Track for letter-spacing on uppercase labels */
+    --tracking-wide: 0.06em;
+
+    /* Border weights */
+    --border-hairline: 1px;
+    --border-strong: 2px;
+
+    /* Transition */
+    --t-fast: 120ms;
+    --t-base: 180ms;
+}
+
+html.dark {
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.65);
+}
+
+
+/* ---- Type primitives ---------------------------------------------------- */
+
+.t-label {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+    line-height: var(--lh-tight);
+}
+
+.t-meta {
+    font-size: var(--fs-meta);
+    font-weight: 400;
+    color: var(--text-muted);
+    line-height: var(--lh-snug);
+}
+
+.t-body {
+    font-size: var(--fs-body);
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: var(--lh-base);
+}
+
+.t-body-strong {
+    font-size: var(--fs-body);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: var(--lh-snug);
+}
+
+.t-subhead {
+    font-size: var(--fs-subhead);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: var(--lh-snug);
+}
+
+.t-heading {
+    font-size: var(--fs-heading);
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.01em;
+}
+
+.t-title {
+    font-size: var(--fs-title);
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: var(--lh-tight);
+    letter-spacing: -0.02em;
+}
+
+
+/* ---- Surface primitives -------------------------------------------------
+ *
+ * Two surface variants. That's it.
+ *   .surface         – the base canvas; no border, no shadow
+ *   .surface-raised  – modals, dropdowns, floating panels; subtle elevation
+ * --------------------------------------------------------------------- */
+
+.surface {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.surface-raised {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+
+/* ---- Section divider + label -------------------------------------------
+ *
+ * .section-label  – the muted uppercase rubric ("SUMMARY · 1.8k")
+ * .section-rule   – the hairline that sits below a region header
+ * ------------------------------------------------------------------- */
+
+.section-label {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    line-height: var(--lh-tight);
+}
+
+.section-label__count {
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    color: var(--text-light, var(--text-muted));
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.section-rule {
+    height: var(--border-hairline);
+    background: var(--border-primary);
+    border: none;
+    margin: 0;
+}
+
+
+/* ---- Tab bar ------------------------------------------------------------
+ *
+ * Used by the right-rail (SUMMARY · NOTES · EVENTS) and the segmented
+ * style of secondary toolbars. Active tab is type weight + accent
+ * underline; never a background fill.
+ *
+ *   <div class="tabs">
+ *     <button class="tab is-active">Summary <span class="tab__count">1.8k</span></button>
+ *     <button class="tab">Notes <span class="tab__count">142</span></button>
+ *   </div>
+ * --------------------------------------------------------------------- */
+
+.tabs {
+    display: flex;
+    align-items: stretch;
+    gap: var(--sp-1);
+    padding: 0;
+    margin: 0;
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    min-height: 40px;
+}
+
+.tab {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: var(--fs-body);
+    font-weight: 600;
+    padding: var(--sp-3) var(--sp-3);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    border-bottom: var(--border-strong) solid transparent;
+    margin-bottom: calc(var(--border-hairline) * -1);
+    transition: color var(--t-fast) ease, border-color var(--t-fast) ease;
+    line-height: var(--lh-tight);
+    white-space: nowrap;
+}
+
+.tab:hover {
+    color: var(--text-secondary, var(--text-primary));
+}
+
+.tab.is-active {
+    color: var(--text-primary);
+    border-bottom-color: var(--text-accent);
+}
+
+.tab__count {
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    color: var(--text-light, var(--text-muted));
+    background: transparent;
+}
+
+.tab.is-active .tab__count {
+    color: var(--text-muted);
+}
+
+.tab__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--text-accent);
+    animation: pulseDot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.4; }
+}
+
+/* Tab bar with action toolbar on the right side */
+.tabs-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    min-height: 40px;
+}
+
+.tabs-bar > .tabs {
+    border-bottom: none;
+    min-height: 0;
+}
+
+.tabs-bar__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding-right: var(--sp-3);
+}
+
+
+/* ---- Toggle (binary on/off pill) ---------------------------------------- */
+
+.toggle {
+    appearance: none;
+    background: transparent;
+    border: var(--border-hairline) solid var(--border-primary);
+    color: var(--text-muted);
+    font-size: var(--fs-meta);
+    font-weight: 500;
+    padding: var(--sp-1) var(--sp-3);
+    height: 28px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    cursor: pointer;
+    transition: background var(--t-fast) ease, color var(--t-fast) ease, border-color var(--t-fast) ease;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.toggle:hover {
+    color: var(--text-secondary, var(--text-primary));
+    background: var(--bg-tertiary);
+}
+
+.toggle.is-on {
+    background: var(--text-accent);
+    color: var(--bg-secondary);
+    border-color: var(--text-accent);
+}
+
+.toggle.is-on:hover {
+    opacity: 0.92;
+}
+
+
+/* ---- Button -------------------------------------------------------------
+ *
+ *   .btn                  base
+ *   .btn--primary         filled accent
+ *   .btn--ghost           bordered, no fill
+ *   .btn--danger          filled danger
+ *   .btn--icon            square 32×32 (40×40 on .btn--icon.btn--lg)
+ *   .btn--sm / .btn--lg   size variants
+ * --------------------------------------------------------------------- */
+
+.btn {
+    appearance: none;
+    background: transparent;
+    border: var(--border-hairline) solid transparent;
+    color: var(--text-primary);
+    font-size: var(--fs-body);
+    font-weight: 500;
+    padding: var(--sp-2) var(--sp-4);
+    border-radius: var(--radius-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    cursor: pointer;
+    transition: background var(--t-fast) ease, color var(--t-fast) ease, border-color var(--t-fast) ease;
+    white-space: nowrap;
+    line-height: 1.2;
+    min-height: 36px;
+}
+
+.btn:disabled, .btn.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn--primary {
+    background: var(--bg-button);
+    color: var(--text-button);
+    border-color: var(--bg-button);
+}
+.btn--primary:hover:not(:disabled) {
+    background: var(--bg-button-hover);
+    border-color: var(--bg-button-hover);
+}
+
+.btn--ghost {
+    background: transparent;
+    color: var(--text-secondary, var(--text-primary));
+    border-color: var(--border-primary);
+}
+.btn--ghost:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn--quiet {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: transparent;
+}
+.btn--quiet:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn--danger {
+    background: var(--bg-danger);
+    color: #fff;
+    border-color: var(--bg-danger);
+}
+.btn--danger:hover:not(:disabled) {
+    background: var(--bg-danger-hover);
+    border-color: var(--bg-danger-hover);
+}
+
+.btn--sm {
+    padding: var(--sp-1) var(--sp-3);
+    font-size: var(--fs-meta);
+    min-height: 28px;
+}
+
+.btn--lg {
+    padding: var(--sp-3) var(--sp-5);
+    font-size: var(--fs-body);
+    min-height: 44px;
+}
+
+.btn--icon {
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+    color: var(--text-muted);
+}
+.btn--icon:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+.btn--icon.btn--lg {
+    width: 44px;
+    min-height: 44px;
+}
+.btn--icon.btn--sm {
+    width: 28px;
+    min-height: 28px;
+}
+
+
+/* ---- Field (input / textarea / select) --------------------------------- */
+
+.field {
+    appearance: none;
+    width: 100%;
+    background: var(--bg-input, var(--bg-secondary));
+    color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-secondary, var(--border-primary));
+    border-radius: var(--radius-md);
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--fs-body);
+    font-family: inherit;
+    line-height: var(--lh-snug);
+    transition: border-color var(--t-fast) ease, box-shadow var(--t-fast) ease;
+    min-height: 36px;
+}
+.field:focus, .field:focus-visible {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--ring-focus);
+}
+.field:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.field--sm {
+    padding: var(--sp-1) var(--sp-2);
+    font-size: var(--fs-meta);
+    min-height: 28px;
+}
+
+
+/* ---- Spinner ------------------------------------------------------------ */
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-primary);
+    border-top-color: var(--text-accent);
+    border-radius: 50%;
+    display: inline-block;
+    animation: spinnerSpin 700ms linear infinite;
+}
+.spinner--sm { width: 12px; height: 12px; border-width: 2px; }
+.spinner--lg { width: 24px; height: 24px; border-width: 3px; }
+@keyframes spinnerSpin {
+    to { transform: rotate(360deg); }
+}
+
+
+/* ---- Empty state -------------------------------------------------------- */
+
+.empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--sp-7) var(--sp-4);
+    gap: var(--sp-3);
+    color: var(--text-muted);
+}
+.empty__icon {
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+.empty__title {
+    font-size: var(--fs-subhead);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.empty__body {
+    font-size: var(--fs-meta);
+    color: var(--text-muted);
+    max-width: 36ch;
+    line-height: var(--lh-snug);
+}
+
+
+/* ---- Toast / Banner ---------------------------------------------------- */
+
+.banner {
+    padding: var(--sp-3) var(--sp-4);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-meta);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    border: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+.banner--info     { background: var(--bg-info-light);    border-color: var(--border-accent); color: var(--text-info-strong, var(--text-primary)); }
+.banner--success  { background: var(--bg-success-light); border-color: var(--border-success, var(--border-primary)); color: var(--text-primary); }
+.banner--warn     { background: var(--bg-warn-light);    border-color: var(--border-accent); color: var(--text-primary); }
+.banner--danger   { background: var(--bg-danger-light);  border-color: var(--border-danger); color: var(--text-danger-strong, var(--text-danger)); }
+
+
+/* ---- Floating panel (chat, dropdown body) ------------------------------ */
+
+.float-panel {
+    background: var(--bg-secondary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    color: var(--text-primary);
+    overflow: hidden;
+    backdrop-filter: blur(8px) saturate(120%);
+}
+.float-panel__header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    cursor: grab;
+    user-select: none;
+}
+.float-panel__header:active {
+    cursor: grabbing;
+}
+.float-panel__title {
+    flex: 1;
+    font-size: var(--fs-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-muted);
+}
+.float-panel__body {
+    padding: var(--sp-3);
+    overflow: auto;
+}
+.float-panel__footer {
+    padding: var(--sp-2) var(--sp-3);
+    border-top: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-tertiary);
+}
+
+
+/* ---- Rail layout (right column of recording detail) -------------------- */
+
+.rail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-secondary);
+    border-left: var(--border-hairline) solid var(--border-primary);
+}
+.rail__header {
+    flex: 0 0 auto;
+    background: var(--bg-secondary);
+    padding: 0 var(--sp-4);
+}
+.rail__body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--sp-4) var(--sp-4) var(--sp-6);
+}
+
+/* Sections inside the rail body for stacked layouts that don't use tabs.
+   Retained for spec but rail content currently uses .tabs above. */
+.rail-section + .rail-section {
+    margin-top: var(--sp-6);
+    padding-top: var(--sp-4);
+    border-top: var(--border-hairline) solid var(--border-primary);
+}
+
+
+/* ---- Focus ring fallback for all interactive elements ----------------- */
+
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
+/* But override outline for elements that already provide their own ring */
+.field:focus-visible,
+.btn:focus-visible,
+.tab:focus-visible,
+.toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring-focus);
+}

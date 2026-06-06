@@ -15,6 +15,7 @@
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/icon-32x32.png') }}">
@@ -439,7 +440,7 @@
 
         <!-- Global Error Banner -->
         <div v-if="globalError" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 max-w-lg w-full mx-4">
-            <div class="bg-red-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
+            <div class="bg-[var(--bg-danger)] text-white px-4 py-3 rounded-lg shadow-lg flex items-center justify-between">
                 <div class="flex items-center">
                     <i class="fas fa-exclamation-circle mr-3"></i>
                     <span class="text-sm font-medium">${ globalError }</span>
@@ -519,7 +520,7 @@
                                     <p class="font-semibold">${share.recording_title}</p>
                                     <p class="text-sm text-[var(--text-muted)]">${ t('help.sharedOn') }: ${share.created_at}</p>
                                 </div>
-                                <button @click="deleteShare(share.id)" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                                <button @click="deleteShare(share.id)" class="text-[var(--text-danger)] hover:opacity-80 p-1"><i class="fas fa-trash"></i></button>
                             </div>
                             <div class="mt-4">
                                 <input :value="'{{ request.url_root }}share/' + share.public_id" readonly class="w-full px-3 py-2 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg text-sm">

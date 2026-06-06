@@ -19,6 +19,7 @@
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <style>
         /* Hide Vue content until compiled */
@@ -866,7 +867,7 @@
                                 <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)] -mt-2">
                                     <span class="font-medium">${ t('preview.placeholderLegend') }</span>
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono">{example}</span>
+                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30 font-mono">{example}</span>
                                         <span>${ t('preview.systemReplaced') }</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1.5">
@@ -1198,7 +1199,7 @@ Summarization Instructions:
                                             ${ new Date(group.created_at).toLocaleDateString() }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                            <button @click="openManageTeamModal(group)" class="text-blue-500 hover:text-blue-700" title="Manage Members">
+                                            <button @click="openManageTeamModal(group)" class="text-[var(--text-accent)] hover:opacity-80" title="Manage Members">
                                                 <i class="fas fa-users-cog"></i>
                                             </button>
                                             <button @click="openManageTeamTagsModal(group)" class="text-purple-500 hover:text-purple-700" title="Manage Group Tags">
@@ -1207,7 +1208,7 @@ Summarization Instructions:
                                             <button @click="openEditTeamModal(group)" class="text-[var(--text-accent)] hover:text-[var(--text-accent-hover)]" title="Edit Group">
                                                 <i class="fas fa-edit"></i>
                                             </button>
-                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-red-500 hover:text-red-700" title="Delete Group">
+                                            <button v-if="!isTeamAdminOnly" @click="confirmDeleteTeam(group)" class="text-[var(--text-danger)] hover:opacity-80" title="Delete Group">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -1590,7 +1591,7 @@ Summarization Instructions:
                                     <option value="admin">Admin</option>
                                 </select>
                                 <button @click="removeTeamMember(member)"
-                                        class="text-red-500 hover:text-red-700" title="Remove from group">
+                                        class="text-[var(--text-danger)] hover:opacity-80" title="Remove from group">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
@@ -1607,7 +1608,7 @@ Summarization Instructions:
 
                 <div class="flex justify-between mt-6">
                     <button @click="syncTeamShares"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
+                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] flex items-center gap-2">
                         <i class="fas fa-sync-alt"></i>
                         Sync Group Shares
                     </button>
@@ -1635,7 +1636,7 @@ Summarization Instructions:
                 </p>
                 <div class="flex justify-end space-x-3">
                     <button @click="showSyncSharesModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="confirmSyncShares" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    <button @click="confirmSyncShares" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
                         <i class="fas fa-sync-alt mr-2"></i>Sync Now
                     </button>
                 </div>
@@ -1834,10 +1835,10 @@ Summarization Instructions:
                                     </div>
                                 </div>
                                 <div class="flex gap-2 flex-shrink-0">
-                                    <button @click="editTeamTag(tag)" class="text-blue-500 hover:text-blue-700 px-2 py-1" title="Edit Tag">
+                                    <button @click="editTeamTag(tag)" class="text-[var(--text-accent)] hover:opacity-80 px-2 py-1" title="Edit Tag">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button @click="deleteTeamTag(tag)" class="text-red-500 hover:text-red-700 px-2 py-1" title="Delete Tag">
+                                    <button @click="deleteTeamTag(tag)" class="text-[var(--text-danger)] hover:opacity-80 px-2 py-1" title="Delete Tag">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -2154,7 +2155,7 @@ Summarization Instructions:
                         // tag_names, transcript_text, ...). Only match identifier-shaped
                         // names so we don't mangle JSON-looking literals.
                         .replace(/\{(\s*[A-Za-z_][A-Za-z0-9_]*\s*)\}/g,
-                            '<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30" title="System placeholder. Replaced by the framework before the LLM call.">{$1}</span>');
+                            '<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30" title="System placeholder. Replaced by the framework before the LLM call.">{$1}</span>');
                 };
                 {% endraw %}
                 

@@ -12,6 +12,7 @@
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/primitives.css') }}">
     <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 
     <!-- Loading overlay to prevent FOUC -->
@@ -734,7 +735,7 @@
                                     <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)]">
                                         <span class="font-medium" data-i18n="preview.placeholderLegend">Placeholder legend:</span>
                                         <span class="inline-flex items-center gap-1.5">
-                                            <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 font-mono">{example}</span>
+                                            <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30 font-mono">{example}</span>
                                             <span data-i18n="preview.systemReplaced">system-replaced (current date, transcript, tag names, etc.)</span>
                                         </span>
                                         <span class="inline-flex items-center gap-1.5">
@@ -965,7 +966,7 @@
                                 <input type="checkbox" id="autoSpeakerLabellingToggle" class="sr-only peer" {% if auto_speaker_labelling %}checked{% endif %}>
                                 <div class="w-11 h-6 bg-[var(--bg-tertiary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-[var(--text-muted)] after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--bg-accent)] peer-checked:after:bg-white"></div>
                             </label>
-                            <select id="autoSpeakerLabellingThreshold" class="text-sm bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded-md px-2 py-1 text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" {% if not auto_speaker_labelling %}disabled{% endif %}>
+                            <select id="autoSpeakerLabellingThreshold" class="text-sm bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded-md px-2 py-1 text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--border-focus)] disabled:opacity-50 disabled:cursor-not-allowed" {% if not auto_speaker_labelling %}disabled{% endif %}>
                                 <option value="high" {% if auto_speaker_labelling_threshold == 'high' %}selected{% endif %}>High</option>
                                 <option value="medium" {% if auto_speaker_labelling_threshold == 'medium' %}selected{% endif %}>Medium</option>
                                 <option value="low" {% if auto_speaker_labelling_threshold == 'low' %}selected{% endif %}>Low</option>
@@ -978,7 +979,7 @@
                     <div class="flex-shrink-0 flex flex-wrap justify-between items-center gap-2 py-2 sm:py-3 px-3 sm:px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mb-3">
                         <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
-                                <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                <input type="checkbox" id="selectAllSpeakersTop" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
                                 <span class="hidden sm:inline">Select All</span>
                                 <span class="sm:hidden">All</span>
                             </label>
@@ -988,7 +989,7 @@
                             <input type="text" id="speakerSearchInput" placeholder="Filter by name..." class="speaker-search-input px-2 py-1 text-sm rounded-md border border-[var(--border-primary)] bg-[var(--bg-primary)] text-[var(--text-primary)] placeholder-[var(--text-light)] focus:outline-none focus:border-[var(--border-accent)] focus:ring-1 focus:ring-[var(--border-accent)] w-32 sm:w-40" autocomplete="off">
                         </div>
                         <div class="flex space-x-1 sm:space-x-2">
-                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
+                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
                                 <i class="fas fa-trash"></i>
                                 <span class="hidden sm:inline ml-1">Delete</span>
                             </button>
@@ -1034,7 +1035,7 @@
                     <div class="flex-shrink-0 flex flex-wrap justify-between items-center gap-2 py-2 sm:py-3 px-3 sm:px-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] mt-3">
                         <div class="flex items-center gap-2 sm:gap-4">
                             <label class="flex items-center text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
-                                <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500">
+                                <input type="checkbox" id="selectAllSpeakersBottom" class="select-all-checkbox mr-1.5 sm:mr-2 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]">
                                 <span class="hidden sm:inline">Select All</span>
                                 <span class="sm:hidden">All</span>
                             </label>
@@ -1043,7 +1044,7 @@
                             </span>
                         </div>
                         <div class="flex space-x-1 sm:space-x-2">
-                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-red-600 dark:bg-red-500 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
+                            <button class="bulk-delete-btn px-2 sm:px-3 py-1 sm:py-1.5 text-sm bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors" disabled title="Delete">
                                 <i class="fas fa-trash"></i>
                                 <span class="hidden sm:inline ml-1">Delete</span>
                             </button>
@@ -1742,7 +1743,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     </a>
                                     
                                     <a href="https://hub.docker.com/r/learnedmachine/speakr" target="_blank" rel="noopener noreferrer"
-                                       class="flex items-center p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
+                                       class="flex items-center p-3 bg-[var(--bg-button)] hover:bg-[var(--bg-button-hover)] text-[var(--text-button)] rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
                                         <i class="fab fa-docker text-xl mr-3"></i>
                                         <div class="flex-1">
                                             <div class="font-medium" data-i18n="aboutPage.dockerHub">Docker Hub</div>
@@ -1783,7 +1784,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
                                     <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-microphone text-blue-600 dark:text-blue-400"></i>
+                                        <i class="fas fa-microphone text-[var(--text-accent)]"></i>
                                     </div>
                                     <div>
                                         <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.audioTranscription">Audio Transcription</h4>
@@ -1854,7 +1855,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                                    <i class="fab fa-python text-3xl text-blue-500 mb-2"></i>
+                                    <i class="fab fa-python text-3xl text-[var(--text-accent)] mb-2"></i>
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Python Flask</p>
                                     <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.backend">Backend</p>
                                 </div>
@@ -1869,7 +1870,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.database">Database</p>
                                 </div>
                                 <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                                    <i class="fab fa-docker text-3xl text-blue-600 mb-2"></i>
+                                    <i class="fab fa-docker text-3xl text-[var(--text-accent)] mb-2"></i>
                                     <p class="text-sm font-medium text-[var(--text-primary)]">Docker</p>
                                     <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.deployment">Deployment</p>
                                 </div>
@@ -2026,7 +2027,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 <div class="flex items-start space-x-3 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
                     <div class="w-6 h-6 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xs"></i>
+                        <i class="fas fa-exclamation-triangle text-[var(--text-danger)] dark:text-red-400 text-xs"></i>
                     </div>
                     <div>
                         <p class="text-sm text-red-800 dark:text-red-200">
@@ -2138,7 +2139,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="p-6 flex-shrink-0 border-b border-[var(--border-primary)]">
                 <div class="flex items-start space-x-3">
                     <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <i class="fas fa-info-circle text-blue-600 text-xs"></i>
+                        <i class="fas fa-info-circle text-[var(--text-accent)] text-xs"></i>
                     </div>
                     <div>
                         <p class="text-sm text-[var(--text-secondary)]">
@@ -2246,7 +2247,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="tagAutoProcess" class="sr-only peer">
-                        <div class="w-9 h-5 bg-[var(--bg-quaternary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--bg-success)]"></div>
+                        <div class="w-9 h-5 bg-[var(--bg-quaternary)] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[var(--border-focus)] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[var(--border-secondary)] after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[var(--bg-success)]"></div>
                     </label>
                 </div>
                 <div id="tagAutoProcessPath" class="hidden px-3 py-2 bg-[var(--bg-tertiary)] rounded-md -mt-2">
@@ -2331,7 +2332,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 <p class="text-xs text-[var(--text-light)] mt-1">Leave empty to use global retention period.</p>
                             </div>
                             <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                                <input type="checkbox" id="tagProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <input type="checkbox" id="tagProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="tagProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
@@ -2391,7 +2392,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </h4>
                         <div class="space-y-3">
                             <div class="flex items-start space-x-3">
-                                <input type="checkbox" id="tagAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <input type="checkbox" id="tagAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="tagAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-share-alt mr-1"></i>Auto-share with all group members
@@ -2400,7 +2401,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </div>
                             </div>
                             <div class="flex items-start space-x-3">
-                                <input type="checkbox" id="tagShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <input type="checkbox" id="tagShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="tagShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-user-shield mr-1"></i>Share with group admins only
@@ -2526,7 +2527,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 <p class="text-xs text-[var(--text-light)] mt-1">Leave empty to use global retention period.</p>
                             </div>
                             <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                                <input type="checkbox" id="folderProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <input type="checkbox" id="folderProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="folderProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
@@ -2579,7 +2580,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </h4>
                         <div class="space-y-3">
                             <div class="flex items-start space-x-3">
-                                <input type="checkbox" id="folderAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <input type="checkbox" id="folderAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="folderAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-share-alt mr-1"></i>Auto-share with all group members
@@ -2588,7 +2589,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </div>
                             </div>
                             <div class="flex items-start space-x-3">
-                                <input type="checkbox" id="folderShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-gray-300 rounded focus:ring-[var(--border-focus)]">
+                                <input type="checkbox" id="folderShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="folderShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-user-shield mr-1"></i>Share with group admins only
@@ -2673,8 +2674,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             <div class="space-y-4">
                 <div class="bg-red-50 border border-red-200 rounded-lg p-3">
                     <div class="flex">
-                        <i class="fas fa-exclamation-triangle text-red-500 mr-2 mt-0.5"></i>
-                        <p class="text-xs text-red-700">
+                        <i class="fas fa-exclamation-triangle text-[var(--text-danger)] mr-2 mt-0.5"></i>
+                        <p class="text-xs text-[var(--text-danger-strong)]">
                             <strong>Important!</strong> This is the only time you'll see this token. Copy it now and store it securely.
                         </p>
                     </div>
@@ -2746,7 +2747,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         span.title = 'User-supplied variable. Filled at upload or reprocess.';
                         span.textContent = '{{' + name + '}}';
                     } else {
-                        span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30';
+                        span.className = 'px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30';
                         span.title = 'System placeholder. Replaced by the framework before the LLM call.';
                         span.textContent = '{' + name + '}';
                     }
@@ -3367,7 +3368,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <!-- Header with checkbox, name, and action buttons -->
                             <div class="flex items-center justify-between mb-2">
                                 <div class="flex items-center flex-1 min-w-0 gap-2">
-                                    <input type="checkbox" class="speaker-select-checkbox rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                                    <input type="checkbox" class="speaker-select-checkbox rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)] flex-shrink-0"
                                            data-speaker-id="${speaker.id}" data-speaker-name="${escapeHtml(speaker.name)}">
                                     <i class="fas fa-user text-[var(--text-accent)] text-sm flex-shrink-0"></i>
                                     <h3 class="font-medium text-sm text-[var(--text-primary)] truncate">${escapeHtml(speaker.name)}</h3>
@@ -3392,7 +3393,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             ${hasVoiceProfile ? `
                             <div class="flex items-center justify-between gap-2 mb-2 px-2 py-1 bg-[var(--bg-secondary)] rounded">
                                 <div class="flex items-center gap-1.5 min-w-0">
-                                    <i class="fas fa-eraser text-blue-500 text-[10px] flex-shrink-0"></i>
+                                    <i class="fas fa-eraser text-[var(--text-accent)] text-[10px] flex-shrink-0"></i>
                                     <span class="text-[10px] text-[var(--text-muted)] truncate">${speaker.embedding_count} sample${speaker.embedding_count !== 1 ? 's' : ''}</span>
                                 </div>
                                 ${confidenceBadge}
@@ -3546,7 +3547,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (snippets.length === 0) {
                         contentEl.innerHTML = `
                             <div class="text-xs text-[var(--text-muted)] text-center py-3 px-2">
-                                <i class="fas fa-info-circle mb-2 text-blue-500"></i>
+                                <i class="fas fa-info-circle mb-2 text-[var(--text-accent)]"></i>
                                 <p class="mb-1">No voice samples found</p>
                                 <p class="text-[10px] leading-relaxed">Voice samples are created when you identify speakers in recordings</p>
                             </div>
@@ -3593,7 +3594,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     console.error('Error loading snippets:', error);
                     loadingEl.classList.add('hidden');
                     contentEl.classList.remove('hidden');
-                    contentEl.innerHTML = '<p class="text-xs text-red-500 text-center py-2">Failed to load snippets</p>';
+                    contentEl.innerHTML = '<p class="text-xs text-[var(--text-danger)] text-center py-2">Failed to load snippets</p>';
                 }
             }
 
@@ -4088,15 +4089,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     <p class="font-semibold">${escapeHtml(share.recording_title)}</p>
                                     <p class="text-sm text-[var(--text-muted)]">${t('sharedTranscripts.sharedOn')}: ${share.created_at}</p>
                                 </div>
-                                <button data-share-id="${share.id}" class="delete-share-btn text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash"></i></button>
+                                <button data-share-id="${share.id}" class="delete-share-btn text-[var(--text-danger)] hover:opacity-80 p-1"><i class="fas fa-trash"></i></button>
                             </div>
                             <div class="mt-4 flex items-center gap-4">
                                 <label class="flex items-center text-sm">
-                                    <input type="checkbox" data-share-id="${share.id}" data-share-prop="share_summary" class="share-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${share.share_summary ? 'checked' : ''}>
+                                    <input type="checkbox" data-share-id="${share.id}" data-share-prop="share_summary" class="share-checkbox h-4 w-4 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]" ${share.share_summary ? 'checked' : ''}>
                                     <span class="ml-2">${t('sharedTranscripts.shareSummary')}</span>
                                 </label>
                                 <label class="flex items-center text-sm">
-                                    <input type="checkbox" data-share-id="${share.id}" data-share-prop="share_notes" class="share-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" ${share.share_notes ? 'checked' : ''}>
+                                    <input type="checkbox" data-share-id="${share.id}" data-share-prop="share_notes" class="share-checkbox h-4 w-4 rounded border-[var(--border-secondary)] text-[var(--text-accent)] focus:ring-[var(--border-focus)]" ${share.share_notes ? 'checked' : ''}>
                                     <span class="ml-2">${t('sharedTranscripts.shareNotes')}</span>
                                 </label>
                             </div>
@@ -4144,7 +4145,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     });
 
                 } catch (error) {
-                    sharesContainer.innerHTML = `<p class="text-center text-red-500">${t('errors.loadingShares')}: ${error.message}</p>`;
+                    sharesContainer.innerHTML = `<p class="text-center text-[var(--text-danger)]">${t('errors.loadingShares')}: ${error.message}</p>`;
                 }
             }
 
@@ -4895,7 +4896,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <button class="edit-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors rounded" data-tag-id="${tag.id}" title="Edit tag">
                                 <i class="fas fa-edit text-xs"></i>
                             </button>
-                            <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-red-500 transition-colors rounded" data-tag-id="${tag.id}" title="Delete tag">
+                            <button class="delete-tag-btn p-1 text-[var(--text-muted)] hover:text-[var(--text-danger)] transition-colors rounded" data-tag-id="${tag.id}" title="Delete tag">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
                         ` : ''}
@@ -5667,7 +5668,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 editBtn.addEventListener('click', () => openFolderModal(folder));
 
                 const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-folder-btn text-[var(--text-muted)] hover:text-red-500 p-1';
+                deleteBtn.className = 'delete-folder-btn text-[var(--text-muted)] hover:text-[var(--text-danger)] p-1';
                 deleteBtn.title = 'Delete folder';
                 const deleteIcon = document.createElement('i');
                 deleteIcon.className = 'fas fa-trash';
@@ -6336,8 +6337,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 console.error('Error loading tokens:', error);
                 tokensLoading.innerHTML = `
                     <div class="text-center py-12">
-                        <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-                        <p class="text-red-600">Failed to load tokens: ${error.message}</p>
+                        <i class="fas fa-exclamation-triangle text-4xl text-[var(--text-danger)] mb-4"></i>
+                        <p class="text-[var(--text-danger)]">Failed to load tokens: ${error.message}</p>
                     </div>
                 `;
             }
