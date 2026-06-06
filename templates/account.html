@@ -403,9 +403,16 @@
                  same surface as the main app. Tab strip below is the
                  primary navigation; content scrolls inside. -->
             <div class="flex flex-col flex-grow overflow-hidden">
-                <!-- Tab strip using the .tabs primitive. IDs preserved so
+                <!-- Tab strip using the .tabs primitive, wrapped in
+                     .tabs-scroller so long strips get left/right chevron
+                     buttons that appear when scrollable; wheel-over-tabs
+                     also maps to horizontal scroll. IDs preserved so
                      existing tab-switching JS keeps working unchanged. -->
-                <nav class="tabs px-3 sm:px-4 overflow-x-auto scrollbar-hide flex-shrink-0" aria-label="Tabs" id="tabs-container">
+                <div class="tabs-scroller flex-shrink-0" data-tabs-scroller>
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--left" aria-label="Scroll left">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                <nav class="tabs px-3 sm:px-4" aria-label="Tabs" id="tabs-container">
                     <a href="#" id="tab-account" class="tab is-active">
                         <i class="fas fa-user-circle"></i><span data-i18n="account.title">Account</span>
                     </a>
@@ -440,6 +447,10 @@
                         <i class="fas fa-info-circle"></i><span data-i18n="accountTabs.about">About</span>
                     </a>
                 </nav>
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--right" aria-label="Scroll right">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
 
                 <div class="tab-content-wrapper px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
                     <div id="content-account" class="tab-content pt-6">
@@ -4088,17 +4099,27 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
         }
         
-        // Toggle dark mode
+        // Toggle dark mode. Re-applies the saved color scheme so the
+        // mode-prefix (theme-light-* vs theme-dark-*) flips along with
+        // the dark class — otherwise switching from dark→light leaves
+        // the previous theme-dark-{amber|emerald|etc.} class on
+        // documentElement and the page falls back to the default blue
+        // light palette because no theme-light-* class was added.
         darkModeToggle.addEventListener('click', () => {
             const isDarkMode = document.documentElement.classList.toggle('dark');
             localStorage.setItem('darkMode', isDarkMode);
-            
+
             if (isDarkMode) {
                 darkModeIcon.classList.remove('fa-moon');
                 darkModeIcon.classList.add('fa-sun');
             } else {
                 darkModeIcon.classList.remove('fa-sun');
                 darkModeIcon.classList.add('fa-moon');
+            }
+
+            // Re-apply the color scheme for the new mode.
+            if (typeof applyTheme === 'function') {
+                applyTheme();
             }
         });
         

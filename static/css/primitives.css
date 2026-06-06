@@ -343,6 +343,67 @@ html.dark {
 }
 
 
+/* ---- Tabs scroller — horizontal-scroll affordance for long tab strips.
+ *
+ * Wraps a .tabs container with overlaid left/right chevron buttons that
+ * appear only when there's content to scroll to in that direction.
+ * Wheel-over-tabs translates vertical scroll to horizontal so the user
+ * doesn't need to use the buttons. The native scrollbar is hidden but
+ * native touch panning still works on mobile.
+ *
+ *   <div class="tabs-scroller" data-tabs-scroller>
+ *     <button class="tabs-scroller__nav tabs-scroller__nav--left"  aria-label="Scroll left"><i class="fas fa-chevron-left"></i></button>
+ *     <nav class="tabs">...</nav>
+ *     <button class="tabs-scroller__nav tabs-scroller__nav--right" aria-label="Scroll right"><i class="fas fa-chevron-right"></i></button>
+ *   </div>
+ *
+ * The auto-init script (see assets/js/tabs-scroller.js or the inline
+ * snippet in page-header.html) attaches the scroll-listener and
+ * resize-observer that toggle .is-visible on the nav buttons.
+ * --------------------------------------------------------------------- */
+
+.tabs-scroller {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+}
+
+.tabs-scroller > .tabs {
+    flex: 1;
+    border-bottom: none;
+    overflow-x: auto;
+    scrollbar-width: none;          /* Firefox */
+    -ms-overflow-style: none;       /* IE 10+ */
+}
+.tabs-scroller > .tabs::-webkit-scrollbar {
+    display: none;                  /* Chromium / Safari */
+}
+
+.tabs-scroller__nav {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 36px;
+    z-index: 2;
+    display: none;                  /* shown by .is-visible */
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--t-fast) ease, opacity var(--t-fast) ease;
+    pointer-events: auto;
+}
+.tabs-scroller__nav:hover { color: var(--text-primary); }
+.tabs-scroller__nav.is-visible { display: inline-flex; }
+
+.tabs-scroller__nav--left  { left: 0;  background: linear-gradient(to right, var(--bg-secondary) 60%, transparent 100%); }
+.tabs-scroller__nav--right { right: 0; background: linear-gradient(to left,  var(--bg-secondary) 60%, transparent 100%); }
+
+
+
 /* ---- Toggle (binary on/off pill) ---------------------------------------- */
 
 .toggle {

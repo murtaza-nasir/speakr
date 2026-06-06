@@ -72,4 +72,65 @@ document.addEventListener('click', function(e) {
         dd.classList.add('hidden');
     }
 });
+
+// Tabs scroller — attaches to any element marked [data-tabs-scroller]
+// that wraps a .tabs container. Shows/hides left/right chevron buttons
+// based on whether the tab strip can scroll further in that direction;
+// click scrolls by 240px; wheel-over-tabs maps vertical wheel to
+// horizontal scroll. Idempotent on multiple init calls.
+(function () {
+    function initScroller(root) {
+        if (root.dataset.tabsScrollerInit === '1') return;
+        root.dataset.tabsScrollerInit = '1';
+        var tabs = root.querySelector('.tabs');
+        var left = root.querySelector('.tabs-scroller__nav--left');
+        var right = root.querySelector('.tabs-scroller__nav--right');
+        if (!tabs || !left || !right) return;
+
+        function update() {
+            var maxScroll = tabs.scrollWidth - tabs.clientWidth;
+            left.classList.toggle('is-visible', tabs.scrollLeft > 4);
+            right.classList.toggle('is-visible', tabs.scrollLeft < maxScroll - 4);
+        }
+
+        left.addEventListener('click', function () {
+            tabs.scrollBy({ left: -240, behavior: 'smooth' });
+        });
+        right.addEventListener('click', function () {
+            tabs.scrollBy({ left: 240, behavior: 'smooth' });
+        });
+        tabs.addEventListener('scroll', update, { passive: true });
+
+        // Wheel-over-tabs: map vertical wheel to horizontal scroll so
+        // users can flick through the strip without using the buttons.
+        tabs.addEventListener('wheel', function (e) {
+            // Only intercept if the dominant axis is vertical and
+            // there's somewhere horizontal to go.
+            if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+            var maxScroll = tabs.scrollWidth - tabs.clientWidth;
+            if (maxScroll <= 0) return;
+            if ((e.deltaY > 0 && tabs.scrollLeft >= maxScroll) ||
+                (e.deltaY < 0 && tabs.scrollLeft <= 0)) return;
+            e.preventDefault();
+            tabs.scrollLeft += e.deltaY;
+        }, { passive: false });
+
+        if (window.ResizeObserver) {
+            new ResizeObserver(update).observe(tabs);
+        } else {
+            window.addEventListener('resize', update);
+        }
+        // Initial measure.
+        requestAnimationFrame(update);
+    }
+
+    function initAll() {
+        document.querySelectorAll('[data-tabs-scroller]').forEach(initScroller);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAll);
+    } else {
+        initAll();
+    }
+})();
 </script>
