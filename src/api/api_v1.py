@@ -2511,11 +2511,19 @@ def download_audio(recording_id):
 
     download = request.args.get('download', 'false').lower() == 'true'
 
+    # original_filename is user-controlled at upload time. Sanitize it
+    # via secure_filename before passing to send_file so null bytes or
+    # path-traversal segments can't reach a confused download dialog
+    # in old clients.
+    from werkzeug.utils import secure_filename
+    raw_name = recording.original_filename or f'recording-{recording_id}.mp3'
+    safe_download_name = secure_filename(raw_name) or f'recording-{recording_id}'
+
     return send_file(
         audio_path,
         mimetype=recording.mime_type or 'audio/mpeg',
         as_attachment=download,
-        download_name=recording.original_filename or f'recording-{recording_id}.mp3'
+        download_name=safe_download_name,
     )
 
 
