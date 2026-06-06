@@ -830,6 +830,27 @@ html.dark .modal-overlay {
 }
 
 
+/* ---- Mobile touch-target adjustments -----------------------------------
+ *
+ * Apple HIG + Material spec both want ~44px minimum touch targets on
+ * touch devices. On narrow viewports, bump icon buttons and tabs to
+ * comfortable sizes so they're easy to hit with a thumb.
+ * --------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+    .btn--icon { width: 40px; min-height: 40px; }
+    .btn--icon.btn--sm { width: 36px; min-height: 36px; }
+    .btn { min-height: 40px; }
+    .btn--sm { min-height: 36px; }
+    .tab { padding: var(--sp-3) var(--sp-3); min-height: 44px; }
+    .toggle { min-height: 32px; padding: var(--sp-1) var(--sp-3); }
+    .field { min-height: 40px; font-size: 16px; /* prevents iOS zoom */ }
+    .modal-header { padding: var(--sp-3) var(--sp-4); }
+    .modal-body { padding: var(--sp-4); }
+    .modal-footer { padding: var(--sp-3) var(--sp-4); }
+}
+
+
 /* ---- Focus ring fallback for all interactive elements ----------------- */
 
 button:focus-visible,
