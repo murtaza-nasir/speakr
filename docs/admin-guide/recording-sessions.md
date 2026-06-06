@@ -26,7 +26,7 @@ Environment variables, all optional:
 |---|---|---|
 | `ENABLE_SERVER_RECORDING_CHUNKS` | `false` | Master switch. Off keeps the legacy single-shot path. |
 | `RECORDING_SESSION_TTL_HOURS` | `24` | Sessions whose `last_seen_at` is older than this are reaped. |
-| `RECORDING_SESSION_MAX_BYTES_PER_USER` | `5368709120` (5 GB) | Per-user cap on in-progress (non-finalized) sessions. |
+| `RECORDING_SESSION_MAX_BYTES_PER_USER` | `5368709120` (5 GB) | Per-user cap on in-progress (non-finalized) sessions. Soft limit: concurrent chunk uploads on different sessions can overrun by up to a few chunk-sizes (16 MB each by default). Cross-process atomic enforcement would require Redis or Postgres advisory locks; the overrun is small and bounded by worker count. |
 | `RECORDING_SESSION_MAX_CHUNK_BYTES` | `16777216` (16 MB) | Per-chunk upload cap. Generous; MediaRecorder chunks are typically <1 MB. |
 | `RECORDING_SESSION_ALLOWED_MIME_TYPES` | `audio/webm,audio/ogg,audio/mp4,audio/mpeg,audio/wav,audio/x-m4a` | Comma-separated whitelist. |
 | `RECORDING_SESSION_CLEANUP_INTERVAL_SECONDS` | `3600` | How often the background thread sweeps expired sessions. Set to `0` to disable. |

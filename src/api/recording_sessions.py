@@ -251,6 +251,14 @@ def upload_chunk(session_id, chunk_index):
         }), 413
 
     # Per-user quota check: the new chunk must not push the user over.
+    # NOTE: this is a best-effort (soft) check. Concurrent chunks
+    # arriving on different sessions can both pass the projection and
+    # together exceed the cap by up to N * max_chunk_bytes where N is
+    # the worker count. SQLite doesn't support row-level locking, and
+    # cross-process locking would need Redis/Postgres advisory locks.
+    # The overrun is small (16 MB per concurrent chunk by default) and
+    # bounded by the session count, so we treat the quota as a
+    # soft limit and accept the race.
     projected = _user_bytes_in_progress(current_user.id) - session.bytes_received + session.bytes_received + len(chunk_bytes)
     if projected > _max_bytes_per_user():
         return jsonify({
