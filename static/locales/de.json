@@ -1538,7 +1538,7 @@
     "keepAudioOnlySubtitleOff": "Videostream verwerfen",
     "keepAudioOnlySubtitleOn": "Video verworfen",
     "keepAudioOnlyLargerAllowed": "Größere Uploads erlaubt",
-    "enableKeepAudioOnlyForLargeVideo": "Über dem normalen Limit von {{regular}} MB. Aktiviere unten „Nur Audio behalten\", um dieses Video hochzuladen."
+    "enableKeepAudioOnlyForLargeVideo": "Über dem normalen Limit. Aktiviere unten „Nur Audio behalten\", um dieses Video hochzuladen."
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

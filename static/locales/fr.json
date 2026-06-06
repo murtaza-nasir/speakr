@@ -1538,7 +1538,7 @@
     "keepAudioOnlySubtitleOff": "Supprimer le flux vidéo",
     "keepAudioOnlySubtitleOn": "Vidéo supprimée",
     "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés",
-    "enableKeepAudioOnlyForLargeVideo": "Dépasse la limite normale de {{regular}} Mo. Activez « Conserver uniquement l’audio » ci-dessous pour envoyer cette vidéo."
+    "enableKeepAudioOnlyForLargeVideo": "Au-delà de la limite normale. Activez « Conserver uniquement l’audio » ci-dessous pour envoyer cette vidéo."
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"

@@ -1538,7 +1538,7 @@
     "keepAudioOnlySubtitleOff": "Отбросить видео",
     "keepAudioOnlySubtitleOn": "Видео отброшено",
     "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки",
-    "enableKeepAudioOnlyForLargeVideo": "Превышает обычный лимит в {{regular}} МБ. Включите «Сохранить только аудио» ниже, чтобы загрузить это видео."
+    "enableKeepAudioOnlyForLargeVideo": "Превышает обычный лимит. Включите «Сохранить только аудио» ниже, чтобы загрузить это видео."
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

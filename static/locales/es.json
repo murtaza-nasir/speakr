@@ -1538,7 +1538,7 @@
     "keepAudioOnlySubtitleOff": "Descartar el vídeo",
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
     "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes",
-    "enableKeepAudioOnlyForLargeVideo": "Supera el límite habitual de {{regular}} MB. Activa «Conservar solo el audio» abajo para subir este vídeo."
+    "enableKeepAudioOnlyForLargeVideo": "Supera el límite habitual. Activa «Conservar solo el audio» abajo para subir este vídeo."
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

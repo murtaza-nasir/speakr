@@ -1547,7 +1547,7 @@
     "keepAudioOnlySubtitleOff": "Drop video stream",
     "keepAudioOnlySubtitleOn": "Video dropped",
     "keepAudioOnlyLargerAllowed": "Larger uploads allowed",
-    "enableKeepAudioOnlyForLargeVideo": "Over the {{regular}} MB regular limit. Enable \"Keep audio only\" below to upload this video."
+    "enableKeepAudioOnlyForLargeVideo": "Over the regular size limit. Enable \"Keep audio only\" below to upload this video."
   },
   "uploadProgress": {
     "title": "Upload Progress"

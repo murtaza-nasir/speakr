@@ -1538,7 +1538,7 @@
     "keepAudioOnlySubtitleOff": "Descartar o vídeo",
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
     "keepAudioOnlyLargerAllowed": "Envios maiores permitidos",
-    "enableKeepAudioOnlyForLargeVideo": "Excede o limite habitual de {{regular}} MB. Ative “Manter apenas o áudio” abaixo para enviar este vídeo."
+    "enableKeepAudioOnlyForLargeVideo": "Excede o limite habitual. Ative “Manter apenas o áudio” abaixo para enviar este vídeo."
   },
   "uploadProgress": {
     "title": "Progresso do Envio"
