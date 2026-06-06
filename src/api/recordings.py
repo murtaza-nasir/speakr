@@ -2745,13 +2745,18 @@ def upload_incognito():
         file_size = file.tell()
         file.seek(0)
 
-        # Check size limit
-        max_content_length = current_app.config.get('MAX_CONTENT_LENGTH')
-        if max_content_length and file_size > max_content_length:
-            max_size_mb = max_content_length / (1024 * 1024)
+        # Enforce the regular (smaller) upload limit, not the WSGI
+        # ceiling. The ceiling was raised to make room for audio-only
+        # video uploads on the normal /upload path, but incognito mode
+        # doesn't currently expose the keep_audio_only / large-video
+        # affordance. Using max_file_size_mb here keeps incognito's
+        # observable limit equal to what users see configured.
+        regular_limit_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
+        regular_limit_bytes = regular_limit_mb * 1024 * 1024
+        if file_size > regular_limit_bytes:
             return jsonify({
-                'error': f'File too large. Maximum size is {max_size_mb:.0f} MB.',
-                'max_size_mb': max_size_mb
+                'error': f'File too large. Maximum size is {regular_limit_mb} MB.',
+                'max_size_mb': float(regular_limit_mb),
             }), 413
 
         # Save to temp file - use secure temp directory
