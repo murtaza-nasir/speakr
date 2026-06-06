@@ -64,13 +64,14 @@
         </div>
 
         <!-- Tab Content -->
-        <div v-if="!isChatMaximized" class="flex-1 overflow-hidden">
+        <div class="flex-1 overflow-hidden">
             {% include 'components/detail/desktop-summary-tab.html' %}
             {% include 'components/detail/desktop-notes-tab.html' %}
             {% include 'components/detail/desktop-events-tab.html' %}
         </div>
     </div>
 
-    <!-- Chat Section -->
-    {% include 'components/detail/desktop-chat-section.html' %}
+    <!-- Chat is no longer inline — it lives in the floating dockable
+         panel (components/detail/floating-chat.html) which is mounted
+         at the detail-view level and teleported to <body>. -->
 </div>

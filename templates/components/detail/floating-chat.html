@@ -1,0 +1,133 @@
+<!-- Floating Dockable Chat Panel (design system v1).
+     States:
+       - 'collapsed': FAB only, bottom-right
+       - 'floating' : 380×500 panel at user-saved position
+       - 'docked-{ne,nw,se,sw}': snapped to a corner
+       - 'maximized': fills available space
+     Drag the header to move. Drop within 100px of a viewport corner →
+     snaps to that corner. Position persisted in localStorage per
+     recording id. Teleported to <body> so it floats above all content. -->
+<Teleport to="body">
+    <div v-if="currentView === 'detail' && selectedRecording" class="floating-chat-root">
+        <!-- FAB (collapsed) -->
+        <button v-if="chatPanelState === 'collapsed'"
+                @click="openChatPanel"
+                class="floating-chat-fab"
+                :title="t('chat.chatWithTranscription')">
+            <i class="fas fa-comments"></i>
+            <span v-if="chatMessages && chatMessages.length > 0" class="floating-chat-fab-badge">
+                ${chatMessages.length}
+            </span>
+        </button>
+
+        <!-- Panel (floating/docked/maximized) -->
+        <div v-else
+             class="floating-chat-panel"
+             :class="['is-' + chatPanelState]"
+             :style="floatingChatPanelStyle">
+            <!-- Header (drag handle) -->
+            <div class="floating-chat-header"
+                 @mousedown="startChatPanelDrag"
+                 @touchstart.passive="startChatPanelDrag">
+                <div class="floating-chat-header-title">
+                    <i class="fas fa-comments"></i>
+                    <span>${ t('chat.chatWithTranscription') }</span>
+                    <span v-if="chatMessages && chatMessages.length > 0" class="tab__count">${chatMessages.length}</span>
+                </div>
+                <div class="floating-chat-header-actions">
+                    <button v-if="chatMessages.length > 0"
+                            @click.stop="downloadChat"
+                            class="btn btn--icon btn--sm"
+                            :title="t('buttons.downloadChat')">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button v-if="chatMessages.length > 0"
+                            @click.stop="clearChat"
+                            class="btn btn--icon btn--sm"
+                            style="color: var(--text-muted);"
+                            title="Clear chat">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                    <button @click.stop="toggleChatPanelMax"
+                            class="btn btn--icon btn--sm"
+                            :title="chatPanelState === 'maximized' ? t('tooltips.restoreChat') : t('tooltips.maximizeChat')">
+                        <i :class="['fas', chatPanelState === 'maximized' ? 'fa-compress' : 'fa-expand']"></i>
+                    </button>
+                    <button @click.stop="collapseChatPanel"
+                            class="btn btn--icon btn--sm"
+                            :title="t('buttons.close')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div ref="chatMessagesRef" class="floating-chat-messages">
+                <div v-if="chatMessages.length === 0" class="empty">
+                    <div class="empty__icon"><i class="fas fa-robot"></i></div>
+                    <div class="empty__title" v-text="t('help.askAboutTranscription')"></div>
+                    <div class="empty__body">Type a question below. Markdown supported.</div>
+                </div>
+
+                <div v-for="(message, index) in chatMessages" :key="index"
+                     :class="['message relative group',
+                              message.role === 'user' ? 'user-message ml-auto' : 'ai-message',
+                              message.role === 'assistant' ? 'pr-10' : '']">
+                    <button v-if="message.role === 'assistant'"
+                            @click="copyMessage(message.content, $event)"
+                            class="btn btn--icon btn--sm absolute"
+                            style="top: var(--sp-2); right: var(--sp-2);"
+                            :title="t('buttons.copyMessage')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <div v-if="message.thinking && message.role === 'assistant'" class="mb-2">
+                        <button @click="message.thinkingExpanded = !message.thinkingExpanded"
+                                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center gap-1">
+                            <i :class="['fas', message.thinkingExpanded ? 'fa-chevron-down' : 'fa-chevron-right']"></i>
+                            <span v-text="t('help.modelReasoning')"></span>
+                            <span class="text-[var(--text-muted)]">(${message.thinking.split('\n').length} lines)</span>
+                        </button>
+                        <div v-if="message.thinkingExpanded"
+                             class="mt-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-primary)] rounded-md text-xs text-[var(--text-muted)] max-h-64 overflow-y-auto">
+                            <pre class="whitespace-pre-wrap font-mono">${message.thinking}</pre>
+                        </div>
+                    </div>
+                    <div v-if="message.html" v-html="message.html"></div>
+                    <div v-else class="whitespace-pre-wrap">${message.content}</div>
+                </div>
+
+                <div v-if="isChatLoading" class="ai-message flex items-center gap-2">
+                    <div class="spinner"></div>
+                    <span v-text="t('chat.thinking')"></span>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="floating-chat-input">
+                <div class="flex gap-2 items-end">
+                    <textarea v-model="chatInput"
+                              ref="chatInputRef"
+                              @keydown="handleChatKeydown"
+                              :disabled="selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
+                              :placeholder="t('chat.placeholderWithHint')"
+                              class="field"
+                              style="resize: none;"
+                              rows="2"></textarea>
+                    <button @click="sendChatMessage"
+                            :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
+                            class="btn btn--primary btn--icon btn--lg"
+                            :title="t('buttons.send') || 'Send'">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div v-if="processedTranscription.isError" class="t-meta mt-2 flex items-center gap-1.5" style="color: var(--text-danger);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span v-text="t('chat.cannotChatTranscriptionFailed')"></span>
+                </div>
+                <div v-else-if="selectedRecording.status !== 'COMPLETED'" class="t-meta mt-2">
+                    <span v-text="t('chat.availableAfterTranscription')"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</Teleport>

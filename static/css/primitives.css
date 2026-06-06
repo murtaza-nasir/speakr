@@ -955,3 +955,158 @@ textarea:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--ring-focus);
 }
+
+
+/* ---- Floating Chat Panel ------------------------------------------------
+ *
+ * Floating, dockable chat surface for the recording-detail screen.
+ * Lives at z-index 40 (above content but below modals at 50).
+ *
+ * States — keyed by the chat-panel--{state} class:
+ *   .is-floating       free-positioned, drag to move
+ *   .is-docked-ne/nw/se/sw    snapped to a viewport corner
+ *   .is-maximized      fills the viewport less the global header
+ * --------------------------------------------------------------------- */
+
+.floating-chat-root {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 40;
+}
+
+/* FAB (collapsed) */
+.floating-chat-fab {
+    position: fixed;
+    bottom: 84px; /* above the persistent bottom audio player */
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 999px;
+    background: var(--bg-button);
+    color: var(--text-button);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    font-size: 22px;
+    transition: transform var(--t-fast) ease, box-shadow var(--t-fast) ease;
+    pointer-events: auto;
+}
+.floating-chat-fab:hover {
+    transform: scale(1.06);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.18);
+}
+.floating-chat-fab-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--bg-danger);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Panel (floating / docked / maximized) */
+.floating-chat-panel {
+    position: fixed;
+    width: 380px;
+    height: 520px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 80px);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: var(--border-hairline) solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    pointer-events: auto;
+    backdrop-filter: blur(6px);
+    animation: chatPanelIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes chatPanelIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Docked corners */
+.floating-chat-panel.is-docked-se { bottom: 84px; right: 24px; top: auto; left: auto; }
+.floating-chat-panel.is-docked-sw { bottom: 84px; left: 24px;  top: auto; right: auto; }
+.floating-chat-panel.is-docked-ne { top: 80px;   right: 24px; bottom: auto; left: auto; }
+.floating-chat-panel.is-docked-nw { top: 80px;   left: 24px;  bottom: auto; right: auto; }
+
+/* Maximized */
+.floating-chat-panel.is-maximized {
+    width: calc(100vw - 48px);
+    height: calc(100vh - 120px);
+    top: 80px;
+    left: 24px;
+    right: 24px;
+    bottom: auto;
+    max-width: none;
+    max-height: none;
+}
+
+/* Header (drag handle) */
+.floating-chat-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    cursor: grab;
+    user-select: none;
+    background: var(--bg-tertiary);
+}
+.floating-chat-header:active { cursor: grabbing; }
+
+.floating-chat-header-title {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-meta);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.floating-chat-header-title i { color: var(--text-muted); font-size: 12px; }
+
+.floating-chat-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.floating-chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--sp-3);
+}
+.floating-chat-messages > .message {
+    margin-bottom: var(--sp-3);
+}
+
+.floating-chat-input {
+    flex: 0 0 auto;
+    border-top: var(--border-hairline) solid var(--border-primary);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--bg-secondary);
+}
+
+@media (max-width: 768px) {
+    .floating-chat-fab { display: none; }
+    .floating-chat-panel { display: none; }
+}
