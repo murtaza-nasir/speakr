@@ -50,3 +50,5 @@ unraid/
 # Frontend test tooling (Vitest)
 node_modules/
 package-lock.json
+pass-*.png
+page-*.png

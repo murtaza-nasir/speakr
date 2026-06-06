@@ -1,72 +1,75 @@
 <!-- Desktop Transcription Panel (Left Column) -->
 <div id="leftMainColumn" class="flex flex-col overflow-hidden" :style="{width: leftColumnWidth + '%'}">
-    <!-- Transcription Header -->
-    <div class="bg-[var(--bg-tertiary)] px-4 py-3 border-b border-[var(--border-primary)] flex items-center justify-between">
-        <h3 class="font-semibold flex items-center">
-            <i class="fas fa-file-text mr-2"></i>
-            <span v-text="t('transcription.title')"></span>
-        </h3>
-        <div class="flex items-center gap-2">
-            <!-- Follow Player Checkbox -->
-            <div v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
-                 class="follow-player-control text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                 @click="toggleFollowPlayerMode"
-                 :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
-                <input type="checkbox"
-                       :checked="followPlayerMode"
-                       @click.stop="toggleFollowPlayerMode">
-                <i class="fas fa-arrows-alt-v follow-icon"></i>
-            </div>
+    <!-- Transcription header (design system v1).
+         Matches the right-rail tab-bar pattern: 40px tab strip with the
+         title on the left and contextual toggles + action icons on the
+         right. View mode is a single Bubble *toggle* (Simple is the
+         default; the toggle modifies that default), not a pair of tabs. -->
+    <div class="tabs-bar px-4">
+        <div class="tabs">
+            <span class="tab is-active" style="cursor: default;">
+                <i class="fas fa-file-text" style="font-size: 13px; opacity: 0.7;"></i>
+                <span v-text="t('transcription.title')"></span>
+            </span>
+        </div>
+        <div class="tabs-bar__actions">
+            <!-- Follow Player toggle (icon-only; label in tooltip) -->
+            <button v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
+                    @click="toggleFollowPlayerMode"
+                    class="toggle"
+                    :class="{ 'is-on': followPlayerMode }"
+                    :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
+                <i class="fas fa-arrows-alt-v" style="font-size: 11px;"></i>
+            </button>
 
-            <!-- View Mode Toggle -->
-            <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
-                <button @click="toggleTranscriptionViewMode"
-                        :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']">
-                    <i class="fas fa-list"></i><span v-text="t('transcription.simple')"></span>
-                </button>
-                <button @click="toggleTranscriptionViewMode"
-                        :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']">
-                    <i class="fas fa-comments"></i><span v-text="t('transcription.bubble')"></span>
-                </button>
-            </div>
+            <!-- View mode: ONE toggle. Off = Simple (default), On = Bubble -->
+            <button v-if="processedTranscription.hasDialogue"
+                    @click="toggleTranscriptionViewMode"
+                    class="toggle"
+                    :class="{ 'is-on': transcriptionViewMode === 'bubble' }"
+                    :title="transcriptionViewMode === 'bubble' ? 'Switch to simple view' : 'Switch to bubble view'">
+                <i class="fas fa-comments" style="font-size: 11px;"></i>
+                <span v-text="t('transcription.bubble')"></span>
+            </button>
 
-            <!-- Copy Button -->
+            <!-- Copy -->
             <button @click="copyTranscription"
-                    class="copy-btn"
+                    class="btn btn--icon"
                     :title="t('tooltips.copyTranscript')">
                 <i class="fas fa-copy"></i>
             </button>
-            <!-- Download Button with Dropdown -->
+
+            <!-- Download with dropdown -->
             <div v-if="selectedRecording && selectedRecording.transcription" class="relative">
                 <button @click="showDownloadMenu = !showDownloadMenu"
                         data-download-toggle
-                        class="copy-btn flex items-center"
+                        class="btn btn--icon"
                         :title="t('tooltips.downloadTranscriptWithTemplate')">
                     <i class="fas fa-download"></i>
-                    <i class="fas fa-caret-down ml-1 text-[10px] opacity-50"></i>
                 </button>
-                <!-- Dropdown Menu -->
                 <div v-if="showDownloadMenu"
                      data-download-dropdown
-                     class="absolute right-0 top-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50 overflow-hidden whitespace-nowrap">
+                     class="absolute right-0 top-full mt-1 surface-raised z-50 overflow-hidden whitespace-nowrap"
+                     style="min-width: 220px;">
                     <button @click="downloadWithDefaultTemplate(); showDownloadMenu = false"
-                            class="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2">
+                            class="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2">
                         <i class="fas fa-star text-[var(--text-accent)] text-[10px]"></i>
                         <span v-text="t('transcriptTemplates.downloadDefault')"></span>
                     </button>
                     <button @click="showTemplateSelector(); showDownloadMenu = false"
-                            class="w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2 border-t border-[var(--border-secondary)]">
+                            class="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors flex items-center gap-2 border-t border-[var(--border-primary)]">
                         <i class="fas fa-list text-[var(--text-muted)] text-[10px]"></i>
                         <span v-text="t('transcriptTemplates.chooseTemplate')"></span>
                     </button>
                 </div>
             </div>
-            <!-- Edit Transcription Button -->
+
+            <!-- Edit -->
             <button @click="openTranscriptionEditor"
                     v-if="selectedRecording && selectedRecording.transcription"
-                    class="copy-btn"
+                    class="btn btn--icon"
                     :title="t('tooltips.editTranscript')">
-                <i class="fas fa-edit"></i>
+                <i class="fas fa-pen"></i>
             </button>
         </div>
     </div>
