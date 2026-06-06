@@ -38,6 +38,11 @@ class Recording(db.Model):
     completed_at = db.Column(db.DateTime, nullable=True)
     processing_time_seconds = db.Column(db.Integer, nullable=True)
     transcription_duration_seconds = db.Column(db.Integer, nullable=True)  # Time taken for transcription
+    # Cached audio duration in seconds, populated at transcription
+    # completion. Lets to_dict() / API list views avoid an ffprobe
+    # subprocess per row. Falls back to live ffprobe in
+    # get_audio_duration() only when the column is empty.
+    audio_duration_seconds = db.Column(db.Float, nullable=True)
     summarization_duration_seconds = db.Column(db.Integer, nullable=True)  # Time taken for summarization
     processing_source = db.Column(db.String(50), default='upload')  # upload, auto_process, recording
     error_message = db.Column(db.Text, nullable=True)  # Store detailed error messages
@@ -144,22 +149,35 @@ class Recording(db.Model):
             ).first()
             return state.personal_notes if state else None
 
-    def get_audio_duration(self):
+    def get_audio_duration(self, allow_probe=False):
         """
-        Get the audio duration in seconds using ffprobe.
+        Get the audio duration in seconds.
+
+        Reads the cached ``audio_duration_seconds`` column when present
+        (populated at transcription completion in src/tasks/processing.py).
+        Falls back to a live ffprobe probe only when ``allow_probe=True``
+        AND the cached value is missing — list/detail API serializers
+        should leave this False to avoid an ffprobe subprocess per row.
+
+        Args:
+            allow_probe: If True, ffprobe the file when no cached value
+                exists. Defaults to False so callers can't accidentally
+                turn a serialization step into a multi-row subprocess
+                blast.
 
         Returns:
-            Float duration in seconds, or None if unavailable
+            Float duration in seconds, or None if unavailable.
         """
         if self.audio_deleted_at is not None:
             return None
-
+        if self.audio_duration_seconds is not None:
+            return float(self.audio_duration_seconds)
+        if not allow_probe:
+            return None
         if not self.audio_path or not os.path.exists(self.audio_path):
             return None
-
         try:
             from src.utils.ffprobe import get_duration
-            # Allow longer timeout for packet scanning fallback on files without duration metadata
             duration = get_duration(self.audio_path, timeout=30)
             return duration
         except Exception as e:

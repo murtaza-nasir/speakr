@@ -1891,6 +1891,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         audio_duration_seconds=int(audio_duration),
                         model_name=model_name
                     )
+                    # Cache duration on the recording so list/detail
+                    # serializers don't have to ffprobe per request.
+                    recording.audio_duration_seconds = float(audio_duration)
+                    db.session.commit()
                     current_app.logger.info(f"Recorded transcription usage: {int(audio_duration)}s for user {recording.user_id}")
                 else:
                     current_app.logger.warning(f"Could not determine audio duration for usage tracking")

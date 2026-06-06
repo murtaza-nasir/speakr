@@ -156,6 +156,8 @@ def initialize_database(app):
             app.logger.info("Added processing_time_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'transcription_duration_seconds', 'INTEGER'):
             app.logger.info("Added transcription_duration_seconds column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'audio_duration_seconds', 'FLOAT'):
+            app.logger.info("Added audio_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'summarization_duration_seconds', 'INTEGER'):
             app.logger.info("Added summarization_duration_seconds column to recording table")
         if add_column_if_not_exists(engine, 'recording', 'processing_source', "VARCHAR(50) DEFAULT 'upload'"):
