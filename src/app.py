@@ -383,11 +383,23 @@ app.wsgi_app = ProxyFix(
 )
 
 # --- Secure Session Cookie Configuration ---
-# For local network usage, disable secure cookies to allow HTTP connections
-# Only enable secure cookies in production when HTTPS is actually being used
-app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP for local network usage
+# Default is False so http://localhost / LAN deployments continue to
+# work out of the box. Production HTTPS deployments should set
+# SESSION_COOKIE_SECURE=true so the session cookie is only sent over
+# TLS. Default-on would silently log users out on a fresh HTTP install,
+# which is a worse failure mode for the most common self-hosted setup.
+app.config['SESSION_COOKIE_SECURE'] = (
+    os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+)
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Still protect against XSS
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+if app.config['SESSION_COOKIE_SECURE']:
+    app.logger.info("Session cookies marked Secure (HTTPS-only)")
+else:
+    app.logger.info(
+        "Session cookies are NOT marked Secure. Set "
+        "SESSION_COOKIE_SECURE=true for production HTTPS deployments."
+    )
 
 # Import database instance from extracted module
 from src.database import db

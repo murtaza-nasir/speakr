@@ -157,6 +157,10 @@ Jobs are persisted to the database and survive application restarts. If Speakr r
 
 **ENABLE_FOLDERS**: Enable the folders organization feature. When `true`, users can create folders to organize recordings with per-folder custom prompts and ASR settings. Default: `false`.
 
+### Security & Session Cookies
+
+**SESSION_COOKIE_SECURE**: When `true`, the session cookie is sent only over HTTPS. Set this to `true` for any production deployment behind TLS (Nginx Proxy Manager, Caddy, Traefik with a real certificate). Default: `false`, so http://localhost and bare-LAN deployments keep working out of the box. If you turn this on and reach the instance over plain HTTP, the browser will silently drop the cookie and you'll be unable to log in.
+
 ### Public Share Page Rendering
 
 **READABLE_PUBLIC_LINKS**: When `true`, transcripts on public share pages are server-side rendered in HTML, making them accessible to LLMs, scrapers, and accessibility tools. When `false`, transcripts are rendered client-side via JavaScript. Default: `false`.
