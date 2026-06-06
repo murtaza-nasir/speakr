@@ -1,9 +1,12 @@
-<!-- Desktop Recording Header -->
-<div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] p-6 flex-shrink-0">
-    <div class="flex flex-col">
-        <div class="flex items-start justify-between">
+<!-- Desktop Recording Header (design system v1) — compact, single
+     adaptive bar carrying title, status, action icons and meta row.
+     Padding tightened from p-6 to px-5 pt-4 pb-3 so the screen returns
+     vertical space to content. -->
+<div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-5 pt-4 pb-3 flex-shrink-0">
+    <div class="flex flex-col gap-2">
+        <div class="flex items-start justify-between gap-3">
             <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-2">
+                <div class="flex items-center gap-2">
                     <h1 v-if="!editingTitle"
                         @dblclick="selectedRecording.can_edit !== false ? toggleEditTitle() : null"
                         :class="[
@@ -129,8 +132,8 @@
             </div>
         </div>
 
-        <!-- Metadata Row -->
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-[var(--text-muted)] mt-2">
+        <!-- Metadata Row (sits ~8px under the title row, not 16px) -->
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-[var(--text-muted)]">
             <!-- Folder Pill, Shared Status Badges and Tags -->
             <div v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || selectedRecording.has_group_tags || (selectedRecording.tags && selectedRecording.tags.length > 0)" class="flex items-center gap-1.5 flex-wrap">
                 <!-- Folder Pill (shown when folder assigned) -->
