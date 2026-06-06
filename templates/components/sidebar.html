@@ -267,8 +267,12 @@
             </div>
         </div>
 
-        <!-- Recordings List -->
-        <div class="flex-1 overflow-y-auto p-4"
+        <!-- Recordings List — full-bleed: no outer horizontal padding so
+             every row, section header, and active-row band can run
+             edge-to-edge across the sidebar. Vertical padding kept on
+             top/bottom for breathing room above the first group and
+             below the last. -->
+        <div class="flex-1 overflow-y-auto py-3"
              @scroll="(e) => {
                 const element = e.target;
                 const threshold = 100; // Load more when 100px from bottom
@@ -345,14 +349,15 @@
                     </div>
                 </div>
 
-                <!-- Section group. Section header gets a subtle tinted
-                     background so the time-window boundaries
-                     (TODAY / THIS WEEK / etc.) read as structural
-                     dividers, not just small captions. Rows use
-                     tighter horizontal padding (px-2) so titles get
-                     more room to breathe; the section header matches
-                     so labels align with row content. -->
-                <div v-for="group in groupedRecordings" :key="group.title" class="mb-3">
+                <!-- Section group. Section header runs the full sidebar
+                     width with a subtle tinted background so the
+                     time-window boundary (TODAY / THIS WEEK / etc.)
+                     reads as a real structural band. Rows below also
+                     run the full width — horizontal padding is on the
+                     row's INTERNAL content, not on a wrapper, so the
+                     active background, hover background, and hairline
+                     divider all extend edge-to-edge. -->
+                <div v-for="group in groupedRecordings" :key="group.title">
                     <h3 class="recording-group-header">
                         ${group.title}
                     </h3>
@@ -361,7 +366,7 @@
                              :key="recording.id"
                              @click="selectionMode ? toggleSelection(recording.id) : selectRecording(recording)"
                              :class="[
-                                 'recording-row relative px-2 py-2.5 cursor-pointer transition-colors',
+                                 'recording-row relative px-3 py-2.5 cursor-pointer transition-colors',
                                  selectionMode && isSelected(recording.id)
                                      ? 'bg-[var(--bg-accent)] is-active'
                                      : selectedRecording?.id === recording.id && !selectionMode

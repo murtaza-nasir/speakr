@@ -4369,10 +4369,10 @@ select:disabled {
 
 /* ---- Sidebar recording rows ------------------------------------------ */
 
-/* Section header (TODAY / THIS WEEK / LAST MONTH / OLDER) sits above
-   each group with a subtle tinted background + thin top + bottom rule
-   so the time-window boundary reads as a real structural divider
-   instead of a tiny caption that floats over the list. */
+/* Section header (TODAY / THIS WEEK / LAST MONTH / OLDER) — full-bleed
+   structural band. The recordings list container has no horizontal
+   padding now, so the header sits edge-to-edge naturally; no negative
+   margins required. */
 .recording-group-header {
     font-size: var(--fs-label);
     font-weight: 600;
@@ -4382,28 +4382,28 @@ select:disabled {
     background: var(--bg-tertiary);
     border-top: 1px solid var(--border-primary);
     border-bottom: 1px solid var(--border-primary);
-    padding: 6px var(--sp-2);
-    margin: 0 calc(-1 * var(--sp-2)) 0 calc(-1 * var(--sp-2));
+    padding: 6px var(--sp-3);
+    margin: 0;
     line-height: var(--lh-tight);
 }
 
-/* Each section group wraps its rows so we can draw subtle hairlines
-   between siblings without dealing with first/last-child quirks on the
-   loop's v-for. */
+/* Each section group wraps its rows for divider scoping. */
 .recording-group {
     display: flex;
     flex-direction: column;
 }
 
-/* Uniform 1px hairline between every consecutive pair of rows. Active
-   and hovered rows do NOT hide the adjacent hairlines — keeping the
-   rhythm uniform prevents the "some-rows-have-lines-some-don't"
-   appearance that read as an inconsistent design. */
+/* Uniform 1px hairline between every consecutive pair of rows. The
+   hairline is on the next row's top border, so it lives INSIDE the
+   row's box and runs the full sidebar width — straight-line dividers,
+   no rounded corners, no state-dependent gaps. */
 .recording-group > .recording-row + .recording-row {
     border-top: 1px solid var(--border-primary);
 }
 
+/* Rows themselves have sharp corners and full sidebar width — the
+   active background, hover background, and hairline divider all
+   extend edge-to-edge. No card chrome. */
 .recording-row {
-    border-radius: var(--radius-sm);
     position: relative;
 }
