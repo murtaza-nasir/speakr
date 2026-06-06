@@ -1220,7 +1220,7 @@
                                             </div>
 
                                             <div class="flex gap-3">
-                                                <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                <button type="submit" class="btn btn--primary">
                                                     <i class="fas fa-save mr-2"></i>
                                                     <span data-i18n="transcriptTemplates.save">Save</span>
                                                 </button>
@@ -1346,7 +1346,7 @@
                                             </div>
 
                                             <div class="flex gap-3">
-                                                <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                <button type="submit" class="btn btn--primary">
                                                     <i class="fas fa-save mr-2"></i>
                                                     <span data-i18n="exportTemplates.save">Save</span>
                                                 </button>
@@ -1471,7 +1471,7 @@
                                             </div>
 
                                             <div class="flex gap-3">
-                                                <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                                <button type="submit" class="btn btn--primary">
                                                     <i class="fas fa-save mr-2"></i>
                                                     <span data-i18n="namingTemplates.save">Save</span>
                                                 </button>
@@ -1917,7 +1917,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button type="button" id="cancelBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</button>
+                    <button type="submit" class="btn btn--primary" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</button>
                 </div>
             </form>
         </div>
@@ -2204,7 +2204,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <button id="cancelEditSpeakerBtn" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
                     Cancel
                 </button>
-                <button id="saveEditSpeakerBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+                <button id="saveEditSpeakerBtn" class="btn btn--primary">
                     <i class="fas fa-save mr-2"></i>
                     Save
                 </button>
@@ -2416,7 +2416,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
                     <button type="button" id="cancelTagBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]" data-i18n="buttons.cancel">Cancel</button>
-                    <button type="submit" id="saveTagBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                    <button type="submit" id="saveTagBtn" class="btn btn--primary">
                         <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.createTag">Save Tag</span>
                     </button>
                 </div>
@@ -2604,7 +2604,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
                     <button type="button" id="cancelFolderBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
-                    <button type="submit" id="saveFolderBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                    <button type="submit" id="saveFolderBtn" class="btn btn--primary">
                         <i class="fas fa-save mr-2"></i> <span>Save Folder</span>
                     </button>
                 </div>
@@ -2654,7 +2654,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 <div class="flex justify-end space-x-3 pt-2">
                     <button type="button" id="cancelCreateTokenBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
-                    <button type="submit" id="submitCreateTokenBtn" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                    <button type="submit" id="submitCreateTokenBtn" class="btn btn--primary">
                         <i class="fas fa-plus mr-2"></i>Create Token
                     </button>
                 </div>

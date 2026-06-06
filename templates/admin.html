@@ -221,7 +221,7 @@
                 <div v-show="activeTab === 'users'">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.userManagement')}</h3>
-                        <button @click="showAddUserModal = true" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <button @click="showAddUserModal = true" class="btn btn--primary">
                             <i class="fas fa-user-plus mr-2"></i> ${t('adminDashboard.addUser')}
                         </button>
                     </div>
@@ -659,7 +659,7 @@
                 <div v-show="activeTab === 'settings'">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.systemSettings')}</h3>
-                        <button @click="loadSettings" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <button @click="loadSettings" class="btn btn--primary">
                             <i class="fas fa-sync-alt mr-2"></i> ${t('buttons.refresh')}
                         </button>
                     </div>
@@ -718,7 +718,7 @@
                                 <i class="fas fa-plus mr-1"></i> Add custom model id
                             </button>
                             <button @click="saveVisibleTranscriptionModels" :disabled="savingModels"
-                                    class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] disabled:opacity-50">
+                                    class="btn btn--primary">
                                 <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-2"></i>
                                 ${ savingModels ? 'Saving...' : 'Save selection' }
                             </button>
@@ -819,7 +819,7 @@
                             <div>
                                 <button @click="saveDefaultPrompt" 
                                         :disabled="isSavingPrompt"
-                                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
+                                        class="btn btn--primary">
                                     <i v-if="isSavingPrompt" class="fas fa-spinner fa-spin mr-2"></i>
                                     <i v-else class="fas fa-save mr-2"></i>
                                     ${ isSavingPrompt ? t('adminDashboard.saving') : t('buttons.saveChanges') }
@@ -934,7 +934,7 @@ Summarization Instructions:
                 <div v-show="activeTab === 'vectorstore'" v-if="inquireModeEnabled">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.vectorStoreManagement')}</h3>
-                        <button @click="loadInquireStatus" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <button @click="loadInquireStatus" class="btn btn--primary">
                             <i class="fas fa-sync-alt mr-2"></i> ${t('adminDashboard.refreshStatus')}
                         </button>
                     </div>
@@ -1111,7 +1111,7 @@ Summarization Instructions:
                             <div class="flex flex-wrap gap-3">
                                 <button @click="processAllRecordings" 
                                         :disabled="isProcessingRecordings"
-                                        class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                                        class="btn btn--primary">
                                     <i :class="isProcessingRecordings ? 'fas fa-spinner fa-spin' : 'fas fa-play'" class="mr-2"></i>
                                     ${ isProcessingRecordings ? t('adminDashboard.processing') : t('adminDashboard.processAllRecordings') }
                                 </button>
@@ -1163,7 +1163,7 @@ Summarization Instructions:
                 <div v-show="activeTab === 'groups'">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">Group Management</h3>
-                        <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg shadow hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="btn btn--primary">
                             <i class="fas fa-plus mr-2"></i> Create Group
                         </button>
                     </div>
@@ -1275,7 +1275,7 @@ Summarization Instructions:
                     </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" @click="showAddUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">${t('buttons.cancel')}</button>
-                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.addUser')}</button>
+                        <button type="submit" class="btn btn--primary">${t('adminDashboard.addUser')}</button>
                     </div>
                 </form>
             </div>
@@ -1338,7 +1338,7 @@ Summarization Instructions:
                     </div>
                     <div class="flex justify-end space-x-3">
                         <button type="button" @click="showEditUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">${t('adminDashboard.updateUser')}</button>
+                        <button type="submit" class="btn btn--primary">${t('adminDashboard.updateUser')}</button>
                     </div>
                 </form>
             </div>
@@ -1490,7 +1490,7 @@ Summarization Instructions:
                         Cancel
                     </button>
                     <button @click="saveSettingValue"
-                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                            class="btn btn--primary">
                         ${t('buttons.saveChanges')}
                     </button>
                 </div>
@@ -1528,7 +1528,7 @@ Summarization Instructions:
                             Cancel
                         </button>
                         <button type="submit"
-                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                                class="btn btn--primary">
                             ${ editingTeam ? 'Update Group' : 'Create Group' }
                         </button>
                     </div>
@@ -1565,7 +1565,7 @@ Summarization Instructions:
                             </select>
                         </div>
                         <button @click="addTeamMember" :disabled="!newMemberUserId"
-                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="btn btn--primary">
                             <i class="fas fa-plus"></i> Add
                         </button>
                     </div>
@@ -1608,12 +1608,12 @@ Summarization Instructions:
 
                 <div class="flex justify-between mt-6">
                     <button @click="syncTeamShares"
-                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] flex items-center gap-2">
+                            class="btn btn--primary">
                         <i class="fas fa-sync-alt"></i>
                         Sync Group Shares
                     </button>
                     <button @click="closeManageTeamModal"
-                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                            class="btn btn--primary">
                         Done
                     </button>
                 </div>
@@ -1636,7 +1636,7 @@ Summarization Instructions:
                 </p>
                 <div class="flex justify-end space-x-3">
                     <button @click="showSyncSharesModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="confirmSyncShares" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                    <button @click="confirmSyncShares" class="btn btn--primary">
                         <i class="fas fa-sync-alt mr-2"></i>Sync Now
                     </button>
                 </div>
@@ -1663,7 +1663,7 @@ Summarization Instructions:
                     </div>
                 </div>
                 <div class="flex justify-end">
-                    <button @click="showSyncResultsModal = false" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
+                    <button @click="showSyncResultsModal = false" class="btn btn--primary">
                         Done
                     </button>
                 </div>
@@ -1803,7 +1803,7 @@ Summarization Instructions:
                             </p>
                         </div>
                         <div v-if="teamTagError" class="text-[var(--text-danger)] text-xs">${ teamTagError }</div>
-                        <button type="submit" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] text-sm">
+                        <button type="submit" class="btn btn--primary">
                             <i :class="editingTeamTagId ? 'fas fa-save' : 'fas fa-plus'" class="mr-1"></i>
                             ${ editingTeamTagId ? 'Update Tag' : 'Create Tag' }
                         </button>
