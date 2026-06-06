@@ -1534,11 +1534,11 @@
     "willAutoSummarize": "Se resumirá automáticamente después de la transcripción",
     "keepAudioOnly": "Conservar solo el audio",
     "videoAudioOnlyAuto": "El flujo de vídeo no se conservará.",
-    "videoExceedsAudioOnlyMaxSize": "El vídeo «{{name}}» supera el máximo de solo audio de {{size}} MB y se omitió.",
+    "videoExceedsAudioOnlyMaxSize": "El vídeo «{{name}}» supera el límite de subida de vídeo de {{size}} MB y se omitió.",
     "keepAudioOnlySubtitleOff": "Descartar el vídeo",
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
     "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes",
-    "enableKeepAudioOnlyForLargeVideo": "Supera el límite habitual. Activa «Conservar solo el audio» abajo para subir este vídeo."
+    "largeVideoNotice": "Archivo de vídeo grande. La subida continuará; la transcripción puede tardar más y usa el troceado en el servidor."
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

@@ -134,22 +134,26 @@ class TestUploadHandlerVideoRetention(unittest.TestCase):
         self.assertIn('effective_audio_only', self.content)
 
     def test_upload_handler_uses_separate_size_limit_for_audio_only_video(self):
-        """When the upload is in audio-only mode AND the file extension
-        looks like video, the size gate uses max_audio_only_video_size_mb
-        instead of max_file_size_mb. The post-extraction guard then
-        ensures the stored audio still fits the regular limit."""
+        """Per option-B semantics, the size gate uses the larger video
+        cap for ANY video file (by extension) regardless of the
+        keep_audio_only flag; the post-extraction guard still rejects
+        when the *extracted* audio exceeds the regular limit AND
+        chunking is off (chunking-on lets large audio through to the
+        chunking pipeline)."""
         # The audio-only-video limit must be read from the SystemSetting,
         # not hardcoded.
         self.assertIn(
             "SystemSetting.get_setting('max_audio_only_video_size_mb'",
             self.content,
         )
-        # Effective limit must split on the (audio_only AND video) condition.
-        self.assertIn('effective_audio_only and is_likely_video_by_ext', self.content)
-        # And the post-extraction size guard must still cap the stored
-        # audio against the regular limit.
+        # Effective limit splits purely on file type, not on audio-only mode.
+        self.assertIn('if is_likely_video_by_ext:', self.content)
+        # And the post-extraction size guard still caps the stored audio
+        # against the regular limit, but only when chunking won't handle
+        # it (chunking pipeline accepts large audio).
         self.assertIn('regular_limit_mb * 1024 * 1024', self.content)
         self.assertIn('extracted_audio_mb', self.content)
+        self.assertIn('chunking_will_handle_large_audio', self.content)
 
     def test_upload_handler_persists_keep_audio_only_on_recording(self):
         """The recording row stores the effective audio-only flag so the

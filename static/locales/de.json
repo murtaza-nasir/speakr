@@ -1534,11 +1534,11 @@
     "willAutoSummarize": "Wird nach der Transkription automatisch zusammengefasst",
     "keepAudioOnly": "Nur Audio behalten",
     "videoAudioOnlyAuto": "Der Videostream wird nicht beibehalten.",
-    "videoExceedsAudioOnlyMaxSize": "Video „{{name}}“ überschreitet das Audio-only-Limit von {{size}} MB und wurde übersprungen.",
+    "videoExceedsAudioOnlyMaxSize": "Video „{{name}}\" überschreitet das Video-Upload-Limit von {{size}} MB und wurde übersprungen.",
     "keepAudioOnlySubtitleOff": "Videostream verwerfen",
     "keepAudioOnlySubtitleOn": "Video verworfen",
     "keepAudioOnlyLargerAllowed": "Größere Uploads erlaubt",
-    "enableKeepAudioOnlyForLargeVideo": "Über dem normalen Limit. Aktiviere unten „Nur Audio behalten\", um dieses Video hochzuladen."
+    "largeVideoNotice": "Großes Videodatei. Upload wird fortgesetzt; Transkription dauert ggf. länger und nutzt das Chunking auf dem Server."
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

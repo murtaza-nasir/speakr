@@ -1543,11 +1543,11 @@
     "willAutoSummarize": "Will auto-summarize after transcription",
     "keepAudioOnly": "Keep audio only",
     "videoAudioOnlyAuto": "Video stream will not be kept.",
-    "videoExceedsAudioOnlyMaxSize": "Video \"{{name}}\" exceeds the audio-only maximum of {{size}} MB and was skipped.",
+    "videoExceedsAudioOnlyMaxSize": "Video \"{{name}}\" exceeds the video upload maximum of {{size}} MB and was skipped.",
     "keepAudioOnlySubtitleOff": "Drop video stream",
     "keepAudioOnlySubtitleOn": "Video dropped",
     "keepAudioOnlyLargerAllowed": "Larger uploads allowed",
-    "enableKeepAudioOnlyForLargeVideo": "Over the regular size limit. Enable \"Keep audio only\" below to upload this video."
+    "largeVideoNotice": "Large video file. Upload will proceed; transcription may take longer and uses chunking on the server."
   },
   "uploadProgress": {
     "title": "Upload Progress"

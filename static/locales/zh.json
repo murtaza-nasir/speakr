@@ -1534,11 +1534,11 @@
     "willAutoSummarize": "转录后将自动生成摘要",
     "keepAudioOnly": "仅保留音频",
     "videoAudioOnlyAuto": "不会保留视频流。",
-    "videoExceedsAudioOnlyMaxSize": "视频 “{{name}}” 超出仅音频上限 {{size}} MB，已跳过。",
+    "videoExceedsAudioOnlyMaxSize": "视频 “{{name}}” 超出视频上传上限 {{size}} MB，已跳过。",
     "keepAudioOnlySubtitleOff": "丢弃视频流",
     "keepAudioOnlySubtitleOn": "已丢弃视频",
     "keepAudioOnlyLargerAllowed": "允许更大文件",
-    "enableKeepAudioOnlyForLargeVideo": "超过常规大小限制。请在下方启用“仅保留音频”后再上传此视频。"
+    "largeVideoNotice": "视频文件较大。上传将继续；转录可能耗时更长，并依赖服务器端的分块处理。"
   },
   "uploadProgress": {
     "title": "上传进度"

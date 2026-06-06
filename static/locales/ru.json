@@ -1534,11 +1534,11 @@
     "willAutoSummarize": "Автоматически создаст резюме после транскрибирования",
     "keepAudioOnly": "Сохранить только аудио",
     "videoAudioOnlyAuto": "Видеопоток сохранён не будет.",
-    "videoExceedsAudioOnlyMaxSize": "Видео «{{name}}» превышает лимит только для аудио в {{size}} МБ и было пропущено.",
+    "videoExceedsAudioOnlyMaxSize": "Видео «{{name}}» превышает лимит загрузки видео в {{size}} МБ и было пропущено.",
     "keepAudioOnlySubtitleOff": "Отбросить видео",
     "keepAudioOnlySubtitleOn": "Видео отброшено",
     "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки",
-    "enableKeepAudioOnlyForLargeVideo": "Превышает обычный лимит. Включите «Сохранить только аудио» ниже, чтобы загрузить это видео."
+    "largeVideoNotice": "Большой видеофайл. Загрузка продолжится; транскрибация может занять больше времени и использует разбивку на сервере."
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

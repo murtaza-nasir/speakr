@@ -16,9 +16,16 @@ The sweet spot depends on your use case. For typical meetings under an hour, 50,
 
 ## Maximum File Size
 
-The file size limit protects your system from being overwhelmed by massive uploads while ensuring users can work with reasonable recordings. The default 300MB accommodates several hours of compressed audio, which covers most use cases.
+Two separate caps apply depending on file type:
 
-Raising this limit allows longer recordings but requires careful consideration. Larger files take longer to upload, consume more storage, and might timeout during processing. Your server needs enough memory to handle these files, and your storage must accommodate them. Network timeouts, browser limitations, and user patience all factor into what's practical.
+- **`max_file_size_mb`** (default 300 MB) — applies to audio uploads. Protects storage from runaway audio.
+- **`max_audio_only_video_size_mb`** (default 4 × `max_file_size_mb`, ≈ 1200 MB) — applies to **any** video file regardless of whether the video stream will be kept. Video files are typically much larger than the audio they contain, so they get their own (larger) ceiling.
+
+When chunking is enabled (`ENABLE_CHUNKING=true`, the default), the upload route lets files through above these caps and chunks them on the server for the ASR call. When chunking is off, the caps are enforced strictly. Files whose **extracted audio** still exceeds `max_file_size_mb` are rejected with a clear error when chunking is off; with chunking on, the chunking pipeline handles them.
+
+The "Keep audio only" toggle on the upload form determines whether the video stream is retained — it no longer affects the size cap (that's controlled by file type). Use it when you specifically don't want the video kept on disk.
+
+Raising these limits allows longer recordings but requires careful consideration. Larger files take longer to upload, consume more storage, and might timeout during processing. Your server needs enough memory to handle these files, and your storage must accommodate them. Network timeouts, browser limitations, and user patience all factor into what's practical.
 
 If users frequently hit the limit, consider whether they really need single recordings that long. Often, splitting long sessions into logical segments produces better results - easier to review, faster to process, and more focused summaries.
 

@@ -2217,14 +2217,19 @@ def upload_file():
         original_file_size = file.tell()
         file.seek(0)
 
-        # Resolve effective size limit. Audio-only video uploads use a
-        # separate, larger limit because only the extracted audio is
-        # stored. Regular limit applies to everything else.
+        # Resolve effective size limit. Video files (by extension) get
+        # the larger video cap regardless of whether the user opted
+        # into "Keep audio only". Audio files use the regular cap.
+        # This is the option-B model: admins set a single per-file-type
+        # upload cap and don't have to think about how the keep-audio
+        # toggle interacts with size validation. The post-extraction
+        # guard further down still enforces that the *stored* artifact
+        # fits the regular limit when only audio is kept.
         regular_limit_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
         audio_only_limit_mb = int(
             SystemSetting.get_setting('max_audio_only_video_size_mb', regular_limit_mb * 4)
         )
-        if effective_audio_only and is_likely_video_by_ext:
+        if is_likely_video_by_ext:
             effective_limit_mb = audio_only_limit_mb
         else:
             effective_limit_mb = regular_limit_mb
@@ -2377,12 +2382,18 @@ def upload_file():
         # max_file_size_mb under the "audio-only video" exception, the
         # stored file (after audio extraction) must still fit the regular
         # limit. If it does not, the user picked a video whose audio track
-        # alone is enormous; reject the upload, clean up, and let them know.
+        # alone is enormous AND chunking is off; reject the upload,
+        # clean up, and let the user know. When chunking is on the
+        # large extracted audio is fine — the chunking pipeline will
+        # split it for the ASR call.
+        chunking_will_handle_large_audio = (
+            chunking_service is not None and not should_enforce_size_limit
+        )
         if (
             effective_audio_only
             and is_likely_video_by_ext
-            and original_file_size > regular_limit_mb * 1024 * 1024
             and final_file_size > regular_limit_mb * 1024 * 1024
+            and not chunking_will_handle_large_audio
         ):
             try:
                 if os.path.exists(filepath):
@@ -2391,17 +2402,20 @@ def upload_file():
                 pass
             current_app.logger.warning(
                 f"Audio-only extraction left {final_file_size/1024/1024:.1f}MB of audio, "
-                f"which exceeds regular limit {regular_limit_mb}MB. Rejecting upload."
+                f"which exceeds regular limit {regular_limit_mb}MB and chunking is off. "
+                f"Rejecting upload."
             )
             return jsonify({
                 'error': (
                     f'The extracted audio is {final_file_size / 1024 / 1024:.0f} MB, '
                     f'larger than the {regular_limit_mb} MB stored-file limit. '
-                    f'Try a lower-bitrate video or shorten the recording.'
+                    f'Enable chunking in admin settings (ENABLE_CHUNKING=true) or '
+                    f'use a shorter / lower-bitrate source video.'
                 ),
                 'max_size_mb': float(regular_limit_mb),
                 'extracted_audio_mb': round(final_file_size / 1024 / 1024, 1),
                 'audio_only_mode': True,
+                'chunking_enabled': False,
             }), 413
 
         # (file_hash and duplicate_warning already computed above, before conversion)

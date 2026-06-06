@@ -1534,11 +1534,11 @@
     "willAutoSummarize": "Résumé automatique après la transcription",
     "keepAudioOnly": "Conserver uniquement l’audio",
     "videoAudioOnlyAuto": "Le flux vidéo ne sera pas conservé.",
-    "videoExceedsAudioOnlyMaxSize": "La vidéo « {{name}} » dépasse le maximum audio uniquement de {{size}} Mo et a été ignorée.",
+    "videoExceedsAudioOnlyMaxSize": "La vidéo « {{name}} » dépasse la limite d’envoi vidéo de {{size}} Mo et a été ignorée.",
     "keepAudioOnlySubtitleOff": "Supprimer le flux vidéo",
     "keepAudioOnlySubtitleOn": "Vidéo supprimée",
     "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés",
-    "enableKeepAudioOnlyForLargeVideo": "Au-delà de la limite normale. Activez « Conserver uniquement l’audio » ci-dessous pour envoyer cette vidéo."
+    "largeVideoNotice": "Fichier vidéo volumineux. L’envoi va se poursuivre ; la transcription peut être plus longue et utilise le découpage côté serveur."
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"
