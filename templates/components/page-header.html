@@ -1,0 +1,75 @@
+{# Shared page header for non-Vue tab-driven pages (account, admin,
+   inquire-when-needed). Visually identical to the main app's Vue header:
+   56px min-height, compact px-3/4 py-2, btn--icon primitives, single
+   adaptive bar. Vanilla HTML + tiny inline JS for the dropdown.
+
+   Usage:
+       set page_label = 'Account'  (optional small label after logo)
+       include 'components/page-header.html'
+#}
+<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3 sticky top-0" style="min-height: 56px;">
+    <!-- Left: Speakr logo + name + optional page label -->
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <a href="{{ url_for('recordings.index') }}" class="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-80 transition-opacity">
+            <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
+            <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
+        </a>
+        {% if page_label %}
+        <span class="text-[var(--text-muted)] hidden sm:inline" aria-hidden="true">/</span>
+        <span class="t-meta hidden sm:inline">{{ page_label }}</span>
+        {% endif %}
+    </div>
+
+    <!-- Right: theme toggle + user menu -->
+    <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <!-- Dark mode toggle (id preserved so existing JS still works) -->
+        <button id="darkModeToggle" class="btn btn--icon" title="Toggle dark mode">
+            <i id="darkModeIcon" class="fas fa-moon"></i>
+        </button>
+
+        {% if current_user.is_authenticated %}
+        <!-- User menu -->
+        <div class="relative" id="userDropdown">
+            <button id="userDropdownButton" class="btn btn--icon" title="User menu" data-user-menu-toggle>
+                <i class="fas fa-user-circle text-lg"></i>
+            </button>
+            <div id="userDropdownMenu" class="hidden absolute right-0 mt-2 w-56 surface-raised z-50" data-user-menu-dropdown>
+                <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-home mr-2 w-4 text-center"></i><span data-i18n="nav.home">Home</span>
+                </a>
+                <a href="{{ url_for('auth.account') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors {% if request.endpoint == 'auth.account' %}text-[var(--text-accent)] bg-[var(--bg-accent)]{% endif %}">
+                    <i class="fas fa-user-circle mr-2 w-4 text-center"></i><span data-i18n="nav.account">Account</span>
+                </a>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.admin') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors {% if request.endpoint == 'admin.admin' %}text-[var(--text-accent)] bg-[var(--bg-accent)]{% endif %}">
+                    <i class="fas fa-user-shield mr-2 w-4 text-center"></i><span data-i18n="nav.admin">Admin</span>
+                </a>
+                {% elif is_team_admin %}
+                <a href="{{ url_for('admin.admin') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-users-cog mr-2 w-4 text-center"></i><span data-i18n="nav.groupManagement">Team Management</span>
+                </a>
+                {% endif %}
+                <div class="border-t border-[var(--border-primary)] my-1"></div>
+                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span data-i18n="nav.signOut">Sign out</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</header>
+
+<script>
+// Tiny vanilla JS: close the user dropdown on outside click. The dark
+// mode toggle and dropdown open/close are owned by the page's existing
+// JS (account.js / admin.js / inquire.html inline) — we just preserve
+// the IDs they expect.
+document.addEventListener('click', function(e) {
+    var dd = document.getElementById('userDropdownMenu');
+    var btn = document.getElementById('userDropdownButton');
+    if (!dd || !btn) return;
+    if (!dd.contains(e.target) && !btn.contains(e.target)) {
+        dd.classList.add('hidden');
+    }
+});
+</script>
