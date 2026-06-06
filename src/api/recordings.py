@@ -2765,18 +2765,22 @@ def upload_incognito():
         file_size = file.tell()
         file.seek(0)
 
-        # Enforce the regular (smaller) upload limit, not the WSGI
-        # ceiling. The ceiling was raised to make room for audio-only
-        # video uploads on the normal /upload path, but incognito mode
-        # doesn't currently expose the keep_audio_only / large-video
-        # affordance. Using max_file_size_mb here keeps incognito's
-        # observable limit equal to what users see configured.
+        # Mirror the regular /upload route's option-B size policy:
+        # video files (by extension) use the larger video cap because
+        # incognito always extracts audio (it never retains the video
+        # stream), so it's effectively always in audio-only mode.
+        # Audio uploads use the regular cap.
+        _VIDEO_EXTS = {'.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv', '.flv', '.ts', '.mts'}
+        _is_video = os.path.splitext(original_filename)[1].lower() in _VIDEO_EXTS
         regular_limit_mb = int(SystemSetting.get_setting('max_file_size_mb', 250))
-        regular_limit_bytes = regular_limit_mb * 1024 * 1024
-        if file_size > regular_limit_bytes:
+        audio_only_limit_mb = int(
+            SystemSetting.get_setting('max_audio_only_video_size_mb', regular_limit_mb * 4)
+        )
+        effective_limit_mb = audio_only_limit_mb if _is_video else regular_limit_mb
+        if file_size > effective_limit_mb * 1024 * 1024:
             return jsonify({
-                'error': f'File too large. Maximum size is {regular_limit_mb} MB.',
-                'max_size_mb': float(regular_limit_mb),
+                'error': f'File too large. Maximum size is {effective_limit_mb} MB.',
+                'max_size_mb': float(effective_limit_mb),
             }), 413
 
         # Save to temp file - use secure temp directory
