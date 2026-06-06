@@ -1533,9 +1533,11 @@
     "videoRetained": "Видео сохранено для воспроизведения",
     "willAutoSummarize": "Автоматически создаст резюме после транскрибирования",
     "keepAudioOnly": "Сохранить только аудио",
-    "keepAudioOnlyHelp": "Отбросить видеопоток в этой загрузке. Позволяет загружать видео больше обычного лимита, если извлечённый звук вписывается.",
     "videoAudioOnlyAuto": "Видеопоток сохранён не будет.",
-    "videoExceedsAudioOnlyMaxSize": "Видео «{{name}}» превышает лимит только для аудио в {{size}} МБ и было пропущено."
+    "videoExceedsAudioOnlyMaxSize": "Видео «{{name}}» превышает лимит только для аудио в {{size}} МБ и было пропущено.",
+    "keepAudioOnlySubtitleOff": "Отбросить видео",
+    "keepAudioOnlySubtitleOn": "Видео отброшено",
+    "keepAudioOnlyLargerAllowed": "Допустимы более крупные загрузки"
   },
   "uploadProgress": {
     "title": "Прогресс загрузки"

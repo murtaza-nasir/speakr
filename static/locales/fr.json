@@ -1533,9 +1533,11 @@
     "videoRetained": "Vidéo conservée pour la lecture",
     "willAutoSummarize": "Résumé automatique après la transcription",
     "keepAudioOnly": "Conserver uniquement l’audio",
-    "keepAudioOnlyHelp": "Supprime le flux vidéo de cet envoi. Permet d’envoyer des vidéos plus grandes que la limite habituelle, tant que l’audio extrait y tient.",
     "videoAudioOnlyAuto": "Le flux vidéo ne sera pas conservé.",
-    "videoExceedsAudioOnlyMaxSize": "La vidéo « {{name}} » dépasse le maximum audio uniquement de {{size}} Mo et a été ignorée."
+    "videoExceedsAudioOnlyMaxSize": "La vidéo « {{name}} » dépasse le maximum audio uniquement de {{size}} Mo et a été ignorée.",
+    "keepAudioOnlySubtitleOff": "Supprimer le flux vidéo",
+    "keepAudioOnlySubtitleOn": "Vidéo supprimée",
+    "keepAudioOnlyLargerAllowed": "Envois plus volumineux autorisés"
   },
   "uploadProgress": {
     "title": "Progression du Téléchargement"

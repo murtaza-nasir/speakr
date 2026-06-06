@@ -100,7 +100,9 @@
                      is enabled at the server AND the queue contains at
                      least one video file. When off, videos in the queue
                      get the larger audio-only size limit automatically
-                     (the hint on each video row makes that visible). -->
+                     (the hint on each video row makes that visible).
+                     Markup mirrors the Incognito Mode toggle above so the
+                     two share the exact visual rhythm. -->
                 <div v-if="videoRetentionEnabled && uploadQueue.some(item => item.file && /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(item.file.name))"
                      class="mt-3">
                     <button @click="keepAudioOnly = !keepAudioOnly"
@@ -123,13 +125,16 @@
                                 <span :class="['text-sm font-medium', keepAudioOnly ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--text-secondary)]']">
                                     ${ t('upload.keepAudioOnly') }
                                 </span>
-                                <p class="text-[10px] text-[var(--text-muted)] leading-tight mt-0.5">
-                                    ${ t('upload.keepAudioOnlyHelp') }
+                                <p v-if="!keepAudioOnly" class="text-[10px] text-[var(--text-muted)]">
+                                    ${ t('upload.keepAudioOnlySubtitleOff') }
+                                </p>
+                                <p v-else class="text-[10px] text-emerald-600 dark:text-emerald-400">
+                                    ${ t('upload.keepAudioOnlySubtitleOn') } &bull; ${ t('upload.keepAudioOnlyLargerAllowed') }
                                 </p>
                             </div>
                         </div>
                         <div :class="[
-                            'w-10 h-5 rounded-full relative transition-all duration-200 flex-shrink-0',
+                            'w-10 h-5 rounded-full relative transition-all duration-200',
                             keepAudioOnly ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-[var(--bg-secondary)]'
                         ]">
                             <div :class="[
