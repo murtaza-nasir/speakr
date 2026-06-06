@@ -120,8 +120,24 @@ document.addEventListener('click', function(e) {
         } else {
             window.addEventListener('resize', update);
         }
-        // Initial measure.
+
+        // Initial measure — run multiple times to catch fonts/images
+        // finishing layout. The first rAF can fire before the tab
+        // strip's true scrollWidth is settled (especially on cold
+        // load), which would leave the right chevron incorrectly
+        // hidden. A second pass on window.load and a third on a tiny
+        // timeout guarantees a correct measurement.
         requestAnimationFrame(update);
+        setTimeout(update, 50);
+        setTimeout(update, 300);
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', update);
+        }
+        // Also respond when fonts finish loading (FontAwesome icons
+        // contribute width to each tab).
+        if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+            document.fonts.ready.then(update);
+        }
     }
 
     function initAll() {
