@@ -73,6 +73,59 @@
     /* Transition */
     --t-fast: 120ms;
     --t-base: 180ms;
+
+    /* Status tints — semantic, *not* theme-customizable. Status colours
+     * (purple = processing, amber = warning, etc.) carry universal
+     * meaning and should look the same across all themes. The opacity
+     * is just enough to read on either surface tint. Use the pill-*
+     * primitive classes below rather than hardcoding bg-blue-500/15
+     * style Tailwind utilities. */
+    --tint-info:        rgba(59, 130, 246, 0.12);    /* blue */
+    --tint-info-border: rgba(59, 130, 246, 0.30);
+    --tint-info-fg:     rgb(37, 99, 235);
+
+    --tint-success:        rgba(16, 185, 129, 0.12);  /* green */
+    --tint-success-border: rgba(16, 185, 129, 0.30);
+    --tint-success-fg:     rgb(5, 150, 105);
+
+    --tint-warn:        rgba(245, 158, 11, 0.12);     /* amber */
+    --tint-warn-border: rgba(245, 158, 11, 0.30);
+    --tint-warn-fg:     rgb(180, 83, 9);
+
+    --tint-danger:        rgba(239, 68, 68, 0.12);    /* red */
+    --tint-danger-border: rgba(239, 68, 68, 0.30);
+    --tint-danger-fg:     rgb(185, 28, 28);
+
+    --tint-processing:        rgba(168, 85, 247, 0.12); /* purple */
+    --tint-processing-border: rgba(168, 85, 247, 0.30);
+    --tint-processing-fg:     rgb(126, 34, 206);
+
+    --tint-pending:        rgba(234, 179, 8, 0.12);   /* yellow */
+    --tint-pending-border: rgba(234, 179, 8, 0.30);
+    --tint-pending-fg:     rgb(161, 98, 7);
+
+    --tint-incognito:        rgba(139, 92, 246, 0.10); /* violet */
+    --tint-incognito-border: rgba(139, 92, 246, 0.30);
+    --tint-incognito-fg:     rgb(109, 40, 217);
+}
+
+html.dark {
+    /* Slightly more opaque tints + lighter foreground on dark mode so
+     * tinted pills stay legible against the darker surface. */
+    --tint-info:        rgba(96, 165, 250, 0.18);
+    --tint-info-fg:     rgb(147, 197, 253);
+    --tint-success:        rgba(52, 211, 153, 0.18);
+    --tint-success-fg:     rgb(110, 231, 183);
+    --tint-warn:        rgba(251, 191, 36, 0.18);
+    --tint-warn-fg:     rgb(252, 211, 77);
+    --tint-danger:        rgba(248, 113, 113, 0.18);
+    --tint-danger-fg:     rgb(252, 165, 165);
+    --tint-processing:        rgba(192, 132, 252, 0.18);
+    --tint-processing-fg:     rgb(216, 180, 254);
+    --tint-pending:        rgba(250, 204, 21, 0.18);
+    --tint-pending-fg:     rgb(253, 224, 71);
+    --tint-incognito:        rgba(167, 139, 250, 0.15);
+    --tint-incognito-fg:     rgb(196, 181, 253);
 }
 
 html.dark {
@@ -517,6 +570,37 @@ html.dark {
     max-width: 36ch;
     line-height: var(--lh-snug);
 }
+
+
+/* ---- Status pill (semantic colour, tint background) -------------------
+ *
+ * <span class="pill-status pill-status--info">Allowed</span>
+ *
+ * Use for at-a-glance status badges where the colour carries semantic
+ * meaning. Backgrounds use --tint-* tokens so they look consistent
+ * across themes but still adapt to light/dark.
+ * --------------------------------------------------------------------- */
+
+.pill-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 1px var(--sp-2);
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: var(--border-hairline) solid transparent;
+    white-space: nowrap;
+    line-height: 1.6;
+}
+.pill-status--info       { background: var(--tint-info);       color: var(--tint-info-fg);       border-color: var(--tint-info-border); }
+.pill-status--success    { background: var(--tint-success);    color: var(--tint-success-fg);    border-color: var(--tint-success-border); }
+.pill-status--warn       { background: var(--tint-warn);       color: var(--tint-warn-fg);       border-color: var(--tint-warn-border); }
+.pill-status--danger     { background: var(--tint-danger);     color: var(--tint-danger-fg);     border-color: var(--tint-danger-border); }
+.pill-status--processing { background: var(--tint-processing); color: var(--tint-processing-fg); border-color: var(--tint-processing-border); }
+.pill-status--pending    { background: var(--tint-pending);    color: var(--tint-pending-fg);    border-color: var(--tint-pending-border); }
+.pill-status--incognito  { background: var(--tint-incognito);  color: var(--tint-incognito-fg);  border-color: var(--tint-incognito-border); }
 
 
 /* ---- Toast / Banner ---------------------------------------------------- */

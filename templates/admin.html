@@ -867,11 +867,11 @@
                                 <div class="flex flex-wrap items-center gap-3 text-xs text-[var(--text-secondary)] -mt-2">
                                     <span class="font-medium">${ t('preview.placeholderLegend') }</span>
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30 font-mono">{example}</span>
+                                        <span class="pill-status pill-status--info font-mono">{example}</span>
                                         <span>${ t('preview.systemReplaced') }</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono">{{example}}</span>
+                                        <span class="pill-status pill-status--warn font-mono">{{example}}</span>
                                         <span>${ t('preview.userSupplied') }</span>
                                     </span>
                                 </div>
@@ -2150,12 +2150,12 @@ Summarization Instructions:
                         // first because it is the longer pattern; prevents single-brace pass
                         // from biting into the inner {var}.
                         .replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g,
-                            '<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30" title="User-supplied variable. Filled at upload or reprocess.">{{$1}}</span>')
+                            '<span class="pill-status pill-status--warn font-mono" title="User-supplied variable. Filled at upload or reprocess.">{{$1}}</span>')
                         // Blue for {system_var} — replaced by the framework (current_date,
                         // tag_names, transcript_text, ...). Only match identifier-shaped
                         // names so we don't mangle JSON-looking literals.
                         .replace(/\{(\s*[A-Za-z_][A-Za-z0-9_]*\s*)\}/g,
-                            '<span class="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-blue-500/15 text-[var(--text-accent)] border border-blue-500/30" title="System placeholder. Replaced by the framework before the LLM call.">{$1}</span>');
+                            '<span class="pill-status pill-status--info font-mono" title="System placeholder. Replaced by the framework before the LLM call.">{$1}</span>');
                 };
                 {% endraw %}
                 
