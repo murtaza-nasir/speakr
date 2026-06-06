@@ -1,28 +1,144 @@
-<!-- Header Component -->
-<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
-    <!-- Left side: Menu toggle and logo -->
-    <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
+<!-- Single adaptive top header.
+     In list view: shows Speakr logo + name.
+     In recording-detail view: title + inline meta + recording action
+     icons take that slot, so the separate detail header is no longer
+     needed (it used to add ~72px of vertical chrome). -->
+<header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-2 flex items-center justify-between flex-shrink-0 z-50 gap-3" style="min-height: 56px;">
+    <!-- Left side: Menu toggle + (logo OR recording title+meta+actions) -->
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <!-- Menu Toggle Button -->
         <button @click="toggleSidebar"
-                class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200 flex-shrink-0 flex items-center justify-center">
+                class="btn btn--icon flex-shrink-0"
+                :title="isSidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'">
             <i class="fas fa-bars text-lg"></i>
         </button>
 
-        <!-- Logo and Title -->
-        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+        <!-- LIST VIEW (or any non-detail screen): Speakr logo + name -->
+        <div v-if="currentView !== 'detail' || !selectedRecording"
+             class="flex items-center gap-2 sm:gap-3 min-w-0">
             <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
             <h1 class="text-lg sm:text-xl font-bold text-[var(--text-primary)] truncate">Speakr</h1>
         </div>
+
+        <!-- DETAIL VIEW: recording title + inline meta + action icons.
+             Replaces the separate desktop-header.html for desktop.
+             On narrower screens (mobile) we still rely on mobile-header.html
+             below the global header for full metadata. -->
+        <template v-else>
+            <!-- Recording title -->
+            <div class="flex items-center gap-2 min-w-0 flex-shrink">
+                <a href="/" class="flex-shrink-0 hidden sm:block" :title="'Back to Speakr'">
+                    <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-7 h-7">
+                </a>
+                <h1 v-if="!editingTitle"
+                    @dblclick="selectedRecording.can_edit !== false ? toggleEditTitle() : null"
+                    :class="[
+                        'text-base sm:text-lg font-semibold truncate transition-opacity min-w-0',
+                        selectedRecording.is_shared ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]',
+                        selectedRecording.can_edit !== false ? 'cursor-text hover:opacity-80' : ''
+                    ]"
+                    :title="selectedRecording.title || 'Untitled Recording'">
+                    ${selectedRecording.title || 'Untitled Recording'}
+                </h1>
+                <input v-else
+                       v-model="selectedRecording.title"
+                       @blur="saveTitle"
+                       @keyup.enter="saveTitle"
+                       @keyup.esc="cancelEditTitle"
+                       ref="titleInput"
+                       class="text-base sm:text-lg font-semibold bg-transparent border-b border-[var(--border-focus)] focus:outline-none text-[var(--text-primary)] flex-1 px-1 min-w-0"
+                       placeholder="Untitled Recording">
+                <button v-if="!editingTitle && selectedRecording.can_edit !== false"
+                        @click="toggleEditTitle"
+                        class="btn btn--icon btn--sm"
+                        :title="t('tooltips.editTitle')">
+                    <i class="fas fa-pen text-xs"></i>
+                </button>
+                <!-- Status badge for non-completed recordings -->
+                <span v-if="!editingTitle && selectedRecording.status !== 'COMPLETED'"
+                      :class="getStatusClass(selectedRecording.status)"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap flex-shrink-0">
+                    ${formatStatus(selectedRecording.status)}
+                </span>
+            </div>
+        </template>
     </div>
 
-    <!-- Right side: User menu and controls -->
-    <div class="flex items-center gap-2 sm:gap-3">
+    <!-- Right side: detail-view action icons (when applicable) +
+         token budget + new recording + user menu -->
+    <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <!-- DETAIL VIEW: action icons inline in the header bar. Hidden
+             on narrow screens; mobile-header.html surfaces them in the
+             expanded meta panel. -->
+        <template v-if="currentView === 'detail' && selectedRecording && !selectedRecording.incognito">
+            <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
+                 class="btn btn--icon relative hidden md:inline-flex"
+                 :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
+                <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
+                        :value="selectedRecording.folder_id || ''"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <option value="">No Folder</option>
+                    <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">${ folder.name }</option>
+                </select>
+                <i class="fas fa-folder"
+                   :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+            </div>
+            <button @click="toggleInbox(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
+                    :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
+                    :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
+                <i class="fas fa-inbox"></i>
+            </button>
+            <button @click="toggleHighlight(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
+                    :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
+                    :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
+                <i class="fas fa-star"></i>
+            </button>
+            <button @click="editRecordingTags(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
+                    :title="t('buttons.editTags')">
+                <i class="fas fa-tags"></i>
+            </button>
+            <button @click="confirmReprocess('transcription', selectedRecording)"
+                    v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                    class="btn btn--icon hidden lg:inline-flex"
+                    :title="useAsrEndpoint ? 'Reprocess with ASR' : 'Reprocess transcription'">
+                <i class="fas fa-redo-alt"></i>
+            </button>
+            <button @click="confirmReprocess('summary', selectedRecording)"
+                    v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                    class="btn btn--icon hidden lg:inline-flex"
+                    :title="t('buttons.reprocessSummary')">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button @click="confirmReset(selectedRecording)" v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+                    class="btn btn--icon hidden md:inline-flex" style="color: rgb(249, 115, 22);"
+                    :title="t('buttons.resetStuckProcessing')">
+                <i class="fas fa-undo"></i>
+            </button>
+            <button @click="openSpeakerModal" v-if="processedTranscription.hasDialogue"
+                    class="btn btn--icon hidden lg:inline-flex"
+                    :title="t('buttons.identifySpeakers')">
+                <i class="fas fa-user-tag"></i>
+            </button>
+            <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
+                    @click="openUnifiedShareModal(selectedRecording)"
+                    class="btn btn--icon hidden md:inline-flex"
+                    :title="t('buttons.shareRecording')">
+                <i class="fas fa-share-alt"></i>
+            </button>
+            <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false" @click="confirmDelete(selectedRecording)"
+                    class="btn btn--icon hidden md:inline-flex" style="color: var(--text-danger);">
+                <i class="fas fa-trash"></i>
+            </button>
+            <!-- Vertical divider between action icons and global controls -->
+            <div class="hidden md:block w-px h-6 bg-[var(--border-primary)] mx-1"></div>
+        </template>
+
         {% include 'components/token_budget_indicator.html' %}
 
         <!-- Inquire Mode Button -->
         {% if inquire_mode_enabled %}
         <a href="/inquire"
-           class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm sm:px-4 sm:py-2 sm:min-w-[120px] sm:flex sm:items-center sm:gap-2 sm:justify-center">
+           class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm sm:px-4 sm:py-2 sm:flex sm:items-center sm:gap-2 sm:justify-center">
             <i class="fas fa-search"></i>
             <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
         </a>
@@ -40,7 +156,7 @@
         <!-- New Recording Button -->
         <button @click="switchToUploadView"
                 class="btn btn--sm btn--primary">
-            <i class="fas fa-plus mr-1"></i><span v-text="t('nav.newRecording')"></span>
+            <i class="fas fa-plus mr-1"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
         </button>
 
         <!-- User menu -->
@@ -48,17 +164,15 @@
         <div class="relative">
             <button @click="isUserMenuOpen = !isUserMenuOpen"
                     data-user-menu-toggle
-                    class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
+                    class="btn btn--icon"
                     :title="t('admin.userMenu')">
                 <i class="fas fa-user-circle text-lg"></i>
-                <span class="hidden lg:inline text-sm">{{ (current_user.name or current_user.username) if current_user.is_authenticated else 'User' }}</span>
-                <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
             </button>
 
             <!-- User dropdown -->
             <div v-if="isUserMenuOpen"
                  data-user-menu-dropdown
-                 class="absolute right-0 mt-2 w-56 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-50">
+                 class="absolute right-0 mt-2 w-56 surface-raised z-50">
                 <a href="/account" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
                     <i class="fas fa-cog mr-2 w-4 text-center"></i><span v-text="t('nav.settings')"></span>
                 </a>

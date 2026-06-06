@@ -43,7 +43,55 @@
 
     <!-- Desktop View -->
     <div v-else class="flex-1 flex flex-col overflow-hidden">
-        {% include 'components/detail/desktop-header.html' %}
+        <!-- Recording title + meta + action icons now live in the single
+             adaptive top header (components/header.html). The separate
+             desktop-header.html still exists in the repo but is no
+             longer rendered here so the screen returns ~70px of
+             vertical space. Compact meta strip below acts as the
+             secondary metadata row for date/size/participants etc. -->
+        <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-5 py-2 flex-shrink-0 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[var(--text-muted)]">
+            <div v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || (selectedRecording.tags && selectedRecording.tags.length > 0)"
+                 class="flex items-center gap-1.5 flex-wrap">
+                <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+                      :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
+                      :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
+                    <i class="fas fa-folder mr-1 text-[10px]"></i>
+                    ${ getFolderName(selectedRecording.folder_id) }
+                </span>
+                <span v-for="tag in selectedRecording.tags" :key="tag.id"
+                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+                      :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }">
+                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[10px]"></i>
+                    ${tag.name}
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fas fa-users text-[var(--text-accent)] text-xs"></i>
+                <span @click="openParticipantsModal" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[300px] truncate inline-block"
+                      :title="selectedRecording.participants || t('help.noParticipants')">
+                    ${selectedRecording.participants || t('help.noParticipants')}
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <i class="fas fa-calendar text-[var(--text-accent)] text-xs"></i>
+                <span @click="openMeetingDatePicker" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
+                    ${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}
+                </span>
+            </div>
+            <div v-if="activeRecordingMetadata && activeRecordingMetadata.length > 0" class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <span v-for="(item, index) in activeRecordingMetadata" :key="index" class="flex items-center gap-1.5">
+                    <i :class="[item.icon, 'text-xs']"></i>
+                    <span :title="item.fullText || item.text">${item.text}</span>
+                </span>
+            </div>
+            <button v-if="selectedRecording.duplicate_info"
+                    @click="openDuplicatesModal(selectedRecording.duplicate_info)"
+                    class="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
+                <i class="fas fa-copy"></i>
+                <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
+            </button>
+        </div>
 
         <!-- Main Content Split View -->
         <div id="mainContentColumns" class="flex-1 flex overflow-hidden">
