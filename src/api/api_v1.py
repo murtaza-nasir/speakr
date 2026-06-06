@@ -2553,9 +2553,27 @@ def batch_update_recordings():
                 # or a valid folder id the caller has access to).
                 recording.folder_id = target_folder_id
 
-            # Handle tag additions
+            # Handle tag additions.
+            # Authorize each tag_id: personal tags must be owned, group
+            # tags require caller membership in the tag's group. Without
+            # this check, the batch endpoint was an IDOR that let any
+            # user attach arbitrary tag_ids (including admin-curated or
+            # other users' private tags) to their own recordings.
             if 'add_tag_ids' in updates:
+                from src.models.organization import Tag, GroupMembership
                 for tag_id in updates['add_tag_ids']:
+                    tag = db.session.get(Tag, tag_id)
+                    if tag is None:
+                        continue  # silently skip unknown ids
+                    if tag.group_id is None:
+                        if tag.user_id != current_user.id:
+                            continue  # not yours
+                    else:
+                        is_member = GroupMembership.query.filter_by(
+                            user_id=current_user.id, group_id=tag.group_id
+                        ).first() is not None
+                        if not is_member:
+                            continue  # not a member of the tag's group
                     existing = RecordingTag.query.filter_by(
                         recording_id=recording_id,
                         tag_id=tag_id
@@ -2571,9 +2589,25 @@ def batch_update_recordings():
                         )
                         db.session.add(recording_tag)
 
-            # Handle tag removals
+            # Handle tag removals. Removing an unauthorised tag from
+            # one's own recording isn't an IDOR per se (you're only
+            # editing your own RecordingTag rows) but symmetry keeps
+            # the contract simple.
             if 'remove_tag_ids' in updates:
+                from src.models.organization import Tag, GroupMembership
                 for tag_id in updates['remove_tag_ids']:
+                    tag = db.session.get(Tag, tag_id)
+                    if tag is None:
+                        continue
+                    if tag.group_id is None:
+                        if tag.user_id != current_user.id:
+                            continue
+                    else:
+                        is_member = GroupMembership.query.filter_by(
+                            user_id=current_user.id, group_id=tag.group_id
+                        ).first() is not None
+                        if not is_member:
+                            continue
                     RecordingTag.query.filter_by(
                         recording_id=recording_id,
                         tag_id=tag_id
