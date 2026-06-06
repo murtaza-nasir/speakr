@@ -1,26 +1,15 @@
-<!-- Reprocess Modal -->
-<div v-if="showReprocessModal" @click.self="cancelReprocess" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-all duration-300 ease-in-out">
-    <div class="modal-panel modal-panel--sm max-h-[90vh flex flex transform transition-all duration-300 ease-in-out">
-        <!-- Header with gradient background -->
-        <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex-shrink-0">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-                        <i class="fas fa-sync-alt text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1" v-text="t('help.confirmReprocessingTitle')"></h3>
-                        <p class="text-sm text-[var(--text-muted)] capitalize">${ reprocessType } reprocessing</p>
-                    </div>
-                </div>
-                <button @click="cancelReprocess" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
+<!-- Reprocess Modal (design system v1) -->
+<div v-if="showReprocessModal" @click.self="cancelReprocess" class="modal-overlay">
+    <div class="modal-panel modal-panel--sm">
+        <div class="modal-header">
+            <i class="fas fa-sync-alt text-2xl text-[var(--text-accent)]"></i>
+            <div class="flex-1">
+                <h3 class="modal-title" v-text="t('help.confirmReprocessingTitle')"></h3>
+                <div class="modal-subtitle capitalize">${ reprocessType } reprocessing</div>
             </div>
+            <button @click="cancelReprocess" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-
-        <!-- Content -->
-        <div class="p-6 modal-content overflow-y-auto flex-1">
+        <div class="modal-body">
             <div v-if="reprocessRecording" class="mb-6">
                 <div class="bg-[var(--bg-tertiary)] rounded-lg p-4 border border-[var(--border-primary)]">
                     <div class="flex items-start space-x-3">
@@ -257,19 +246,11 @@
             </div>
         </div>
 
-        <!-- Footer with action buttons -->
-        <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0">
-            <button
-                @click="cancelReprocess"
-                class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
-                <i class="fas fa-times mr-2"></i>
-                Cancel
-            </button>
-            <button
-                @click="executeReprocess"
-                class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center shadow-lg font-medium transform hover:scale-105">
-                <i class="fas fa-sync-alt mr-2"></i>
-                Start Reprocessing
+        <div class="modal-footer">
+            <button @click="cancelReprocess" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+            <button @click="executeReprocess" class="btn btn--primary">
+                <i class="fas fa-sync-alt"></i>
+                <span>Start Reprocessing</span>
             </button>
         </div>
     </div>

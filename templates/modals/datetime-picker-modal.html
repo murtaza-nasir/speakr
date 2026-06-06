@@ -1,17 +1,10 @@
 <!-- DateTime Picker Modal -->
 <div v-if="showDateTimePicker" @click.self="closeDateTimePicker" class="modal-overlay">
     <div class="modal-panel modal-panel--xs overflow-hidden">
-        <!-- Header -->
-        <div class="p-4 border-b border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-                    <i class="fas fa-calendar-alt mr-2 text-[var(--text-accent)]"></i>
-                    Select Date & Time
-                </h3>
-                <button @click="closeDateTimePicker" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1">
-                    <i class="fas fa-times text-lg"></i>
-                </button>
-            </div>
+        <div class="modal-header">
+            <i class="fas fa-calendar-alt text-2xl text-[var(--text-accent)]"></i>
+            <h3 class="modal-title">Select Date &amp; Time</h3>
+            <button @click="closeDateTimePicker" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
 
         <!-- Calendar Section -->
@@ -109,24 +102,16 @@
             </div>
         </div>
 
-        <!-- Footer -->
-        <div class="p-4 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
-            <div class="text-sm text-[var(--text-muted)] mb-3 text-center">
-                <span v-if="pickerSelectedDate" class="font-medium text-[var(--text-primary)]">
-                    ${formatPickerPreview()}
-                </span>
+        <div class="modal-footer">
+            <div class="t-meta flex-1 text-left">
+                <span v-if="pickerSelectedDate" class="t-body-strong">${formatPickerPreview()}</span>
                 <span v-else class="italic">No date selected</span>
             </div>
-            <div class="flex gap-2 justify-end">
-                <button @click="closeDateTimePicker"
-                        class="px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] rounded-lg transition-colors">
-                    Cancel
-                </button>
-                <button @click="applyDateTime"
-                        class="px-4 py-2 bg-[var(--text-accent)] text-white rounded-lg hover:opacity-90 transition-opacity font-medium whitespace-nowrap">
-                    <i class="fas fa-check mr-1"></i>Apply
-                </button>
-            </div>
+            <button @click="closeDateTimePicker" class="btn btn--ghost">${ t('buttons.cancel') }</button>
+            <button @click="applyDateTime" class="btn btn--primary">
+                <i class="fas fa-check"></i>
+                <span>Apply</span>
+            </button>
         </div>
     </div>
 </div>

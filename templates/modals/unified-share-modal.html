@@ -1,16 +1,12 @@
 <!-- Unified Share Modal (Public + Internal Sharing) -->
 <div v-if="showUnifiedShareModal" @click.self="closeUnifiedShareModal" class="modal-overlay">
     <div class="modal-panel modal-panel--lg max-h-[90vh flex flex">
-        <div class="px-6 py-4 border-b border-[var(--border-primary)] flex-shrink-0">
-            <div class="flex items-center justify-between">
-                <div class="flex-1">
-                    <h3 class="text-lg font-semibold" v-text="t('modal.shareRecording')"></h3>
-                    <p class="text-sm text-[var(--text-muted)] mt-0.5">${internalShareRecording?.title}</p>
-                </div>
-                <button @click="closeUnifiedShareModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ml-4">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
+        <div class="modal-header">
+            <div class="flex-1">
+                <h3 class="modal-title" v-text="t('modal.shareRecording')"></h3>
+                <div class="modal-subtitle">${internalShareRecording?.title}</div>
             </div>
+            <button @click="closeUnifiedShareModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="flex-1 overflow-y-auto">
@@ -272,8 +268,8 @@
             </div>
         </div>
 
-        <div class="px-6 py-3 border-t border-[var(--border-primary)] flex justify-end flex-shrink-0">
-            <button @click="closeUnifiedShareModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
+        <div class="modal-footer">
+            <button @click="closeUnifiedShareModal" class="btn btn--primary">
                 <span v-text="t('tagsModal.done')"></span>
             </button>
         </div>

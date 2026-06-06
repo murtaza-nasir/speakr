@@ -1,35 +1,27 @@
-<!-- Edit Tags Modal -->
+<!-- Edit Tags Modal (design system v1) -->
 <div v-if="showEditTagsModal" @click.self="closeEditTagsModal" class="modal-overlay">
-    <div class="modal-panel modal-panel--sm max-h-[80vh flex flex">
-        <div class="p-6 border-b border-[var(--border-primary)] flex-shrink-0">
-            <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold" v-text="t('modal.editTags')"></h3>
-                <button @click="closeEditTagsModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
+    <div class="modal-panel modal-panel--sm">
+        <div class="modal-header">
+            <h3 class="modal-title" v-text="t('modal.editTags')"></h3>
+            <button @click="closeEditTagsModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
-        <div class="p-6 overflow-y-auto flex-1">
-            <!-- Current Tags with Drag Reorder -->
+        <div class="modal-body">
+            <!-- Current Tags -->
             <div class="mb-4">
                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" v-text="t('tags.currentTags')"></label>
                 <div v-if="editingRecording && editingRecording.tags && editingRecording.tags.length > 0"
-                     class="flex flex-wrap gap-2"
-                     @touchmove="handleModalTagTouchMove">
+                     class="flex flex-wrap gap-2" @touchmove="handleModalTagTouchMove">
                     <span v-for="(tag, index) in editingRecording.tags" :key="tag.id"
-                          :data-modal-tag-index="index"
-                          draggable="true"
+                          :data-modal-tag-index="index" draggable="true"
                           @dragstart="handleModalTagDragStart(index, $event)"
                           @dragover="handleModalTagDragOver(index, $event)"
                           @drop="handleModalTagDrop(index, $event)"
                           @dragend="handleModalTagDragEnd"
                           @touchstart="handleModalTagTouchStart(index, $event)"
                           @touchend="handleModalTagTouchEnd"
-                          :class="[
-                              'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-all duration-150',
-                              modalDraggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
-                              modalDragOverTagIndex === index && modalDraggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : ''
-                          ]"
+                          :class="['inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-all duration-150',
+                                   modalDraggedTagIndex === index ? 'opacity-50 cursor-grabbing' : 'cursor-grab',
+                                   modalDragOverTagIndex === index && modalDraggedTagIndex !== index ? 'ring-2 ring-[var(--ring-focus)] ring-offset-1' : '']"
                           :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
                           :title="(tag.group_id ? ('Group: ' + tag.group_name) : tag.name) + ' (drag to reorder)'">
                         <span class="opacity-75 mr-1 text-xs">${index + 1}.</span>
@@ -40,8 +32,8 @@
                         </button>
                     </span>
                 </div>
-                <p v-else class="text-sm text-[var(--text-muted)] italic" v-text="t('tags.noTags')"></p>
-                <p v-if="editingRecording && editingRecording.tags && editingRecording.tags.length > 1" class="text-xs text-[var(--text-muted)] mt-2">
+                <p v-else class="t-meta italic" v-text="t('tags.noTags')"></p>
+                <p v-if="editingRecording && editingRecording.tags && editingRecording.tags.length > 1" class="t-meta mt-2">
                     <i class="fas fa-grip-vertical mr-1" style="font-size: 10px;"></i>
                     Drag to reorder &bull; First tag's defaults are applied
                 </p>
@@ -50,19 +42,14 @@
             <!-- Add Tags -->
             <div>
                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" v-text="t('tags.addTag')"></label>
-
-                <!-- Search -->
                 <div class="relative mb-3">
-                    <input v-model="tagSearchFilter" type="text" :placeholder="t('tagsModal.searchTags')"
-                           class="w-full px-3 py-2 pl-9 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                    <input v-model="tagSearchFilter" type="text" :placeholder="t('tagsModal.searchTags')" class="field pl-9">
                     <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--text-muted)]"></i>
                 </div>
-
-                <!-- Available Tags -->
-                <div class="max-h-48 overflow-y-auto space-y-2">
+                <div class="max-h-48 overflow-y-auto space-y-1.5">
                     <button v-for="tag in filteredAvailableTagsForModal" :key="tag.id"
                             @click="addTagToRecording(tag.id)"
-                            class="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                            class="w-full flex items-center justify-between px-3 py-2 rounded-md border border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
                         <div class="flex items-center gap-2">
                             <i v-if="tag.group_id" class="fas fa-users text-xs flex-shrink-0" :style="{ color: tag.color }"></i>
                             <span v-else class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: tag.color }"></span>
@@ -73,13 +60,11 @@
                         <i class="fas fa-plus text-[var(--text-muted)]"></i>
                     </button>
                 </div>
-                <p v-if="filteredAvailableTagsForModal.length === 0" class="text-sm text-[var(--text-muted)] text-center py-4" v-text="t('tags.noAvailableTags')"></p>
+                <p v-if="filteredAvailableTagsForModal.length === 0" class="t-meta text-center py-4" v-text="t('tags.noAvailableTags')"></p>
             </div>
         </div>
-        <div class="p-6 border-t border-[var(--border-primary)] flex justify-end">
-            <button @click="closeEditTagsModal" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
-                <span v-text="t('tagsModal.done')"></span>
-            </button>
+        <div class="modal-footer">
+            <button @click="closeEditTagsModal" class="btn btn--primary" v-text="t('tagsModal.done')"></button>
         </div>
     </div>
 </div>
