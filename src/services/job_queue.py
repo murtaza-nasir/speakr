@@ -318,13 +318,12 @@ class FairJobQueue:
                 if not recording:
                     raise ValueError(f"Recording {recording_id} not found")
 
-                # Webhook fan-out for "started" events (#275). Fires once
-                # per claim, before the actual work begins. Best-effort,
-                # never blocks the job from proceeding.
-                try:
-                    self._emit_started_webhook(job_type, recording_id)
-                except Exception as e:
-                    logger.warning(f"Webhook emit on job {job_id} start failed: {e}")
+                # Webhook fan-out for "started" events (#275) is now
+                # emitted INSIDE each job handler after the
+                # file-existence and recording-validity checks, so
+                # subscribers don't see misleading started→failed
+                # sequences when the audio file is missing on disk.
+                # (Previously fired here, immediately after claim.)
 
                 # Dispatch based on job type
                 if job_type == 'transcribe':
@@ -417,6 +416,16 @@ class FairJobQueue:
         filepath = recording.audio_path
         filename_for_asr = recording.original_filename or os.path.basename(filepath)
 
+        # Emit recording.transcription.started AFTER we know the file
+        # is on disk so subscribers don't see misleading started→failed
+        # events for jobs that abort immediately. Best-effort; emit
+        # errors don't block the actual work.
+        if filepath and os.path.exists(filepath):
+            try:
+                self._emit_started_webhook('transcribe', recording.id)
+            except Exception as e:
+                logger.warning(f"Webhook emit (transcribe started) failed: {e}")
+
         transcribe_audio_task(
             current_app._get_current_object().app_context(),
             recording.id,
@@ -452,6 +461,13 @@ class FairJobQueue:
 
         filepath = recording.audio_path
         filename_for_asr = recording.original_filename or os.path.basename(filepath)
+
+        # Emit started AFTER file existence check (see _run_transcription).
+        if filepath and os.path.exists(filepath):
+            try:
+                self._emit_started_webhook('reprocess_transcription', recording.id)
+            except Exception as e:
+                logger.warning(f"Webhook emit (reprocess_transcription started) failed: {e}")
 
         transcribe_audio_task(
             current_app._get_current_object().app_context(),
