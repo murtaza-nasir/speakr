@@ -436,7 +436,10 @@
         </header>
 
         <main class="flex-grow flex flex-col">
-            <div class="modal-panel modal-panel--md flex flex flex overflow-hidden">
+            <!-- Page content area — full width, no floating-card chrome,
+                 same surface as the main app. Tab strip below is the
+                 primary navigation; content scrolls inside. -->
+            <div class="flex flex-col flex-grow overflow-hidden">
                 <div class="border-b border-[var(--border-primary)]">
                     <div class="relative">
                         <!-- Scroll gradient indicators -->
@@ -1890,33 +1893,36 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <!-- Change Password Modal -->
     <div id="changePasswordModal" class="modal-overlay hidden">
         <div class="modal-panel modal-panel--sm">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</h3>
-                <button id="closeModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
-            </div>
-            <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                {% if has_password %}
-                <div class="mb-4">
-                    <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current Password</label>
-                    <input type="password" id="current_password" name="current_password" autocomplete="current-password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+            <form id="changePasswordForm" method="POST" action="{{ url_for('auth.change_password') }}" style="display: contents;">
+                <div class="modal-header">
+                    <h3 class="modal-title" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</h3>
+                    <button type="button" id="closeModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                {% else %}
-                <div class="mb-4 p-3 bg-[var(--bg-tertiary)] rounded-md">
-                    <p class="text-sm text-[var(--text-muted)]"><i class="fas fa-info-circle mr-1"></i> You don't have a password set. Create one to enable local login.</p>
+                <div class="modal-body space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    {% if has_password %}
+                    <div>
+                        <label for="current_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.currentPassword">Current Password</label>
+                        <input type="password" id="current_password" name="current_password" autocomplete="current-password" required class="field">
+                    </div>
+                    {% else %}
+                    <div class="banner banner--info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>You don't have a password set. Create one to enable local login.</span>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New Password</label>
+                        <input type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="8" class="field">
+                        <p class="t-meta mt-1" data-i18n="changePasswordModal.passwordRequirement">Password must be at least 8 characters long</p>
+                    </div>
+                    <div>
+                        <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.confirmPassword">Confirm New Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required class="field">
+                    </div>
                 </div>
-                {% endif %}
-                <div class="mb-4">
-                    <label for="new_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.newPassword">New Password</label>
-                    <input type="password" id="new_password" name="new_password" autocomplete="new-password" required minlength="8" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                    <p class="text-xs text-[var(--text-muted)] mt-1" data-i18n="changePasswordModal.passwordRequirement">Password must be at least 8 characters long</p>
-                </div>
-                <div class="mb-6">
-                    <label for="confirm_password" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="changePasswordModal.confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button type="button" id="cancelBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
+                <div class="modal-footer">
+                    <button type="button" id="cancelBtn" class="btn btn--ghost">Cancel</button>
                     <button type="submit" class="btn btn--primary" data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</button>
                 </div>
             </form>
@@ -1925,53 +1931,45 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Manage Speakers Modal -->
     <div id="manageSpeakersModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--lg max-h-[80vh overflow-hidden">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="account.manageSpeakers">Manage Speakers</h3>
-                <button id="closeSpeakersModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+        <div class="modal-panel modal-panel--lg">
+            <div class="modal-header">
+                <h3 class="modal-title" data-i18n="account.manageSpeakers">Manage Speakers</h3>
+                <button id="closeSpeakersModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
-            
-            <div class="mb-4">
-                <p class="text-sm text-[var(--text-muted)] mb-4">
-                    <span data-i18n="manageSpeakersModal.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</span>
-                </p>
-                
+            <div class="modal-body">
+                <p class="t-meta mb-3"><span data-i18n="manageSpeakersModal.description">Manage your saved speakers. These are automatically saved when you use speaker names in your recordings.</span></p>
+
                 <!-- Loading state -->
-                <div id="speakersLoading" class="text-center py-8 hidden">
-                    <i class="fas fa-spinner fa-spin text-2xl text-[var(--text-muted)]"></i>
-                    <p class="text-[var(--text-muted)] mt-2" data-i18n="manageSpeakersModal.loadingSpeakers">Loading speakers...</p>
+                <div id="speakersLoading" class="empty hidden">
+                    <div class="spinner spinner--lg"></div>
+                    <div class="t-meta" data-i18n="manageSpeakersModal.loadingSpeakers">Loading speakers...</div>
                 </div>
-                
+
                 <!-- Error state -->
-                <div id="speakersError" class="hidden bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] p-3 rounded-lg mb-4">
-                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                <div id="speakersError" class="banner banner--danger hidden">
+                    <i class="fas fa-exclamation-triangle"></i>
                     <span id="speakersErrorMessage" data-i18n="manageSpeakersModal.failedToLoad">Failed to load speakers</span>
                 </div>
-                
+
                 <!-- Empty state -->
-                <div id="speakersEmpty" class="text-center py-8 hidden">
-                    <i class="fas fa-users text-4xl text-[var(--text-light)] mb-4"></i>
-                    <p class="text-[var(--text-muted)]" data-i18n="manageSpeakersModal.noSpeakersYet">No speakers saved yet</p>
-                    <p class="text-sm text-[var(--text-light)]" data-i18n="manageSpeakersModal.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</p>
+                <div id="speakersEmpty" class="empty hidden">
+                    <div class="empty__icon"><i class="fas fa-users"></i></div>
+                    <div class="empty__title" data-i18n="manageSpeakersModal.noSpeakersYet">No speakers saved yet</div>
+                    <div class="empty__body" data-i18n="manageSpeakersModal.speakersWillAppear">Speakers will appear here when you use speaker names in your recordings</div>
                 </div>
-                
+
                 <!-- Speakers list -->
-                <div id="speakersList" class="space-y-2 max-h-96 overflow-y-auto">
-                    <!-- Speakers will be populated here -->
-                </div>
+                <div id="speakersList" class="space-y-2 max-h-96 overflow-y-auto"></div>
             </div>
-            
-            <div class="flex justify-between items-center pt-4 border-t border-[var(--border-primary)]">
-                <div class="text-sm text-[var(--text-muted)]">
+            <div class="modal-footer modal-footer--between">
+                <div class="t-meta">
                     <span><span id="speakersCount">0</span> <span data-i18n="manageSpeakersModal.speakersSaved">speakers saved</span></span>
                 </div>
-                <div class="flex space-x-3">
-                    <button id="deleteAllSpeakersBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)] disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        <i class="fas fa-trash mr-2"></i> <span data-i18n="buttons.deleteAll">Delete All</span>
+                <div class="flex gap-2">
+                    <button id="deleteAllSpeakersBtn" class="btn btn--danger" disabled>
+                        <i class="fas fa-trash"></i><span data-i18n="buttons.deleteAll">Delete All</span>
                     </button>
-                    <button id="closeSpeakersBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">
-                        <span data-i18n="buttons.close">Close</span>
-                    </button>
+                    <button id="closeSpeakersBtn" class="btn btn--ghost"><span data-i18n="buttons.close">Close</span></button>
                 </div>
             </div>
         </div>
@@ -1979,20 +1977,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Delete All Speakers Confirmation Modal -->
     <div id="deleteAllSpeakersModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--sm">
-            <div class="flex items-center mb-4">
-                <i class="fas fa-exclamation-triangle text-[var(--text-danger)] text-2xl mr-3"></i>
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="buttons.deleteAll">Delete All Speakers</h3>
+        <div class="modal-panel modal-panel--sm modal-panel--danger">
+            <div class="modal-header">
+                <i class="fas fa-exclamation-triangle text-2xl text-[var(--text-danger)]"></i>
+                <h3 class="modal-title" data-i18n="buttons.deleteAll">Delete All Speakers</h3>
             </div>
-            <p class="text-[var(--text-secondary)] mb-6">
-                <span data-i18n="deleteAllSpeakersModal.confirmMessage">Are you sure you want to delete all saved speakers? This action cannot be undone.</span>
-            </p>
-            <div class="flex justify-end space-x-3">
-                <button id="cancelDeleteAllBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">
-                    <span data-i18n="buttons.cancel">Cancel</span>
-                </button>
-                <button id="confirmDeleteAllBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">
-                    <i class="fas fa-trash mr-2"></i> Delete All
+            <div class="modal-body">
+                <p class="t-body"><span data-i18n="deleteAllSpeakersModal.confirmMessage">Are you sure you want to delete all saved speakers? This action cannot be undone.</span></p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelDeleteAllBtn" class="btn btn--ghost"><span data-i18n="buttons.cancel">Cancel</span></button>
+                <button id="confirmDeleteAllBtn" class="btn btn--danger">
+                    <i class="fas fa-trash"></i><span>Delete All</span>
                 </button>
             </div>
         </div>
@@ -2000,52 +1996,28 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Delete Selected Speakers Confirmation Modal -->
     <div id="deleteSelectedSpeakersModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--sm transform transition-all duration-300 ease-in-out">
-            <!-- Header -->
-            <div class="p-6 border-b border-[var(--border-primary)]">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
-                        <i class="fas fa-trash text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-[var(--text-primary)]">Delete Speakers</h3>
-                        <p class="text-sm text-[var(--text-muted)] mt-0.5">This action cannot be undone</p>
-                    </div>
+        <div class="modal-panel modal-panel--sm modal-panel--danger">
+            <div class="modal-header">
+                <i class="fas fa-trash text-2xl text-[var(--text-danger)]"></i>
+                <div class="flex-1">
+                    <h3 class="modal-title">Delete Speakers</h3>
+                    <div class="modal-subtitle">This action cannot be undone</div>
                 </div>
             </div>
-
-            <!-- Content -->
-            <div class="p-6">
-                <div class="mb-4">
-                    <p class="text-[var(--text-secondary)] mb-3">
-                        You are about to delete <strong id="deleteSelectedCount" class="text-[var(--text-primary)]">0</strong> speaker(s):
-                    </p>
-                    <div id="deleteSelectedSpeakersList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-lg p-3 border border-[var(--border-primary)]">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <div class="flex items-start space-x-3 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
-                    <div class="w-6 h-6 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <i class="fas fa-exclamation-triangle text-[var(--text-danger)] dark:text-red-400 text-xs"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm text-red-800 dark:text-red-200">
-                            All voice profiles, recordings associations, and usage data will be permanently deleted.
-                        </p>
-                    </div>
+            <div class="modal-body">
+                <p class="t-body mb-3">
+                    You are about to delete <strong id="deleteSelectedCount">0</strong> speaker(s):
+                </p>
+                <div id="deleteSelectedSpeakersList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)] mb-3"></div>
+                <div class="banner banner--danger" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
+                    <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>
+                    <span>All voice profiles, recording associations, and usage data will be permanently deleted.</span>
                 </div>
             </div>
-
-            <!-- Footer -->
-            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
-                <button id="cancelDeleteSelectedBtn" class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
-                    <i class="fas fa-times mr-2"></i>
-                    Cancel
-                </button>
-                <button id="confirmDeleteSelectedBtn" class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 flex items-center shadow-lg font-medium">
-                    <i class="fas fa-trash mr-2"></i>
-                    Delete Speakers
+            <div class="modal-footer">
+                <button id="cancelDeleteSelectedBtn" class="btn btn--ghost">Cancel</button>
+                <button id="confirmDeleteSelectedBtn" class="btn btn--danger">
+                    <i class="fas fa-trash"></i><span>Delete Speakers</span>
                 </button>
             </div>
         </div>
@@ -2053,66 +2025,35 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Clear Voice Profiles Confirmation Modal -->
     <div id="clearVoiceProfilesModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--sm transform transition-all duration-300 ease-in-out">
-            <!-- Header -->
-            <div class="bg-gradient-to-r from-orange-500 to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-                        <i class="fas fa-eraser text-white text-lg"></i>
-                    </div>
+        <div class="modal-panel modal-panel--sm">
+            <div class="modal-header">
+                <i class="fas fa-eraser text-2xl" style="color: #f97316;"></i>
+                <div class="flex-1">
+                    <h3 class="modal-title">Clear Voice Profiles</h3>
+                    <div class="modal-subtitle">Remove voice recognition data</div>
+                </div>
+            </div>
+            <div class="modal-body">
+                <p class="t-body mb-3">
+                    Clear voice profiles for <strong id="clearVoiceProfilesCount">0</strong> speaker(s):
+                </p>
+                <div id="clearVoiceProfilesList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)] mb-4"></div>
+                <div class="banner banner--warn mb-2" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
+                    <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
                     <div>
-                        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Clear Voice Profiles</h3>
-                        <p class="text-sm text-[var(--text-muted)]">Remove voice recognition data</p>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">What will happen</div>
+                        <div class="t-meta">All voice embeddings and recognition data will be removed. Speaker names and usage history will be preserved.</div>
                     </div>
+                </div>
+                <div class="banner banner--success" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
+                    <i class="fas fa-check" style="margin-top: 2px;"></i>
+                    <span class="t-meta">New voice profiles will be created when you identify these speakers in future recordings.</span>
                 </div>
             </div>
-
-            <!-- Content -->
-            <div class="p-6 modal-content">
-                <div class="mb-4">
-                    <p class="text-[var(--text-secondary)] mb-3">
-                        Clear voice profiles for <strong id="clearVoiceProfilesCount" class="text-[var(--text-primary)]">0</strong> speaker(s):
-                    </p>
-                    <div id="clearVoiceProfilesList" class="max-h-48 overflow-y-auto space-y-2 bg-[var(--bg-tertiary)] rounded-lg p-3 border border-[var(--border-primary)]">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <div class="flex items-start space-x-3">
-                        <div class="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <i class="fas fa-info-circle text-amber-600 text-xs"></i>
-                        </div>
-                        <div>
-                            <p class="text-[var(--text-secondary)] font-medium mb-1">What will happen:</p>
-                            <p class="text-sm text-[var(--text-muted)]">
-                                All voice embeddings and recognition data will be removed. Speaker names and usage history will be preserved.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-start space-x-3">
-                        <div class="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <i class="fas fa-check text-green-600 text-xs"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-[var(--text-muted)]">
-                                New voice profiles will be created when you identify these speakers in future recordings.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
-                <button id="cancelClearVoiceProfilesBtn" class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
-                    <i class="fas fa-times mr-2"></i>
-                    Cancel
-                </button>
-                <button id="confirmClearVoiceProfilesBtn" class="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:from-orange-600 hover:to-amber-700 transition-all duration-200 flex items-center shadow-lg font-medium">
-                    <i class="fas fa-eraser mr-2"></i>
-                    Clear Profiles
+            <div class="modal-footer">
+                <button id="cancelClearVoiceProfilesBtn" class="btn btn--ghost">Cancel</button>
+                <button id="confirmClearVoiceProfilesBtn" class="btn btn--primary" style="background: #f97316; border-color: #f97316;">
+                    <i class="fas fa-eraser"></i><span>Clear Profiles</span>
                 </button>
             </div>
         </div>
@@ -2120,51 +2061,26 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Merge Speakers Modal -->
     <div id="mergeSpeakersModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--md max-h-[80vh flex flex transform transition-all duration-300 ease-in-out">
-            <!-- Header -->
-            <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-secondary)] p-5 rounded-t-xl flex items-center justify-between flex-shrink-0">
-                <div class="flex items-center">
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-                        <i class="fas fa-object-group text-white text-lg"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">Merge Speakers</h3>
-                        <p class="text-sm text-[var(--text-muted)]">Combine speaker profiles</p>
-                    </div>
+        <div class="modal-panel modal-panel--md">
+            <div class="modal-header">
+                <i class="fas fa-object-group text-2xl text-[var(--text-accent)]"></i>
+                <div class="flex-1">
+                    <h3 class="modal-title">Merge Speakers</h3>
+                    <div class="modal-subtitle">Combine speaker profiles</div>
                 </div>
-                <button id="closeMergeModal" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-tertiary)] transition-colors">&times;</button>
+                <button id="closeMergeModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
-
-            <!-- Info Section -->
-            <div class="p-6 flex-shrink-0 border-b border-[var(--border-primary)]">
-                <div class="flex items-start space-x-3">
-                    <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <i class="fas fa-info-circle text-[var(--text-accent)] text-xs"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm text-[var(--text-secondary)]">
-                            Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.
-                        </p>
-                    </div>
+            <div class="modal-body">
+                <div class="banner banner--info mb-3" style="display: flex; align-items: flex-start; gap: var(--sp-2);">
+                    <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
+                    <span>Click on the speaker you want to keep. All voice data, snippets, and usage statistics from other speakers will be merged into it.</span>
                 </div>
+                <div id="mergeSpeakersList" class="space-y-2"></div>
             </div>
-
-            <!-- Scrollable speaker list -->
-            <div class="flex-1 overflow-y-auto min-h-0 p-6">
-                <div id="mergeSpeakersList" class="space-y-2">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)] flex-shrink-0">
-                <button id="cancelMergeBtn" class="px-5 py-2.5 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-all duration-200 flex items-center shadow-sm font-medium">
-                    <i class="fas fa-times mr-2"></i>
-                    Cancel
-                </button>
-                <button id="executeMergeBtn" class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center shadow-lg font-medium" disabled>
-                    <i class="fas fa-object-group mr-2"></i>
-                    <span>Merge Speakers</span>
+            <div class="modal-footer">
+                <button id="cancelMergeBtn" class="btn btn--ghost">Cancel</button>
+                <button id="executeMergeBtn" class="btn btn--primary" disabled>
+                    <i class="fas fa-object-group"></i><span>Merge Speakers</span>
                 </button>
             </div>
         </div>
@@ -2172,41 +2088,21 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Edit Speaker Modal -->
     <div id="editSpeakerModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--sm transform transition-all duration-300 ease-in-out">
-            <!-- Header -->
-            <div class="p-5 border-b border-[var(--border-primary)]">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 bg-[var(--bg-accent)] rounded-full flex items-center justify-center mr-3">
-                            <i class="fas fa-edit text-[var(--text-button)]"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-[var(--text-primary)]">Edit Speaker Name</h3>
-                    </div>
-                    <button id="closeEditSpeakerModal" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--bg-tertiary)] transition-colors">&times;</button>
-                </div>
+        <div class="modal-panel modal-panel--sm">
+            <div class="modal-header">
+                <i class="fas fa-pen text-2xl text-[var(--text-accent)]"></i>
+                <h3 class="modal-title">Edit Speaker Name</h3>
+                <button id="closeEditSpeakerModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
-
-            <!-- Body -->
-            <div class="p-6">
-                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                    Speaker Name
-                </label>
-                <input
-                    type="text"
-                    id="editSpeakerNameInput"
-                    class="w-full px-4 py-2 border border-[var(--border-secondary)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                    placeholder="Enter speaker name">
-                <div id="editSpeakerError" class="mt-2 text-sm text-[var(--text-danger)] hidden"></div>
+            <div class="modal-body">
+                <label for="editSpeakerNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">Speaker Name</label>
+                <input type="text" id="editSpeakerNameInput" class="field" placeholder="Enter speaker name">
+                <div id="editSpeakerError" class="t-meta mt-2 hidden" style="color: var(--text-danger);"></div>
             </div>
-
-            <!-- Footer -->
-            <div class="bg-[var(--bg-tertiary)] px-6 py-4 rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
-                <button id="cancelEditSpeakerBtn" class="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-lg border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors">
-                    Cancel
-                </button>
+            <div class="modal-footer">
+                <button id="cancelEditSpeakerBtn" class="btn btn--ghost">Cancel</button>
                 <button id="saveEditSpeakerBtn" class="btn btn--primary">
-                    <i class="fas fa-save mr-2"></i>
-                    Save
+                    <i class="fas fa-save"></i><span>Save</span>
                 </button>
             </div>
         </div>
@@ -2214,13 +2110,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Create/Edit Tag Modal -->
     <div id="tagModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--md max-h-[90vh overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="tagModalTitle" class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="editTagModal.createTitle">Create Tag</h3>
-                <button id="closeTagModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+        <div class="modal-panel modal-panel--md">
+            <div class="modal-header">
+                <h3 id="tagModalTitle" class="modal-title" data-i18n="editTagModal.createTitle">Create Tag</h3>
+                <button id="closeTagModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
-
-            <form id="tagForm" class="space-y-4">
+            <form id="tagForm" style="display: contents;">
+                <div class="modal-body space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" id="tagId" name="tag_id">
 
@@ -2414,10 +2310,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </div>
                 </div>
 
-                <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
-                    <button type="button" id="cancelTagBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]" data-i18n="buttons.cancel">Cancel</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelTagBtn" class="btn btn--ghost" data-i18n="buttons.cancel">Cancel</button>
                     <button type="submit" id="saveTagBtn" class="btn btn--primary">
-                        <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.createTag">Save Tag</span>
+                        <i class="fas fa-save"></i><span data-i18n="buttons.createTag">Save Tag</span>
                     </button>
                 </div>
             </form>
@@ -2426,13 +2323,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
     <!-- Create/Edit Folder Modal -->
     <div id="folderModal" class="modal-overlay hidden">
-        <div class="modal-panel modal-panel--md max-h-[90vh overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h3 id="folderModalTitle" class="text-xl font-semibold text-[var(--text-primary)]">Create Folder</h3>
-                <button id="closeFolderModalBtn" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+        <div class="modal-panel modal-panel--md">
+            <div class="modal-header">
+                <h3 id="folderModalTitle" class="modal-title">Create Folder</h3>
+                <button id="closeFolderModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
-
-            <form id="folderForm" class="space-y-4">
+            <form id="folderForm" style="display: contents;">
+                <div class="modal-body space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" id="folderId" name="folder_id">
 
