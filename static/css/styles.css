@@ -4393,19 +4393,7 @@ select:disabled {
     border-top-color: transparent;
 }
 
-/* Active row gets a left accent bar in the gutter so the selection
-   reads from the eye-track of the sidebar even when scrolled. */
 .recording-row {
     border-radius: var(--radius-sm);
     position: relative;
-}
-.recording-row.is-active::before {
-    content: '';
-    position: absolute;
-    top: 6px;
-    bottom: 6px;
-    left: 0;
-    width: 3px;
-    border-radius: 0 2px 2px 0;
-    background: var(--text-accent);
 }
