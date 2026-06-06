@@ -748,8 +748,22 @@ def list_recordings():
     inbox_filter = request.args.get('inbox')
     starred_filter = request.args.get('starred')
 
-    # Base query - user's recordings
-    query = Recording.query.filter(Recording.user_id == current_user.id)
+    # Base query - user's recordings.
+    # Eager-load folder and tag-association+Tag so the list builder
+    # doesn't trigger one lazy SELECT per row for folder access (25
+    # rows -> 25 extra queries) and one per tag association (another
+    # ~50 queries on a typical page). This collapses ~75 queries into
+    # the single paginated SELECT plus two joined-table joins.
+    from sqlalchemy.orm import joinedload
+    from src.models.organization import RecordingTag
+    query = (
+        Recording.query
+        .options(
+            joinedload(Recording.folder),
+            joinedload(Recording.tag_associations).joinedload(RecordingTag.tag),
+        )
+        .filter(Recording.user_id == current_user.id)
+    )
 
     # Status filter
     if status_filter == 'pending':
