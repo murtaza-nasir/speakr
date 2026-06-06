@@ -553,7 +553,7 @@
     "customPrompt": "Custom Summary Prompt",
     "customPromptPlaceholder": "Optional: Custom prompt for generating summaries for recordings with this tag",
     "defaultLanguage": "Default Language",
-    "defaultPromptPlaceholder": "Leer lassen, um Ihren Standard-Zusammenfassungs-Prompt zu verwenden",
+    "defaultPromptPlaceholder": "Leave empty to use your default summary prompt",
     "exportTemplate": "Export Template",
     "exportTemplateHint": "Select an export template to use when exporting recordings with this tag",
     "leaveBlankPrompt": "Leave blank to use your default summary prompt",
