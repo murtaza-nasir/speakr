@@ -268,11 +268,12 @@
         </div>
 
         <!-- Recordings List — full-bleed: no outer horizontal padding so
-             every row, section header, and active-row band can run
-             edge-to-edge across the sidebar. Vertical padding kept on
-             top/bottom for breathing room above the first group and
-             below the last. -->
-        <div class="flex-1 overflow-y-auto py-3"
+             every row, section header, and active-row band runs
+             edge-to-edge across the sidebar. Top padding is zero so the
+             first section header (TODAY) sits flush against the search
+             toolbar's bottom border above; bottom padding keeps a
+             little breathing room below the final row. -->
+        <div class="flex-1 overflow-y-auto pb-3"
              @scroll="(e) => {
                 const element = e.target;
                 const threshold = 100; // Load more when 100px from bottom
