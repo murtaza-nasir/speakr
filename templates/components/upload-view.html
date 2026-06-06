@@ -55,14 +55,19 @@
                             <i class="fas fa-volume-up text-xs mt-0.5 flex-shrink-0"></i>
                             <span>${ t('upload.videoAudioOnlyAuto') }</span>
                         </div>
-                        <!-- Inline WARNING when the file is a video over
-                             the regular size limit and the user has
-                             VIDEO_RETENTION on without "Keep audio only"
-                             toggled. Without the toggle the server will
-                             reject the upload; tell the user up front
-                             rather than after they click upload. -->
+                        <!-- Inline WARNING when the upload route is
+                             actually going to reject this file. Fires
+                             only when: file is video, VIDEO_RETENTION
+                             is on, the "Keep audio only" toggle is
+                             off, the file exceeds the regular limit,
+                             AND chunking is off at the server. With
+                             chunking on, the upload-route's size check
+                             is bypassed (the file gets chunked
+                             server-side), so the warning would be
+                             misleading. -->
                         <div v-if="videoRetentionEnabled
                                    && !keepAudioOnly
+                                   && !chunkingEnabled
                                    && /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(item.file.name)
                                    && item.file.size > maxFileSizeMB * 1024 * 1024"
                              class="flex items-start gap-1.5 pl-5 mt-0.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400">
