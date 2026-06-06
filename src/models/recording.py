@@ -184,6 +184,42 @@ class Recording(db.Model):
             logger.warning(f"Failed to get duration for recording {self.id}: {e}")
             return None
 
+    @classmethod
+    def get_duplicate_info_map(cls, user_id):
+        """Pre-compute duplicate-info groupings for one user in a single query.
+
+        Returns a dict keyed by file_hash. Each value is the
+        ``{'total_copies': N, 'copies': [...]}`` payload that
+        ``get_duplicate_info`` returns. List endpoints pass this map
+        into ``to_dict`` / ``to_list_dict`` to avoid the per-row query.
+        """
+        rows = (
+            cls.query
+            .filter(cls.user_id == user_id, cls.file_hash != None)  # noqa: E711
+            .with_entities(cls.id, cls.title, cls.created_at, cls.file_hash)
+            .order_by(cls.created_at)
+            .all()
+        )
+        grouped = {}
+        for rid, title, created, fh in rows:
+            grouped.setdefault(fh, []).append((rid, title, created))
+        out = {}
+        for fh, items in grouped.items():
+            if len(items) <= 1:
+                continue
+            out[fh] = {
+                'total_copies': len(items),
+                'copies': [
+                    {
+                        'id': rid,
+                        'title': title,
+                        'created_at': local_datetime_filter(created),
+                    }
+                    for (rid, title, created) in items
+                ],
+            }
+        return out
+
     def get_duplicate_info(self):
         """Check if other recordings share the same file_hash for this user.
 
@@ -213,7 +249,7 @@ class Recording(db.Model):
             }
         return None
 
-    def to_list_dict(self, viewer_user=None):
+    def to_list_dict(self, viewer_user=None, duplicate_info_map=None):
         """
         Lightweight dict for list views - excludes expensive HTML conversions.
 
@@ -254,14 +290,34 @@ class Recording(db.Model):
             'folder_id': self.folder_id,
             'folder': self.folder.to_dict() if self.folder else None,
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
-            'duplicate_info': self.get_duplicate_info(),
+            'duplicate_info': self._dup_from_map_or_query(duplicate_info_map),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,
             'audio_duration': self.get_audio_duration(),
             'keep_audio_only': self.keep_audio_only,
         }
 
-    def to_dict(self, include_html=True, viewer_user=None):
+    def _dup_from_map_or_query(self, duplicate_info_map):
+        """Use a pre-batched duplicate-info map when provided, else fall
+        back to the per-row query. The map is keyed by file_hash and is
+        produced by ``get_duplicate_info_map`` for list endpoints; the
+        legacy path stays correct for single-row callers (detail views,
+        share endpoints, etc.)."""
+        if duplicate_info_map is not None:
+            if not self.file_hash:
+                return None
+            entry = duplicate_info_map.get(self.file_hash)
+            if not entry:
+                return None
+            # Annotate is_self for the current row, matching the
+            # legacy per-row payload shape.
+            copies = []
+            for c in entry['copies']:
+                copies.append({**c, 'is_self': c['id'] == self.id})
+            return {'total_copies': entry['total_copies'], 'copies': copies}
+        return self.get_duplicate_info()
+
+    def to_dict(self, include_html=True, viewer_user=None, duplicate_info_map=None):
         """
         Full dict with optional HTML conversion for notes/summary.
 
@@ -317,7 +373,7 @@ class Recording(db.Model):
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'events': [event.to_dict() for event in self.events] if self.events else [],
             'prompt_variables': self.prompt_variables or {},
-            'duplicate_info': self.get_duplicate_info(),
+            'duplicate_info': self._dup_from_map_or_query(duplicate_info_map),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,
             'keep_audio_only': self.keep_audio_only,

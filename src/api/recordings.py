@@ -1443,7 +1443,13 @@ def get_recordings():
         # Filter recordings by the current user
         stmt = select(Recording).where(Recording.user_id == current_user.id).order_by(Recording.created_at.desc())
         recordings = db.session.execute(stmt).scalars().all()
-        return jsonify([recording.to_dict(viewer_user=current_user) for recording in recordings])
+        # Pre-batch the duplicate-info groupings so we don't run a
+        # per-row query inside each recording's to_dict() call.
+        dup_map = Recording.get_duplicate_info_map(current_user.id)
+        return jsonify([
+            recording.to_dict(viewer_user=current_user, duplicate_info_map=dup_map)
+            for recording in recordings
+        ])
     except Exception as e:
         current_app.logger.error(f"Error fetching recordings: {e}")
         return jsonify({'error': str(e)}), 500
