@@ -45,10 +45,14 @@
                         <!-- Inline hint when VIDEO_RETENTION is off at the
                              server. Shows on each video file so users
                              aren't surprised the video stream is dropped
-                             and that the larger size limit applies. -->
+                             and that the larger size limit applies.
+                             Styling: same icon size (text-xs) and gap
+                             (gap-1.5) as the file row above; pl-5 aligns
+                             the icon roughly under the file-icon column;
+                             mt-0.5 gives the row breathing room. -->
                         <div v-if="!videoRetentionEnabled && /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(item.file.name)"
-                             class="flex items-center gap-1 pl-5 text-[10px] text-emerald-700 dark:text-emerald-400">
-                            <i class="fas fa-volume-up"></i>
+                             class="flex items-start gap-1.5 pl-5 mt-0.5 text-[11px] leading-snug text-emerald-700 dark:text-emerald-400">
+                            <i class="fas fa-volume-up text-xs mt-0.5 flex-shrink-0"></i>
                             <span>${ t('upload.videoAudioOnlyAuto') }</span>
                         </div>
                         <!-- Inline WARNING when the file is a video over
@@ -61,8 +65,8 @@
                                    && !keepAudioOnly
                                    && /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(item.file.name)
                                    && item.file.size > maxFileSizeMB * 1024 * 1024"
-                             class="flex items-center gap-1 pl-5 text-[10px] text-amber-700 dark:text-amber-400">
-                            <i class="fas fa-exclamation-triangle"></i>
+                             class="flex items-start gap-1.5 pl-5 mt-0.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400">
+                            <i class="fas fa-exclamation-triangle text-xs mt-0.5 flex-shrink-0"></i>
                             <span>${ t('upload.enableKeepAudioOnlyForLargeVideo') }</span>
                         </div>
                     </div>
