@@ -4204,52 +4204,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             }
 
             // ---- AJAX form submission for the settings forms --------
-            // Intercepts the four settings-tab forms (Account info,
-            // Preferences, Display, Prompts) and submits them via
-            // fetch + FormData so the page doesn't reload and the
-            // active tab is preserved. Falls back to the browser's
-            // native submit if fetch fails (network down etc.) so the
-            // user never loses their edit. Shows a small toast on
-            // success.
-            function settingsToast(message, kind) {
-                let bar = document.getElementById('settings-toast');
-                if (!bar) {
-                    bar = document.createElement('div');
-                    bar.id = 'settings-toast';
-                    bar.setAttribute('role', 'status');
-                    bar.style.cssText = [
-                        'position: fixed',
-                        'left: 50%',
-                        'bottom: 80px',
-                        'transform: translateX(-50%)',
-                        'padding: 10px 18px',
-                        'border-radius: var(--radius-md, 8px)',
-                        'font-size: 14px',
-                        'font-weight: 500',
-                        'box-shadow: 0 10px 30px rgba(0,0,0,0.18)',
-                        'z-index: 9999',
-                        'opacity: 0',
-                        'transition: opacity .15s ease, transform .15s ease',
-                        'pointer-events: none'
-                    ].join(';');
-                    document.body.appendChild(bar);
-                }
-                bar.textContent = message;
-                bar.style.background = kind === 'danger'
-                    ? 'var(--bg-danger, #dc2626)'
-                    : 'var(--bg-success, #059669)';
-                bar.style.color = '#fff';
-                requestAnimationFrame(() => {
-                    bar.style.opacity = '1';
-                    bar.style.transform = 'translateX(-50%) translateY(0)';
-                });
-                clearTimeout(bar._hideTimer);
-                bar._hideTimer = setTimeout(() => {
-                    bar.style.opacity = '0';
-                }, 2500);
-            }
-
-            function wireAjaxFormSubmit(formId, successKey) {
+            // Intercepts the three settings-tab forms (Account info,
+            // Preferences, Custom Prompts) and submits them via fetch
+            // + FormData so the page doesn't reload and the active tab
+            // is preserved. Falls back to the browser's native submit
+            // if fetch fails (network down etc.) so the user never
+            // loses their edit. The existing top-right notification
+            // ("Preferences saved" / "Settings saved") rendered
+            // elsewhere in the page handles success feedback — this
+            // handler doesn't add its own.
+            function wireAjaxFormSubmit(formId) {
                 const form = document.getElementById(formId);
                 if (!form) return;
                 form.addEventListener('submit', async (e) => {
@@ -4259,12 +4223,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     if (submitBtn) submitBtn.disabled = true;
                     try {
                         const fd = new FormData(form);
-                        // The Display/Prompts/Account/Preferences forms
-                        // all POST to the same endpoint and discriminate
-                        // by checking which marker key is present in
-                        // request.form (accountInfoForm has user_name,
-                        // preferences_form / preferences_form fields,
-                        // etc.). FormData carries those automatically.
                         const csrfToken = form.querySelector('[name=csrf_token]')?.value;
                         const response = await fetch(form.action || window.location.href, {
                             method: form.method || 'POST',
@@ -4278,30 +4236,19 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}`);
                         }
-                        // Server still returns the rendered HTML page;
-                        // we don't need to parse it. The fact that the
-                        // POST returned 2xx means the save succeeded.
-                        settingsToast(
-                            (window.i18nT?.(successKey)) || 'Settings saved',
-                            'success'
-                        );
                     } catch (err) {
                         console.error('[settings save]', err);
-                        // Network failure: fall back to a real submit so
-                        // the user never loses their pending edits.
-                        settingsToast('Save failed — submitting normally', 'danger');
-                        form.removeEventListener('submit', arguments.callee);
+                        // Network failure: fall back to a real submit
+                        // so the user never loses their pending edits.
                         form.submit();
                     } finally {
                         if (submitBtn) submitBtn.disabled = false;
                     }
                 });
             }
-            // Wire all four forms once the DOM is ready (this script
-            // already runs after the form elements have been parsed).
-            wireAjaxFormSubmit('accountInfoForm', 'account.savedSuccess');
-            wireAjaxFormSubmit('preferencesForm', 'account.savedSuccess');
-            wireAjaxFormSubmit('customPromptsForm', 'account.savedSuccess');
+            wireAjaxFormSubmit('accountInfoForm');
+            wireAjaxFormSubmit('preferencesForm');
+            wireAjaxFormSubmit('customPromptsForm');
             
             // Update footer with version. Writes the resolved string to
             // the --footer-version-text CSS variable on :root so every
