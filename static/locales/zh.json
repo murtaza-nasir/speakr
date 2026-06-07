@@ -104,7 +104,9 @@
     "transcriptionHintsDesc": "这些默认值会在没有标签或文件夹覆盖时生效，帮助提高您所在场景下的转录准确率。",
     "transcriptionLanguage": "转录语言",
     "userDetails": "用户详情",
-    "username": "用户名"
+    "username": "用户名",
+    "signInSecurity": "登录与安全",
+    "password": "密码"
   },
   "accountTabs": {
     "about": "关于",

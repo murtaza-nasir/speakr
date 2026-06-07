@@ -104,7 +104,9 @@
     "transcriptionHintsDesc": "These defaults are used when no tag or folder overrides are set. They help improve transcription accuracy for your specific use case.",
     "transcriptionLanguage": "Transcription Language",
     "userDetails": "User Details",
-    "username": "Username"
+    "username": "Username",
+    "signInSecurity": "Sign-in & Security",
+    "password": "Password"
   },
   "accountTabs": {
     "about": "About",

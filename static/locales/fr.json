@@ -104,7 +104,9 @@
     "transcriptionHintsDesc": "Ces valeurs par défaut s’appliquent quand aucun tag ni dossier ne les remplace. Elles aident à améliorer la précision de la transcription pour votre usage.",
     "transcriptionLanguage": "Langue de Transcription",
     "userDetails": "Détails de l'Utilisateur",
-    "username": "Nom d'Utilisateur"
+    "username": "Nom d'Utilisateur",
+    "signInSecurity": "Connexion et sécurité",
+    "password": "Mot de passe"
   },
   "accountTabs": {
     "about": "À Propos",

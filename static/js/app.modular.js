@@ -936,13 +936,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
 
+            // Single source of truth for chat bounds is the
+            // #mainContentColumns rect (right of sidebar, between
+            // meta strip / top player and bottom audio bar). A
+            // ResizeObserver watching that one element catches every
+            // future layout change automatically — player moved
+            // top↔bottom, sidebar collapsed/expanded, columns resized,
+            // viewport resized, mobile-bottom-nav appearing or not —
+            // so we don't have to add a new bump for every layout
+            // input. Re-attach if/when the detail view re-mounts.
+            let _chatBoundsObserver = null;
+            const _attachChatBoundsObserver = () => {
+                if (typeof ResizeObserver === 'undefined') return;
+                const target = document.getElementById('mainContentColumns');
+                if (!target) return;
+                if (_chatBoundsObserver) _chatBoundsObserver.disconnect();
+                _chatBoundsObserver = new ResizeObserver(_bumpChatLayout);
+                _chatBoundsObserver.observe(target);
+            };
+
             // Restore chat panel position whenever the selected recording changes.
             watch(selectedRecording, (newRec) => {
                 if (newRec) {
                     restoreChatPanelPosition();
-                    nextTick(_bumpChatLayout);
+                    nextTick(() => {
+                        _bumpChatLayout();
+                        // The detail view (and #mainContentColumns) just
+                        // mounted/re-mounted; (re-)attach the observer.
+                        _attachChatBoundsObserver();
+                    });
                 }
             }, { immediate: false });
+
+            // The Display tab lets users flip the audio player between
+            // top and bottom of the detail screen. That repositions
+            // #mainContentColumns (it grows/shrinks vertically and its
+            // top edge changes). The ResizeObserver above catches the
+            // SIZE change; this watch catches even the case where only
+            // the top edge changes (e.g. layout swap), and is also a
+            // useful explicit signal for debugging.
+            watch(audioPlayerPosition, () => {
+                nextTick(_bumpChatLayout);
+            });
 
             // --- Audio Player State (Main Player) ---
             const playerVolume = ref(1.0);

@@ -104,7 +104,9 @@
     "transcriptionHintsDesc": "Estos valores predeterminados se aplican cuando no hay sobrescritura por tag o carpeta. Ayudan a mejorar la precisión de la transcripción para su caso de uso.",
     "transcriptionLanguage": "Idioma de Transcripción",
     "userDetails": "Detalles del Usuario",
-    "username": "Nombre de Usuario"
+    "username": "Nombre de Usuario",
+    "signInSecurity": "Inicio de sesión y seguridad",
+    "password": "Contraseña"
   },
   "accountTabs": {
     "about": "Acerca de",

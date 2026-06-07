@@ -616,60 +616,65 @@
                             </div>
                         </div>
 
-                        {% if sso_enabled %}
+                        <!-- Sign-in & Security — combines the Single Sign-On
+                             provider controls and the password (change /
+                             set) flow into one section since they're both
+                             ways the user authenticates into the account.
+                             "Go to Recordings" link removed; the
+                             page-header Speakr logo is the natural exit. -->
                         <div class="mt-6">
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">Single Sign-On</h3>
-                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.ssoProvider">Provider</span>
-                                        <span class="block text-[var(--text-primary)]">{{ sso_provider_name }}</span>
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.signInSecurity">Sign-in & Security</h3>
+                            <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] space-y-4">
+                                {% if sso_enabled %}
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <span class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.ssoProvider">Provider</span>
+                                            <span class="block text-[var(--text-primary)]">{{ sso_provider_name }}</span>
+                                        </div>
+                                        {% if sso_linked %}
+                                        <span class="px-2 py-1 text-xs rounded bg-[var(--bg-success-light)] text-[var(--text-success-strong)]" data-i18n="account.ssoLinked">Linked</span>
+                                        {% else %}
+                                        <span class="px-2 py-1 text-xs rounded bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]" data-i18n="account.ssoNotLinked">Not linked</span>
+                                        {% endif %}
                                     </div>
+
                                     {% if sso_linked %}
-                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-success-light)] text-[var(--text-success-strong)]" data-i18n="account.ssoLinked">Linked</span>
+                                    <div class="text-xs text-[var(--text-muted)] break-all">
+                                        <span class="font-medium text-[var(--text-secondary)]" data-i18n="account.ssoSubject">Subject:</span> {{ sso_subject }}
+                                    </div>
+                                    {% if has_password %}
+                                    <form method="POST" action="{{ url_for('auth.sso_unlink') }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" onclick="return confirm(t('account.ssoUnlinkConfirm'))" class="btn btn--ghost w-full">
+                                            <i class="fas fa-unlink"></i><span data-i18n="account.ssoUnlinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Unlink {{ sso_provider_name }} account</span>
+                                        </button>
+                                    </form>
+                                    {% elif not password_login_disabled or current_user.is_admin %}
+                                    <div class="t-meta">
+                                        <i class="fas fa-info-circle mr-1"></i> <span data-i18n="account.ssoSetPasswordFirst">To unlink SSO, you must first set a password.</span>
+                                    </div>
+                                    {% endif %}
                                     {% else %}
-                                    <span class="px-2 py-1 text-xs rounded bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]" data-i18n="account.ssoNotLinked">Not linked</span>
+                                    <form method="POST" action="{{ url_for('auth.sso_link') }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn btn--primary w-full">
+                                            <i class="fas fa-link"></i><span data-i18n="account.ssoLinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Link {{ sso_provider_name }} account</span>
+                                        </button>
+                                    </form>
                                     {% endif %}
                                 </div>
-
-                                {% if sso_linked %}
-                                <div class="text-xs text-[var(--text-muted)] break-all">
-                                    <span class="font-medium text-[var(--text-secondary)]" data-i18n="account.ssoSubject">Subject:</span> {{ sso_subject }}
-                                </div>
-                                {% if has_password %}
-                                <form method="POST" action="{{ url_for('auth.sso_unlink') }}" class="mt-2">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" onclick="return confirm(t('account.ssoUnlinkConfirm'))" class="w-full inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                        <i class="fas fa-unlink mr-2"></i> <span data-i18n="account.ssoUnlinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Unlink {{ sso_provider_name }} account</span>
-                                    </button>
-                                </form>
-                                {% elif not password_login_disabled or current_user.is_admin %}
-                                <div class="mt-2 text-xs text-[var(--text-muted)]">
-                                    <i class="fas fa-info-circle mr-1"></i> <span data-i18n="account.ssoSetPasswordFirst">To unlink SSO, you must first set a password.</span>
-                                </div>
-                                {% endif %}
-                                {% else %}
-                                <form method="POST" action="{{ url_for('auth.sso_link') }}" class="mt-2">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                        <i class="fas fa-link mr-2"></i> <span data-i18n="account.ssoLinkAccount" data-i18n-params='{"provider": "{{ sso_provider_name }}"}'>Link {{ sso_provider_name }} account</span>
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="mt-6"> <!-- Added mt-6 for spacing, was mt-8 on Account Actions -->
-                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2" data-i18n="account.accountActions">Account Actions</h3>
-                            <div class="flex flex-col space-y-3">
-                                <a href="{{ url_for('recordings.index') }}" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-microphone mr-2"></i> <span data-i18n="account.goToRecordings">Go to Recordings</span>
-                                </a>
                                 {% if not password_login_disabled or current_user.is_admin %}
-                                <button id="changePasswordBtn" class="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-key mr-2"></i> <span data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</span>
-                                </button>
+                                <div class="border-t border-[var(--border-primary)] pt-3"></div>
+                                {% endif %}
+                                {% endif %}
+                                {% if not password_login_disabled or current_user.is_admin %}
+                                <div>
+                                    <span class="block text-sm font-medium text-[var(--text-muted)] mb-2" data-i18n="account.password">Password</span>
+                                    <button id="changePasswordBtn" class="btn btn--ghost w-full">
+                                        <i class="fas fa-key"></i><span data-i18n="account.changePassword">{% if has_password %}Change Password{% else %}Set Password{% endif %}</span>
+                                    </button>
+                                </div>
                                 {% endif %}
                             </div>
                         </div>

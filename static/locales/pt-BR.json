@@ -104,7 +104,9 @@
     "transcriptionHintsDesc": "Esses padrões são usados quando nenhuma etiqueta ou pasta substitui as definições. Eles ajudam a melhorar a precisão da transcrição para seu caso de uso específico.",
     "transcriptionLanguage": "Idioma da Transcrição",
     "userDetails": "Detalhes do Usuário",
-    "username": "Nome de Usuário"
+    "username": "Nome de Usuário",
+    "signInSecurity": "Acesso e segurança",
+    "password": "Senha"
   },
   "accountTabs": {
     "about": "Sobre",

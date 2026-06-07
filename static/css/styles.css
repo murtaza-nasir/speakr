@@ -4385,6 +4385,7 @@ select:disabled {
     padding: 6px var(--sp-3);
     margin: 0;
     line-height: var(--lh-tight);
+    text-align: center;
 }
 
 /* Each section group wraps its rows for divider scoping. */

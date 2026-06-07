@@ -104,7 +104,9 @@
     "transcriptionHintsDesc": "Diese Standardwerte werden verwendet, wenn keine Tag- oder Ordner-Überschreibungen gesetzt sind. Sie helfen, die Transkriptionsgenauigkeit für Ihren spezifischen Anwendungsfall zu verbessern.",
     "transcriptionLanguage": "Transkriptionssprache",
     "userDetails": "Benutzerdetails",
-    "username": "Benutzername"
+    "username": "Benutzername",
+    "signInSecurity": "Anmeldung & Sicherheit",
+    "password": "Passwort"
   },
   "accountTabs": {
     "about": "Über",
