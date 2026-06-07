@@ -384,23 +384,41 @@ html.dark {
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 36px;
+    width: 40px;
     z-index: 2;
     display: none;                  /* shown by .is-visible */
     align-items: center;
     justify-content: center;
     background: transparent;
     border: none;
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: pointer;
-    transition: color var(--t-fast) ease, opacity var(--t-fast) ease;
+    font-size: 14px;
+    transition: color var(--t-fast) ease, transform var(--t-fast) ease;
     pointer-events: auto;
 }
-.tabs-scroller__nav:hover { color: var(--text-primary); }
+.tabs-scroller__nav:hover {
+    color: var(--text-accent);
+    transform: scale(1.12);
+}
 .tabs-scroller__nav.is-visible { display: inline-flex; }
 
-.tabs-scroller__nav--left  { left: 0;  background: linear-gradient(to right, var(--bg-secondary) 60%, transparent 100%); }
-.tabs-scroller__nav--right { right: 0; background: linear-gradient(to left,  var(--bg-secondary) 60%, transparent 100%); }
+/* Stronger gradient so the chevron sits on a visible "fade" backdrop
+   rather than blending into the page. */
+.tabs-scroller__nav--left  {
+    left: 0;
+    background: linear-gradient(to right,
+        var(--bg-secondary) 0%,
+        var(--bg-secondary) 50%,
+        transparent 100%);
+}
+.tabs-scroller__nav--right {
+    right: 0;
+    background: linear-gradient(to left,
+        var(--bg-secondary) 0%,
+        var(--bg-secondary) 50%,
+        transparent 100%);
+}
 
 
 
