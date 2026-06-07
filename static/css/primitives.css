@@ -1647,13 +1647,9 @@ textarea:focus-visible {
 /* When expanded, the whole group reads as ONE contained card: the
    summary becomes the card header (connected to the body, no gap) and
    the body sits visibly INSIDE the bordered box. Closed, it's just the
-   summary chip. This gives the contents clear visual ownership instead
-   of floating at the same level as the summary. */
-.upload-options-group[open] {
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-md);
-    background: var(--bg-secondary);
-}
+   summary chip. The card border/background + radius are declared (and
+   transitioned) in the Expand/collapse animation section below, shared
+   with .disclosure-card. */
 
 /* Summary as the card header: square off its bottom corners and add a
    divider so it reads as attached to the body below. Specificity
@@ -1746,12 +1742,9 @@ input[type="checkbox"].checkbox:disabled {
    Same idea as .upload-options-group but reusable on any <details>:
    when open the whole element is one bordered card with the summary as
    its header and the body padded inside. Put .disclosure-card on the
-   <details> and .disclosure-card-body on the body wrapper. */
-details.disclosure-card[open] {
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-md);
-    background: var(--bg-secondary);
-}
+   <details> and .disclosure-card-body on the body wrapper. The card
+   border/background + radius are declared (and transitioned) in the
+   Expand/collapse animation section below. */
 details.disclosure-card[open] > summary {
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     border-bottom: 1px solid var(--border-secondary);
@@ -1762,6 +1755,88 @@ details.disclosure-card[open] > .disclosure-card-body {
 }
 details.disclosure-card[open] > .disclosure-card-body > *:first-child {
     margin-top: 0;
+}
+
+
+/* ---- Expand / collapse animation ---------------------------------------
+ *
+ * Two mechanisms, one feel (0.25s ease). When an expander animates its
+ * height, the modal — which sizes to its content — grows/shrinks in step
+ * automatically, so the whole panel resize looks smooth without animating
+ * the modal itself.
+ *
+ * (A) Native <details> (.upload-options-group, .disclosure-card):
+ *     animate the ::details-content box. interpolate-size lets height
+ *     transition to/from the `auto` keyword; content-visibility with
+ *     allow-discrete keeps the content painted through the collapse.
+ *     Supported in current Chromium; older browsers ignore it and the
+ *     expander just snaps open/closed (no regression).
+ *
+ *     The card border/background is given a transparent resting state and
+ *     transitioned so it fades in/out in step with the height instead of
+ *     snapping the moment the [open] attribute flips.
+ *
+ * (B) v-show panels (.disclosure-anim): the grid-template-rows 0fr→1fr
+ *     trick. Works in every browser. The body stays in the DOM and the
+ *     inner wrapper clips overflow, so the row collapses to zero height
+ *     smoothly. Toggle .is-open on the grid container.
+ */
+/* Scoped to the disclosure elements (not :root) so enabling keyword
+   interpolation doesn't affect height transitions elsewhere. */
+.upload-options-group,
+details.disclosure-card {
+    interpolate-size: allow-keywords;
+}
+
+.upload-options-group::details-content,
+details.disclosure-card::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size 0.25s ease, content-visibility 0.25s allow-discrete;
+}
+.upload-options-group[open]::details-content,
+details.disclosure-card[open]::details-content {
+    block-size: auto;
+}
+
+/* Transition the card chrome so it fades with the height rather than
+   snapping when [open] toggles. Resting border is transparent (keeps the
+   closed chip the same size; no layout shift). */
+.upload-options-group,
+details.disclosure-card {
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    transition: border-color 0.25s ease, background-color 0.25s ease;
+}
+.upload-options-group[open],
+details.disclosure-card[open] {
+    border-color: var(--border-secondary);
+    background: var(--bg-secondary);
+}
+
+/* Grid-rows animation wrapper for the v-show panels. */
+.disclosure-anim {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+}
+.disclosure-anim.is-open {
+    grid-template-rows: 1fr;
+}
+.disclosure-anim__inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Respect users who ask for reduced motion: snap instead of animate. */
+@media (prefers-reduced-motion: reduce) {
+    .upload-options-group::details-content,
+    details.disclosure-card::details-content,
+    .upload-options-group,
+    details.disclosure-card,
+    .disclosure-anim {
+        transition: none !important;
+    }
 }
 
 

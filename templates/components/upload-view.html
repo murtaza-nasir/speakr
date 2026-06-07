@@ -647,7 +647,9 @@
                         </div>
                     </details>
                 </div>
-                <div v-show="showPromptVariablesPanel" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3 border border-[var(--border-secondary)]">
+                <div class="disclosure-anim mt-2" :class="{ 'is-open': showPromptVariablesPanel }">
+                  <div class="disclosure-anim__inner">
+                <div class="p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3 border border-[var(--border-secondary)]">
                     <div v-for="variable in selectedPromptVariables" :key="variable.name" class="space-y-1">
                         <label class="block text-xs font-medium text-[var(--text-secondary)]" :for="'pv-' + variable.name">
                             ${ variable.label }
@@ -676,6 +678,8 @@
                         </div>
                     </div>
                 </div>
+                  </div><!-- end .disclosure-anim__inner -->
+                </div><!-- end .disclosure-anim -->
             </div>
 
             <!-- Advanced Options for diarization-enabled connectors (collapsible) -->
@@ -689,7 +693,9 @@
                     <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                 </button>
 
-                <div v-show="showAdvancedOptions" class="disclosure-panel p-3 bg-[var(--bg-tertiary)] space-y-3 border border-[var(--border-secondary)]">
+                <div class="disclosure-anim" :class="{ 'is-open': showAdvancedOptions }">
+                  <div class="disclosure-anim__inner">
+                <div class="disclosure-panel p-3 bg-[var(--bg-tertiary)] space-y-3 border border-[var(--border-secondary)]">
                     <!-- Language Selection -->
                     <div>
                         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
@@ -766,9 +772,11 @@
                         ${ t('upload.settingsApplyToAll') }
                     </p>
                 </div>
+                  </div><!-- end .disclosure-anim__inner -->
+                </div><!-- end .disclosure-anim -->
             </div>
 
-                </div><!-- end .mt-2 wrapper inside details -->
+                </div><!-- end .upload-options-body wrapper inside details -->
             </details><!-- end Options progressive-disclosure group -->
         </div>
 
