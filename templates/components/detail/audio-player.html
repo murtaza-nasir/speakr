@@ -211,11 +211,18 @@
                          @mouseleave="showVolumeSlider = false">
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-lg shadow-xl flex flex-col items-center gap-1">
                             <span class="text-[10px] font-mono text-[var(--text-muted)]">${ Math.round(playerVolume * 100) }</span>
-                            <input type="range" min="0" max="1" step="0.05"
-                                   :value="audioIsMuted ? 0 : playerVolume"
-                                   @input="(e) => setAudioVolume(parseFloat(e.target.value))"
-                                   class="volume-slider-vertical"
-                                   style="height: 80px;">
+                            <!-- The rotated input reserves a layout box
+                                 equal to its pre-rotation width × height,
+                                 so the wrap forces a square slot the
+                                 rotation can spin inside without
+                                 shifting the popover's centre. -->
+                            <div class="volume-slider-vertical-wrap" style="width: 20px; height: 80px;">
+                                <input type="range" min="0" max="1" step="0.05"
+                                       :value="audioIsMuted ? 0 : playerVolume"
+                                       @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                       class="volume-slider-vertical"
+                                       style="width: 80px;">
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -3213,20 +3213,33 @@ body {
 }
 
 /* Vertical volume slider (popup) */
+/* Vertical volume slider implemented as a HORIZONTAL native range
+   input rotated 90 degrees. The previous writing-mode: vertical-lr
+   approach was modern but has known thumb-alignment quirks in Chrome
+   that placed the thumb off-centre from the track (the cross-axis
+   width differences between track and thumb didn't translate cleanly
+   to vertical orientation). Rotation produces a pixel-perfect
+   vertical control across every browser that supports range inputs.
+
+   Wrapper element is responsible for reserving the rotated bounding
+   box; see .volume-slider-vertical-wrap below. */
 .volume-slider-vertical {
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
     cursor: pointer;
-    writing-mode: vertical-lr;
-    direction: rtl;
-    width: 20px;
+    /* Horizontal "width" becomes the visible LENGTH of the rotated
+       slider, so the inline style sets this; CSS-controlled height
+       gives it the touch slop while keeping the track narrow. */
+    height: 20px;
+    transform: rotate(-90deg);
+    transform-origin: center center;
 }
 
 .volume-slider-vertical::-webkit-slider-runnable-track {
     background: var(--border-accent);
     opacity: 0.5;
-    width: 6px;
+    height: 6px;
     border-radius: 3px;
 }
 
@@ -3244,12 +3257,16 @@ body {
     background: var(--text-accent);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     cursor: pointer;
+    /* Lift the thumb up so its centre aligns with the centre of the
+       6 px track (default behaviour leaves it sitting on the track's
+       baseline). margin-top is the standard cross-browser trick. */
+    margin-top: -4px;
 }
 
 .volume-slider-vertical::-moz-range-track {
     background: var(--border-accent);
     opacity: 0.5;
-    width: 6px;
+    height: 6px;
     border-radius: 3px;
 }
 
@@ -3266,6 +3283,18 @@ body {
     border: none;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
     cursor: pointer;
+}
+
+/* Wrapper that reserves a SQUARE bounding box for the rotated slider.
+   The rotation happens around the centre, so the rotated visible
+   extent matches the input's pre-rotation width — but the layout box
+   stays at the pre-rotation aspect ratio, which would shift the
+   surrounding column. Setting the wrapper to width and height equal
+   to the rotated extent gives the popover a clean square slot. */
+.volume-slider-vertical-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Player play button - accent colored with proper contrast */
