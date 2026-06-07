@@ -1711,22 +1711,23 @@ body {
     font-size: 0.7rem;
     letter-spacing: 0.02em;
     user-select: none;
-    /* Tint the half by overlaying a uniform translucent black layer. The
-       inherited speaker-color background shows through and the result reads
-       as a darker shade of the same colour in both themes. */
-    background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
+    /* Tint the half by overlaying a translucent black layer. In light
+       mode we go heavier (0.55) so the speaker pastel becomes a deeply
+       saturated shade that gives high contrast with white time text;
+       in dark mode 0.18 is enough because the inherited speaker
+       foreground is already a light pastel. */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55));
     display: inline-flex;
     align-items: center;
-    /* The inherited speaker-color foreground (e.g. #0D47A1 deep blue
-       for color-1) is saturated and dark — on top of the 0.18 black
-       overlay above this reads as 'dark on dark' in light mode.
-       Drop the opacity so the time row sits a perceptual notch
-       lighter than the speaker name, in both themes. */
-    opacity: 0.7;
+    /* Force white text in light mode for maximum contrast on the
+       darkened tint above. Dark mode falls through to the inherited
+       pastel from the speaker-color class which already reads well on
+       its own dark background. */
+    color: rgba(255, 255, 255, 0.95);
 }
 .dark .speaker-tablet-group .speaker-tablet-time {
-    /* In dark mode the speaker-color foreground is already a light
-       pastel; we don't need to lighten it further. */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
+    color: inherit;
     opacity: 0.85;
 }
 
