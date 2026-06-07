@@ -750,20 +750,26 @@ html.dark select.field {
 .chip {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 1px var(--sp-2);
+    gap: 5px;
+    padding: 2px 8px 2px 7px;
     border-radius: var(--radius-sm);
     font-size: var(--fs-label);
     font-weight: 600;
-    line-height: 1.55;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
     white-space: nowrap;
     max-width: 14rem;
-    transition: opacity 0.15s ease, transform 0.05s ease;
+    /* Hairline outline at 12% black; reads on any custom background
+       colour and gives the chip a defined edge without committing to
+       a heavy border. */
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+    transition: opacity 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
 }
 
 .chip > i {
     font-size: 0.78em;
     line-height: 0;
+    opacity: 0.85;
 }
 
 .chip > .chip__label {
@@ -776,7 +782,8 @@ html.dark select.field {
 }
 
 .chip--clickable:hover {
-    opacity: 0.85;
+    opacity: 0.92;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .chip--clickable:active {

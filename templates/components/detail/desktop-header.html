@@ -188,6 +188,14 @@
                 <span class="chip__label">${tag.name}</span>
             </span>
 
+            <!-- Vertical separator between the chip group and the
+                 text-metadata items so the two reads as distinct bands
+                 even when they sit on the same wrapped line. Hidden
+                 when there are no preceding chips to separate from. -->
+            <span v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || selectedRecording.has_group_tags || (selectedRecording.tags && selectedRecording.tags.length > 0)"
+                  aria-hidden="true"
+                  class="self-stretch w-px bg-[var(--border-primary)] opacity-60 my-0.5"></span>
+
             <!-- Participants -->
             <span class="inline-flex items-center gap-1.5">
                 <i class="fas fa-users text-[var(--text-accent)] text-[11px]"></i>
