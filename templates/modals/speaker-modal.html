@@ -133,11 +133,16 @@
                                :placeholder="speakerMap[speaker].isMe ? currentUserName : t('help.enterNameFor') + ' ' + (speakerDisplayMap[speaker] || speaker)"
                                autocomplete="off">
 
-                        <!-- Voice match suggestion pill -->
+                        <!-- Voice match suggestion pill — vibrant blue→purple
+                             gradient is the "AI suggestion" affordance used
+                             throughout the app; intentionally NOT theme-tinted
+                             so it stays a recognisable signal against any
+                             theme background. The white text contrasts cleanly
+                             against the saturated gradient in both light and
+                             dark modes. -->
                         <button v-if="shouldShowVoiceSuggestionPill(speaker)"
                                 @click.stop="applyVoiceSuggestion(speaker, voiceSuggestions[speaker][0])"
-                                class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full flex items-center gap-1 text-white text-[10px] transition-all active:scale-95"
-                                style="background: linear-gradient(to right, var(--bg-info), var(--bg-accent));">
+                                class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-[10px] rounded-full flex items-center gap-1 transition-all shadow-sm hover:shadow active:scale-95">
                             <i class="fas fa-waveform-lines text-[9px]"></i>
                             <span class="font-medium truncate max-w-[50px] sm:max-w-[80px]">${ voiceSuggestions[speaker][0].name }</span>
                             <span class="text-[9px] opacity-90">${ voiceSuggestions[speaker][0].similarity }%</span>
@@ -208,10 +213,15 @@
                                @ended="modalAudioIsPlaying = false">
                         </component>
                         <div class="flex items-center gap-2">
+                            <!-- Round play button to match the other audio
+                                 players in the app (main player, mobile
+                                 player, etc.). btn--icon is square-ish by
+                                 default; we override with rounded-full +
+                                 explicit w-8 h-8 sizing for circularity. -->
                             <button @click="$refs.speakerModalAudioRef?.paused ? $refs.speakerModalAudioRef.play() : $refs.speakerModalAudioRef.pause()"
-                                    class="btn btn--primary btn--icon btn--sm"
+                                    class="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
                                     :title="modalAudioIsPlaying ? 'Pause' : 'Play'">
-                                <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
+                                <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-xs" :style="!modalAudioIsPlaying ? 'margin-left: 1px' : ''"></i>
                             </button>
                             <div class="flex flex-col items-end flex-shrink-0 leading-none">
                                 <span class="text-xs text-[var(--text-primary)] font-mono">${ formatAudioTime(modalAudioCurrentTime) }</span>
