@@ -1,2 +1,68 @@
-<!-- Toast Container -->
-<div id="toastContainer" class="fixed top-4 right-4 z-50 pointer-events-none"></div>
+<!-- Toast Container.
+
+     Anchored to the TOP-RIGHT of the active work area (#mainContentColumns)
+     when present — same single source of truth the floating chat uses, so
+     any layout change that affects the chat bounds also moves the toasts
+     consistently (sidebar collapse, column resize, audio player flip
+     top↔bottom, mobile bottom-nav presence, viewport resize). Falls back
+     to the viewport top-right corner when #mainContentColumns isn't on
+     the page (e.g. settings, admin, inquire).
+
+     Implementation note: the container is fixed-positioned, with top + right
+     offsets computed from the columns rect. A ResizeObserver on the columns
+     element handles size changes and window-resize handles the fallback. -->
+<div id="toastContainer" class="fixed z-50 pointer-events-none"
+     style="top: 16px; right: 16px;"></div>
+
+<script>
+(function () {
+    var INSET = 16;
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    function update() {
+        var anchor = document.getElementById('mainContentColumns');
+        if (anchor) {
+            var r = anchor.getBoundingClientRect();
+            // When the columns are off-screen (e.g. on a tab without the
+            // detail view), fall back to the viewport corner.
+            if (r.width > 0 && r.bottom > 0 && r.top < window.innerHeight) {
+                container.style.top = Math.max(0, r.top + INSET) + 'px';
+                container.style.right = Math.max(0, (window.innerWidth - r.right) + INSET) + 'px';
+                return;
+            }
+        }
+        container.style.top = INSET + 'px';
+        container.style.right = INSET + 'px';
+    }
+
+    // Initial position.
+    update();
+
+    // React to any change of the work-area bounds. ResizeObserver fires
+    // when the observed element's size changes; window.resize covers the
+    // fallback case where #mainContentColumns isn't present yet (Vue
+    // mounts later) and also fires reliably on viewport resize.
+    var observed = null;
+    function ensureObserver() {
+        if (typeof ResizeObserver === 'undefined') return;
+        var anchor = document.getElementById('mainContentColumns');
+        if (!anchor || anchor === observed) return;
+        observed = anchor;
+        new ResizeObserver(update).observe(anchor);
+    }
+
+    // Window resize covers fallback + size changes the observer doesn't.
+    window.addEventListener('resize', update, { passive: true });
+
+    // #mainContentColumns is created by Vue after mount. Retry attaching
+    // the observer for a short window so we don't miss the late mount.
+    ensureObserver();
+    var attempts = 0;
+    var retryTimer = setInterval(function () {
+        ensureObserver();
+        update();
+        if (++attempts >= 20 || observed) clearInterval(retryTimer);
+    }, 150);
+})();
+</script>
