@@ -339,7 +339,11 @@ html.dark {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-1);
-    padding-right: var(--sp-3);
+    /* No padding-right here — the outer .tabs-bar already provides
+       horizontal padding (typically px-4). Adding more here stacked
+       ~12px on top of the outer 16px, pushing the action icons ~10px
+       further from the right edge than the tab labels sit from the
+       left edge; the result read as inconsistent. */
 }
 
 
