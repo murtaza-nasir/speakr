@@ -1717,6 +1717,17 @@ body {
     background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
     display: inline-flex;
     align-items: center;
+    /* The inherited speaker-color foreground (e.g. #0D47A1 deep blue
+       for color-1) is saturated and dark — on top of the 0.18 black
+       overlay above this reads as 'dark on dark' in light mode.
+       Drop the opacity so the time row sits a perceptual notch
+       lighter than the speaker name, in both themes. */
+    opacity: 0.7;
+}
+.dark .speaker-tablet-group .speaker-tablet-time {
+    /* In dark mode the speaker-color foreground is already a light
+       pastel; we don't need to lighten it further. */
+    opacity: 0.85;
 }
 
 .speaker-tablet-group .speaker-tablet-name {
