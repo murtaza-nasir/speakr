@@ -209,22 +209,81 @@
             flex-direction: column;
         }
 
-        /* Tab content area — flex-based sizing fills the available
-           vertical space below the consolidated 56px page header and
-           the tab strip, so we don't have to guess pixel offsets per
-           viewport. */
+        /* Tab content area — flex-based shell so each .tab-content can
+           have an internally-scrolling body and a sticky Save row at
+           the bottom of the screen. The wrapper itself does NOT scroll;
+           it's a flex column container whose children (the active
+           .tab-content) fill the available height. */
         .tab-content-wrapper {
             flex: 1 1 auto;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
             min-height: 0;
-        }
-
-        /* Ensure all tab content divs take full height */
-        .tab-content {
-            min-height: 100%;
             display: flex;
             flex-direction: column;
+        }
+
+        /* Each tab content is a flex column that fills the wrapper.
+           Hidden tab contents are display:none (Tailwind .hidden) and
+           don't participate in flex layout. The visible one becomes a
+           flex column with its own internal scroll body + optional
+           footer. */
+        .tab-content {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* The scrollable body of each tab — where the form fields and
+           content live. Has the inner padding that used to be on the
+           wrapper. */
+        .tab-scroll {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: var(--sp-6) var(--sp-6);
+        }
+
+        /* The fixed bottom row of every tab. Always visible at the
+           bottom of the screen — never scrolls. Shows the copyright on
+           the LEFT (via the ::before pseudo-element so we don't have to
+           repeat the markup in every tab) and any per-tab action
+           buttons on the right. */
+        .tab-footer {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: var(--sp-2);
+            padding: var(--sp-3) var(--sp-6);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-primary);
+        }
+        .tab-footer::before {
+            /* The displayed string comes from the CSS variable
+               --footer-version-text, which JS (updateFooter) writes to
+               on page load after fetching the live version. The
+               fallback is rendered server-side via Jinja so the row is
+               never blank, even before the API call completes. */
+            content: var(--footer-version-text, "Speakr \00a9 {{ now.year }}");
+            margin-right: auto;
+            color: var(--text-light);
+            font-size: var(--fs-meta);
+        }
+        .tab-footer__left {
+            margin-right: auto;
+            color: var(--text-muted);
+            font-size: var(--fs-meta);
+        }
+
+        @media (max-width: 640px) {
+            .tab-scroll { padding: var(--sp-4) var(--sp-4); }
+            .tab-footer { padding: var(--sp-2) var(--sp-4); }
+            .tab-footer::before {
+                font-size: 10px;
+            }
         }
 
         /* Custom scrollbar for content areas */
@@ -393,16 +452,16 @@
         }
     </style>
 </head>
-<body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col">
+<body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
     {% set page_label = 'Account' %}
     {% include 'components/page-header.html' %}
-    <div class="main-container flex-1 flex flex-col overflow-hidden">
+    <div class="main-container flex-1 flex flex-col min-h-0 overflow-hidden">
 
-        <main class="flex-grow flex flex-col">
+        <main class="flex-1 flex flex-col min-h-0 overflow-hidden">
             <!-- Page content area — full width, no floating-card chrome,
                  same surface as the main app. Tab strip below is the
                  primary navigation; content scrolls inside. -->
-            <div class="flex flex-col flex-grow overflow-hidden">
+            <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
                 <!-- Tab strip using the .tabs primitive, wrapped in
                      .tabs-scroller so long strips get left/right chevron
                      buttons that appear when scrollable; wheel-over-tabs
@@ -455,8 +514,9 @@
                     </button>
                 </div>
 
-                <div class="tab-content-wrapper px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
-                    <div id="content-account" class="tab-content pt-6">
+                <div class="tab-content-wrapper">
+                    <div id="content-account" class="tab-content">
+                      <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="account.title">Account Information</h2>
                     {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -491,9 +551,10 @@
                                 </div>
                             </div>
 
-                            <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-save mr-2"></i> <span data-i18n="account.saveAllPreferences">Save All Preferences</span>
-                            </button>
+                            <!-- Save button moved to the sticky tab-footer
+                                 at the bottom of this content area; the
+                                 button there uses form="accountInfoForm"
+                                 to submit this form. -->
                         </form>
                     </div>
                     
@@ -608,9 +669,16 @@
                         </div>
                     </div>
                 </div>
+                      </div><!-- /.tab-scroll -->
+                      <div class="tab-footer">
+                        <button type="submit" form="accountInfoForm" class="btn btn--primary">
+                            <i class="fas fa-save"></i> <span data-i18n="account.saveAllPreferences">Save All Preferences</span>
+                        </button>
+                      </div>
                 </div>
 
-                    <div id="content-prompts" class="hidden tab-content pt-6">
+                    <div id="content-prompts" class="hidden tab-content">
+                      <div class="tab-scroll">
                     <!-- Header with Auto-summarization toggle -->
                     <div class="flex items-center justify-between mb-6">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="accountTabs.promptOptions">Prompt Options</h2>
@@ -791,19 +859,21 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-end">
-                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
-                            </button>
-                        </div>
                     </form>
+                      </div><!-- /.tab-scroll -->
+                      <div class="tab-footer">
+                        <button type="submit" form="customPromptsForm" class="btn btn--primary">
+                            <i class="fas fa-save"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
+                        </button>
+                      </div>
                 </div>
 
-                    <div id="content-preferences" class="hidden tab-content pt-6">
+                    <div id="content-preferences" class="hidden tab-content">
+                      <div class="tab-scroll">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-2" data-i18n="accountTabs.preferences">Preferences</h2>
                         <p class="text-sm text-[var(--text-muted)] mb-6" data-i18n="preferences.description">Display and editor behaviour preferences. These settings are saved to your account and apply across devices.</p>
 
-                        <form id="preferencesForm" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+                        <form id="preferencesForm" method="POST" action="{{ url_for('auth.account') }}" class="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="preferences_form" value="1">
 
@@ -904,13 +974,13 @@
                                 </label>
                             </div>
 
-                            <!-- Save button spans both columns -->
-                            <div class="lg:col-span-2 flex justify-end pt-2">
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
-                                    <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
-                                </button>
-                            </div>
                         </form>
+                      </div>
+                      <div class="tab-footer">
+                        <button type="submit" form="preferencesForm" class="btn btn--primary">
+                            <i class="fas fa-save"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
+                        </button>
+                      </div>
                     </div>
 
                     <!-- Display tab — layout-level UI choices that change how
@@ -919,7 +989,8 @@
                          column ratio defaults, etc.). Lives in its own
                          tab to keep the Preferences tab focused on
                          transcript/editor behaviour. -->
-                    <div id="content-display" class="hidden tab-content pt-6">
+                    <div id="content-display" class="hidden tab-content">
+                      <div class="tab-scroll">
                         <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.display">Display</h2>
                         <form id="displayForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6 max-w-2xl">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -969,22 +1040,27 @@
                                 </div>
                             </div>
 
-                            <div class="flex justify-end pt-2">
-                                <button type="submit" class="btn btn--primary">
-                                    <i class="fas fa-save"></i><span data-i18n="buttons.saveSettings">Save Settings</span>
-                                </button>
-                            </div>
                         </form>
+                      </div>
+                      <div class="tab-footer">
+                        <button type="submit" form="displayForm" class="btn btn--primary">
+                            <i class="fas fa-save"></i><span data-i18n="buttons.saveSettings">Save Settings</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div id="content-shares" class="hidden tab-content pt-6">
+                    <div id="content-shares" class="hidden tab-content">
+                      <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.sharedTranscripts">Shared Transcripts</h2>
                     <div id="shares-container" class="space-y-4">
                         <!-- Shares will be loaded here by JavaScript -->
                     </div>
+                      </div>
+                      <div class="tab-footer"></div>
                 </div>
 
-                    <div id="content-speakers" class="hidden tab-content pt-6 flex flex-col h-full">
+                    <div id="content-speakers" class="hidden tab-content">
+                      <div class="flex-1 min-h-0 flex flex-col overflow-hidden" style="padding: var(--sp-6) var(--sp-6); padding-bottom: 0;">
                     <!-- Header with Auto-label toggle -->
                     <div class="flex-shrink-0 mb-4 flex items-center justify-between">
                         <div>
@@ -1090,10 +1166,13 @@
                             </button>
                         </div>
                     </div>
+                      </div><!-- /padded speakers inner -->
+                      <div class="tab-footer"></div>
                 </div>
 
                     <!-- Folders Tab Content -->
-                    <div id="content-folders" class="hidden tab-content pt-6">
+                    <div id="content-folders" class="hidden tab-content">
+                      <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="folderManagement.title">Folder Management</h2>
 
                     <div class="mb-6">
@@ -1128,9 +1207,12 @@
                             <!-- Folders will be populated here -->
                         </div>
                     </div>
+                      </div>
+                      <div class="tab-footer"></div>
                 </div>
 
-                    <div id="content-tags" class="hidden tab-content pt-6">
+                    <div id="content-tags" class="hidden tab-content">
+                      <div class="tab-scroll">
                     <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.tagManagement">Tag Management</h2>
 
                     <div class="mb-6">
@@ -1165,24 +1247,31 @@
                             <!-- Tags will be populated here -->
                         </div>
                     </div>
+                      </div>
+                      <div class="tab-footer"></div>
                 </div>
 
-                    <div id="content-templates" class="hidden tab-content pt-6">
+                    <div id="content-templates" class="hidden tab-content">
+                      <!-- Sub-tabs sit OUTSIDE .tab-scroll so they're a real
+                           secondary nav strip flush below the primary tabs,
+                           not a sticky element inside a scrolling area
+                           with awkward negative margins to break out of
+                           the scroll's padding. -->
+                      <div class="border-b border-[var(--border-primary)] px-6 flex-shrink-0">
+                          <nav class="tabs" id="templates-subtabs" style="border-bottom: none;">
+                              <button id="subtab-transcript" class="tab is-active" data-i18n="transcriptTemplates.tabTitle">
+                                  Transcript
+                              </button>
+                              <button id="subtab-export" class="tab" style="display: none;" data-i18n="exportTemplates.tabTitle">
+                                  Export
+                              </button>
+                              <button id="subtab-naming" class="tab" data-i18n="namingTemplates.tabTitle">
+                                  Naming
+                              </button>
+                          </nav>
+                      </div>
+                      <div class="tab-scroll">
                     <div class="space-y-6">
-                        <!-- Sub-tabs for Templates (sticky) -->
-                        <div class="sticky top-0 z-10 bg-[var(--bg-secondary)] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 -mt-6 pt-6 pb-0 border-b border-[var(--border-primary)]">
-                            <nav class="flex gap-4" id="templates-subtabs">
-                                <button id="subtab-transcript" class="pb-2 px-1 text-sm font-medium border-b-2 border-[var(--border-accent)] text-[var(--text-accent)]" data-i18n="transcriptTemplates.tabTitle">
-                                    Transcript
-                                </button>
-                                <button id="subtab-export" class="pb-2 px-1 text-sm font-medium border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" style="display: none;" data-i18n="exportTemplates.tabTitle">
-                                    Export
-                                </button>
-                                <button id="subtab-naming" class="pb-2 px-1 text-sm font-medium border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-i18n="namingTemplates.tabTitle">
-                                    Naming
-                                </button>
-                            </nav>
-                        </div>
 
                         <!-- Transcript Templates Sub-content -->
                         <div id="subcontent-transcript" class="space-y-6">
@@ -1527,10 +1616,13 @@
                             </div>
                         </div>
                     </div>
+                      </div>
+                      <div class="tab-footer"></div>
                 </div>
 
                     <!-- API Tokens Tab Content -->
-                    <div id="content-tokens" class="hidden tab-content pt-6">
+                    <div id="content-tokens" class="hidden tab-content">
+                      <div class="tab-scroll">
                         <div class="space-y-6">
                             <div class="flex items-center justify-between">
                                 <div>
@@ -1622,10 +1714,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </div>
                             </div>
                         </div>
+                      </div>
+                      <div class="tab-footer"></div>
                     </div>
 
                     <!-- Webhooks Tab Content -->
-                    <div id="content-webhooks" class="hidden tab-content pt-6">
+                    <div id="content-webhooks" class="hidden tab-content">
+                      <div class="tab-scroll">
                         <div class="space-y-6">
                             <div class="flex items-center justify-between flex-wrap gap-3">
                                 <div>
@@ -1694,9 +1789,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                 </div>
                             </div>
                         </div>
+                      </div>
+                      <div class="tab-footer"></div>
                     </div>
 
-                    <div id="content-about" class="hidden tab-content pt-6">
+                    <div id="content-about" class="hidden tab-content">
+                      <div class="tab-scroll">
                     <div class="space-y-8">
                         <!-- Header Section -->
                         <div class="text-center">
@@ -1910,13 +2008,19 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </div>
                     </div>
                     </div>
+                      </div><!-- /.tab-scroll (about) -->
+                      <div class="tab-footer"></div>
                 </div>
             </div>
         </main>
-
-        <footer class="text-center py-4 mt-8 text-xs text-[var(--text-light)] border-t border-[var(--border-primary)]">
-            <span id="footer-text">Speakr &copy; {{ now.year }}</span>
-        </footer>
+        <!-- The standalone footer has been removed; the copyright now
+             lives on the LEFT of every .tab-footer, sharing the row
+             with the Save button on the right. The hidden #footer-text
+             span is kept so existing footer-updating JS (admin links,
+             version text) still has its target element to write into,
+             but the value is also reflected onto the .tab-footer via
+             a CSS variable so we don't have to duplicate markup. -->
+        <span id="footer-text" style="display: none;"></span>
     </div>
 
     <!-- Change Password Modal -->
@@ -4141,7 +4245,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 return div.innerHTML;
             }
             
-            // Update footer with version
+            // Update footer with version. Writes the resolved string to
+            // the --footer-version-text CSS variable on :root so every
+            // .tab-footer's ::before pseudo-element picks it up
+            // automatically — no markup duplication, no need to
+            // refresh on tab switch.
             async function updateFooter() {
                 try {
                     const response = await fetch('/api/system/info');
@@ -4149,7 +4257,12 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         const data = await response.json();
                         const footerText = document.getElementById('footer-text');
                         if (footerText && data.version) {
-                            footerText.textContent = `Speakr ${data.version} © {{ now.year }}`;
+                            const value = `Speakr ${data.version} © {{ now.year }}`;
+                            footerText.textContent = value;
+                            document.documentElement.style.setProperty(
+                                '--footer-version-text',
+                                `"${value.replace(/"/g, '\\"')}"`
+                            );
                         }
                     }
                 } catch (error) {
