@@ -40,8 +40,18 @@
             </button>
         </div>
 
-        <!-- Main Content - Tab-based on mobile, side-by-side on desktop -->
-        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden modal-content">
+        <!-- Main Content - Tab-based on mobile, side-by-side on desktop.
+             modal-content class intentionally REMOVED: it carries
+             'max-height: calc(100vh - 200px); overflow-y: auto' from
+             styles.css that fought the new .modal-panel flex-column
+             layout — it introduced a SECOND scrollable container
+             between the modal panel and the transcript pane, making
+             the transcript's clientHeight unstable and feeding back
+             into virtualScroll's range recompute. With it removed the
+             flex-grow takes the natural remaining height of the
+             modal-panel and the only scrollable container is the
+             transcript pane itself. -->
+        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden">
             <!-- Speaker List Panel - shown on mobile when speakers tab active, always on desktop -->
             <div class="lg:w-1/3 p-3 sm:p-6 space-y-2 sm:space-y-4 overflow-y-auto custom-scrollbar lg:border-r border-[var(--border-primary)]"
                  :class="{ 'hidden lg:block': speakerModalTab !== 'speakers', 'flex-1': speakerModalTab === 'speakers' }">
