@@ -1447,7 +1447,8 @@
     "summaryFailed": "Generierung der Zusammenfassung fehlgeschlagen",
     "summaryInProgress": "Zusammenfassung wird generiert...",
     "title": "Zusammenfassung",
-    "customizePrompt": "Prompt anpassen"
+    "customizePrompt": "Prompt anpassen",
+    "editingSaveHint": "Bearbeitung — über die Tab-Leiste oben speichern"
   },
   "tagManagement": {
     "asrDefaults": "ASR-Standards",

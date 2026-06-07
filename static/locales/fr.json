@@ -1447,7 +1447,8 @@
     "summaryFailed": "La génération du résumé a échoué",
     "summaryInProgress": "Génération du résumé en cours...",
     "title": "Résumé",
-    "customizePrompt": "Personnaliser le prompt"
+    "customizePrompt": "Personnaliser le prompt",
+    "editingSaveHint": "Modification — enregistrer depuis la barre d'onglets ci-dessus"
   },
   "tagManagement": {
     "asrDefaults": "Paramètres ASR par Défaut",

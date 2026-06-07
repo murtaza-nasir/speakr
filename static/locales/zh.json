@@ -1447,7 +1447,8 @@
     "summaryFailed": "摘要生成失败",
     "summaryInProgress": "摘要生成中...",
     "title": "摘要",
-    "customizePrompt": "自定义提示词"
+    "customizePrompt": "自定义提示词",
+    "editingSaveHint": "正在编辑 — 请通过上方的标签栏保存"
   },
   "tagManagement": {
     "asrDefaults": "ASR 默认值",

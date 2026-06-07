@@ -1447,7 +1447,8 @@
     "summaryFailed": "La generación del resumen falló",
     "summaryInProgress": "Generación de resumen en progreso...",
     "title": "Resumen",
-    "customizePrompt": "Personalizar instrucción"
+    "customizePrompt": "Personalizar instrucción",
+    "editingSaveHint": "Editando — guarda desde la barra de pestañas de arriba"
   },
   "tagManagement": {
     "asrDefaults": "Configuraciones ASR Predeterminadas",

@@ -1447,7 +1447,8 @@
     "summaryFailed": "Falha na geração do resumo",
     "summaryInProgress": "Geração de resumo em andamento...",
     "title": "Resumo",
-    "customizePrompt": "Personalizar prompt"
+    "customizePrompt": "Personalizar prompt",
+    "editingSaveHint": "Editando — salvar na barra de abas acima"
   },
   "tagManagement": {
     "asrDefaults": "Padrões de ASR",

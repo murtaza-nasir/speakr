@@ -2288,7 +2288,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                          with a group). Copy varies by site-admin status. -->
                     <div id="tagSharingEmptyState" class="empty hidden">
                         <div class="empty__icon"><i class="fas fa-users"></i></div>
-                        <div class="empty__title">No groups available for sharing</div>
+                        <div class="empty__title" data-i18n="folderManagement.sharingEmptyTitle">No groups available for sharing</div>
                         <div class="empty__body">
                             {% if current_user.is_admin %}
                                 Sharing tags requires at least one group. Create one in
@@ -2319,7 +2319,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <div id="folderModal" class="modal-overlay hidden">
         <div class="modal-panel modal-panel--md">
             <div class="modal-header">
-                <h3 id="folderModalTitle" class="modal-title">Create Folder</h3>
+                <h3 id="folderModalTitle" class="modal-title" data-i18n="folderManagement.createFolderTitle">Create Folder</h3>
                 <button id="closeFolderModalBtn" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
             <form id="folderForm" style="display: contents;">
@@ -2329,15 +2329,15 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                 <!-- Name and Color (always visible, outside tabs) -->
                 <div>
-                    <label for="folderName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Folder Name *</label>
+                    <label for="folderName" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.folderName">Folder Name *</label>
                     <input type="text" id="folderName" name="name" required maxlength="50" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., Office Calls, Interviews">
                 </div>
 
                 <div>
-                    <label for="folderColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Color</label>
+                    <label for="folderColor" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.folderColor">Color</label>
                     <div class="flex items-center space-x-3">
                         <input type="color" id="folderColor" name="color" value="#10B981" class="w-12 h-10 rounded border border-[var(--border-secondary)]">
-                        <span class="text-sm text-[var(--text-muted)]">Choose a color for easy identification</span>
+                        <span class="text-sm text-[var(--text-muted)]" data-i18n="folderManagement.colorDescription">Choose a color for easy identification</span>
                     </div>
                 </div>
 
@@ -2345,13 +2345,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <div class="border-b border-[var(--border-primary)]">
                     <nav class="flex -mb-px space-x-1" id="folderModalTabs">
                         <button type="button" class="folder-modal-tab active px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-[var(--border-focus)] text-[var(--text-accent)]" data-tab="folderTabTranscription">
-                            <i class="fas fa-microphone mr-1"></i>Transcription
+                            <i class="fas fa-microphone mr-1"></i><span data-i18n="folderManagement.tabTranscription">Transcription</span>
                         </button>
                         <button type="button" class="folder-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-tab="folderTabSummary">
-                            <i class="fas fa-file-alt mr-1"></i>Summary & Templates
+                            <i class="fas fa-file-alt mr-1"></i><span data-i18n="folderManagement.tabSummary">Summary & Templates</span>
                         </button>
                         <button type="button" id="folderTabSharingBtn" class="folder-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hidden" data-tab="folderTabSharing">
-                            <i class="fas fa-users mr-1"></i>Sharing
+                            <i class="fas fa-users mr-1"></i><span data-i18n="folderManagement.tabSharing">Sharing</span>
                         </button>
                     </nav>
                 </div>
@@ -2363,20 +2363,20 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <div id="folderTabTranscription" class="folder-modal-tab-content space-y-4">
                     {% if connector_supports_diarization %}
                     <div>
-                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Transcription Default Settings</h4>
-                        <p class="text-xs text-[var(--text-light)] mb-3">Tag settings take priority over folder settings</p>
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="folderManagement.transcriptionDefaultSettings">Transcription Default Settings</h4>
+                        <p class="text-xs text-[var(--text-light)] mb-3" data-i18n="folderManagement.tagPriorityNote">Tag settings take priority over folder settings</p>
                         <div class="space-y-3">
                             <div>
-                                <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Default Language</label>
+                                <label for="folderLanguage" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.defaultLanguage">Default Language</label>
                                 <input type="text" id="folderLanguage" name="default_language" maxlength="10" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., en, es, zh">
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label for="folderMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Min Speakers</label>
+                                    <label for="folderMinSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.minSpeakers">Min Speakers</label>
                                     <input type="number" id="folderMinSpeakers" name="default_min_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                                 </div>
                                 <div>
-                                    <label for="folderMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1">Max Speakers</label>
+                                    <label for="folderMaxSpeakers" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="folderManagement.maxSpeakers">Max Speakers</label>
                                     <input type="number" id="folderMaxSpeakers" name="default_max_speakers" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                                 </div>
                             </div>
@@ -2404,30 +2404,30 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     <div id="folderTranscriptionModelSection" class="hidden">
                         <label for="folderTranscriptionModel" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.defaultTranscriptionModel">Default transcription model</label>
                         <select id="folderTranscriptionModel" name="default_transcription_model" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">(use admin/global default)</option>
+                            <option value="" data-i18n="folderManagement.useAdminGlobalDefault">(use admin/global default)</option>
                         </select>
-                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.defaultTranscriptionModelHelp">Override which transcription model is used for recordings in this folder.</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.transcriptionModelHelp">Override which transcription model is used for recordings in this folder.</p>
                     </div>
 
                     <!-- Retention Period Override (only shown when auto-deletion is enabled) -->
                     <div id="folderRetentionSection" class="hidden border-t border-[var(--border-primary)] pt-4 mt-2">
                         <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                            <i class="fas fa-clock mr-2"></i>Retention & Auto-Deletion
+                            <i class="fas fa-clock mr-2"></i><span data-i18n="folderManagement.retentionAndAutoDeletion">Retention & Auto-Deletion</span>
                         </h4>
                         <div class="space-y-3">
                             <div id="folderRetentionDaysContainer">
-                                <label for="folderRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Retention Period (days)</label>
-                                <input type="number" id="folderRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention">
-                                <p class="text-xs text-[var(--text-light)] mt-1">Leave empty to use global retention period.</p>
+                                <label for="folderRetentionDays" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.retentionPeriodLabel">Retention Period (days)</label>
+                                <input type="number" id="folderRetentionDays" name="retention_days" min="1" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Leave empty to use global retention" data-i18n-placeholder="folderManagement.retentionPlaceholder">
+                                <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.retentionHelp">Leave empty to use global retention period.</p>
                             </div>
                             <div class="flex items-start space-x-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
                                 <input type="checkbox" id="folderProtectFromDeletion" class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="folderProtectFromDeletion" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
                                         <i class="fas fa-shield-alt mr-1 text-yellow-600 dark:text-yellow-400"></i>
-                                        Protect from Auto-Deletion (Infinite Retention)
+                                        <span data-i18n="folderManagement.protectFromDeletionLabel">Protect from Auto-Deletion (Infinite Retention)</span>
                                     </label>
-                                    <p class="text-xs text-[var(--text-light)] mt-1">Recordings in this folder will never be automatically deleted.</p>
+                                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.protectFromDeletionLongHelp">Recordings in this folder will never be automatically deleted.</p>
                                 </div>
                             </div>
                         </div>
@@ -2437,24 +2437,24 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <!-- Tab: Summary & Templates -->
                 <div id="folderTabSummary" class="folder-modal-tab-content space-y-4 hidden">
                     <div>
-                        <label for="folderCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Custom Summary Prompt</label>
-                        <textarea id="folderCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings in this folder"></textarea>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Leave blank to use your default summary prompt. Tag prompts take priority over folder prompts.</p>
+                        <label for="folderCustomPrompt" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.customPrompt">Custom Summary Prompt</label>
+                        <textarea id="folderCustomPrompt" name="custom_prompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Optional: Custom prompt for generating summaries for recordings in this folder" data-i18n-placeholder="folderManagement.summaryPromptPlaceholder"></textarea>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.summaryPromptHelp">Leave blank to use your default summary prompt. Tag prompts take priority over folder prompts.</p>
                     </div>
                     <div>
-                        <label for="folderNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Naming Template</label>
+                        <label for="folderNamingTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.namingTemplate">Naming Template</label>
                         <select id="folderNamingTemplate" name="naming_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">No template (use user default or AI title)</option>
+                            <option value="" data-i18n="folderManagement.namingTemplateNone">No template (use user default or AI title)</option>
                         </select>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Select a naming template to automatically format titles for recordings in this folder</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.namingTemplateHint">Select a naming template to automatically format titles for recordings in this folder</p>
                     </div>
                     {% if enable_auto_export %}
                     <div>
-                        <label for="folderExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Export Template</label>
+                        <label for="folderExportTemplate" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.exportTemplate">Export Template</label>
                         <select id="folderExportTemplate" name="export_template_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">No template (use user default)</option>
+                            <option value="" data-i18n="folderManagement.exportTemplateNone">No template (use user default)</option>
                         </select>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Select an export template to use when exporting recordings in this folder</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.exportTemplateHint">Select an export template to use when exporting recordings in this folder</p>
                     </div>
                     {% endif %}
                 </div>
@@ -2462,37 +2462,37 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <!-- Tab: Sharing -->
                 <div id="folderTabSharing" class="folder-modal-tab-content space-y-4 hidden">
                     <div id="folderGroupSelectionSection" class="hidden">
-                        <label for="folderGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Assignment (Optional)</label>
+                        <label for="folderGroupId" class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="folderManagement.groupAssignment">Group Assignment (Optional)</label>
                         <select id="folderGroupId" name="group_id" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                             <option value="" data-i18n="account.personalFolder">Personal Folder (Not Associated with a Group)</option>
                         </select>
-                        <p class="text-xs text-[var(--text-light)] mt-1">Assign this folder to a group to enable auto-sharing when recordings are moved to it</p>
+                        <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.groupAssignmentHelp">Assign this folder to a group to enable auto-sharing when recordings are moved to it</p>
                     </div>
                     <div id="folderGroupSettingsSection" class="hidden">
                         <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                            <i class="fas fa-users mr-2"></i>Group Sharing Settings
+                            <i class="fas fa-users mr-2"></i><span data-i18n="folderManagement.groupSharingSettings">Group Sharing Settings</span>
                         </h4>
                         <div class="space-y-3">
                             <div class="flex items-start space-x-3">
                                 <input type="checkbox" id="folderAutoShareOnApply" name="auto_share_on_apply" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="folderAutoShareOnApply" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                        <i class="fas fa-share-alt mr-1"></i>Auto-share with all group members
+                                        <i class="fas fa-share-alt mr-1"></i><span data-i18n="folderManagement.autoShareLabel">Auto-share with all group members</span>
                                     </label>
-                                    <p class="text-xs text-[var(--text-light)] mt-1">All group members will automatically get access to recordings in this folder</p>
+                                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.autoShareHelp">All group members will automatically get access to recordings in this folder</p>
                                 </div>
                             </div>
                             <div class="flex items-start space-x-3">
                                 <input type="checkbox" id="folderShareWithGroupLead" name="share_with_group_lead" checked class="mt-1 h-4 w-4 text-[var(--bg-accent)] border-[var(--border-secondary)] rounded focus:ring-[var(--border-focus)]">
                                 <div class="flex-1">
                                     <label for="folderShareWithGroupLead" class="block text-sm font-medium text-[var(--text-secondary)] cursor-pointer">
-                                        <i class="fas fa-user-shield mr-1"></i>Share with group admins only
+                                        <i class="fas fa-user-shield mr-1"></i><span data-i18n="folderManagement.shareWithAdminsLabel">Share with group admins only</span>
                                     </label>
-                                    <p class="text-xs text-[var(--text-light)] mt-1">Only group admins will get access (not all members)</p>
+                                    <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="folderManagement.shareWithAdminsHelp">Only group admins will get access (not all members)</p>
                                 </div>
                             </div>
                         </div>
-                        <p class="text-xs text-[var(--text-light)] italic mt-3">Note: If both are enabled, all group members will have access.</p>
+                        <p class="text-xs text-[var(--text-light)] italic mt-3" data-i18n="folderManagement.shareModeNote">Note: If both are enabled, all group members will have access.</p>
                     </div>
 
                     <!-- Empty state: shown when internal sharing is enabled but the user
@@ -2500,7 +2500,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                          with a group). Copy varies by site-admin status. -->
                     <div id="folderSharingEmptyState" class="empty hidden">
                         <div class="empty__icon"><i class="fas fa-users"></i></div>
-                        <div class="empty__title">No groups available for sharing</div>
+                        <div class="empty__title" data-i18n="folderManagement.sharingEmptyTitle">No groups available for sharing</div>
                         <div class="empty__body">
                             {% if current_user.is_admin %}
                                 Sharing folders requires at least one group. Create one in
@@ -2517,9 +2517,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 </div><!-- /.modal-tabs-pane -->
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
-                    <button type="button" id="cancelFolderBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
+                    <button type="button" id="cancelFolderBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]" data-i18n="buttons.cancel">Cancel</button>
                     <button type="submit" id="saveFolderBtn" class="btn btn--primary">
-                        <i class="fas fa-save mr-2"></i> <span>Save Folder</span>
+                        <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveFolder">Save Folder</span>
                     </button>
                 </div>
             </form>
@@ -4969,8 +4969,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (tag) {
                 // Edit mode
                 isEditingTag = true;
-                tagModalTitle.textContent = 'Edit Tag';
-                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Update Tag';
+                tagModalTitle.textContent = t('editTagModal.editTitle') || 'Edit Tag';
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + (t('editTagModal.updateTag') || 'Update Tag');
 
                 // Populate form
                 document.getElementById('tagId').value = tag.id;
@@ -5099,8 +5099,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } else {
                 // Create mode
                 isEditingTag = false;
-                tagModalTitle.textContent = 'Create Tag';
-                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> Save Tag';
+                tagModalTitle.textContent = t('editTagModal.createTitle') || 'Create Tag';
+                saveTagBtn.innerHTML = '<i class="fas fa-save mr-2"></i> ' + (t('buttons.createTag') || 'Save Tag');
                 tagForm.reset();
                 document.getElementById('tagColor').value = '#3B82F6';
 
@@ -5799,7 +5799,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             if (folder) {
                 // Edit mode
                 isEditingFolder = true;
-                if (folderModalTitle) folderModalTitle.textContent = 'Edit Folder';
+                if (folderModalTitle) folderModalTitle.textContent = t('folderManagement.editFolder') || 'Edit Folder';
                 if (saveFolderBtn) {
                     saveFolderBtn.textContent = '';
                     const saveIcon = document.createElement('i');
@@ -5862,7 +5862,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             } else {
                 // Create mode
                 isEditingFolder = false;
-                if (folderModalTitle) folderModalTitle.textContent = 'Create Folder';
+                if (folderModalTitle) folderModalTitle.textContent = t('folderManagement.createFolderTitle') || 'Create Folder';
                 if (saveFolderBtn) {
                     saveFolderBtn.textContent = '';
                     const saveIcon = document.createElement('i');

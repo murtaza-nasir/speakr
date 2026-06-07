@@ -1447,7 +1447,8 @@
     "summaryFailed": "Не удалось сгенерировать резюме",
     "summaryInProgress": "Генерация резюме...",
     "title": "Резюме",
-    "customizePrompt": "Настроить подсказку"
+    "customizePrompt": "Настроить подсказку",
+    "editingSaveHint": "Редактирование — сохраните через панель вкладок выше"
   },
   "tagManagement": {
     "asrDefaults": "Настройки ASR по умолчанию",

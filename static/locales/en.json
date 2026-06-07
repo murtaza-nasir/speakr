@@ -1456,7 +1456,8 @@
     "summaryFailed": "Summary generation failed",
     "summaryInProgress": "Summary generation in progress...",
     "title": "Summary",
-    "customizePrompt": "Customise prompt"
+    "customizePrompt": "Customise prompt",
+    "editingSaveHint": "Editing — save from the tab bar above"
   },
   "tagManagement": {
     "asrDefaults": "ASR Defaults",
