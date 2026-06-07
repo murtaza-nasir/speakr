@@ -135,10 +135,12 @@
         <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-3 sm:px-4 py-3 flex items-center justify-between flex-shrink-0 z-50">
             <!-- Left side: Menu and logo -->
             <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-shrink">
-                <!-- Mobile Sidebar Toggle -->
-                <button @click="isMobileSidebarOpen = !isMobileSidebarOpen" 
-                        class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200 lg:hidden flex-shrink-0 flex items-center justify-center">
-                    <i class="fas fa-bars text-lg"></i>
+                <!-- Mobile Sidebar Toggle — uses the design system
+                     icon-button primitive so it matches the rest of
+                     the app's icon button rhythm. -->
+                <button @click="isMobileSidebarOpen = !isMobileSidebarOpen"
+                        class="btn btn--icon lg:hidden flex-shrink-0">
+                    <i class="fas fa-bars"></i>
                 </button>
                 
                 <!-- Logo and Title (clickable to go back) -->
@@ -165,10 +167,10 @@
                 <div class="relative">
                     <button @click="isUserMenuOpen = !isUserMenuOpen"
                             data-user-menu-toggle
-                            class="flex items-center gap-1 sm:gap-2 p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors duration-200"
+                            class="btn btn--ghost btn--sm flex-shrink-0"
                             :title="t('admin.userMenu')">
-                        <i class="fas fa-user-circle text-lg"></i>
-                        <span class="hidden lg:inline text-sm">{{ (current_user.name or current_user.username) if current_user.is_authenticated else 'User' }}</span>
+                        <i class="fas fa-user-circle"></i>
+                        <span class="hidden lg:inline">{{ (current_user.name or current_user.username) if current_user.is_authenticated else 'User' }}</span>
                         <i class="fas fa-chevron-down text-xs hidden sm:inline"></i>
                     </button>
 
@@ -226,85 +228,91 @@
                      'lg:relative lg:translate-x-0', 
                      isMobileSidebarOpen ? 'fixed inset-y-0 left-0 translate-x-0' : 'fixed inset-y-0 left-0 -translate-x-full lg:translate-x-0'
                  ]">
-                <!-- Mobile close button -->
-                <div class="lg:hidden flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
-                    <h2 class="text-lg font-bold">${t('inquire.filters')}</h2>
-                    <button @click="isMobileSidebarOpen = false" 
-                            class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
-                        <i class="fas fa-times text-lg"></i>
+                <!-- Mobile close button — matches the design system
+                     icon-button primitive. -->
+                <div class="lg:hidden flex items-center justify-between p-3 border-b"
+                     style="border-bottom-color: var(--border-primary);">
+                    <h2 class="text-base font-semibold">${ t('inquire.filters') }</h2>
+                    <button @click="isMobileSidebarOpen = false"
+                            class="btn btn--icon">
+                        <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
                 <div class="flex-1 overflow-y-auto custom-scrollbar">
-                    <div class="p-4 space-y-4">
-                    <div class="flex items-center justify-between lg:block">
-                        <h2 class="text-lg font-bold hidden lg:block">${t('inquire.filters')}</h2>
-                        <button @click="clearInquireFilters" class="text-xs px-3 py-1 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] transition-colors flex items-center gap-1 w-full lg:w-auto justify-center">
-                            <i class="fas fa-times"></i> ${t('inquire.clearAll')}
+                    <div class="p-3 space-y-3">
+                    <!-- Filters header — h2 on desktop is hidden because
+                         the sidebar already carries an "Filters" label
+                         in the mobile close header above; on desktop
+                         the Clear all button alone is enough chrome. -->
+                    <div class="flex items-center justify-between lg:justify-end">
+                        <h2 class="text-base font-semibold lg:hidden">${ t('inquire.filters') }</h2>
+                        <button @click="clearInquireFilters" class="btn btn--sm btn--ghost">
+                            <i class="fas fa-times"></i><span>${ t('inquire.clearAll') }</span>
                         </button>
                     </div>
-                    
+
                     <!-- Tag Filters -->
-                    <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
-                        <h3 class="font-medium mb-2 flex items-center text-[var(--text-primary)]">
-                            <i class="fas fa-tags mr-2 text-[var(--text-accent)]"></i>${t('inquire.tags')}
+                    <div class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-tags mr-2" style="color: var(--text-accent);"></i>${ t('inquire.tags') }
                         </h3>
-                        <!-- Tag search input -->
-                        <div class="mb-3">
-                            <input type="text" v-model="tagSearchQuery" :placeholder="t('form.searchTags')" 
-                                   class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
-                        </div>
-                        <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                            <label v-for="tag in filteredTags" :key="tag.id" class="flex items-center cursor-pointer hover:bg-[var(--bg-tertiary)] p-2 rounded transition-colors group">
-                                <input type="checkbox" :value="tag.id" v-model="inquireFilters.selectedTags" 
+                        <input type="text" v-model="tagSearchQuery" :placeholder="t('form.searchTags')"
+                               class="field mb-2"
+                               style="font-size: var(--fs-meta);">
+                        <div class="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                            <label v-for="tag in filteredTags" :key="tag.id"
+                                   class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
+                                <input type="checkbox" :value="tag.id" v-model="inquireFilters.selectedTags"
                                        class="filter-checkbox">
-                                <span class="ml-2 text-sm font-medium flex-1" :style="{color: tag.color}">${tag.name}</span>
-                                <span class="text-xs px-1.5 py-0.5 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-full">${tag.recording_count}</span>
+                                <span class="ml-2 text-sm font-medium flex-1" :style="{ color: tag.color }">${ tag.name }</span>
+                                <span class="text-xs px-1.5 py-0.5 rounded-full"
+                                      style="background: var(--bg-tertiary); color: var(--text-muted);">${ tag.recording_count }</span>
                             </label>
                         </div>
                     </div>
-                    
+
                     <!-- Speaker Filters -->
-                    <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
-                        <h3 class="font-medium mb-2 flex items-center text-[var(--text-primary)]">
-                            <i class="fas fa-users mr-2 text-[var(--text-accent)]"></i>${t('inquire.speakers')}
+                    <div class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-users mr-2" style="color: var(--text-accent);"></i>${ t('inquire.speakers') }
                         </h3>
                         <div v-if="availableFilters.speakers.length > 0">
-                            <!-- Speaker search input -->
-                            <div class="mb-3">
-                                <input type="text" v-model="speakerSearchQuery" :placeholder="t('form.searchSpeakers')" 
-                                       class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
-                            </div>
-                            <div class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar">
-                                <label v-for="speaker in filteredSpeakers" :key="speaker" class="flex items-center cursor-pointer hover:bg-[var(--bg-tertiary)] p-2 rounded transition-colors group">
-                                    <input type="checkbox" :value="speaker" v-model="inquireFilters.selectedSpeakers" 
+                            <input type="text" v-model="speakerSearchQuery" :placeholder="t('form.searchSpeakers')"
+                                   class="field mb-2"
+                                   style="font-size: var(--fs-meta);">
+                            <div class="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                                <label v-for="speaker in filteredSpeakers" :key="speaker"
+                                       class="flex items-center cursor-pointer p-1.5 rounded transition-colors hover:bg-[var(--bg-tertiary)]">
+                                    <input type="checkbox" :value="speaker" v-model="inquireFilters.selectedSpeakers"
                                            class="filter-checkbox">
-                                    <span class="ml-2 text-sm text-[var(--text-primary)] flex-1">${speaker}</span>
+                                    <span class="ml-2 text-sm flex-1" style="color: var(--text-primary);">${ speaker }</span>
                                 </label>
                             </div>
                         </div>
-                        
-                        <!-- No Speakers Message -->
-                        <div v-if="availableFilters.speakers.length === 0" class="text-center py-3">
-                            <i class="fas fa-users text-xl text-[var(--text-muted)] mb-2"></i>
-                            <p class="text-sm text-[var(--text-muted)]">${t('inquire.noSpeakerData')}</p>
-                            <p class="text-xs text-[var(--text-muted)] mt-1">${t('inquire.speakerRequirement')}</p>
+                        <div v-else class="empty" style="padding: var(--sp-3);">
+                            <div class="empty__icon"><i class="fas fa-users"></i></div>
+                            <div class="t-meta">${ t('inquire.noSpeakerData') }</div>
+                            <div class="t-meta" style="font-size: var(--fs-label); margin-top: var(--sp-1);">${ t('inquire.speakerRequirement') }</div>
                         </div>
                     </div>
-                    
+
                     <!-- Date Range Filters -->
-                    <div class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
-                        <h3 class="font-medium mb-2 flex items-center text-[var(--text-primary)]">
-                            <i class="fas fa-calendar mr-2 text-[var(--text-accent)]"></i>${t('inquire.dateRange')}
+                    <div class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <h3 class="t-body-strong mb-2 flex items-center">
+                            <i class="fas fa-calendar mr-2" style="color: var(--text-accent);"></i>${ t('inquire.dateRange') }
                         </h3>
                         <div class="space-y-2">
                             <div>
-                                <label class="block text-xs text-[var(--text-muted)] mb-1 font-medium">${t('inquire.from')}</label>
-                                <input type="date" v-model="inquireFilters.dateFrom" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
+                                <label class="t-label mb-1 block">${ t('inquire.from') }</label>
+                                <input type="date" v-model="inquireFilters.dateFrom" class="field" style="font-size: var(--fs-meta);">
                             </div>
                             <div>
-                                <label class="block text-xs text-[var(--text-muted)] mb-1 font-medium">${t('inquire.to')}</label>
-                                <input type="date" v-model="inquireFilters.dateTo" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-1 focus:ring-[var(--border-focus)] transition-colors">
+                                <label class="t-label mb-1 block">${ t('inquire.to') }</label>
+                                <input type="date" v-model="inquireFilters.dateTo" class="field" style="font-size: var(--fs-meta);">
                             </div>
                         </div>
                     </div>
@@ -328,21 +336,34 @@
                     </div>
                 -->
                 
-                    <!-- Active Filters Summary -->
-                    <div v-if="hasActiveFilters" class="bg-[var(--bg-primary)] rounded-lg border border-[var(--border-secondary)] p-3">
-                        <h4 class="text-sm font-medium mb-2 text-[var(--text-muted)] flex items-center">
-                            <i class="fas fa-filter mr-2"></i>${t('inquire.activeFilters')}
-                        </h4>
-                        <div class="space-y-1 text-xs">
-                            <div v-if="inquireFilters.selectedTags.length" class="flex items-center px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-                                <span><i class="fas fa-tags mr-1"></i>${inquireFilters.selectedTags.length} ${t('inquire.tagsCount')}</span>
-                            </div>
-                            <div v-if="inquireFilters.selectedSpeakers.length" class="flex items-center px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-                                <span><i class="fas fa-users mr-1"></i>${inquireFilters.selectedSpeakers.length} ${t('inquire.speakersCount')}</span>
-                            </div>
-                            <div v-if="inquireFilters.dateFrom || inquireFilters.dateTo" class="flex items-center px-2 py-1 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)]">
-                                <span><i class="fas fa-calendar mr-1"></i>${t('inquire.dateRangeActive')}</span>
-                            </div>
+                    <!-- Active Filters Summary — small pill-style
+                         readout of what's currently filtered, with the
+                         accent colour on the icon so it reads as an
+                         "active" indicator. -->
+                    <div v-if="hasActiveFilters" class="rounded-md border p-3"
+                         style="background: var(--bg-primary); border-color: var(--border-secondary);">
+                        <div class="t-label mb-2 flex items-center">
+                            <i class="fas fa-filter mr-1" style="color: var(--text-accent);"></i>${ t('inquire.activeFilters') }
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            <span v-if="inquireFilters.selectedTags.length"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-tags"></i>
+                                <span>${ inquireFilters.selectedTags.length } ${ t('inquire.tagsCount') }</span>
+                            </span>
+                            <span v-if="inquireFilters.selectedSpeakers.length"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-users"></i>
+                                <span>${ inquireFilters.selectedSpeakers.length } ${ t('inquire.speakersCount') }</span>
+                            </span>
+                            <span v-if="inquireFilters.dateFrom || inquireFilters.dateTo"
+                                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                                  style="background: var(--bg-accent); color: var(--text-accent);">
+                                <i class="fas fa-calendar"></i>
+                                <span>${ t('inquire.dateRangeActive') }</span>
+                            </span>
                         </div>
                     </div>
                     </div><!-- End of p-4 space-y-4 div -->
@@ -354,80 +375,119 @@
                  :class="isMobileSidebarOpen ? 'hidden lg:flex' : 'flex'">
                 <!-- Chat Messages Area -->
                 <div ref="inquireMessagesRef" @scroll="handleScroll" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                    <!-- Welcome Message -->
-                    <div v-if="inquireChatMessages.length === 0" class="text-center py-16">
-                        <div class="mb-6 text-[var(--text-accent)]">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
+                    <!-- Welcome / Empty state.
+                         Polished landing layout: friendly accent
+                         icon badge, clear headline + supporting copy,
+                         and a calmer "Example questions" card that
+                         uses the bg-tertiary surface treatment the
+                         rest of the design system uses. -->
+                    <div v-if="inquireChatMessages.length === 0" class="flex flex-col items-center text-center py-12 px-4">
+                        <div class="mx-auto mb-5 w-20 h-20 rounded-full flex items-center justify-center"
+                             style="background: var(--bg-tertiary);">
+                            <i class="fas fa-search text-3xl" style="color: var(--text-accent);"></i>
                         </div>
-                        <h2 class="text-2xl font-bold mb-4">${t('inquire.askQuestions')}</h2>
-                        <p class="text-[var(--text-muted)] max-w-lg mx-auto mb-6">
-                            ${t('inquire.selectFilters')}
+                        <h2 class="text-2xl font-semibold mb-2" style="color: var(--text-primary);">
+                            ${ t('inquire.askQuestions') }
+                        </h2>
+                        <p class="t-body max-w-lg mb-6" style="color: var(--text-muted);">
+                            ${ t('inquire.selectFilters') }
                         </p>
-                        <div class="bg-[var(--bg-tertiary)] rounded-xl p-4 max-w-md mx-auto">
-                            <h4 class="font-medium mb-2">${t('inquire.exampleQuestions')}</h4>
-                            <ul class="text-sm text-[var(--text-secondary)] space-y-1 text-left">
-                                <li>${t('inquire.exampleQuestion1')}</li>
-                                <li>${t('inquire.exampleQuestion2')}</li>
-                                <li>${t('inquire.exampleQuestion3')}</li>
-                                <li>${t('inquire.exampleQuestion4')}</li>
+                        <div class="surface-raised text-left max-w-md w-full" style="padding: var(--sp-4);">
+                            <div class="t-label mb-2">
+                                <i class="fas fa-lightbulb mr-1" style="color: var(--text-accent);"></i>
+                                ${ t('inquire.exampleQuestions') }
+                            </div>
+                            <ul class="t-body space-y-1.5" style="color: var(--text-secondary);">
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-angle-right mt-1 text-xs" style="color: var(--text-muted);"></i>
+                                    <span>${ t('inquire.exampleQuestion1') }</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-angle-right mt-1 text-xs" style="color: var(--text-muted);"></i>
+                                    <span>${ t('inquire.exampleQuestion2') }</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-angle-right mt-1 text-xs" style="color: var(--text-muted);"></i>
+                                    <span>${ t('inquire.exampleQuestion3') }</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-angle-right mt-1 text-xs" style="color: var(--text-muted);"></i>
+                                    <span>${ t('inquire.exampleQuestion4') }</span>
+                                </li>
                             </ul>
                         </div>
                     </div>
                     
-                    <!-- Chat Messages -->
-                    <div v-for="(message, index) in inquireChatMessages" :key="index" 
+                    <!-- Chat Messages.
+                         User bubble: accent-tinted; assistant bubble:
+                         tertiary surface with prose-flush content so
+                         markdown renders consistently. Both bubbles
+                         use rounded-lg (instead of rounded-xl) so the
+                         shape matches the rest of the design system. -->
+                    <div v-for="(message, index) in inquireChatMessages" :key="index"
                          :class="['flex', message.role === 'user' ? 'justify-end' : 'justify-start']">
-                        <div :class="['max-w-3xl px-4 py-4 rounded-xl chat-message', 
-                                      message.role === 'user' 
-                                      ? 'bg-[var(--bg-accent)] text-[var(--text-accent)]' 
-                                      : 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]']">
-                            <div class="prose prose-sm max-w-none text-[var(--text-primary)]" 
-                                 :class="message.role === 'user' ? 'prose-invert' : ''" 
+                        <div class="max-w-3xl chat-message"
+                             :class="message.role === 'user' ? 'message user-message' : 'message ai-message'">
+                            <div v-if="message.html || message.content"
+                                 class="prose prose-sm max-w-none"
+                                 :class="message.role === 'user' ? 'prose-invert' : ''"
                                  v-html="message.html || message.content">
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Loading indicator with status -->
+
+                    <!-- Loading indicator — uses the .ai-message
+                         primitive for visual consistency with normal
+                         assistant messages, plus a clear step indicator
+                         row so the user sees progress through the
+                         analysis pipeline. -->
                     <div v-if="isInquireChatLoading" class="flex justify-start">
-                        <div class="bg-[var(--bg-tertiary)] px-4 py-3 rounded-xl max-w-md">
-                            <div class="flex items-center space-x-2">
-                                <div class="animate-spin h-5 w-5 border-2 border-[var(--text-accent)] border-t-transparent rounded-full flex-shrink-0"></div>
-                                <span class="text-sm text-[var(--text-muted)]" v-if="showProcessingStatus">${chatProcessingStatus}</span>
-                                <span class="text-sm text-[var(--text-muted)]" v-else>Analyzing transcriptions...</span>
+                        <div class="ai-message message max-w-md">
+                            <div class="flex items-center gap-2">
+                                <div class="spinner flex-shrink-0"></div>
+                                <span class="t-meta" v-if="showProcessingStatus">${ chatProcessingStatus }</span>
+                                <span class="t-meta" v-else>Analyzing transcriptions...</span>
                             </div>
-                            
-                            <!-- Progress steps indicator -->
-                            <div v-if="showProcessingStatus" class="mt-2 flex space-x-1">
-                                <div class="h-1 w-4 bg-[var(--text-accent)] rounded" :class="{ 'animate-pulse': chatProcessingStatus.includes('Analyzing') }"></div>
-                                <div class="h-1 w-4 rounded" :class="chatProcessingStatus.includes('Enriching') || chatProcessingStatus.includes('Searching') || chatProcessingStatus.includes('Responding') ? 'bg-[var(--text-accent)]' : 'bg-[var(--border-secondary)]'"></div>
-                                <div class="h-1 w-4 rounded" :class="chatProcessingStatus.includes('Searching') || chatProcessingStatus.includes('Responding') ? 'bg-[var(--text-accent)]' : 'bg-[var(--border-secondary)]'"></div>
-                                <div class="h-1 w-4 rounded" :class="chatProcessingStatus.includes('Contextualizing') || chatProcessingStatus.includes('Responding') ? 'bg-[var(--text-accent)]' : 'bg-[var(--border-secondary)]'"></div>
-                                <div class="h-1 w-4 rounded" :class="chatProcessingStatus.includes('Responding') ? 'bg-[var(--text-accent)] animate-pulse' : 'bg-[var(--border-secondary)]'"></div>
+                            <div v-if="showProcessingStatus" class="mt-2 flex gap-1">
+                                <div class="h-1 w-4 rounded transition-colors"
+                                     :style="{ background: chatProcessingStatus.includes('Analyzing') ? 'var(--text-accent)' : 'var(--text-accent)' }"
+                                     :class="{ 'animate-pulse': chatProcessingStatus.includes('Analyzing') }"></div>
+                                <div class="h-1 w-4 rounded transition-colors"
+                                     :style="{ background: (chatProcessingStatus.includes('Enriching') || chatProcessingStatus.includes('Searching') || chatProcessingStatus.includes('Responding')) ? 'var(--text-accent)' : 'var(--border-secondary)' }"></div>
+                                <div class="h-1 w-4 rounded transition-colors"
+                                     :style="{ background: (chatProcessingStatus.includes('Searching') || chatProcessingStatus.includes('Responding')) ? 'var(--text-accent)' : 'var(--border-secondary)' }"></div>
+                                <div class="h-1 w-4 rounded transition-colors"
+                                     :style="{ background: (chatProcessingStatus.includes('Contextualizing') || chatProcessingStatus.includes('Responding')) ? 'var(--text-accent)' : 'var(--border-secondary)' }"></div>
+                                <div class="h-1 w-4 rounded transition-colors"
+                                     :style="{ background: chatProcessingStatus.includes('Responding') ? 'var(--text-accent)' : 'var(--border-secondary)' }"
+                                     :class="{ 'animate-pulse': chatProcessingStatus.includes('Responding') }"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Chat Input Area -->
-                <div class="flex-shrink-0 border-t border-[var(--border-primary)] p-6 bg-[var(--bg-secondary)]">
-                    <div class="flex gap-4">
-                        <textarea v-model="inquireChatInput" 
+                <!-- Chat Input Area — uses the .field primitive and
+                     .btn--primary so the input row matches the rest
+                     of the app's send-message patterns instead of a
+                     bespoke px-6 py-3 button. -->
+                <div class="flex-shrink-0 border-t px-4 py-3 sm:px-6 sm:py-4"
+                     style="border-top-color: var(--border-primary); background: var(--bg-secondary);">
+                    <div class="flex gap-2 items-end">
+                        <textarea v-model="inquireChatInput"
                                   @keydown="handleInquireChatKeydown"
                                   :placeholder="t('inquire.placeholder')"
-                                  class="flex-1 px-4 py-3 bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] focus:border-transparent text-[var(--text-primary)]"
-                                  rows="3"></textarea>
-                        <button @click="sendInquireChatMessage" 
+                                  class="field flex-1"
+                                  style="resize: none;"
+                                  rows="2"></textarea>
+                        <button @click="sendInquireChatMessage"
                                 :disabled="!inquireChatInput.trim() || isInquireChatLoading"
-                                class="px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-xl hover:bg-[var(--bg-button-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[60px]">
-                            <i class="fas fa-paper-plane text-lg"></i>
+                                class="btn btn--primary btn--icon btn--lg flex-shrink-0">
+                            <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
-                    <div class="text-xs text-[var(--text-muted)] mt-3 flex items-center justify-between">
+                    <div class="t-meta mt-2 flex items-center justify-between">
                         <span>${t('inquire.sendHint')}</span>
-                        <span v-if="hasActiveFilters" class="text-[var(--text-accent)]">
+                        <span v-if="hasActiveFilters" style="color: var(--text-accent);">
                             <i class="fas fa-filter mr-1"></i>${t('inquire.filtersActive')}
                         </span>
                     </div>
@@ -435,8 +495,10 @@
             </div>
         </div>
 
-        <!-- Toast Container -->
-        <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+        <!-- Toast Container — shared partial so the inquire view
+             gets the same below-header positioning as the main app
+             (top: calc(--app-header-height + 16px); right: 16px). -->
+        {% include 'modals/toast-container.html' %}
 
         <!-- Global Error Banner -->
         <div v-if="globalError" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 max-w-lg w-full mx-4">
