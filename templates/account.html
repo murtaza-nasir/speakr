@@ -924,10 +924,23 @@
                         <form id="displayForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6 max-w-2xl">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" name="preferences_form" value="1"/>
-                            <!-- Preserve other preference fields so saving this
-                                 form doesn't reset them to blank/default. -->
-                            <input type="hidden" name="show_timestamps_simple_view" value="{% if current_user.show_timestamps_simple_view %}on{% endif %}">
-                            <input type="hidden" name="editor_autosave" value="{% if current_user.editor_autosave %}on{% endif %}">
+                            <!-- Preserve other preference fields so saving the
+                                 Display form doesn't reset them. IMPORTANT:
+                                 the backend uses key presence (`name in
+                                 request.form`) to decide checkbox state, so
+                                 these hidden inputs must only be emitted
+                                 when the corresponding pref is currently
+                                 TRUE — emitting an always-present input
+                                 with value="" would silently flip the
+                                 checkbox on every save. Language fields
+                                 always carry a value so they're always
+                                 emitted. -->
+                            {% if current_user.show_timestamps_simple_view %}
+                            <input type="hidden" name="show_timestamps_simple_view" value="on">
+                            {% endif %}
+                            {% if current_user.editor_autosave %}
+                            <input type="hidden" name="editor_autosave" value="on">
+                            {% endif %}
                             <input type="hidden" name="ui_language" value="{{ current_user.ui_language or 'en' }}">
                             <input type="hidden" name="transcription_language" value="{{ current_user.transcription_language or '' }}">
                             <input type="hidden" name="output_language" value="{{ current_user.output_language or '' }}">
