@@ -2,6 +2,20 @@
 
 Speakr combines powerful transcription capabilities with intelligent AI features to transform your audio recordings into valuable, actionable knowledge. Every feature is designed to save time and extract maximum value from your spoken content.
 
+## Recording & Capture
+
+### Multi-Platform System Audio Capture
+
+Record your microphone, your system audio, or a mix of both — with platform-aware setup guidance. Speakr detects your OS and browser and shows a per-OS help guide for what works where: Chrome / Edge on Windows or ChromeOS captures full system audio out of the box via the "Share system audio" checkbox; macOS and Linux capture tab audio directly, and full system audio via documented virtual-audio-device workflows (BlackHole + Multi-Output Device on macOS, `pactl module-virtual-source` one-liner on Linux). A small amber indicator appears on the System Audio / Mic + System buttons when full system audio isn't expected to work on the current platform, so users know before clicking. See the [Recording guide](user-guide/recording.md#platform-support-matrix) for the full matrix.
+
+### Multi-Input Recording (Mic + Secondary Device)
+
+A new Input devices picker in the upload modal lets you pick a primary microphone AND an optional secondary device (a Pulse monitor source, BlackHole, VB-Cable, etc.). Speakr captures both streams in parallel and mixes them via Web Audio into a single track — the canonical solution for capturing **both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively. Virtual / monitor devices are detected and badged in the picker. A separate toggle disables Chrome's echo cancellation / noise suppression / auto-gain — necessary for monitor-source capture because the suppressor otherwise gates sustained speech to silence.
+
+### Recording Stats
+
+A per-recording Stats tab shows total length, speaker count, conversation turns, and word count as headline metrics, then a per-speaker breakdown table (desktop) or card stack (mobile) showing each speaker's speaking time, percentage of total audio, turn count, words, and WPM. A silence row shows how much of the recording was actually quiet. Stats appear automatically when the transcript has speaker diarisation with per-segment timestamps.
+
 ## Core Transcription Features
 
 ### Multi-Engine Support

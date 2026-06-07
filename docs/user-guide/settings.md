@@ -109,6 +109,10 @@ These settings used to live on the Account Information tab. They moved here so a
 
 **Auto-save edits in the transcript editor.** When enabled, edits made in the transcript editor are saved automatically a couple of seconds after you stop typing, with a small `Saved` indicator to confirm. When disabled (the default), saves are explicit via the Save buttons or the `Ctrl+S` keyboard shortcut. Auto-save is useful for long editing sessions where the risk of losing work outweighs the predictability of explicit writes.
 
+### Display
+
+**Audio player position (desktop only).** Choose whether the persistent audio player sits at the **bottom** of the recording detail surface (default — spans the transcription + right rail with a single-row layout) or at the **top** (above the metadata and content area). The setting is saved on your account and takes effect on every recording. Mobile is unaffected; the mobile audio player always sits between the content area and the bottom navigation.
+
 ## Shared Transcripts Tab
 
 ![Shared Transcripts](../assets/images/screenshots/settings shared transcripts.png)

@@ -6,12 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/Main view.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! warning "Latest Release: v0.8.21-alpha - Security Patch (CSRF Bypass + SSO Account Takeover)"
-    **CSRF bypass via unauthenticated API token parameter, plus chained SSO-only account takeover (CWE-287).** All users should upgrade promptly.
+!!! success "Latest Release: v0.9.0 — Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
+    The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform with a per-OS help guide and a Web Audio mixing path for capturing both sides of a meeting; a new Stats tab shows per-recording metrics; the mobile detail view is a first-class member of the design system. Upload modal redesigned, inquire mode polished, dark-mode select dropdowns finally legible.
 
-    - The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter. Replaced with a per-request, header-only, database-validated check.
-    - `change_password` no longer silently sets a password on an SSO-only account (where `current_user.password` is None); this was the chained-takeover path.
-    - Reported by **@Irench1k**. Tracked as a GitHub Security Advisory.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.0.md) for the complete list. Backwards compatible with v0.8.x; database migrations run automatically.
 
 ## Quick Navigation
 

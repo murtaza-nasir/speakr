@@ -56,6 +56,20 @@ A Progressive Web App combines the best of web and mobile apps:
 
 ## PWA Features
 
+### Mobile-First Detail View (v0.9.0+)
+
+The mobile recording detail view is a first-class member of the design system. When you open a recording on a phone you see:
+
+- **Single header** — the global app header carries the title + edit pen + regenerate-title; the per-recording strip below carries participants, status, folder / tag / share pills, and a chevron to expand for action toolbar + secondary metadata.
+- **Bottom navigation** — Summary, Transcript, Chat as direct tabs, plus a **More** overflow that opens a bottom-sheet for Notes / Stats / Events when those tabs are available.
+- **Contextual icons in the chevron row** — Copy / download / edit for Summary and Notes, the follow-player and view-mode toggles for Transcript, calendar-export for Events. Shares the chevron's row so it doesn't take a separate row of vertical space.
+- **Edge-to-edge content** — Panels run full-width to the screen edges instead of sitting inside nested gutters.
+- **Sticky speaker pills** — In the transcript, the speaker tablet pins to the top of the scroll area for the entire speaker's run.
+- **Editor with sticky Cancel / Save footer** — Markdown editing for Summary and Notes uses a flat-corner editor that spans edge-to-edge, with a sticky footer that keeps Cancel and Save reachable for long content.
+- **Audio player** — Sits above the bottom nav with `.btn--icon.btn--sm` consistency across speed / volume / download / fullscreen / video-toggle. The volume slider popover opens upward.
+- **Upload modal as a bottom sheet** — Drag the modal header down to dismiss; the sheet animates fully off-screen if you drag past 120 px or 25 % of viewport height.
+- **Processing queue as a bottom sheet** — When background jobs are running, the queue sits above the player + nav strip (was overlapping them in earlier versions).
+
 ### Offline Support
 
 Once installed, Speakr caches essential files for offline use:

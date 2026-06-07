@@ -23,6 +23,9 @@ Access Inquire Mode by clicking the Inquire button in the top navigation bar. Th
 
 The beauty of Inquire Mode is its simplicity. You don't need to learn special search syntax or commands. Just type your question as you would ask a colleague, and the system handles the complexity of finding and synthesizing the relevant information.
 
+!!! tip "+ New Recording from Inquire mode"
+    Inquire mode runs as a separate Vue application, so it can't embed the main app's upload modal directly. The **+ New Recording** button in the inquire header redirects to `/?upload=1`; the main app reads that query parameter on mount, opens the upload modal automatically, and strips the parameter from the URL so a refresh doesn't re-trigger. Result: one click from "I need to add a recording" to the upload modal, same as if you'd hit + New Recording from anywhere else in the app.
+
 ## Using Filters to Focus Your Search
 
 The left sidebar contains filters that help you narrow your search to specific recordings before asking your question. This is particularly useful when you have a large library and want to focus on certain contexts.

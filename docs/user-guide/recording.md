@@ -4,15 +4,15 @@ Speakr provides two powerful ways to add content to your library: uploading exis
 
 ## Important: Browser Requirements for Recording
 
-Before you start recording, it's crucial to understand that browser security features can affect your ability to record audio, especially system audio. For security reasons, most browsers require HTTPS connections for audio recording features. If you're accessing Speakr locally (not via localhost), you may need to configure your browser to allow audio recording on HTTP connections. Detailed browser configuration instructions are provided at the bottom of this page.
+Browser security features affect your ability to record audio, especially system audio. Most browsers require HTTPS for audio capture (localhost is a permitted exception). If you're accessing Speakr over HTTP from another machine on your network, you may need to configure your browser to allow audio recording on insecure connections — instructions are at the bottom of this page.
 
-When recording system audio, you'll need to grant screen sharing permissions and specifically enable the "Also share system audio" option. Without this, only your microphone will be recorded. Different browsers may phrase this option differently, but it's essential for capturing computer audio.
+When recording system audio, you'll grant screen sharing permission and tick a **"Share system audio"** (or **"Share tab audio"**) checkbox in the share dialog. Different browsers phrase the checkbox slightly differently but the option is always there for the capture modes that work on your platform — see the [platform support matrix](#platform-support-matrix) below for which capture modes work on which OS / browser combinations.
 
-## Accessing the New Recording Screen
+## Accessing the Upload Modal
 
-Click the "+ New Recording" button in the top navigation bar to access the recording interface. This opens a dedicated screen where you can either upload files or start a live recording.
+Click the **+ New Recording** button in the top navigation bar (or from the empty-state landing card, or via the deep-link from Inquire mode). This opens the upload modal over your recordings list or the open recording's detail view — backdrop click and Esc dismiss without uploading.
 
-![New Recording View](../assets/images/screenshots/Recording interface.png)
+![Upload Modal](../assets/images/screenshots/recording-upload-modal.png)
 
 ## Uploading Audio Files
 
@@ -27,52 +27,139 @@ When you upload a file, it immediately appears in the upload queue with a progre
 
 ## Recording Live Audio
 
-Below the upload area, you'll find the audio recording section with three distinct recording modes, each designed for different scenarios:
+The upload modal includes three recording buttons under the drag-and-drop file area. **Microphone** sits as the full-width primary button (the everyday case); **System Audio** and **Mic + System** sit on a secondary tier with smaller buttons and coloured icon accents. A small amber dot appears on the System Audio / Mic + System buttons when full system audio isn't expected to work on the platform Speakr detected (more on this in the [platform matrix](#platform-support-matrix) below) — clicking the button still works for tab audio in that case, with a help-modal link explaining the workaround.
 
-![Recording Options](../assets/images/screenshots/recording-upload-modal.png)
+![Recording Options](../assets/images/screenshots/recording-single-source.png)
 
 ### Microphone Recording
 
-The red microphone button captures audio from your selected microphone. This mode is perfect for recording in-person meetings, personal voice notes, or interviews. When you click this option, your browser will request microphone permission if it hasn't been granted already. You can select which microphone to use if you have multiple input devices connected.
+Captures audio from your selected microphone. Perfect for in-person meetings, personal voice notes, and interviews. The browser will prompt for microphone permission the first time. By default Speakr uses your operating system's default input; pick a specific device via the **Input devices** picker (described below) if you want a USB headset, a virtual audio device, or a Pulse monitor source instead.
 
 ### System Audio Recording
 
-The blue system audio button captures all sound playing through your computer. This is ideal for recording online meetings when you're primarily listening, webinars, online presentations, podcasts, or any audio content playing on your computer. This feature uses the browser's screen capture API, so you'll need to select which screen or application to share when you start recording. Make sure to check the "Share system audio" checkbox in the sharing dialog.
+Captures audio playing through your computer (or a specific browser tab) via the browser's screen-share API. Ideal for recording online meetings when you're primarily listening, webinars, online presentations, podcasts, or any audio playing locally. When you click the button, the browser shows its share dialog — pick **Entire Screen**, a **Window**, or a **Tab**, then tick the **Share system audio** / **Share tab audio** checkbox in the dialog. The checkbox is the critical step; without it the recording will be silent.
 
 ### Combined Recording (Microphone + System)
 
-The purple combined button records both your microphone and system audio simultaneously into a single synchronized track. This is the recommended mode for online meetings where you're an active participant, as it captures both sides of the conversation. The system intelligently mixes both audio sources, ensuring clear recording of both your voice and the meeting audio.
+Records both your microphone AND system audio simultaneously, mixed into a single synchronized track. The recommended mode for online meetings where you're an active participant — it captures both sides of the conversation. Same share dialog as System Audio Recording, with the same Share system audio checkbox requirement.
 
-## How to Enable System Audio Recording
+## Platform Support Matrix
 
-When you click to record system audio (or both microphone and system), your browser will display a screen sharing dialog. This might seem confusing at first since you want to record audio, not share your screen, but this is how browsers provide access to system audio.
+The browser's `getDisplayMedia` API gates what system-audio capture modes actually work. Speakr detects your OS and browser and shows platform-aware hints inline, but the matrix is summarized here:
 
-### Recording from a Browser Tab
+| Browser | OS | Tab audio | Window audio | Full system audio |
+|---|---|---|---|---|
+| Chrome / Edge | Windows / ChromeOS | ✅ | ✅ | ✅ via "Share system audio" checkbox |
+| Chrome / Edge | macOS | ✅ (only when sharing a tab) | ❌ | ❌ — needs a virtual audio device |
+| Chrome / Edge | Linux | ✅ (only when sharing a tab) | ❌ | ❌ — needs a Pulse monitor source |
+| Firefox | any OS | ❌ | ❌ | ❌ — no audio via getDisplayMedia |
+| Safari | any OS | ❌ | ❌ | ❌ — no audio via getDisplayMedia |
 
-Choose the tab option if the audio you want to record is playing within a specific browser tab, such as audio/video content on YouTube, web-based meeting platforms (like Google Meet or browser-based Zoom), or online training sessions.
+If you click System Audio or Mic + System on a platform where capture won't deliver an audio track, Speakr opens a per-OS help guide automatically. The guide tabs are described below.
 
-![Tab Selection with Audio](../assets/images/screenshots/record from tab.png)
+## Per-OS Setup for System Audio
 
-When selecting a tab, you'll see a preview of all your open tabs. Choose the tab containing your audio source, then make sure to enable the **"Also share tab audio"** checkbox at the bottom of the dialog. This checkbox is critical - without it enabled, you'll only record silence. The exact wording may vary by browser (Chrome might say "Share tab audio" while Edge might phrase it slightly differently), but there will always be an audio-related checkbox that must be checked.
+### macOS
 
-This option will only capture audio from that specific tab, so make sure all the audio you're interested in is within that single tab before starting your recording.
+macOS doesn't let any browser capture system audio directly — the OS treats audio capture as a privileged operation that browsers (sandboxed apps) can't request. There are two paths:
 
-### Recording from Your Entire Screen
+**Option A. Tab audio (no install).** Play the source content in a Chrome tab (YouTube, Zoom web, meeting URL, etc.), click **System Audio** in Speakr, pick that tab in the share dialog, tick **Share tab audio**. Works only for content playing inside a browser tab — native app audio (Slack desktop, native Zoom client, etc.) won't be captured.
 
-Choose the screen option if the audio you want to record is coming from desktop applications or multiple sources.
+**Option B. Virtual audio device (recommended for native app audio).** Install [BlackHole 2ch](https://existential.audio/blackhole/) (free; installer signs cleanly with no kernel-extension prompts). Open **Audio MIDI Setup**, create a **Multi-Output Device** containing your speakers + BlackHole, and set this as your system output. In Speakr, click **Microphone** and pick **BlackHole 2ch** as the input. Once set up, system audio captures continuously regardless of which tab or window is active. Alternative paid tools: [Loopback](https://rogueamoeba.com/loopback/) (Rogue Amoeba) is the most polished UX.
 
-![Screen Selection Dialog](../assets/images/screenshots/record from screen.png)
+### Windows
 
-This is the recommended option when recording:
+Chrome and Edge on Windows are the easiest path — system-wide capture works out of the box:
 
-- Desktop applications like Zoom client, Microsoft Groups, Skype, or Discord
-- Audio from multiple browser tabs simultaneously
-- System sounds or notifications you want to capture
-- Any combination of audio sources on your computer
+1. Click **System Audio** or **Mic + System** in Speakr
+2. Pick **Entire Screen** in the share dialog
+3. Tick **Share system audio** (bottom-left of the dialog)
+4. Click **Share**
 
-When you select "Your Entire Screen", you'll see previews of all your available screens (if you have multiple monitors). It doesn't matter which screen you choose since Speakr only records audio, not video. The critical step is to enable the **"Also share system audio"** checkbox at the bottom of the dialog. Without this checkbox enabled, you'll only record silence.
+Per-window capture is also available: pick **Window** instead of Entire Screen, choose the specific app, tick **Share window audio**. Useful for meeting recordings without your own keyboard/typing noise.
 
-**Important macOS Limitation:** The "Also share system audio" option is available on Windows and Linux, but may not be available on macOS due to operating system limitations. macOS users may only be able to record audio from browser tabs, not from the entire system or desktop applications. This is a limitation imposed by macOS's security model, not by Speakr or your browser.
+If you hit "no audio track" errors with specific apps (Spotify desktop, DRM-protected video sometimes suppress system-audio capture), the standard workaround is a virtual cable like [VB-Audio Cable](https://vb-audio.com/Cable/).
+
+### Linux
+
+Linux has three distinct paths. Pick the one that matches what you want to capture:
+
+**Option A. Tab audio (no setup).** Play the source content in a Chrome tab, click **System Audio**, pick the tab in the share dialog, tick **Share tab audio**. Note: this won't show up in pavucontrol. Chrome captures tab audio internally and never routes through PulseAudio, so the Recording tab will say "No application is currently recording audio." That's normal — Speakr's meter is the source of truth. Only captures audio playing inside a browser tab; native apps (Slack, Spotify desktop, Discord) won't be picked up.
+
+**Option B. Switch source in pavucontrol mid-recording.** Quick but limited — captures system audio at the cost of your mic input. Useful only when you want to record what's playing through your headphones / speakers without your own voice. Click **Microphone** in Speakr, open `pavucontrol` → **Recording** tab, change Speakr's capture source from your mic to **Monitor of &lt;your output&gt;**.
+
+**Option C. Expose a virtual source so Chrome will list it (recommended).** Chrome on Linux deliberately filters "Monitor of …" sources out of the input device list it exposes to web apps — that's why Speakr's input-device picker doesn't show them even though pavucontrol does. The fix is to wrap a monitor source in a regular virtual source that Chrome doesn't filter. Once you do this, the new source appears in Speakr's picker and you can use it as either the primary input OR as a "Also mix in" alongside your real mic.
+
+Find your output sink name (the part before `.monitor`):
+
+```bash
+pactl list short sinks
+```
+
+Then wrap its monitor as a virtual source Chrome will list:
+
+```bash
+pactl load-module module-virtual-source \
+    source_name=speakr_loopback \
+    master=<sink_name>.monitor
+```
+
+Reload Speakr's input-device picker — you'll now see `speakr_loopback` in the dropdown. Pick it as **"Also mix in"** alongside your real mic and you'll capture both. To persist across reboots, add the `load-module` line (without `pactl`) to `~/.config/pulse/default.pa`.
+
+**PipeWire (newer distros).** Same idea — wrap the monitor in a virtual source so Chrome doesn't filter it. Use `pw-loopback`:
+
+```bash
+pw-loopback \
+  --capture-props='node.target=<sink>.monitor' \
+  --playback-props='media.class=Audio/Source node.name=speakr_loopback'
+```
+
+Or use `qpwgraph` / `helvum` to wire it visually.
+
+## Input Device Picker & Multi-Input Recording
+
+Under the recording buttons is a collapsible **Input devices** section. Expanded, it shows two dropdowns:
+
+![Input device picker](../assets/images/screenshots/recording-input-device-picker.png)
+
+- **Primary input** — defaults to your OS's default microphone. Pick a specific input here if you want a USB headset, BlackHole, VB-Cable, or a Pulse / PipeWire monitor source as your primary capture device. Virtual / monitor entries are badged.
+- **Also mix in (optional)** — pick a second input device and Speakr will capture both streams in parallel and mix them via Web Audio into one MediaRecorder track. This is the canonical solution for **capturing both sides of a meeting** on macOS or Linux where the browser can't capture full system audio natively — set your real mic as Primary, set BlackHole / `speakr_loopback` / VB-Cable as the secondary, and one recording captures your voice plus the remote participants.
+
+Device labels are blank until you grant microphone permission. The first time you expand the picker, click the **Request microphone permission** link so the OS shows the prompt; subsequent recordings remember the permission and the labels populate.
+
+**Persistence**: the primary + secondary device choices are saved in `localStorage` so you configure them once and they survive across sessions.
+
+### Disable echo cancellation, noise suppression & auto-gain
+
+A small checkbox below the recording buttons disables Chrome's default audio processing trio:
+
+```
+[ ] Disable echo cancellation, noise suppression & auto-gain
+    — enable when you're routing system audio in through a monitor source
+      or virtual audio device. Leave off for normal microphone recording.
+```
+
+Why this matters: Chrome's `noiseSuppression` algorithm is tuned for human voice next to a microphone. When you route sustained speech or music through a monitor source / virtual audio device, the algorithm classifies the sustained audio as noise and gates the stream to silence about a second in. Turning the processing off is necessary for monitor-source capture to actually produce audio. The choice persists in `localStorage`.
+
+For a normal microphone recording (mic in front of your face, in a quiet room), leave this off — Chrome's processing meaningfully improves audibility.
+
+## Privacy Notes for Virtual Audio Devices
+
+Once you install BlackHole / Loopback on macOS, VB-Cable / Voicemeeter / Stereo Mix on Windows, or load `speakr_loopback` (or any virtual source) on Linux, that device shows up in `navigator.mediaDevices.enumerateDevices()` alongside your real microphone. **Any site you've granted mic permission to can pick that device and capture whatever audio is flowing through it**, under the same recording indicator the browser shows for normal mic capture — not the "screen sharing" indicator.
+
+Per-OS specifics:
+
+- **macOS (BlackHole / Loopback)** — The device is a permanently installed audio driver. The risk is active only while system audio is actually routed through it, i.e. while your output is set to the Multi-Output Device. When you're not recording, switch the system output back to your normal speakers so nothing flows through BlackHole.
+- **Windows (VB-Cable, Voicemeeter, Stereo Mix)** — Same pattern. The risk is active while audio is routed through the cable. Native "Share system audio" via the share dialog has no comparable exposure because nothing is routed through a virtual mic.
+- **Linux (`speakr_loopback`)** — Chrome's filtering of "Monitor of …" sources is a deliberate privacy protection. The `module-virtual-source` wrap explicitly undoes that protection. Unlike macOS / Windows the device is a runtime module you can `pactl unload-module` at will.
+
+**Mitigations (apply on every OS):**
+
+- **Route through the virtual device only while recording.** On macOS, switch the system output back to your speakers after. On Windows, stop routing through the cable. On Linux, `pactl unload-module module-virtual-source` after recording (or simply don't add the `load-module` line to `default.pa`).
+- **Audit your mic permissions** at `chrome://settings/content/microphone` and remove any site that doesn't strictly need it.
+- **Use a less obvious device name** where you can choose one (e.g. `aux_in` instead of `speakr_loopback`). Doesn't stop a determined enumerator but raises the bar.
+
+**Where the audio ends up**: Captured audio goes to your Speakr server (self-hosted by you) and then to whichever ASR endpoint you've configured. If you're running a local Whisper / self-hosted ASR, audio never leaves your network. If your ASR is OpenAI or another cloud provider, audio gets sent there.
 
 ## During Recording - Live Interface
 
@@ -100,13 +187,21 @@ Common use cases for live notes include capturing action items and deadlines dur
 
 ## Finalizing Your Recording
 
-After stopping a recording or selecting an uploaded file, you'll see the finalization screen where you can add metadata and configure processing options:
+After stopping a recording or dropping a file, the upload modal stays open so you can review and configure before committing. The modal has four main regions:
 
-![Upload Modal](../assets/images/screenshots/recording-upload-modal.png)
+**1. File picker / queue.** The drag-and-drop file area at the top, plus the queued files list. Each queued file shows its **name**, **size**, and **duration** (probed asynchronously from the container header so it appears within a fraction of a second — no full payload read). Video files get a sky-blue video glyph instead of the audio one so you can tell which files in the queue are video at a glance.
+
+**2. Recording buttons + Input devices + processing toggle.** Hidden when files are queued (since you're uploading, not recording). Otherwise: the three recording buttons (Microphone, System Audio, Mic + System), the collapsible Input devices picker, the "Disable echo cancellation" toggle, and platform-aware hints.
+
+**3. Options group (progressive disclosure).** Folder, tags, prompt variables, and advanced ASR options are tucked behind a single collapsible **Options** row with a **chip summary** of what's currently set. Chips show the folder pill in its colour, an "N tags" count, a language code if set, and a speaker-count chip if min/max are set — each with an inline × to clear individual selections without expanding the editor. Defaults to collapsed because most uploads inherit your last-used selections (see "Last-used defaults auto-restore" below); click the row to expand for editing.
+
+**4. Sticky modal footer.** Cancel on the left, Upload on the right. The Upload button is disabled until at least one file is queued, then shows "Upload N files" — always reachable while scrolling through long queues or the expanded Options group.
+
+**Last-used defaults auto-restore**: after every successful upload, your form choices (tag IDs, folder, language, min/max speakers) are memo-ed to `localStorage`. The next time you add a file to the queue, those values restore automatically — only filling slots you haven't already set this session. Each chip's × clears that selection if you want different ones this time.
 
 ### Adding Tags
 
-The tag system is one of Speakr's most powerful organizational features. Tags appear as colored pills that you can select to categorize your recording. You can apply multiple tags to a single recording, making it easy to cross-reference content across different categories.
+The tag system is one of Speakr's most powerful organizational features. Expand the **Options** group to see the tag picker. Tags appear as colored pills that you can select to categorize your recording. You can apply multiple tags to a single recording, making it easy to cross-reference content across different categories.
 
 ![Tag Selection and Stacking](../assets/images/screenshots/tag selection and stacking.png)
 
@@ -144,7 +239,20 @@ If a selected tag, folder, or your account default summary prompt contains `{{na
 
 ### Final Actions
 
-At the bottom of the modal, you have three options for proceeding. The "Upload" or "Start Processing" button begins transcription immediately with your selected settings. The recording will appear in your library with a processing indicator while transcription runs in the background. The "Discard" option deletes the recording without saving, useful if you made a test recording or captured the wrong content. Some configurations may also offer a "Save Draft" option to store the recording without processing it immediately.
+The sticky modal footer holds **Cancel** (dismisses without uploading) and **Upload N files** (begins transcription immediately with your selected settings). The recording appears in your library with a processing indicator while transcription runs in the background. If you started a recording from inside the modal and the upload completes, Speakr auto-navigates to the new recording's detail view; bulk drag-drop uploads of multiple files leave you on whatever you were viewing.
+
+If incognito mode is enabled at the server, a toggle in the upload modal lets you process recordings without saving them to your account. Incognito uploads accept one file at a time.
+
+### Mobile Upload Experience
+
+On phones the modal becomes a **bottom sheet** that slides up from the bottom of the viewport instead of a centered card. The sheet:
+
+- Takes the full viewport width with rounded top corners only
+- Carries a small drag-handle bar at the top as a draggability affordance
+- Can be **dragged down to dismiss** — pull the header down past 120 px (or 25 % of viewport height) and the sheet animates fully off-screen
+- Has a sticky Cancel / Upload footer that sits right above the thumb's natural rest position
+
+The recording buttons, Input devices picker, and Options chip summary all behave identically on mobile and desktop.
 
 ## Crash Recovery (v0.6.2+)
 

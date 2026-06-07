@@ -10,11 +10,9 @@ The main view is organized into three distinct sections that work together seaml
 
 ## Top Navigation Bar
 
-The navigation bar at the top of the screen provides quick access to essential features:
+The header is a single adaptive bar — in list view it shows the Speakr logo and global controls; when you open a recording it consolidates to also show the recording title, the edit pen, regenerate-title button, status badge, and the row of action icons (folder, inbox, star, tags, reprocess transcription, regenerate summary, identify speakers, share, delete). On the right side, the **Inquire** button opens semantic search across all your recordings, the **+ New Recording** button opens the upload modal as an overlay (your current detail view stays visible behind), and your username appears with a dropdown menu containing settings, language preferences, dark mode toggle, color scheme picker, and logout.
 
-![Navigation Elements](../assets/images/screenshots/Main view.png)
-
-Starting from the left, you'll find the Speakr logo which always brings you back to the main view from anywhere in the application. The Inquire button opens the semantic search interface, allowing you to search across all your recordings using natural language questions. The New Recording button is your gateway to creating new content, either by uploading existing audio files or recording directly in your browser. On the right side, your username appears with a dropdown menu containing access to settings, language preferences, and the logout option.
+On mobile the header keeps just the title, edit pen, regenerate-title, search, +, and user menu — the per-recording action toolbar moves into the chevron-expand row of the detail view below.
 
 ## Left Sidebar - Recording List and Filters
 
@@ -51,7 +49,16 @@ If your recording was processed with speaker diarization, you'll also see a Simp
 
 ## Recording Metadata Bar
 
-Spanning across the top of both the center and right panels, the metadata bar displays important recording information and provides quick access to actions. From left to right, you'll see the recording title, participant names (if identified), recording date and time, file size, and duration. The action buttons on the right side of this bar allow you to bookmark the recording (star icon), edit recording details (pencil icon), manage tags (tag icon), reprocess the transcription (refresh icon), share the recording (share icon), and delete the recording (trash icon).
+Spanning across the top of both the center and right panels, the metadata bar displays important recording information and provides quick access to actions. From left to right, you'll see the recording title, participant names (if identified), recording date and time, file size, and duration. The action buttons (folder, inbox, star, tags, reprocess, regenerate summary, identify speakers, share, delete) are now consolidated into the global header alongside the title — same icons, one row.
+
+## Right Rail Tabs (Desktop)
+
+The right-rail carries three core tabs (Summary, Notes, Chat) plus two contextual ones that appear when applicable:
+
+- **Stats** — A per-recording metrics tab with total length, speaker count, conversation turns, word count as headline cards, then a per-speaker table showing each speaker's speaking time, percentage of total audio, turn count, words, and words-per-minute. A trailing silence row shows how much of the recording was actually quiet. The tab only appears when the transcript has speaker diarisation with per-segment timestamps.
+- **Events** — Extracted calendar events from the transcript when present, with export-to-ICS.
+
+The tab bar carries an inline action toolbar on the right (copy / download / edit for Summary and Notes; export-to-calendar for Events) so per-tab actions are reachable without leaving the tab.
 
 ## Right Panel - Playback, Summary, Notes, and Chat
 

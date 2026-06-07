@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.8.21--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.9.0-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -33,15 +33,18 @@ Speakr transforms your audio recordings into organized, searchable, and intellig
 ## Key Features
 
 ### Core Functionality
-- **Smart Recording & Upload** - Record directly in browser or upload existing audio files
+- **Smart Recording & Upload** - Record from your microphone, system audio, or a mix of both — with a per-OS setup guide and a virtual-device picker that exposes Pulse monitor sources, BlackHole, VB-Cable, etc. as alternative inputs
 - **AI Transcription** - High-accuracy transcription with speaker identification
 - **Voice Profiles** - AI-powered speaker recognition with voice embeddings (requires WhisperX ASR service)
+- **Recording Stats** - At-a-glance per-recording metrics — total length, speaker count, conversation turns, per-speaker share with WPM, silence row
 - **REST API v1** - Complete API with Swagger UI for automation tools (n8n, Zapier, Make) and dashboard widgets
+- **Webhooks** - HMAC-signed outbound webhooks for `recording.transcription.*`, `events.extracted`, lifecycle events; built-in retry, SSRF protection, account-settings UI
 - **Single Sign-On** - Authenticate with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
 - **Audio-Transcript Sync** - Click transcript to jump to audio, auto-highlight current text, follow mode for hands-free playback
-- **Interactive Chat** - Ask questions about your recordings and get AI-powered answers
+- **Interactive Chat** - Floating, dockable chat panel that snaps to any corner, maximises, or docks into the right column
 - **Inquire Mode** - Semantic search across all recordings using natural language
-- **Internationalization** - Full support for English, Spanish, French, German, Chinese, and Russian
+- **Mobile-First Detail View** - Bottom nav with Summary / Transcript / Chat / More, sticky speaker pills, drag-to-dismiss upload sheet
+- **Internationalization** - Full support for English, Spanish, French, German, Chinese, Russian, and Brazilian Portuguese
 - **Beautiful Themes** - Light and dark modes with customizable color schemes
 
 ### Collaboration & Sharing
@@ -179,15 +182,43 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.8.21-alpha)
+## Latest Release (v0.9.0)
 
-**Security: CSRF bypass via unauthenticated API token parameter, plus chained SSO-only account takeover (CWE-287).** Patch release on top of v0.8.20-alpha. **All users should upgrade promptly.**
+**The first non-patch release in the v0.8 line.** Three big user-facing themes: capturing audio is now multi-platform and properly documented, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. **Full release notes: [`release_notes_v0.9.0.md`](release_notes_v0.9.0.md).**
 
-- The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter, even with a bogus value. The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`, which validates the token against the database and only honours headers (not query strings) because a Simple Cross-Origin Request can carry one without preflight.
-- `change_password` no longer silently sets a password on an SSO-only account (where `current_user.password` is None). That branch was used in the chained-takeover proof-of-concept; SSO users now must continue to authenticate through SSO until a dedicated "add password to SSO account" flow exists.
+**System Audio & Multi-Input Recording**
+- Per-OS help guide auto-opens for the right platform (macOS BlackHole + Multi-Output Device, Windows "Share system audio", Linux pavucontrol + `pactl module-virtual-source` one-liner)
+- New Input devices picker: pick a primary mic AND an optional "Also mix in" secondary device; Web Audio mixes both into one track for capturing both sides of a meeting
+- Toggle to disable Chrome's echo cancellation / noise suppression / auto-gain (needed for monitor-source capture)
+- Virtual audio device discovery (BlackHole, Loopback, VB-Cable, Voicemeeter, Stereo Mix, Pulse / PipeWire monitors)
+- Privacy notes section flags the trade-offs honestly with concrete mitigations
+
+**Stats Tab**
+- New per-recording tab: total length, speaker count, turns, words at the top; per-speaker time / % / turns / words / WPM table; silence row
+- Available on desktop right-rail tabs and mobile bottom-nav More overflow
+
+**Upload Modal Redesign**
+- Real modal overlay (not full-screen takeover), progressive disclosure of Options behind a chip summary, inline file preview with duration probe, sticky modal-footer Upload action, last-used tag/folder/language auto-restore with clearable chips, calmer recording buttons
+- Mobile: full-width bottom-sheet with drag-to-dismiss
+
+**Mobile UI**
+- Bottom navigation (Summary / Transcript / Chat / More), contextual icons in the chevron row, edge-to-edge content, sticky speaker pills, sticky editor Cancel/Save footer, audio player polish (volume slider rotation fix, popover anchored upward), progress queue as a bottom sheet anchored above the player
+
+**Inquire mode** "+ New Recording" now opens the upload modal directly via `?upload=1` instead of dumping you on the list.
+
+**Design system unification** brought 22 modals onto shared `.modal-*` primitives, `.btn` + `.field` everywhere, dark-mode select theming, header consolidation, sidebar redesign, floating dockable chat panel.
+
+**Backend & infra**: Webhooks Phase 1–3 with HMAC + retry + SSRF guard, server-side recording sessions (hours-long ceiling, resume-on-reload), IDOR fixes for folder / tag ownership, eager-loading and batch query performance work.
+
+**Localization** refreshed across en, fr, de, es, ru, zh, pt-BR.
+
+### Previous Release (v0.8.21-alpha)
+
+**Security: CSRF bypass via unauthenticated API token parameter, plus chained SSO-only account takeover (CWE-287).** Patch release on top of v0.8.20-alpha.
+
+- The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter. The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`.
+- `change_password` no longer silently sets a password on an SSO-only account.
 - Reported by **@Irench1k**. Tracked as a GitHub Security Advisory.
-
-No new features, no breaking changes.
 
 ### Previous Release (v0.8.20-alpha)
 

@@ -90,6 +90,22 @@ When the **Show timestamps in simple view** preference is on (`Account → Prefe
 
 The bubble view formats the transcription like a chat conversation, with each speaker's contributions in separate message bubbles. This format works particularly well for interviews, debates, or any recording with back-and-forth dialogue. The visual separation makes it easier to follow who said what in rapid exchanges.
 
+### Sticky Speaker Pills
+
+In both simple view and on mobile, consecutive segments from the same speaker are grouped into a **speaker run**, and the speaker's name + timestamp pill at the top of the run **pins to the top of the scroll area** for the entire run. As you scroll through a long monologue, the speaker pill stays visible until a different speaker takes over, so you always know who's talking even mid-paragraph. This eliminates the previous behaviour where the pill would scroll away with its first segment.
+
+## Recording Stats
+
+A **Stats** tab appears in the right-rail tab strip when the recording has speaker diarisation with per-segment timestamps. The tab shows:
+
+- **Headline metrics** — Total length of the recording, number of distinct speakers, conversation turns (each speaker switch counts as a turn), and total word count
+- **Per-speaker breakdown** — A table (desktop) or card stack (mobile) showing each speaker's speaking time, percentage of total audio, turn count, words, and words-per-minute (WPM, only when a meaningful sample is present). A slim proportion bar visualises each speaker's share.
+- **Silence row** — Detected silence is shown as its own row / card with the same proportion bar and duration so you can see how much of the meeting was actually quiet.
+
+![Stats Tab](../assets/images/screenshots/stats-tab.png)
+
+On mobile the Stats tab lives in the bottom-nav More overflow (alongside Notes and Events). Same data, narrower layout — the table becomes a card stack with each speaker as its own card, and the 4-column headline grid becomes a 2-column grid.
+
 ## Audio Synchronization and Follow Mode
 
 For recordings processed with [speaker diarization](../features.md#speaker-diarization), Speakr provides bidirectional synchronization between the audio player and transcript, creating an interactive reading experience.
