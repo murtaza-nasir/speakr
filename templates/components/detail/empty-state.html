@@ -1,12 +1,52 @@
-<!-- Empty State -->
-<div v-if="currentView === 'detail' && !selectedRecording" class="flex-1 flex items-center justify-center">
-    <div class="text-center">
-        <i class="fas fa-microphone text-6xl text-[var(--text-muted)] mb-4"></i>
-        <h2 class="text-2xl font-bold mb-2" v-text="t('colorScheme.selectRecording')"></h2>
-        <p class="text-[var(--text-muted)] mb-6" v-text="t('colorScheme.chooseRecording')"></p>
-        <button @click="switchToUploadView"
-                class="px-6 py-3 bg-[var(--bg-button)] text-[var(--text-button)] rounded-lg hover:bg-[var(--bg-button-hover)] transition-colors">
-            <i class="fas fa-plus mr-2"></i>Upload New Recording
-        </button>
+<!-- Empty / landing surface.
+
+     Shows whenever no recording is selected AND we are not in the
+     recording flow. Two flavours:
+       - First-time / truly empty: a friendly "Get started" panel with
+         an explicit Upload and Record CTA.
+       - Recordings list has items but none selected (e.g. just after a
+         deletion auto-selected nothing): a minimal "Select a recording
+         or upload a new one" prompt.
+
+     Sits as the landing surface of the main column. The detail view
+     (its sibling) has its own v-if for the populated state. -->
+<div v-if="!selectedRecording && currentView !== 'recording'"
+     class="flex-1 flex items-center justify-center p-6">
+    <div class="max-w-md w-full text-center">
+        <!-- TRULY EMPTY (no recordings at all) -->
+        <template v-if="!recordings || recordings.length === 0">
+            <div class="mx-auto mb-6 w-20 h-20 rounded-full flex items-center justify-center"
+                 style="background: var(--bg-tertiary);">
+                <i class="fas fa-microphone text-3xl" style="color: var(--text-accent);"></i>
+            </div>
+            <h2 class="text-2xl font-semibold mb-2" style="color: var(--text-primary);">
+                Ready to capture
+            </h2>
+            <p class="t-body mb-6" style="color: var(--text-muted);">
+                Drop an audio file, record from your microphone, or capture system audio — Speakr turns it into a searchable transcript with summary and chat.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-2 justify-center">
+                <button @click="switchToUploadView" class="btn btn--primary">
+                    <i class="fas fa-plus"></i><span>New recording</span>
+                </button>
+            </div>
+        </template>
+
+        <!-- SOMETHING SELECTABLE EXISTS but nothing currently selected -->
+        <template v-else>
+            <div class="mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center"
+                 style="background: var(--bg-tertiary);">
+                <i class="fas fa-list text-xl" style="color: var(--text-muted);"></i>
+            </div>
+            <h2 class="text-lg font-semibold mb-1" style="color: var(--text-primary);">
+                Select a recording
+            </h2>
+            <p class="t-meta mb-5">
+                Pick one from the sidebar or start a new recording.
+            </p>
+            <button @click="switchToUploadView" class="btn btn--ghost">
+                <i class="fas fa-plus"></i><span>New recording</span>
+            </button>
+        </template>
     </div>
 </div>

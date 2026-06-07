@@ -98,6 +98,15 @@ export function useModals(state, utils) {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to delete recording');
 
+            // Capture the deleted recording's index BEFORE removing it,
+            // so when the deleted one was the selectedRecording we can
+            // pick a sensible neighbour to land on (the next sibling
+            // visually, or the previous one if we deleted the last
+            // entry) instead of dropping the user into an empty
+            // surface.
+            const wasSelected = selectedRecording.value?.id === deletedId;
+            const deletedIndex = recordings.value.findIndex(r => r.id === deletedId);
+
             // Remove from recordings list
             recordings.value = recordings.value.filter(r => r.id !== deletedId);
             totalRecordings.value--;
@@ -113,13 +122,21 @@ export function useModals(state, utils) {
                 allJobs.value = allJobs.value.filter(job => job.recording_id !== deletedId);
             }
 
-            // Clear selected recording if it's the one being deleted.
-            // currentView is left as-is — the empty/list view is what
-            // shows when selectedRecording is null and currentView isn't
-            // explicitly 'recording' or 'detail'.
-            if (selectedRecording.value?.id === deletedId) {
-                selectedRecording.value = null;
-                currentView.value = null;
+            // Re-select a neighbour when the deleted recording was the
+            // selected one. If anything remains: pick the recording at
+            // the same index (next sibling) or the new last one if we
+            // were at the end. Falls back to clearing selection only
+            // when the list is now empty.
+            if (wasSelected) {
+                const remaining = recordings.value;
+                if (remaining.length > 0) {
+                    const nextIndex = Math.min(deletedIndex, remaining.length - 1);
+                    selectedRecording.value = remaining[nextIndex];
+                    currentView.value = 'detail';
+                } else {
+                    selectedRecording.value = null;
+                    currentView.value = null;
+                }
             }
 
             showToast('Recording deleted.', 'fa-trash');
