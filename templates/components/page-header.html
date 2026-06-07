@@ -115,29 +115,60 @@ document.addEventListener('click', function(e) {
             tabs.scrollLeft += e.deltaY;
         }, { passive: false });
 
+        // ----- Reactive resize detection. The brittle case the
+        // original implementation missed: ResizeObserver on the .tabs
+        // container only fires when the CONTAINER box changes, not
+        // when the SCROLLWIDTH changes because individual tab buttons
+        // grow (which happens whenever FontAwesome glyphs render
+        // late, web fonts load late, or i18n translations swap in
+        // longer strings). To catch all those, we also observe every
+        // direct child of .tabs — each one resizes when its text
+        // metrics change, fires the observer, runs update().
+        // MutationObserver covers the rare case where the tab list
+        // itself gains or loses children at runtime.
         if (window.ResizeObserver) {
-            new ResizeObserver(update).observe(tabs);
+            const ro = new ResizeObserver(update);
+            ro.observe(tabs);
+            Array.from(tabs.children).forEach(child => ro.observe(child));
+
+            if (window.MutationObserver) {
+                new MutationObserver((muts) => {
+                    muts.forEach(m => {
+                        m.addedNodes.forEach(n => {
+                            if (n.nodeType === 1) ro.observe(n);
+                        });
+                    });
+                    update();
+                }).observe(tabs, { childList: true });
+            }
         } else {
             window.addEventListener('resize', update);
         }
 
-        // Initial measure — run multiple times to catch fonts/images
-        // finishing layout. The first rAF can fire before the tab
-        // strip's true scrollWidth is settled (especially on cold
-        // load), which would leave the right chevron incorrectly
-        // hidden. A second pass on window.load and a third on a tiny
-        // timeout guarantees a correct measurement.
+        // Initial measure — multiple cold-load nets so at least one
+        // catches a correct scrollWidth even on slow devices:
+        //   - rAF: ASAP after current frame's layout
+        //   - window.load: all resources finished
+        //   - document.fonts.ready: text reflowed to its final metrics
+        //   - polling fallback for the first 3 seconds for the rare
+        //     case where none of the above fires at the right moment
+        //     (e.g. lazy-loading icons that don't trigger font events)
         requestAnimationFrame(update);
-        setTimeout(update, 50);
-        setTimeout(update, 300);
         if (document.readyState !== 'complete') {
             window.addEventListener('load', update);
         }
-        // Also respond when fonts finish loading (FontAwesome icons
-        // contribute width to each tab).
         if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
             document.fonts.ready.then(update);
         }
+        // Polling fallback: tick every 100ms for the first 3 seconds.
+        // Each tick is cheap (a width comparison + class toggle) and
+        // the loop self-terminates. This catches any timing window
+        // the events above missed.
+        let pollTicks = 30;
+        const pollTimer = setInterval(() => {
+            update();
+            if (--pollTicks <= 0) clearInterval(pollTimer);
+        }, 100);
     }
 
     function initAll() {
