@@ -105,21 +105,48 @@
             <!-- Linux -->
             <div v-else-if="helpModalOsTab === 'Linux'" class="space-y-3">
                 <p class="t-body">
-                    Browsers on Linux can only capture tab audio directly. For full system audio, route the desktop output through a PulseAudio or PipeWire monitor source and pick it as the input device when recording.
+                    Linux has two distinct paths. Pick the one that matches what you actually want to capture:
                 </p>
+
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">PulseAudio / PipeWire monitor source</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option A — Tab audio (no setup)</div>
                     <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
-                        <li>Open <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pavucontrol</code> (PulseAudio Volume Control)</li>
-                        <li>Click <strong>System Audio</strong> in Speakr — a Chrome share dialog appears</li>
-                        <li>In pavucontrol → <strong>Recording</strong> tab, find the Speakr capture entry and change its source to <strong>Monitor of &lt;your output sink&gt;</strong></li>
-                        <li>Audio now flows from system playback into Speakr</li>
+                        <li>Play the source content in a Chrome tab (YouTube, Zoom web, meeting URL, etc.)</li>
+                        <li>Click <strong>System Audio</strong> in Speakr — pick that tab in the share dialog</li>
+                        <li>Tick <strong>Share tab audio</strong> before clicking Share</li>
                     </ol>
+                    <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-top: var(--sp-2);">
+                        <i class="fas fa-circle-info" style="margin-top: 2px;"></i>
+                        <div>
+                            <div class="t-meta">
+                                <strong>This won't show up in pavucontrol.</strong> Chrome captures tab audio internally and never routes through PulseAudio, so the Recording tab will say "No application is currently recording audio." That's normal — Speakr's meter is the source of truth.
+                            </div>
+                        </div>
+                    </div>
+                    <p class="t-meta" style="margin-top: var(--sp-2);">Only captures audio playing inside a browser tab. Native apps (Slack, Spotify desktop, Discord) won't be picked up.</p>
                 </div>
+
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B — Full system audio via PulseAudio monitor (one-time setup)</div>
+                    <p class="t-body" style="color: var(--text-secondary);">
+                        Every Linux audio sink has a corresponding "monitor" source you can record FROM. Chrome can pick it as a microphone input — then anything playing through your speakers gets captured. Use the <strong>Microphone</strong> button, not System Audio.
+                    </p>
+                    <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary); margin-top: var(--sp-2);">
+                        <li>Open <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pavucontrol</code></li>
+                        <li>In <strong>Configuration</strong> tab, make sure your output device profile is set (HDMI / Analog Stereo / etc.)</li>
+                        <li>In Speakr, click <strong>Microphone</strong> and grant permission. This makes Chrome enumerate input devices including monitor sources.</li>
+                        <li>While Speakr is recording, open pavucontrol's <strong>Recording</strong> tab. Find Speakr's capture entry and switch its source from your microphone to <strong>Monitor of &lt;your output&gt;</strong></li>
+                        <li>Subsequent records will remember this routing if you make it the default.</li>
+                    </ol>
+                    <p class="t-meta" style="margin-top: var(--sp-2);">
+                        To capture BOTH your mic and the monitor, create a virtual combined source: <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pactl load-module module-null-sink sink_name=combined</code> then loopback both inputs to it.
+                    </p>
+                </div>
+
                 <div>
                     <div class="t-body-strong" style="margin-bottom: var(--sp-1);">PipeWire (newer distros)</div>
                     <p class="t-body" style="color: var(--text-secondary);">
-                        Same idea: use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> or <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire the playback sink's monitor into Chrome's capture input.
+                        Same monitor-source pattern. Use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> or <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire your playback sink's monitor into Chrome's capture input.
                     </p>
                 </div>
             </div>
