@@ -135,10 +135,14 @@
 
         {% include 'components/token_budget_indicator.html' %}
 
+        <!-- Inquire / Install PWA / New Recording header buttons.
+             All three use the .btn .btn--sm primitive so their height
+             + padding + font size are identical; only the colour
+             intent differs (Inquire = quiet/highlighted, PWA Install
+             = primary-success, New Recording = primary). -->
         <!-- Inquire Mode Button -->
         {% if inquire_mode_enabled %}
-        <a href="/inquire"
-           class="px-2 py-1.5 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-lg hover:opacity-80 transition-opacity text-sm sm:px-4 sm:py-2 sm:flex sm:items-center sm:gap-2 sm:justify-center">
+        <a href="/inquire" class="btn btn--sm" style="background: var(--bg-accent); color: var(--text-accent); border-color: transparent;">
             <i class="fas fa-search"></i>
             <span class="hidden sm:inline" v-text="t('inquire.title')"></span>
         </a>
@@ -147,16 +151,16 @@
         <!-- Install PWA Button -->
         <button v-if="showInstallButton && !isPWAInstalled"
                 @click="promptInstall"
-                class="px-2 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:px-4 sm:py-2 sm:flex sm:items-center sm:gap-2"
+                class="btn btn--sm"
+                style="background: #16a34a; color: #fff; border-color: transparent;"
                 :title="t('pwa.installApp')">
             <i class="fas fa-download"></i>
             <span class="hidden sm:inline" v-text="t('pwa.installApp')"></span>
         </button>
 
         <!-- New Recording Button -->
-        <button @click="switchToUploadView"
-                class="btn btn--sm btn--primary">
-            <i class="fas fa-plus mr-1"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
+        <button @click="switchToUploadView" class="btn btn--sm btn--primary">
+            <i class="fas fa-plus"></i><span class="hidden sm:inline" v-text="t('nav.newRecording')"></span>
         </button>
 
         <!-- User menu -->
