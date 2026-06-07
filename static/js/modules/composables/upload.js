@@ -533,6 +533,21 @@ export function useUpload(state, utils) {
             recordings.value.unshift(data);
             totalRecordings.value++;
 
+            // For in-app recordings (where the upload modal opened
+            // automatically after the user stopped recording), auto-
+            // navigate to the new recording's detail view — otherwise
+            // the user closes the modal and lands on an empty surface
+            // because nothing is selected. This only fires for queue
+            // items that came from an in-app recording (set in
+            // audio.js's recording-stop path) so bulk drag-drop
+            // uploads of many files still leave the user wherever
+            // they were.
+            if (fileItem.fromInProgressRecording) {
+                selectedRecording.value = data;
+                currentView.value = 'detail';
+                if (showUploadModal) showUploadModal.value = false;
+            }
+
             // Handle duplicate warning
             if (data.duplicate_warning) {
                 const warning = data.duplicate_warning;
