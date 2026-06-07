@@ -132,97 +132,103 @@
             </div>
         </div>
 
-        <!-- Metadata Row (sits ~8px under the title row, not 16px) -->
-        <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm text-[var(--text-muted)]">
-            <!-- Folder Pill, Shared Status Badges and Tags -->
-            <div v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0 || selectedRecording.has_group_tags || (selectedRecording.tags && selectedRecording.tags.length > 0)" class="flex items-center gap-1.5 flex-wrap">
-                <!-- Folder Pill (shown when folder assigned) -->
-                <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
-                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
-                      :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
-                      :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
-                    <i class="fas fa-folder mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
-                    ${ getFolderName(selectedRecording.folder_id) }
-                </span>
-                <!-- Shared by someone else (INCOMING) -->
-                <span v-if="selectedRecording.is_shared"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-purple-500 text-white"
-                      :title="t('sharing.sharedBy') + ' ' + (selectedRecording.owner_username || t('sharing.unknown'))">
-                    <i class="fas fa-arrow-down" style="vertical-align: middle; line-height: 0;"></i>
-                </span>
+        <!-- Metadata Row.
+             Every entry sits as a direct sibling of the outer flex-wrap
+             container so wrapping happens per-item. Previously the
+             file-metadata entries (activeRecordingMetadata) lived in
+             their own nested flex-wrap div, which forced them ALL to
+             drop to a new line as a block even when individual entries
+             could have fit on the top row. Chips use the .chip primitive
+             that matches the sidebar look (rounded-md, tight padding,
+             label-size, semi-bold). Small badge dots use .chip-dot. -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--text-muted)]">
+            <!-- Folder Pill -->
+            <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
+                  class="chip"
+                  :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
+                  :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
+                <i class="fas fa-folder"></i>
+                <span class="chip__label">${ getFolderName(selectedRecording.folder_id) }</span>
+            </span>
 
-                <!-- Group indicator (show for both owned and shared recordings with group tags) -->
-                <span v-if="selectedRecording.has_group_tags"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-blue-500 text-white"
-                      :title="t('sharing.teamRecording')">
-                    <i class="fas fa-users" style="vertical-align: middle; line-height: 0;"></i>
-                </span>
+            <!-- Shared by someone else (INCOMING) -->
+            <span v-if="selectedRecording.is_shared"
+                  class="chip-dot bg-purple-500"
+                  :title="t('sharing.sharedBy') + ' ' + (selectedRecording.owner_username || t('sharing.unknown'))">
+                <i class="fas fa-arrow-down"></i>
+            </span>
 
-                <!-- Shared with others (OUTGOING) -->
-                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-indigo-500 text-white"
-                      :title="t('sharing.sharedWith') + ' ' + selectedRecording.shared_with_count + ' ' + t('sharing.users')">
-                    <i class="fas fa-arrow-up" style="vertical-align: middle; line-height: 0;"></i>
-                </span>
+            <!-- Group indicator -->
+            <span v-if="selectedRecording.has_group_tags"
+                  class="chip-dot bg-blue-500"
+                  :title="t('sharing.teamRecording')">
+                <i class="fas fa-users"></i>
+            </span>
 
-                <!-- Public link shares -->
-                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0"
-                      class="inline-flex items-center justify-center w-5 h-5 text-[10px] font-medium rounded-full bg-teal-500 text-white"
-                      :title="selectedRecording.public_share_count + ' ' + t('sharing.publicLinksGenerated')">
-                    <i class="fas fa-globe" style="vertical-align: middle; line-height: 0;"></i>
-                </span>
+            <!-- Shared with others (OUTGOING) -->
+            <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0"
+                  class="chip-dot bg-indigo-500"
+                  :title="t('sharing.sharedWith') + ' ' + selectedRecording.shared_with_count + ' ' + t('sharing.users')">
+                <i class="fas fa-arrow-up"></i>
+            </span>
 
-                <!-- Tags -->
-                <span v-for="tag in selectedRecording.tags" :key="tag.id"
-                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
-                      :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }"
-                      :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
-                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[10px]" style="vertical-align: middle; line-height: 0;"></i>
-                    ${tag.name}
-                </span>
-            </div>
+            <!-- Public link shares -->
+            <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0"
+                  class="chip-dot bg-teal-500"
+                  :title="selectedRecording.public_share_count + ' ' + t('sharing.publicLinksGenerated')">
+                <i class="fas fa-globe"></i>
+            </span>
+
+            <!-- Tags -->
+            <span v-for="tag in selectedRecording.tags" :key="tag.id"
+                  class="chip"
+                  :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }"
+                  :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                <i v-if="tag.group_id" class="fas fa-users"></i>
+                <span class="chip__label">${tag.name}</span>
+            </span>
 
             <!-- Participants -->
-            <div class="flex items-center gap-2">
-                <i class="fas fa-users text-[var(--text-accent)]"></i>
+            <span class="inline-flex items-center gap-1.5">
+                <i class="fas fa-users text-[var(--text-accent)] text-[11px]"></i>
                 <span @click="openParticipantsModal"
-                      class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[300px] truncate inline-block"
+                      class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[260px] truncate"
                       :title="selectedRecording.participants || t('help.noParticipants')">
                     ${selectedRecording.participants || t('help.noParticipants')}
                 </span>
-            </div>
+            </span>
 
             <!-- Owner (for shared recordings) -->
-            <div v-if="selectedRecording.is_shared" class="flex items-center gap-2">
-                <i class="fas fa-user text-[var(--text-accent)]"></i>
-                <span class="max-w-[300px] truncate inline-block"
+            <span v-if="selectedRecording.is_shared" class="inline-flex items-center gap-1.5">
+                <i class="fas fa-user text-[var(--text-accent)] text-[11px]"></i>
+                <span class="max-w-[260px] truncate"
                       :title="'Owner: ' + (selectedRecording.owner_username || t('sharing.unknown'))">
                     ${selectedRecording.owner_username || t('sharing.unknown')}
                 </span>
-            </div>
+            </span>
 
             <!-- Meeting Date -->
-            <div class="flex items-center gap-2">
-                <i class="fas fa-calendar text-[var(--text-accent)]"></i>
+            <span class="inline-flex items-center gap-1.5">
+                <i class="fas fa-calendar text-[var(--text-accent)] text-[11px]"></i>
                 <span @click="openMeetingDatePicker"
                       class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
                     ${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}
                 </span>
-            </div>
+            </span>
 
-            <!-- Other Metadata -->
-            <div v-if="activeRecordingMetadata && activeRecordingMetadata.length > 0" class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                <span v-for="(item, index) in activeRecordingMetadata" :key="index" class="flex items-center gap-1.5">
-                    <i :class="item.icon"></i>
-                    <span :title="item.fullText || item.text">${item.text}</span>
-                </span>
-            </div>
+            <!-- Other Metadata — each item is a top-level sibling so it
+                 wraps independently. -->
+            <span v-for="(item, index) in (activeRecordingMetadata || [])" :key="`meta-${index}`"
+                  class="inline-flex items-center gap-1.5">
+                <i :class="item.icon" class="text-[var(--text-accent)] text-[11px]"></i>
+                <span :title="item.fullText || item.text" class="max-w-[260px] truncate">${item.text}</span>
+            </span>
 
             <!-- Duplicate Indicator -->
             <button v-if="selectedRecording.duplicate_info"
                     @click="openDuplicatesModal(selectedRecording.duplicate_info)"
-                    class="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
-                <i class="fas fa-copy"></i>
+                    class="inline-flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
+                <i class="fas fa-copy text-[11px]"></i>
                 <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
             </button>
         </div>

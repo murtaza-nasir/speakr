@@ -474,19 +474,19 @@
                                  class="flex flex-wrap items-center gap-1 mt-1">
                                 <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito"
                                         @click.stop="filterFolder = recording.folder_id"
-                                        class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
+                                        class="chip chip--clickable"
                                         :style="{ backgroundColor: getFolderColor(recording.folder_id), color: getContrastTextColor(getFolderColor(recording.folder_id)) }"
                                         :title="'Folder: ' + getFolderName(recording.folder_id)">
-                                    <i class="fas fa-folder mr-1" style="font-size: 9px; vertical-align: middle; line-height: 0;"></i>
-                                    <span v-text="getFolderName(recording.folder_id)"></span>
+                                    <i class="fas fa-folder"></i>
+                                    <span class="chip__label" v-text="getFolderName(recording.folder_id)"></span>
                                 </button>
                                 <button v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id"
                                         @click.stop="filterByTag(tag)"
-                                        class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium hover:opacity-80 transition-all cursor-pointer"
+                                        class="chip chip--clickable"
                                         :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
                                         :title="tag.group_id ? ('Group: ' + tag.group_name) : ('Filter by ' + tag.name)">
-                                    <i v-if="tag.group_id" class="fas fa-users mr-1" style="font-size: 9px; vertical-align: middle; line-height: 0;"></i>
-                                    <span v-text="tag.name"></span>
+                                    <i v-if="tag.group_id" class="fas fa-users"></i>
+                                    <span class="chip__label" v-text="tag.name"></span>
                                 </button>
                                 <span v-if="getRecordingTags(recording).length > 4"
                                       class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"

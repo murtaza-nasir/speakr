@@ -736,6 +736,70 @@ html.dark select.field {
 .pill-status--incognito  { background: var(--tint-incognito);  color: var(--tint-incognito-fg);  border-color: var(--tint-incognito-border); }
 
 
+/* ---- User-coloured chip (folder / tag) --------------------------------
+ *
+ * <span class="chip" :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }">Work</span>
+ *
+ * Used for folder pills and tag pills where the colour is user-chosen
+ * (so we can't bake it into a token). The shape — rounded-md, tight
+ * padding, label-size, semi-bold — matches the sidebar style, which
+ * is now the standard chip look across the app. Add .chip--clickable
+ * to get the hover affordance on filter chips.
+ * --------------------------------------------------------------------- */
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px var(--sp-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    line-height: 1.55;
+    white-space: nowrap;
+    max-width: 14rem;
+    transition: opacity 0.15s ease, transform 0.05s ease;
+}
+
+.chip > i {
+    font-size: 0.78em;
+    line-height: 0;
+}
+
+.chip > .chip__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chip--clickable {
+    cursor: pointer;
+}
+
+.chip--clickable:hover {
+    opacity: 0.85;
+}
+
+.chip--clickable:active {
+    transform: scale(0.97);
+}
+
+/* Icon-only round chip for the small status badges (incoming-share /
+   group / outgoing-share / public-link). Keeps semantic background
+   colour from inline style. */
+.chip-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    color: white;
+    font-size: 10px;
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+
 /* ---- Toast / Banner ---------------------------------------------------- */
 
 .banner {
