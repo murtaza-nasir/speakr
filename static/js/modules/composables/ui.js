@@ -1965,10 +1965,16 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     const getParticipantDropdownPosition = (index) => {
-        // Find the input element for this index and calculate position
-        const inputs = document.querySelectorAll('.max-w-md input[placeholder="' + t('form.participantNamePlaceholder') + '"]');
-        if (inputs[index]) {
-            const rect = inputs[index].getBoundingClientRect();
+        // Look up the input by its data attribute (set in the modal
+        // template) rather than a fragile class+placeholder selector.
+        // The old selector targeted .max-w-md input[placeholder="…"]
+        // but the new design-system modal uses .field on the input and
+        // a literal English placeholder; the lookup matched no
+        // element and the fallback below dropped the dropdown into
+        // the top-left corner of the viewport.
+        const input = document.querySelector(`input[data-participant-index="${index}"]`);
+        if (input) {
+            const rect = input.getBoundingClientRect();
             return {
                 top: rect.bottom + 2 + 'px',
                 left: rect.left + 'px',

@@ -15,6 +15,7 @@
                                    @input="filterParticipantSuggestions(index)"
                                    @focus="filterParticipantSuggestions(index)"
                                    @blur="closeParticipantSuggestionsDelayed(index)"
+                                   :data-participant-index="index"
                                    type="text" class="field" placeholder="Participant name...">
                         </div>
                         <teleport to="body">
