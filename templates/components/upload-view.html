@@ -294,22 +294,6 @@
                     </span>
                 </div>
 
-                <!-- Audio-processing opt-out. Chrome's getUserMedia
-                     applies echoCancellation + noiseSuppression +
-                     autoGainControl by default, which is correct for
-                     voice but kills sustained speech / music coming
-                     in through a monitor source or virtual audio
-                     device (the suppressor classifies it as noise
-                     after about a second). Persisted to localStorage. -->
-                <label class="flex items-start gap-2 mt-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <input type="checkbox" v-model="disableAudioProcessing"
-                           class="mt-0.5 h-3.5 w-3.5 rounded border-[var(--border-secondary)]">
-                    <span class="text-[11px] flex-1" style="color: var(--text-secondary);">
-                        <strong>${ t('recording.disableAudioProcessingTitle') }</strong>
-                        ${ t('recording.disableAudioProcessingHelp') }
-                    </span>
-                </label>
-
                 <!-- Input device picker (collapsed by default). Lets
                      the user pick the primary input AND an optional
                      secondary input which Speakr mixes in via Web
@@ -318,15 +302,17 @@
                      macOS / Linux where the browser can't capture full
                      OS audio natively. Pre-permission the device
                      labels are empty; the inline button calls
-                     getUserMedia briefly to populate them. -->
-                <details class="text-[11px] mt-1 group">
-                    <summary class="cursor-pointer flex items-center gap-1 px-2 py-1 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors" style="color: var(--text-muted); list-style: none;">
+                     getUserMedia briefly to populate them. The
+                     audio-processing opt-out lives inside this group
+                     too since it's a device-level capture setting. -->
+                <details class="disclosure-card text-[11px] mt-1 group">
+                    <summary class="cursor-pointer flex items-center gap-1 px-2 py-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors" style="color: var(--text-muted); list-style: none;">
                         <i class="fas fa-sliders-h"></i>
                         <span>${ t('recording.inputDevices') }</span>
                         <span v-if="selectedSecondaryDeviceId" class="text-green-500 font-medium">· ${ t('recording.mixingTwoInputs') }</span>
                         <i class="fas fa-chevron-down ml-auto text-[10px] transition-transform group-open:rotate-180"></i>
                     </summary>
-                    <div class="mt-2 space-y-2 px-2 py-2 rounded-md" style="background: var(--bg-tertiary);">
+                    <div class="disclosure-card-body space-y-2">
                         <div v-if="!inputAudioDevices || inputAudioDevices.length === 0 || !(inputAudioDevices[0] && inputAudioDevices[0].label)"
                              class="text-[11px]" style="color: var(--text-muted);">
                             <i class="fas fa-info-circle mr-1"></i>
@@ -378,6 +364,23 @@
                                 </p>
                             </div>
                         </template>
+
+                        <!-- Audio-processing opt-out. Chrome's getUserMedia
+                             applies echoCancellation + noiseSuppression +
+                             autoGainControl by default, which is correct for
+                             voice but kills sustained speech / music coming
+                             in through a monitor source or virtual audio
+                             device (the suppressor classifies it as noise
+                             after about a second). It's a device-level
+                             capture setting so it lives in this group.
+                             Persisted to localStorage. -->
+                        <label class="flex items-start gap-2 pt-2 mt-1 border-t border-[var(--border-secondary)] cursor-pointer">
+                            <input type="checkbox" v-model="disableAudioProcessing" class="checkbox mt-0.5">
+                            <span class="text-[11px] flex-1" style="color: var(--text-secondary);">
+                                <strong>${ t('recording.disableAudioProcessingTitle') }</strong>
+                                ${ t('recording.disableAudioProcessingHelp') }
+                            </span>
+                        </label>
                     </div>
                 </details>
 

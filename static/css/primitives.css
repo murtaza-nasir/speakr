@@ -1680,11 +1680,88 @@ textarea:focus-visible {
    top, and the panel hangs flush beneath with a shared border. */
 .disclosure-trigger.is-open {
     border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+    /* Outline the header too so it matches the panel below — without
+       this the panel had side/bottom borders but the header floated
+       with no outline. The header keeps its bottom border, which
+       doubles as the divider line to the panel. */
+    border: 1px solid var(--border-secondary);
 }
 .disclosure-panel {
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
     border-top: 0 !important;
     margin-top: 0 !important;
+}
+
+
+/* ---- Themed checkbox ---------------------------------------------------
+   Reusable accent-filled checkbox with a white tick — the same look as
+   the speaker modal's .speaker-checkbox, promoted to a primitive so any
+   form can use one consistent themed control instead of the raw browser
+   checkbox. Put .checkbox on an <input type="checkbox">. */
+input[type="checkbox"].checkbox {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 2px solid var(--border-secondary);
+    border-radius: 0.25rem;
+    background-color: var(--bg-input);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+input[type="checkbox"].checkbox:hover {
+    border-color: var(--text-accent);
+    background-color: var(--bg-secondary);
+}
+input[type="checkbox"].checkbox:focus {
+    outline: none;
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+input[type="checkbox"].checkbox:checked {
+    background-color: var(--text-accent);
+    border-color: var(--text-accent);
+}
+input[type="checkbox"].checkbox:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.25rem;
+    height: 0.5rem;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: translate(-50%, -60%) rotate(45deg);
+}
+input[type="checkbox"].checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+
+/* ---- Generic <details> disclosure card ---------------------------------
+   Same idea as .upload-options-group but reusable on any <details>:
+   when open the whole element is one bordered card with the summary as
+   its header and the body padded inside. Put .disclosure-card on the
+   <details> and .disclosure-card-body on the body wrapper. */
+details.disclosure-card[open] {
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+details.disclosure-card[open] > summary {
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-bottom: 1px solid var(--border-secondary);
+}
+details.disclosure-card[open] > .disclosure-card-body {
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+    margin-top: 0;
+}
+details.disclosure-card[open] > .disclosure-card-body > *:first-child {
+    margin-top: 0;
 }
 
 
