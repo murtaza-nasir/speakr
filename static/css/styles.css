@@ -1711,13 +1711,17 @@ body {
     font-size: 0.7rem;
     letter-spacing: 0.02em;
     user-select: none;
-    /* Light mode: overlay a translucent WHITE layer so the time half
-       becomes a LIGHTER tint of the speaker pastel (rather than a
-       darker one). The inherited dark speaker-color text then reads
-       well on the lighter background. Going the OTHER direction —
-       darkening the half — desaturated the colour and made
-       everything look grey. */
-    background-image: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55));
+    /* Light mode: darken the time half by a multiplicative speaker-hue
+       shade (color-burn produces a more saturated darker shade than
+       black overlay would, which previously desaturated to grey) and
+       force white text for high contrast. The result reads as a
+       saturated darker version of the speaker pastel with clear
+       white time digits. Fallback to a 0.32 black overlay for
+       browsers that don't support mix-blend-mode (it's near-universal
+       though). */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.32));
+    color: #ffffff;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
     display: inline-flex;
     align-items: center;
 }
@@ -1727,7 +1731,9 @@ body {
        we keep the original 0.18 black overlay (a small darken on the
        already-dark speaker palette). */
     background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
-    opacity: 0.85;
+    color: inherit;
+    text-shadow: none;
+    opacity: 0.9;
 }
 
 .speaker-tablet-group .speaker-tablet-name {
