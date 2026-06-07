@@ -968,16 +968,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }, { immediate: false });
 
-            // The Display tab lets users flip the audio player between
-            // top and bottom of the detail screen. That repositions
-            // #mainContentColumns (it grows/shrinks vertically and its
-            // top edge changes). The ResizeObserver above catches the
-            // SIZE change; this watch catches even the case where only
-            // the top edge changes (e.g. layout swap), and is also a
-            // useful explicit signal for debugging.
-            watch(audioPlayerPosition, () => {
-                nextTick(_bumpChatLayout);
-            });
+            // Note: a top↔bottom player swap also changes the height of
+            // #mainContentColumns (because the player occupies space on
+            // a different side of the flex column), so the
+            // ResizeObserver above is the only handler needed for that
+            // case. No explicit watch on audioPlayerPosition required.
 
             // --- Audio Player State (Main Player) ---
             const playerVolume = ref(1.0);
