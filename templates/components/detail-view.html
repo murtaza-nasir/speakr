@@ -67,7 +67,13 @@
              coherent — tablets together, "other stuff" together —
              instead of tags being flung apart by the wide inter-item
              gap the text group needs. -->
-        <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-5 py-2 flex-shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-[var(--text-muted)]">
+        <!-- Coloured chips (folder + tags) sit in a tight group like the
+             sidebar; metadata facts are neutral .chip-meta tablets like
+             the mobile expanded panel. The colour difference separates
+             the two groups so no divider is needed even when they wrap
+             onto separate lines. gap-y-2 gives a little vertical air
+             between wrapped rows. -->
+        <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-5 py-2.5 flex-shrink-0 flex flex-wrap items-center gap-x-2.5 gap-y-2 text-xs text-[var(--text-muted)]">
             <!-- Chip group (folder + tags), tight 4px gap like the sidebar -->
             <div v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || (selectedRecording.tags && selectedRecording.tags.length > 0)"
                  class="flex flex-wrap items-center gap-1">
@@ -87,47 +93,33 @@
                 </span>
             </div>
 
-            <!-- Divider between the chip group and the text metadata,
-                 shown only when there are chips to separate from. -->
-            <span v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || (selectedRecording.tags && selectedRecording.tags.length > 0)"
-                  aria-hidden="true"
-                  class="self-stretch w-px bg-[var(--border-primary)] opacity-60 my-0.5"></span>
+            <!-- Participants -->
+            <span class="chip-meta chip-meta--clickable" @click="openParticipantsModal"
+                  :title="selectedRecording.participants || t('help.noParticipants')">
+                <i class="fas fa-users"></i>
+                <span class="chip-meta__label">${selectedRecording.participants || t('help.noParticipants')}</span>
+            </span>
 
-            <!-- Text-metadata group: participants / date / file info /
-                 duplicate. Comfortable inter-item gap; wraps internally. -->
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
-                <!-- Participants -->
-                <span class="inline-flex items-center gap-1.5">
-                    <i class="fas fa-users text-[var(--text-accent)] text-[11px]"></i>
-                    <span @click="openParticipantsModal" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[260px] truncate"
-                          :title="selectedRecording.participants || t('help.noParticipants')">
-                        ${selectedRecording.participants || t('help.noParticipants')}
-                    </span>
-                </span>
+            <!-- Meeting date -->
+            <span class="chip-meta chip-meta--clickable" @click="openMeetingDatePicker">
+                <i class="fas fa-calendar"></i>
+                <span class="chip-meta__label">${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}</span>
+            </span>
 
-                <!-- Meeting date -->
-                <span class="inline-flex items-center gap-1.5">
-                    <i class="fas fa-calendar text-[var(--text-accent)] text-[11px]"></i>
-                    <span @click="openMeetingDatePicker" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
-                        ${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}
-                    </span>
-                </span>
+            <!-- File metadata facts -->
+            <span v-for="(item, index) in (activeRecordingMetadata || [])" :key="`meta-${index}`"
+                  class="chip-meta" :title="item.fullText || item.text">
+                <i :class="item.icon"></i>
+                <span class="chip-meta__label">${item.text}</span>
+            </span>
 
-                <!-- File metadata items -->
-                <span v-for="(item, index) in (activeRecordingMetadata || [])" :key="`meta-${index}`"
-                      class="inline-flex items-center gap-1.5">
-                    <i :class="item.icon" class="text-[var(--text-accent)] text-[11px]"></i>
-                    <span :title="item.fullText || item.text" class="max-w-[260px] truncate">${item.text}</span>
-                </span>
-
-                <!-- Duplicate indicator -->
-                <button v-if="selectedRecording.duplicate_info"
-                        @click="openDuplicatesModal(selectedRecording.duplicate_info)"
-                        class="inline-flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
-                    <i class="fas fa-copy text-[11px]"></i>
-                    <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
-                </button>
-            </div>
+            <!-- Duplicate indicator -->
+            <button v-if="selectedRecording.duplicate_info"
+                    @click="openDuplicatesModal(selectedRecording.duplicate_info)"
+                    class="chip-meta chip-meta--warn chip-meta--clickable">
+                <i class="fas fa-copy"></i>
+                <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
+            </button>
         </div>
 
         <!-- Persistent audio player. By default sits at the BOTTOM of

@@ -130,31 +130,24 @@
              instead of a comma-separated string. Each chip is the
              same height/padding so the row has visual rhythm. -->
         <div class="flex flex-wrap gap-1.5">
-            <button @click.stop="openMeetingDatePicker"
-                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] hover:opacity-80 transition-opacity"
-                    style="background: var(--bg-tertiary); color: var(--text-secondary);">
-                <i class="fas fa-calendar text-[10px]" style="color: var(--text-accent);"></i>
-                <span v-text="selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'"></span>
+            <button @click.stop="openMeetingDatePicker" class="chip-meta chip-meta--clickable">
+                <i class="fas fa-calendar"></i>
+                <span class="chip-meta__label" v-text="selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'"></span>
             </button>
-            <span v-if="selectedRecording.is_shared"
-                  class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px]"
-                  style="background: var(--bg-tertiary); color: var(--text-secondary);">
-                <i class="fas fa-user text-[10px]" style="color: var(--text-accent);"></i>
-                <span v-text="selectedRecording.owner_username || t('sharing.unknown')"></span>
+            <span v-if="selectedRecording.is_shared" class="chip-meta">
+                <i class="fas fa-user"></i>
+                <span class="chip-meta__label" v-text="selectedRecording.owner_username || t('sharing.unknown')"></span>
             </span>
             <template v-if="activeRecordingMetadata" v-for="(item, index) in activeRecordingMetadata" :key="index">
-                <span v-if="!item.isTagItem"
-                      class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px]"
-                      style="background: var(--bg-tertiary); color: var(--text-secondary);">
-                    <i :class="[item.icon, 'text-[10px]']" style="color: var(--text-accent);"></i>
-                    <span :title="item.fullText || item.text" v-text="item.text"></span>
+                <span v-if="!item.isTagItem" class="chip-meta" :title="item.fullText || item.text">
+                    <i :class="item.icon"></i>
+                    <span class="chip-meta__label" v-text="item.text"></span>
                 </span>
             </template>
             <button v-if="selectedRecording.duplicate_info"
                     @click.stop="openDuplicatesModal(selectedRecording.duplicate_info)"
-                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] hover:opacity-80 transition-opacity"
-                    style="background: rgba(217, 119, 6, 0.12); color: var(--text-warn, #d97706);">
-                <i class="fas fa-copy text-[10px]"></i>
+                    class="chip-meta chip-meta--warn chip-meta--clickable">
+                <i class="fas fa-copy"></i>
                 <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
             </button>
         </div>

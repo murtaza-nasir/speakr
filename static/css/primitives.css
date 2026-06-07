@@ -790,6 +790,58 @@ html.dark select.field {
     transform: scale(0.97);
 }
 
+/* Neutral metadata chip — filled bg-tertiary tablet for facts like
+   date / file size / filename / participants. Distinct from .chip
+   (which carries a user-chosen colour for folders & tags): the grey
+   fill makes facts read as a tidy row of tablets instead of bare
+   icon+text, and visually separates them from the coloured tag chips
+   without needing a divider. Icon is accent-coloured; label
+   truncates. This is the look the mobile expanded panel uses; it is
+   now shared so desktop + mobile render identically. */
+.chip-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-label);
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    max-width: 16rem;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    transition: opacity 0.15s ease;
+}
+
+.chip-meta > i {
+    color: var(--text-accent);
+    font-size: 0.85em;
+    line-height: 0;
+}
+
+.chip-meta__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chip-meta--clickable {
+    cursor: pointer;
+}
+
+.chip-meta--clickable:hover {
+    opacity: 0.8;
+}
+
+/* Warning variant for the duplicate-files indicator. */
+.chip-meta--warn {
+    background: rgba(217, 119, 6, 0.12);
+    color: #d97706;
+}
+.chip-meta--warn > i {
+    color: inherit;
+}
+
 /* Icon-only round chip for the small status badges (incoming-share /
    group / outgoing-share / public-link). Keeps semantic background
    colour from inline style. */
