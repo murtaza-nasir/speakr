@@ -382,6 +382,58 @@
                 </div>
             </div>
 
+            <!-- Progressive disclosure: Folder + Tags + Prompt
+                 variables + Advanced ASR all live behind a single
+                 collapsible "Options" group. The summary line shows
+                 chips for whatever the user has selected so they can
+                 verify state without expanding; clicking opens the
+                 full editor. Defaults to collapsed because most
+                 uploads use whatever was last set and the chips
+                 already communicate that. -->
+            <details class="mt-4 upload-options-group">
+                <summary class="cursor-pointer flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
+                         style="list-style: none; background: var(--bg-tertiary);">
+                    <i class="fas fa-sliders-h text-[var(--text-muted)]"></i>
+                    <span class="text-sm font-medium" style="color: var(--text-secondary);">Options</span>
+
+                    <!-- Chip summary of currently-set values. Each
+                         chip is conditionally rendered. -->
+                    <div class="flex items-center gap-1 ml-2 flex-wrap min-w-0">
+                        <!-- Folder chip -->
+                        <span v-if="foldersEnabled && selectedFolderId && getFolderById(selectedFolderId)"
+                              class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full"
+                              :style="{ background: getFolderColor(selectedFolderId) + '22', color: getFolderColor(selectedFolderId) }">
+                            <i class="fas fa-folder"></i>
+                            <span class="truncate max-w-[120px]" v-text="getFolderById(selectedFolderId).name"></span>
+                        </span>
+                        <!-- Tag count chip -->
+                        <span v-if="selectedTags.length > 0"
+                              class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full"
+                              style="background: var(--bg-accent); color: var(--text-accent);">
+                            <i class="fas fa-tag"></i>
+                            <span>${ selectedTags.length } ${ selectedTags.length === 1 ? 'tag' : 'tags' }</span>
+                        </span>
+                        <!-- Language chip (only if non-default) -->
+                        <span v-if="uploadLanguage"
+                              class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full"
+                              style="background: var(--bg-accent); color: var(--text-accent);">
+                            <i class="fas fa-language"></i>
+                            <span v-text="uploadLanguage"></span>
+                        </span>
+                        <!-- Speakers chip (only if non-default) -->
+                        <span v-if="uploadMinSpeakers || uploadMaxSpeakers"
+                              class="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full"
+                              style="background: var(--bg-accent); color: var(--text-accent);">
+                            <i class="fas fa-users"></i>
+                            <span>${ uploadMinSpeakers || '?' }${ uploadMinSpeakers != uploadMaxSpeakers ? '-' + (uploadMaxSpeakers || '?') : '' }</span>
+                        </span>
+                    </div>
+
+                    <i class="fas fa-chevron-down ml-auto text-xs text-[var(--text-muted)] transition-transform upload-options-chevron"></i>
+                </summary>
+
+                <div class="mt-2">
+
             <!-- Folder Selection (only shown if folders are enabled) -->
             <div v-if="foldersEnabled" class="mt-4">
                 <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
@@ -672,6 +724,9 @@
                     </p>
                 </div>
             </div>
+
+                </div><!-- end .mt-2 wrapper inside details -->
+            </details><!-- end Options progressive-disclosure group -->
         </div>
     </div>
 </div>

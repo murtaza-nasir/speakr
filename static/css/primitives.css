@@ -1410,3 +1410,12 @@ textarea:focus-visible {
     .tab-footer { padding: var(--sp-2) var(--sp-4); }
     .tab-footer::before { font-size: 10px; }
 }
+
+
+/* ---- Upload modal: progressive-disclosure Options group ------------------
+   The .upload-options-group <details> wraps Folder / Tags / Prompt vars /
+   Advanced ASR. The chevron-down icon inside flips up when the group is
+   expanded so users have a clear visual indicator. */
+.upload-options-group[open] .upload-options-chevron {
+    transform: rotate(180deg);
+}
