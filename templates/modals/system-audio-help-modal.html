@@ -127,26 +127,44 @@
                 </div>
 
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B — Full system audio via PulseAudio monitor (one-time setup)</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B — Switch source in pavucontrol mid-recording</div>
                     <p class="t-body" style="color: var(--text-secondary);">
-                        Every Linux audio sink has a corresponding "monitor" source you can record FROM. Chrome can pick it as a microphone input — then anything playing through your speakers gets captured. Use the <strong>Microphone</strong> button, not System Audio.
+                        Quick but limited: captures system audio AT THE COST OF your mic input — useful only when you want to record what's playing through your headphones / speakers without your own voice.
                     </p>
                     <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary); margin-top: var(--sp-2);">
-                        <li>Open <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pavucontrol</code></li>
-                        <li>In <strong>Configuration</strong> tab, make sure your output device profile is set (HDMI / Analog Stereo / etc.)</li>
-                        <li>In Speakr, click <strong>Microphone</strong> and grant permission. This makes Chrome enumerate input devices including monitor sources.</li>
-                        <li>While Speakr is recording, open pavucontrol's <strong>Recording</strong> tab. Find Speakr's capture entry and switch its source from your microphone to <strong>Monitor of &lt;your output&gt;</strong></li>
-                        <li>Subsequent records will remember this routing if you make it the default.</li>
+                        <li>Click <strong>Microphone</strong> in Speakr</li>
+                        <li>Open <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pavucontrol</code> → <strong>Recording</strong> tab</li>
+                        <li>Change Speakr's capture source from your mic to <strong>Monitor of &lt;your output&gt;</strong></li>
                     </ol>
-                    <p class="t-meta" style="margin-top: var(--sp-2);">
-                        To capture BOTH your mic and the monitor, create a virtual combined source: <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pactl load-module module-null-sink sink_name=combined</code> then loopback both inputs to it.
+                </div>
+
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option C — Expose a virtual source so Chrome will list it (recommended)</div>
+                    <p class="t-body" style="color: var(--text-secondary);">
+                        <strong>Why this is needed:</strong> Chrome on Linux deliberately filters "Monitor of …" sources out of the input device list it exposes to web apps — that's why Speakr's input-device picker doesn't show them even though pavucontrol does. The fix is to wrap a monitor source in a regular virtual source that Chrome doesn't filter. Once you do this, the new source appears in Speakr's picker and you can use it as either the primary input OR as a "Also mix in" alongside your real mic to capture BOTH your voice and system audio in one stream.
+                    </p>
+                    <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin: var(--sp-2) 0;">
+                        <i class="fas fa-circle-info" style="margin-top: 2px;"></i>
+                        <div class="t-meta" style="flex: 1; min-width: 0;">
+                            <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Quick setup (one-time)</div>
+                            <p>Find your output sink name (the part before <code style="background: var(--bg-secondary); padding: 1px 4px; border-radius: 3px;">.monitor</code>):</p>
+                            <pre style="background: var(--bg-secondary); padding: var(--sp-2); border-radius: 4px; margin-top: var(--sp-1); overflow-x: auto; font-size: 11px;">pactl list short sinks</pre>
+                            <p style="margin-top: var(--sp-2);">Then wrap its monitor as a virtual source Chrome will list:</p>
+                            <pre style="background: var(--bg-secondary); padding: var(--sp-2); border-radius: 4px; margin-top: var(--sp-1); overflow-x: auto; font-size: 11px;">pactl load-module module-virtual-source \
+    source_name=speakr_loopback \
+    master=&lt;sink_name&gt;.monitor</pre>
+                            <p style="margin-top: var(--sp-2);">Reload Speakr's input-device picker — you'll now see <strong>speakr_loopback</strong> in the dropdown. Pick it as <strong>"Also mix in"</strong> alongside your real mic and you'll capture both.</p>
+                        </div>
+                    </div>
+                    <p class="t-meta">
+                        To persist across reboots, add the <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">load-module module-virtual-source source_name=speakr_loopback master=&lt;sink_name&gt;.monitor</code> line to <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">~/.config/pulse/default.pa</code>.
                     </p>
                 </div>
 
                 <div>
                     <div class="t-body-strong" style="margin-bottom: var(--sp-1);">PipeWire (newer distros)</div>
                     <p class="t-body" style="color: var(--text-secondary);">
-                        Same monitor-source pattern. Use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> or <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire your playback sink's monitor into Chrome's capture input.
+                        Same idea — wrap the monitor in a virtual source so Chrome doesn't filter it. Use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pw-loopback</code>: <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pw-loopback --capture-props='node.target=&lt;sink&gt;.monitor' --playback-props='media.class=Audio/Source node.name=speakr_loopback'</code>. Or use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> / <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire it visually.
                     </p>
                 </div>
             </div>

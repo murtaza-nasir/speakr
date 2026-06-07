@@ -333,7 +333,22 @@
                                     </option>
                                 </select>
                                 <p class="text-[10px] mt-1" style="color: var(--text-muted);">
-                                    Pick a monitor source ("Monitor of …" on Linux, BlackHole on macOS, VB-Cable on Windows) to mix system audio with your mic. Both streams combine into one recording.
+                                    Pick a monitor / virtual audio device (BlackHole on macOS, VB-Cable on Windows, or a wrapped Pulse monitor on Linux) to mix system audio with your mic. Both streams combine into one recording.
+                                </p>
+                                <!-- Linux-specific: Chrome filters
+                                     "Monitor of ..." sources out of
+                                     enumerateDevices, so the picker
+                                     above won't show them by default
+                                     even though pavucontrol does.
+                                     Point users at the help guide
+                                     where Option C explains the
+                                     pactl one-liner to expose a
+                                     virtual source Chrome WILL list. -->
+                                <p v-if="platformInfo && platformInfo.os === 'Linux'"
+                                   class="text-[10px] mt-1" style="color: var(--text-muted);">
+                                    <i class="fas fa-circle-info text-amber-500"></i>
+                                    Don't see "Monitor of …" entries? Chrome on Linux filters them out. The help guide's Linux → Option C shows a one-line <code style="background: var(--bg-secondary); padding: 0 2px; border-radius: 2px;">pactl</code> command to expose a Pulse monitor as a regular source Chrome will list.
+                                    <button @click.prevent="showSystemAudioHelp = true" class="underline" style="color: var(--text-accent);">Open guide</button>
                                 </p>
                             </div>
                         </template>
