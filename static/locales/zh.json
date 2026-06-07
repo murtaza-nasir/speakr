@@ -559,6 +559,7 @@
     "colorDescription": "选择颜色以便识别",
     "createTitle": "创建标签",
     "editTitle": "编辑标签",
+    "tabHasSettings": "有自定义设置",
     "updateTag": "更新标签",
     "customPrompt": "自定义摘要提示",
     "customPromptPlaceholder": "可选：为带有此标签的录音生成摘要的自定义提示",

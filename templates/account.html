@@ -2127,13 +2127,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <div class="border-b border-[var(--border-primary)]">
                     <nav class="flex -mb-px space-x-1" id="tagModalTabs">
                         <button type="button" class="tag-modal-tab active px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-[var(--border-focus)] text-[var(--text-accent)]" data-tab="tagTabTranscription">
-                            <i class="fas fa-microphone mr-1"></i>Transcription
+                            <i class="fas fa-microphone mr-1"></i>Transcription<span class="tab-mod-dot hidden inline-block w-1.5 h-1.5 rounded-full bg-[var(--text-accent)] ml-1 align-middle"></span>
                         </button>
                         <button type="button" class="tag-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-tab="tagTabSummary">
-                            <i class="fas fa-file-alt mr-1"></i>Summary & Templates
+                            <i class="fas fa-file-alt mr-1"></i>Summary & Templates<span class="tab-mod-dot hidden inline-block w-1.5 h-1.5 rounded-full bg-[var(--text-accent)] ml-1 align-middle"></span>
                         </button>
                         <button type="button" id="tagTabSharingBtn" class="tag-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hidden" data-tab="tagTabSharing">
-                            <i class="fas fa-users mr-1"></i>Sharing
+                            <i class="fas fa-users mr-1"></i>Sharing<span class="tab-mod-dot hidden inline-block w-1.5 h-1.5 rounded-full bg-[var(--text-accent)] ml-1 align-middle"></span>
                         </button>
                     </nav>
                 </div>
@@ -2345,13 +2345,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 <div class="border-b border-[var(--border-primary)]">
                     <nav class="flex -mb-px space-x-1" id="folderModalTabs">
                         <button type="button" class="folder-modal-tab active px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-[var(--border-focus)] text-[var(--text-accent)]" data-tab="folderTabTranscription">
-                            <i class="fas fa-microphone mr-1"></i><span data-i18n="folderManagement.tabTranscription">Transcription</span>
+                            <i class="fas fa-microphone mr-1"></i><span data-i18n="folderManagement.tabTranscription">Transcription</span><span class="tab-mod-dot hidden inline-block w-1.5 h-1.5 rounded-full bg-[var(--text-accent)] ml-1 align-middle"></span>
                         </button>
                         <button type="button" class="folder-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]" data-tab="folderTabSummary">
-                            <i class="fas fa-file-alt mr-1"></i><span data-i18n="folderManagement.tabSummary">Summary & Templates</span>
+                            <i class="fas fa-file-alt mr-1"></i><span data-i18n="folderManagement.tabSummary">Summary & Templates</span><span class="tab-mod-dot hidden inline-block w-1.5 h-1.5 rounded-full bg-[var(--text-accent)] ml-1 align-middle"></span>
                         </button>
                         <button type="button" id="folderTabSharingBtn" class="folder-modal-tab px-3 py-2 text-xs font-medium rounded-t-md border-b-2 border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hidden" data-tab="folderTabSharing">
-                            <i class="fas fa-users mr-1"></i><span data-i18n="folderManagement.tabSharing">Sharing</span>
+                            <i class="fas fa-users mr-1"></i><span data-i18n="folderManagement.tabSharing">Sharing</span><span class="tab-mod-dot hidden inline-block w-1.5 h-1.5 rounded-full bg-[var(--text-accent)] ml-1 align-middle"></span>
                         </button>
                     </nav>
                 </div>
@@ -4624,6 +4624,64 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             document.getElementById('folderTabSharingBtn')?.classList.remove('hidden');
         }
 
+        // ===== TAB "HAS CUSTOM SETTINGS" INDICATORS =====
+        // Each tab in the tag/folder edit modals shows a small accent dot
+        // when it contains any non-default setting, so the user can see at
+        // a glance which tabs hold customisations for this tag/folder
+        // without clicking through every tab. Field lists below map each
+        // tab to the inputs that count as a "setting"; sharing only counts
+        // the group assignment (the auto-share checkboxes default on and
+        // are only meaningful once a group is chosen).
+        const TAG_TAB_FIELDS = {
+            tagTabTranscription: ['tagLanguage','tagMinSpeakers','tagMaxSpeakers','tagHotwords','tagInitialPrompt','tagTranscriptionModel','tagRetentionDays','tagProtectFromDeletion'],
+            tagTabSummary: ['tagCustomPrompt','tagNamingTemplate','tagExportTemplate'],
+            tagTabSharing: ['tagGroupId'],
+        };
+        const FOLDER_TAB_FIELDS = {
+            folderTabTranscription: ['folderLanguage','folderMinSpeakers','folderMaxSpeakers','folderHotwords','folderInitialPrompt','folderTranscriptionModel','folderRetentionDays','folderProtectFromDeletion'],
+            folderTabSummary: ['folderCustomPrompt','folderNamingTemplate','folderExportTemplate'],
+            folderTabSharing: ['folderGroupId'],
+        };
+
+        function fieldHasValue(id) {
+            const el = document.getElementById(id);
+            if (!el) return false;
+            if (el.type === 'checkbox') return el.checked;
+            // For text/number inputs and selects: a non-empty value is a
+            // customisation. Selects use value="" for their default option.
+            return (el.value || '').trim() !== '';
+        }
+
+        function refreshModalTabIndicators(navId, tabFields) {
+            const nav = document.getElementById(navId);
+            if (!nav) return;
+            const dotTitle = (window.i18n && window.i18n.t)
+                ? window.i18n.t('editTagModal.tabHasSettings')
+                : 'Has custom settings';
+            Object.entries(tabFields).forEach(([tabId, fields]) => {
+                const btn = nav.querySelector('[data-tab="' + tabId + '"]');
+                if (!btn) return;
+                const dot = btn.querySelector('.tab-mod-dot');
+                if (!dot) return;
+                const modified = fields.some(fieldHasValue);
+                dot.classList.toggle('hidden', !modified);
+                dot.title = dotTitle;
+            });
+        }
+
+        const refreshTagTabIndicators = () => refreshModalTabIndicators('tagModalTabs', TAG_TAB_FIELDS);
+        const refreshFolderTabIndicators = () => refreshModalTabIndicators('folderModalTabs', FOLDER_TAB_FIELDS);
+        // Expose so the async template-dropdown loaders can call back once
+        // they've set their <select> values (which happens after open).
+        window._refreshTagTabIndicators = refreshTagTabIndicators;
+        window._refreshFolderTabIndicators = refreshFolderTabIndicators;
+
+        // Live update as the user edits fields inside either modal.
+        document.getElementById('tagModal')?.addEventListener('input', refreshTagTabIndicators);
+        document.getElementById('tagModal')?.addEventListener('change', refreshTagTabIndicators);
+        document.getElementById('folderModal')?.addEventListener('input', refreshFolderTabIndicators);
+        document.getElementById('folderModal')?.addEventListener('change', refreshFolderTabIndicators);
+
         // ===== TAG MANAGEMENT FUNCTIONALITY =====
 
         // Tag management elements
@@ -5153,14 +5211,22 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 refreshTagAutoProcessVariableWarning();
             }
 
-            // Load naming templates for dropdown
-            loadNamingTemplatesForTagModal();
-
-            // Load export templates for dropdown
-            loadExportTemplatesForTagModal();
+            // Load naming + export templates for dropdowns. These are
+            // async (they fetch then restore the selected value), so
+            // re-run the tab indicators once they settle to catch the
+            // Summary tab's template selections.
+            Promise.allSettled([
+                loadNamingTemplatesForTagModal(),
+                loadExportTemplatesForTagModal()
+            ]).then(refreshTagTabIndicators);
 
             // Reset to first tab
             switchModalTab('tagModalTabs', 'tag-modal-tab', 'tag-modal-tab-content', 'tagTabTranscription');
+
+            // Mark which tabs hold custom settings. Run now for the
+            // synchronously-populated fields; the naming/export template
+            // loaders re-run it once their async <select> values are set.
+            refreshTagTabIndicators();
 
             tagModal.classList.remove('hidden');
         }
@@ -5875,14 +5941,20 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 document.getElementById('folderId').value = '';
             }
 
-            // Load naming templates for dropdown (pass folder to set initial value)
-            loadNamingTemplatesForFolderModal(folder);
-
-            // Load export templates for dropdown (pass folder to set initial value)
-            loadExportTemplatesForFolderModal(folder);
+            // Load naming + export templates (async; restore selected
+            // value), then re-run tab indicators so the Summary tab's
+            // template selections are reflected once they settle.
+            Promise.allSettled([
+                loadNamingTemplatesForFolderModal(folder),
+                loadExportTemplatesForFolderModal(folder)
+            ]).then(refreshFolderTabIndicators);
 
             // Reset to first tab
             switchModalTab('folderModalTabs', 'folder-modal-tab', 'folder-modal-tab-content', 'folderTabTranscription');
+
+            // Mark which tabs hold custom settings (async template loaders
+            // re-run this once their <select> values are populated).
+            refreshFolderTabIndicators();
 
             if (folderModal) folderModal.classList.remove('hidden');
         }
