@@ -3559,6 +3559,12 @@ body {
 
 .markdown-editor-container .EasyMDEContainer .editor-toolbar {
     background: var(--bg-tertiary);
+    /* EasyMDE's default CSS puts a 1px solid #ddd on the toolbar's
+       top/left/right edges. In dark mode that reads as a white
+       outline at the top of the editor — explicitly reset all four
+       sides and re-add only the bottom hairline using the theme
+       variable. */
+    border: none;
     border-bottom: 1px solid var(--border-secondary);
     border-radius: 0.75rem 0.75rem 0 0;
     padding: 0.5rem;
