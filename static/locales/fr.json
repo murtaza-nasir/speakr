@@ -1515,6 +1515,8 @@
     "discardIncognito": "Supprimer l'enregistrement incognito",
     "editTranscript": "Modifier la transcription",
     "exitFullscreen": "Quitter le plein écran",
+    "video": "Vidéo",
+    "enterFullscreen": "Plein écran",
     "expand": "Développer",
     "followPlayerDisabled": "Activer le défilement automatique - la transcription suit la lecture audio",
     "followPlayerEnabled": "Désactiver le défilement automatique - la transcription reste en place",

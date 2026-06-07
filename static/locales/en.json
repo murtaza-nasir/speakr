@@ -1524,6 +1524,8 @@
     "discardIncognito": "Discard incognito recording",
     "editTranscript": "Edit transcript",
     "exitFullscreen": "Exit fullscreen",
+    "video": "Video",
+    "enterFullscreen": "Fullscreen",
     "expand": "Expand",
     "followPlayerDisabled": "Enable auto-scroll - transcript follows audio playback",
     "followPlayerEnabled": "Disable auto-scroll - transcript stays in place",

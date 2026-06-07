@@ -21,9 +21,17 @@
 
     <!-- Audio Player -->
     <div v-else>
-        <!-- Video/Audio element wrapped in Teleport for fullscreen -->
-        <Teleport to="body" :disabled="!videoFullscreen">
-            <div :class="videoFullscreen ? 'video-fullscreen-overlay' : ''"
+        <!-- Video/Audio element. A SINGLE element teleported between three
+             homes so playback never restarts:
+               - fullscreen        -> body (fullscreen overlay)
+               - docked (desktop)  -> #videoDockSlot in the transcript column
+               - otherwise         -> in place here, hidden (audio-only)
+             Teleport is disabled (element stays here) only when neither
+             fullscreen nor docked. #videoDockSlot is kept mounted via
+             v-show on the dock so the target always exists when enabled. -->
+        <Teleport :to="videoFullscreen ? 'body' : '#videoDockSlot'"
+                  :disabled="!videoFullscreen && !(isVideoRecording && videoDockEnabled)">
+            <div :class="videoFullscreen ? 'video-fullscreen-overlay' : (isVideoRecording && videoDockEnabled ? 'video-dock-wrapper' : '')"
                  @mousemove="videoFullscreen && handleFullscreenMouseMove()"
                  @click.self="videoFullscreen && toggleAudioPlayback()">
 
@@ -39,10 +47,10 @@
                        @ended="handleAudioEnded"
                        @waiting="handleAudioWaiting"
                        @canplay="handleAudioCanPlay"
-                       @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && toggleAudioPlayback()"
+                       @click="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoFullscreen && toggleAudioPlayback()"
                        @dblclick="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoFullscreen && enterVideoFullscreen()"
-                       :class="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')
-                           ? (videoFullscreen ? 'video-fullscreen-video' : 'hidden')
+                       :class="isVideoRecording
+                           ? (videoFullscreen ? 'video-fullscreen-video' : (videoDockEnabled ? 'video-dock-video' : 'hidden'))
                            : 'hidden'">
                 </component>
 
@@ -138,6 +146,17 @@
                      :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
                      style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
             </div>
+
+            <!-- Video toggle (video files only): shows/hides the docked
+                 video strip at the bottom of the transcript column.
+                 Accent colour when on. -->
+            <button v-if="isVideoRecording"
+                    @click="toggleVideoDock"
+                    class="btn btn--icon flex-shrink-0"
+                    :style="videoDockEnabled ? 'color: var(--text-accent);' : ''"
+                    :title="videoDockEnabled ? t('tooltips.hideVideo') : t('tooltips.showVideo')">
+                <i :class="videoDockEnabled ? 'fas fa-video' : 'fas fa-video-slash'" class="text-sm"></i>
+            </button>
 
             <!-- Playback speed -->
             <div class="relative flex-shrink-0">

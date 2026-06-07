@@ -1515,6 +1515,8 @@
     "discardIncognito": "Descartar gravação de incógnito",
     "editTranscript": "Editar transcrição",
     "exitFullscreen": "Sair da tela cheia",
+    "video": "Vídeo",
+    "enterFullscreen": "Tela cheia",
     "expand": "Expandir",
     "followPlayerDisabled": "Ativar deslocamento automático - transcrição acompanha reproducão de áudio",
     "followPlayerEnabled": "Desativar deslocamento automático - transcrição fica no lugar",

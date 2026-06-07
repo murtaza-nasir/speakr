@@ -1515,6 +1515,8 @@
     "discardIncognito": "丢弃隐身录音",
     "editTranscript": "编辑转录",
     "exitFullscreen": "退出全屏",
+    "video": "视频",
+    "enterFullscreen": "全屏",
     "expand": "展开",
     "followPlayerDisabled": "启用自动滚动 - 文字记录跟随音频播放",
     "followPlayerEnabled": "禁用自动滚动 - 文字记录保持位置",

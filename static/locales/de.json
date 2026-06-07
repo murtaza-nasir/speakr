@@ -1515,6 +1515,8 @@
     "discardIncognito": "Inkognito-Aufnahme verwerfen",
     "editTranscript": "Transkript bearbeiten",
     "exitFullscreen": "Vollbild beenden",
+    "video": "Video",
+    "enterFullscreen": "Vollbild",
     "expand": "Erweitern",
     "followPlayerDisabled": "Automatisches Scrollen aktivieren - Transkript folgt der Audiowiedergabe",
     "followPlayerEnabled": "Automatisches Scrollen deaktivieren - Transkript bleibt an Ort und Stelle",
