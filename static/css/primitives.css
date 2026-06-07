@@ -1526,3 +1526,24 @@ textarea:focus-visible {
     from { opacity: 0; transform: translateY(100%); }
     to   { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ---- Native <select> theming ------------------------------------------
+   The browser's native dropdown for <select> elements doesn't inherit
+   the page's theme variables — on dark mode it falls back to OS / UA
+   default which is typically a light surface, producing the
+   "white-on-white" reading of <option>s seen on the folder picker.
+   Explicitly styling the option elements with the same theme tokens
+   the rest of the UI uses gives consistent contrast in both modes.
+   Note: <option> styling support varies by browser; covers Chrome /
+   Edge / Firefox on desktop and most mobile browsers. Safari ignores
+   most <option> styles but uses system theme automatically. */
+select option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+select option:checked,
+select option:hover {
+    background-color: var(--bg-accent);
+    color: var(--text-accent);
+}
