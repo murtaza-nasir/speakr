@@ -1,8 +1,11 @@
-<!-- Mobile Bottom Tab Navigation (design system v1).
-     Three primary tabs (Summary / Transcript / Chat) plus a More overflow
-     menu that surfaces Notes / Events / Settings. 56px tall to comfortably
-     accommodate icon + label + 44×44 touch target per HIG. -->
-<div class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-stretch" style="min-height: 56px;">
+<!-- Mobile Bottom Tab Navigation. The base nav always shows Summary,
+     Transcript, Chat and Notes (four direct tabs). When the recording
+     also has extracted Events the total would exceed 4, so we surface
+     Notes inside a More overflow with Events instead — at 4 or fewer
+     items there's no overflow menu so the user can reach every tab in
+     one tap (queue #9). 56px tall to accommodate icon + label + 44×44
+     touch target per HIG. -->
+<div class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-stretch" style="min-height: 56px; padding-bottom: env(safe-area-inset-bottom);">
     <button @click="mobileTab = 'summary'"
             class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
             :class="mobileTab === 'summary' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
@@ -26,13 +29,23 @@
             ${chatMessages.length}
         </span>
     </button>
-    <!-- More menu (overflow): houses Notes, Events, etc. -->
-    <button @click="mobileMoreOpen = !mobileMoreOpen"
+    <!-- Notes appears DIRECTLY in the bar when the recording has no
+         events (total stays at 4 tabs); when events ARE present it
+         moves into the More overflow alongside Events. -->
+    <button v-if="!selectedRecording || !selectedRecording.events || selectedRecording.events.length === 0"
+            @click="mobileTab = 'notes'"
+            class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
+            :class="mobileTab === 'notes' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+        <i class="fas fa-sticky-note text-base"></i>
+        <span class="text-[10px] font-medium" v-text="t('notes.title')"></span>
+    </button>
+    <!-- More menu only when there's actual overflow (events present). -->
+    <button v-else
+            @click="mobileMoreOpen = !mobileMoreOpen"
             class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
             :class="['notes','events'].includes(mobileTab) ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
         <i class="fas fa-ellipsis-h text-base"></i>
         <span class="text-[10px] font-medium">More</span>
-        <!-- Indicator when an overflow tab is active -->
         <span v-if="['notes','events'].includes(mobileTab)"
               class="absolute top-1 right-3 inline-flex items-center justify-center w-1.5 h-1.5 rounded-full"
               style="background: var(--text-accent);"></span>
