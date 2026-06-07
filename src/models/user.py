@@ -65,6 +65,11 @@ class User(db.Model, UserMixin):
     # UI/display preferences
     show_timestamps_simple_view = db.Column(db.Boolean, default=False)
     editor_autosave = db.Column(db.Boolean, default=False)
+    # Audio player placement in the recording-detail view. 'bottom'
+    # (default) keeps the player anchored under the content columns;
+    # 'top' renders it above the columns so it sits closer to the
+    # title bar. User-configurable from the Display tab in settings.
+    audio_player_position = db.Column(db.String(10), default='bottom')
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}')"

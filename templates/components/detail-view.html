@@ -101,6 +101,17 @@
             </button>
         </div>
 
+        <!-- Persistent audio player. By default sits at the BOTTOM of
+             the recording-detail screen, but the user can flip it to
+             the TOP from the Display tab in settings (preference
+             stored in user.audio_player_position; mirrored to the
+             reactive audioPlayerPosition ref). When 'top', the same
+             component renders ABOVE the main content split view so
+             it sits just under the title-meta strip. -->
+        <template v-if="audioPlayerPosition === 'top'">
+            {% include 'components/detail/desktop-bottom-player.html' %}
+        </template>
+
         <!-- Main Content Split View -->
         <div id="mainContentColumns" class="flex-1 flex overflow-hidden">
             {% include 'components/detail/desktop-transcription-panel.html' %}
@@ -111,10 +122,9 @@
             {% include 'components/detail/desktop-right-panel.html' %}
         </div>
 
-        <!-- Persistent Bottom Audio Player. Spans the transcript + right
-             rail. Stays anchored to the bottom of the recording-detail
-             screen so the player is always within reach. -->
-        {% include 'components/detail/desktop-bottom-player.html' %}
+        <template v-if="audioPlayerPosition !== 'top'">
+            {% include 'components/detail/desktop-bottom-player.html' %}
+        </template>
     </div>
 
     <!-- Floating dockable chat (teleported to body; desktop-only). -->

@@ -575,6 +575,10 @@ def account():
         elif 'preferences_form' in request.form:
             current_user.show_timestamps_simple_view = 'show_timestamps_simple_view' in request.form
             current_user.editor_autosave = 'editor_autosave' in request.form
+            # Audio player position — only 'top' or 'bottom' are valid;
+            # anything else falls back to the default 'bottom'.
+            pos = request.form.get('audio_player_position', 'bottom')
+            current_user.audio_player_position = pos if pos in ('bottom', 'top') else 'bottom'
 
             ui_lang = request.form.get('ui_language')
             transcription_lang = request.form.get('transcription_language')

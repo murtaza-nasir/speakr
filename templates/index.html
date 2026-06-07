@@ -57,6 +57,7 @@
          data-user-language="{{ user_language }}"
          data-show-timestamps-simple-view="{{ 'True' if (current_user.is_authenticated and current_user.show_timestamps_simple_view) else 'False' }}"
          data-editor-autosave="{{ 'True' if (current_user.is_authenticated and current_user.editor_autosave) else 'False' }}"
+         data-audio-player-position="{{ (current_user.audio_player_position or 'bottom') if current_user.is_authenticated else 'bottom' }}"
          data-server-recording-chunks="{{ 'True' if server_recording_chunks_enabled else 'False' }}"
          data-recording-max-hours="{{ recording_max_hours }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">

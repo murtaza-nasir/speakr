@@ -999,6 +999,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const connectorSupportsInitialPrompt = ref(false); // Connector accepts initial prompt / context hint
             const showTimestampsSimpleView = ref(false);     // User pref: display timestamps in simple view
             const editorAutosave = ref(false);                // User pref: autosave transcript editor
+            const audioPlayerPosition = ref('bottom');        // User pref: 'bottom' or 'top' for desktop player placement
             const currentUserName = ref('');
             const canDeleteRecordings = ref(true);
             const enableInternalSharing = ref(false);
@@ -1283,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openAsrDropdownIndex,
 
                 // App Config
-                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
+                useAsrEndpoint, connectorSupportsDiarization, connectorSupportsSpeakerCount, connectorSupportsHotwords, connectorSupportsInitialPrompt, showTimestampsSimpleView, editorAutosave, audioPlayerPosition, formatTimestamp, currentUserName, canDeleteRecordings, enableInternalSharing, enableArchiveToggle, showUsernamesInUI,
 
                 // Internal Sharing
                 showUnifiedShareModal, internalShareUserSearch, internalShareSearchResults,
@@ -2830,6 +2831,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     connectorSupportsInitialPrompt.value = appElement.dataset.connectorSupportsInitialPrompt === 'True';
                     showTimestampsSimpleView.value = appElement.dataset.showTimestampsSimpleView === 'True';
                     editorAutosave.value = appElement.dataset.editorAutosave === 'True';
+                    const pos = appElement.dataset.audioPlayerPosition;
+                    audioPlayerPosition.value = (pos === 'top') ? 'top' : 'bottom';
                     currentUserName.value = appElement.dataset.currentUserName || '';
                 }
 

@@ -119,7 +119,8 @@
     "tagManagement": "Tag Management",
     "templates": "Templates",
     "transcriptTemplates": "Transcript Templates",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "display": "Display"
   },
   "admin": {
     "title": "Admin",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "Copy this secret now — it will not be shown again",
     "secretBannerHint": "Sign every receiver request: HMAC-SHA256 of the raw body using this secret. Header: Speakr-Signature: sha256=<hex>",
     "copy": "Copy"
+  },
+  "display": {
+    "audioPlayerSection": "Audio player",
+    "audioPlayerPositionLabel": "Player position in the recording-detail screen",
+    "audioPlayerPositionHelp": "Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.",
+    "playerPositionBottom": "Bottom",
+    "playerPositionBottomHelp": "Player anchored under the transcript + summary columns. Default.",
+    "playerPositionTop": "Top",
+    "playerPositionTopHelp": "Player sits above the columns, just under the title and metadata strip."
   }
 }

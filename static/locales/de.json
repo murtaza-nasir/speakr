@@ -119,7 +119,8 @@
     "templates": "Vorlagen",
     "transcriptTemplates": "Transkript-Vorlagen",
     "preferences": "Einstellungen",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "display": "Anzeige"
   },
   "admin": {
     "title": "Administration",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "Geheimnis jetzt kopieren — es wird nicht erneut angezeigt",
     "secretBannerHint": "Signieren Sie jede Empfänger-Anfrage: HMAC-SHA256 des Rohkörpers mit diesem Geheimnis. Header: Speakr-Signature: sha256=<hex>",
     "copy": "Kopieren"
+  },
+  "display": {
+    "audioPlayerSection": "Audio-Player",
+    "audioPlayerPositionLabel": "Player-Position im Aufnahme-Detailbildschirm",
+    "audioPlayerPositionHelp": "Wählen Sie, ob der Audio-Player am unteren Rand des Bildschirms (Standard) oder oben, direkt unter Titel und Metadaten der Aufnahme, angezeigt wird.",
+    "playerPositionBottom": "Unten",
+    "playerPositionBottomHelp": "Player unter den Transkript- und Zusammenfassungsspalten verankert. Standard.",
+    "playerPositionTop": "Oben",
+    "playerPositionTopHelp": "Der Player sitzt über den Spalten, direkt unter dem Titel und der Metadatenleiste."
   }
 }

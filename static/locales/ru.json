@@ -119,7 +119,8 @@
     "templates": "Шаблоны",
     "transcriptTemplates": "Шаблоны транскриптов",
     "preferences": "Настройки",
-    "webhooks": "Вебхуки"
+    "webhooks": "Вебхуки",
+    "display": "Отображение"
   },
   "admin": {
     "title": "Администратор",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "Скопируйте этот секрет сейчас — он больше не будет показан",
     "secretBannerHint": "Подписывайте каждый запрос получателя: HMAC-SHA256 от исходного тела с этим секретом. Заголовок: Speakr-Signature: sha256=<hex>",
     "copy": "Копировать"
+  },
+  "display": {
+    "audioPlayerSection": "Аудиоплеер",
+    "audioPlayerPositionLabel": "Положение плеера на экране деталей записи",
+    "audioPlayerPositionHelp": "Выберите, где будет располагаться аудиоплеер: внизу экрана (по умолчанию) или вверху, прямо под заголовком и метаданными записи.",
+    "playerPositionBottom": "Внизу",
+    "playerPositionBottomHelp": "Плеер закреплён под столбцами расшифровки и резюме. По умолчанию.",
+    "playerPositionTop": "Вверху",
+    "playerPositionTopHelp": "Плеер располагается над столбцами, прямо под заголовком и панелью метаданных."
   }
 }

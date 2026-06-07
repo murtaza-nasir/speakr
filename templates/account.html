@@ -419,6 +419,9 @@
                     <a href="#" id="tab-preferences" class="tab">
                         <i class="fas fa-sliders-h"></i><span data-i18n="accountTabs.preferences">Preferences</span>
                     </a>
+                    <a href="#" id="tab-display" class="tab">
+                        <i class="fas fa-desktop"></i><span data-i18n="accountTabs.display">Display</span>
+                    </a>
                     <a href="#" id="tab-prompts" class="tab">
                         <i class="fas fa-cog"></i><span data-i18n="accountTabs.promptOptions">Prompts</span>
                     </a>
@@ -905,6 +908,57 @@
                             <div class="lg:col-span-2 flex justify-end pt-2">
                                 <button type="submit" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
                                     <i class="fas fa-save mr-2"></i> <span data-i18n="buttons.saveSettings">Save Settings</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Display tab — layout-level UI choices that change how
+                         the recording-detail screen is composed (player
+                         position now; future room for sidebar width,
+                         column ratio defaults, etc.). Lives in its own
+                         tab to keep the Preferences tab focused on
+                         transcript/editor behaviour. -->
+                    <div id="content-display" class="hidden tab-content pt-6">
+                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.display">Display</h2>
+                        <form id="displayForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6 max-w-2xl">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="preferences_form" value="1"/>
+                            <!-- Preserve other preference fields so saving this
+                                 form doesn't reset them to blank/default. -->
+                            <input type="hidden" name="show_timestamps_simple_view" value="{% if current_user.show_timestamps_simple_view %}on{% endif %}">
+                            <input type="hidden" name="editor_autosave" value="{% if current_user.editor_autosave %}on{% endif %}">
+                            <input type="hidden" name="ui_language" value="{{ current_user.ui_language or 'en' }}">
+                            <input type="hidden" name="transcription_language" value="{{ current_user.transcription_language or '' }}">
+                            <input type="hidden" name="output_language" value="{{ current_user.output_language or '' }}">
+
+                            <div>
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3" data-i18n="display.audioPlayerSection">Audio player</h3>
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" data-i18n="display.audioPlayerPositionLabel">Player position in the recording-detail screen</label>
+                                <p class="t-meta mb-3" data-i18n="display.audioPlayerPositionHelp">Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.</p>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {% set apos = current_user.audio_player_position or 'bottom' %}
+                                    <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]" :class="audioPlayerPosition === 'bottom' ? 'border-[var(--border-accent)]' : ''">
+                                        <input type="radio" name="audio_player_position" value="bottom" {% if apos != 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionBottom">Bottom</span>
+                                            <span class="block t-meta mt-0.5" data-i18n="display.playerPositionBottomHelp">Player anchored under the transcript + summary columns. Default.</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                        <input type="radio" name="audio_player_position" value="top" {% if apos == 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionTop">Top</span>
+                                            <span class="block t-meta mt-0.5" data-i18n="display.playerPositionTopHelp">Player sits above the columns, just under the title and metadata strip.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-2">
+                                <button type="submit" class="btn btn--primary">
+                                    <i class="fas fa-save"></i><span data-i18n="buttons.saveSettings">Save Settings</span>
                                 </button>
                             </div>
                         </form>
@@ -2967,9 +3021,11 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabWebhooks = document.getElementById('tab-webhooks');
             const tabAbout = document.getElementById('tab-about');
             const tabPreferences = document.getElementById('tab-preferences');
+            const tabDisplay = document.getElementById('tab-display');
             const contentAccount = document.getElementById('content-account');
             const contentPrompts = document.getElementById('content-prompts');
             const contentPreferences = document.getElementById('content-preferences');
+            const contentDisplay = document.getElementById('content-display');
             const contentShares = document.getElementById('content-shares');
             const contentSpeakers = document.getElementById('content-speakers');
             const contentFolders = document.getElementById('content-folders');
@@ -2987,6 +3043,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabs = [
                 { tab: tabAccount, content: contentAccount, name: 'account' },
                 { tab: tabPreferences, content: contentPreferences, name: 'preferences' },
+                { tab: tabDisplay, content: contentDisplay, name: 'display' },
                 { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
@@ -3037,6 +3094,10 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 switchToTab('preferences');
             }
 
+            function showDisplayTab() {
+                switchToTab('display');
+            }
+
             function showPromptsTab() {
                 switchToTab('prompts');
             }
@@ -3078,6 +3139,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 tabPreferences.addEventListener('click', (e) => {
                     e.preventDefault();
                     showPreferencesTab();
+                });
+            }
+
+            if (tabDisplay) {
+                tabDisplay.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showDisplayTab();
                 });
             }
 

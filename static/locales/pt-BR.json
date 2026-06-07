@@ -119,7 +119,8 @@
     "templates": "Modelos",
     "transcriptTemplates": "Modelos de Transcrição",
     "preferences": "Preferências",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "display": "Exibição"
   },
   "admin": {
     "title": "Administração",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "Copie este segredo agora — não será mostrado de novo",
     "secretBannerHint": "Assine cada requisição do receptor: HMAC-SHA256 do corpo bruto usando este segredo. Cabeçalho: Speakr-Signature: sha256=<hex>",
     "copy": "Copiar"
+  },
+  "display": {
+    "audioPlayerSection": "Reprodutor de áudio",
+    "audioPlayerPositionLabel": "Posição do reprodutor na tela de detalhes da gravação",
+    "audioPlayerPositionHelp": "Escolha se o reprodutor de áudio fica na parte inferior da tela (padrão) ou na parte superior, logo abaixo do título e dos metadados da gravação.",
+    "playerPositionBottom": "Inferior",
+    "playerPositionBottomHelp": "Reprodutor ancorado abaixo das colunas de transcrição e resumo. Padrão.",
+    "playerPositionTop": "Superior",
+    "playerPositionTopHelp": "O reprodutor fica acima das colunas, logo abaixo do título e da barra de metadados."
   }
 }

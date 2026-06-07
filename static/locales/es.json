@@ -119,7 +119,8 @@
     "templates": "Plantillas",
     "transcriptTemplates": "Plantillas de Transcripción",
     "preferences": "Preferencias",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "display": "Visualización"
   },
   "admin": {
     "title": "Administración",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "Copie este secreto ahora — no se mostrará otra vez",
     "secretBannerHint": "Firme cada solicitud del receptor: HMAC-SHA256 del cuerpo crudo usando este secreto. Cabecera: Speakr-Signature: sha256=<hex>",
     "copy": "Copiar"
+  },
+  "display": {
+    "audioPlayerSection": "Reproductor de audio",
+    "audioPlayerPositionLabel": "Posición del reproductor en la pantalla de detalle de la grabación",
+    "audioPlayerPositionHelp": "Elige si el reproductor de audio se sitúa en la parte inferior de la pantalla (predeterminado) o en la parte superior, justo debajo del título y los metadatos de la grabación.",
+    "playerPositionBottom": "Inferior",
+    "playerPositionBottomHelp": "Reproductor anclado debajo de las columnas de transcripción y resumen. Predeterminado.",
+    "playerPositionTop": "Superior",
+    "playerPositionTopHelp": "El reproductor se sitúa encima de las columnas, justo debajo del título y la barra de metadatos."
   }
 }

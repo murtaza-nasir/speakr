@@ -119,7 +119,8 @@
     "templates": "Modèles",
     "transcriptTemplates": "Modèles de Transcription",
     "preferences": "Préférences",
-    "webhooks": "Webhooks"
+    "webhooks": "Webhooks",
+    "display": "Affichage"
   },
   "admin": {
     "title": "Administration",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "Copiez ce secret maintenant — il ne sera plus affiché",
     "secretBannerHint": "Signez chaque requête du récepteur : HMAC-SHA256 du corps brut avec ce secret. En-tête : Speakr-Signature: sha256=<hex>",
     "copy": "Copier"
+  },
+  "display": {
+    "audioPlayerSection": "Lecteur audio",
+    "audioPlayerPositionLabel": "Position du lecteur dans l'écran de détail de l'enregistrement",
+    "audioPlayerPositionHelp": "Choisissez si le lecteur audio se trouve en bas de l'écran (par défaut) ou en haut, juste sous le titre et les métadonnées de l'enregistrement.",
+    "playerPositionBottom": "En bas",
+    "playerPositionBottomHelp": "Lecteur ancré sous les colonnes de transcription et de résumé. Par défaut.",
+    "playerPositionTop": "En haut",
+    "playerPositionTopHelp": "Le lecteur se place au-dessus des colonnes, juste sous le titre et la barre de métadonnées."
   }
 }

@@ -119,7 +119,8 @@
     "templates": "模板",
     "transcriptTemplates": "转录模板",
     "preferences": "偏好设置",
-    "webhooks": "Webhook"
+    "webhooks": "Webhook",
+    "display": "显示"
   },
   "admin": {
     "title": "管理员",
@@ -1617,5 +1618,14 @@
     "secretBannerTitle": "立即复制此密钥 — 不会再次显示",
     "secretBannerHint": "用此密钥对每个接收方请求进行签名: 原始正文的 HMAC-SHA256。请求头: Speakr-Signature: sha256=<hex>",
     "copy": "复制"
+  },
+  "display": {
+    "audioPlayerSection": "音频播放器",
+    "audioPlayerPositionLabel": "录音详情页中播放器的位置",
+    "audioPlayerPositionHelp": "选择音频播放器是位于屏幕底部（默认）还是顶部（紧贴录音标题和元数据下方）。",
+    "playerPositionBottom": "底部",
+    "playerPositionBottomHelp": "播放器固定在转录和摘要栏下方。默认。",
+    "playerPositionTop": "顶部",
+    "playerPositionTopHelp": "播放器位于栏的上方，紧贴标题和元数据栏下方。"
   }
 }
