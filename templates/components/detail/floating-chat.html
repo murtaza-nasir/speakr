@@ -12,10 +12,17 @@
 -->
 <Teleport to="body">
     <div v-if="currentView === 'detail' && selectedRecording" class="floating-chat-root">
-        <!-- FAB (collapsed) -->
+        <!-- FAB (collapsed). Position is derived from the same
+             #mainContentColumns rect that the floating/docked panel
+             uses, so the FAB sits just inside the bottom-right of the
+             content area regardless of where the audio player is
+             docked (top vs bottom). chatLayoutTick is touched to make
+             this style reactive to layout changes the ResizeObserver
+             catches. -->
         <button v-if="chatPanelState === 'collapsed'"
                 @click="openChatPanel"
                 class="floating-chat-fab"
+                :style="floatingChatFabStyle"
                 :title="t('chat.chatWithTranscription')">
             <i class="fas fa-comments"></i>
             <span v-if="chatMessages && chatMessages.length > 0" class="floating-chat-fab-badge">

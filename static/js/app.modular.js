@@ -613,6 +613,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
 
             // Compute the panel's inline style for the active state.
+            // Position of the collapsed FAB derives from the same
+            // #mainContentColumns rect as the floating/docked panel —
+            // single source of truth — so the FAB sits just inside the
+            // bottom-right corner of the content area regardless of
+            // whether the audio player is docked at the top or bottom.
+            // Falls back to viewport-bottom-right with a small inset
+            // when the rect isn't available yet (initial render).
+            const floatingChatFabStyle = computed(() => {
+                void chatLayoutTick.value;
+                const r = _rect('#mainContentColumns');
+                if (r && r.width > 0) {
+                    return {
+                        position: 'fixed',
+                        top: 'auto',
+                        bottom: (window.innerHeight - r.bottom + 24) + 'px',
+                        left: 'auto',
+                        right: (window.innerWidth - r.right + 24) + 'px',
+                    };
+                }
+                return {};  // falls back to CSS bottom: 84px right: 24px
+            });
+
             // Reactive on chatLayoutTick so resize / sidebar toggle
             // trigger recompute.
             const floatingChatPanelStyle = computed(() => {
@@ -724,11 +746,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const openChatPanel = () => {
                 if (chatPanelState.value === 'collapsed') {
-                    const main = document.querySelector('main.main-content');
-                    const r = main ? main.getBoundingClientRect() : null;
+                    // Use #mainContentColumns as the single bounds
+                    // reference — same as the docked/floating panel
+                    // clamp logic — so the FAB→panel transition lands
+                    // inside the actual content area regardless of
+                    // whether the audio player is docked at the top
+                    // or bottom of the layout.
+                    const r = _rect('#mainContentColumns');
                     chatPanelState.value = 'floating';
                     chatPanelX.value = r ? (r.right - chatPanelW.value - 24) : (window.innerWidth - chatPanelW.value - 24);
-                    chatPanelY.value = r ? (r.bottom - chatPanelH.value - 80) : (window.innerHeight - chatPanelH.value - 80);
+                    chatPanelY.value = r ? (r.bottom - chatPanelH.value - 24) : (window.innerHeight - chatPanelH.value - 80);
                 }
                 saveChatPanelPosition();
             };
@@ -1294,7 +1321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Chat
                 showChat, isChatMaximized, chatMessages, chatInput, isChatLoading, chatMessagesRef, chatInputRef,
                 chatPanelState, chatPanelX, chatPanelY, chatPanelW, chatPanelH,
-                chatDragActive, chatResizeActive, floatingChatPanelStyle,
+                chatDragActive, chatResizeActive, floatingChatPanelStyle, floatingChatFabStyle,
                 chatLastDock, chatDockMenuOpen,
                 openChatPanel, collapseChatPanel, toggleChatPanelMax,
                 startChatPanelDrag, startChatPanelResize, dockChatPanel,
