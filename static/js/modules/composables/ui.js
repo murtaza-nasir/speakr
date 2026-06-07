@@ -1844,8 +1844,24 @@ export function useUI(state, utils, processedTranscription) {
         // Load saved playback rate
         initializePlaybackRate();
 
-        // Watch for recording changes to reset active segment and audio player state
-        watch(selectedRecording, (newRecording) => {
+        // Watch for recording changes to reset active segment and audio player state.
+        // IMPORTANT: only reset when the recording IDENTITY changes (different id).
+        // selectedRecording gets reassigned to a fresh object with the SAME id by
+        // background refreshes — list polling, the processing queue completing,
+        // autosave responses, etc. Those reassignments keep the same /audio/<id>
+        // src so the <audio> element keeps playing, but a blanket reset here would
+        // set audioIsPlaying = false mid-playback, making the play button revert to
+        // "play" while audio is still playing. Guard on id so player state survives
+        // same-recording refreshes.
+        watch(selectedRecording, (newRecording, oldRecording) => {
+            if (newRecording && oldRecording && newRecording.id === oldRecording.id) {
+                // Same recording, just a refreshed object — keep player state.
+                // Pick up a server-side duration if it only just became available.
+                if (newRecording.audio_duration && !audioDuration.value) {
+                    audioDuration.value = newRecording.audio_duration;
+                }
+                return;
+            }
             if (videoFullscreen.value) exitVideoFullscreen();
             currentPlayingSegmentIndex.value = null;
             resetAudioPlayerState();
