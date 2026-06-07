@@ -413,7 +413,11 @@
                     <span class="text-sm font-medium" style="color: var(--text-secondary);">Options</span>
 
                     <!-- Chip summary of currently-set values. Each
-                         chip is conditionally rendered. -->
+                         chip has a small × button so the user can
+                         clear individual selections without expanding
+                         the full editor. @click.stop.prevent stops
+                         the click from toggling the <details> open
+                         state (we want JUST the clear, not expand). -->
                     <div class="flex items-center gap-1 ml-2 flex-wrap min-w-0">
                         <!-- Folder chip -->
                         <span v-if="foldersEnabled && selectedFolderId && getFolderById(selectedFolderId)"
@@ -421,6 +425,11 @@
                               :style="{ background: getFolderColor(selectedFolderId) + '22', color: getFolderColor(selectedFolderId) }">
                             <i class="fas fa-folder"></i>
                             <span class="truncate max-w-[120px]" v-text="getFolderById(selectedFolderId).name"></span>
+                            <button @click.stop.prevent="selectedFolderId = null"
+                                    class="hover:opacity-100 opacity-70"
+                                    title="Clear folder">
+                                <i class="fas fa-times text-[9px]"></i>
+                            </button>
                         </span>
                         <!-- Tag count chip -->
                         <span v-if="selectedTags.length > 0"
@@ -428,6 +437,11 @@
                               style="background: var(--bg-accent); color: var(--text-accent);">
                             <i class="fas fa-tag"></i>
                             <span>${ selectedTags.length } ${ selectedTags.length === 1 ? 'tag' : 'tags' }</span>
+                            <button @click.stop.prevent="selectedTagIds = []"
+                                    class="hover:opacity-100 opacity-70"
+                                    title="Clear tags">
+                                <i class="fas fa-times text-[9px]"></i>
+                            </button>
                         </span>
                         <!-- Language chip (only if non-default) -->
                         <span v-if="uploadLanguage"
@@ -435,6 +449,11 @@
                               style="background: var(--bg-accent); color: var(--text-accent);">
                             <i class="fas fa-language"></i>
                             <span v-text="uploadLanguage"></span>
+                            <button @click.stop.prevent="uploadLanguage = ''"
+                                    class="hover:opacity-100 opacity-70"
+                                    title="Clear language">
+                                <i class="fas fa-times text-[9px]"></i>
+                            </button>
                         </span>
                         <!-- Speakers chip (only if non-default) -->
                         <span v-if="uploadMinSpeakers || uploadMaxSpeakers"
@@ -442,6 +461,11 @@
                               style="background: var(--bg-accent); color: var(--text-accent);">
                             <i class="fas fa-users"></i>
                             <span>${ uploadMinSpeakers || '?' }${ uploadMinSpeakers != uploadMaxSpeakers ? '-' + (uploadMaxSpeakers || '?') : '' }</span>
+                            <button @click.stop.prevent="uploadMinSpeakers = ''; uploadMaxSpeakers = ''"
+                                    class="hover:opacity-100 opacity-70"
+                                    title="Clear speakers">
+                                <i class="fas fa-times text-[9px]"></i>
+                            </button>
                         </span>
                     </div>
 

@@ -190,8 +190,56 @@ export function useUpload(state, utils) {
         e.target.value = null;
     };
 
+    // Restore the previous upload's form choices (tags / folder /
+    // language / min-max speakers) when (a) we have a memo from a
+    // prior successful upload and (b) the user hasn't set anything
+    // for this upload yet. Idempotent — only fills empty slots so a
+    // user who already picked something doesn't get clobbered. Called
+    // automatically when the first file lands in the queue.
+    let _hydrateAttempted = false;
+    const hydrateUploadDefaults = () => {
+        if (_hydrateAttempted) return;
+        _hydrateAttempted = true;
+        let memo;
+        try {
+            const raw = localStorage.getItem('lastUploadDefaults');
+            if (!raw) return;
+            memo = JSON.parse(raw);
+        } catch (_) { return; }
+        if (!memo) return;
+        // Tags: only fill if nothing currently selected. Also drop
+        // any tag IDs that no longer exist on the user's account.
+        if (selectedTagIds && (!selectedTagIds.value || selectedTagIds.value.length === 0)
+            && Array.isArray(memo.tagIds) && memo.tagIds.length > 0
+            && Array.isArray(availableTags?.value)) {
+            const liveIds = new Set(availableTags.value.map(t => t.id));
+            const restored = memo.tagIds.filter(id => liveIds.has(id));
+            if (restored.length > 0) selectedTagIds.value = restored;
+        }
+        if (selectedFolderId && (selectedFolderId.value == null) && memo.folderId != null) {
+            // Only restore if the folder still exists.
+            if (Array.isArray(availableFolders?.value)
+                && availableFolders.value.some(f => f.id === memo.folderId)) {
+                selectedFolderId.value = memo.folderId;
+            }
+        }
+        if (uploadLanguage && !uploadLanguage.value && memo.language) {
+            uploadLanguage.value = memo.language;
+        }
+        if (uploadMinSpeakers && !uploadMinSpeakers.value && memo.minSpeakers) {
+            uploadMinSpeakers.value = memo.minSpeakers;
+        }
+        if (uploadMaxSpeakers && !uploadMaxSpeakers.value && memo.maxSpeakers) {
+            uploadMaxSpeakers.value = memo.maxSpeakers;
+        }
+    };
+
     // Add files to the upload queue
     const addFilesToQueue = (files) => {
+        // Restore last-upload defaults the first time a file lands in
+        // the queue (deferred until then so a user who opens then
+        // immediately closes the modal doesn't get residual chips).
+        hydrateUploadDefaults();
         let filesAdded = 0;
         for (const file of files) {
             const fileObject = file.file ? file.file : file;
@@ -574,6 +622,23 @@ export function useUpload(state, utils) {
             // Add to recordings list
             recordings.value.unshift(data);
             totalRecordings.value++;
+
+            // Remember the upload-form choices so the NEXT modal open
+            // can pre-fill them. Most users follow a routine (same
+            // tags, same folder, same language) and re-typing them on
+            // every upload is friction. Persisted in localStorage;
+            // restored by hydrateUploadDefaults() on the first file
+            // added to the queue.
+            try {
+                const memo = {
+                    tagIds: Array.isArray(selectedTagIds?.value) ? [...selectedTagIds.value] : [],
+                    folderId: selectedFolderId?.value ?? null,
+                    language: uploadLanguage?.value ?? '',
+                    minSpeakers: uploadMinSpeakers?.value ?? '',
+                    maxSpeakers: uploadMaxSpeakers?.value ?? ''
+                };
+                localStorage.setItem('lastUploadDefaults', JSON.stringify(memo));
+            } catch (_) { /* localStorage disabled / quota — ignore */ }
 
             // For in-app recordings (where the upload modal opened
             // automatically after the user stopped recording), auto-
