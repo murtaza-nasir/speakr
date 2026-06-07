@@ -1,4 +1,10 @@
-const CACHE_NAME = 'Speakr-cache-v4';
+// Bump this version whenever any cached asset (app.modular.js, styles.css,
+// vendor JS, the i18n module, the offline page) changes — otherwise the
+// service worker keeps serving the previously-cached copy and users see
+// stale code even after a hard refresh. Forgetting to bump this was what
+// made the speaker-modal scroll fixes appear to do nothing: the SW kept
+// serving the broken pre-fix app.modular.js.
+const CACHE_NAME = 'Speakr-cache-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/static/offline.html',
