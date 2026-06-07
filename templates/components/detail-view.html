@@ -137,8 +137,11 @@
         <div id="mainContentColumns" class="flex-1 flex overflow-hidden">
             {% include 'components/detail/desktop-transcription-panel.html' %}
 
-            <!-- Resizable Divider -->
-            <div id="mainColumnResizer" @mousedown="startColumnResize"></div>
+            <!-- Resizable Divider. Carries a persistent themed seam
+                 (::before) for always-on visual separation between the
+                 transcript and summary columns; on hover / while
+                 dragging it thickens into an accent grab-handle. -->
+            <div id="mainColumnResizer" :class="{ 'is-resizing': isResizing }" @mousedown="startColumnResize"></div>
 
             {% include 'components/detail/desktop-right-panel.html' %}
         </div>

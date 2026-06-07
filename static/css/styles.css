@@ -2666,7 +2666,18 @@ body {
     max-width: 450px;
 }
 
-/* Discrete horizontal resize divider */
+/* Horizontal resize divider between the transcript and summary columns.
+ *
+ * The 12px-wide hit area stays transparent with a -6px margin so it
+ * overlaps the column edges and doesn't consume layout width. Visual
+ * separation is carried by two pseudo-elements:
+ *   ::before — a persistent full-height hairline seam in --border-primary
+ *              so the two columns always read as distinct panels. The
+ *              token is themed, so this adapts to every light/dark theme.
+ *   ::after  — a rounded accent grab-handle that fades in on hover and
+ *              while dragging, giving a clear "you can drag this"
+ *              affordance without cluttering the resting state.
+ */
 #mainColumnResizer {
     width: 12px !important;
     background-color: transparent !important;
@@ -2676,17 +2687,44 @@ body {
     z-index: 10;
 }
 
-#mainColumnResizer:hover::before {
+/* Persistent hairline seam (always visible). */
+#mainColumnResizer::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    transform: translateX(-50%);
+    background-color: var(--border-primary);
+    transition: width 0.15s ease, background-color 0.15s ease;
+}
+
+/* Hover / active: the seam thickens slightly and tints to accent. */
+#mainColumnResizer:hover::before,
+#mainColumnResizer.is-resizing::before {
+    width: 2px;
+    background-color: var(--border-accent);
+}
+
+/* Rounded accent grab-handle, hidden at rest, fades in on hover/drag. */
+#mainColumnResizer::after {
     content: '';
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
     width: 4px;
-    height: 60px;
+    height: 48px;
     background-color: var(--border-accent);
     border-radius: 2px;
-    transition: background-color 0.15s ease;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+#mainColumnResizer:hover::after,
+#mainColumnResizer.is-resizing::after {
+    opacity: 1;
 }
 
 /* Ensure consistent layout behavior when sidebar is collapsed */
