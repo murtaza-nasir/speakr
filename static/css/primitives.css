@@ -632,6 +632,25 @@ html.dark {
     min-height: 28px;
 }
 
+/* When .field is applied to a <select>, the global `select` rule in
+   styles.css sets a chevron background-image with background-repeat:
+   no-repeat — but `.field`'s `background:` shorthand resets only
+   `background-color` reliably across browsers; in practice the chevron
+   ends up tiled horizontally inside the select. Re-establish the
+   chevron explicitly here so select.field renders a single chevron at
+   the right edge like the global select rule intends. */
+select.field {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%236b7280' d='M4.5 5.5L8 9l3.5-3.5L10.75 4.75 8 7.5 5.25 4.75z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1em 1em;
+    padding-right: 2rem;
+    cursor: pointer;
+}
+html.dark select.field {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23cbd5e1' d='M4.5 5.5L8 9l3.5-3.5L10.75 4.75 8 7.5 5.25 4.75z'/%3E%3C/svg%3E");
+}
+
 
 /* ---- Spinner ------------------------------------------------------------ */
 
