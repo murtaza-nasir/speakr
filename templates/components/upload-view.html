@@ -381,30 +381,20 @@
                     </div>
                 </details>
 
-                <!-- Help Text - Compact -->
-                <div class="text-[10px] text-[var(--text-muted)] space-y-0.5 mt-2">
-                    <div class="flex items-center justify-between">
-                        <span><strong v-text="t('recording.microphone') + ':'"></strong> <span v-text="t('help.microphoneDesc')"></span></span>
-                        <i class="fas fa-microphone text-red-500 flex-shrink-0 ml-1"></i>
-                    </div>
-                    <div v-if="canRecordSystemAudio" class="flex items-center justify-between">
-                        <span><strong v-text="t('recording.systemAudio') + ':'"></strong> <span v-text="t('help.systemAudioDesc')"></span></span>
-                        <i class="fas fa-desktop text-blue-500 flex-shrink-0 ml-1"></i>
-                    </div>
-                    <div v-if="canRecordSystemAudio" class="flex items-center justify-between">
-                        <span><strong v-text="t('recording.microphoneAndSystem') + ':'"></strong> <span v-text="t('help.bothAudioDesc')"></span></span>
-                        <div class="flex items-center gap-0.5 flex-shrink-0 ml-1">
-                            <i class="fas fa-microphone text-purple-500"></i>
-                            <i class="fas fa-desktop text-purple-500"></i>
-                        </div>
-                    </div>
-                    <div v-if="!canRecordSystemAudio" class="text-amber-600 dark:text-amber-400">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        ${ t('recording.systemAudioNotSupported') }
-                        <button @click="showSystemAudioHelp = true" class="ml-1 text-blue-500 hover:text-blue-600 underline">
-                            <span v-text="t('buttons.help')"></span>
-                        </button>
-                    </div>
+                <!-- Per-mode descriptions removed: the three recording
+                     buttons + their colour-coded icons + the top capability
+                     banner already convey what each mode does, so the
+                     "Microphone: records your voice…" lines were redundant.
+                     We keep only the hard-unsupported warning (Firefox /
+                     Safari, where getDisplayMedia can't capture any audio)
+                     since that explains why the system-audio buttons are
+                     unavailable and points at the help guide. -->
+                <div v-if="!canRecordSystemAudio" class="text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    ${ t('recording.systemAudioNotSupported') }
+                    <button @click="showSystemAudioHelp = true" class="ml-1 text-blue-500 hover:text-blue-600 underline">
+                        <span v-text="t('buttons.help')"></span>
+                    </button>
                 </div>
             </div>
 
@@ -482,7 +472,7 @@
                     <i class="fas fa-chevron-down ml-auto text-xs text-[var(--text-muted)] transition-transform upload-options-chevron"></i>
                 </summary>
 
-                <div class="mt-2">
+                <div class="upload-options-body">
 
             <!-- Folder Selection (only shown if folders are enabled) -->
             <div v-if="foldersEnabled" class="mt-4">
@@ -688,7 +678,7 @@
             <!-- Advanced Options for diarization-enabled connectors (collapsible) -->
             <div v-if="connectorSupportsDiarization" class="mt-4">
                 <button @click="showAdvancedOptions = !showAdvancedOptions"
-                        class="w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium">
+                        :class="['disclosure-trigger w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium', { 'is-open': showAdvancedOptions }]">
                     <span class="flex items-center gap-2 text-[var(--text-secondary)]">
                         <i class="fas fa-cog text-[var(--text-muted)]"></i>
                         <span v-text="t('help.advancedAsrOptions')"></span>
@@ -696,7 +686,7 @@
                     <i :class="['fas text-[var(--text-muted)]', showAdvancedOptions ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                 </button>
 
-                <div v-show="showAdvancedOptions" class="mt-2 p-3 bg-[var(--bg-tertiary)] rounded-md space-y-3 border border-[var(--border-secondary)]">
+                <div v-show="showAdvancedOptions" class="disclosure-panel p-3 bg-[var(--bg-tertiary)] space-y-3 border border-[var(--border-secondary)]">
                     <!-- Language Selection -->
                     <div>
                         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">

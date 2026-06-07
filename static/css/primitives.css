@@ -1644,6 +1644,49 @@ textarea:focus-visible {
     transform: rotate(180deg);
 }
 
+/* When expanded, the whole group reads as ONE contained card: the
+   summary becomes the card header (connected to the body, no gap) and
+   the body sits visibly INSIDE the bordered box. Closed, it's just the
+   summary chip. This gives the contents clear visual ownership instead
+   of floating at the same level as the summary. */
+.upload-options-group[open] {
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+
+/* Summary as the card header: square off its bottom corners and add a
+   divider so it reads as attached to the body below. Specificity
+   (class + [attr] + element) beats the inline Tailwind rounded-md. */
+.upload-options-group[open] > summary {
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+/* Body padded inside the card; first section loses its top margin so
+   it doesn't double up with the card padding. */
+.upload-options-group[open] > .upload-options-body {
+    padding: var(--sp-2) var(--sp-4) var(--sp-4);
+}
+.upload-options-group[open] > .upload-options-body > div:first-child {
+    margin-top: 0;
+}
+
+/* Nested disclosure (Advanced ASR / Prompt variables) inside the
+   Options card: connect each trigger to its panel so the pair reads as
+   one sub-card rather than two same-level blocks. The trigger gets
+   .disclosure-trigger and the panel .disclosure-panel; when the panel
+   is shown the trigger squares its bottom corners and the panel its
+   top, and the panel hangs flush beneath with a shared border. */
+.disclosure-trigger.is-open {
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+}
+.disclosure-panel {
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    border-top: 0 !important;
+    margin-top: 0 !important;
+}
+
 
 /* ---- Mobile editor flat corners ----------------------------------------
    On phones the EasyMDE editor spans screen-edge to screen-edge inside
