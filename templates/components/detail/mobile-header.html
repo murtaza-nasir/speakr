@@ -166,12 +166,22 @@
         <div class="rounded-md overflow-hidden" style="background: var(--bg-tertiary);">
             <div class="flex items-center gap-0.5 overflow-x-auto px-1 py-1">
                 <template v-if="!selectedRecording.incognito">
-                    <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
-                         class="btn btn--icon btn--sm relative flex-shrink-0"
-                         :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : 'Assign Folder'">
+                    <!-- Folder picker: the wrapper uses display: block
+                         + position: relative so the native <select>'s
+                         absolute-positioned dropdown anchors to the
+                         folder icon button visually, not to (0,0) of
+                         the viewport (which was the symptom on mobile
+                         when the wrapper inherited inline-flex from
+                         .btn). The select is visually invisible via
+                         opacity but receives clicks; native OS picker
+                         handles the dropdown UI. -->
+                    <label v-if="foldersEnabled && selectedRecording.can_edit !== false"
+                           class="btn btn--icon btn--sm flex-shrink-0 cursor-pointer"
+                           style="position: relative;"
+                           :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : 'Assign Folder'">
                         <select @change.stop="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
                                 :value="selectedRecording.folder_id || ''"
-                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; background: transparent;">
                             <option value="">No Folder</option>
                             <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
                                 ${ folder.name }
@@ -179,14 +189,22 @@
                         </select>
                         <i class="fas fa-folder"
                            :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
-                    </div>
+                    </label>
+                    <!-- Inbox / highlight active state uses :style not
+                         :class because primitives.css's
+                         .btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):not(.btn--quiet)
+                         rule for default colour has higher specificity
+                         than a single Tailwind text-* utility, so the
+                         conditional text-blue-500 / text-yellow-500
+                         classes never won — inline style sidesteps the
+                         specificity contest. -->
                     <button @click.stop="toggleInbox(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
+                            :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"
                             title="Inbox"><i class="fas fa-inbox"></i></button>
                     <button @click.stop="toggleHighlight(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"
-                            :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
+                            :style="selectedRecording.is_highlighted ? 'color: #eab308;' : ''"
                             title="Highlight"><i class="fas fa-star"></i></button>
                     <button @click.stop="editRecordingTags(selectedRecording)"
                             class="btn btn--icon btn--sm flex-shrink-0"

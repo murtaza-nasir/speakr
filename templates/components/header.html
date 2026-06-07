@@ -101,12 +101,12 @@
                    :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
             </div>
             <button @click="toggleInbox(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
-                    :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
+                    :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"
                     :title="selectedRecording.is_inbox ? 'Mark as Read' : 'Move to Inbox'">
                 <i class="fas fa-inbox"></i>
             </button>
             <button @click="toggleHighlight(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
-                    :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
+                    :style="selectedRecording.is_highlighted ? 'color: #eab308;' : ''"
                     :title="selectedRecording.is_highlighted ? 'Remove Highlight' : 'Highlight'">
                 <i class="fas fa-star"></i>
             </button>

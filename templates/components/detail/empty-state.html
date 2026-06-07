@@ -10,8 +10,13 @@
 
      Sits as the landing surface of the main column. The detail view
      (its sibling) has its own v-if for the populated state. -->
+<!-- min-h-[60vh] ensures the empty-state has visible height on mobile
+     even when its parent (<main>) has overflow-y: auto and no
+     explicit child-stretching context — without this the flex-1
+     collapsed to 0 height on phones (visible as a blank screen
+     under the global header when no recording is selected). -->
 <div v-if="!selectedRecording && currentView !== 'recording'"
-     class="flex-1 flex items-center justify-center p-6">
+     class="flex-1 flex items-center justify-center p-6 min-h-[60vh]">
     <div class="max-w-md w-full text-center">
         <!-- TRULY EMPTY (no recordings at all) -->
         <template v-if="!recordings || recordings.length === 0">
