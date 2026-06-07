@@ -1,21 +1,24 @@
 /* App logo wrapper — gives the colourful Speakr icon a quiet, theme-
-   appropriate outline wherever it appears (top-left header, page-header,
-   inquire header, settings About page, share view). Pattern borrowed from
-   .speaker-tablet: a hairline border that softens into the surrounding
-   surface plus a 1-px shadow for separation. Padding is intentionally
-   tight (1 px) so the existing img sizing classes (w-7 h-7, etc.) keep
-   producing the right visual footprint — the outline reads as a "chip"
-   around the icon rather than a frame. */
+   appropriate outline that sits FLUSH with the visible icon edge (the
+   PNGs are now trim-cropped so there's no transparent margin to fight
+   with) wherever the icon appears: top-left header, page-header, inquire
+   header, share view, settings About page.
+
+   Uses box-shadow rather than border + padding because:
+     - box-shadow doesn't change the image's box dimensions, so every
+       existing utility size (w-7 h-7, h-12 w-12, etc.) keeps producing
+       the same footprint — no shrinkage from box-sizing math.
+     - The two layered shadows give a hairline outline (first shadow)
+       PLUS a soft drop (second) without two stacked elements.
+   border-radius: 22% matches the iOS-style rounded-square corner of the
+   Speakr icon so the outline traces the icon's actual shape rather than
+   cutting across it. */
 .app-logo {
-    border: 1px solid var(--border-secondary);
-    border-radius: 6px;
-    background: var(--bg-secondary);
-    padding: 1px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-    box-sizing: border-box;
+    border-radius: 22%;
+    box-shadow: 0 0 0 1px var(--border-secondary), 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .dark .app-logo {
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 1px var(--border-secondary), 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================================================
