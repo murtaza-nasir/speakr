@@ -1711,26 +1711,28 @@ body {
     font-size: 0.7rem;
     letter-spacing: 0.02em;
     user-select: none;
-    /* Use the speaker palette's saturated foreground as the BG and
-       white text on top. This keeps the hue (no grey desaturation),
-       gives WCAG-AAA contrast for the time digits, and reads as
-       clearly distinct from the pastel name half. The custom property
-       is set on .speaker-color-N up above; if absent we fall back to
-       a neutral dark colour so the layout doesn't break. */
-    background: var(--speaker-fg, #424242);
+    /* Light mode: blend the speaker palette's saturated foreground
+       with white so the time half reads as a softer-saturated darker
+       shade of the speaker hue (not the full saturated --speaker-fg
+       which was too high-contrast). White text on top stays legible
+       and the hue identity is preserved. color-mix is supported in
+       all evergreens. */
+    background: color-mix(in srgb, var(--speaker-fg, #424242) 70%, #ffffff 30%);
     background-image: none;
     color: #ffffff;
     display: inline-flex;
     align-items: center;
 }
 .dark .speaker-tablet-group .speaker-tablet-time {
-    /* Dark mode: the inherited speaker-color foreground is already a
-       light pastel that reads well on the existing 0.18 black overlay
-       and the original design was correct there, so we revert to it. */
+    /* Dark mode: restore the original behaviour exactly — transparent
+       bg so the parent's dark pastel shows through + a 0.18 black
+       overlay to give a subtle darkened distinction from the name
+       half + inherited text colour. No opacity, no colour-mix, no
+       --speaker-fg involvement — this was the design that worked
+       before any of my recent changes touched it. */
     background: transparent;
     background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
     color: inherit;
-    opacity: 0.9;
 }
 
 .speaker-tablet-group .speaker-tablet-name {
