@@ -1688,218 +1688,84 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
                     <div id="content-about" class="hidden tab-content">
                       <div class="tab-scroll">
-                    <div class="space-y-8">
-                        <!-- Header Section -->
-                        <div class="text-center">
-                            <div class="flex items-center justify-center mb-4">
-                                <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-16 w-16 mr-4">
-                                <div>
-                                    <h2 class="text-3xl font-bold text-[var(--text-primary)]">Speakr</h2>
-                                    <p class="text-[var(--text-secondary)]" data-i18n="aboutPage.tagline">AI-Powered Audio Transcription & Note-Taking</p>
+                        <!-- About — kept lean: identity strip + the two
+                             useful info panels (system configuration
+                             and project links). Marketing sections
+                             (Key Features, Technology Stack) removed
+                             since this is the in-app About page, not
+                             a landing page. -->
+                        <div class="max-w-4xl mx-auto space-y-6">
+                            <!-- Identity strip -->
+                            <div class="flex items-center gap-4">
+                                <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-12 w-12 flex-shrink-0">
+                                <div class="flex-1">
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]">Speakr</h2>
+                                    <p class="text-sm text-[var(--text-muted)]" data-i18n="aboutPage.tagline">AI-Powered Audio Transcription &amp; Note-Taking</p>
                                 </div>
+                                <span class="inline-flex items-center px-2.5 py-1 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md text-xs font-mono border border-[var(--border-primary)]">
+                                    <i class="fas fa-tag mr-1.5 text-[var(--text-muted)]"></i>
+                                    <span id="system-version">Loading…</span>
+                                </span>
                             </div>
-                            <div class="inline-flex items-center px-3 py-1 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-full text-sm font-medium">
-                                <i class="fas fa-tag mr-2"></i>
-                                Version <span id="system-version" class="ml-1 font-mono">Loading...</span>
-                            </div>
-                        </div>
 
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            <!-- System Information -->
-                            <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
-                                <div class="flex items-center mb-4">
-                                    <div class="p-2 bg-[var(--bg-accent)] rounded-lg mr-3">
-                                        <i class="fas fa-cogs text-[var(--text-accent)] text-lg"></i>
+                            <!-- System Configuration -->
+                            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-5">
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4" data-i18n="aboutPage.systemConfiguration">System Configuration</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div>
+                                        <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.largeLanguageModel">Large Language Model</h4>
+                                        <dl class="text-xs space-y-1">
+                                            <div class="flex items-baseline gap-2">
+                                                <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.model">Model:</dt>
+                                                <dd id="llm-model" class="font-mono text-[var(--text-primary)] break-all">Loading…</dd>
+                                            </div>
+                                            <div class="flex items-baseline gap-2">
+                                                <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.endpoint">Endpoint:</dt>
+                                                <dd id="llm-endpoint" class="font-mono text-[var(--text-muted)] break-all">Loading…</dd>
+                                            </div>
+                                        </dl>
                                     </div>
-                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.systemConfiguration">System Configuration</h3>
-                                </div>
-                                
-                                <div class="space-y-4">
-                                    <div class="border-l-4 border-[var(--border-accent)] pl-4">
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.largeLanguageModel">Large Language Model</h4>
-                                        <div class="space-y-1 text-sm">
-                                            <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium" data-i18n="aboutPage.model">Model:</span> 
-                                                <span id="llm-model" class="font-mono text-[var(--text-primary)] bg-[var(--bg-tertiary)] px-2 py-1 rounded ml-1">Loading...</span>
-                                            </p>
-                                            <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium" data-i18n="aboutPage.endpoint">Endpoint:</span> 
-                                                <span id="llm-endpoint" class="font-mono text-xs text-[var(--text-muted)] break-all ml-1">Loading...</span>
-                                            </p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="border-l-4 border-green-500 pl-4">
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.speechRecognition">Speech Recognition</h4>
-                                        <div class="space-y-1 text-sm">
-                                            <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium" data-i18n="aboutPage.model">Model:</span>
-                                                <span id="transcription-model" class="font-mono text-xs bg-[var(--bg-tertiary)] px-2 py-0.5 rounded text-[var(--text-primary)] ml-1">Loading...</span>
-                                            </p>
-                                            <p class="text-[var(--text-secondary)]">
-                                                <span class="font-medium" data-i18n="aboutPage.endpoint">Endpoint:</span>
-                                                <span id="transcription-endpoint" class="font-mono text-xs text-[var(--text-muted)] ml-1">Loading...</span>
-                                            </p>
-                                        </div>
+                                    <div>
+                                        <h4 class="text-sm font-medium text-[var(--text-primary)] mb-2" data-i18n="aboutPage.speechRecognition">Speech Recognition</h4>
+                                        <dl class="text-xs space-y-1">
+                                            <div class="flex items-baseline gap-2">
+                                                <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.model">Model:</dt>
+                                                <dd id="transcription-model" class="font-mono text-[var(--text-primary)] break-all">Loading…</dd>
+                                            </div>
+                                            <div class="flex items-baseline gap-2">
+                                                <dt class="text-[var(--text-muted)] flex-shrink-0" data-i18n="aboutPage.endpoint">Endpoint:</dt>
+                                                <dd id="transcription-endpoint" class="font-mono text-[var(--text-muted)] break-all">Loading…</dd>
+                                            </div>
+                                        </dl>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Project Information -->
-                            <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
-                                <div class="flex items-center mb-4">
-                                    <div class="p-2 bg-gray-800 rounded-lg mr-3">
-                                        <i class="fab fa-github text-white text-lg"></i>
-                                    </div>
-                                    <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.projectLinks">Project Links</h3>
-                                </div>
-                                
-                                <div class="space-y-3">
-                                    <a href="https://github.com/murtaza-nasir/speakr" target="_blank" rel="noopener noreferrer" 
-                                       class="flex items-center p-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
-                                        <i class="fab fa-github text-xl mr-3"></i>
-                                        <div class="flex-1">
-                                            <div class="font-medium" data-i18n="aboutPage.githubRepository">GitHub Repository</div>
-                                            <div class="text-sm text-gray-300" data-i18n="aboutPage.githubDescription">Source code, issues, and releases</div>
-                                        </div>
-                                        <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
+                            <!-- Project Links -->
+                            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg p-5">
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-4" data-i18n="aboutPage.projectLinks">Project Links</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <a href="https://github.com/murtaza-nasir/speakr" target="_blank" rel="noopener noreferrer"
+                                       class="flex items-center gap-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-accent)] transition-colors text-sm">
+                                        <i class="fab fa-github text-base text-[var(--text-secondary)]"></i>
+                                        <span class="flex-1 text-[var(--text-primary)]" data-i18n="aboutPage.githubRepository">GitHub Repository</span>
+                                        <i class="fas fa-external-link-alt text-xs text-[var(--text-muted)]"></i>
                                     </a>
-                                    
                                     <a href="https://hub.docker.com/r/learnedmachine/speakr" target="_blank" rel="noopener noreferrer"
-                                       class="flex items-center p-3 bg-[var(--bg-button)] hover:bg-[var(--bg-button-hover)] text-[var(--text-button)] rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
-                                        <i class="fab fa-docker text-xl mr-3"></i>
-                                        <div class="flex-1">
-                                            <div class="font-medium" data-i18n="aboutPage.dockerHub">Docker Hub</div>
-                                            <div class="text-sm text-blue-100" data-i18n="aboutPage.dockerDescription">Official Docker images</div>
-                                        </div>
-                                        <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
+                                       class="flex items-center gap-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-accent)] transition-colors text-sm">
+                                        <i class="fab fa-docker text-base text-[var(--text-secondary)]"></i>
+                                        <span class="flex-1 text-[var(--text-primary)]" data-i18n="aboutPage.dockerHub">Docker Hub</span>
+                                        <i class="fas fa-external-link-alt text-xs text-[var(--text-muted)]"></i>
                                     </a>
-                                    
                                     <a href="https://murtaza-nasir.github.io/speakr" target="_blank" rel="noopener noreferrer"
-                                       class="flex items-center p-3 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all duration-200 group transform hover:scale-[1.02]">
-                                        <i class="fas fa-book text-xl mr-3"></i>
-                                        <div class="flex-1">
-                                            <div class="font-medium" data-i18n="aboutPage.documentation">Documentation</div>
-                                            <div class="text-sm text-green-100" data-i18n="aboutPage.documentationDescription">User guide and tutorials</div>
-                                        </div>
-                                        <i class="fas fa-external-link-alt text-sm opacity-70 group-hover:opacity-100"></i>
+                                       class="flex items-center gap-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md hover:bg-[var(--bg-tertiary)] hover:border-[var(--border-accent)] transition-colors text-sm">
+                                        <i class="fas fa-book text-base text-[var(--text-secondary)]"></i>
+                                        <span class="flex-1 text-[var(--text-primary)]" data-i18n="aboutPage.documentation">Documentation</span>
+                                        <i class="fas fa-external-link-alt text-xs text-[var(--text-muted)]"></i>
                                     </a>
                                 </div>
-                                
-                                <div class="mt-6 p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)]">
-                                    <p class="text-sm text-[var(--text-secondary)] leading-relaxed">
-                                        <i class="fas fa-info-circle text-[var(--text-accent)] mr-2"></i>
-                                        <span data-i18n="aboutPage.projectDescription">Transform your audio recordings into organized, searchable notes with AI-powered transcription, summarization, and interactive chat features.</span>
-                                    </p>
-                                </div>
                             </div>
                         </div>
-
-                        <!-- Key Features -->
-                        <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex items-center mb-6">
-                                <div class="p-2 bg-purple-600 rounded-lg mr-3">
-                                    <i class="fas fa-star text-white text-lg"></i>
-                                </div>
-                                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.keyFeatures">Key Features</h3>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
-                                    <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-microphone text-[var(--text-accent)]"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.audioTranscription">Audio Transcription</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.audioTranscriptionDesc">Whisper API and custom ASR support with high accuracy</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
-                                    <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-robot text-purple-600 dark:text-purple-400"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.aiSummarization">AI Summarization</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.aiSummarizationDesc">OpenRouter and Ollama integration with custom prompts</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
-                                    <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-users text-green-600 dark:text-green-400"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.speakerDiarization">Speaker Diarization</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.speakerDiarizationDesc">Identify and label different speakers automatically</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
-                                    <div class="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-comments text-orange-600 dark:text-orange-400"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.interactiveChat">Interactive Chat</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.interactiveChatDesc">Chat with your transcriptions using AI</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
-                                    <div class="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-search text-indigo-600 dark:text-indigo-400"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.inquireMode">Inquire Mode</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.inquireModeDesc">Semantic search across all your recordings</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="flex items-start p-4 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-secondary)] hover:border-[var(--border-accent)] transition-colors">
-                                    <div class="p-2 bg-teal-100 dark:bg-teal-900 rounded-lg mr-3 mt-1">
-                                        <i class="fas fa-share-alt text-teal-600 dark:text-teal-400"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="font-medium text-[var(--text-primary)] mb-1" data-i18n="aboutPage.sharingExport">Sharing & Export</h4>
-                                        <p class="text-sm text-[var(--text-secondary)]" data-i18n="aboutPage.sharingExportDesc">Share recordings and export to various formats</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Technology Stack -->
-                        <div class="bg-[var(--bg-secondary)] rounded-xl p-6 border border-[var(--border-primary)] shadow-sm">
-                            <div class="flex items-center mb-4">
-                                <div class="p-2 bg-red-500 rounded-lg mr-3">
-                                    <i class="fas fa-code text-white text-lg"></i>
-                                </div>
-                                <h3 class="text-xl font-semibold text-[var(--text-primary)]" data-i18n="aboutPage.technologyStack">Technology Stack</h3>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                                    <i class="fab fa-python text-3xl text-[var(--text-accent)] mb-2"></i>
-                                    <p class="text-sm font-medium text-[var(--text-primary)]">Python Flask</p>
-                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.backend">Backend</p>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                                    <i class="fab fa-vuejs text-3xl text-green-500 mb-2"></i>
-                                    <p class="text-sm font-medium text-[var(--text-primary)]">Vue.js</p>
-                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.frontend">Frontend</p>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                                    <i class="fas fa-database text-3xl text-purple-500 mb-2"></i>
-                                    <p class="text-sm font-medium text-[var(--text-primary)]">SQLite</p>
-                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.database">Database</p>
-                                </div>
-                                <div class="text-center p-3 bg-[var(--bg-tertiary)] rounded-lg">
-                                    <i class="fab fa-docker text-3xl text-[var(--text-accent)] mb-2"></i>
-                                    <p class="text-sm font-medium text-[var(--text-primary)]">Docker</p>
-                                    <p class="text-xs text-[var(--text-muted)]" data-i18n="aboutPage.deployment">Deployment</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- /.space-y-8 (about) -->
                       </div><!-- /.tab-scroll (about) -->
                       <div class="tab-footer"></div>
                     </div><!-- /content-about -->
