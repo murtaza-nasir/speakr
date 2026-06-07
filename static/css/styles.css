@@ -1697,6 +1697,13 @@ body {
     margin: 0 0.5rem 0.5rem 0;
     border-radius: 0.375rem;
     overflow: hidden;
+    /* Hairline outline in the speaker's own identity colour. Uses
+       currentColor so it picks up whatever the speaker-color-N
+       class set as `color` — the saturated dark hue in light mode
+       (e.g. #0D47A1 for blue) and the light pastel hue in dark mode
+       (e.g. #A5C9EA for blue), matching what the speaker name
+       reads as on each surface. */
+    border: 1px solid currentColor;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     font-size: 0.75rem;
     font-weight: 600;
@@ -1965,7 +1972,9 @@ body {
     font-weight: 600;
     margin-bottom: 0.5rem;
     margin-right: 0.5rem;
-    border: none;
+    /* Hairline outline in the speaker's identity colour — see
+       .speaker-tablet-group for the rationale. */
+    border: 1px solid currentColor;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
