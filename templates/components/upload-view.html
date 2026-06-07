@@ -268,6 +268,22 @@
                     </span>
                 </div>
 
+                <!-- Audio-processing opt-out. Chrome's getUserMedia
+                     applies echoCancellation + noiseSuppression +
+                     autoGainControl by default, which is correct for
+                     voice but kills sustained speech / music coming
+                     in through a monitor source or virtual audio
+                     device (the suppressor classifies it as noise
+                     after about a second). Persisted to localStorage. -->
+                <label class="flex items-start gap-2 mt-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <input type="checkbox" v-model="disableAudioProcessing"
+                           class="mt-0.5 h-3.5 w-3.5 rounded border-[var(--border-secondary)]">
+                    <span class="text-[11px] flex-1" style="color: var(--text-secondary);">
+                        <strong>Disable echo cancellation, noise suppression &amp; auto-gain</strong>
+                        — enable when you're routing system audio in through a monitor source or virtual audio device (BlackHole, VB-Cable, Pulse monitor). Leave off for normal microphone recording.
+                    </span>
+                </label>
+
                 <!-- Help Text - Compact -->
                 <div class="text-[10px] text-[var(--text-muted)] space-y-0.5 mt-2">
                     <div class="flex items-center justify-between">

@@ -13,7 +13,7 @@ export function useAudio(state, utils) {
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
-        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, isDarkMode, wakeLock, animationFrameId,
+        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing, isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
@@ -265,10 +265,21 @@ export function useAudio(state, utils) {
                 if (!canRecordAudio.value) {
                     throw new Error('Microphone recording is not available. Make sure you are using HTTPS.');
                 }
+                // When the user is routing system audio in via a
+                // monitor source / virtual audio device, the default
+                // echoCancellation + noiseSuppression + autoGainControl
+                // processing trio aggressively gates the stream to
+                // silence after about a second because the algorithm
+                // classifies sustained speech/music audio as noise.
+                // Flag-controlled via disableAudioProcessing, exposed
+                // as a toggle in the upload modal next to the mic
+                // button and persisted in localStorage.
+                const skipProc = disableAudioProcessing && disableAudioProcessing.value;
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
+                        echoCancellation: !skipProc,
+                        noiseSuppression: !skipProc,
+                        autoGainControl: !skipProc,
                         sampleRate: 48000
                     }
                 });
@@ -342,10 +353,14 @@ export function useAudio(state, utils) {
                 if (!canRecordAudio.value || !canRecordSystemAudio.value) {
                     throw new Error('Recording is not available. Make sure you are using HTTPS.');
                 }
+                // Honour the disableAudioProcessing flag here too —
+                // see comment at the microphone-only path above.
+                const skipProcBoth = disableAudioProcessing && disableAudioProcessing.value;
                 const micStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
+                        echoCancellation: !skipProcBoth,
+                        noiseSuppression: !skipProcBoth,
+                        autoGainControl: !skipProcBoth,
                         sampleRate: 48000
                     }
                 });

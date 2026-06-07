@@ -358,6 +358,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recordingNotes = ref('');
             const showSystemAudioHelp = ref(false);
             const showSystemAudioHelpModal = ref(false);
+            // When true the microphone getUserMedia call is made WITHOUT
+            // echoCancellation / noiseSuppression / autoGainControl —
+            // appropriate when the user is routing system audio in via a
+            // PulseAudio monitor source or a virtual audio device (BlackHole,
+            // VB-Cable). The default-on suppression kills sustained speech
+            // audio from monitor sources because the algorithm classifies it
+            // as "noise". Persisted across sessions in localStorage.
+            const disableAudioProcessing = ref(
+                (typeof localStorage !== 'undefined' && localStorage.getItem('disableAudioProcessing') === 'true')
+            );
+            watch(disableAudioProcessing, (v) => {
+                try { localStorage.setItem('disableAudioProcessing', v ? 'true' : 'false'); } catch (_) {}
+            });
             // Platform + capability state for the system-audio flow.
             // Detected once on init; the help modal uses these to
             // pre-select the right OS tab and to gate which paragraphs
@@ -1410,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Audio Recording
                 isRecording, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
                 canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError,
-                recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal,
+                recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal, disableAudioProcessing,
                 platformInfo, audioCaps, helpModalOsTab, virtualAudioDevices, refreshVirtualAudioDevices,
                 asrLanguage, asrMinSpeakers, asrMaxSpeakers,
                 audioContext, analyser, micAnalyser, systemAnalyser, visualizer, micVisualizer,
