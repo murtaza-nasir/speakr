@@ -29,24 +29,24 @@
             ${chatMessages.length}
         </span>
     </button>
-    <!-- Notes appears DIRECTLY in the bar when the recording has no
-         events (total stays at 4 tabs); when events ARE present it
-         moves into the More overflow alongside Events. -->
-    <button v-if="!selectedRecording || !selectedRecording.events || selectedRecording.events.length === 0"
+    <!-- Notes appears DIRECTLY in the bar when there's nothing in the
+         More overflow (no events, no stats); otherwise Notes moves
+         into More alongside Events and Stats so the bar stays at 4
+         tabs and overflow content has a single home. -->
+    <button v-if="!hasMobileMoreOverflow"
             @click="mobileTab = 'notes'"
             class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
             :class="mobileTab === 'notes' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
         <i class="fas fa-sticky-note text-base"></i>
         <span class="text-[10px] font-medium" v-text="t('notes.title')"></span>
     </button>
-    <!-- More menu only when there's actual overflow (events present). -->
     <button v-else
             @click="mobileMoreOpen = !mobileMoreOpen"
             class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors relative"
-            :class="['notes','events'].includes(mobileTab) ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+            :class="['notes','events','stats'].includes(mobileTab) ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
         <i class="fas fa-ellipsis-h text-base"></i>
         <span class="text-[10px] font-medium">More</span>
-        <span v-if="['notes','events'].includes(mobileTab)"
+        <span v-if="['notes','events','stats'].includes(mobileTab)"
               class="absolute top-1 right-3 inline-flex items-center justify-center w-1.5 h-1.5 rounded-full"
               style="background: var(--text-accent);"></span>
     </button>
@@ -54,9 +54,7 @@
     <!-- More popup (slides up over the nav). Bottom-sheet feel. -->
     <Teleport to="body">
         <div v-if="mobileMoreOpen" class="fixed inset-0 z-[60] flex flex-col">
-            <!-- Backdrop -->
             <div class="flex-1" style="background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(2px);" @click="mobileMoreOpen = false"></div>
-            <!-- Sheet -->
             <div class="surface-raised flex-shrink-0" style="border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: env(safe-area-inset-bottom);">
                 <div class="flex justify-center py-2">
                     <span style="width: 36px; height: 4px; border-radius: 2px; background: var(--border-primary);"></span>
@@ -67,6 +65,14 @@
                             :class="mobileTab === 'notes' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
                         <i class="fas fa-sticky-note w-5 text-center"></i>
                         <span class="font-medium" v-text="t('notes.title')"></span>
+                    </button>
+                    <button v-if="hasRecordingStats"
+                            @click="mobileTab = 'stats'; mobileMoreOpen = false"
+                            class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="mobileTab === 'stats' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
+                        <i class="fas fa-chart-bar w-5 text-center"></i>
+                        <span class="font-medium">Stats</span>
+                        <span class="ml-auto pill-status pill-status--info">${ recordingStats.total.speakers }</span>
                     </button>
                     <button v-if="selectedRecording && selectedRecording.events && selectedRecording.events.length > 0"
                             @click="mobileTab = 'events'; mobileMoreOpen = false"

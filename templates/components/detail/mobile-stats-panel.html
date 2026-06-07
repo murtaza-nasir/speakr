@@ -1,0 +1,95 @@
+<!-- Mobile Stats Panel — same data as desktop-stats-tab.html but laid
+     out for narrow screens: 2-column metric grid instead of 4-column,
+     stacked per-speaker cards instead of a wide HTML table. Gated on
+     hasRecordingStats so the tab only surfaces meaningful data (the
+     stats are derived from per-segment start/end times). -->
+<div v-if="mobileTab === 'stats'" class="h-full overflow-y-auto px-3 py-3">
+    <div v-if="hasRecordingStats" class="space-y-4">
+
+        <!-- Headline metrics -->
+        <div class="grid grid-cols-2 gap-2">
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Total length</div>
+                <div class="t-subhead mt-1" v-text="recordingStats.total.durationLabel"></div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Speakers</div>
+                <div class="t-subhead mt-1" v-text="recordingStats.total.speakers"></div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Turns</div>
+                <div class="t-subhead mt-1" v-text="recordingStats.total.turns"></div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Words</div>
+                <div class="t-subhead mt-1" v-text="recordingStats.total.words.toLocaleString()"></div>
+            </div>
+        </div>
+
+        <!-- Per-speaker stack — one card per speaker, sorted by
+             speaking time. Each card has the speaker pill + a
+             proportion bar across the top, then a 2-column grid of
+             secondary stats below. -->
+        <div>
+            <div class="flex items-center justify-between mb-2 px-1">
+                <h3 class="t-subhead">Per speaker</h3>
+                <span class="t-meta">sorted by time</span>
+            </div>
+            <div class="space-y-2">
+                <div v-for="row in recordingStats.speakerRows" :key="row.speakerId"
+                     class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <span :class="['speaker-tablet', row.color]"
+                              style="font-size: 11px; padding: 2px 8px;"
+                              v-text="row.name"></span>
+                        <span class="t-meta font-mono" v-text="row.durationLabel"></span>
+                    </div>
+                    <!-- Slim proportion bar -->
+                    <div class="h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden mb-2">
+                        <div class="h-full" :style="{ width: row.pct.toFixed(1) + '%', background: 'var(--text-accent)' }"></div>
+                    </div>
+                    <!-- Secondary stats: 3-column grid -->
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                            <div class="t-label">% audio</div>
+                            <div class="text-sm font-medium mt-0.5">${ row.pct.toFixed(1) }%</div>
+                        </div>
+                        <div>
+                            <div class="t-label">Turns</div>
+                            <div class="text-sm font-medium mt-0.5" v-text="row.turns"></div>
+                        </div>
+                        <div>
+                            <div class="t-label">Words</div>
+                            <div class="text-sm font-medium mt-0.5" v-text="row.words.toLocaleString()"></div>
+                        </div>
+                    </div>
+                    <div v-if="row.wpm" class="mt-2 pt-2 border-t border-[var(--border-secondary)] flex items-center justify-between t-meta">
+                        <span>Speaking rate</span>
+                        <span class="font-mono font-medium" style="color: var(--text-primary);">${ row.wpm } WPM</span>
+                    </div>
+                </div>
+
+                <!-- Silence card -->
+                <div v-if="recordingStats.silence.seconds > 0"
+                     class="bg-[var(--bg-tertiary)]/50 border border-[var(--border-secondary)] rounded-md p-3">
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <span class="t-meta italic">Silence</span>
+                        <span class="t-meta font-mono" v-text="recordingStats.silence.durationLabel"></span>
+                    </div>
+                    <div class="h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden mb-2">
+                        <div class="h-full" :style="{ width: recordingStats.silence.pct.toFixed(1) + '%', background: 'var(--text-muted)' }"></div>
+                    </div>
+                    <div class="t-meta text-center">
+                        ${ recordingStats.silence.pct.toFixed(1) }% of total
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-else class="empty">
+        <div class="empty__icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="empty__title">No stats yet</div>
+        <div class="empty__body">Stats appear once this recording has been transcribed with speaker diarization and segment timestamps.</div>
+    </div>
+</div>

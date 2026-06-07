@@ -1320,6 +1320,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const hasRecordingStats = computed(() =>
                 !!recordingStats.value && recordingStats.value.speakerRows.length > 0
             );
+            // True when the mobile bottom nav needs a More overflow:
+            // either Events or Stats is available alongside Notes.
+            // Otherwise the bar keeps Notes as a direct 4th tab.
+            const hasMobileMoreOverflow = computed(() =>
+                hasRecordingStats.value
+                || (selectedRecording.value
+                    && Array.isArray(selectedRecording.value.events)
+                    && selectedRecording.value.events.length > 0)
+            );
 
             // Aggregate `{{name}}` variables across the currently selected
             // tags / folder / user / admin prompt chain. The pure helpers
@@ -1448,7 +1457,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, mobileMoreOpen, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
-                summaryWordCount, notesWordCount, recordingStats, hasRecordingStats,
+                summaryWordCount, notesWordCount, recordingStats, hasRecordingStats, hasMobileMoreOverflow,
 
                 // Upload
                 uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,
