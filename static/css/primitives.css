@@ -1481,3 +1481,44 @@ textarea:focus-visible {
         border-radius: 0 !important;
     }
 }
+
+
+/* ---- Progress popup viewport rules -------------------------------------
+   Desktop: 320 px floating card pinned to bottom-left.
+   Mobile (≤ 640 px): full-width bottom-sheet that sits ABOVE the audio
+   player + tab navigation strip (≈ 70 px player + 56 px nav + safe-area
+   inset). Rounded only on the top corners so it reads as a sheet
+   anchored to the bottom edge, not a free-floating card. */
+.progress-popup {
+    bottom: 1rem;
+    left: 1rem;
+    width: 20rem;
+}
+.progress-popup__card {
+    border-radius: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .progress-popup {
+        bottom: calc(70px + 56px + env(safe-area-inset-bottom, 0px));
+        left: 0;
+        right: 0;
+        width: auto;
+        max-height: 60vh;
+        animation: progressSheetUp 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .progress-popup__card {
+        border-radius: 0.75rem 0.75rem 0 0;
+        border-left-width: 0;
+        border-right-width: 0;
+        border-bottom-width: 0;
+    }
+    /* The minimized header strip is fine to render full-width too;
+       the existing collapse logic in the template handles the body
+       visibility. */
+}
+
+@keyframes progressSheetUp {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
+}

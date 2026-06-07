@@ -1,10 +1,23 @@
-<!-- Processing Queue Popup - Compact Unified Progress Tracking -->
+<!-- Processing Queue Popup.
+
+     Two distinct layouts driven by viewport:
+     - DESKTOP (≥ 641 px): bottom-left floating card, 320 px wide,
+       16 px from bottom and left. Same behaviour the user has always
+       had.
+     - MOBILE (≤ 640 px): full-width bottom-sheet that anchors ABOVE
+       the audio player + tab navigation (instead of overlapping
+       them as in the previous wiring); rounded top corners only,
+       slide-up animation, content takes the whole row width so the
+       compact desktop card no longer reads like a pasted desktop
+       widget on a phone. When minimized on mobile the sheet
+       collapses to just its header strip, still sitting above the
+       player / nav — never obscures content. -->
 <div v-if="showProcessingPopup && !progressPopupClosed"
      :class="[
-         'fixed bottom-4 left-4 z-[100] w-80 transition-all duration-300',
+         'progress-popup fixed z-[100] transition-all duration-300',
          progressPopupMinimized ? 'minimized' : ''
      ]">
-    <div class="bg-[var(--bg-secondary)] border border-[var(--bg-accent)] rounded-lg shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">
+    <div class="progress-popup__card bg-[var(--bg-secondary)] border border-[var(--bg-accent)] shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">
         <!-- Compact Header -->
         <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2">
             <div class="flex items-center justify-between">
