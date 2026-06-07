@@ -558,6 +558,8 @@
     "color": "Color",
     "colorDescription": "Elige un color para fácil identificación",
     "createTitle": "Crear Etiqueta",
+    "editTitle": "Editar Etiqueta",
+    "updateTag": "Actualizar Etiqueta",
     "customPrompt": "Prompt de Resumen Personalizado",
     "customPromptPlaceholder": "Opcional: Prompt personalizado para generar resúmenes de grabaciones con esta etiqueta",
     "defaultLanguage": "Idioma Predeterminado",

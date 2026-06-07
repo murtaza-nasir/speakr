@@ -558,6 +558,8 @@
     "color": "Color",
     "colorDescription": "Choose a color for easy identification",
     "createTitle": "Create Tag",
+    "editTitle": "Edit Tag",
+    "updateTag": "Update Tag",
     "customPrompt": "Custom Summary Prompt",
     "customPromptPlaceholder": "Optional: Custom prompt for generating summaries for recordings with this tag",
     "defaultLanguage": "Default Language",

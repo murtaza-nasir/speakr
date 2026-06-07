@@ -558,6 +558,8 @@
     "color": "Farbe",
     "colorDescription": "Wählen Sie eine Farbe zur einfachen Identifikation",
     "createTitle": "Tag Erstellen",
+    "editTitle": "Tag Bearbeiten",
+    "updateTag": "Tag Aktualisieren",
     "customPrompt": "Benutzerdefinierter Zusammenfassungs-Prompt",
     "customPromptPlaceholder": "Optional: Benutzerdefinierter Prompt für die Generierung von Zusammenfassungen für Aufnahmen mit diesem Tag",
     "defaultLanguage": "Standard-Sprache",

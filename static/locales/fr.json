@@ -558,6 +558,8 @@
     "color": "Couleur",
     "colorDescription": "Choisissez une couleur pour faciliter l'identification",
     "createTitle": "Créer une Étiquette",
+    "editTitle": "Modifier l'Étiquette",
+    "updateTag": "Mettre à Jour l'Étiquette",
     "customPrompt": "Invite de Résumé Personnalisée",
     "customPromptPlaceholder": "Optionnel : Invite personnalisée pour générer des résumés pour les enregistrements avec cette étiquette",
     "defaultLanguage": "Langue par Défaut",
