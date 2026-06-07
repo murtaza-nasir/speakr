@@ -1,6 +1,15 @@
-<!-- Speaker Identification Modal (design system v1) -->
+<!-- Speaker Identification Modal (design system v1).
+     IMPORTANT: explicit height: 85vh (was h-[85vh] in the original
+     speaker-modal pre-design-system migration). The .modal-panel
+     primitive uses max-height: 88vh which lets the panel SHRINK to its
+     content — and when content shrinks below the viewport, the
+     transcript pane's clientHeight changes too. That was the root cause
+     of the scroll oscillation; the ResizeObserver fired on every
+     content change, the visibleRange recomputed, different items
+     rendered, height changed again, repeat. Locking the modal to a
+     fixed height stops the feedback loop. -->
 <div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="modal-overlay">
-    <div @click="closeSpeakerSuggestionsOnClick" class="modal-panel modal-panel--xl">
+    <div @click="closeSpeakerSuggestionsOnClick" class="modal-panel modal-panel--xl" style="height: 90vh;">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.identifySpeakers')"></h3>
             <button @click="closeSpeakerModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
@@ -217,21 +226,35 @@
                 </div>
                 </div>
 
-                <!-- Transcript Section (Virtual Scrolling for performance) -->
+                <!-- Transcript Section.
+                     Renders ALL segments directly into the DOM rather than
+                     trying to virtualise the window. The previous virtual-
+                     scroll wiring used a fixed 52 px row estimate which
+                     fought variable-height segments (a one-line "Yes." is
+                     ~40 px, a long podcast paragraph is 600+ px), so:
+                       - scrollToIndex(N) landed at index*52 which was
+                         nowhere near segment N's actual position
+                       - the user's mouse-wheel scroll triggered an
+                         onScroll → visibleRange recompute → spacer height
+                         changed → scroll position drifted on its own
+                       - rapid Next clicks oscillated for the same reason
+                     Native rendering plus `content-visibility: auto` (set
+                     on .speaker-segment in styles.css) gives the browser
+                     permission to skip painting off-screen elements
+                     without removing them from the DOM, so we keep the
+                     paint-cost win of virtual scrolling but every
+                     scrollIntoView / querySelector / mouse-wheel scroll
+                     uses real measured positions. No spacers, no
+                     onScroll handler, no oscillation. -->
                 <div ref="speakerModalTranscriptRef"
                      class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0"
-                     @click="(e) => { const t = e.target.closest('[data-start-time]')?.dataset.startTime; if (t && $refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.currentTime = parseFloat(t); $refs.speakerModalAudioRef.play(); } }"
-                     @scroll="onSpeakerModalScroll">
+                     @click="(e) => { const t = e.target.closest('[data-start-time]')?.dataset.startTime; if (t && $refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.currentTime = parseFloat(t); $refs.speakerModalAudioRef.play(); } }">
                     <div v-if="processedTranscription.isJson">
-                        <!-- Virtual scroll spacer (top) -->
-                        <div :style="{ height: speakerModalSpacerBefore + 'px' }"></div>
-
-                        <!-- Only render visible segments -->
-                        <div v-for="segment in speakerModalVisibleSegments"
-                             :key="getVirtualItemKey(segment, 'sm')"
+                        <div v-for="(segment, idx) in processedTranscription.simpleSegments"
+                             :key="getVirtualItemKey(segment, 'sm', idx)"
                              class="speaker-segment mb-1.5 sm:mb-2 group relative"
                              :data-start-time="segment.startTime"
-                             :data-segment-index="segment._originalIndex">
+                             :data-segment-index="idx">
                             <div class="flex items-start gap-1">
                                 <!-- Speaker tag on its own line on mobile -->
                                 <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId" class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24" :title="segment.speaker">${ segment.speaker }</span>
@@ -239,29 +262,26 @@
                                 <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-xs sm:text-sm leading-relaxed">${ segment.sentence }</span>
                                 <!-- Edit buttons - inline on mobile -->
                                 <span class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <button @click.stop="openSpeakerChangeDropdown(segment._originalIndex)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
+                                    <button @click.stop="openSpeakerChangeDropdown(idx)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
                                         <i class="fas fa-user-edit text-[10px] sm:text-xs"></i>
                                     </button>
-                                    <button @click.stop="openEditTextModal(segment._originalIndex)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
+                                    <button @click.stop="openEditTextModal(idx)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
                                         <i class="fas fa-edit text-[10px] sm:text-xs"></i>
                                     </button>
                                 </span>
                             </div>
 
                             <!-- Speaker Change Dropdown - compact on mobile -->
-                            <div v-if="editingSpeakerIndex === segment._originalIndex" @click.stop class="mt-1 p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-primary)] shadow-lg">
+                            <div v-if="editingSpeakerIndex === idx" @click.stop class="mt-1 p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-primary)] shadow-lg">
                                 <p class="text-[10px] text-[var(--text-muted)] mb-1">Select speaker:</p>
                                 <div class="flex flex-wrap gap-1">
-                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(segment._originalIndex, speaker)" class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-secondary)]">
+                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(idx, speaker)" class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-secondary)]">
                                         <div :class="speakerMap[speaker].color" class="w-2.5 h-2.5 rounded-full flex-shrink-0"></div>
                                         <span class="truncate max-w-[60px]">${ speakerMap[speaker].name || speaker }</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Virtual scroll spacer (bottom) -->
-                        <div :style="{ height: speakerModalSpacerAfter + 'px' }"></div>
                     </div>
                     <div v-else class="whitespace-pre-wrap text-sm text-[var(--text-primary)]">${ processedTranscription.plainText }</div>
                 </div>
