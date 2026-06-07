@@ -71,7 +71,7 @@
                             class="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors"
                             :class="mobileTab === 'stats' ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]'">
                         <i class="fas fa-chart-bar w-5 text-center"></i>
-                        <span class="font-medium">Stats</span>
+                        <span class="font-medium" v-text="t('stats.title')"></span>
                         <span class="ml-auto pill-status pill-status--info">${ recordingStats.total.speakers }</span>
                     </button>
                     <button v-if="selectedRecording && selectedRecording.events && selectedRecording.events.length > 0"

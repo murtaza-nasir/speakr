@@ -26,7 +26,7 @@
                         @click="selectedTab = 'stats'"
                         class="tab"
                         :class="{'is-active': selectedTab === 'stats'}">
-                    <span>Stats</span>
+                    <span>${ t('stats.title') }</span>
                     <span class="tab__count">${ recordingStats.total.speakers }</span>
                 </button>
                 <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
