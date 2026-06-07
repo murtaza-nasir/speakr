@@ -1288,3 +1288,90 @@ textarea:focus-visible {
     .floating-chat-fab { display: none; }
     .floating-chat-panel { display: none; }
 }
+
+
+/* ---- Settings page shell ---------------------------------------------
+ *
+ * Layout primitives for tab-driven settings pages (account, admin,
+ * inquire-when-needed). The page is structured as:
+ *
+ *   body.h-full.flex.flex-col.overflow-hidden
+ *     page-header (56px, sticky-by-flex)
+ *     div.main-container.flex-1.flex.flex-col.min-h-0.overflow-hidden
+ *       main.flex-1.flex.flex-col.min-h-0.overflow-hidden
+ *         div.flex-1.flex.flex-col.min-h-0.overflow-hidden
+ *           tabs-scroller (flex-shrink-0)
+ *           div.tab-content-wrapper
+ *             div.tab-content (active = display:flex, hidden = display:none)
+ *               div.tab-scroll  — scrolls
+ *               div.tab-footer  — sticky bottom row
+ *
+ * Every flex parent needs min-height: 0 and overflow: hidden to keep the
+ * inner .tab-scroll as the only scroll surface. Without min-h: 0 the
+ * default min-h: auto lets children expand the parent, defeating the
+ * overflow on the scroll element.
+ * --------------------------------------------------------------------- */
+
+.tab-content-wrapper {
+    flex: 1 1 auto;
+    overflow: hidden;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+/* Compound selector wins over the bare .tab-content rule whatever the
+   order of stylesheet load. Hidden tabs are display: none, so they
+   don't render their .tab-footer either — otherwise multiple footers
+   stack at the bottom of the page. */
+.tab-content.hidden {
+    display: none;
+}
+
+.tab-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--sp-6) var(--sp-6);
+}
+
+/* Sticky bottom row of the active tab. Carries the copyright on the
+   LEFT (via ::before content driven by a CSS variable) and per-tab
+   action buttons on the right. The CSS variable is updated by JS once
+   the version is fetched from /api/system/info so every page shows
+   the live version without per-page markup duplication. */
+.tab-footer {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-6);
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-primary);
+}
+.tab-footer::before {
+    content: var(--footer-version-text, "Speakr");
+    margin-right: auto;
+    color: var(--text-light);
+    font-size: var(--fs-meta);
+}
+.tab-footer__left {
+    margin-right: auto;
+    color: var(--text-muted);
+    font-size: var(--fs-meta);
+}
+
+@media (max-width: 640px) {
+    .tab-scroll { padding: var(--sp-4) var(--sp-4); }
+    .tab-footer { padding: var(--sp-2) var(--sp-4); }
+    .tab-footer::before { font-size: 10px; }
+}

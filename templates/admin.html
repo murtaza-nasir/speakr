@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -112,113 +112,117 @@
             }
         }
         applyTheme();
+
+        // Wire up the shared page-header's controls (dark mode toggle
+        // + user dropdown). Has to run after DOMContentLoaded because
+        // the header partial includes its own script that registers
+        // an outside-click handler for the dropdown.
+        document.addEventListener('DOMContentLoaded', () => {
+            const darkBtn = document.getElementById('darkModeToggle');
+            const darkIcon = document.getElementById('darkModeIcon');
+            const userBtn = document.getElementById('userDropdownButton');
+            const userMenu = document.getElementById('userDropdownMenu');
+
+            // Sync the icon to the current mode on first load.
+            if (darkIcon) {
+                const isDark = document.documentElement.classList.contains('dark');
+                darkIcon.classList.toggle('fa-moon', !isDark);
+                darkIcon.classList.toggle('fa-sun', isDark);
+            }
+
+            if (darkBtn) {
+                darkBtn.addEventListener('click', () => {
+                    const isDark = document.documentElement.classList.toggle('dark');
+                    localStorage.setItem('darkMode', isDark);
+                    if (darkIcon) {
+                        darkIcon.classList.toggle('fa-moon', !isDark);
+                        darkIcon.classList.toggle('fa-sun', isDark);
+                    }
+                    // Re-apply the saved color scheme for the new mode
+                    // so the theme-{light|dark}-* prefix flips with the
+                    // .dark class (same bug fixed on the account page).
+                    if (typeof applyTheme === 'function') applyTheme();
+                });
+            }
+
+            if (userBtn && userMenu) {
+                userBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userMenu.classList.toggle('hidden');
+                });
+            }
+        });
     </script>
 </head>
-<body class="bg-[var(--bg-primary)] text-[var(--text-primary)]">
-    <div id="app" v-cloak class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-screen">
-        <header class="flex justify-between items-center mb-6 pb-4 border-b border-[var(--border-primary)]">
-            <h1 class="text-3xl font-bold text-[var(--text-primary)]">
-                <a href="{{ url_for('recordings.index') }}" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/icon-192x192.png') }}" alt="Speakr Logo" class="h-9 w-9 mr-2">
-                    Speakr
-                </a>
-            </h1>
-            <div class="flex items-center space-x-2">
-                <button @click="toggleDarkMode" class="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] dark:text-gray-400 dark:hover:bg-gray-700 transition-colors duration-200" :title="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
-                    <i :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
-                </button>
-                <div class="relative">
-                    <button @click="isUserMenuOpen = !isUserMenuOpen"
-                            data-user-menu-toggle
-                            class="flex items-center px-3 py-2 border border-[var(--border-secondary)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-accent)] focus:outline-none">
-                        <i :class="isTeamAdminOnly ? 'fas fa-users-cog mr-2' : 'fas fa-user-shield mr-2'"></i>
-                        <span>{{ current_user.username }}</span>
-                        <i class="fas fa-chevron-down ml-2"></i>
-                    </button>
-                    <div v-if="isUserMenuOpen"
-                         data-user-menu-dropdown
-                         class="absolute right-0 mt-2 w-48 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg shadow-lg z-10">
-                        <a href="{{ url_for('recordings.index') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-home mr-2"></i> ${t('nav.home')}
-                        </a>
-                        <a href="{{ url_for('auth.account') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-accent)]">
-                            <i class="fas fa-user mr-2"></i> ${t('nav.account')}
-                        </a>
-                        <a href="{{ url_for('admin.admin') }}" class="block px-4 py-2 text-[var(--text-accent)] bg-[var(--bg-accent)]">
-                            <i :class="isTeamAdminOnly ? 'fas fa-users-cog mr-2' : 'fas fa-user-shield mr-2'"></i>
-                            <span v-text="isTeamAdminOnly ? t('nav.groupManagement') : t('nav.admin')"></span>
-                        </a>
-                        <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
-                            <i class="fas fa-sign-out-alt mr-2"></i> ${t('nav.signOut')}
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </header>
+<body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
+    {% set page_label = ('Team Management' if is_team_admin and not current_user.is_admin else 'Admin') %}
+    {% include 'components/page-header.html' %}
+    <div id="app" v-cloak class="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <main class="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
 
-        <main class="flex-grow">
-            <div class="bg-[var(--bg-secondary)] p-4 sm:p-6 lg:p-8 rounded-xl shadow-lg border border-[var(--border-primary)]">
-                <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" v-text="isTeamAdminOnly ? t('nav.groupManagement') : t('nav.adminDashboard')"></h2>
-                
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
+                    <div class="px-4 sm:px-6 pt-3 flex-shrink-0">
                         {% for category, message in messages %}
-                            <div class="mb-4 p-3 rounded-lg {% if category == 'success' %}bg-[var(--bg-success-light)] text-[var(--text-success-strong)]{% elif category == 'danger' %}bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]{% else %}bg-[var(--bg-info-light)] text-[var(--text-info-strong)]{% endif %}">
+                            <div class="mb-2 p-3 rounded-lg {% if category == 'success' %}bg-[var(--bg-success-light)] text-[var(--text-success-strong)]{% elif category == 'danger' %}bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]{% else %}bg-[var(--bg-info-light)] text-[var(--text-info-strong)]{% endif %}">
                                 {{ message }}
                             </div>
                         {% endfor %}
+                    </div>
                     {% endif %}
                 {% endwith %}
-                
-                <!-- Tabs -->
-                <div class="border-b border-[var(--border-primary)] mb-6">
-                    <div class="relative">
-                        <!-- Scroll gradient indicators -->
-                        <div class="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-[var(--bg-secondary)] to-transparent z-[1] pointer-events-none opacity-0 transition-opacity duration-200 flex items-center justify-start" id="admin-left-scroll-indicator">
-                            <i class="fas fa-chevron-left text-[var(--text-muted)] ml-1"></i>
-                        </div>
-                        <div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[var(--bg-secondary)] to-transparent z-[1] pointer-events-none opacity-100 transition-opacity duration-200 flex items-center justify-end" id="admin-right-scroll-indicator">
-                            <i class="fas fa-chevron-right text-[var(--text-muted)] mr-1"></i>
-                        </div>
-                        <nav class="tab-nav px-1 sm:px-4 lg:px-6 pt-3 sm:pt-4 lg:pt-6 pb-4 sm:pb-6 -mb-px overflow-x-auto scrollbar-hide" aria-label="Tabs" id="admin-tabs-container">
-                            <div class="inline-flex gap-1 sm:gap-2">
-                                <button v-if="!isTeamAdminOnly" @click="activeTab = 'users'"
-                                        :class="activeTab === 'users' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-users mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.userManagement')}</span>
-                                </button>
-                                <button v-if="!isTeamAdminOnly" @click="activeTab = 'stats'"
-                                        :class="activeTab === 'stats' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-chart-bar mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.systemStatistics')}</span>
-                                </button>
-                                <button v-if="!isTeamAdminOnly" @click="activeTab = 'settings'"
-                                        :class="activeTab === 'settings' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-cogs mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.systemSettings')}</span>
-                                </button>
-                                <button v-if="!isTeamAdminOnly" @click="activeTab = 'prompts'"
-                                        :class="activeTab === 'prompts' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-file-alt mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.defaultPrompts')}</span>
-                                </button>
-                                <button @click="activeTab = 'groups'"
-                                        :class="activeTab === 'groups' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-users-cog mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.groupsTab')}</span>
-                                </button>
-                                <button v-if="!isTeamAdminOnly && inquireModeEnabled" @click="activeTab = 'vectorstore'"
-                                        :class="activeTab === 'vectorstore' ? 'border-[var(--border-accent)] text-[var(--text-accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:border-[var(--border-secondary)]'"
-                                        class="inline-flex items-center whitespace-nowrap py-1 px-1.5 sm:py-3 sm:px-3 border-b-2 font-medium text-xs sm:text-sm rounded-t-md sm:rounded-t-lg hover:bg-[var(--bg-tertiary)]">
-                                    <i class="fas fa-database mr-0.5 sm:mr-2 text-xs sm:text-sm"></i><span>${t('adminDashboard.vectorStore')}</span>
-                                </button>
-                            </div>
-                        </nav>
-                    </div>
+
+                <!-- Primary tabs strip using the shared .tabs primitive
+                     + .tabs-scroller wrapper so the horizontal chevron
+                     buttons appear when the strip overflows. Tab IDs
+                     not needed (Vue v-show binds the content). -->
+                <div class="tabs-scroller flex-shrink-0" data-tabs-scroller>
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--left" aria-label="Scroll left">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <nav class="tabs px-3 sm:px-4" aria-label="Tabs">
+                        <button v-if="!isTeamAdminOnly" @click="activeTab = 'users'"
+                                class="tab"
+                                :class="{ 'is-active': activeTab === 'users' }">
+                            <i class="fas fa-users"></i><span>${t('adminDashboard.userManagement')}</span>
+                        </button>
+                        <button v-if="!isTeamAdminOnly" @click="activeTab = 'stats'"
+                                class="tab"
+                                :class="{ 'is-active': activeTab === 'stats' }">
+                            <i class="fas fa-chart-bar"></i><span>${t('adminDashboard.systemStatistics')}</span>
+                        </button>
+                        <button v-if="!isTeamAdminOnly" @click="activeTab = 'settings'"
+                                class="tab"
+                                :class="{ 'is-active': activeTab === 'settings' }">
+                            <i class="fas fa-cogs"></i><span>${t('adminDashboard.systemSettings')}</span>
+                        </button>
+                        <button v-if="!isTeamAdminOnly" @click="activeTab = 'prompts'"
+                                class="tab"
+                                :class="{ 'is-active': activeTab === 'prompts' }">
+                            <i class="fas fa-file-alt"></i><span>${t('adminDashboard.defaultPrompts')}</span>
+                        </button>
+                        <button @click="activeTab = 'groups'"
+                                class="tab"
+                                :class="{ 'is-active': activeTab === 'groups' }">
+                            <i class="fas fa-users-cog"></i><span>${t('adminDashboard.groupsTab')}</span>
+                        </button>
+                        <button v-if="!isTeamAdminOnly && inquireModeEnabled" @click="activeTab = 'vectorstore'"
+                                class="tab"
+                                :class="{ 'is-active': activeTab === 'vectorstore' }">
+                            <i class="fas fa-database"></i><span>${t('adminDashboard.vectorStore')}</span>
+                        </button>
+                    </nav>
+                    <button type="button" class="tabs-scroller__nav tabs-scroller__nav--right" aria-label="Scroll right">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
+
+                <div class="tab-content-wrapper">
                 
                 <!-- User Management Tab -->
-                <div v-show="activeTab === 'users'">
+                <div class="tab-content" :class="{ hidden: activeTab !== 'users' }">
+                  <div class="tab-scroll">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.userManagement')}</h3>
                         <button @click="showAddUserModal = true" class="btn btn--primary">
@@ -301,10 +305,13 @@
                             </tbody>
                         </table>
                     </div>
+                  </div><!-- /.tab-scroll -->
+                  <div class="tab-footer"></div>
                 </div>
-                
+
                 <!-- System Statistics Tab -->
-                <div v-show="activeTab === 'stats'">
+                <div class="tab-content" :class="{ hidden: activeTab !== 'stats' }">
+                  <div class="tab-scroll">
                     <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">${t('adminDashboard.systemStatistics')}</h3>
                     
                     <!-- Summary Cards -->
@@ -653,10 +660,13 @@
                             </div>
                         </div>
                     </div>
+                  </div><!-- /.tab-scroll -->
+                  <div class="tab-footer"></div>
                 </div>
 
                 <!-- System Settings Tab -->
-                <div v-show="activeTab === 'settings'">
+                <div class="tab-content" :class="{ hidden: activeTab !== 'settings' }">
+                  <div class="tab-scroll">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.systemSettings')}</h3>
                         <button @click="loadSettings" class="btn btn--primary">
@@ -781,10 +791,13 @@
                             </div>
                         </div>
                     </div>
+                  </div><!-- /.tab-scroll -->
+                  <div class="tab-footer"></div>
                 </div>
-                
+
                 <!-- Default Prompts Tab -->
-                <div v-show="activeTab === 'prompts'">
+                <div class="tab-content" :class="{ hidden: activeTab !== 'prompts' }">
+                  <div class="tab-scroll">
                     <div class="mb-6">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-4">${t('adminDashboard.defaultPrompts')}</h3>
                         <div class="bg-[var(--bg-info-light)] text-[var(--text-info-strong)] p-4 rounded-lg mb-4">
@@ -928,10 +941,13 @@ Summarization Instructions:
                             </div>
                         </div>
                     </div>
+                  </div><!-- /.tab-scroll -->
+                  <div class="tab-footer"></div>
                 </div>
-                
+
                 <!-- Vector Store Tab -->
-                <div v-show="activeTab === 'vectorstore'" v-if="inquireModeEnabled">
+                <div class="tab-content" :class="{ hidden: activeTab !== 'vectorstore' }" v-if="inquireModeEnabled">
+                  <div class="tab-scroll">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">${t('adminDashboard.vectorStoreManagement')}</h3>
                         <button @click="loadInquireStatus" class="btn btn--primary">
@@ -1157,10 +1173,13 @@ Summarization Instructions:
                             </button>
                         </div>
                     </div>
+                  </div><!-- /.tab-scroll -->
+                  <div class="tab-footer"></div>
                 </div>
 
                 <!-- Groups Tab -->
-                <div v-show="activeTab === 'groups'">
+                <div class="tab-content" :class="{ hidden: activeTab !== 'groups' }">
+                  <div class="tab-scroll">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-medium text-[var(--text-secondary)]">Group Management</h3>
                         <button v-if="!isTeamAdminOnly" @click="openCreateTeamModal" class="btn btn--primary">
@@ -1224,13 +1243,18 @@ Summarization Instructions:
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-        </main>
+                  </div><!-- /.tab-scroll -->
+                  <div class="tab-footer"></div>
+                </div><!-- /.tab-content (groups) -->
 
-        <footer class="text-center py-4 mt-8 text-xs text-[var(--text-light)] border-t border-[var(--border-primary)]">
-            Speakr &copy; {{ now.year }}
-        </footer>
+                </div><!-- /.tab-content-wrapper -->
+            </div><!-- /inner flex shell -->
+        </main>
+        <!-- Standalone footer removed; the copyright now lives in each
+             .tab-footer via the ::before pseudo-element driven by the
+             --footer-version-text CSS variable. The hidden #footer-text
+             span keeps any existing version-loading JS happy. -->
+        <span id="footer-text" style="display: none;"></span>
 
         <!-- Add User Modal -->
         <div v-if="showAddUserModal" @click.self="showAddUserModal = false" class="modal-overlay">
