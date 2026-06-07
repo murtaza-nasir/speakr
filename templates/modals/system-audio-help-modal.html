@@ -25,7 +25,7 @@
                         Full system-audio capture is supported. When you click <strong>System Audio</strong> or <strong>Mic + System</strong>, pick <strong>Entire Screen</strong> in the share dialog and tick <strong>Share system audio</strong>.
                     </div>
                     <div class="t-meta" v-else-if="audioCaps.supportsTabAudio">
-                        Browser-level system-audio is not available on this OS / browser combination. The browser can still capture <strong>tab audio</strong> (when you share a tab playing sound), or you can route system audio through a virtual audio device — see your tab below.
+                        Browser-level system-audio is not available on this OS / browser combination. The browser can still capture <strong>tab audio</strong> (when you share a tab playing sound), or you can route system audio through a virtual audio device. See your tab below.
                     </div>
                     <div class="t-meta" v-else>
                         This browser doesn't support audio capture via screen sharing at all. Use Chrome or Edge to record system audio, or record from a microphone instead.
@@ -49,10 +49,10 @@
             <!-- macOS -->
             <div v-if="helpModalOsTab === 'macOS'" class="space-y-3">
                 <p class="t-body">
-                    macOS doesn't let any browser capture system audio directly — the OS treats audio capture as a privileged operation that browsers (sandboxed apps) can't request. The standard workaround is a free virtual audio driver that routes the system output back into an input device the browser can read like a microphone.
+                    macOS doesn't let any browser capture system audio directly. The OS treats audio capture as a privileged operation that browsers (sandboxed apps) can't request. The standard workaround is a free virtual audio driver that routes the system output back into an input device the browser can read like a microphone.
                 </p>
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option A — Tab audio (no install)</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option A. Tab audio (no install)</div>
                     <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
                         <li>Open the source content in a <strong>tab</strong> (YouTube, Zoom web, etc.)</li>
                         <li>Click <strong>System Audio</strong> in Speakr and pick the tab in the share dialog</li>
@@ -61,9 +61,9 @@
                     <p class="t-meta" style="margin-top: var(--sp-2);">Works only for content playing in a browser tab. App audio (Slack, native Zoom client, etc.) won't be captured.</p>
                 </div>
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B — Virtual audio device (recommended)</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B. Virtual audio device (recommended)</div>
                     <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
-                        <li>Install <a href="https://existential.audio/blackhole/" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">BlackHole 2ch</a> (free) — installer signs in, no kernel-extension prompts.</li>
+                        <li>Install <a href="https://existential.audio/blackhole/" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">BlackHole 2ch</a> (free). The installer signs in with no kernel-extension prompts.</li>
                         <li>Open <strong>Audio MIDI Setup</strong> → create a <strong>Multi-Output Device</strong> containing your speakers + BlackHole. Set this as the system output.</li>
                         <li>In Speakr, click <strong>Microphone</strong> and pick <strong>BlackHole 2ch</strong> as the input.</li>
                     </ol>
@@ -77,7 +77,7 @@
             <!-- Windows -->
             <div v-else-if="helpModalOsTab === 'Windows'" class="space-y-3">
                 <p class="t-body">
-                    Windows is the easiest platform — Chrome and Edge can capture audio from any source the OS plays, including specific apps. No extra software needed.
+                    Windows is the easiest platform. Chrome and Edge can capture audio from any source the OS plays, including specific apps. No extra software needed.
                 </p>
                 <div>
                     <div class="t-body-strong" style="margin-bottom: var(--sp-1);">System-wide capture</div>
@@ -95,7 +95,7 @@
                         <li>Choose the specific app's window</li>
                         <li>Tick <strong>Share window audio</strong></li>
                     </ol>
-                    <p class="t-meta" style="margin-top: var(--sp-2);">Captures only the chosen app's audio — useful for meeting recordings without your own keyboard/typing noise.</p>
+                    <p class="t-meta" style="margin-top: var(--sp-2);">Captures only the chosen app's audio, useful for meeting recordings without your own keyboard/typing noise.</p>
                 </div>
                 <p class="t-meta">
                     Stuck on "no audio track" errors? Some apps (Spotify desktop, DRM-protected video) suppress system-audio capture. Use a virtual cable like <a href="https://vb-audio.com/Cable/" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">VB-Audio Cable</a> as a workaround.
@@ -109,17 +109,17 @@
                 </p>
 
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option A — Tab audio (no setup)</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option A. Tab audio (no setup)</div>
                     <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
                         <li>Play the source content in a Chrome tab (YouTube, Zoom web, meeting URL, etc.)</li>
-                        <li>Click <strong>System Audio</strong> in Speakr — pick that tab in the share dialog</li>
+                        <li>Click <strong>System Audio</strong> in Speakr, then pick that tab in the share dialog</li>
                         <li>Tick <strong>Share tab audio</strong> before clicking Share</li>
                     </ol>
                     <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-top: var(--sp-2);">
                         <i class="fas fa-circle-info" style="margin-top: 2px;"></i>
                         <div>
                             <div class="t-meta">
-                                <strong>This won't show up in pavucontrol.</strong> Chrome captures tab audio internally and never routes through PulseAudio, so the Recording tab will say "No application is currently recording audio." That's normal — Speakr's meter is the source of truth.
+                                <strong>This won't show up in pavucontrol.</strong> Chrome captures tab audio internally and never routes through PulseAudio, so the Recording tab will say "No application is currently recording audio." That's normal: Speakr's meter is the source of truth.
                             </div>
                         </div>
                     </div>
@@ -127,9 +127,9 @@
                 </div>
 
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B — Switch source in pavucontrol mid-recording</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B. Switch source in pavucontrol mid-recording</div>
                     <p class="t-body" style="color: var(--text-secondary);">
-                        Quick but limited: captures system audio AT THE COST OF your mic input — useful only when you want to record what's playing through your headphones / speakers without your own voice.
+                        Quick but limited: captures system audio at the cost of your mic input, useful only when you want to record what's playing through your headphones / speakers without your own voice.
                     </p>
                     <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary); margin-top: var(--sp-2);">
                         <li>Click <strong>Microphone</strong> in Speakr</li>
@@ -139,9 +139,9 @@
                 </div>
 
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option C — Expose a virtual source so Chrome will list it (recommended)</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option C. Expose a virtual source so Chrome will list it (recommended)</div>
                     <p class="t-body" style="color: var(--text-secondary);">
-                        <strong>Why this is needed:</strong> Chrome on Linux deliberately filters "Monitor of …" sources out of the input device list it exposes to web apps — that's why Speakr's input-device picker doesn't show them even though pavucontrol does. The fix is to wrap a monitor source in a regular virtual source that Chrome doesn't filter. Once you do this, the new source appears in Speakr's picker and you can use it as either the primary input OR as a "Also mix in" alongside your real mic to capture BOTH your voice and system audio in one stream.
+                        <strong>Why this is needed:</strong> Chrome on Linux deliberately filters "Monitor of …" sources out of the input device list it exposes to web apps, which is why Speakr's input-device picker doesn't show them even though pavucontrol does. The fix is to wrap a monitor source in a regular virtual source that Chrome doesn't filter. Once you do this, the new source appears in Speakr's picker and you can use it as either the primary input or as a "Also mix in" alongside your real mic to capture both your voice and system audio in one stream.
                     </p>
                     <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin: var(--sp-2) 0;">
                         <i class="fas fa-circle-info" style="margin-top: 2px;"></i>
@@ -153,7 +153,7 @@
                             <pre style="background: var(--bg-secondary); padding: var(--sp-2); border-radius: 4px; margin-top: var(--sp-1); overflow-x: auto; font-size: 11px;">pactl load-module module-virtual-source \
     source_name=speakr_loopback \
     master=&lt;sink_name&gt;.monitor</pre>
-                            <p style="margin-top: var(--sp-2);">Reload Speakr's input-device picker — you'll now see <strong>speakr_loopback</strong> in the dropdown. Pick it as <strong>"Also mix in"</strong> alongside your real mic and you'll capture both.</p>
+                            <p style="margin-top: var(--sp-2);">Reload Speakr's input-device picker. You'll now see <strong>speakr_loopback</strong> in the dropdown. Pick it as <strong>"Also mix in"</strong> alongside your real mic and you'll capture both.</p>
                         </div>
                     </div>
                     <p class="t-meta">
@@ -164,7 +164,7 @@
                 <div>
                     <div class="t-body-strong" style="margin-bottom: var(--sp-1);">PipeWire (newer distros)</div>
                     <p class="t-body" style="color: var(--text-secondary);">
-                        Same idea — wrap the monitor in a virtual source so Chrome doesn't filter it. Use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pw-loopback</code>: <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pw-loopback --capture-props='node.target=&lt;sink&gt;.monitor' --playback-props='media.class=Audio/Source node.name=speakr_loopback'</code>. Or use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> / <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire it visually.
+                        Same idea. Wrap the monitor in a virtual source so Chrome doesn't filter it. Use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pw-loopback</code>: <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pw-loopback --capture-props='node.target=&lt;sink&gt;.monitor' --playback-props='media.class=Audio/Source node.name=speakr_loopback'</code>. Or use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> / <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire it visually.
                     </p>
                 </div>
             </div>
@@ -177,61 +177,64 @@
                 <div>
                     <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Virtual audio device detected</div>
                     <div class="t-meta">
-                        Speakr found these on your system — they're already wired up:
+                        Speakr found these on your system. They're already wired up:
                         <ul class="list-disc list-inside" style="margin-top: var(--sp-1);">
                             <li v-for="d in virtualAudioDevices" :key="d.deviceId">
-                                <span style="font-family: var(--font-mono, ui-monospace, monospace);" v-text="d.label"></span>
-                                — pick this from the Microphone dropdown to capture system audio.
+                                <span style="font-family: var(--font-mono, ui-monospace, monospace);" v-text="d.label"></span>.
+                                Pick this from the Microphone dropdown to capture system audio.
                             </li>
                         </ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Privacy notes — collapsed by default so the modal
+            <!-- Privacy notes. Collapsed by default so the modal
                  stays focused on setup; expandable for users who
                  care about the trade-offs each capture mode makes,
                  especially the Linux virtual-source workaround
                  which removes a Chrome-level privacy protection
                  on the user's machine. -->
             <details style="margin-top: var(--sp-4);">
-                <summary class="cursor-pointer t-body-strong" style="color: var(--text-secondary);">
-                    <i class="fas fa-shield-halved"></i>
-                    Privacy notes
+                <summary class="cursor-pointer flex items-center gap-2" style="list-style: none;">
+                    <i class="fas fa-triangle-exclamation text-lg" style="color: var(--text-warn, #d97706);"></i>
+                    <h4 class="text-base font-semibold m-0" style="color: var(--text-primary);">
+                        Privacy notes
+                    </h4>
+                    <i class="fas fa-chevron-down ml-auto text-xs" style="color: var(--text-muted);"></i>
                 </summary>
                 <div class="space-y-3" style="margin-top: var(--sp-3);">
                     <p class="t-body" style="color: var(--text-secondary);">
-                        Most of these capture modes use standard browser APIs and have the same privacy properties as any other web app that records audio. A couple of them have specific trade-offs worth knowing about.
+                        Most of these capture modes use standard browser APIs and have the same privacy properties as any other web app that records audio. A couple have specific trade-offs worth knowing.
                     </p>
 
                     <div>
                         <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Microphone, System Audio, Mic + System</div>
                         <p class="t-body" style="color: var(--text-secondary);">
-                            All gated by the browser's permission system. The browser shows an explicit prompt before capture starts, displays a persistent recording indicator while it's running, and lets you revoke access at any time from the site settings. No new privacy surface beyond what's already in any voice-recording web app.
+                            All gated by the browser's permission system. The browser shows an explicit prompt before capture starts, displays a persistent recording indicator while it's running, and lets you revoke access at any time from the site settings.
                         </p>
                     </div>
 
                     <div>
                         <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Disable echo cancellation, noise suppression &amp; auto-gain</div>
                         <p class="t-body" style="color: var(--text-secondary);">
-                            Not a privacy setting — these are audio-quality processors. With them off the recording captures more of the ambient room (background voices, typing, notifications). The data path doesn't change; everything still goes to the same place.
+                            These are audio-quality processors, not privacy controls. With them off the recording captures more of the ambient room (background voices, typing, notifications).
                         </p>
                     </div>
 
                     <div>
-                        <div class="t-body-strong" style="margin-bottom: var(--sp-1); color: var(--text-warn, var(--text-accent));">
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1); color: var(--text-warn, #d97706);">
                             <i class="fas fa-triangle-exclamation"></i>
                             Linux virtual source (<code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">speakr_loopback</code>)
                         </div>
                         <p class="t-body" style="color: var(--text-secondary);">
-                            This is the one to think about. Chrome's filtering of PulseAudio monitor sources is a deliberate privacy protection — without it, a malicious site with mic permission could silently record everything you're listening to (calls, sensitive content, private music) with no "screen sharing" indicator. The <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">module-virtual-source</code> wrap explicitly undoes that protection on your machine.
+                            This is the one to think about. Chrome's filtering of PulseAudio monitor sources is a deliberate privacy protection. Without it, a malicious site with mic permission could silently record everything you're listening to (calls, sensitive content, private music) with no "screen sharing" indicator. The <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">module-virtual-source</code> wrap explicitly undoes that protection on your machine.
                         </p>
                         <p class="t-body" style="color: var(--text-secondary); margin-top: var(--sp-2);">
                             After the module is loaded, any site you've granted mic access to can enumerate <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">speakr_loopback</code> and capture system audio through it.
                         </p>
                         <div class="t-body-strong" style="margin-top: var(--sp-2); margin-bottom: var(--sp-1);">Mitigations:</div>
                         <ul class="list-disc list-inside space-y-1 t-body" style="color: var(--text-secondary);">
-                            <li><strong>Load on-demand</strong>: don't add the <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">load-module</code> line to <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">~/.config/pulse/default.pa</code>. Run <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">pactl load-module …</code> before recording and <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">pactl unload-module module-virtual-source</code> after.</li>
+                            <li><strong>Load on-demand.</strong> Don't add the <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">load-module</code> line to <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">~/.config/pulse/default.pa</code>. Run <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">pactl load-module …</code> before recording and <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">pactl unload-module module-virtual-source</code> after.</li>
                             <li><strong>Audit your mic permissions</strong> at <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">chrome://settings/content/microphone</code> and remove any site that doesn't strictly need it.</li>
                             <li><strong>Use a less obvious source name</strong> (e.g. <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">aux_in</code> instead of <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">speakr_loopback</code>). Doesn't stop a determined enumerator but raises the bar.</li>
                         </ul>
@@ -240,7 +243,7 @@
                     <div>
                         <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Where the audio ends up</div>
                         <p class="t-body" style="color: var(--text-secondary);">
-                            Captured audio goes to your Speakr server (self-hosted by you) and then to whichever ASR endpoint you've configured. If you're running a local Whisper / self-hosted ASR, audio never leaves your network. If your ASR is OpenAI or another cloud provider, audio gets sent there — same as any other recording you upload to Speakr. That's a deployment-config decision, not specific to these capture modes.
+                            Captured audio goes to your Speakr server (self-hosted by you) and then to whichever ASR endpoint you've configured. If you're running a local Whisper or self-hosted ASR, audio never leaves your network. If your ASR is OpenAI or another cloud provider, audio gets sent there.
                         </p>
                     </div>
                 </div>
