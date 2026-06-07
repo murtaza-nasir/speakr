@@ -1499,11 +1499,18 @@ textarea:focus-visible {
 }
 
 @media (max-width: 640px) {
+    /* !important wins against the base-rule values above — the base
+       rule's left: 1rem + width: 20rem would otherwise leave the
+       popup as a 320 px wide card pinned to the left edge with the
+       rest of the screen empty (visible in the prior screenshot as
+       the queue "touching the left side" rather than spanning the
+       row). Bottom offset: 60 px player content + 56 px bottom nav
+       + 12 px breathing room + safe-area inset. */
     .progress-popup {
-        bottom: calc(70px + 56px + env(safe-area-inset-bottom, 0px));
-        left: 0;
-        right: 0;
-        width: auto;
+        bottom: calc(60px + 56px + 12px + env(safe-area-inset-bottom, 0px)) !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100vw !important;
         max-height: 60vh;
         animation: progressSheetUp 220ms cubic-bezier(0.16, 1, 0.3, 1);
     }
@@ -1513,9 +1520,6 @@ textarea:focus-visible {
         border-right-width: 0;
         border-bottom-width: 0;
     }
-    /* The minimized header strip is fine to render full-width too;
-       the existing collapse logic in the template handles the body
-       visibility. */
 }
 
 @keyframes progressSheetUp {
