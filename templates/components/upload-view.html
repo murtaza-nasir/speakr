@@ -151,19 +151,27 @@
                      reading the label. -->
                 <div v-if="videoRetentionEnabled && uploadQueue.some(item => item.file && /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts)$/i.test(item.file.name))"
                      class="mt-3">
+                    <!-- Off-state keeps a soft sky tint on the icon
+                         badge so the colour link to the sky-blue
+                         video-file rows is visible BEFORE the user
+                         clicks the toggle; the toggle just intensifies
+                         the same hue when activated rather than
+                         introducing a new colour. Left-border accent
+                         on the outer button does the same job for the
+                         row as a whole. -->
                     <button @click="keepAudioOnly = !keepAudioOnly"
                             :class="[
-                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all duration-200',
+                                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-all duration-200 border-l-4',
                                 keepAudioOnly
-                                    ? 'bg-gradient-to-r from-sky-500/10 to-blue-500/10 border-sky-400/50 dark:border-sky-500/50'
-                                    : 'bg-[var(--bg-tertiary)] border-[var(--border-secondary)] hover:border-[var(--border-focus)]'
+                                    ? 'bg-gradient-to-r from-sky-500/10 to-blue-500/10 border-sky-400/50 dark:border-sky-500/50 border-l-sky-500'
+                                    : 'bg-[var(--bg-tertiary)] border-[var(--border-secondary)] border-l-sky-400/60 dark:border-l-sky-500/50 hover:border-[var(--border-focus)] hover:border-l-sky-500'
                             ]">
                         <div class="flex items-center gap-3">
                             <div :class="[
                                 'w-8 h-8 rounded-full flex items-center justify-center transition-all',
                                 keepAudioOnly
                                     ? 'bg-gradient-to-br from-sky-500 to-blue-600 text-white'
-                                    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
+                                    : 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
                             ]">
                                 <i class="fas fa-video-slash text-sm"></i>
                             </div>
