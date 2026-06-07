@@ -1707,27 +1707,26 @@ body {
 .speaker-tablet-group .speaker-tablet-time {
     padding: 0.25rem 0.55rem;
     font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-    font-weight: 500;
+    font-weight: 600;
     font-size: 0.7rem;
     letter-spacing: 0.02em;
     user-select: none;
-    /* Tint the half by overlaying a translucent black layer. In light
-       mode we go heavier (0.55) so the speaker pastel becomes a deeply
-       saturated shade that gives high contrast with white time text;
-       in dark mode 0.18 is enough because the inherited speaker
-       foreground is already a light pastel. */
-    background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55));
+    /* Light mode: overlay a translucent WHITE layer so the time half
+       becomes a LIGHTER tint of the speaker pastel (rather than a
+       darker one). The inherited dark speaker-color text then reads
+       well on the lighter background. Going the OTHER direction —
+       darkening the half — desaturated the colour and made
+       everything look grey. */
+    background-image: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55));
     display: inline-flex;
     align-items: center;
-    /* Force white text in light mode for maximum contrast on the
-       darkened tint above. Dark mode falls through to the inherited
-       pastel from the speaker-color class which already reads well on
-       its own dark background. */
-    color: rgba(255, 255, 255, 0.95);
 }
 .dark .speaker-tablet-group .speaker-tablet-time {
+    /* Dark mode: the inherited speaker-color foreground is a light
+       pastel and was already legible on the slightly-darker tint, so
+       we keep the original 0.18 black overlay (a small darken on the
+       already-dark speaker palette). */
     background-image: linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18));
-    color: inherit;
     opacity: 0.85;
 }
 
