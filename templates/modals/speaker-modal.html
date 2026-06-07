@@ -276,66 +276,55 @@
                      style="flex: 1 1 auto; min-height: 0; overflow-y: auto;"
                      @click="(e) => { const t = e.target.closest('[data-start-time]')?.dataset.startTime; if (t && $refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.currentTime = parseFloat(t); $refs.speakerModalAudioRef.play(); } }">
                     <div v-if="processedTranscription.isJson">
+                        <!-- Each segment is mounted in full (no hydrated/
+                             placeholder split). The hydration scheme was
+                             introduced for perf but made speaker-highlight
+                             intermittent because the two template branches
+                             interacted oddly with v-memo when the
+                             IntersectionObserver promoted/demoted rows
+                             mid-selection. The browser still skips paint
+                             for off-screen rows via content-visibility:
+                             auto on .speaker-segment (see styles.css), so
+                             we keep most of the perf win without the
+                             rendering regressions. v-memo per row stops
+                             Vue from re-rendering unrelated rows when
+                             one row's data changes. -->
                         <div v-for="(segment, idx) in processedTranscription.simpleSegments"
                              :key="segment.startTime + '-' + idx"
-                             v-memo="[idx, segment.speakerId, segment.speaker, segment.sentence, highlightedSpeaker === segment.speakerId, editingSpeakerIndex === idx, speakerModalHydratedRows.has(idx)]"
+                             v-memo="[idx, segment.speakerId, segment.speaker, segment.sentence, highlightedSpeaker === segment.speakerId, editingSpeakerIndex === idx]"
                              class="speaker-segment group relative"
                              :data-start-time="segment.startTime"
                              :data-segment-index="idx">
-                            <!-- Hydrated (full) version: includes hover-only
-                                 edit/change-speaker buttons and the
-                                 conditional change-speaker dropdown. Mounted
-                                 only when the IntersectionObserver promotes
-                                 the row (it's near the viewport). The
-                                 placeholder below is what shows for
-                                 off-screen rows. -->
-                            <template v-if="speakerModalHydratedRows.has(idx) || editingSpeakerIndex === idx">
-                                <div class="flex items-start gap-2">
-                                    <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]"
-                                          :data-speaker-id="segment.speakerId"
-                                          class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24"
-                                          :title="segment.speaker">${ segment.speaker }</span>
-                                    <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-xs sm:text-sm leading-relaxed">${ segment.sentence }</span>
-                                    <span class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                        <button @click.stop="openSpeakerChangeDropdown(idx)" class="btn btn--icon btn--sm" title="Change speaker">
-                                            <i class="fas fa-user-edit text-[10px]"></i>
-                                        </button>
-                                        <button @click.stop="openEditTextModal(idx)" class="btn btn--icon btn--sm" title="Edit text">
-                                            <i class="fas fa-edit text-[10px]"></i>
-                                        </button>
-                                    </span>
+                            <div class="flex items-start gap-2">
+                                <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]"
+                                      :data-speaker-id="segment.speakerId"
+                                      class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24"
+                                      :title="segment.speaker">${ segment.speaker }</span>
+                                <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-xs sm:text-sm leading-relaxed">${ segment.sentence }</span>
+                                <span class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                    <button @click.stop="openSpeakerChangeDropdown(idx)" class="btn btn--icon btn--sm" title="Change speaker">
+                                        <i class="fas fa-user-edit text-[10px]"></i>
+                                    </button>
+                                    <button @click.stop="openEditTextModal(idx)" class="btn btn--icon btn--sm" title="Edit text">
+                                        <i class="fas fa-edit text-[10px]"></i>
+                                    </button>
+                                </span>
+                            </div>
+                            <div v-if="editingSpeakerIndex === idx"
+                                 @click.stop
+                                 class="surface-raised"
+                                 style="margin-top: var(--sp-2); padding: var(--sp-2);">
+                                <p class="t-label" style="margin-bottom: var(--sp-2);">Select speaker:</p>
+                                <div class="flex flex-wrap gap-1">
+                                    <button v-for="speaker in modalSpeakers"
+                                            :key="speaker"
+                                            @click="changeSpeaker(idx, speaker)"
+                                            class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-tertiary)]">
+                                        <div :class="speakerMap[speaker].color" class="w-2.5 h-2.5 rounded-full flex-shrink-0"></div>
+                                        <span class="truncate max-w-[60px]">${ speakerMap[speaker].name || speaker }</span>
+                                    </button>
                                 </div>
-                                <div v-if="editingSpeakerIndex === idx"
-                                     @click.stop
-                                     class="surface-raised"
-                                     style="margin-top: var(--sp-2); padding: var(--sp-2);">
-                                    <p class="t-label" style="margin-bottom: var(--sp-2);">Select speaker:</p>
-                                    <div class="flex flex-wrap gap-1">
-                                        <button v-for="speaker in modalSpeakers"
-                                                :key="speaker"
-                                                @click="changeSpeaker(idx, speaker)"
-                                                class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-tertiary)]">
-                                            <div :class="speakerMap[speaker].color" class="w-2.5 h-2.5 rounded-full flex-shrink-0"></div>
-                                            <span class="truncate max-w-[60px]">${ speakerMap[speaker].name || speaker }</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </template>
-                            <!-- Placeholder (lightweight) version for
-                                 off-screen rows: same speaker pill + text
-                                 spans, no hover button shells, no edit
-                                 dropdown. The natural height matches the
-                                 hydrated version's height with no edit
-                                 dropdown open, so promotion in place
-                                 doesn't shift the layout. -->
-                            <template v-else>
-                                <div class="flex items-start gap-2">
-                                    <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]"
-                                          class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24"
-                                          :title="segment.speaker">${ segment.speaker }</span>
-                                    <span class="flex-1 text-xs sm:text-sm leading-relaxed text-[var(--text-primary)]">${ segment.sentence }</span>
-                                </div>
-                            </template>
+                            </div>
                         </div>
                     </div>
                     <div v-else class="whitespace-pre-wrap text-sm text-[var(--text-primary)]">${ processedTranscription.plainText }</div>

@@ -1201,71 +1201,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const asrEditorSaveFlash = ref(false);  // Brief "Saved" indicator after Save (without close)
             const asrEditorHighlightIndex = ref(null);  // Segment index briefly highlighted after double-click open
 
-            // -------------------------------------------------------------
-            // Lazy-hydration wiring for the SPEAKER modal long transcript
-            // pane (declared above as speakerModalHydratedRows). The
-            // factory creates an IntersectionObserver against the
-            // scrollable container. Rows entering the watch region
-            // (viewport ± 600 px) get added to the hydrated Set; rows
-            // leaving get REMOVED — bounded membership so the hydrated
-            // count stays around one viewport's worth regardless of
-            // transcript length. A row is never dehydrated while it
-            // contains document.activeElement, so editing mid-scroll
-            // never yanks an input away.
-            //
-            // The ASR editor uses a different approach (fixed-height
-            // virtual scrolling) because its rows are spreadsheet-like
-            // — uniform single-line inputs + a textarea capped at
-            // max-h-20. Variable-height tricks aren't worth the CLS
-            // cost there.
-            // -------------------------------------------------------------
-            const _makeRowHydrator = (containerRef, hydratedRef, options = {}) => {
-                const observer = { current: null };
-                const rootMargin = options.rootMargin || '600px 0px 600px 0px';
-                const setup = () => {
-                    if (observer.current) { observer.current.disconnect(); observer.current = null; }
-                    if (!containerRef.value) return;
-                    observer.current = new IntersectionObserver((entries) => {
-                        let changed = false;
-                        const next = new Set(hydratedRef.value);
-                        for (const entry of entries) {
-                            const idx = parseInt(entry.target.dataset.segmentIndex, 10);
-                            if (Number.isNaN(idx)) continue;
-                            if (entry.isIntersecting) {
-                                if (!next.has(idx)) { next.add(idx); changed = true; }
-                            } else {
-                                if (entry.target.contains(document.activeElement)) continue;
-                                if (next.has(idx)) { next.delete(idx); changed = true; }
-                            }
-                        }
-                        if (changed) hydratedRef.value = next;
-                    }, { root: containerRef.value, rootMargin });
-                    nextTick(() => {
-                        const rows = containerRef.value.querySelectorAll('[data-segment-index]');
-                        rows.forEach(r => observer.current.observe(r));
-                    });
-                };
-                const teardown = () => {
-                    if (observer.current) { observer.current.disconnect(); observer.current = null; }
-                    hydratedRef.value = new Set();
-                };
-                const hydrate = (idx) => {
-                    if (hydratedRef.value.has(idx)) return;
-                    const next = new Set(hydratedRef.value);
-                    next.add(idx);
-                    hydratedRef.value = next;
-                };
-                return { setup, teardown, hydrate };
-            };
-            const _speakerModalHydrator = _makeRowHydrator(speakerModalTranscriptRef, speakerModalHydratedRows);
-            const hydrateSpeakerModalRow = _speakerModalHydrator.hydrate;
-            watch(showSpeakerModal, (open) => {
-                if (open) nextTick(() => _speakerModalHydrator.setup());
-                else _speakerModalHydrator.teardown();
-            });
-            // ASR editor uses virtual scroll; no hydration wiring needed.
-            // Keep hydrateAsrEditorRow as a no-op for any leftover refs.
+            // Lazy-hydration was previously wired for both modals but
+            // (a) the ASR editor went back to virtual scrolling (uniform
+            // row heights make fixed-itemHeight the right tool) and
+            // (b) the speaker modal hydration scheme made the speaker
+            // highlight glow intermittent because the hydrated/placeholder
+            // template split interacted badly with v-memo as rows
+            // promoted/demoted mid-selection. Speaker modal now mounts
+            // all rows in full; content-visibility: auto on .speaker-segment
+            // still skips paint for off-screen rows so most of the perf
+            // win is preserved. Keep the hydrate stubs as no-ops in case
+            // any leftover template reference still calls them.
             const hydrateAsrEditorRow = () => {};
+            const hydrateSpeakerModalRow = () => {};
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
