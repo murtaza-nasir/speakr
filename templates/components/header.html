@@ -25,15 +25,20 @@
              On narrower screens (mobile) we still rely on mobile-header.html
              below the global header for full metadata. -->
         <template v-else>
-            <!-- Recording title -->
-            <div class="flex items-center gap-2 min-w-0 flex-shrink">
+            <!-- Recording title. The wrapper uses flex-1 + min-w-0 so
+                 the title (h1 or input) can take all remaining
+                 horizontal space in the header row; the previous
+                 flex-shrink without flex-grow sized the wrapper to
+                 content, which made the input collapse to a few dozen
+                 pixels in edit mode. -->
+            <div class="flex items-center gap-2 min-w-0 flex-1">
                 <a href="/" class="flex-shrink-0 hidden sm:block" :title="'Back to Speakr'">
                     <img src="{{ url_for('static', filename='img/icon-32x32.png') }}" alt="Speakr" class="w-7 h-7">
                 </a>
                 <h1 v-if="!editingTitle"
                     @dblclick="selectedRecording.can_edit !== false ? toggleEditTitle() : null"
                     :class="[
-                        'text-base sm:text-lg font-semibold truncate transition-opacity min-w-0',
+                        'text-base sm:text-lg font-semibold truncate transition-opacity min-w-0 flex-1',
                         selectedRecording.is_shared ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]',
                         selectedRecording.can_edit !== false ? 'cursor-text hover:opacity-80' : ''
                     ]"
@@ -50,9 +55,21 @@
                        placeholder="Untitled Recording">
                 <button v-if="!editingTitle && selectedRecording.can_edit !== false"
                         @click="toggleEditTitle"
-                        class="btn btn--icon btn--sm"
+                        class="btn btn--icon btn--sm flex-shrink-0"
                         :title="t('tooltips.editTitle')">
                     <i class="fas fa-pen text-xs"></i>
+                </button>
+                <!-- Regenerate title (AI). Shown only for completed
+                     recordings, hidden while editing. Re-added per
+                     queue item #4 — was lost when the bespoke
+                     desktop-header.html merged into this adaptive
+                     header. -->
+                <button v-if="!editingTitle && selectedRecording.can_edit !== false && selectedRecording.status === 'COMPLETED'"
+                        @click="regenerateTitle"
+                        :disabled="regeneratingTitle"
+                        class="btn btn--icon btn--sm flex-shrink-0"
+                        :title="t('tooltips.regenerateTitle')">
+                    <i class="fas fa-sync-alt text-xs" :class="{ 'fa-spin': regeneratingTitle }"></i>
                 </button>
                 <!-- Status badge for non-completed recordings -->
                 <span v-if="!editingTitle && selectedRecording.status !== 'COMPLETED'"
