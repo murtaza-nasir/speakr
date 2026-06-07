@@ -1664,19 +1664,6 @@ body {
 .speaker-segment {
     margin-bottom: 1rem;
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    /* content-visibility: auto lets the browser skip rendering this
-       element when it's off-screen, while keeping it in the DOM so
-       querySelector / scrollIntoView / sequential Tab focus all still
-       work against measured positions. contain-intrinsic-size gives
-       the browser a placeholder size to use for the off-screen
-       elements when computing scroll height — without it the scrollbar
-       would jump as elements render in. The width is auto (the
-       container constrains it) and the height is a generous 60 px
-       estimate per segment; real heights vary from ~40 px for short
-       sentences to several hundred for podcast paragraphs, so 60 px
-       is a reasonable average that keeps the scrollbar stable. */
-    content-visibility: auto;
-    contain-intrinsic-size: auto 60px;
 }
 
 /* Speaker run: wraps consecutive same-speaker segments so the sticky
