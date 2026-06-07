@@ -38,7 +38,7 @@
                 <h1 v-if="!editingTitle"
                     @dblclick="selectedRecording.can_edit !== false ? toggleEditTitle() : null"
                     :class="[
-                        'text-base sm:text-lg font-semibold truncate transition-opacity min-w-0 flex-1',
+                        'text-base sm:text-lg font-semibold truncate transition-opacity min-w-0',
                         selectedRecording.is_shared ? 'text-[var(--text-accent)]' : 'text-[var(--text-primary)]',
                         selectedRecording.can_edit !== false ? 'cursor-text hover:opacity-80' : ''
                     ]"
