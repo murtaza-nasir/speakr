@@ -151,13 +151,37 @@
                     userMenu.classList.toggle('hidden');
                 });
             }
+
+            // Update the tab-footer version string by writing to the
+            // --footer-version-text CSS variable that .tab-footer::before
+            // reads. Same pattern as the account page.
+            (async () => {
+                try {
+                    const r = await fetch('/api/system/info');
+                    if (!r.ok) return;
+                    const data = await r.json();
+                    if (!data.version) return;
+                    const value = `Speakr ${data.version} © {{ now.year }}`;
+                    const ft = document.getElementById('footer-text');
+                    if (ft) ft.textContent = value;
+                    document.documentElement.style.setProperty(
+                        '--footer-version-text',
+                        `"${value.replace(/"/g, '\\"')}"`
+                    );
+                } catch (e) { /* leave the fallback "Speakr" string */ }
+            })();
         });
     </script>
 </head>
 <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] h-full flex flex-col overflow-hidden">
     {% set page_label = ('Team Management' if is_team_admin and not current_user.is_admin else 'Admin') %}
     {% include 'components/page-header.html' %}
-    <div id="app" v-cloak class="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <!-- inline min-height: 0 beats the global #app { min-height: 100% }
+         rule in styles.css (ID selector has higher specificity than the
+         Tailwind min-h-0 utility); without this override the flex chain
+         couldn't shrink #app below its content height and the sticky
+         .tab-footer ended up below the viewport. -->
+    <div id="app" v-cloak class="flex-1 flex flex-col overflow-hidden" style="min-height: 0;">
         <main class="flex-1 flex flex-col min-h-0 overflow-hidden">
             <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
 
