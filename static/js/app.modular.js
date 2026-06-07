@@ -2266,11 +2266,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Add scrollToSegmentIndex to utils for composables that need it
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
             utils.resetModalAudioState = resetModalAudioState;
-            utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
-            // Scroll to the target row but offset upward so the row lands
-            // comfortably below the sticky table header (~2 rows of clearance)
-            // instead of being clipped at the top.
-            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(Math.max(0, index - 2), 'auto');
+            utils.resetAsrEditorScroll = () => {
+                if (asrEditorRef.value) asrEditorRef.value.scrollTop = 0;
+            };
+            // Scroll the editor table to a specific row by index. The
+            // table no longer uses virtual scrolling — all rows are in
+            // the DOM (with content-visibility skipping off-screen paint),
+            // so this is just a real-DOM lookup + scrollIntoView using
+            // measured positions. block: 'center' centres the row in the
+            // viewport so it lands well clear of the sticky table header
+            // without us having to know the header's height.
+            utils.scrollAsrEditorToIndex = (index) => {
+                const container = asrEditorRef.value;
+                if (!container) return;
+                const target = container.querySelector(`[data-segment-index="${index}"]`);
+                if (target) target.scrollIntoView({ block: 'center', behavior: 'auto' });
+            };
             utils.setAsrEditorScrollTop = (scrollTop) => {
                 if (asrEditorRef.value) {
                     asrEditorRef.value.scrollTop = scrollTop;
