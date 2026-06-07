@@ -51,7 +51,6 @@
                                    v-model="speakerMap[speaker].isMe"
                                    @change="handleIsMeChange(speaker)"
                                    @focus="highlightSpeakerInTranscript(speaker)"
-                                   @blur="clearSpeakerHighlight"
                                    class="speaker-checkbox w-4 h-4 sm:w-4 sm:h-4">
                             <span class="ml-1.5 select-none" v-text="t('help.me')"></span>
                         </label>

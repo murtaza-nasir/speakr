@@ -724,12 +724,20 @@ export function useSpeakers(state, utils, processedTranscription) {
     };
 
     const blurSpeaker = () => {
-        // Clear the active speaker input after a delay to allow clicking on suggestions
+        // Clear the active speaker input after a delay to allow clicking
+        // on suggestions before the dropdown collapses.
         setTimeout(() => {
             activeSpeakerInput.value = null;
             speakerSuggestions.value = {};
         }, 200);
-        clearSpeakerHighlight();
+        // DO NOT clear the speaker highlight here. The highlight + the
+        // prev/next nav buttons should remain usable while the user
+        // walks through the speaker's segments — clicking Prev/Next
+        // moves focus off the input and would otherwise clear the
+        // navigation state mid-action. Highlight is now released only
+        // when a DIFFERENT speaker is focused (focusSpeaker overwrites
+        // highlightedSpeaker), the user picks the default "Navigate
+        // to speaker…" option, or the modal closes.
     };
 
     const clearSpeakerHighlight = () => {
