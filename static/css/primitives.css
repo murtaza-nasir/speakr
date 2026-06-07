@@ -784,6 +784,50 @@ html.dark .modal-overlay {
 .modal-panel--xl   { max-width: 980px; }
 .modal-panel--full { max-width: 95vw; max-height: 95vh; }
 
+/* Bottom-sheet variant: opt-in via .modal-panel--bottom-sheet on the
+   panel. Above mobile breakpoint it behaves identically to a regular
+   centered modal. On phones (≤ 640 px) the overlay collapses its
+   padding and anchors the panel to the bottom edge of the viewport,
+   stretches it full-width, rounds only the top corners, and uses a
+   slide-up animation instead of the centered fade-in. Better thumb
+   reach for the close / primary actions. A small drag-handle bar is
+   drawn via a ::before so the affordance reads as draggable even
+   without implementing actual drag-to-dismiss. */
+@media (max-width: 640px) {
+    .modal-overlay:has(> .modal-panel--bottom-sheet) {
+        padding: 0;
+        align-items: flex-end;
+    }
+    .modal-panel--bottom-sheet {
+        max-width: 100%;
+        max-height: 92vh;
+        border-radius: 1rem 1rem 0 0;
+        border-bottom-width: 0;
+        animation: modalSheetUp 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+    }
+    .modal-panel--bottom-sheet::before {
+        content: '';
+        position: absolute;
+        top: var(--sp-2);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 36px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--border-secondary);
+        z-index: 1;
+        pointer-events: none;
+    }
+    .modal-panel--bottom-sheet .modal-header {
+        padding-top: calc(var(--sp-4) + 4px);
+    }
+}
+@keyframes modalSheetUp {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .modal-header {
     display: flex;
     align-items: center;
