@@ -1994,13 +1994,22 @@ Summarization Instructions:
                 const monthlyEmbeddingChart = ref(null);
                 const settings = ref([]);
                 // Settings that are managed by dedicated UI panels
-                // above (Transcription Models) and should not appear
-                // as raw editable cards in the catch-all settings list
-                // below. Editing those values here would put them out
-                // of sync with the panel state.
+                // elsewhere and should not appear as raw editable cards
+                // in the catch-all settings list below. Editing those
+                // values here would duplicate the dedicated editor and
+                // risk the two getting out of sync.
+                //   - transcription_* : managed by the Transcription
+                //     Models panel above.
+                //   - admin_default_summary_prompt : managed by the
+                //     dedicated "Default Prompts" tab, which is the
+                //     authoritative editor (reset-to-default, prompt
+                //     hierarchy explainer, full prompt-structure
+                //     preview). Both used to write the same key, so the
+                //     raw card here was a redundant second editor.
                 const HIDDEN_SETTING_KEYS = new Set([
                     'transcription_models_visible_json',
                     'transcription_default_model',
+                    'admin_default_summary_prompt',
                 ]);
                 const displayedSettings = computed(() =>
                     (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key))
