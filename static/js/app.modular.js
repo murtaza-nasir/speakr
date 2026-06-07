@@ -3206,18 +3206,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ]);
 
                 // Open the upload modal directly when arriving from
-                // inquire mode's "+ New Recording" button (or any other
-                // entry point that wants to deep-link into the upload
-                // flow). Strip the query param after handling so a
-                // refresh doesn't re-trigger the modal.
+                // inquire mode's "+ New Recording" button (or any
+                // other entry point that wants to deep-link into the
+                // upload flow). loadRecordings auto-selects the last
+                // viewed recording via an async selectRecording() it
+                // does NOT await, so that async body completes after
+                // the current task and resets showUploadModal=false
+                // on the detail-view transition; we defer the modal
+                // open with a setTimeout(0) so it runs in a later
+                // task after the pending select resolves, plus
+                // another nextTick to be defensive. Strip the query
+                // param after handling so a refresh doesn't
+                // re-trigger.
                 try {
                     const params = new URLSearchParams(window.location.search);
                     if (params.get('upload') === '1') {
-                        uiComposable.switchToUploadView();
                         params.delete('upload');
                         const qs = params.toString();
                         const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
                         window.history.replaceState({}, '', newUrl);
+                        setTimeout(async () => {
+                            await nextTick();
+                            uiComposable.switchToUploadView();
+                        }, 0);
                     }
                 } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
 
