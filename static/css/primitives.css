@@ -550,9 +550,17 @@ html.dark {
     width: 36px;
     min-height: 36px;
     padding: 0;
+}
+/* Default colours for a bare .btn--icon (no colour variant). When
+   combined with .btn--primary / .btn--danger / .btn--ghost the
+   variant's own colour rules apply — otherwise the muted icon colour
+   below would override the variant's foreground (and the hover rule
+   would override its background), which produced a dark icon on a
+   coloured primary fill in light mode. */
+.btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost) {
     color: var(--text-muted);
 }
-.btn--icon:hover:not(:disabled) {
+.btn--icon:not(.btn--primary):not(.btn--danger):not(.btn--ghost):hover:not(:disabled) {
     background: var(--bg-tertiary);
     color: var(--text-primary);
 }
