@@ -2239,66 +2239,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Helper to scroll to a segment by index (for speaker navigation).
             //
-            // Virtual scroll keeps ~30 segments mounted at a time so
-            // reactivity stays cheap on 4500-segment transcripts (issue
-            // #157). That's non-negotiable. The hard part is that
-            // virtualScroll.scrollToIndex uses index*52 math which is
-            // wrong when real segments have variable heights — a
-            // single-line "Yes." is ~40 px, a long podcast paragraph
-            // 600+ px. So we do a two-step dance:
-            //
-            //   Step 1: virtualScroll.scrollToIndex puts the target
-            //           index into the RENDER WINDOW (rough, fixed-height
-            //           math). Without this the target's DOM node
-            //           doesn't exist yet for the next step to find it.
-            //   Step 2: after Vue re-renders the new visible range,
-            //           querySelector for the actual DOM node and call
-            //           scrollIntoView({block:'center', behavior:'smooth'})
-            //           — this uses the element's MEASURED position so
-            //           variable heights stop being a problem, and the
-            //           browser's smooth scroll feels polished (~200 ms,
-            //           fast enough not to feel sluggish on rapid clicks).
-            //
-            // The 300 ms scroll-event suppression below stops the
-            // programmatic scroll from triggering a visibleRange
-            // recompute that would shift the position underneath us
-            // mid-animation. Combined with the modal's fixed height
-            // (style="height: 90vh" — see speaker-modal.html) which
-            // stops the ResizeObserver feedback loop, this gives
-            // virtual scroll back its accuracy without sacrificing
-            // the perf win on long transcripts.
-            let _scrollSuppressedUntil = 0;
-            utils.isProgrammaticScroll = () => performance.now() < _scrollSuppressedUntil;
-
+            // This is intentionally identical to the v0.8.21-alpha
+            // implementation that the user remembers working. The ACTUAL
+            // regression was the modal-panel primitive migration (commit
+            // 8e1c080) which replaced the modal's fixed h-[85vh] with
+            // max-height: 88vh — that broke the ResizeObserver feedback
+            // (containerHeight became unstable as content rendered) and
+            // virtual scroll started oscillating. With the modal's
+            // height locked back to a fixed value (style="height: 90vh"
+            // on the modal-panel in speaker-modal.html), virtualScroll's
+            // scrollToIndex works exactly as it did before. Don't add
+            // querySelector/scrollIntoView gymnastics here — those
+            // helped during the broken-height window but now they only
+            // race against the browser's native smooth-scroll animation.
             const scrollToSegmentIndex = (index) => {
-                const inModal = showSpeakerModal.value;
-                const vs = inModal ? speakerModalVirtualScroll : mainTranscriptVirtualScroll;
-                const containerRef = inModal ? speakerModalTranscriptRef : mainTranscriptRef;
-                if (!containerRef.value) return;
-
-                // Smooth animation typically ~200-400ms; suppress scroll
-                // event recomputes for slightly longer to be safe.
-                _scrollSuppressedUntil = performance.now() + 600;
-
-                // Step 1: rough virtual-scroll positioning so target's
-                // DOM node enters the rendered range. We jump to a few
-                // rows BEFORE the target so when we then smooth-scroll
-                // into view, the animation is short and feels snappy.
-                vs.scrollToIndex(Math.max(0, index - 3), 'auto');
-
-                // Step 2: after Vue paints the new visible range, find
-                // the real DOM node and centre it with a smooth fast
-                // scroll. Two nextTicks because virtualScroll's range
-                // recompute + Vue's render + browser layout pass need a
-                // beat each before the target exists with measured size.
-                nextTick(() => {
-                    nextTick(() => {
-                        const target = containerRef.value && containerRef.value.querySelector(`[data-segment-index="${index}"]`);
-                        if (target) {
-                            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                        }
-                    });
-                });
+                if (showSpeakerModal.value) {
+                    speakerModalVirtualScroll.scrollToIndex(index, 'smooth');
+                } else {
+                    mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
+                }
             };
 
             // Add scrollToSegmentIndex to utils for composables that need it
@@ -3604,23 +3563,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 speakerModalVisibleSegments: speakerModalVirtualScroll.visibleItems,
                 speakerModalSpacerBefore: speakerModalVirtualScroll.spacerBefore,
                 speakerModalSpacerAfter: speakerModalVirtualScroll.spacerAfter,
-                // onScroll handlers are wrapped to ignore native scroll
-                // events during a programmatic scroll window (set by
-                // scrollToSegmentIndex). Without this, the smooth scroll
-                // mid-animation triggers visibleRange recomputes that
-                // shift the target position underneath us. The flag is
-                // shared across both wrappers via utils.isProgrammaticScroll.
-                onSpeakerModalScroll: (e) => {
-                    if (utils.isProgrammaticScroll && utils.isProgrammaticScroll()) return;
-                    speakerModalVirtualScroll.onScroll(e);
-                },
+                onSpeakerModalScroll: speakerModalVirtualScroll.onScroll,
                 mainTranscriptVisibleSegments: mainTranscriptVirtualScroll.visibleItems,
                 mainTranscriptSpacerBefore: mainTranscriptVirtualScroll.spacerBefore,
                 mainTranscriptSpacerAfter: mainTranscriptVirtualScroll.spacerAfter,
-                onMainTranscriptScroll: (e) => {
-                    if (utils.isProgrammaticScroll && utils.isProgrammaticScroll()) return;
-                    mainTranscriptVirtualScroll.onScroll(e);
-                },
+                onMainTranscriptScroll: mainTranscriptVirtualScroll.onScroll,
                 asrEditorVisibleSegments: asrEditorVirtualScroll.visibleItems,
                 asrEditorSpacerBefore: asrEditorVirtualScroll.spacerBefore,
                 asrEditorSpacerAfter: asrEditorVirtualScroll.spacerAfter,
