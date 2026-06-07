@@ -196,9 +196,17 @@
                             :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
                         <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
                     </button>
-                    <!-- Volume Slider (expands on hover, outer div is invisible hover bridge) -->
-                    <div class="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50 transition-all duration-200"
+                    <!-- Volume slider popover — anchored ABOVE the
+                         button (bottom-full + pb-2) because the audio
+                         player sits at the bottom of the viewport, so
+                         a top-anchored popup would have rendered off-
+                         screen below the player and behind the bottom
+                         nav. The pb-2 is a hover bridge that lets the
+                         cursor cross from the button into the popover
+                         without breaking the :hover state. -->
+                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 pb-2 z-50 transition-all duration-200"
                          :class="showVolumeSlider ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'"
+                         style="transform-origin: bottom center;"
                          @mouseenter="showVolumeSlider = true"
                          @mouseleave="showVolumeSlider = false">
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-lg shadow-xl flex flex-col items-center gap-1">
