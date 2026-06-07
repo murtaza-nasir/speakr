@@ -1,14 +1,7 @@
-<!-- Mobile Chat Panel (design system v1) -->
-<div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden relative">
-    <!-- Clear button -->
-    <button v-if="chatMessages.length > 0"
-            @click="clearChat"
-            class="btn btn--icon btn--sm absolute"
-            style="top: var(--sp-2); right: var(--sp-2); z-index: 20; color: var(--text-muted);"
-            title="Clear chat">
-        <i class="fas fa-times"></i>
-    </button>
-
+<!-- Mobile Chat Panel. Clear button moved into the mobile-header's
+     contextual toolbar so this panel no longer overlays its own
+     floating × button on top of message content. -->
+<div v-if="mobileTab === 'chat'" class="h-full flex flex-col overflow-hidden">
     <div ref="chatMessagesRef" class="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         <div v-if="chatMessages.length === 0" class="empty">
             <div class="empty__icon"><i class="fas fa-robot"></i></div>

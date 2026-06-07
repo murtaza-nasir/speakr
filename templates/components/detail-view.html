@@ -33,8 +33,11 @@
     <div v-if="isMobile" class="flex flex-col h-full overflow-hidden">
         {% include 'components/detail/mobile-header.html' %}
 
-        <!-- Mobile Tab Content (single panel) -->
-        <div class="flex-1 overflow-y-auto p-4">
+        <!-- Mobile Tab Content. No outer padding — each panel owns
+             its own edges so the content goes full-width to the
+             screen edges instead of sitting inside a 16 px gutter
+             that read as a "box within a box". -->
+        <div class="flex-1 overflow-y-auto">
             {% include 'components/detail/mobile-transcript-panel.html' %}
             {% include 'components/detail/mobile-summary-panel.html' %}
             {% include 'components/detail/mobile-notes-panel.html' %}

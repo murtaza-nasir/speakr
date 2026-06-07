@@ -60,11 +60,67 @@
             </div>
         </div>
 
-        <button @click.stop="isMetadataExpanded = !isMetadataExpanded"
-                class="btn btn--icon btn--sm flex-shrink-0"
-                :title="isMetadataExpanded ? 'Hide details' : 'Show details'">
-            <i :class="['fas fa-chevron-down text-xs transition-transform', { 'rotate-180': isMetadataExpanded }]"></i>
-        </button>
+        <!-- Contextual toolbar — tab-specific actions move INTO the
+             chevron row instead of taking a whole separate row in
+             each panel. Saves a row of vertical space and gives the
+             user the actions next to where their eye is anyway.
+             Hidden when the active tab is in an editing mode since
+             the editor's own Cancel/Save footer takes over. -->
+        <div class="flex items-center gap-0.5 flex-shrink-0">
+            <template v-if="mobileTab === 'summary' && !editingSummary">
+                <button v-if="selectedRecording.summary" @click.stop="copySummary" class="btn btn--icon btn--sm" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
+                <button v-if="selectedRecording.summary" @click.stop="downloadSummary" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+                <button @click.stop="toggleEditSummary" class="btn btn--icon btn--sm" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
+            </template>
+            <template v-else-if="mobileTab === 'notes' && !editingNotes">
+                <button v-if="selectedRecording.notes" @click.stop="copyNotes" class="btn btn--icon btn--sm" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
+                <button v-if="selectedRecording.notes" @click.stop="downloadNotes" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+                <button @click.stop="toggleEditNotes" class="btn btn--icon btn--sm" :title="t('buttons.editNotes')"><i class="fas fa-pen"></i></button>
+            </template>
+            <template v-else-if="mobileTab === 'transcript'">
+                <!-- Follow-player toggle: when ON, only the icon
+                     COLOUR changes (text-accent), no background
+                     pill. Previously it carried bg-accent which
+                     made the button visually heavier than its
+                     peers in the same toolbar — caused the
+                     "inconsistent box sizes" issue from the
+                     follow-up message. Stays identical in
+                     dimensions to copy / download / edit
+                     regardless of state. -->
+                <button v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
+                        @click.stop="toggleFollowPlayerMode"
+                        class="btn btn--icon btn--sm"
+                        :style="followPlayerMode ? 'color: var(--text-accent);' : ''"
+                        :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
+                    <i class="fas fa-arrows-alt-v"></i>
+                </button>
+                <button v-if="processedTranscription.hasDialogue"
+                        @click.stop="toggleTranscriptionViewMode"
+                        class="btn btn--icon btn--sm"
+                        :title="transcriptionViewMode === 'simple' ? (t('tooltips.bubbleView') || 'Bubble view') : (t('tooltips.simpleView') || 'Simple view')">
+                    <i :class="transcriptionViewMode === 'simple' ? 'fas fa-comments' : 'fas fa-list'"></i>
+                </button>
+                <button @click.stop="copyTranscription" class="btn btn--icon btn--sm" :title="t('tooltips.copyTranscript')"><i class="fas fa-copy"></i></button>
+                <button v-if="selectedRecording.transcription" @click.stop="downloadTranscript" class="btn btn--icon btn--sm" :title="t('tooltips.downloadTranscriptWithTemplate')"><i class="fas fa-download"></i></button>
+                <button v-if="selectedRecording.transcription" @click.stop="openTranscriptionEditor" class="btn btn--icon btn--sm" :title="t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>
+            </template>
+            <template v-else-if="mobileTab === 'events' && selectedRecording.events && selectedRecording.events.length > 0">
+                <button @click.stop="downloadICS" class="btn btn--icon btn--sm" :title="t('buttons.exportCalendar')">
+                    <i class="fas fa-calendar-plus"></i>
+                </button>
+            </template>
+            <template v-else-if="mobileTab === 'chat' && chatMessages && chatMessages.length > 0">
+                <button @click.stop="clearChat" class="btn btn--icon btn--sm" title="Clear chat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </template>
+
+            <button @click.stop="isMetadataExpanded = !isMetadataExpanded"
+                    class="btn btn--icon btn--sm"
+                    :title="isMetadataExpanded ? 'Hide details' : 'Show details'">
+                <i :class="['fas fa-chevron-down text-xs transition-transform', { 'rotate-180': isMetadataExpanded }]"></i>
+            </button>
+        </div>
     </div>
 
     <!-- Expanded panel -->

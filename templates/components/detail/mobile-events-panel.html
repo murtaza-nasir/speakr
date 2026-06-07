@@ -1,11 +1,8 @@
-<!-- Mobile Events Panel (design system v1) -->
+<!-- Mobile Events Panel. Calendar-export button moved into the
+     mobile-header's contextual toolbar so this panel now drops
+     straight into its event list. -->
 <div v-if="mobileTab === 'events' && selectedRecording.events && selectedRecording.events.length > 0" class="h-full flex flex-col">
-    <div class="flex items-center justify-end gap-1 flex-shrink-0 px-3 py-2">
-        <button @click="downloadICS" class="btn btn--icon" :title="t('buttons.exportCalendar')">
-            <i class="fas fa-calendar-plus"></i>
-        </button>
-    </div>
-    <div class="flex-grow overflow-y-auto px-3 pb-3 space-y-3">
+    <div class="flex-grow overflow-y-auto px-3 py-3 space-y-3">
         <div v-for="event in selectedRecording.events" :key="event.id"
              class="bg-[var(--bg-tertiary)] rounded-md p-3 border border-[var(--border-primary)]">
             <div class="flex justify-between items-start mb-2">

@@ -4,22 +4,16 @@
      so the edit-pen active-state inconsistency disappears, and the
      editor takes the full panel height with thin outer padding plus a
      sticky Cancel/Save footer. -->
+<!-- Per-tab contextual toolbar lives in mobile-header.html. -->
 <div v-if="mobileTab === 'notes'" class="h-full flex flex-col">
-    <!-- Reading-mode toolbar — hidden during editing. -->
-    <div v-if="!editingNotes"
-         class="flex items-center justify-end gap-1 flex-shrink-0 px-3 py-2">
-        <button v-if="selectedRecording.notes" @click="copyNotes" class="btn btn--icon btn--sm" :title="t('buttons.copyNotes')"><i class="fas fa-copy"></i></button>
-        <button v-if="selectedRecording.notes" @click="downloadNotes" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
-        <button @click="toggleEditNotes" class="btn btn--icon btn--sm" :title="t('buttons.editNotes')"><i class="fas fa-pen"></i></button>
-    </div>
 
-    <!-- Editing-mode shell. -->
-    <div v-if="editingNotes" class="flex-grow flex flex-col min-h-0 px-2 pt-2">
+    <!-- Editing-mode shell — editor goes edge-to-edge. -->
+    <div v-if="editingNotes" class="flex-grow flex flex-col min-h-0 pt-1">
         <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
             <textarea ref="notesMarkdownEditor"
                       v-model="selectedRecording.notes"></textarea>
         </div>
-        <div class="flex justify-end gap-2 flex-shrink-0 px-1 py-2 border-t"
+        <div class="flex justify-end gap-2 flex-shrink-0 px-3 py-2 border-t"
              style="border-top-color: var(--border-secondary);">
             <button @click="cancelEditNotes" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
             <button @click="saveEditNotes" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>
@@ -27,7 +21,7 @@
     </div>
 
     <!-- Reading-mode body. -->
-    <div v-else class="flex-grow overflow-y-auto px-3 pb-3" @click="clickToEditNotes">
+    <div v-else class="flex-grow overflow-y-auto px-3 py-3" @click="clickToEditNotes">
         <div v-if="!selectedRecording.notes" class="empty">
             <div class="empty__icon"><i class="fas fa-sticky-note"></i></div>
             <div class="empty__title" v-text="t('help.clickToAddNotes')"></div>

@@ -9,33 +9,29 @@
      (2) EDITING: editor fills the panel edge-to-edge with minimal
          outer padding so the typing area is as large as possible;
          Cancel and Save live in a sticky footer below the editor. -->
+<!-- Per-tab contextual toolbar moved into mobile-header.html so it
+     shares the chevron row instead of taking a separate row here. -->
 <div v-if="mobileTab === 'summary'" class="h-full flex flex-col">
-    <!-- Reading-mode toolbar — hidden during editing. -->
-    <div v-if="!editingSummary"
-         class="flex items-center justify-end gap-1 flex-shrink-0 px-3 py-2">
-        <button v-if="selectedRecording.summary" @click="copySummary" class="btn btn--icon btn--sm" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
-        <button v-if="selectedRecording.summary" @click="downloadSummary" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
-        <button @click="toggleEditSummary" class="btn btn--icon btn--sm" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
-    </div>
 
-    <!-- Editing-mode shell — editor takes the full available height
-         with a thin 8 px outer padding (was 12 px on every side); the
-         sticky footer holds Cancel + Save so they don't scroll out of
-         reach for long summaries. -->
-    <div v-if="editingSummary" class="flex-grow flex flex-col min-h-0 px-2 pt-2">
+    <!-- Editing-mode shell — editor goes edge-to-edge (no horizontal
+         padding) since the surrounding mobile content area no longer
+         wraps it in p-4. Tiny pt-1 keeps the editor toolbar from
+         touching the header's bottom border. -->
+    <div v-if="editingSummary" class="flex-grow flex flex-col min-h-0 pt-1">
         <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
             <textarea ref="summaryMarkdownEditor"
                       v-model="selectedRecording.summary"></textarea>
         </div>
-        <div class="flex justify-end gap-2 flex-shrink-0 px-1 py-2 border-t"
+        <div class="flex justify-end gap-2 flex-shrink-0 px-3 py-2 border-t"
              style="border-top-color: var(--border-secondary);">
             <button @click="cancelEditSummary" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
             <button @click="saveEditSummary" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>
         </div>
     </div>
 
-    <!-- Reading-mode body. -->
-    <div v-else class="flex-grow overflow-y-auto px-3 pb-3">
+    <!-- Reading-mode body — px-3 only for prose readability against
+         the screen edge; py-3 keeps the prose off the toolbar above. -->
+    <div v-else class="flex-grow overflow-y-auto px-3 py-3">
         <div>
             <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
                 <div class="spinner spinner--lg"></div>
