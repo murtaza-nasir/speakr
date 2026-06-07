@@ -538,6 +538,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showResetModal = ref(false);
             const showSpeakerModal = ref(false);
             const speakerModalTab = ref('speakers');  // 'speakers' or 'transcript' for mobile view
+            // Whether the video player in the speaker modal is collapsed.
+            // For video recordings the full <video> element by default eats
+            // half the available vertical height in the right pane, leaving
+            // very little room for the transcript-with-context that the
+            // navigation buttons rely on. When collapsed the <video> hides
+            // and only the audio-style transport controls remain, so the
+            // transcript gets back ~250 px of room. Preference is persisted
+            // to localStorage so the user only has to set it once.
+            const speakerModalVideoCollapsed = ref(
+                localStorage.getItem('speakerModalVideoCollapsed') === 'true'
+            );
+            const toggleSpeakerModalVideo = () => {
+                speakerModalVideoCollapsed.value = !speakerModalVideoCollapsed.value;
+                localStorage.setItem('speakerModalVideoCollapsed', String(speakerModalVideoCollapsed.value));
+            };
             const showShareModal = ref(false);
             const showSharesListModal = ref(false);
             const showTextEditorModal = ref(false);
@@ -1497,7 +1512,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
-                showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, showShareModal, showSharesListModal,
+                showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
                 showTextEditorModal, showAsrEditorModal, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
                 editingSegments, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
@@ -2222,12 +2237,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                 overscan: 10
             });
 
-            // Helper to scroll to a segment by index (for speaker navigation)
+            // Helper to scroll to a segment by index (for speaker navigation).
+            //
+            // Two intentional choices here:
+            //
+            //   1. 'auto' (instant) behaviour, not 'smooth'. Smooth scrolling
+            //      a virtual-scroll container looks jerky in practice: the
+            //      browser animates the scrollTop in 16ms steps, each step
+            //      triggers a visibleRange recompute, and the rows in the
+            //      destination region don't exist yet so the user sees an
+            //      empty band sliding past until the range catches up. With
+            //      'auto' the jump is instant and the new range paints in a
+            //      single frame.
+            //
+            //   2. Offset upward by ~3 rows so the target segment lands a
+            //      comfortable distance below the viewport top instead of
+            //      flush at the very top. Without the offset, the navigated
+            //      row touches the top edge of the container and the eye
+            //      reads it as "still cut off" — the user's confusion about
+            //      Adam "not being visible" after Next is this offset issue,
+            //      not the row genuinely missing.
             const scrollToSegmentIndex = (index) => {
                 if (showSpeakerModal.value) {
-                    speakerModalVirtualScroll.scrollToIndex(index, 'smooth');
+                    speakerModalVirtualScroll.scrollToIndex(Math.max(0, index - 3), 'auto');
                 } else {
-                    mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
+                    mainTranscriptVirtualScroll.scrollToIndex(Math.max(0, index - 3), 'auto');
                 }
             };
 
