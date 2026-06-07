@@ -22,6 +22,13 @@
                     <span>${ t('notes.title') }</span>
                     <span v-if="notesWordCount" class="tab__count">${ notesWordCount }</span>
                 </button>
+                <button v-if="hasRecordingStats"
+                        @click="selectedTab = 'stats'"
+                        class="tab"
+                        :class="{'is-active': selectedTab === 'stats'}">
+                    <span>Stats</span>
+                    <span class="tab__count">${ recordingStats.total.speakers }</span>
+                </button>
                 <button v-if="selectedRecording.events && selectedRecording.events.length > 0"
                         @click="selectedTab = 'events'"
                         class="tab"
@@ -67,6 +74,7 @@
         <div class="flex-1 overflow-hidden">
             {% include 'components/detail/desktop-summary-tab.html' %}
             {% include 'components/detail/desktop-notes-tab.html' %}
+            {% include 'components/detail/desktop-stats-tab.html' %}
             {% include 'components/detail/desktop-events-tab.html' %}
         </div>
     </div>

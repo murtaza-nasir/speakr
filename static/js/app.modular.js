@@ -1118,6 +1118,119 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return n ? _formatCount(n) : '';
             });
 
+            // ---------------------------------------------------------------
+            // Recording stats — per-speaker speaking time, % of audio, turn
+            // counts, word counts and WPM, plus a silence row aggregating the
+            // gaps between consecutive segments. Surfaces a Stats tab in the
+            // right rail only when diarized transcript segments with
+            // start/end times are available; otherwise empty/null.
+            //
+            // Pure derivation from processedTranscription.simpleSegments +
+            // recording.duration. No backend change.
+            // ---------------------------------------------------------------
+            const _fmtMmSs = (totalSec) => {
+                if (totalSec == null || !isFinite(totalSec)) return '—';
+                const s = Math.max(0, Math.round(totalSec));
+                const m = Math.floor(s / 60);
+                const r = s % 60;
+                return `${m}:${String(r).padStart(2, '0')}`;
+            };
+            const recordingStats = computed(() => {
+                const rec = selectedRecording.value;
+                const pt = processedTranscription.value;
+                if (!rec || !pt) return null;
+                const segs = pt.simpleSegments || [];
+                if (segs.length === 0) return null;
+                // Require time info on at least the first segment.
+                const hasTimes = segs.every(s =>
+                    typeof s.startTime === 'number' &&
+                    typeof s.endTime === 'number' &&
+                    isFinite(s.startTime) && isFinite(s.endTime)
+                );
+                if (!hasTimes) return null;
+
+                // Per-speaker aggregation.
+                const bySpeaker = new Map();  // speakerId → { name, color, seconds, turns, words, firstStart }
+                let totalSpeakingSeconds = 0;
+                segs.forEach((seg, idx) => {
+                    const dur = Math.max(0, (seg.endTime || 0) - (seg.startTime || 0));
+                    const wordCount = (seg.sentence || '').trim().split(/\s+/).filter(Boolean).length;
+                    const id = seg.speakerId || 'unknown';
+                    let agg = bySpeaker.get(id);
+                    if (!agg) {
+                        agg = {
+                            speakerId: id,
+                            name: seg.speaker || id,
+                            color: seg.color || 'speaker-color-1',
+                            seconds: 0,
+                            words: 0,
+                            turns: 0,
+                            firstStart: seg.startTime,
+                        };
+                        bySpeaker.set(id, agg);
+                    }
+                    agg.seconds += dur;
+                    agg.words += wordCount;
+                    // A new "turn" = previous segment had a different speaker.
+                    const prev = segs[idx - 1];
+                    if (!prev || prev.speakerId !== seg.speakerId) {
+                        agg.turns += 1;
+                    }
+                    totalSpeakingSeconds += dur;
+                });
+
+                // Silence: gaps between consecutive segments + leading/trailing gap.
+                const totalAudioSeconds = Number(rec.duration) || segs[segs.length - 1].endTime || 0;
+                let silenceSeconds = 0;
+                for (let i = 0; i < segs.length - 1; i++) {
+                    const gap = (segs[i + 1].startTime || 0) - (segs[i].endTime || 0);
+                    if (gap > 0) silenceSeconds += gap;
+                }
+                // Leading silence before first segment.
+                if (segs[0].startTime > 0) silenceSeconds += segs[0].startTime;
+                // Trailing silence after last segment (only if duration known).
+                if (totalAudioSeconds > 0) {
+                    const trail = totalAudioSeconds - segs[segs.length - 1].endTime;
+                    if (trail > 0) silenceSeconds += trail;
+                }
+
+                // Build sorted speaker rows.
+                const denominator = totalAudioSeconds > 0 ? totalAudioSeconds : (totalSpeakingSeconds + silenceSeconds);
+                const speakerRows = Array.from(bySpeaker.values())
+                    .sort((a, b) => b.seconds - a.seconds)
+                    .map(agg => ({
+                        speakerId: agg.speakerId,
+                        name: agg.name,
+                        color: agg.color,
+                        seconds: agg.seconds,
+                        durationLabel: _fmtMmSs(agg.seconds),
+                        pct: denominator > 0 ? (agg.seconds / denominator) * 100 : 0,
+                        turns: agg.turns,
+                        words: agg.words,
+                        wpm: agg.seconds > 0 ? Math.round((agg.words / agg.seconds) * 60) : 0,
+                    }));
+
+                return {
+                    speakerRows,
+                    silence: {
+                        seconds: silenceSeconds,
+                        durationLabel: _fmtMmSs(silenceSeconds),
+                        pct: denominator > 0 ? (silenceSeconds / denominator) * 100 : 0,
+                    },
+                    total: {
+                        seconds: denominator,
+                        durationLabel: _fmtMmSs(denominator),
+                        speakingSeconds: totalSpeakingSeconds,
+                        speakers: speakerRows.length,
+                        turns: segs.length,
+                        words: speakerRows.reduce((s, r) => s + r.words, 0),
+                    },
+                };
+            });
+            const hasRecordingStats = computed(() =>
+                !!recordingStats.value && recordingStats.value.speakerRows.length > 0
+            );
+
             // Aggregate `{{name}}` variables across the currently selected
             // tags / folder / user / admin prompt chain. The pure helpers
             // live in modules/utils/prompt-variables.js so they can be unit
@@ -1245,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, mobileMoreOpen, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
-                summaryWordCount, notesWordCount,
+                summaryWordCount, notesWordCount, recordingStats, hasRecordingStats,
 
                 // Upload
                 uploadQueue, allJobs, currentlyProcessingFile, processingProgress, processingMessage,

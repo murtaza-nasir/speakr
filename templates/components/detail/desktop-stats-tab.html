@@ -1,0 +1,88 @@
+<!-- Recording stats tab — per-speaker speaking time, %, turns, words and
+     WPM, plus a silence row. Only shown when the transcript has speaker
+     segments with start/end times (see hasRecordingStats computed). -->
+<div v-show="selectedTab === 'stats'" class="h-full overflow-y-auto px-5 py-4">
+    <div v-if="hasRecordingStats" class="space-y-5">
+        <!-- Headline metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Total length</div>
+                <div class="t-heading mt-1">${ recordingStats.total.durationLabel }</div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Speakers</div>
+                <div class="t-heading mt-1">${ recordingStats.total.speakers }</div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Turns</div>
+                <div class="t-heading mt-1">${ recordingStats.total.turns }</div>
+            </div>
+            <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
+                <div class="t-label">Words</div>
+                <div class="t-heading mt-1">${ recordingStats.total.words.toLocaleString() }</div>
+            </div>
+        </div>
+
+        <!-- Per-speaker breakdown table -->
+        <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-hidden">
+            <div class="px-4 py-3 border-b border-[var(--border-primary)] flex items-center justify-between">
+                <h3 class="t-subhead">Per speaker</h3>
+                <span class="t-meta">sorted by speaking time</span>
+            </div>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left t-label">
+                        <th class="py-2 px-4">Speaker</th>
+                        <th class="py-2 px-3 text-right">Time</th>
+                        <th class="py-2 px-3 text-right">% of audio</th>
+                        <th class="py-2 px-3 text-right">Turns</th>
+                        <th class="py-2 px-3 text-right">Words</th>
+                        <th class="py-2 px-3 text-right">WPM</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="row in recordingStats.speakerRows" :key="row.speakerId"
+                        class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <td class="py-2 px-4">
+                            <div class="flex items-center gap-2">
+                                <span :class="['speaker-tablet', row.color]" style="font-size: 11px; padding: 2px 8px;">
+                                    ${ row.name }
+                                </span>
+                            </div>
+                            <!-- Slim proportion bar -->
+                            <div class="mt-1.5 h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                                <div class="h-full" :style="{ width: row.pct.toFixed(1) + '%', background: 'var(--text-accent)' }"></div>
+                            </div>
+                        </td>
+                        <td class="py-2 px-3 font-mono text-right">${ row.durationLabel }</td>
+                        <td class="py-2 px-3 text-right">${ row.pct.toFixed(1) }%</td>
+                        <td class="py-2 px-3 text-right">${ row.turns }</td>
+                        <td class="py-2 px-3 text-right">${ row.words.toLocaleString() }</td>
+                        <td class="py-2 px-3 text-right">${ row.wpm || '—' }</td>
+                    </tr>
+                    <!-- Silence row -->
+                    <tr v-if="recordingStats.silence.seconds > 0"
+                        class="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/50">
+                        <td class="py-2 px-4">
+                            <span class="t-meta italic">Silence</span>
+                            <div class="mt-1.5 h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
+                                <div class="h-full" :style="{ width: recordingStats.silence.pct.toFixed(1) + '%', background: 'var(--text-muted)' }"></div>
+                            </div>
+                        </td>
+                        <td class="py-2 px-3 font-mono text-right">${ recordingStats.silence.durationLabel }</td>
+                        <td class="py-2 px-3 text-right">${ recordingStats.silence.pct.toFixed(1) }%</td>
+                        <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
+                        <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
+                        <td class="py-2 px-3 text-right text-[var(--text-muted)]">—</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div v-else class="empty">
+        <div class="empty__icon"><i class="fas fa-chart-bar"></i></div>
+        <div class="empty__title">No stats yet</div>
+        <div class="empty__body">Stats appear once this recording has been transcribed with speaker diarization and segment timestamps.</div>
+    </div>
+</div>
