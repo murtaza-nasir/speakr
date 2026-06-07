@@ -1664,6 +1664,19 @@ body {
 .speaker-segment {
     margin-bottom: 1rem;
     transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    /* content-visibility: auto lets the browser skip paint + layout for
+       off-screen segments while keeping them in the DOM. Critical for
+       the speaker modal: ALL ~4500 segments stay mounted (so
+       scrollIntoView, querySelector, and the scrollbar use real
+       measured positions and don't jump as the viewport changes), but
+       only the on-screen ones pay the rendering cost. contain-intrinsic-
+       size: auto 60px gives the browser a fallback placeholder height
+       for off-screen elements when computing the document's scroll
+       height — without it the scrollbar would visibly resize as
+       elements get rendered or skipped. 60 px is a reasonable average
+       across short-line and long-paragraph segments. */
+    content-visibility: auto;
+    contain-intrinsic-size: auto 60px;
 }
 
 /* Speaker run: wraps consecutive same-speaker segments so the sticky

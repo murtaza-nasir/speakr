@@ -1,175 +1,199 @@
-<!-- Speaker Identification Modal.
-     Outer wrapper deliberately kept as raw Tailwind (fixed inset-0 +
-     custom h-[85vh] panel), NOT migrated to modal-overlay/.modal-panel
-     primitives. The primitive variant kept introducing layout bugs in
-     the virtual-scroll'd transcript pane (.modal-panel's max-height
-     vs fixed-height, the stacked .modal-content scrollable container,
-     the panel shrinking to content height — all symptoms of the same
-     underlying mismatch between the column-flex primitive and this
-     modal's specific need for a STABLE-height transcript pane so
-     virtualScroll's ResizeObserver doesn't oscillate). Reverted to
-     the exact v0.8.21-alpha wrapper markup that's known to work. The
-     inner buttons / fields / footer still use the design-system
-     primitives (btn, btn--primary, etc.) so visual consistency with
-     the rest of the app is preserved. -->
-<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
-    <div @click="closeSpeakerSuggestionsOnClick" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-[95vh] sm:h-[85vh]">
-        <!-- Header — kept as v0.8.21 raw Tailwind, NOT the modal-header
-             primitive, because the primitive has different padding and
-             a different flex behaviour that affected the heights the
-             virtual-scroll relies on. -->
-        <div class="p-3 sm:p-5 border-b border-[var(--border-primary)] flex-shrink-0">
-            <div class="flex items-center justify-between">
-                <h3 class="text-base sm:text-xl font-bold text-[var(--text-primary)]" v-text="t('modal.identifySpeakers')"></h3>
-                <button @click="closeSpeakerModal" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <!-- Warning for too many speakers -->
-            <div v-if="modalSpeakers.length > 16" class="mt-3 p-3 bg-[var(--bg-warn-light)] border border-amber-300 dark:border-amber-800 rounded-lg">
-                <div class="flex items-start">
-                    <i class="fas fa-exclamation-triangle text-[var(--text-warn-strong)] mt-0.5 mr-2"></i>
-                    <div class="text-sm">
-                        <p class="font-medium text-[var(--text-warn-strong)]" v-text="t('help.moreSpeakersThanColors')"></p>
-                        <p class="text-[var(--text-warn-strong)] mt-1" v-text="t('help.youHaveXSpeakers', { count: modalSpeakers.length })">
-                        </p>
-                    </div>
-                </div>
+<!-- Identify Speakers Modal — design-system rebuild.
+
+     PERFORMANCE NOTES (issue #157):
+     The previous implementation used a fixed-itemHeight virtual scroller
+     (only ~30 of the ~4500 segments mounted at a time) to keep Vue's
+     reactivity cheap during edits. That solved the slowdown but broke
+     position math: real segment heights vary 40 px → 600+ px so
+     scrollTop = index * 52 landed at wrong positions, the scrollbar
+     visibly jumped as scrollHeight recomputed mid-scroll, and smooth-
+     scroll animations fought their own moving target.
+
+     This rewrite drops the virtual scroller and uses three browser-
+     native primitives that handle variable heights correctly:
+
+       1. content-visibility: auto + contain-intrinsic-size: auto 60px
+          on .speaker-segment (defined in styles.css). All ~4500
+          segments stay in the DOM with a 60-px placeholder size for
+          off-screen elements, so the document's total scroll height
+          is stable AND scrollIntoView / querySelector / mouse-wheel
+          scrolling work against real measured positions. Browser
+          skips paint + layout for off-screen segments — same perf
+          benefit virtual scroll was after.
+
+       2. v-memo on each row — Vue 3's per-row render skip. Only re-
+          renders a row when its specific dependencies change
+          (segment data, highlightedSpeaker for this row, edit-mode
+          for this row). Typing a name into speakerMap[X] no longer
+          fans out to all 4500 rows — only the rows whose displayed
+          speaker label is X re-render.
+
+       3. scrollToSegmentIndex (in app.modular.js) = querySelector +
+          scrollIntoView({ block: 'center', behavior: 'smooth' }).
+          Uses measured positions; no math, no race conditions, no
+          spacer drift.
+
+     UX NOTES:
+       - modal-overlay / modal-panel primitives so the modal matches
+         the rest of the app's design language. Height locked to 90vh
+         via inline style so the inner flex column has a stable size.
+       - field primitive for the name inputs.
+       - btn primitives for footer actions.
+       - pill-status for the "3 / 5" navigation position indicator.
+       - empty primitive when there's no transcript to navigate. -->
+
+<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="modal-overlay">
+    <div @click="closeSpeakerSuggestionsOnClick"
+         class="modal-panel modal-panel--xl"
+         style="height: 90vh; max-height: 90vh;">
+
+        <div class="modal-header">
+            <h3 class="modal-title" v-text="t('modal.identifySpeakers')"></h3>
+            <button @click="closeSpeakerModal" class="modal-close" :title="t('buttons.close')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Warning for too many speakers -->
+        <div v-if="modalSpeakers.length > 16"
+             class="banner banner--warn"
+             style="margin: var(--sp-3) var(--sp-5) 0;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <div class="t-body-strong" v-text="t('help.moreSpeakersThanColors')"></div>
+                <div class="t-meta mt-1" v-text="t('help.youHaveXSpeakers', { count: modalSpeakers.length })"></div>
             </div>
         </div>
 
-        <!-- Mobile Tab Switcher (hidden on lg screens) -->
+        <!-- Mobile Tab Switcher (hidden on lg) -->
         <div class="lg:hidden flex border-b border-[var(--border-primary)] flex-shrink-0">
-            <button
-                @click="speakerModalTab = 'speakers'"
-                class="flex-1 py-2 text-xs font-medium transition-colors relative"
-                :class="speakerModalTab === 'speakers' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+            <button @click="speakerModalTab = 'speakers'"
+                    class="flex-1 py-2 text-xs font-medium transition-colors relative"
+                    :class="speakerModalTab === 'speakers' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
                 <i class="fas fa-users mr-1"></i>Speakers
                 <span v-if="speakerModalTab === 'speakers'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--bg-accent)]"></span>
             </button>
-            <button
-                @click="speakerModalTab = 'transcript'"
-                class="flex-1 py-2 text-xs font-medium transition-colors relative"
-                :class="speakerModalTab === 'transcript' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
+            <button @click="speakerModalTab = 'transcript'"
+                    class="flex-1 py-2 text-xs font-medium transition-colors relative"
+                    :class="speakerModalTab === 'transcript' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
                 <i class="fas fa-file-lines mr-1"></i>Transcript
                 <span v-if="speakerModalTab === 'transcript'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--bg-accent)]"></span>
             </button>
         </div>
 
-        <!-- Main Content - Tab-based on mobile, side-by-side on desktop.
-             modal-content class is REQUIRED here — v0.8.21-alpha had it
-             and I incorrectly removed it earlier when chasing a
-             different bug. The class supplies max-height + overflow-y:
-             auto from styles.css which give the content area a stable
-             scrollable boundary for the virtual-scroll'd transcript
-             pane to size against. Don't remove it again. -->
-        <div class="flex-grow flex flex-col lg:flex-row overflow-hidden modal-content">
-            <!-- Speaker List Panel - shown on mobile when speakers tab active, always on desktop -->
-            <div class="lg:w-1/3 p-3 sm:p-6 space-y-2 sm:space-y-4 overflow-y-auto custom-scrollbar lg:border-r border-[var(--border-primary)]"
+        <!-- Main two-column content. flex: 1 1 auto + min-height: 0 so
+             this region absorbs ALL the remaining vertical space inside
+             the fixed-height modal-panel. Inner panes own their own
+             overflow. -->
+        <div class="flex flex-col lg:flex-row overflow-hidden" style="flex: 1 1 auto; min-height: 0;">
+
+            <!-- LEFT — Speaker list -->
+            <div class="lg:w-1/3 overflow-y-auto custom-scrollbar lg:border-r border-[var(--border-primary)]"
+                 style="padding: var(--sp-4);"
                  :class="{ 'hidden lg:block': speakerModalTab !== 'speakers', 'flex-1': speakerModalTab === 'speakers' }">
-                <div v-for="(speaker, index) in modalSpeakers" :key="`${selectedRecording.id}-speaker-${index}-${speaker}`" class="space-y-1.5 sm:space-y-3">
-                    <!-- Speaker label with color indicator and "This is Me" checkbox -->
+
+                <div v-for="(speaker, index) in modalSpeakers"
+                     :key="`${selectedRecording.id}-speaker-${index}-${speaker}`"
+                     class="space-y-2"
+                     style="margin-bottom: var(--sp-4);">
+
+                    <!-- Speaker color swatch + label + Me toggle -->
                     <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center space-x-1.5 min-w-0">
-                            <div :class="speakerMap[speaker].color" class="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
-                            <span class="font-mono text-xs sm:text-sm text-[var(--text-muted)] truncate">${ speakerDisplayMap[speaker] || speaker }</span>
-                            <span v-if="index >= 16" class="text-[10px] text-[var(--text-warn-strong)] bg-[var(--bg-warn-light)] px-1.5 py-0.5 rounded-full flex-shrink-0" :title="`Color repeats from speaker ${((index % 16) + 1)}`">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div :class="speakerMap[speaker].color"
+                                 class="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-white/30 shadow-sm flex-shrink-0"></div>
+                            <span class="t-meta font-mono truncate">${ speakerDisplayMap[speaker] || speaker }</span>
+                            <span v-if="index >= 16"
+                                  class="pill-status pill-status--warn"
+                                  style="font-size: 9px; padding: 1px 6px;"
+                                  :title="`Color repeats from speaker ${((index % 16) + 1)}`">
                                 Repeat
                             </span>
                         </div>
-                        <label class="flex items-center text-xs sm:text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors flex-shrink-0">
+                        <label class="flex items-center text-xs cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex-shrink-0">
                             <input type="checkbox"
                                    v-model="speakerMap[speaker].isMe"
                                    @change="handleIsMeChange(speaker)"
                                    @focus="highlightSpeakerInTranscript(speaker)"
-                                   class="speaker-checkbox w-4 h-4 sm:w-4 sm:h-4">
+                                   class="speaker-checkbox w-4 h-4">
                             <span class="ml-1.5 select-none" v-text="t('help.me')"></span>
                         </label>
                     </div>
 
-                    <!-- Autocomplete input field -->
+                    <!-- Name input + autocomplete -->
                     <div class="relative">
-                        <input
-                            type="text"
-                            v-model="speakerMap[speaker].name"
-                            @input="searchSpeakers($event.target.value, speaker)"
-                            @focus="focusSpeaker(speaker)"
-                            @blur="blurSpeaker()"
-                            :disabled="speakerMap[speaker].isMe"
-                            class="w-full px-2 py-2 sm:py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)] disabled:bg-[var(--bg-tertiary)] disabled:text-[var(--text-muted)] disabled:cursor-not-allowed"
-                            :class="{ 'pr-28': shouldShowVoiceSuggestionPill(speaker) }"
-                            :placeholder="speakerMap[speaker].isMe ? currentUserName : t('help.enterNameFor') + ' ' + (speakerDisplayMap[speaker] || speaker)"
-                            autocomplete="off">
+                        <input type="text"
+                               v-model="speakerMap[speaker].name"
+                               @input="searchSpeakers($event.target.value, speaker)"
+                               @focus="focusSpeaker(speaker)"
+                               @blur="blurSpeaker()"
+                               :disabled="speakerMap[speaker].isMe"
+                               class="field field--sm"
+                               :class="{ 'pr-28': shouldShowVoiceSuggestionPill(speaker) }"
+                               :placeholder="speakerMap[speaker].isMe ? currentUserName : t('help.enterNameFor') + ' ' + (speakerDisplayMap[speaker] || speaker)"
+                               autocomplete="off">
 
                         <!-- Voice match suggestion pill -->
                         <button v-if="shouldShowVoiceSuggestionPill(speaker)"
                                 @click.stop="applyVoiceSuggestion(speaker, voiceSuggestions[speaker][0])"
-                                class="absolute right-1.5 top-1/2 transform -translate-y-1/2 px-1.5 py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[10px] rounded-full flex items-center gap-0.5 hover:from-blue-600 hover:to-purple-600 transition-all shadow-sm hover:shadow group active:scale-95">
+                                class="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full flex items-center gap-1 text-white text-[10px] transition-all active:scale-95"
+                                style="background: linear-gradient(to right, var(--bg-info), var(--bg-accent));">
                             <i class="fas fa-waveform-lines text-[9px]"></i>
                             <span class="font-medium truncate max-w-[50px] sm:max-w-[80px]">${ voiceSuggestions[speaker][0].name }</span>
                             <span class="text-[9px] opacity-90">${ voiceSuggestions[speaker][0].similarity }%</span>
                         </button>
 
                         <!-- Loading indicator -->
-                        <div v-if="loadingSuggestions[speaker] && !speakerMap[speaker].isMe" class="absolute right-2 top-1/2 transform -translate-y-1/2">
+                        <div v-if="loadingSuggestions[speaker] && !speakerMap[speaker].isMe"
+                             class="absolute right-2 top-1/2 -translate-y-1/2">
                             <i class="fas fa-spinner fa-spin text-[var(--text-muted)] text-xs"></i>
                         </div>
 
                         <!-- Suggestions dropdown -->
                         <div v-if="activeSpeakerInput === speaker && speakerSuggestions[speaker] && speakerSuggestions[speaker].length > 0 && !speakerMap[speaker].isMe"
                              @click.stop
-                             class="absolute z-10 w-full mt-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-40 overflow-y-auto">
-                            <div class="py-0.5">
-                                <div v-for="suggestion in speakerSuggestions[speaker]"
-                                     :key="suggestion.id"
-                                     @click="selectSpeakerSuggestion(speaker, suggestion)"
-                                     class="px-2 py-1.5 cursor-pointer hover:bg-[var(--bg-tertiary)] active:bg-[var(--bg-accent)] flex items-center justify-between">
-                                    <div class="flex-grow min-w-0">
-                                        <div class="text-xs font-medium text-[var(--text-primary)] truncate">${ suggestion.name }</div>
-                                        <div class="text-[10px] text-[var(--text-muted)]">
-                                            Used ${ suggestion.use_count }x
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-user text-[var(--text-muted)] ml-1.5 flex-shrink-0 text-[10px]"></i>
+                             class="absolute z-10 w-full mt-1 surface-raised max-h-40 overflow-y-auto"
+                             style="padding: var(--sp-1);">
+                            <div v-for="suggestion in speakerSuggestions[speaker]"
+                                 :key="suggestion.id"
+                                 @click="selectSpeakerSuggestion(speaker, suggestion)"
+                                 class="px-2 py-1.5 cursor-pointer hover:bg-[var(--bg-tertiary)] rounded flex items-center justify-between">
+                                <div class="flex-grow min-w-0">
+                                    <div class="text-xs font-medium text-[var(--text-primary)] truncate">${ suggestion.name }</div>
+                                    <div class="text-[10px] text-[var(--text-muted)]">Used ${ suggestion.use_count }x</div>
                                 </div>
+                                <i class="fas fa-user text-[var(--text-muted)] ml-1.5 flex-shrink-0 text-[10px]"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Add Speaker Button -->
-                <div class="pt-2 sm:pt-4 border-t border-[var(--border-primary)]">
-                    <button @click="openAddSpeakerModal" class="w-full px-3 py-2 sm:py-2 bg-[var(--bg-accent)] text-[var(--text-accent)] rounded-md hover:bg-[var(--bg-accent-hover)] active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium">
-                        <i class="fas fa-plus mr-1.5"></i>
+                <!-- Add Speaker -->
+                <div style="padding-top: var(--sp-3); border-top: var(--border-hairline) solid var(--border-primary);">
+                    <button @click="openAddSpeakerModal" class="btn btn--ghost btn--sm w-full">
+                        <i class="fas fa-plus"></i>
                         <span v-text="t('buttons.addSpeaker')"></span>
                     </button>
                 </div>
             </div>
 
-            <!-- Audio Player & Transcript Panel - shown on mobile when transcript tab active, always on desktop -->
-            <div class="lg:w-2/3 p-3 sm:p-6 flex flex-col overflow-hidden"
+            <!-- RIGHT — Audio player + transcript + navigation -->
+            <div class="lg:w-2/3 flex flex-col overflow-hidden"
+                 style="padding: var(--sp-4); gap: var(--sp-3);"
                  :class="{ 'hidden lg:flex': speakerModalTab !== 'transcript', 'flex-1': speakerModalTab === 'transcript' }">
-                <!-- Audio Player Section -->
-                <div class="mb-2 sm:mb-4 flex-shrink-0">
-                    <!-- Show message if audio has been deleted -->
+
+                <!-- Audio player -->
+                <div class="flex-shrink-0">
                     <div v-if="selectedRecording.audio_deleted_at"
                          class="text-[var(--text-muted)] text-xs flex items-center gap-2">
                         <i class="fas fa-info-circle"></i>
                         <span v-text="t('help.audioDeletedMessage')"></span>
                     </div>
-                    <!-- Show message for incognito recordings -->
                     <div v-else-if="selectedRecording.incognito"
                          class="text-[var(--text-muted)] text-xs flex items-center gap-2">
                         <i class="fas fa-user-secret"></i>
                         <span>Audio not stored in incognito mode</span>
                     </div>
-                    <!-- Custom Audio/Video Player (Independent from main player).
-                         The class chooses between three states: hidden (audio
-                         file — no video to show), hidden (video file but the
-                         user collapsed the panel via the toggle button below),
-                         or visible (video file, expanded). The element itself
-                         is always mounted so audio playback works regardless;
-                         only its visual rendering toggles. -->
                     <div v-else>
                         <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
                                ref="speakerModalAudioRef"
@@ -184,227 +208,193 @@
                                @ended="modalAudioIsPlaying = false">
                         </component>
                         <div class="flex items-center gap-2">
-                        <!-- Play/Pause -->
-                        <button @click="$refs.speakerModalAudioRef?.paused ? $refs.speakerModalAudioRef.play() : $refs.speakerModalAudioRef.pause()"
-                                class="w-8 h-8 flex items-center justify-center rounded-full bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white transition-all flex-shrink-0 shadow-sm"
-                                :title="modalAudioIsPlaying ? 'Pause' : 'Play'">
-                            <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'" class="text-xs" :style="!modalAudioIsPlaying ? 'margin-left: 1px' : ''"></i>
-                        </button>
-                        <!-- Time -->
-                        <div class="flex flex-col items-end flex-shrink-0 leading-none">
-                            <span class="text-xs text-[var(--text-primary)] font-mono">${ formatAudioTime(modalAudioCurrentTime) }</span>
-                            <span class="text-[10px] text-[var(--text-muted)] font-mono">${ formatAudioTime(modalAudioDuration) }</span>
-                        </div>
-                        <!-- Progress Bar -->
-                        <div class="flex-1 h-1.5 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
-                             @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width; if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.currentTime = pct * modalAudioDuration; }">
-                            <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
-                                 :style="{ width: modalAudioProgressPercent + '%' }">
-                            </div>
-                        </div>
-                        <!-- Volume Control -->
-                        <div class="relative flex items-center flex-shrink-0"
-                             @mouseenter="showModalVolumeSlider = true"
-                             @mouseleave="showModalVolumeSlider = false">
-                            <button @click="if ($refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.muted = !$refs.speakerModalAudioRef.muted; audioIsMuted = $refs.speakerModalAudioRef.muted; }"
-                                    class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] transition-all flex-shrink-0"
-                                    :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'">
-                                <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-xs"></i>
+                            <button @click="$refs.speakerModalAudioRef?.paused ? $refs.speakerModalAudioRef.play() : $refs.speakerModalAudioRef.pause()"
+                                    class="btn btn--primary btn--icon btn--sm"
+                                    :title="modalAudioIsPlaying ? 'Pause' : 'Play'">
+                                <i :class="modalAudioIsPlaying ? 'fas fa-pause' : 'fas fa-play'"></i>
                             </button>
-                            <!-- Volume Slider Popup (outer div is invisible hover bridge) -->
-                            <div class="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-[9999] transition-all duration-200"
-                                 :class="showModalVolumeSlider ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'"
+                            <div class="flex flex-col items-end flex-shrink-0 leading-none">
+                                <span class="text-xs text-[var(--text-primary)] font-mono">${ formatAudioTime(modalAudioCurrentTime) }</span>
+                                <span class="text-[10px] text-[var(--text-muted)] font-mono">${ formatAudioTime(modalAudioDuration) }</span>
+                            </div>
+                            <div class="flex-1 h-1.5 bg-[var(--bg-tertiary)] rounded-full cursor-pointer group relative"
+                                 @click="(e) => { const rect = e.currentTarget.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width; if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.currentTime = pct * modalAudioDuration; }">
+                                <div class="h-full bg-[var(--bg-accent)] rounded-full transition-all duration-100"
+                                     :style="{ width: modalAudioProgressPercent + '%' }"></div>
+                            </div>
+                            <div class="relative flex items-center flex-shrink-0"
                                  @mouseenter="showModalVolumeSlider = true"
                                  @mouseleave="showModalVolumeSlider = false">
-                                <div class="px-2.5 py-2 bg-[var(--bg-tertiary)] border border-[var(--border-accent)] rounded-lg shadow-xl flex flex-col items-center gap-1">
-                                    <span class="text-[9px] font-mono text-[var(--text-muted)]">${ Math.round(playerVolume * 100) }</span>
-                                    <input type="range" min="0" max="1" step="0.05"
-                                           :value="audioIsMuted ? 0 : playerVolume"
-                                           @input="(e) => setAudioVolume(parseFloat(e.target.value))"
-                                           class="volume-slider-vertical"
-                                           style="height: 70px;">
+                                <button @click="if ($refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.muted = !$refs.speakerModalAudioRef.muted; audioIsMuted = $refs.speakerModalAudioRef.muted; }"
+                                        class="btn btn--icon btn--sm"
+                                        :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-primary)]'">
+                                    <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'"></i>
+                                </button>
+                                <div class="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-[9999] transition-all duration-200"
+                                     :class="showModalVolumeSlider ? 'opacity-100 pointer-events-auto scale-100' : 'opacity-0 pointer-events-none scale-95'"
+                                     @mouseenter="showModalVolumeSlider = true"
+                                     @mouseleave="showModalVolumeSlider = false">
+                                    <div class="surface-raised flex flex-col items-center gap-1" style="padding: var(--sp-2) var(--sp-3);">
+                                        <span class="text-[9px] font-mono text-[var(--text-muted)]">${ Math.round(playerVolume * 100) }</span>
+                                        <input type="range" min="0" max="1" step="0.05"
+                                               :value="audioIsMuted ? 0 : playerVolume"
+                                               @input="(e) => setAudioVolume(parseFloat(e.target.value))"
+                                               class="volume-slider-vertical"
+                                               style="height: 70px;">
+                                    </div>
                                 </div>
                             </div>
+                            <button @click="cycleModalPlaybackRate(); if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.playbackRate = modalPlaybackRate"
+                                    class="btn btn--icon btn--sm"
+                                    title="Playback speed (tap to change)">
+                                <span class="text-[10px] font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
+                            </button>
+                            <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
+                                    @click="toggleSpeakerModalVideo"
+                                    class="btn btn--icon btn--sm"
+                                    :title="speakerModalVideoCollapsed ? 'Show video' : 'Hide video (audio-only view)'">
+                                <i :class="speakerModalVideoCollapsed ? 'fas fa-video' : 'fas fa-video-slash'"></i>
+                            </button>
                         </div>
-                        <!-- Speed Control (compact - tap to cycle) -->
-                        <button @click="cycleModalPlaybackRate(); if ($refs.speakerModalAudioRef) $refs.speakerModalAudioRef.playbackRate = modalPlaybackRate"
-                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-                                title="Playback speed (tap to change)">
-                            <span class="text-[10px] font-semibold font-mono">${ formatPlaybackRate(modalPlaybackRate) }</span>
-                        </button>
-                        <!-- Video collapse toggle — only shown when the
-                             current recording is video. Lets the user
-                             reclaim ~half the vertical pane for the
-                             transcript when they don't need to see the
-                             video frame; preference persists in
-                             localStorage. -->
-                        <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
-                                @click="toggleSpeakerModalVideo"
-                                class="w-7 h-7 flex items-center justify-center rounded hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all flex-shrink-0"
-                                :title="speakerModalVideoCollapsed ? 'Show video' : 'Hide video (audio-only view)'">
-                            <i :class="speakerModalVideoCollapsed ? 'fas fa-video' : 'fas fa-video-slash'" class="text-xs"></i>
-                        </button>
                     </div>
                 </div>
-                </div>
 
-                <!-- Transcript Section (virtual-scrolled for performance —
-                     issue #157 reported 4500+ segments causing 2+ minute
-                     pauses when all rendered natively, virtual scroll
-                     keeps ~30 segments mounted at a time so reactivity
-                     stays cheap).
-
-                     scrollToSegmentIndex (defined in app.modular.js) does
-                     a two-step dance for navigation: first virtualScroll's
-                     fixed-height math gets the target index into the
-                     RENDER WINDOW (rough), then scrollIntoView on the
-                     actual rendered DOM node CENTRES it using its
-                     measured position — that handles the case where real
-                     segment heights differ from the 52 px estimate
-                     (single "Yes." line vs 600 px podcast paragraph).
-                     Modal panel has a FIXED height (style=height: 90vh
-                     above) so containerHeight is stable; without this
-                     the ResizeObserver would fire on every content
-                     change and oscillate. -->
+                <!-- Transcript — see top-of-file comment for the
+                     content-visibility + v-memo design. -->
                 <div ref="speakerModalTranscriptRef"
-                     class="flex-grow overflow-y-auto custom-scrollbar speaker-modal-transcript min-h-0"
-                     @click="(e) => { const t = e.target.closest('[data-start-time]')?.dataset.startTime; if (t && $refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.currentTime = parseFloat(t); $refs.speakerModalAudioRef.play(); } }"
-                     @scroll="onSpeakerModalScroll">
+                     class="speaker-modal-transcript custom-scrollbar"
+                     style="flex: 1 1 auto; min-height: 0; overflow-y: auto;"
+                     @click="(e) => { const t = e.target.closest('[data-start-time]')?.dataset.startTime; if (t && $refs.speakerModalAudioRef) { $refs.speakerModalAudioRef.currentTime = parseFloat(t); $refs.speakerModalAudioRef.play(); } }">
                     <div v-if="processedTranscription.isJson">
-                        <!-- Virtual scroll spacer (top) -->
-                        <div :style="{ height: speakerModalSpacerBefore + 'px' }"></div>
-
-                        <!-- Only render visible segments + overscan -->
-                        <div v-for="segment in speakerModalVisibleSegments"
-                             :key="getVirtualItemKey(segment, 'sm')"
-                             class="speaker-segment mb-1.5 sm:mb-2 group relative"
+                        <div v-for="(segment, idx) in processedTranscription.simpleSegments"
+                             :key="segment.startTime + '-' + idx"
+                             v-memo="[idx, segment.speakerId, segment.speaker, segment.sentence, highlightedSpeaker === segment.speakerId, editingSpeakerIndex === idx]"
+                             class="speaker-segment group relative"
                              :data-start-time="segment.startTime"
-                             :data-segment-index="segment._originalIndex">
-                            <div class="flex items-start gap-1">
-                                <!-- Speaker tag on its own line on mobile -->
-                                <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]" :data-speaker-id="segment.speakerId" class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24" :title="segment.speaker">${ segment.speaker }</span>
-                                <!-- Text content -->
+                             :data-segment-index="idx">
+                            <div class="flex items-start gap-2">
+                                <span :class="[segment.color, 'speaker-tag', { 'speaker-highlight': highlightedSpeaker === segment.speakerId }]"
+                                      :data-speaker-id="segment.speakerId"
+                                      class="inline-block flex-shrink-0 truncate text-xs sm:text-sm font-medium w-16 sm:w-24"
+                                      :title="segment.speaker">${ segment.speaker }</span>
                                 <span class="word cursor-pointer hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] rounded px-0.5 flex-1 text-xs sm:text-sm leading-relaxed">${ segment.sentence }</span>
-                                <!-- Edit buttons - inline on mobile -->
                                 <span class="flex items-center gap-0.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <button @click.stop="openSpeakerChangeDropdown(segment._originalIndex)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Change speaker">
-                                        <i class="fas fa-user-edit text-[10px] sm:text-xs"></i>
+                                    <button @click.stop="openSpeakerChangeDropdown(idx)" class="btn btn--icon btn--sm" title="Change speaker">
+                                        <i class="fas fa-user-edit text-[10px]"></i>
                                     </button>
-                                    <button @click.stop="openEditTextModal(segment._originalIndex)" class="p-1 rounded bg-[var(--bg-tertiary)] hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors active:scale-95" title="Edit text">
-                                        <i class="fas fa-edit text-[10px] sm:text-xs"></i>
+                                    <button @click.stop="openEditTextModal(idx)" class="btn btn--icon btn--sm" title="Edit text">
+                                        <i class="fas fa-edit text-[10px]"></i>
                                     </button>
                                 </span>
                             </div>
 
-                            <!-- Speaker Change Dropdown - compact on mobile -->
-                            <div v-if="editingSpeakerIndex === segment._originalIndex" @click.stop class="mt-1 p-1.5 bg-[var(--bg-tertiary)] rounded-md border border-[var(--border-primary)] shadow-lg">
-                                <p class="text-[10px] text-[var(--text-muted)] mb-1">Select speaker:</p>
+                            <div v-if="editingSpeakerIndex === idx"
+                                 @click.stop
+                                 class="surface-raised"
+                                 style="margin-top: var(--sp-2); padding: var(--sp-2);">
+                                <p class="t-label" style="margin-bottom: var(--sp-2);">Select speaker:</p>
                                 <div class="flex flex-wrap gap-1">
-                                    <button v-for="speaker in modalSpeakers" :key="speaker" @click="changeSpeaker(segment._originalIndex, speaker)" class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-secondary)]">
+                                    <button v-for="speaker in modalSpeakers"
+                                            :key="speaker"
+                                            @click="changeSpeaker(idx, speaker)"
+                                            class="px-2 py-1 rounded-md hover:bg-[var(--bg-accent)] hover:text-[var(--text-accent)] active:scale-[0.98] transition-all flex items-center gap-1 text-xs bg-[var(--bg-tertiary)]">
                                         <div :class="speakerMap[speaker].color" class="w-2.5 h-2.5 rounded-full flex-shrink-0"></div>
                                         <span class="truncate max-w-[60px]">${ speakerMap[speaker].name || speaker }</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Virtual scroll spacer (bottom) -->
-                        <div :style="{ height: speakerModalSpacerAfter + 'px' }"></div>
                     </div>
                     <div v-else class="whitespace-pre-wrap text-sm text-[var(--text-primary)]">${ processedTranscription.plainText }</div>
                 </div>
 
-                <!-- Speaker Navigation Controls - more compact -->
-                <div class="mt-1.5 sm:mt-3 p-1.5 sm:p-3 bg-[var(--bg-tertiary)] rounded-md flex flex-col gap-1.5 flex-shrink-0">
-                    <!-- Speaker Selector Row -->
-                    <div class="flex items-center gap-1.5">
-                        <select
-                            :value="highlightedSpeaker"
-                            @change="selectSpeakerForNavigation($event.target.value)"
-                            class="flex-1 px-2 py-1 text-xs bg-[var(--bg-secondary)] border border-[var(--border-secondary)] rounded text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                            <option value="">Navigate to speaker...</option>
+                <!-- Navigation: speaker picker + Prev/Next + position pill -->
+                <div class="flex-shrink-0 surface" style="padding: var(--sp-2) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2);">
+                    <div class="flex items-center gap-2">
+                        <select :value="highlightedSpeaker"
+                                @change="selectSpeakerForNavigation($event.target.value)"
+                                class="field field--sm flex-1">
+                            <option value="">Navigate to speaker…</option>
                             <option v-for="speaker in modalSpeakers" :key="speaker" :value="speaker">
                                 ${ speakerMap[speaker]?.name || speakerDisplayMap[speaker] || speaker }
                             </option>
                         </select>
-                        <span v-if="highlightedSpeaker && speakerGroups.length > 0" class="text-[10px] text-[var(--text-muted)] flex-shrink-0 tabular-nums">
-                            ${ currentSpeakerGroupIndex + 1 }/${ speakerGroups.length }
+                        <span v-if="highlightedSpeaker && speakerGroups.length > 0"
+                              class="pill-status pill-status--info flex-shrink-0 tabular-nums"
+                              style="font-size: 10px;">
+                            ${ currentSpeakerGroupIndex + 1 } / ${ speakerGroups.length }
                         </span>
                     </div>
-                    <!-- Navigation Buttons Row -->
-                    <div class="flex items-center gap-1.5" :class="{'opacity-50': !highlightedSpeaker || speakerGroups.length <= 1}">
-                        <button @mousedown.prevent @click="navigateToPrevSpeakerGroup"
-                                class="flex-1 px-2 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-all active:scale-95 flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                    <div class="flex items-center gap-2" :class="{ 'opacity-50': !highlightedSpeaker || speakerGroups.length <= 1 }">
+                        <button @mousedown.prevent
+                                @click="navigateToPrevSpeakerGroup"
+                                class="btn btn--quiet btn--sm flex-1"
                                 :disabled="!highlightedSpeaker || speakerGroups.length <= 1">
-                            <i class="fas fa-chevron-up mr-1"></i>Prev
+                            <i class="fas fa-chevron-up"></i>
+                            <span>Prev</span>
                         </button>
-                        <button @mousedown.prevent @click="navigateToNextSpeakerGroup"
-                                class="flex-1 px-2 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded border border-[var(--border-secondary)] transition-all active:scale-95 flex items-center justify-center text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                        <button @mousedown.prevent
+                                @click="navigateToNextSpeakerGroup"
+                                class="btn btn--quiet btn--sm flex-1"
                                 :disabled="!highlightedSpeaker || speakerGroups.length <= 1">
-                            Next<i class="fas fa-chevron-down ml-1"></i>
+                            <span>Next</span>
+                            <i class="fas fa-chevron-down"></i>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Regenerate Summary Checkbox -->
-        <div class="p-2 sm:p-4 bg-[var(--bg-tertiary)] border-t border-[var(--border-primary)] flex-shrink-0">
+        <!-- Regenerate summary opt-in row -->
+        <div class="flex-shrink-0" style="padding: var(--sp-3) var(--sp-5); background: var(--bg-tertiary); border-top: var(--border-hairline) solid var(--border-primary);">
             <label class="flex items-center text-xs sm:text-sm text-[var(--text-muted)] cursor-pointer hover:text-[var(--text-primary)] transition-colors">
                 <input type="checkbox"
                        v-model="regenerateSummaryAfterSpeakerUpdate"
-                       class="speaker-checkbox w-4 h-4">
-                <span class="ml-1.5 select-none" v-text="t('help.regenerateSummaryAfterNames')"></span>
+                       class="mr-2 w-4 h-4">
+                <span v-text="t('help.regenerateSummaryAfterUpdating')"></span>
             </label>
         </div>
 
-        <!-- Footer — kept as v0.8.21 raw Tailwind, NOT the modal-footer
-             primitive, for the same height-stability reason as the
-             header above. -->
-        <div class="bg-[var(--bg-tertiary)] px-3 sm:px-6 py-2 sm:py-4 flex flex-row justify-between items-center gap-2 border-t border-[var(--border-primary)] flex-shrink-0 rounded-b-xl">
-            <!-- Left: Auto Identify Split Button + Apply Suggested -->
+        <div class="modal-footer modal-footer--between">
             <div class="flex items-center gap-2">
-                <!-- Split Button: Auto Identify -->
                 <div class="relative inline-flex" ref="autoIdSplitBtn">
-                    <!-- Main button: identify missing only -->
-                    <button @click="autoIdentifySpeakers(false)" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-purple-600 text-white rounded-l-md hover:bg-purple-700 active:scale-[0.98] transition-all flex items-center justify-center text-xs sm:text-sm font-medium" :disabled="isAutoIdentifying">
-                        <i class="fas fa-magic mr-1 sm:mr-1.5"></i>
+                    <button @click="autoIdentifySpeakers(false)"
+                            class="btn btn--primary"
+                            style="border-top-right-radius: 0; border-bottom-right-radius: 0;"
+                            :disabled="isAutoIdentifying">
+                        <i class="fas fa-magic"></i>
                         <span v-if="!isAutoIdentifying" class="hidden sm:inline" v-text="t('help.autoIdentify')"></span>
                         <span v-if="!isAutoIdentifying" class="sm:hidden" v-text="t('help.autoIdentifyMobile')"></span>
-                        <span v-else>
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </span>
+                        <span v-else><i class="fas fa-spinner fa-spin"></i></span>
                     </button>
-                    <!-- Dropdown arrow -->
-                    <button @click="showAutoIdDropdown = !showAutoIdDropdown" class="px-1.5 py-1.5 sm:py-2 bg-purple-600 text-white rounded-r-md border-l border-purple-500 hover:bg-purple-700 active:scale-[0.98] transition-all text-xs sm:text-sm" :disabled="isAutoIdentifying">
+                    <button @click="showAutoIdDropdown = !showAutoIdDropdown"
+                            class="btn btn--primary btn--icon"
+                            style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid rgba(255,255,255,0.2);"
+                            :disabled="isAutoIdentifying">
                         <i class="fas fa-caret-down"></i>
                     </button>
-                    <!-- Dropdown menu -->
-                    <div v-if="showAutoIdDropdown" class="absolute bottom-full left-0 mb-1 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg z-50 min-w-[180px]">
-                        <button @click="autoIdentifySpeakers(true)" class="w-full px-3 py-2 text-left text-xs sm:text-sm text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors rounded-md">
-                            <i class="fas fa-users mr-2"></i><span v-text="t('help.identifyAllSpeakers')"></span>
+                    <div v-if="showAutoIdDropdown"
+                         class="absolute bottom-full left-0 mb-1 surface-raised z-50"
+                         style="min-width: 200px;">
+                        <button @click="autoIdentifySpeakers(true)"
+                                class="w-full px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors rounded-md">
+                            <i class="fas fa-users mr-2"></i>
+                            <span v-text="t('help.identifyAllSpeakers')"></span>
                         </button>
                     </div>
                 </div>
-                <!-- Apply Suggested Button -->
-                <button v-if="hasAnySuggestions" @click="applySuggestedNames" class="px-2 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-md hover:from-blue-700 hover:to-purple-700 active:scale-[0.98] transition-all flex items-center text-xs sm:text-sm font-medium">
-                    <i class="fas fa-lightbulb mr-1 sm:mr-1.5"></i>
+                <button v-if="hasAnySuggestions" @click="applySuggestedNames" class="btn btn--primary">
+                    <i class="fas fa-lightbulb"></i>
                     <span class="hidden sm:inline" v-text="t('help.applySuggested')"></span>
                     <span class="sm:hidden" v-text="t('help.applySuggestedMobile')"></span>
                 </button>
             </div>
-            <!-- Right: Cancel & Save Buttons -->
             <div class="flex gap-2">
-                <button @click="closeSpeakerModal" class="px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] rounded-md border border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.98] transition-all text-xs sm:text-sm" v-text="t('common.cancel')"></button>
-                <button
-                    @click="saveSpeakerNames"
-                    :disabled="!hasSpeakerNames"
-                    class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-md transition-all text-xs sm:text-sm font-medium active:scale-[0.98]"
-                    :class="hasSpeakerNames
-                        ? 'bg-[var(--bg-accent)] text-[var(--text-accent)] hover:bg-[var(--bg-accent-hover)] cursor-pointer'
-                        : 'bg-gray-400 text-gray-200 cursor-not-allowed'"
-                    v-text="t('buttons.saveNames')"
-                ></button>
+                <button @click="closeSpeakerModal" class="btn btn--ghost" v-text="t('common.cancel')"></button>
+                <button @click="saveSpeakerNames"
+                        :disabled="!hasSpeakerNames"
+                        class="btn btn--primary"
+                        v-text="t('buttons.saveNames')"></button>
             </div>
         </div>
     </div>

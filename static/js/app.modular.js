@@ -2237,14 +2237,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 overscan: 10
             });
 
-            // Helper to scroll to a segment by index (for speaker navigation).
-            // EXACT v0.8.21-alpha implementation, restored after weeks of
-            // overengineering by me. With the modal wrapper reverted to
-            // its original 'h-[85vh] flex flex-col' markup, this one-line
-            // works the same way it always did.
+            // Scroll a transcript segment into view by index.
+            //
+            // The speaker modal no longer uses virtual scrolling — see the
+            // top-of-file comment in speaker-modal.html for the
+            // content-visibility + v-memo design that replaced it. Every
+            // segment is in the DOM, so this is just querySelector +
+            // scrollIntoView using MEASURED positions. Robust against
+            // variable segment heights, smooth animation works because
+            // nothing is fighting it, scrollbar is stable.
+            //
+            // The main transcript panel STILL uses virtual scrolling
+            // (smaller panel, different perf characteristics, no Prev/Next
+            // nav buttons to expose the variable-height inaccuracy).
             const scrollToSegmentIndex = (index) => {
                 if (showSpeakerModal.value) {
-                    speakerModalVirtualScroll.scrollToIndex(index, 'smooth');
+                    const container = speakerModalTranscriptRef.value;
+                    if (!container) return;
+                    const target = container.querySelector(`[data-segment-index="${index}"]`);
+                    if (target) {
+                        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    }
                 } else {
                     mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
                 }
@@ -2263,8 +2276,39 @@ document.addEventListener('DOMContentLoaded', async () => {
                     asrEditorRef.value.scrollTop = scrollTop;
                 }
             };
-            utils.resetSpeakerModalScroll = () => speakerModalVirtualScroll.reset();
-            utils.getSpeakerModalVisibleRange = () => speakerModalVirtualScroll.visibleRange.value;
+            utils.resetSpeakerModalScroll = () => {
+                if (speakerModalTranscriptRef.value) {
+                    speakerModalTranscriptRef.value.scrollTop = 0;
+                }
+            };
+            // Compute the visible segment range from the DOM rather than
+            // from a virtual scroller. Walks the rendered segments inside
+            // the speaker modal's transcript container, comparing each
+            // element's bounding rect to the container's; returns the
+            // [start, end) range of segment indices currently in view.
+            // Used by speakers.js to decide whether the highlighted
+            // speaker's nearest group is already visible (and we can skip
+            // the scroll). O(n) walk; only called when the user picks a
+            // new speaker to highlight, not on every scroll event.
+            utils.getSpeakerModalVisibleRange = () => {
+                const container = speakerModalTranscriptRef.value;
+                if (!container) return null;
+                const segments = container.querySelectorAll('[data-segment-index]');
+                if (!segments.length) return { start: 0, end: 0 };
+                const cTop = container.getBoundingClientRect().top;
+                const cBottom = cTop + container.clientHeight;
+                let start = -1, end = 0;
+                for (const el of segments) {
+                    const r = el.getBoundingClientRect();
+                    if (r.bottom < cTop) continue;          // above viewport
+                    if (r.top > cBottom) break;             // below viewport (segments are in document order)
+                    const idx = parseInt(el.dataset.segmentIndex, 10);
+                    if (Number.isNaN(idx)) continue;
+                    if (start === -1) start = idx;
+                    end = idx + 1;
+                }
+                return start === -1 ? { start: 0, end: 0 } : { start, end };
+            };
 
             // Speakers composable needs processedTranscription and scrollToSegmentIndex
             const speakersComposable = useSpeakers(state, utils, processedTranscription);
