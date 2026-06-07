@@ -61,46 +61,65 @@
              longer rendered here so the screen returns ~70px of
              vertical space. Compact meta strip below acts as the
              secondary metadata row for date/size/participants etc. -->
-        <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-5 py-2 flex-shrink-0 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-[var(--text-muted)]">
-            <div v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || (selectedRecording.tags && selectedRecording.tags.length > 0)"
-                 class="flex items-center gap-1.5 flex-wrap">
-                <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
-                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
-                      :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
-                      :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
-                    <i class="fas fa-folder mr-1 text-[10px]"></i>
-                    ${ getFolderName(selectedRecording.folder_id) }
-                </span>
-                <span v-for="tag in selectedRecording.tags" :key="tag.id"
-                      class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
-                      :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }">
-                    <i v-if="tag.group_id" class="fas fa-users mr-1 text-[10px]"></i>
-                    ${tag.name}
-                </span>
-            </div>
-            <div class="flex items-center gap-2">
-                <i class="fas fa-users text-[var(--text-accent)] text-xs"></i>
-                <span @click="openParticipantsModal" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[300px] truncate inline-block"
+        <!-- Secondary metadata strip. Every entry is a direct sibling of
+             the outer flex-wrap so wrapping happens per-item, not per
+             nested group. Chips (folder + tags) use the shared .chip
+             primitive so they render identically to the sidebar chips. -->
+        <div class="bg-[var(--bg-secondary)] border-b border-[var(--border-primary)] px-5 py-2 flex-shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--text-muted)]">
+            <!-- Folder chip -->
+            <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
+                  class="chip"
+                  :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }"
+                  :title="'Folder: ' + getFolderName(selectedRecording.folder_id)">
+                <i class="fas fa-folder"></i>
+                <span class="chip__label">${ getFolderName(selectedRecording.folder_id) }</span>
+            </span>
+
+            <!-- Tag chips -->
+            <span v-for="tag in selectedRecording.tags" :key="tag.id"
+                  class="chip"
+                  :style="{ backgroundColor: tag.color || '#6B7280', color: getContrastTextColor(tag.color || '#6B7280') }"
+                  :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
+                <i v-if="tag.group_id" class="fas fa-users"></i>
+                <span class="chip__label">${tag.name}</span>
+            </span>
+
+            <!-- Divider between the chip group and the text metadata,
+                 shown only when there are chips to separate from. -->
+            <span v-if="(foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito) || (selectedRecording.tags && selectedRecording.tags.length > 0)"
+                  aria-hidden="true"
+                  class="self-stretch w-px bg-[var(--border-primary)] opacity-60 my-0.5"></span>
+
+            <!-- Participants -->
+            <span class="inline-flex items-center gap-1.5">
+                <i class="fas fa-users text-[var(--text-accent)] text-[11px]"></i>
+                <span @click="openParticipantsModal" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors max-w-[260px] truncate"
                       :title="selectedRecording.participants || t('help.noParticipants')">
                     ${selectedRecording.participants || t('help.noParticipants')}
                 </span>
-            </div>
-            <div class="flex items-center gap-2">
-                <i class="fas fa-calendar text-[var(--text-accent)] text-xs"></i>
+            </span>
+
+            <!-- Meeting date -->
+            <span class="inline-flex items-center gap-1.5">
+                <i class="fas fa-calendar text-[var(--text-accent)] text-[11px]"></i>
                 <span @click="openMeetingDatePicker" class="cursor-pointer hover:text-[var(--text-accent)] transition-colors">
                     ${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}
                 </span>
-            </div>
-            <div v-if="activeRecordingMetadata && activeRecordingMetadata.length > 0" class="flex flex-wrap items-center gap-x-5 gap-y-1">
-                <span v-for="(item, index) in activeRecordingMetadata" :key="index" class="flex items-center gap-1.5">
-                    <i :class="[item.icon, 'text-xs']"></i>
-                    <span :title="item.fullText || item.text">${item.text}</span>
-                </span>
-            </div>
+            </span>
+
+            <!-- File metadata — each item a top-level sibling so it wraps
+                 independently. -->
+            <span v-for="(item, index) in (activeRecordingMetadata || [])" :key="`meta-${index}`"
+                  class="inline-flex items-center gap-1.5">
+                <i :class="item.icon" class="text-[var(--text-accent)] text-[11px]"></i>
+                <span :title="item.fullText || item.text" class="max-w-[260px] truncate">${item.text}</span>
+            </span>
+
+            <!-- Duplicate indicator -->
             <button v-if="selectedRecording.duplicate_info"
                     @click="openDuplicatesModal(selectedRecording.duplicate_info)"
-                    class="flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
-                <i class="fas fa-copy"></i>
+                    class="inline-flex items-center gap-1.5 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer">
+                <i class="fas fa-copy text-[11px]"></i>
                 <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
             </button>
         </div>

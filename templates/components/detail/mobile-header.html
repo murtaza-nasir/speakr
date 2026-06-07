@@ -34,28 +34,28 @@
             <div v-if="(foldersEnabled && selectedRecording.folder_id) || getRecordingTags(selectedRecording).length > 0 || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0"
                  class="flex flex-wrap gap-1 mt-1.5">
                 <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
-                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
+                      class="chip"
                       :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }">
-                    <i class="fas fa-folder mr-1"></i>
-                    <span v-text="getFolderName(selectedRecording.folder_id)"></span>
+                    <i class="fas fa-folder"></i>
+                    <span class="chip__label" v-text="getFolderName(selectedRecording.folder_id)"></span>
                 </span>
                 <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id"
                         @click.stop="filterByTag(tag)"
-                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium hover:opacity-80 transition-all"
+                        class="chip chip--clickable"
                         :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
                         :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
-                    <i v-if="tag.group_id" class="fas fa-users mr-1"></i>
-                    <i v-else class="fas fa-tag mr-1"></i>
-                    <span v-text="tag.name"></span>
+                    <i v-if="tag.group_id" class="fas fa-users"></i>
+                    <i v-else class="fas fa-tag"></i>
+                    <span class="chip__label" v-text="tag.name"></span>
                 </button>
-                <span v-if="selectedRecording.is_shared" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500 text-white">
-                    <i class="fas fa-arrow-down mr-1"></i>Shared
+                <span v-if="selectedRecording.is_shared" class="chip bg-purple-500 text-white">
+                    <i class="fas fa-arrow-down"></i><span class="chip__label">Shared</span>
                 </span>
-                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500 text-white">
-                    <i class="fas fa-arrow-up mr-1"></i>${ selectedRecording.shared_with_count }
+                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="chip bg-indigo-500 text-white">
+                    <i class="fas fa-arrow-up"></i><span class="chip__label">${ selectedRecording.shared_with_count }</span>
                 </span>
-                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-500 text-white">
-                    <i class="fas fa-globe mr-1"></i>${ selectedRecording.public_share_count }
+                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0" class="chip bg-teal-500 text-white">
+                    <i class="fas fa-globe"></i><span class="chip__label">${ selectedRecording.public_share_count }</span>
                 </span>
             </div>
         </div>
