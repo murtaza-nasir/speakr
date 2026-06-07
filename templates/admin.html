@@ -698,71 +698,100 @@
                         </button>
                     </div>
 
-                    <!-- Transcription Models curation -->
-                    <div class="mb-6 bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                        <div class="flex justify-between items-start mb-3">
-                            <div>
-                                <h4 class="text-md font-semibold text-[var(--text-primary)]"><i class="fas fa-microphone-lines mr-2"></i>Transcription Models</h4>
-                                <p class="text-sm text-[var(--text-muted)] mt-1">Discover models on the active transcription provider, then choose which ones users can pick from at upload time. Saved choices override <code>TRANSCRIPTION_MODELS_AVAILABLE</code> in the environment.</p>
+                    <!-- Transcription Models curation. Single bordered
+                         section (no nested card chrome) — the section
+                         header carries the title + Discover button on
+                         one row; the table fills the panel below; the
+                         action row at the bottom carries Add + Save
+                         + status. The underlying SystemSetting rows
+                         (transcription_models_visible_json,
+                         transcription_default_model) are filtered out
+                         of the settings list below — managed here. -->
+                    <div class="mb-6 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-lg overflow-hidden">
+                        <!-- Section header -->
+                        <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-[var(--border-primary)]">
+                            <div class="min-w-0">
+                                <h4 class="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                                    <i class="fas fa-microphone-lines text-[var(--text-accent)]"></i>
+                                    <span>Transcription Models</span>
+                                </h4>
+                                <p class="text-xs text-[var(--text-muted)] mt-0.5">Discover models on the active transcription provider, then choose which ones users can pick from at upload time.</p>
                             </div>
                             <button @click="discoverTranscriptionModels" :disabled="discoveringModels"
-                                    class="px-3 py-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg shadow hover:bg-[var(--bg-tertiary)] disabled:opacity-50">
-                                <i :class="discoveringModels ? 'fas fa-spinner fa-spin' : 'fas fa-search'" class="mr-2"></i>
-                                ${ discoveringModels ? 'Discovering...' : 'Discover models' }
+                                    class="btn btn--ghost flex-shrink-0 whitespace-nowrap">
+                                <i :class="discoveringModels ? 'fas fa-spinner fa-spin' : 'fas fa-search'"></i>
+                                <span>${ discoveringModels ? 'Discovering…' : 'Discover' }</span>
                             </button>
                         </div>
 
-                        <div v-if="modelDiscoveryError" class="mb-3 text-sm text-[var(--text-danger-strong)]">
-                            ${ modelDiscoveryError }
+                        <!-- Connector info / error banners -->
+                        <div v-if="modelDiscoveryError" class="banner banner--danger mx-4 mt-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>${ modelDiscoveryError }</span>
+                        </div>
+                        <div v-if="modelDiscoveryResult" class="px-4 pt-3 text-xs text-[var(--text-muted)]">
+                            Active connector: <code class="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)]">${ modelDiscoveryResult.connector }</code>
+                            <span v-if="!modelDiscoveryResult.supported"> · no model-discovery API for this connector; add model IDs manually below</span>
                         </div>
 
-                        <div v-if="modelDiscoveryResult" class="mb-3 text-xs text-[var(--text-muted)]">
-                            Active connector: <code>${ modelDiscoveryResult.connector }</code>
-                            <span v-if="!modelDiscoveryResult.supported"> (no model discovery API; add models manually below)</span>
+                        <!-- Models table -->
+                        <div v-if="visibleTranscriptionModels.length > 0 || (modelDiscoveryResult && modelDiscoveryResult.models && modelDiscoveryResult.models.length > 0)"
+                             class="px-1 py-2">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-left t-label">
+                                        <th class="py-2 px-3 w-16">Visible</th>
+                                        <th class="py-2 px-3 w-16">Default</th>
+                                        <th class="py-2 px-3">Model ID</th>
+                                        <th class="py-2 px-3">Label shown to users</th>
+                                        <th class="py-2 px-3 w-24">Source</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="row in transcriptionModelRows" :key="row.value"
+                                        class="border-t border-[var(--border-primary)] hover:bg-[var(--bg-tertiary)] transition-colors">
+                                        <td class="py-2 px-3 text-center"><input type="checkbox" v-model="row.visible" class="h-4 w-4"></td>
+                                        <td class="py-2 px-3 text-center"><input type="radio" :value="row.value" v-model="transcriptionDefaultModel" :disabled="!row.visible" class="h-4 w-4"></td>
+                                        <td class="py-2 px-3 font-mono text-xs text-[var(--text-primary)]">${ row.value }</td>
+                                        <td class="py-2 px-3"><input type="text" v-model="row.label" class="field field--sm" placeholder="Friendly label"></td>
+                                        <td class="py-2 px-3 text-xs text-[var(--text-muted)]">${ row.source }</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        <table v-if="visibleTranscriptionModels.length > 0 || (modelDiscoveryResult && modelDiscoveryResult.models && modelDiscoveryResult.models.length > 0)"
-                               class="w-full text-sm border-collapse">
-                            <thead>
-                                <tr class="text-left text-xs uppercase text-[var(--text-muted)] border-b border-[var(--border-primary)]">
-                                    <th class="py-2">Visible</th>
-                                    <th class="py-2">Default</th>
-                                    <th class="py-2">Model id</th>
-                                    <th class="py-2">Label shown to users</th>
-                                    <th class="py-2">Source</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="row in transcriptionModelRows" :key="row.value"
-                                    class="border-b border-[var(--border-primary)]/50">
-                                    <td class="py-2"><input type="checkbox" v-model="row.visible"></td>
-                                    <td class="py-2"><input type="radio" :value="row.value" v-model="transcriptionDefaultModel" :disabled="!row.visible"></td>
-                                    <td class="py-2 font-mono text-xs">${ row.value }</td>
-                                    <td class="py-2"><input type="text" v-model="row.label" class="w-full px-2 py-1 text-sm bg-[var(--bg-input)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded"></td>
-                                    <td class="py-2 text-xs text-[var(--text-muted)]">${ row.source }</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div v-else class="empty">
+                            <div class="empty__icon"><i class="fas fa-microphone-lines"></i></div>
+                            <div class="empty__title">No models configured</div>
+                            <div class="empty__body">Click <strong>Discover</strong> to probe the active connector, or add a model ID manually.</div>
+                        </div>
 
-                        <p v-else class="text-sm text-[var(--text-muted)] mb-3">No models discovered yet. Click "Discover models" to probe the active connector, or set <code>TRANSCRIPTION_MODELS_AVAILABLE</code> in your environment.</p>
-
-                        <div class="flex items-center gap-3 mt-4">
-                            <button @click="addManualTranscriptionModel"
-                                    class="px-3 py-2 text-sm bg-[var(--bg-secondary)] text-[var(--text-secondary)] border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--bg-tertiary)]">
-                                <i class="fas fa-plus mr-1"></i> Add custom model id
+                        <!-- Action row -->
+                        <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]">
+                            <button @click="addManualTranscriptionModel" class="btn btn--ghost btn--sm">
+                                <i class="fas fa-plus"></i><span>Add model ID</span>
                             </button>
+                            <span v-if="modelSaveMessage" class="text-sm ml-2"
+                                  :class="modelSaveError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">
+                                <i :class="modelSaveError ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'" class="mr-1"></i>
+                                ${ modelSaveMessage }
+                            </span>
                             <button @click="saveVisibleTranscriptionModels" :disabled="savingModels"
-                                    class="btn btn--primary">
-                                <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="mr-2"></i>
-                                ${ savingModels ? 'Saving...' : 'Save selection' }
+                                    class="btn btn--primary btn--sm ml-auto">
+                                <i :class="savingModels ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
+                                <span>${ savingModels ? 'Saving…' : 'Save selection' }</span>
                             </button>
-                            <span v-if="modelSaveMessage" class="text-sm" :class="modelSaveError ? 'text-[var(--text-danger-strong)]' : 'text-[var(--text-success-strong)]'">${ modelSaveMessage }</span>
                         </div>
                     </div>
 
-                    <!-- Settings List -->
+                    <!-- Settings List. We exclude the two settings that
+                         are managed by the Transcription Models panel
+                         above (transcription_models_visible_json,
+                         transcription_default_model) so the admin
+                         can't accidentally edit the raw JSON / model
+                         string here and put them out of sync. -->
                     <div class="space-y-4">
-                        <div v-for="setting in settings" :key="setting.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                        <div v-for="setting in displayedSettings" :key="setting.id" class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <div class="flex justify-between items-start">
                                 <div class="flex-grow">
                                     <h4 class="text-md font-medium text-[var(--text-primary)] mb-1">${ setting.key }</h4>
@@ -1964,6 +1993,18 @@ Summarization Instructions:
                 const dailyEmbeddingChart = ref(null);
                 const monthlyEmbeddingChart = ref(null);
                 const settings = ref([]);
+                // Settings that are managed by dedicated UI panels
+                // above (Transcription Models) and should not appear
+                // as raw editable cards in the catch-all settings list
+                // below. Editing those values here would put them out
+                // of sync with the panel state.
+                const HIDDEN_SETTING_KEYS = new Set([
+                    'transcription_models_visible_json',
+                    'transcription_default_model',
+                ]);
+                const displayedSettings = computed(() =>
+                    (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key))
+                );
                 // Transcription model curation state
                 const visibleTranscriptionModels = ref([]); // [{value, label}, ...]
                 const transcriptionDefaultModel = ref(null);
@@ -3590,6 +3631,7 @@ Summarization Instructions:
                     transcriptionStats,
                     transcriptionUserStats,
                     settings,
+                    displayedSettings,
                     isLoadingUsers,
                     isLoadingSettings,
                     userSearchQuery,
