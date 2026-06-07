@@ -215,39 +215,49 @@
             <div v-if="pendingQueueFiles.length === 0" class="space-y-2">
                 <h3 class="text-xs font-medium text-[var(--text-secondary)] text-center" v-text="t('recording.title')"></h3>
 
-                <!-- Microphone Recording -->
+                <!-- Microphone Recording — primary calm action.
+                     Microphone is the everyday case so it takes the
+                     full-width primary slot. Previous design used a
+                     saturated red bg which competed with the upload
+                     action in the footer for visual attention; now
+                     uses the muted accent palette with the recording
+                     dot left of the label so the function is still
+                     obvious without being loud. -->
                 <button @click="startRecording('microphone')"
-                        class="w-full px-3 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 text-sm">
-                    <i class="fas fa-microphone"></i>
+                        class="w-full px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors"
+                        style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-secondary);"
+                        onmouseover="this.style.borderColor='var(--text-accent)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
+                    <span class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                    <i class="fas fa-microphone text-[var(--text-muted)]"></i>
                     <span v-text="t('recording.microphone')"></span>
                 </button>
 
-                <!-- System Audio and Both - Side by Side. Buttons stay
-                     visible whenever the browser supports getDisplayMedia
-                     at all (incl. tab-only-audio platforms) — the help
-                     modal explains the per-OS limitations and routing
-                     options. A small amber dot appears on the buttons
-                     when full system audio isn't expected to work on
-                     this platform so the user knows BEFORE clicking. -->
+                <!-- Secondary record sources. Lower hierarchy
+                     (smaller padding, fully neutral background,
+                     icon-only tint accent) since these are less
+                     common than the microphone case. The amber
+                     "tab-audio-only" indicator dot is preserved. -->
                 <div v-if="canRecordSystemAudio" class="grid grid-cols-2 gap-2">
-                    <!-- System Audio Recording -->
                     <button @click="startRecording('system')"
-                            class="relative px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-sm">
+                            class="relative px-3 py-2 rounded-lg flex items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                            style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-secondary);"
+                            onmouseover="this.style.borderColor='var(--text-accent)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
                         <span v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
-                              class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400"
+                              class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400"
                               title="Tab audio only on this platform — see help"></span>
-                        <i class="fas fa-desktop"></i>
+                        <i class="fas fa-desktop text-blue-500"></i>
                         <span v-text="t('recording.systemAudio')"></span>
                     </button>
 
-                    <!-- Both Audio Sources -->
                     <button @click="startRecording('both')"
-                            class="relative px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1 text-sm">
+                            class="relative px-3 py-2 rounded-lg flex items-center justify-center gap-1 text-xs font-medium transition-colors"
+                            style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-secondary);"
+                            onmouseover="this.style.borderColor='var(--text-accent)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
                         <span v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
-                              class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400"
+                              class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400"
                               title="Tab audio only on this platform — see help"></span>
-                        <i class="fas fa-microphone"></i>
-                        <i class="fas fa-desktop"></i>
+                        <i class="fas fa-microphone text-purple-500"></i>
+                        <i class="fas fa-desktop text-purple-500"></i>
                         <span class="hidden sm:inline" v-text="t('recording.microphoneAndSystem')"></span>
                         <span class="sm:hidden">${ t('recording.micPlusSys') }</span>
                     </button>
