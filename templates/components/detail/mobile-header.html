@@ -1,67 +1,65 @@
 <!-- Mobile Header for Detail View.
 
-     The global app header (templates/components/header.html) already
-     shows the recording title with the edit + regenerate buttons on
-     mobile, so the previous duplicate title row here read as a
-     doubled title bar. This component now only owns what the global
-     header doesn't: the participants / pills meta strip, the folder
-     / tag / share badges, and the expandable action toolbar with
-     extra metadata. -->
+     The global app header already shows the recording title with the
+     edit + regenerate buttons on mobile, so this component owns only
+     the secondary information layer:
+       (a) Always-visible meta strip — participants + status + folder
+           / tag / share pills, plus a single chevron to expand.
+       (b) Expanded panel — secondary metadata (date / file size /
+           etc.) grouped as a clean pill row, and an action toolbar
+           sitting on its own bg-tertiary background so the cluster of
+           icons reads as ONE bordered control bar instead of nine
+           loose icons floating against the page background. -->
 <div class="border-b flex-shrink-0"
      style="background: var(--bg-secondary); border-bottom-color: var(--border-primary);">
 
-    <!-- Always-visible meta strip — participants on the left, a single
-         expand chevron on the right that opens the action toolbar +
-         secondary metadata (meeting date, duration, model, etc.). -->
+    <!-- Always-visible meta strip -->
     <div @click="isMetadataExpanded = !isMetadataExpanded"
-         class="cursor-pointer px-4 py-2 flex items-center justify-between gap-3">
+         class="cursor-pointer px-4 py-2 flex items-center gap-3">
 
         <div class="flex-1 min-w-0">
-            <!-- Participants line -->
-            <p class="t-meta truncate">
-                <i class="fas fa-users mr-1.5" style="color: var(--text-muted); font-size: 10px;"></i>
-                <span v-text="selectedRecording.participants || t('help.noParticipants')"></span>
-                <!-- Status badge inline when not completed (avoids
-                     wrapping issues with the chevron). -->
+            <!-- Participants + status, single line, truncates -->
+            <div class="flex items-center gap-2 min-w-0">
+                <i class="fas fa-users flex-shrink-0" style="color: var(--text-muted); font-size: 11px;"></i>
+                <span class="text-sm truncate" style="color: var(--text-secondary);"
+                      v-text="selectedRecording.participants || t('help.noParticipants')"></span>
                 <span v-if="selectedRecording.status !== 'COMPLETED'"
                       :class="getStatusClass(selectedRecording.status)"
-                      class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap ml-2">
+                      class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap flex-shrink-0">
                     ${ formatStatus(selectedRecording.status) }
                 </span>
-            </p>
+            </div>
 
-            <!-- Folder / tag / share pills row, compact -->
+            <!-- Folder / tag / share pill row, only when present -->
             <div v-if="(foldersEnabled && selectedRecording.folder_id) || getRecordingTags(selectedRecording).length > 0 || selectedRecording.is_shared || selectedRecording.shared_with_count > 0 || selectedRecording.public_share_count > 0"
                  class="flex flex-wrap gap-1 mt-1.5">
                 <span v-if="foldersEnabled && selectedRecording.folder_id && !selectedRecording.incognito"
-                      class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                       :style="{ backgroundColor: getFolderColor(selectedRecording.folder_id), color: getContrastTextColor(getFolderColor(selectedRecording.folder_id)) }">
                     <i class="fas fa-folder mr-1"></i>
                     <span v-text="getFolderName(selectedRecording.folder_id)"></span>
                 </span>
                 <button v-for="tag in getRecordingTags(selectedRecording)" :key="tag.id"
                         @click.stop="filterByTag(tag)"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium hover:opacity-80 transition-all"
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium hover:opacity-80 transition-all"
                         :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
                         :title="tag.group_id ? ('Group: ' + tag.group_name) : tag.name">
                     <i v-if="tag.group_id" class="fas fa-users mr-1"></i>
                     <i v-else class="fas fa-tag mr-1"></i>
                     <span v-text="tag.name"></span>
                 </button>
-                <span v-if="selectedRecording.is_shared" class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-purple-500 text-white">
+                <span v-if="selectedRecording.is_shared" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500 text-white">
                     <i class="fas fa-arrow-down mr-1"></i>Shared
                 </span>
-                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500 text-white">
+                <span v-if="!selectedRecording.is_shared && selectedRecording.shared_with_count > 0" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500 text-white">
                     <i class="fas fa-arrow-up mr-1"></i>${ selectedRecording.shared_with_count }
                 </span>
-                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0" class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-500 text-white">
+                <span v-if="!selectedRecording.is_shared && selectedRecording.public_share_count > 0" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-500 text-white">
                     <i class="fas fa-globe mr-1"></i>${ selectedRecording.public_share_count }
                 </span>
             </div>
         </div>
 
-        <!-- Expand affordance — using the .btn--icon primitive so it
-             matches the rest of the design system. -->
         <button @click.stop="isMetadataExpanded = !isMetadataExpanded"
                 class="btn btn--icon btn--sm flex-shrink-0"
                 :title="isMetadataExpanded ? 'Hide details' : 'Show details'">
@@ -69,109 +67,122 @@
         </button>
     </div>
 
-    <!-- Expanded panel: secondary metadata + horizontal action
-         toolbar. Only the items the global header doesn't already
-         expose. -->
-    <div v-if="isMetadataExpanded"
-         class="px-4 pb-3 pt-1 space-y-3 border-t"
-         style="border-top-color: var(--border-secondary);">
+    <!-- Expanded panel -->
+    <div v-if="isMetadataExpanded" class="px-3 pb-3 space-y-2">
 
-        <!-- Secondary metadata row -->
-        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 t-meta">
+        <!-- Metadata: chip-styled so it reads as a tidy row of facts
+             instead of a comma-separated string. Each chip is the
+             same height/padding so the row has visual rhythm. -->
+        <div class="flex flex-wrap gap-1.5">
             <button @click.stop="openMeetingDatePicker"
-                    class="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
-                    style="color: var(--text-muted);">
-                <i class="fas fa-calendar" style="color: var(--text-accent);"></i>
+                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] hover:opacity-80 transition-opacity"
+                    style="background: var(--bg-tertiary); color: var(--text-secondary);">
+                <i class="fas fa-calendar text-[10px]" style="color: var(--text-accent);"></i>
                 <span v-text="selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'"></span>
             </button>
-            <span v-if="selectedRecording.is_shared" class="inline-flex items-center gap-1" style="color: var(--text-muted);">
-                <i class="fas fa-user" style="color: var(--text-accent);"></i>
+            <span v-if="selectedRecording.is_shared"
+                  class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px]"
+                  style="background: var(--bg-tertiary); color: var(--text-secondary);">
+                <i class="fas fa-user text-[10px]" style="color: var(--text-accent);"></i>
                 <span v-text="selectedRecording.owner_username || t('sharing.unknown')"></span>
             </span>
             <template v-if="activeRecordingMetadata" v-for="(item, index) in activeRecordingMetadata" :key="index">
-                <span v-if="!item.isTagItem" class="inline-flex items-center gap-1" style="color: var(--text-muted);">
-                    <i :class="item.icon" style="color: var(--text-accent);"></i>
+                <span v-if="!item.isTagItem"
+                      class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px]"
+                      style="background: var(--bg-tertiary); color: var(--text-secondary);">
+                    <i :class="[item.icon, 'text-[10px]']" style="color: var(--text-accent);"></i>
                     <span :title="item.fullText || item.text" v-text="item.text"></span>
                 </span>
             </template>
             <button v-if="selectedRecording.duplicate_info"
                     @click.stop="openDuplicatesModal(selectedRecording.duplicate_info)"
-                    class="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
-                    style="color: var(--text-warn, #d97706);">
-                <i class="fas fa-copy"></i>
+                    class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] hover:opacity-80 transition-opacity"
+                    style="background: rgba(217, 119, 6, 0.12); color: var(--text-warn, #d97706);">
+                <i class="fas fa-copy text-[10px]"></i>
                 <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
             </button>
         </div>
 
-        <!-- Action toolbar — uses .btn--icon primitives so it
-             matches desktop. Horizontally scrolls if it overflows. -->
-        <div class="flex items-center gap-1 overflow-x-auto -mx-1 px-1 pb-1">
-            <template v-if="!selectedRecording.incognito">
-                <!-- Folder Assignment (icon-only dropdown) -->
-                <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
-                     class="btn btn--icon btn--sm relative flex-shrink-0"
-                     :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : 'Assign Folder'">
-                    <select @change.stop="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
-                            :value="selectedRecording.folder_id || ''"
-                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                        <option value="">No Folder</option>
-                        <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
-                            ${ folder.name }
-                        </option>
-                    </select>
-                    <i class="fas fa-folder"
-                       :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
-                </div>
-                <button @click.stop="toggleInbox(selectedRecording)"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
-                        title="Inbox"><i class="fas fa-inbox"></i></button>
-                <button @click.stop="toggleHighlight(selectedRecording)"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
-                        title="Highlight"><i class="fas fa-star"></i></button>
-                <button @click.stop="editRecordingTags(selectedRecording)"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        title="Edit tags"><i class="fas fa-tags"></i></button>
-                <button @click.stop="confirmReprocess('transcription', selectedRecording)"
-                        v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        title="Reprocess transcription"><i class="fas fa-redo-alt"></i></button>
-                <button @click.stop="confirmReprocess('summary', selectedRecording)"
-                        v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        title="Regenerate summary"><i class="fas fa-sync-alt"></i></button>
-                <button @click.stop="confirmReset(selectedRecording)"
-                        v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        style="color: var(--text-warn, #d97706);"
-                        title="Reset"><i class="fas fa-undo"></i></button>
-                <button @click.stop="openSpeakerModal"
-                        v-if="processedTranscription.hasDialogue"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        title="Identify speakers"><i class="fas fa-user-tag"></i></button>
-                <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
-                        @click.stop="openUnifiedShareModal(selectedRecording)"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        title="Share"><i class="fas fa-share-alt"></i></button>
-                <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false"
-                        @click.stop="confirmDelete(selectedRecording)"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        style="color: var(--text-danger);"
-                        title="Delete"><i class="fas fa-trash"></i></button>
-            </template>
+        <!-- Action toolbar — sits on its own bg-tertiary background
+             so the cluster of icons reads as one bordered control bar
+             instead of a row of free-floating icons. Horizontal scroll
+             on overflow so adding more actions doesn't break layout. -->
+        <div class="rounded-md overflow-hidden" style="background: var(--bg-tertiary);">
+            <div class="flex items-center gap-0.5 overflow-x-auto px-1 py-1">
+                <template v-if="!selectedRecording.incognito">
+                    <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
+                         class="btn btn--icon btn--sm relative flex-shrink-0"
+                         :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : 'Assign Folder'">
+                        <select @change.stop="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
+                                :value="selectedRecording.folder_id || ''"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <option value="">No Folder</option>
+                            <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
+                                ${ folder.name }
+                            </option>
+                        </select>
+                        <i class="fas fa-folder"
+                           :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+                    </div>
+                    <button @click.stop="toggleInbox(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            :class="selectedRecording.is_inbox ? 'text-blue-500' : ''"
+                            title="Inbox"><i class="fas fa-inbox"></i></button>
+                    <button @click.stop="toggleHighlight(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            :class="selectedRecording.is_highlighted ? 'text-yellow-500' : ''"
+                            title="Highlight"><i class="fas fa-star"></i></button>
+                    <button @click.stop="editRecordingTags(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            title="Edit tags"><i class="fas fa-tags"></i></button>
+                    <!-- Subtle inline divider so the destructive / reset
+                         actions read as a distinct group from the
+                         everyday actions. -->
+                    <span class="flex-shrink-0 mx-0.5" style="width: 1px; height: 18px; background: var(--border-primary);"></span>
+                    <button @click.stop="confirmReprocess('transcription', selectedRecording)"
+                            v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            title="Reprocess transcription"><i class="fas fa-redo-alt"></i></button>
+                    <button @click.stop="confirmReprocess('summary', selectedRecording)"
+                            v-if="selectedRecording && selectedRecording.can_edit !== false && (selectedRecording.status === 'COMPLETED' || selectedRecording.status === 'FAILED')"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            title="Regenerate summary"><i class="fas fa-sync-alt"></i></button>
+                    <button @click.stop="confirmReset(selectedRecording)"
+                            v-if="['PENDING', 'PROCESSING', 'SUMMARIZING', 'FAILED'].includes(selectedRecording.status)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            style="color: var(--text-warn, #d97706);"
+                            title="Reset"><i class="fas fa-undo"></i></button>
+                    <button @click.stop="openSpeakerModal"
+                            v-if="processedTranscription.hasDialogue"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            title="Identify speakers"><i class="fas fa-user-tag"></i></button>
+                    <button v-if="!selectedRecording.is_shared || (selectedRecording.share_info && selectedRecording.share_info.can_reshare)"
+                            @click.stop="openUnifiedShareModal(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            title="Share"><i class="fas fa-share-alt"></i></button>
+                    <!-- Pushes delete to the right edge so it's
+                         visually separate from the everyday actions
+                         and harder to mis-tap. -->
+                    <span class="flex-1"></span>
+                    <button v-if="canDeleteRecordings && selectedRecording.can_delete !== false"
+                            @click.stop="confirmDelete(selectedRecording)"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            style="color: var(--text-danger);"
+                            title="Delete"><i class="fas fa-trash"></i></button>
+                </template>
 
-            <!-- Incognito mode: discard only -->
-            <template v-else>
-                <span class="text-[11px] px-2 inline-flex items-center gap-1" style="color: var(--text-warn, #d97706);">
-                    <i class="fas fa-user-secret"></i>
-                    Incognito Mode
-                </span>
-                <button @click.stop="clearIncognitoRecordingWithConfirm"
-                        class="btn btn--icon btn--sm flex-shrink-0"
-                        style="color: var(--text-danger);"
-                        title="Discard incognito recording"><i class="fas fa-trash"></i></button>
-            </template>
+                <template v-else>
+                    <span class="text-[11px] px-2 inline-flex items-center gap-1" style="color: var(--text-warn, #d97706);">
+                        <i class="fas fa-user-secret"></i>
+                        Incognito Mode
+                    </span>
+                    <span class="flex-1"></span>
+                    <button @click.stop="clearIncognitoRecordingWithConfirm"
+                            class="btn btn--icon btn--sm flex-shrink-0"
+                            style="color: var(--text-danger);"
+                            title="Discard incognito recording"><i class="fas fa-trash"></i></button>
+                </template>
+            </div>
         </div>
     </div>
 </div>

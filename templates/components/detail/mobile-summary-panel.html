@@ -1,29 +1,42 @@
-<!-- Mobile Summary Panel (design system v1) -->
+<!-- Mobile Summary Panel.
+
+     Two modes:
+     (1) READING: small action toolbar (copy / download / edit) above
+         the prose. Toolbar hides when editing so the "edit pen
+         highlights when active" inconsistency from before is gone —
+         in edit mode there's no panel toolbar at all, only the
+         editor's own toolbar + a sticky Cancel/Save footer.
+     (2) EDITING: editor fills the panel edge-to-edge with minimal
+         outer padding so the typing area is as large as possible;
+         Cancel and Save live in a sticky footer below the editor. -->
 <div v-if="mobileTab === 'summary'" class="h-full flex flex-col">
-    <!-- Action toolbar -->
-    <div class="flex items-center justify-end gap-1 flex-shrink-0 px-3 py-2">
-        <button v-if="selectedRecording.summary" @click="copySummary" class="btn btn--icon" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
-        <button v-if="selectedRecording.summary" @click="downloadSummary" class="btn btn--icon" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
-        <button @click="toggleEditSummary" class="btn btn--icon" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
+    <!-- Reading-mode toolbar — hidden during editing. -->
+    <div v-if="!editingSummary"
+         class="flex items-center justify-end gap-1 flex-shrink-0 px-3 py-2">
+        <button v-if="selectedRecording.summary" @click="copySummary" class="btn btn--icon btn--sm" :title="t('buttons.copySummary')"><i class="fas fa-copy"></i></button>
+        <button v-if="selectedRecording.summary" @click="downloadSummary" class="btn btn--icon btn--sm" :title="t('buttons.downloadAsWord')"><i class="fas fa-download"></i></button>
+        <button @click="toggleEditSummary" class="btn btn--icon btn--sm" :title="t('buttons.editSummary')"><i class="fas fa-pen"></i></button>
     </div>
-    <div class="flex-grow overflow-y-auto px-3 pb-3">
-        <div v-if="editingSummary" class="h-full flex flex-col">
-            <!-- EasyMDE replaces this textarea with its toolbar +
-                 CodeMirror DOM. The .markdown-editor-container
-                 wrapper is what hooks the editor's theme + height
-                 CSS at styles.css line 3498+ (and the mobile-specific
-                 overrides at line 2348+); without it the editor
-                 renders un-themed and auto-grows past the viewport. -->
-            <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
-                <textarea ref="summaryMarkdownEditor"
-                          v-model="selectedRecording.summary"></textarea>
-            </div>
-            <div class="flex justify-end gap-2 mt-2">
-                <button @click="cancelEditSummary" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
-                <button @click="saveEditSummary" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>
-            </div>
+
+    <!-- Editing-mode shell — editor takes the full available height
+         with a thin 8 px outer padding (was 12 px on every side); the
+         sticky footer holds Cancel + Save so they don't scroll out of
+         reach for long summaries. -->
+    <div v-if="editingSummary" class="flex-grow flex flex-col min-h-0 px-2 pt-2">
+        <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
+            <textarea ref="summaryMarkdownEditor"
+                      v-model="selectedRecording.summary"></textarea>
         </div>
-        <div v-else>
+        <div class="flex justify-end gap-2 flex-shrink-0 px-1 py-2 border-t"
+             style="border-top-color: var(--border-secondary);">
+            <button @click="cancelEditSummary" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
+            <button @click="saveEditSummary" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>
+        </div>
+    </div>
+
+    <!-- Reading-mode body. -->
+    <div v-else class="flex-grow overflow-y-auto px-3 pb-3">
+        <div>
             <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
                 <div class="spinner spinner--lg"></div>
                 <div class="empty__title" v-text="t('help.generatingSummary')"></div>
