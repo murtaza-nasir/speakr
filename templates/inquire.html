@@ -155,11 +155,19 @@
             <div class="flex items-center gap-2 sm:gap-3">
                 {% include 'components/token_budget_indicator.html' %}
 
-                <!-- New Recording Button -->
-                <a href="/"
+                <!-- New Recording Button.
+                     Inquire mode is a separate Vue app that can't
+                     embed the main app's upload modal directly. We
+                     redirect to "/" with ?upload=1 — the main app
+                     reads that query param on mount and opens the
+                     upload modal automatically (then clears the
+                     param via history.replaceState so a refresh
+                     doesn't re-trigger). Click is the same single
+                     action the user expected. -->
+                <a href="/?upload=1"
                    class="btn btn--sm btn--primary">
                     <i class="fas fa-plus"></i>
-                    <span class="hidden sm:inline">${t('nav.newRecording')}</span>
+                    <span class="hidden sm:inline">${ t('nav.newRecording') }</span>
                 </a>
 
                 <!-- User menu -->

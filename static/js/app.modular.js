@@ -3205,6 +3205,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     loadTokenBudget()
                 ]);
 
+                // Open the upload modal directly when arriving from
+                // inquire mode's "+ New Recording" button (or any other
+                // entry point that wants to deep-link into the upload
+                // flow). Strip the query param after handling so a
+                // refresh doesn't re-trigger the modal.
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    if (params.get('upload') === '1') {
+                        uiComposable.switchToUploadView();
+                        params.delete('upload');
+                        const qs = params.toString();
+                        const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+                        window.history.replaceState({}, '', newUrl);
+                    }
+                } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
+
                 // Clean up orphaned incognito data if we're not viewing incognito recording
                 // This can happen if user navigated away without the cleanup triggering
                 if (uploadComposable.hasIncognitoRecording() && selectedRecording.value?.id !== 'incognito') {
