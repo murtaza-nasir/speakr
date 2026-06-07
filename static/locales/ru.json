@@ -106,7 +106,8 @@
     "userDetails": "Данные пользователя",
     "username": "Имя пользователя",
     "signInSecurity": "Вход и безопасность",
-    "password": "Пароль"
+    "password": "Пароль",
+    "savedSuccess": "Настройки сохранены"
   },
   "accountTabs": {
     "about": "О продукте",

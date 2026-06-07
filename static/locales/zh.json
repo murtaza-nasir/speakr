@@ -106,7 +106,8 @@
     "userDetails": "用户详情",
     "username": "用户名",
     "signInSecurity": "登录与安全",
-    "password": "密码"
+    "password": "密码",
+    "savedSuccess": "设置已保存"
   },
   "accountTabs": {
     "about": "关于",

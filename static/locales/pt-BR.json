@@ -106,7 +106,8 @@
     "userDetails": "Detalhes do Usuário",
     "username": "Nome de Usuário",
     "signInSecurity": "Acesso e segurança",
-    "password": "Senha"
+    "password": "Senha",
+    "savedSuccess": "Configurações salvas"
   },
   "accountTabs": {
     "about": "Sobre",

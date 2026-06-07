@@ -484,9 +484,6 @@
                     <a href="#" id="tab-preferences" class="tab">
                         <i class="fas fa-sliders-h"></i><span data-i18n="accountTabs.preferences">Preferences</span>
                     </a>
-                    <a href="#" id="tab-display" class="tab">
-                        <i class="fas fa-desktop"></i><span data-i18n="accountTabs.display">Display</span>
-                    </a>
                     <a href="#" id="tab-prompts" class="tab">
                         <i class="fas fa-cog"></i><span data-i18n="accountTabs.promptOptions">Prompts</span>
                     </a>
@@ -983,6 +980,31 @@
                                         <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="preferences.editorAutosaveHelp">When enabled, edits in the transcript editor are saved automatically a couple of seconds after you stop typing. When disabled (default), you save explicitly via the Save buttons or <code>Ctrl+S</code>.</span>
                                     </span>
                                 </label>
+
+                                <!-- Audio player position (was the Display
+                                     tab; merged here because the only thing
+                                     it controlled was a display preference
+                                     and the dedicated tab was hard to find
+                                     for one setting). -->
+                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide pt-4" data-i18n="display.audioPlayerSection">Audio player</h3>
+                                <p class="text-xs text-[var(--text-muted)]" data-i18n="display.audioPlayerPositionHelp">Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.</p>
+                                {% set apos = current_user.audio_player_position or 'bottom' %}
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                        <input type="radio" name="audio_player_position" value="bottom" {% if apos != 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionBottom">Bottom</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.playerPositionBottomHelp">Player anchored under the transcript + summary columns. Default.</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start gap-2 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
+                                        <input type="radio" name="audio_player_position" value="top" {% if apos == 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
+                                        <span class="flex-1">
+                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionTop">Top</span>
+                                            <span class="block text-xs text-[var(--text-muted)] mt-0.5" data-i18n="display.playerPositionTopHelp">Player sits above the columns, just under the title and metadata strip.</span>
+                                        </span>
+                                    </label>
+                                </div>
                             </div>
 
                         </form>
@@ -994,71 +1016,10 @@
                       </div>
                     </div>
 
-                    <!-- Display tab — layout-level UI choices that change how
-                         the recording-detail screen is composed (player
-                         position now; future room for sidebar width,
-                         column ratio defaults, etc.). Lives in its own
-                         tab to keep the Preferences tab focused on
-                         transcript/editor behaviour. -->
-                    <div id="content-display" class="hidden tab-content">
-                      <div class="tab-scroll">
-                        <h2 class="text-2xl font-semibold text-[var(--text-primary)] mb-6" data-i18n="accountTabs.display">Display</h2>
-                        <form id="displayForm" method="POST" action="{{ url_for('auth.account') }}" class="space-y-6 max-w-2xl">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <input type="hidden" name="preferences_form" value="1"/>
-                            <!-- Preserve other preference fields so saving the
-                                 Display form doesn't reset them. IMPORTANT:
-                                 the backend uses key presence (`name in
-                                 request.form`) to decide checkbox state, so
-                                 these hidden inputs must only be emitted
-                                 when the corresponding pref is currently
-                                 TRUE — emitting an always-present input
-                                 with value="" would silently flip the
-                                 checkbox on every save. Language fields
-                                 always carry a value so they're always
-                                 emitted. -->
-                            {% if current_user.show_timestamps_simple_view %}
-                            <input type="hidden" name="show_timestamps_simple_view" value="on">
-                            {% endif %}
-                            {% if current_user.editor_autosave %}
-                            <input type="hidden" name="editor_autosave" value="on">
-                            {% endif %}
-                            <input type="hidden" name="ui_language" value="{{ current_user.ui_language or 'en' }}">
-                            <input type="hidden" name="transcription_language" value="{{ current_user.transcription_language or '' }}">
-                            <input type="hidden" name="output_language" value="{{ current_user.output_language or '' }}">
-
-                            <div>
-                                <h3 class="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wide mb-3" data-i18n="display.audioPlayerSection">Audio player</h3>
-                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2" data-i18n="display.audioPlayerPositionLabel">Player position in the recording-detail screen</label>
-                                <p class="t-meta mb-3" data-i18n="display.audioPlayerPositionHelp">Choose whether the audio player sits at the bottom of the screen (default) or at the top, just under the recording's title and metadata.</p>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {% set apos = current_user.audio_player_position or 'bottom' %}
-                                    <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]" :class="audioPlayerPosition === 'bottom' ? 'border-[var(--border-accent)]' : ''">
-                                        <input type="radio" name="audio_player_position" value="bottom" {% if apos != 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
-                                        <span class="flex-1">
-                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionBottom">Bottom</span>
-                                            <span class="block t-meta mt-0.5" data-i18n="display.playerPositionBottomHelp">Player anchored under the transcript + summary columns. Default.</span>
-                                        </span>
-                                    </label>
-                                    <label class="flex items-start gap-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border-secondary)] rounded-md cursor-pointer hover:bg-[var(--bg-accent-hover)]">
-                                        <input type="radio" name="audio_player_position" value="top" {% if apos == 'top' %}checked{% endif %} class="mt-1 h-4 w-4 text-[var(--text-accent)] border-[var(--border-secondary)] focus:ring-[var(--border-focus)]">
-                                        <span class="flex-1">
-                                            <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="display.playerPositionTop">Top</span>
-                                            <span class="block t-meta mt-0.5" data-i18n="display.playerPositionTopHelp">Player sits above the columns, just under the title and metadata strip.</span>
-                                        </span>
-                                    </label>
-                                </div>
-                            </div>
-
-                        </form>
-                      </div>
-                      <div class="tab-footer">
-                        <button type="submit" form="displayForm" class="btn btn--primary">
-                            <i class="fas fa-save"></i><span data-i18n="buttons.saveSettings">Save Settings</span>
-                        </button>
-                      </div>
-                    </div>
+                    <!-- The Display tab was folded into Preferences —
+                         the only setting it carried (audio player
+                         position) was a display preference and a
+                         single-setting tab was hard to find. -->
 
                     <div id="content-shares" class="hidden tab-content">
                       <div class="tab-scroll">
@@ -3149,11 +3110,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabWebhooks = document.getElementById('tab-webhooks');
             const tabAbout = document.getElementById('tab-about');
             const tabPreferences = document.getElementById('tab-preferences');
-            const tabDisplay = document.getElementById('tab-display');
             const contentAccount = document.getElementById('content-account');
             const contentPrompts = document.getElementById('content-prompts');
             const contentPreferences = document.getElementById('content-preferences');
-            const contentDisplay = document.getElementById('content-display');
             const contentShares = document.getElementById('content-shares');
             const contentSpeakers = document.getElementById('content-speakers');
             const contentFolders = document.getElementById('content-folders');
@@ -3171,7 +3130,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const tabs = [
                 { tab: tabAccount, content: contentAccount, name: 'account' },
                 { tab: tabPreferences, content: contentPreferences, name: 'preferences' },
-                { tab: tabDisplay, content: contentDisplay, name: 'display' },
                 { tab: tabPrompts, content: contentPrompts, name: 'prompts' },
                 { tab: tabShares, content: contentShares, name: 'shares' },
                 { tab: tabSpeakers, content: contentSpeakers, name: 'speakers' },
@@ -3222,10 +3180,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 switchToTab('preferences');
             }
 
-            function showDisplayTab() {
-                switchToTab('display');
-            }
-
             function showPromptsTab() {
                 switchToTab('prompts');
             }
@@ -3267,13 +3221,6 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 tabPreferences.addEventListener('click', (e) => {
                     e.preventDefault();
                     showPreferencesTab();
-                });
-            }
-
-            if (tabDisplay) {
-                tabDisplay.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showDisplayTab();
                 });
             }
 
@@ -4255,6 +4202,106 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 div.textContent = text;
                 return div.innerHTML;
             }
+
+            // ---- AJAX form submission for the settings forms --------
+            // Intercepts the four settings-tab forms (Account info,
+            // Preferences, Display, Prompts) and submits them via
+            // fetch + FormData so the page doesn't reload and the
+            // active tab is preserved. Falls back to the browser's
+            // native submit if fetch fails (network down etc.) so the
+            // user never loses their edit. Shows a small toast on
+            // success.
+            function settingsToast(message, kind) {
+                let bar = document.getElementById('settings-toast');
+                if (!bar) {
+                    bar = document.createElement('div');
+                    bar.id = 'settings-toast';
+                    bar.setAttribute('role', 'status');
+                    bar.style.cssText = [
+                        'position: fixed',
+                        'left: 50%',
+                        'bottom: 80px',
+                        'transform: translateX(-50%)',
+                        'padding: 10px 18px',
+                        'border-radius: var(--radius-md, 8px)',
+                        'font-size: 14px',
+                        'font-weight: 500',
+                        'box-shadow: 0 10px 30px rgba(0,0,0,0.18)',
+                        'z-index: 9999',
+                        'opacity: 0',
+                        'transition: opacity .15s ease, transform .15s ease',
+                        'pointer-events: none'
+                    ].join(';');
+                    document.body.appendChild(bar);
+                }
+                bar.textContent = message;
+                bar.style.background = kind === 'danger'
+                    ? 'var(--bg-danger, #dc2626)'
+                    : 'var(--bg-success, #059669)';
+                bar.style.color = '#fff';
+                requestAnimationFrame(() => {
+                    bar.style.opacity = '1';
+                    bar.style.transform = 'translateX(-50%) translateY(0)';
+                });
+                clearTimeout(bar._hideTimer);
+                bar._hideTimer = setTimeout(() => {
+                    bar.style.opacity = '0';
+                }, 2500);
+            }
+
+            function wireAjaxFormSubmit(formId, successKey) {
+                const form = document.getElementById(formId);
+                if (!form) return;
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const submitBtn = form.querySelector('[type=submit]')
+                        || document.querySelector(`[form="${formId}"][type=submit]`);
+                    if (submitBtn) submitBtn.disabled = true;
+                    try {
+                        const fd = new FormData(form);
+                        // The Display/Prompts/Account/Preferences forms
+                        // all POST to the same endpoint and discriminate
+                        // by checking which marker key is present in
+                        // request.form (accountInfoForm has user_name,
+                        // preferences_form / preferences_form fields,
+                        // etc.). FormData carries those automatically.
+                        const csrfToken = form.querySelector('[name=csrf_token]')?.value;
+                        const response = await fetch(form.action || window.location.href, {
+                            method: form.method || 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {})
+                            },
+                            body: fd,
+                            credentials: 'same-origin'
+                        });
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        // Server still returns the rendered HTML page;
+                        // we don't need to parse it. The fact that the
+                        // POST returned 2xx means the save succeeded.
+                        settingsToast(
+                            (window.i18nT?.(successKey)) || 'Settings saved',
+                            'success'
+                        );
+                    } catch (err) {
+                        console.error('[settings save]', err);
+                        // Network failure: fall back to a real submit so
+                        // the user never loses their pending edits.
+                        settingsToast('Save failed — submitting normally', 'danger');
+                        form.removeEventListener('submit', arguments.callee);
+                        form.submit();
+                    } finally {
+                        if (submitBtn) submitBtn.disabled = false;
+                    }
+                });
+            }
+            // Wire all four forms once the DOM is ready (this script
+            // already runs after the form elements have been parsed).
+            wireAjaxFormSubmit('accountInfoForm', 'account.savedSuccess');
+            wireAjaxFormSubmit('preferencesForm', 'account.savedSuccess');
+            wireAjaxFormSubmit('customPromptsForm', 'account.savedSuccess');
             
             // Update footer with version. Writes the resolved string to
             // the --footer-version-text CSS variable on :root so every
