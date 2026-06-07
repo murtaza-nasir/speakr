@@ -222,17 +222,23 @@
             flex-direction: column;
         }
 
-        /* Each tab content is a flex column that fills the wrapper.
-           Hidden tab contents are display:none (Tailwind .hidden) and
-           don't participate in flex layout. The visible one becomes a
-           flex column with its own internal scroll body + optional
-           footer. */
+        /* Each tab content is a flex column that fills the wrapper. The
+           inline <style> block in this template loads after Tailwind's
+           runtime-injected utilities in some environments, which let
+           `.tab-content { display: flex }` win over `.hidden { display:
+           none }` and rendered every tab simultaneously. The
+           compound `.tab-content.hidden` selector below is more
+           specific than either rule alone, so the hidden state always
+           wins regardless of stylesheet order. */
         .tab-content {
             flex: 1 1 auto;
             min-height: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+        }
+        .tab-content.hidden {
+            display: none;
         }
 
         /* The scrollable body of each tab — where the form fields and
