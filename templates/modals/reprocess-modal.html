@@ -5,7 +5,7 @@
             <i class="fas fa-sync-alt text-2xl text-[var(--text-accent)]"></i>
             <div class="flex-1">
                 <h3 class="modal-title" v-text="t('help.confirmReprocessingTitle')"></h3>
-                <div class="modal-subtitle capitalize">${ reprocessType } reprocessing</div>
+                <div class="modal-subtitle">${ reprocessType === 'summary' ? t('reprocessModal.subtitleSummary') : t('reprocessModal.subtitleTranscription') }</div>
             </div>
             <button @click="cancelReprocess" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
@@ -16,10 +16,10 @@
                         <i class="fas fa-file-audio text-[var(--text-accent)] mt-1"></i>
                         <div class="flex-1 min-w-0">
                             <h4 class="font-medium text-[var(--text-primary)] truncate" :title="reprocessRecording.title">
-                                ${ reprocessRecording.title || 'Untitled Recording' }
+                                ${ reprocessRecording.title || t('reprocessModal.untitledRecording') }
                             </h4>
                             <p class="text-sm text-[var(--text-muted)] mt-1">
-                                Created: ${ new Date(reprocessRecording.created_at).toLocaleDateString() }
+                                ${ t('reprocessModal.createdPrefix') } ${ new Date(reprocessRecording.created_at).toLocaleDateString(window.i18n?.currentLocale || 'en') }
                             </p>
                         </div>
                     </div>
@@ -138,43 +138,43 @@
 
                 <!-- Custom Prompt Options for Summary Reprocessing -->
                 <div v-if="reprocessType === 'summary'" class="space-y-4 pt-4 border-t border-[var(--border-primary)]">
-                    <h4 class="text-md font-semibold text-[var(--text-secondary)]">Custom Summarization Prompt</h4>
+                    <h4 class="text-md font-semibold text-[var(--text-secondary)]">${ t('reprocessModal.customSummaryPrompt') }</h4>
 
                     <!-- Prompt Source Selection -->
                     <div>
-                        <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">Prompt Source</label>
+                        <label class="block text-sm font-medium text-[var(--text-muted)] mb-2">${ t('reprocessModal.promptSource') }</label>
                         <div class="space-y-2">
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="radio" v-model="summaryReprocessPromptSource" value="default" class="text-[var(--text-accent)]" name="promptSource">
-                                <span class="text-sm text-[var(--text-secondary)]">Use default prompt</span>
+                                <span class="text-sm text-[var(--text-secondary)]">${ t('reprocessModal.useDefaultPrompt') }</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer" v-if="tagsWithCustomPrompts.length > 0">
                                 <input type="radio" v-model="summaryReprocessPromptSource" value="tag" class="text-[var(--text-accent)]" name="promptSource">
-                                <span class="text-sm text-[var(--text-secondary)]">Use prompt from tag</span>
+                                <span class="text-sm text-[var(--text-secondary)]">${ t('reprocessModal.usePromptFromTag') }</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="radio" v-model="summaryReprocessPromptSource" value="custom" class="text-[var(--text-accent)]" name="promptSource">
-                                <span class="text-sm text-[var(--text-secondary)]">Enter custom prompt</span>
+                                <span class="text-sm text-[var(--text-secondary)]">${ t('reprocessModal.enterCustomPrompt') }</span>
                             </label>
                         </div>
                     </div>
 
                     <!-- Tag Selection (shown when 'tag' is selected) -->
                     <div v-if="summaryReprocessPromptSource === 'tag' && tagsWithCustomPrompts.length > 0">
-                        <label for="reprocess-tag-select" class="block text-sm font-medium text-[var(--text-muted)] mb-2">Select Tag</label>
+                        <label for="reprocess-tag-select" class="block text-sm font-medium text-[var(--text-muted)] mb-2">${ t('reprocessModal.selectTag') }</label>
                         <select id="reprocess-tag-select" v-model="summaryReprocessSelectedTagId" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                            <option value="">Select a tag...</option>
+                            <option value="">${ t('reprocessModal.selectTagPlaceholder') }</option>
                             <option v-for="tag in tagsWithCustomPrompts" :key="tag.id" :value="tag.id">${ tag.name }</option>
                         </select>
                         <div v-if="summaryReprocessSelectedTagId" class="mt-2 p-2 bg-[var(--bg-tertiary)] rounded text-xs text-[var(--text-muted)] max-h-20 overflow-y-auto">
-                            <strong>Preview:</strong> ${ getTagPromptPreview(summaryReprocessSelectedTagId) }
+                            <strong>${ t('reprocessModal.previewLabel') }</strong> ${ getTagPromptPreview(summaryReprocessSelectedTagId) }
                         </div>
                     </div>
 
                     <!-- Custom Prompt Textarea (shown when 'custom' is selected) -->
                     <div v-if="summaryReprocessPromptSource === 'custom'">
-                        <label for="reprocess-custom-prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-2">Custom Prompt</label>
-                        <textarea id="reprocess-custom-prompt" v-model="summaryReprocessCustomPrompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="Enter your custom summarization instructions..."></textarea>
+                        <label for="reprocess-custom-prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-2">${ t('reprocessModal.customPromptLabel') }</label>
+                        <textarea id="reprocess-custom-prompt" v-model="summaryReprocessCustomPrompt" rows="4" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" :placeholder="t('reprocessModal.customPromptPlaceholder')"></textarea>
                     </div>
 
                     {# Apply mode toggle only for custom prompts. A selected tag
@@ -204,7 +204,7 @@
 
                     <!-- Info message when no tags with custom prompts exist -->
                     <div v-if="summaryReprocessPromptSource === 'tag' && tagsWithCustomPrompts.length === 0" class="text-xs text-[var(--text-muted)] italic">
-                        No tags with custom prompts available. Create tags with custom prompts in the Account Settings.
+                        ${ t('reprocessModal.noTagsWithPromptsHint') }
                     </div>
                 </div>
 
@@ -250,7 +250,7 @@
             <button @click="cancelReprocess" class="btn btn--ghost">${ t('buttons.cancel') }</button>
             <button @click="executeReprocess" class="btn btn--primary">
                 <i class="fas fa-sync-alt"></i>
-                <span>Start Reprocessing</span>
+                <span>${ t('buttons.startReprocessing') }</span>
             </button>
         </div>
     </div>

@@ -9,19 +9,19 @@
         <!-- Headline metrics -->
         <div class="grid grid-cols-2 gap-2">
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Total length</div>
+                <div class="t-label">${ t('stats.totalLength') }</div>
                 <div class="t-subhead mt-1" v-text="recordingStats.total.durationLabel"></div>
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Speakers</div>
+                <div class="t-label">${ t('stats.speakers') }</div>
                 <div class="t-subhead mt-1" v-text="recordingStats.total.speakers"></div>
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Turns</div>
+                <div class="t-label">${ t('stats.turns') }</div>
                 <div class="t-subhead mt-1" v-text="recordingStats.total.turns"></div>
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Words</div>
+                <div class="t-label">${ t('stats.words') }</div>
                 <div class="t-subhead mt-1" v-text="recordingStats.total.words.toLocaleString()"></div>
             </div>
         </div>
@@ -32,8 +32,8 @@
              secondary stats below. -->
         <div>
             <div class="flex items-center justify-between mb-2 px-1">
-                <h3 class="t-subhead">Per speaker</h3>
-                <span class="t-meta">sorted by time</span>
+                <h3 class="t-subhead">${ t('stats.perSpeaker') }</h3>
+                <span class="t-meta">${ t('stats.sortedBySpeakingTime') }</span>
             </div>
             <div class="space-y-2">
                 <div v-for="row in recordingStats.speakerRows" :key="row.speakerId"
@@ -51,21 +51,21 @@
                     <!-- Secondary stats: 3-column grid -->
                     <div class="grid grid-cols-3 gap-2 text-center">
                         <div>
-                            <div class="t-label">% audio</div>
+                            <div class="t-label">${ t('stats.pctAudio') }</div>
                             <div class="text-sm font-medium mt-0.5">${ row.pct.toFixed(1) }%</div>
                         </div>
                         <div>
-                            <div class="t-label">Turns</div>
+                            <div class="t-label">${ t('stats.turns') }</div>
                             <div class="text-sm font-medium mt-0.5" v-text="row.turns"></div>
                         </div>
                         <div>
-                            <div class="t-label">Words</div>
+                            <div class="t-label">${ t('stats.words') }</div>
                             <div class="text-sm font-medium mt-0.5" v-text="row.words.toLocaleString()"></div>
                         </div>
                     </div>
                     <div v-if="row.wpm" class="mt-2 pt-2 border-t border-[var(--border-secondary)] flex items-center justify-between t-meta">
-                        <span>Speaking rate</span>
-                        <span class="font-mono font-medium" style="color: var(--text-primary);">${ row.wpm } WPM</span>
+                        <span>${ t('stats.wpm') }</span>
+                        <span class="font-mono font-medium" style="color: var(--text-primary);">${ row.wpm } ${ t('stats.wpm') }</span>
                     </div>
                 </div>
 
@@ -73,14 +73,14 @@
                 <div v-if="recordingStats.silence.seconds > 0"
                      class="bg-[var(--bg-tertiary)]/50 border border-[var(--border-secondary)] rounded-md p-3">
                     <div class="flex items-center justify-between gap-2 mb-2">
-                        <span class="t-meta italic">Silence</span>
+                        <span class="t-meta italic">${ t('stats.silence') }</span>
                         <span class="t-meta font-mono" v-text="recordingStats.silence.durationLabel"></span>
                     </div>
                     <div class="h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden mb-2">
                         <div class="h-full" :style="{ width: recordingStats.silence.pct.toFixed(1) + '%', background: 'var(--text-muted)' }"></div>
                     </div>
                     <div class="t-meta text-center">
-                        ${ recordingStats.silence.pct.toFixed(1) }% of total
+                        ${ recordingStats.silence.pct.toFixed(1) }% ${ t('stats.pctAudio') }
                     </div>
                 </div>
             </div>
@@ -89,7 +89,7 @@
 
     <div v-else class="empty">
         <div class="empty__icon"><i class="fas fa-chart-bar"></i></div>
-        <div class="empty__title">No stats yet</div>
-        <div class="empty__body">Stats appear once this recording has been transcribed with speaker diarization and segment timestamps.</div>
+        <div class="empty__title">${ t('stats.noStatsTitle') }</div>
+        <div class="empty__body">${ t('stats.noStatsBody') }</div>
     </div>
 </div>

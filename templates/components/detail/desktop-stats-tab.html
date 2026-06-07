@@ -6,19 +6,19 @@
         <!-- Headline metrics -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Total length</div>
+                <div class="t-label">${ t('stats.totalLength') }</div>
                 <div class="t-heading mt-1">${ recordingStats.total.durationLabel }</div>
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Speakers</div>
+                <div class="t-label">${ t('stats.speakers') }</div>
                 <div class="t-heading mt-1">${ recordingStats.total.speakers }</div>
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Turns</div>
+                <div class="t-label">${ t('stats.turns') }</div>
                 <div class="t-heading mt-1">${ recordingStats.total.turns }</div>
             </div>
             <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md p-3">
-                <div class="t-label">Words</div>
+                <div class="t-label">${ t('stats.words') }</div>
                 <div class="t-heading mt-1">${ recordingStats.total.words.toLocaleString() }</div>
             </div>
         </div>
@@ -26,18 +26,18 @@
         <!-- Per-speaker breakdown table -->
         <div class="bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md overflow-hidden">
             <div class="px-4 py-3 border-b border-[var(--border-primary)] flex items-center justify-between">
-                <h3 class="t-subhead">Per speaker</h3>
-                <span class="t-meta">sorted by speaking time</span>
+                <h3 class="t-subhead">${ t('stats.perSpeaker') }</h3>
+                <span class="t-meta">${ t('stats.sortedBySpeakingTime') }</span>
             </div>
             <table class="w-full text-sm">
                 <thead>
                     <tr class="text-left t-label">
-                        <th class="py-2 px-4">Speaker</th>
-                        <th class="py-2 px-3 text-right">Time</th>
-                        <th class="py-2 px-3 text-right">% of audio</th>
-                        <th class="py-2 px-3 text-right">Turns</th>
-                        <th class="py-2 px-3 text-right">Words</th>
-                        <th class="py-2 px-3 text-right">WPM</th>
+                        <th class="py-2 px-4">${ t('stats.speaker') }</th>
+                        <th class="py-2 px-3 text-right">${ t('stats.time') }</th>
+                        <th class="py-2 px-3 text-right">${ t('stats.pctAudio') }</th>
+                        <th class="py-2 px-3 text-right">${ t('stats.turns') }</th>
+                        <th class="py-2 px-3 text-right">${ t('stats.words') }</th>
+                        <th class="py-2 px-3 text-right">${ t('stats.wpm') }</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -64,7 +64,7 @@
                     <tr v-if="recordingStats.silence.seconds > 0"
                         class="border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)]/50">
                         <td class="py-2 px-4">
-                            <span class="t-meta italic">Silence</span>
+                            <span class="t-meta italic">${ t('stats.silence') }</span>
                             <div class="mt-1.5 h-1.5 w-full rounded-full bg-[var(--bg-tertiary)] overflow-hidden">
                                 <div class="h-full" :style="{ width: recordingStats.silence.pct.toFixed(1) + '%', background: 'var(--text-muted)' }"></div>
                             </div>
@@ -82,7 +82,7 @@
 
     <div v-else class="empty">
         <div class="empty__icon"><i class="fas fa-chart-bar"></i></div>
-        <div class="empty__title">No stats yet</div>
-        <div class="empty__body">Stats appear once this recording has been transcribed with speaker diarization and segment timestamps.</div>
+        <div class="empty__title">${ t('stats.noStatsTitle') }</div>
+        <div class="empty__body">${ t('stats.noStatsBody') }</div>
     </div>
 </div>

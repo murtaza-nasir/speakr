@@ -355,7 +355,8 @@
     "toggleTheme": "Changer de thème",
     "updateTag": "Mettre à jour le tag",
     "delete": "Supprimer",
-    "save": "Enregistrer"
+    "save": "Enregistrer",
+    "startReprocessing": "Lancer le retraitement"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmer le Nouveau Mot de Passe",
@@ -1230,7 +1231,22 @@
     "audioReTranscribedWithAsr": "L'audio sera re-transcrit en utilisant l'endpoint ASR. Cela inclut la diarisation et régénérera le titre et le résumé.",
     "manualEditsOverwritten": "Toute modification manuelle de la transcription, du titre ou du résumé sera écrasée.",
     "manualEditsOverwrittenSummary": "Toute modification manuelle du résumé sera écrasée.",
-    "newTitleAndSummary": "Un nouveau résumé sera généré basé sur la transcription existante."
+    "newTitleAndSummary": "Un nouveau résumé sera généré basé sur la transcription existante.",
+    "createdPrefix": "Créé le :",
+    "untitledRecording": "Enregistrement sans titre",
+    "customSummaryPrompt": "Prompt de résumé personnalisé",
+    "promptSource": "Source du prompt",
+    "useDefaultPrompt": "Utiliser le prompt par défaut",
+    "usePromptFromTag": "Utiliser le prompt d'une étiquette",
+    "enterCustomPrompt": "Saisir un prompt personnalisé",
+    "selectTag": "Sélectionner une étiquette",
+    "selectTagPlaceholder": "Sélectionnez une étiquette...",
+    "previewLabel": "Aperçu :",
+    "customPromptLabel": "Prompt personnalisé",
+    "customPromptPlaceholder": "Saisissez vos instructions de résumé personnalisées...",
+    "noTagsWithPromptsHint": "Aucune étiquette avec prompt personnalisé disponible. Créez des étiquettes avec prompts personnalisés dans les Paramètres du compte.",
+    "subtitleSummary": "Retraitement du résumé",
+    "subtitleTranscription": "Retraitement de la transcription"
   },
   "settings": {
     "apiKeys": "Clés API",
@@ -1305,7 +1321,9 @@
     "totalRecordings": "{{count}} enregistrement",
     "totalRecordingsPlural": "{{count}} enregistrements",
     "upcoming": "À venir",
-    "yesterday": "Hier"
+    "yesterday": "Hier",
+    "allRecordings": "Tous les enregistrements",
+    "unfiled": "Non classés"
   },
   "speakers": {
     "filterBySpeaker": "Filtrer par intervenant",
@@ -1372,7 +1390,8 @@
     "saveSummary": "Enregistrer le Résumé",
     "summaryFailed": "La génération du résumé a échoué",
     "summaryInProgress": "Génération du résumé en cours...",
-    "title": "Résumé"
+    "title": "Résumé",
+    "customizePrompt": "Personnaliser le prompt"
   },
   "tagManagement": {
     "asrDefaults": "Paramètres ASR par Défaut",
@@ -1630,5 +1649,56 @@
     "playerPositionBottomHelp": "Lecteur ancré sous les colonnes de transcription et de résumé. Par défaut.",
     "playerPositionTop": "En haut",
     "playerPositionTopHelp": "Le lecteur se place au-dessus des colonnes, juste sous le titre et la barre de métadonnées."
+  },
+  "stats": {
+    "title": "Statistiques",
+    "totalLength": "Durée totale",
+    "speakers": "Intervenants",
+    "turns": "Tours de parole",
+    "words": "Mots",
+    "perSpeaker": "Par intervenant",
+    "sortedBySpeakingTime": "trié par temps de parole",
+    "speaker": "Intervenant",
+    "time": "Temps",
+    "pctAudio": "% de l'audio",
+    "wpm": "MPM",
+    "silence": "Silence",
+    "noStatsTitle": "Pas encore de statistiques",
+    "noStatsBody": "Les statistiques apparaissent une fois que l'enregistrement a été transcrit avec identification des intervenants et horodatage des segments."
+  },
+  "progressQueue": {
+    "title": "File de traitement",
+    "clear": "Effacer",
+    "uploading": "{{count}} en cours d'envoi",
+    "transcribing": "{{count}} en transcription",
+    "summarizing": "{{count}} en résumé",
+    "queued": "{{count}} en attente",
+    "cancel": "Annuler",
+    "failed": "Échecs",
+    "completed": "Terminés",
+    "done": "Terminé",
+    "empty": "Aucun élément dans la file",
+    "duplicateWarning": "Fichier en double détecté",
+    "retry": "Réessayer",
+    "delete": "Supprimer",
+    "uploadingShort": "en cours d'envoi",
+    "transcribingShort": "en transcription",
+    "summarizingShort": "en résumé",
+    "queuedShort": "en attente"
+  },
+  "floatingChat": {
+    "dockLeft": "Ancrer à gauche",
+    "dockRight": "Ancrer à droite",
+    "dockFull": "Plein écran"
+  },
+  "bulkActions": {
+    "star": "Favoris",
+    "reprocess": "Retraiter"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "Aucun lien public pour le moment",
+    "noUsersFound": "Aucun utilisateur trouvé",
+    "add": "Ajouter",
+    "notSharedYet": "Pas encore partagé"
   }
 }

@@ -23,7 +23,7 @@
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 min-w-0">
                     <i class="fas fa-tasks text-sm text-gray-800 dark:text-white"></i>
-                    <span class="font-medium text-sm text-gray-800 dark:text-white">Processing Queue</span>
+                    <span class="font-medium text-sm text-gray-800 dark:text-white">${ t('progressQueue.title') }</span>
                     <span class="text-xs bg-black dark:bg-white bg-opacity-20 dark:bg-opacity-20 px-1.5 py-0.5 rounded-full text-gray-800 dark:text-white font-medium">
                         ${totalProcessingCount}
                     </span>
@@ -31,7 +31,7 @@
                 <div class="flex items-center gap-1 flex-shrink-0">
                     <button v-if="allCompletedCount > 0" @click="clearAllCompleted()"
                             class="px-1.5 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all text-gray-800 dark:text-white">
-                        Clear
+                        ${ t('progressQueue.clear') }
                     </button>
                     <button @click="progressPopupMinimized = !progressPopupMinimized"
                             class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
@@ -43,19 +43,24 @@
                     </button>
                 </div>
             </div>
-            <!-- Compact Summary Line -->
+            <!-- Compact Summary Line.
+                 Each entry is "<count> <label>" — split into two interpolations
+                 because Vue's `${...}` delimiter parser can't see past a nested
+                 object literal like `{ count: ... }`, so we keep the count and
+                 the localized noun as separate interpolations and translate the
+                 label alone via progressQueue.*Short keys. -->
             <div v-if="activeProgressItems.length > 0" class="text-xs text-gray-800 dark:text-white opacity-70 mt-1">
                 <span v-if="activeProgressItems.filter(i => i.status === 'uploading').length > 0">
-                    ${activeProgressItems.filter(i => i.status === 'uploading').length} uploading<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.status === 'uploading').length } ${ t('progressQueue.uploadingShort') }<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'transcribing').length > 0">
-                    ${activeProgressItems.filter(i => i.status === 'transcribing').length} transcribing<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.status === 'transcribing').length } ${ t('progressQueue.transcribingShort') }<span v-if="activeProgressItems.filter(i => ['summarizing', 'queued'].includes(i.status)).length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'summarizing').length > 0">
-                    ${activeProgressItems.filter(i => i.status === 'summarizing').length} summarizing<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
+                    ${ activeProgressItems.filter(i => i.status === 'summarizing').length } ${ t('progressQueue.summarizingShort') }<span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">, </span>
                 </span>
                 <span v-if="activeProgressItems.filter(i => i.status === 'queued').length > 0">
-                    ${activeProgressItems.filter(i => i.status === 'queued').length} queued
+                    ${ activeProgressItems.filter(i => i.status === 'queued').length } ${ t('progressQueue.queuedShort') }
                 </span>
             </div>
         </div>
@@ -105,7 +110,7 @@
                         <button v-if="item.status === 'ready' && item.clientId"
                                 @click="removeProgressItem(item)"
                                 class="text-[10px] text-red-500 hover:text-red-600">
-                            <i class="fas fa-times"></i> Cancel
+                            <i class="fas fa-times"></i> ${ t('progressQueue.cancel') }
                         </button>
                     </div>
                 </div>
@@ -115,7 +120,7 @@
             <div v-if="failedProgressItems.length > 0" class="mt-2">
                 <div class="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                     <i class="fas fa-exclamation-triangle"></i>
-                    Failed (${failedProgressItems.length})
+                    ${ t('progressQueue.failed') } (${failedProgressItems.length})
                 </div>
                 <div v-for="item in failedProgressItems"
                      :key="item.id"
@@ -145,12 +150,12 @@
                         <div class="flex items-center gap-1">
                             <button v-if="item.jobId" @click.stop="retryProgressItem(item)"
                                     class="p-1 rounded bg-blue-500/20 hover:bg-blue-500/40 transition-colors"
-                                    title="Retry">
+                                    :title="t('progressQueue.retry')">
                                 <i class="fas fa-redo text-blue-500 text-[10px]"></i>
                             </button>
                             <button @click.stop="removeProgressItem(item)"
                                     class="p-1 rounded bg-red-500/20 hover:bg-red-500/40 transition-colors"
-                                    title="Delete">
+                                    :title="t('progressQueue.delete')">
                                 <i class="fas fa-trash text-red-500 text-[10px]"></i>
                             </button>
                         </div>
@@ -178,7 +183,7 @@
             <div v-if="completedProgressItems.length > 0" class="mt-2">
                 <div class="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-1 flex items-center gap-1">
                     <i class="fas fa-check-double"></i>
-                    Completed (${completedProgressItems.length})
+                    ${ t('progressQueue.completed') } (${completedProgressItems.length})
                 </div>
                 <div v-for="item in completedProgressItems"
                      :key="item.id"
@@ -186,8 +191,8 @@
                      class="px-2 py-1 bg-[var(--bg-tertiary)]/30 rounded-md flex items-center gap-2 hover:bg-[var(--bg-tertiary)]/50 cursor-pointer mb-1">
                     <i class="fas fa-check-circle text-xs text-green-500"></i>
                     <span class="text-xs truncate flex-1 text-[var(--text-primary)]">${item.title}</span>
-                    <i v-if="item.duplicateWarning" class="fas fa-copy text-xs text-amber-500" title="Duplicate file detected"></i>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">Done</span>
+                    <i v-if="item.duplicateWarning" class="fas fa-copy text-xs text-amber-500" :title="t('progressQueue.duplicateWarning')"></i>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-500 font-medium">${ t('progressQueue.done') }</span>
                 </div>
             </div>
 
@@ -195,7 +200,7 @@
             <div v-if="unifiedProgressItems.length === 0"
                  class="text-center py-3 text-[var(--text-muted)] text-xs">
                 <i class="fas fa-inbox text-lg mb-1 opacity-50"></i>
-                <p>No items in queue</p>
+                <p>${ t('progressQueue.empty') }</p>
             </div>
         </div>
     </div>

@@ -355,7 +355,8 @@
     "toggleTheme": "Cambiar tema",
     "updateTag": "Actualizar tag",
     "delete": "Eliminar",
-    "save": "Guardar"
+    "save": "Guardar",
+    "startReprocessing": "Iniciar reprocesamiento"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmar Nueva Contraseña",
@@ -1230,7 +1231,22 @@
     "audioReTranscribedWithAsr": "El audio será re-transcrito usando el endpoint ASR. Esto incluye diarización y regenerará el título y resumen.",
     "manualEditsOverwritten": "Cualquier edición manual de la transcripción, título o resumen será sobrescrita.",
     "manualEditsOverwrittenSummary": "Cualquier edición manual del resumen será sobrescrita.",
-    "newTitleAndSummary": "Se generará un nuevo resumen basado en la transcripción existente."
+    "newTitleAndSummary": "Se generará un nuevo resumen basado en la transcripción existente.",
+    "createdPrefix": "Creado:",
+    "untitledRecording": "Grabación sin título",
+    "customSummaryPrompt": "Instrucción de resumen personalizada",
+    "promptSource": "Origen de la instrucción",
+    "useDefaultPrompt": "Usar instrucción predeterminada",
+    "usePromptFromTag": "Usar instrucción de una etiqueta",
+    "enterCustomPrompt": "Introducir instrucción personalizada",
+    "selectTag": "Seleccionar etiqueta",
+    "selectTagPlaceholder": "Selecciona una etiqueta...",
+    "previewLabel": "Vista previa:",
+    "customPromptLabel": "Instrucción personalizada",
+    "customPromptPlaceholder": "Introduce tus instrucciones de resumen personalizadas...",
+    "noTagsWithPromptsHint": "No hay etiquetas con instrucciones personalizadas. Crea etiquetas con instrucciones personalizadas en Configuración de la cuenta.",
+    "subtitleSummary": "Reprocesamiento del resumen",
+    "subtitleTranscription": "Reprocesamiento de la transcripción"
   },
   "settings": {
     "apiKeys": "Claves API",
@@ -1305,7 +1321,9 @@
     "totalRecordings": "{{count}} grabación",
     "totalRecordingsPlural": "{{count}} grabaciones",
     "upcoming": "Próximo",
-    "yesterday": "Ayer"
+    "yesterday": "Ayer",
+    "allRecordings": "Todas las grabaciones",
+    "unfiled": "Sin clasificar"
   },
   "speakers": {
     "filterBySpeaker": "Filtrar por orador",
@@ -1372,7 +1390,8 @@
     "saveSummary": "Guardar Resumen",
     "summaryFailed": "La generación del resumen falló",
     "summaryInProgress": "Generación de resumen en progreso...",
-    "title": "Resumen"
+    "title": "Resumen",
+    "customizePrompt": "Personalizar instrucción"
   },
   "tagManagement": {
     "asrDefaults": "Configuraciones ASR Predeterminadas",
@@ -1630,5 +1649,56 @@
     "playerPositionBottomHelp": "Reproductor anclado debajo de las columnas de transcripción y resumen. Predeterminado.",
     "playerPositionTop": "Superior",
     "playerPositionTopHelp": "El reproductor se sitúa encima de las columnas, justo debajo del título y la barra de metadatos."
+  },
+  "stats": {
+    "title": "Estadísticas",
+    "totalLength": "Duración total",
+    "speakers": "Hablantes",
+    "turns": "Turnos",
+    "words": "Palabras",
+    "perSpeaker": "Por hablante",
+    "sortedBySpeakingTime": "ordenado por tiempo de habla",
+    "speaker": "Hablante",
+    "time": "Tiempo",
+    "pctAudio": "% del audio",
+    "wpm": "PPM",
+    "silence": "Silencio",
+    "noStatsTitle": "Aún no hay estadísticas",
+    "noStatsBody": "Las estadísticas aparecen cuando la grabación se ha transcrito con identificación de hablantes y marcas de tiempo de los segmentos."
+  },
+  "progressQueue": {
+    "title": "Cola de procesamiento",
+    "clear": "Limpiar",
+    "uploading": "{{count}} subiendo",
+    "transcribing": "{{count}} transcribiendo",
+    "summarizing": "{{count}} resumiendo",
+    "queued": "{{count}} en cola",
+    "cancel": "Cancelar",
+    "failed": "Fallidos",
+    "completed": "Completados",
+    "done": "Hecho",
+    "empty": "No hay elementos en la cola",
+    "duplicateWarning": "Archivo duplicado detectado",
+    "retry": "Reintentar",
+    "delete": "Eliminar",
+    "uploadingShort": "subiendo",
+    "transcribingShort": "transcribiendo",
+    "summarizingShort": "resumiendo",
+    "queuedShort": "en cola"
+  },
+  "floatingChat": {
+    "dockLeft": "Anclar a la izquierda",
+    "dockRight": "Anclar a la derecha",
+    "dockFull": "Pantalla completa"
+  },
+  "bulkActions": {
+    "star": "Destacar",
+    "reprocess": "Reprocesar"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "Aún no hay enlaces públicos",
+    "noUsersFound": "No se encontraron usuarios",
+    "add": "Añadir",
+    "notSharedYet": "Aún no compartido con nadie"
   }
 }

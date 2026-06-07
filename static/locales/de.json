@@ -355,7 +355,8 @@
     "toggleTheme": "Design umschalten",
     "updateTag": "Tag aktualisieren",
     "delete": "Löschen",
-    "save": "Speichern"
+    "save": "Speichern",
+    "startReprocessing": "Neuverarbeitung starten"
   },
   "changePasswordModal": {
     "confirmPassword": "Neues Passwort Bestätigen",
@@ -1230,7 +1231,22 @@
     "audioReTranscribedWithAsr": "Das Audio wird mit dem ASR-Endpoint neu transkribiert. Dies umfasst Diarisierung und wird Titel und Zusammenfassung neu generieren.",
     "manualEditsOverwritten": "Alle manuellen Bearbeitungen der Transkription, des Titels oder der Zusammenfassung werden überschrieben.",
     "manualEditsOverwrittenSummary": "Alle manuellen Bearbeitungen der Zusammenfassung werden überschrieben.",
-    "newTitleAndSummary": "Eine neue Zusammenfassung wird basierend auf der vorhandenen Transkription generiert."
+    "newTitleAndSummary": "Eine neue Zusammenfassung wird basierend auf der vorhandenen Transkription generiert.",
+    "createdPrefix": "Erstellt:",
+    "untitledRecording": "Unbenannte Aufnahme",
+    "customSummaryPrompt": "Benutzerdefinierter Zusammenfassungs-Prompt",
+    "promptSource": "Prompt-Quelle",
+    "useDefaultPrompt": "Standard-Prompt verwenden",
+    "usePromptFromTag": "Prompt aus Schlagwort verwenden",
+    "enterCustomPrompt": "Eigenen Prompt eingeben",
+    "selectTag": "Schlagwort wählen",
+    "selectTagPlaceholder": "Schlagwort auswählen...",
+    "previewLabel": "Vorschau:",
+    "customPromptLabel": "Eigener Prompt",
+    "customPromptPlaceholder": "Eigene Anweisungen für die Zusammenfassung eingeben...",
+    "noTagsWithPromptsHint": "Keine Schlagwörter mit eigenen Prompts vorhanden. Erstellen Sie Schlagwörter mit eigenen Prompts in den Kontoeinstellungen.",
+    "subtitleSummary": "Zusammenfassung neu verarbeiten",
+    "subtitleTranscription": "Transkription neu verarbeiten"
   },
   "settings": {
     "apiKeys": "API-Schlüssel",
@@ -1305,7 +1321,9 @@
     "totalRecordings": "{{count}} Aufnahme",
     "totalRecordingsPlural": "{{count}} Aufnahmen",
     "upcoming": "Bevorstehend",
-    "yesterday": "Gestern"
+    "yesterday": "Gestern",
+    "allRecordings": "Alle Aufnahmen",
+    "unfiled": "Nicht zugeordnet"
   },
   "speakers": {
     "filterBySpeaker": "Nach Sprecher filtern",
@@ -1372,7 +1390,8 @@
     "saveSummary": "Zusammenfassung speichern",
     "summaryFailed": "Generierung der Zusammenfassung fehlgeschlagen",
     "summaryInProgress": "Zusammenfassung wird generiert...",
-    "title": "Zusammenfassung"
+    "title": "Zusammenfassung",
+    "customizePrompt": "Prompt anpassen"
   },
   "tagManagement": {
     "asrDefaults": "ASR-Standards",
@@ -1630,5 +1649,56 @@
     "playerPositionBottomHelp": "Player unter den Transkript- und Zusammenfassungsspalten verankert. Standard.",
     "playerPositionTop": "Oben",
     "playerPositionTopHelp": "Der Player sitzt über den Spalten, direkt unter dem Titel und der Metadatenleiste."
+  },
+  "stats": {
+    "title": "Statistiken",
+    "totalLength": "Gesamtdauer",
+    "speakers": "Sprecher",
+    "turns": "Sprecherwechsel",
+    "words": "Wörter",
+    "perSpeaker": "Pro Sprecher",
+    "sortedBySpeakingTime": "sortiert nach Sprechdauer",
+    "speaker": "Sprecher",
+    "time": "Zeit",
+    "pctAudio": "% des Audios",
+    "wpm": "WpM",
+    "silence": "Stille",
+    "noStatsTitle": "Noch keine Statistiken",
+    "noStatsBody": "Statistiken erscheinen, sobald die Aufnahme mit Sprechertrennung und Zeitstempeln transkribiert wurde."
+  },
+  "progressQueue": {
+    "title": "Verarbeitungswarteschlange",
+    "clear": "Leeren",
+    "uploading": "{{count}} werden hochgeladen",
+    "transcribing": "{{count}} werden transkribiert",
+    "summarizing": "{{count}} werden zusammengefasst",
+    "queued": "{{count}} in der Warteschlange",
+    "cancel": "Abbrechen",
+    "failed": "Fehlgeschlagen",
+    "completed": "Abgeschlossen",
+    "done": "Fertig",
+    "empty": "Keine Einträge in der Warteschlange",
+    "duplicateWarning": "Doppelte Datei erkannt",
+    "retry": "Wiederholen",
+    "delete": "Löschen",
+    "uploadingShort": "werden hochgeladen",
+    "transcribingShort": "werden transkribiert",
+    "summarizingShort": "werden zusammengefasst",
+    "queuedShort": "in der Warteschlange"
+  },
+  "floatingChat": {
+    "dockLeft": "Links andocken",
+    "dockRight": "Rechts andocken",
+    "dockFull": "Vollbild"
+  },
+  "bulkActions": {
+    "star": "Markieren",
+    "reprocess": "Neu verarbeiten"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "Noch keine öffentlichen Freigabe-Links",
+    "noUsersFound": "Keine Benutzer gefunden",
+    "add": "Hinzufügen",
+    "notSharedYet": "Noch nicht freigegeben"
   }
 }

@@ -883,6 +883,21 @@ html.dark .modal-overlay {
     padding: 0;
 }
 
+/* Tab-content pane inside a modal: keep the panel a stable height as the
+   user switches tabs. Without this the modal "breathes" because the
+   Transcription tab is tall, Summary tab is medium, and Sharing tab is
+   short (especially when there are no admin groups and only an empty
+   state renders). A min-height that matches the tallest realistic tab
+   makes the modal feel rigid without needing JS height measurement. */
+.modal-tabs-pane {
+    min-height: 320px;
+}
+@media (max-width: 640px) {
+    .modal-tabs-pane {
+        min-height: 0;
+    }
+}
+
 .modal-footer {
     display: flex;
     align-items: center;

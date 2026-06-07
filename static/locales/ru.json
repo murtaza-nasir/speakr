@@ -355,7 +355,8 @@
     "toggleTheme": "Переключить тему",
     "updateTag": "Обновить тег",
     "delete": "Удалить",
-    "save": "Сохранить"
+    "save": "Сохранить",
+    "startReprocessing": "Запустить повторную обработку"
   },
   "changePasswordModal": {
     "confirmPassword": "Подтвердите новый пароль",
@@ -1230,7 +1231,22 @@
     "audioReTranscribedWithAsr": "Аудио будет транскрибировано заново с использованием ASR-эндпоинта. Это включает диаризацию и перегенерирует заголовок и резюме.",
     "manualEditsOverwritten": "Любые ручные правки транскрипции, заголовка или резюме будут перезаписаны.",
     "manualEditsOverwrittenSummary": "Любые ручные правки резюме будут перезаписаны.",
-    "newTitleAndSummary": "Новое резюме будет сгенерировано на основе существующей транскрипции."
+    "newTitleAndSummary": "Новое резюме будет сгенерировано на основе существующей транскрипции.",
+    "createdPrefix": "Создано:",
+    "untitledRecording": "Запись без названия",
+    "customSummaryPrompt": "Пользовательская подсказка для резюме",
+    "promptSource": "Источник подсказки",
+    "useDefaultPrompt": "Использовать подсказку по умолчанию",
+    "usePromptFromTag": "Использовать подсказку из тега",
+    "enterCustomPrompt": "Ввести свою подсказку",
+    "selectTag": "Выберите тег",
+    "selectTagPlaceholder": "Выберите тег...",
+    "previewLabel": "Предпросмотр:",
+    "customPromptLabel": "Своя подсказка",
+    "customPromptPlaceholder": "Введите свои инструкции для резюмирования...",
+    "noTagsWithPromptsHint": "Нет тегов с пользовательскими подсказками. Создайте теги с подсказками в настройках аккаунта.",
+    "subtitleSummary": "Повторная обработка резюме",
+    "subtitleTranscription": "Повторная обработка расшифровки"
   },
   "settings": {
     "apiKeys": "API-ключи",
@@ -1305,7 +1321,9 @@
     "totalRecordings": "{{count}} запись",
     "totalRecordingsPlural": "{{count}} записей",
     "upcoming": "Предстоящие",
-    "yesterday": "Вчера"
+    "yesterday": "Вчера",
+    "allRecordings": "Все записи",
+    "unfiled": "Без папки"
   },
   "speakers": {
     "filterBySpeaker": "Фильтр по спикеру",
@@ -1372,7 +1390,8 @@
     "saveSummary": "Сохранить резюме",
     "summaryFailed": "Не удалось сгенерировать резюме",
     "summaryInProgress": "Генерация резюме...",
-    "title": "Резюме"
+    "title": "Резюме",
+    "customizePrompt": "Настроить подсказку"
   },
   "tagManagement": {
     "asrDefaults": "Настройки ASR по умолчанию",
@@ -1630,5 +1649,56 @@
     "playerPositionBottomHelp": "Плеер закреплён под столбцами расшифровки и резюме. По умолчанию.",
     "playerPositionTop": "Вверху",
     "playerPositionTopHelp": "Плеер располагается над столбцами, прямо под заголовком и панелью метаданных."
+  },
+  "stats": {
+    "title": "Статистика",
+    "totalLength": "Общая длительность",
+    "speakers": "Говорящие",
+    "turns": "Реплики",
+    "words": "Слова",
+    "perSpeaker": "По каждому говорящему",
+    "sortedBySpeakingTime": "отсортировано по времени речи",
+    "speaker": "Говорящий",
+    "time": "Время",
+    "pctAudio": "% аудио",
+    "wpm": "слов/мин",
+    "silence": "Тишина",
+    "noStatsTitle": "Статистики пока нет",
+    "noStatsBody": "Статистика появится после того, как запись будет расшифрована с разделением говорящих и временными метками сегментов."
+  },
+  "progressQueue": {
+    "title": "Очередь обработки",
+    "clear": "Очистить",
+    "uploading": "{{count}} загружается",
+    "transcribing": "{{count}} расшифровывается",
+    "summarizing": "{{count}} резюмируется",
+    "queued": "{{count}} в очереди",
+    "cancel": "Отмена",
+    "failed": "Ошибки",
+    "completed": "Завершено",
+    "done": "Готово",
+    "empty": "В очереди ничего нет",
+    "duplicateWarning": "Обнаружен дубликат файла",
+    "retry": "Повторить",
+    "delete": "Удалить",
+    "uploadingShort": "загружается",
+    "transcribingShort": "расшифровывается",
+    "summarizingShort": "резюмируется",
+    "queuedShort": "в очереди"
+  },
+  "floatingChat": {
+    "dockLeft": "Закрепить слева",
+    "dockRight": "Закрепить справа",
+    "dockFull": "Во весь экран"
+  },
+  "bulkActions": {
+    "star": "Избранное",
+    "reprocess": "Повторить"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "Публичных ссылок пока нет",
+    "noUsersFound": "Пользователи не найдены",
+    "add": "Добавить",
+    "notSharedYet": "Пока ни с кем не поделились"
   }
 }

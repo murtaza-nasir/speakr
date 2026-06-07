@@ -21,7 +21,73 @@
     <script>
         // Initialize i18n
         let t = (key) => key; // Default fallback
-        
+
+        // Sort the option list of a <select> alphabetically by the displayed
+        // text, using the current locale's collation. The selected option is
+        // preserved across the reshuffle so the user's preference doesn't
+        // appear to "jump" to a different value. Options carrying
+        // `data-sort-pin="top"` stay anchored at the start (used for
+        // "Auto-detect" / "Default (model decides)" sentinel rows). All
+        // option `value` attributes are left untouched so this is fully
+        // backward-compatible — what changes is purely the visual order of
+        // the rendered <option> elements.
+        //
+        // NOTE: capturing the selected value via the HTMLOptionElement
+        // .selected property (and re-applying it the same way) is more
+        // robust than reading/writing select.value, because some browsers
+        // reset the selectedness when option nodes are detached + re-appended
+        // and select.value setter has historically been finicky in that
+        // window. Using .selected sidesteps that race entirely.
+        function sortSelectOptionsAlphabetically(select, locale) {
+            if (!select || select.options.length < 2) return;
+            const opts = Array.from(select.options);
+            const wasSelected = opts.find(o => o.selected) || null;
+            const pinned = opts.filter(o => o.dataset.sortPin === 'top');
+            const rest = opts.filter(o => o.dataset.sortPin !== 'top');
+            const collator = new Intl.Collator(locale || 'en', { sensitivity: 'base', numeric: true });
+            rest.sort((a, b) => collator.compare(a.textContent.trim(), b.textContent.trim()));
+            // Detach all and re-attach in sorted order.
+            while (select.firstChild) select.removeChild(select.firstChild);
+            for (const o of pinned) select.appendChild(o);
+            for (const o of rest)   select.appendChild(o);
+            // Re-apply the previous selection. If nothing was selected (rare —
+            // would only happen on a select with no `selected` attribute and
+            // no JS-set value), leave the browser default (first option) alone.
+            if (wasSelected) {
+                Array.from(select.options).forEach(o => { o.selected = (o === wasSelected); });
+            }
+        }
+
+        function sortLanguageDropdowns() {
+            const locale = (window.i18n && window.i18n.currentLocale) || 'en';
+            ['ui_language', 'transcription_language', 'output_language'].forEach(id => {
+                sortSelectOptionsAlphabetically(document.getElementById(id), locale);
+            });
+        }
+
+        // Reconcile the Interface Language dropdown with whatever locale the
+        // UI is ACTUALLY rendering in. The DB column current_user.ui_language
+        // and the localStorage `preferredLanguage` value can drift apart
+        // (e.g. user switched languages on a different device, or an old
+        // session set localStorage before the DB existed). When they
+        // disagree, the UI follows localStorage but the <select> would
+        // still render based on the DB value — confusing because clicking
+        // the "actually rendering" language in the dropdown is then a no-op
+        // (no `change` event since the selection didn't move). Pull the
+        // dropdown into line with what the user is actually seeing.
+        function syncUILanguageDropdownToActiveLocale() {
+            const sel = document.getElementById('ui_language');
+            if (!sel || !window.i18n) return;
+            const active = window.i18n.currentLocale;
+            // Only sync if the active locale is one of the dropdown's options
+            // — otherwise leave the DB value alone (mismatched locale codes
+            // can happen during locale-file additions).
+            const match = Array.from(sel.options).find(o => o.value === active);
+            if (match && !match.selected) {
+                Array.from(sel.options).forEach(o => { o.selected = (o === match); });
+            }
+        }
+
         async function initializeI18n(language) {
             const userLanguage = language || "{{ user_language }}";
 
@@ -45,6 +111,15 @@
                     const key = el.getAttribute('data-i18n-placeholder');
                     el.placeholder = t(key);
                 });
+
+                // Make sure the Interface Language dropdown reflects the
+                // locale that's actually rendering, not just the DB value.
+                syncUILanguageDropdownToActiveLocale();
+
+                // After translations apply, sort language dropdowns in the
+                // current locale's alphabetical order. Values stay intact so
+                // already-saved user preferences continue to resolve.
+                sortLanguageDropdowns();
             }
         }
 
@@ -63,7 +138,7 @@
                 const key = el.getAttribute('data-i18n-placeholder');
                 el.placeholder = t(key);
             });
-            
+
             // Update language options in dropdown to show native names
             const langSelect = document.getElementById('ui_language');
             if (langSelect) {
@@ -76,14 +151,18 @@
                     'ru': 'Русский (Russian)',
                     'pt-BR': 'Português (Brasil)'
                 };
-                
+
                 Array.from(langSelect.options).forEach(option => {
                     if (langOptions[option.value]) {
                         option.textContent = langOptions[option.value];
                     }
                 });
             }
-            
+
+            // Re-sort the language dropdowns now that translations + autonyms
+            // have been re-applied for the new locale.
+            sortLanguageDropdowns();
+
             // Force update any Vue or dynamic content by dispatching a custom event
             window.dispatchEvent(new CustomEvent('language-changed', { detail: { language: window.i18n.currentLanguage } }));
         }
@@ -826,7 +905,7 @@
                                     <div>
                                         <label for="transcription_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.transcriptionLanguage">Transcription Language</label>
                                         <select name="transcription_language" id="transcription_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                            <option value="" data-i18n="languages.autoDetect" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
+                                            <option value="" data-sort-pin="top" data-i18n="languages.autoDetect" {% if not current_user.transcription_language %}selected{% endif %}>Auto-detect</option>
                                             <option value="en" data-i18n="languages.en" {% if current_user.transcription_language == 'en' %}selected{% endif %}>English</option>
                                             <option value="es" data-i18n="languages.es" {% if current_user.transcription_language == 'es' %}selected{% endif %}>Spanish</option>
                                             <option value="fr" data-i18n="languages.fr" {% if current_user.transcription_language == 'fr' %}selected{% endif %}>French</option>
@@ -854,7 +933,7 @@
                                     <div>
                                         <label for="output_language" class="block text-sm font-medium text-[var(--text-muted)]" data-i18n="account.preferredOutputLanguage">Preferred Output Language</label>
                                         <select name="output_language" id="output_language" class="mt-1 block w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-[var(--border-focus)] focus:border-[var(--border-focus)] sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                            <option value="" data-i18n="languages.defaultModelDecides" {% if not current_user.output_language %}selected{% endif %}>Default (model decides)</option>
+                                            <option value="" data-sort-pin="top" data-i18n="languages.defaultModelDecides" {% if not current_user.output_language %}selected{% endif %}>Default (model decides)</option>
                                             <option value="English" data-i18n="languages.en" {% if current_user.output_language == 'English' %}selected{% endif %}>English</option>
                                             <option value="Spanish" data-i18n="languages.es" {% if current_user.output_language == 'Spanish' %}selected{% endif %}>Spanish</option>
                                             <option value="French" data-i18n="languages.fr" {% if current_user.output_language == 'French' %}selected{% endif %}>French</option>
@@ -2059,6 +2138,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     </nav>
                 </div>
 
+                <!-- Tab content area: wrapper keeps modal a consistent height across tabs -->
+                <div class="modal-tabs-pane">
+
                 <!-- Tab: Transcription & Retention -->
                 <div id="tagTabTranscription" class="tag-modal-tab-content space-y-4">
                     {% if connector_supports_diarization %}
@@ -2200,7 +2282,27 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </div>
                         <p class="text-xs text-[var(--text-light)] italic mt-3">Note: If both are enabled, all group members will have access.</p>
                     </div>
+
+                    <!-- Empty state: shown when internal sharing is enabled but the user
+                         is not an admin of any group (so they can't associate this tag
+                         with a group). Copy varies by site-admin status. -->
+                    <div id="tagSharingEmptyState" class="empty hidden">
+                        <div class="empty__icon"><i class="fas fa-users"></i></div>
+                        <div class="empty__title">No groups available for sharing</div>
+                        <div class="empty__body">
+                            {% if current_user.is_admin %}
+                                Sharing tags requires at least one group. Create one in
+                                <a href="/admin#groups" class="text-[var(--text-accent)] hover:underline">Admin&nbsp;&rarr;&nbsp;Groups</a>,
+                                then come back here to associate this tag with it.
+                            {% else %}
+                                Sharing tags requires you to be an admin of at least one group.
+                                Ask your administrator to create a group and add you as an admin, then you can share tags with that group's members.
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
+
+                </div><!-- /.modal-tabs-pane -->
 
                 </div>
                 <div class="modal-footer">
@@ -2253,6 +2355,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </button>
                     </nav>
                 </div>
+
+                <!-- Tab content area: wrapper keeps modal a consistent height across tabs -->
+                <div class="modal-tabs-pane">
 
                 <!-- Tab: Transcription & Retention -->
                 <div id="folderTabTranscription" class="folder-modal-tab-content space-y-4">
@@ -2389,7 +2494,27 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         </div>
                         <p class="text-xs text-[var(--text-light)] italic mt-3">Note: If both are enabled, all group members will have access.</p>
                     </div>
+
+                    <!-- Empty state: shown when internal sharing is enabled but the user
+                         is not an admin of any group (so they can't associate this folder
+                         with a group). Copy varies by site-admin status. -->
+                    <div id="folderSharingEmptyState" class="empty hidden">
+                        <div class="empty__icon"><i class="fas fa-users"></i></div>
+                        <div class="empty__title">No groups available for sharing</div>
+                        <div class="empty__body">
+                            {% if current_user.is_admin %}
+                                Sharing folders requires at least one group. Create one in
+                                <a href="/admin#groups" class="text-[var(--text-accent)] hover:underline">Admin&nbsp;&rarr;&nbsp;Groups</a>,
+                                then come back here to associate this folder with it.
+                            {% else %}
+                                Sharing folders requires you to be an admin of at least one group.
+                                Ask your administrator to create a group and add you as an admin, then you can share folders with that group's members.
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
+
+                </div><!-- /.modal-tabs-pane -->
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-[var(--border-primary)]">
                     <button type="button" id="cancelFolderBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
@@ -4523,16 +4648,28 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         let userAdminGroups = {{ user_admin_groups | tojson }};
         console.log('User admin groups:', userAdminGroups);
 
-        // Update visibility of group selection based on whether user is admin of any groups
+        // Update visibility of group selection based on whether user is admin of any groups.
+        // When internal sharing is on but the user has no admin groups, surface an
+        // empty state so the Sharing tab isn't visually blank.
         function updateGroupSelectionVisibility() {
             const groupSelectionSection = document.getElementById('tagGroupSelectionSection');
+            const emptyState = document.getElementById('tagSharingEmptyState');
+            const isInternalSharingEnabled = {{ 'true' if enable_internal_sharing else 'false' }};
+            const hasGroups = Array.isArray(userAdminGroups) && userAdminGroups.length > 0;
+
             if (groupSelectionSection) {
-                const isInternalSharingEnabled = {{ 'true' if enable_internal_sharing else 'false' }};
-                if (isInternalSharingEnabled && userAdminGroups.length > 0) {
+                if (isInternalSharingEnabled && hasGroups) {
                     groupSelectionSection.classList.remove('hidden');
                     populateGroupDropdown();
                 } else {
                     groupSelectionSection.classList.add('hidden');
+                }
+            }
+            if (emptyState) {
+                if (isInternalSharingEnabled && !hasGroups) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
                 }
             }
         }
@@ -5990,10 +6127,16 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         }
         checkFolderAutoDeletionEnabled();
 
-        // Initialize folder group selection visibility
+        // Initialize folder group selection visibility. Mirror the tag-modal
+        // behavior: surface an empty state inside the Sharing tab when
+        // internal sharing is on but the user has no admin groups.
         function initFolderGroupSelection() {
             const folderGroupSection = document.getElementById('folderGroupSelectionSection');
-            if (folderGroupSection && userAdminGroups && userAdminGroups.length > 0) {
+            const emptyState = document.getElementById('folderSharingEmptyState');
+            const isInternalSharingEnabled = {{ 'true' if enable_internal_sharing else 'false' }};
+            const hasGroups = Array.isArray(userAdminGroups) && userAdminGroups.length > 0;
+
+            if (folderGroupSection && hasGroups) {
                 folderGroupSection.classList.remove('hidden');
 
                 // Populate folder group dropdown
@@ -6010,6 +6153,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                         option.textContent = group.name;
                         folderGroupIdEl.appendChild(option);
                     });
+                }
+            }
+            if (emptyState) {
+                if (isInternalSharingEnabled && !hasGroups) {
+                    emptyState.classList.remove('hidden');
+                } else {
+                    emptyState.classList.add('hidden');
                 }
             }
         }

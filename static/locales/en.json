@@ -355,7 +355,8 @@
     "toggleTheme": "Toggle theme",
     "updateTag": "Update Tag",
     "delete": "Delete",
-    "save": "Save"
+    "save": "Save",
+    "startReprocessing": "Start Reprocessing"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirm New Password",
@@ -1239,7 +1240,22 @@
     "audioReTranscribedWithAsr": "The audio will be re-transcribed using the ASR endpoint. This includes diarization and will regenerate the title and summary.",
     "manualEditsOverwritten": "Any manual edits to the transcription, title, or summary will be overwritten.",
     "manualEditsOverwrittenSummary": "Any manual edits to the summary will be overwritten.",
-    "newTitleAndSummary": "A new summary will be generated based on the existing transcription."
+    "newTitleAndSummary": "A new summary will be generated based on the existing transcription.",
+    "createdPrefix": "Created:",
+    "untitledRecording": "Untitled Recording",
+    "customSummaryPrompt": "Custom Summarization Prompt",
+    "promptSource": "Prompt Source",
+    "useDefaultPrompt": "Use default prompt",
+    "usePromptFromTag": "Use prompt from tag",
+    "enterCustomPrompt": "Enter custom prompt",
+    "selectTag": "Select Tag",
+    "selectTagPlaceholder": "Select a tag...",
+    "previewLabel": "Preview:",
+    "customPromptLabel": "Custom Prompt",
+    "customPromptPlaceholder": "Enter your custom summarization instructions...",
+    "noTagsWithPromptsHint": "No tags with custom prompts available. Create tags with custom prompts in the Account Settings.",
+    "subtitleSummary": "Summary reprocessing",
+    "subtitleTranscription": "Transcription reprocessing"
   },
   "settings": {
     "apiKeys": "API Keys",
@@ -1314,7 +1330,9 @@
     "totalRecordings": "{{count}} recording",
     "totalRecordingsPlural": "{{count}} recordings",
     "upcoming": "Upcoming",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "allRecordings": "All Recordings",
+    "unfiled": "Unfiled"
   },
   "speakers": {
     "filterBySpeaker": "Filter by speaker",
@@ -1381,7 +1399,8 @@
     "saveSummary": "Save Summary",
     "summaryFailed": "Summary generation failed",
     "summaryInProgress": "Summary generation in progress...",
-    "title": "Summary"
+    "title": "Summary",
+    "customizePrompt": "Customise prompt"
   },
   "tagManagement": {
     "asrDefaults": "ASR Defaults",
@@ -1630,5 +1649,56 @@
     "playerPositionBottomHelp": "Player anchored under the transcript + summary columns. Default.",
     "playerPositionTop": "Top",
     "playerPositionTopHelp": "Player sits above the columns, just under the title and metadata strip."
+  },
+  "stats": {
+    "title": "Stats",
+    "totalLength": "Total length",
+    "speakers": "Speakers",
+    "turns": "Turns",
+    "words": "Words",
+    "perSpeaker": "Per speaker",
+    "sortedBySpeakingTime": "sorted by speaking time",
+    "speaker": "Speaker",
+    "time": "Time",
+    "pctAudio": "% of audio",
+    "wpm": "WPM",
+    "silence": "Silence",
+    "noStatsTitle": "No stats yet",
+    "noStatsBody": "Stats appear once this recording has been transcribed with speaker diarization and segment timestamps."
+  },
+  "progressQueue": {
+    "title": "Processing Queue",
+    "clear": "Clear",
+    "uploading": "{{count}} uploading",
+    "transcribing": "{{count}} transcribing",
+    "summarizing": "{{count}} summarizing",
+    "queued": "{{count}} queued",
+    "cancel": "Cancel",
+    "failed": "Failed",
+    "completed": "Completed",
+    "done": "Done",
+    "empty": "No items in queue",
+    "duplicateWarning": "Duplicate file detected",
+    "retry": "Retry",
+    "delete": "Delete",
+    "uploadingShort": "uploading",
+    "transcribingShort": "transcribing",
+    "summarizingShort": "summarizing",
+    "queuedShort": "queued"
+  },
+  "floatingChat": {
+    "dockLeft": "Dock left",
+    "dockRight": "Dock right",
+    "dockFull": "Dock full"
+  },
+  "bulkActions": {
+    "star": "Star",
+    "reprocess": "Reprocess"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "No public share links yet",
+    "noUsersFound": "No users found",
+    "add": "Add",
+    "notSharedYet": "Not shared with anyone yet"
   }
 }

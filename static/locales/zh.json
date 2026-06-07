@@ -355,7 +355,8 @@
     "toggleTheme": "切换主题",
     "updateTag": "更新标签",
     "delete": "删除",
-    "save": "保存"
+    "save": "保存",
+    "startReprocessing": "开始重新处理"
   },
   "changePasswordModal": {
     "confirmPassword": "确认新密码",
@@ -1230,7 +1231,22 @@
     "audioReTranscribedWithAsr": "音频将使用 ASR 端点重新转录。这包括说话人分离，并将重新生成标题和摘要。",
     "manualEditsOverwritten": "对转录、标题或摘要的任何手动编辑都将被覆盖。",
     "manualEditsOverwrittenSummary": "对摘要的任何手动编辑都将被覆盖。",
-    "newTitleAndSummary": "将基于现有转录生成新的摘要。"
+    "newTitleAndSummary": "将基于现有转录生成新的摘要。",
+    "createdPrefix": "创建时间:",
+    "untitledRecording": "未命名录音",
+    "customSummaryPrompt": "自定义摘要提示词",
+    "promptSource": "提示词来源",
+    "useDefaultPrompt": "使用默认提示词",
+    "usePromptFromTag": "使用标签的提示词",
+    "enterCustomPrompt": "输入自定义提示词",
+    "selectTag": "选择标签",
+    "selectTagPlaceholder": "请选择一个标签...",
+    "previewLabel": "预览:",
+    "customPromptLabel": "自定义提示词",
+    "customPromptPlaceholder": "请输入您的自定义摘要指令...",
+    "noTagsWithPromptsHint": "没有带自定义提示词的标签。请在账户设置中创建带自定义提示词的标签。",
+    "subtitleSummary": "重新生成摘要",
+    "subtitleTranscription": "重新转录"
   },
   "settings": {
     "apiKeys": "API密钥",
@@ -1305,7 +1321,9 @@
     "totalRecordings": "{{count}} 个录音",
     "totalRecordingsPlural": "{{count}} 个录音",
     "upcoming": "即将到来",
-    "yesterday": "昨天"
+    "yesterday": "昨天",
+    "allRecordings": "所有录音",
+    "unfiled": "未分类"
   },
   "speakers": {
     "filterBySpeaker": "按发言人筛选",
@@ -1372,7 +1390,8 @@
     "saveSummary": "保存摘要",
     "summaryFailed": "摘要生成失败",
     "summaryInProgress": "摘要生成中...",
-    "title": "摘要"
+    "title": "摘要",
+    "customizePrompt": "自定义提示词"
   },
   "tagManagement": {
     "asrDefaults": "ASR 默认值",
@@ -1630,5 +1649,56 @@
     "playerPositionBottomHelp": "播放器固定在转录和摘要栏下方。默认。",
     "playerPositionTop": "顶部",
     "playerPositionTopHelp": "播放器位于栏的上方，紧贴标题和元数据栏下方。"
+  },
+  "stats": {
+    "title": "统计",
+    "totalLength": "总时长",
+    "speakers": "发言人",
+    "turns": "发言轮次",
+    "words": "字数",
+    "perSpeaker": "按发言人",
+    "sortedBySpeakingTime": "按发言时长排序",
+    "speaker": "发言人",
+    "time": "时间",
+    "pctAudio": "占音频比例",
+    "wpm": "字/分",
+    "silence": "静默",
+    "noStatsTitle": "暂无统计数据",
+    "noStatsBody": "在录音完成带有说话人分离和片段时间戳的转录后,统计数据将会显示。"
+  },
+  "progressQueue": {
+    "title": "处理队列",
+    "clear": "清除",
+    "uploading": "{{count}} 个正在上传",
+    "transcribing": "{{count}} 个正在转录",
+    "summarizing": "{{count}} 个正在生成摘要",
+    "queued": "{{count}} 个排队中",
+    "cancel": "取消",
+    "failed": "失败",
+    "completed": "已完成",
+    "done": "完成",
+    "empty": "队列中没有项目",
+    "duplicateWarning": "检测到重复文件",
+    "retry": "重试",
+    "delete": "删除",
+    "uploadingShort": "个正在上传",
+    "transcribingShort": "个正在转录",
+    "summarizingShort": "个正在生成摘要",
+    "queuedShort": "个排队中"
+  },
+  "floatingChat": {
+    "dockLeft": "停靠左侧",
+    "dockRight": "停靠右侧",
+    "dockFull": "全屏"
+  },
+  "bulkActions": {
+    "star": "加星标",
+    "reprocess": "重新处理"
+  },
+  "unifiedShareModal": {
+    "noPublicLinks": "尚无公开分享链接",
+    "noUsersFound": "未找到用户",
+    "add": "添加",
+    "notSharedYet": "尚未与任何人分享"
   }
 }
