@@ -6,7 +6,7 @@
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
-        showColorSchemeModal, isUserMenuOpen, currentView, selectedRecording,
+        showColorSchemeModal, isUserMenuOpen, currentView, showUploadModal, selectedRecording,
         windowWidth, isMobileScreen, showAdvancedFilters, showSortOptions,
         searchTipsExpanded, isMetadataExpanded, editingParticipants, editingMeetingDate,
         editingSummary, tempSummaryContent, summaryMarkdownEditorInstance,
@@ -176,7 +176,9 @@ export function useUI(state, utils, processedTranscription) {
                 selectedFolderId.value = null;
             }
         }
-        currentView.value = 'upload';
+        // Upload is now a modal flag, not a currentView value, so the
+        // underlying detail / list stays mounted behind the overlay.
+        showUploadModal.value = true;
         if (isMobileScreen.value) {
             isSidebarCollapsed.value = true;
         }
@@ -185,15 +187,15 @@ export function useUI(state, utils, processedTranscription) {
     // Switch to detail view
     const switchToDetailView = () => {
         currentView.value = 'detail';
+        // Closing implies dismissing the upload modal too in case it
+        // was open while the user navigated into a recording.
+        showUploadModal.value = false;
     };
 
-    // Close the upload modal. If a recording was already open behind it,
-    // return to its detail view; otherwise drop back to the empty/list
-    // state by clearing currentView. Mirrors the "previous view" mental
-    // model the user has when dismissing a modal.
+    // Dismiss the upload modal. The underlying view (list or detail)
+    // is unchanged — the modal was overlay-only.
     const closeUploadView = () => {
-        if (currentView.value !== 'upload') return;
-        currentView.value = selectedRecording.value ? 'detail' : null;
+        showUploadModal.value = false;
     };
 
     // Switch to recording view

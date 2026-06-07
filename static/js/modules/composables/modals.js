@@ -113,10 +113,13 @@ export function useModals(state, utils) {
                 allJobs.value = allJobs.value.filter(job => job.recording_id !== deletedId);
             }
 
-            // Clear selected recording if it's the one being deleted
+            // Clear selected recording if it's the one being deleted.
+            // currentView is left as-is — the empty/list view is what
+            // shows when selectedRecording is null and currentView isn't
+            // explicitly 'recording' or 'detail'.
             if (selectedRecording.value?.id === deletedId) {
                 selectedRecording.value = null;
-                currentView.value = 'upload';
+                currentView.value = null;
             }
 
             showToast('Recording deleted.', 'fa-trash');

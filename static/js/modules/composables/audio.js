@@ -13,7 +13,7 @@ export function useAudio(state, utils) {
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
-        showRecordingDisclaimerModal, pendingRecordingMode, currentView, isDarkMode, wakeLock, animationFrameId,
+        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
@@ -480,6 +480,9 @@ export function useAudio(state, utils) {
             isRecording.value = true;
             // Switch to recording view immediately so pending wake-lock/notification awaits don't block Safari rendering
             currentView.value = 'recording';
+            // Dismiss the upload modal while the recording view is on
+            // screen so the two don't compete for the same surface.
+            showUploadModal.value = false;
 
             // Start timer. Phase C of #287 (c)(d): hours-based hard ceiling
             // replaces the size-based auto-stop for server-streamed
@@ -631,7 +634,11 @@ export function useAudio(state, utils) {
                 await hideRecordingNotification();
                 try { await RecordingDB.clearRecordingSession(); } catch (_) { /* ignore */ }
                 _resetServerSessionState();
-                currentView.value = 'upload';
+                // Drop the recording view and reopen the upload modal
+                // over whatever was underneath so the finalized
+                // recording lands in the queue ready to finish.
+                currentView.value = null;
+                showUploadModal.value = true;
                 return result;
             } catch (e) {
                 console.error('[Recording] finalize failed; falling back to single-shot upload:', e);
@@ -692,8 +699,9 @@ export function useAudio(state, utils) {
         await releaseWakeLock();
         await hideRecordingNotification();
 
-        // Return to upload view (main UI)
-        currentView.value = 'upload';
+        // Return to upload modal so the user can finish the upload form.
+        currentView.value = null;
+        showUploadModal.value = true;
 
         // Start upload immediately
         progressPopupMinimized.value = false;
@@ -872,8 +880,9 @@ export function useAudio(state, utils) {
         await releaseWakeLock();
         await hideRecordingNotification();
 
-        // Return to upload view
-        currentView.value = 'upload';
+        // Return to upload modal so the user can finish the upload form.
+        currentView.value = null;
+        showUploadModal.value = true;
     };
 
     // Draw single visualizer

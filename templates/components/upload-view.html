@@ -4,7 +4,7 @@
      the modal calls closeUploadView() which restores currentView to either
      'detail' (if a recording is open behind it) or null (drops back to
      the empty/list view). Backdrop-click and Esc both dismiss. -->
-<div v-if="currentView === 'upload'"
+<div v-if="showUploadModal"
      @click.self="closeUploadView"
      @keydown.esc="closeUploadView"
      tabindex="-1"

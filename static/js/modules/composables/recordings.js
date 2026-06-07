@@ -13,7 +13,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, filterFolder, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
-        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView,
+        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
         speakerColorMap,
         // Incognito mode
@@ -259,6 +259,10 @@ export function useRecordings(state, utils, reprocessComposable) {
         }
 
         currentView.value = 'detail';
+        // If the upload modal happened to be open, dismiss it so the
+        // user's click on a recording resolves to the detail view
+        // without a competing overlay.
+        showUploadModal.value = false;
 
         if (isRecording.value) {
             // Don't interrupt recording

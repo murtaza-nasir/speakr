@@ -50,7 +50,7 @@ export function useUpload(state, utils) {
         // Video / audio-only upload state
         videoRetentionEnabled, keepAudioOnly, maxAudioOnlyVideoSizeMB,
         // View state
-        currentView,
+        currentView, showUploadModal,
         // Upload disclaimer state
         uploadDisclaimer, showUploadDisclaimerModal
     } = state;
@@ -832,6 +832,9 @@ export function useUpload(state, utils) {
             // Auto-select the incognito recording and switch to detail view
             selectedRecording.value = incognitoData;
             currentView.value = 'detail';
+            // Dismiss the upload modal if it was still open behind the
+            // success transition.
+            if (showUploadModal) showUploadModal.value = false;
 
             // Show toast
             showToast(t('incognito.recordingProcessed'), 'fa-user-secret');
@@ -875,6 +878,9 @@ export function useUpload(state, utils) {
         if (incognitoRecording && incognitoRecording.value) {
             selectedRecording.value = incognitoRecording.value;
             currentView.value = 'detail';
+            // Dismiss the upload modal if it was still open behind the
+            // success transition.
+            if (showUploadModal) showUploadModal.value = false;
         }
     };
 

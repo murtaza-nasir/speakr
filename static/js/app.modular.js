@@ -236,7 +236,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
 
             // --- Core State ---
-            const currentView = ref('upload');
+            // Initial view is null (the recordings list / empty state).
+            // Was 'upload' which made the old full-screen upload view the
+            // landing surface; now that upload is a modal, defaulting to
+            // null lets the user land on their recordings list and open
+            // the modal explicitly via the New Recording button.
+            const currentView = ref(null);
+            // Upload visibility is a modal flag, not a currentView value,
+            // so the underlying list / detail stays mounted behind the
+            // overlay. Set true on switchToUploadView / opened paths;
+            // cleared by closeUploadView and the upload-success transition
+            // to the detail view. Defaults to false so the user lands on
+            // the recordings list / empty state, not on an auto-open modal.
+            const showUploadModal = ref(false);
             const dragover = ref(false);
             const recordings = ref([]);
             const selectedRecording = ref(null);
@@ -1341,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             const state = {
                 // Core
-                currentView, dragover, recordings, selectedRecording, selectedTab, searchQuery,
+                currentView, showUploadModal, dragover, recordings, selectedRecording, selectedTab, searchQuery,
                 isLoadingRecordings, globalError, csrfToken,
 
                 // Filters
@@ -3251,6 +3263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const recovered = await audioComposable.recoverRecordingFromDB();
                     if (recovered) {
                         currentView.value = 'recording';
+                        showUploadModal.value = false;
                         showToast(safeT('messages.recordingRecovered'), 'success');
                     } else {
                         showToast(safeT('messages.failedToRecoverRecording'), 'error');
