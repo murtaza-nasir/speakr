@@ -371,6 +371,47 @@ document.addEventListener('DOMContentLoaded', async () => {
             watch(disableAudioProcessing, (v) => {
                 try { localStorage.setItem('disableAudioProcessing', v ? 'true' : 'false'); } catch (_) {}
             });
+
+            // Per-input-device state for the multi-source recording flow.
+            // The user can pick a PRIMARY input (their mic) and an OPTIONAL
+            // SECONDARY input (e.g. a Pulse monitor source / BlackHole / VB-
+            // Cable) — both are captured via getUserMedia and mixed in Web
+            // Audio so the recording captures the user AND whatever's
+            // playing through their speakers in one stream. Device IDs are
+            // persisted in localStorage so the user only configures once.
+            // Labels populate only AFTER mic permission is granted; the
+            // first grant triggers refreshInputAudioDevices to repopulate
+            // the dropdowns with real names.
+            const inputAudioDevices = ref([]);
+            const selectedMicDeviceId = ref(
+                (typeof localStorage !== 'undefined' && localStorage.getItem('selectedMicDeviceId')) || ''
+            );
+            const selectedSecondaryDeviceId = ref(
+                (typeof localStorage !== 'undefined' && localStorage.getItem('selectedSecondaryDeviceId')) || ''
+            );
+            watch(selectedMicDeviceId, (v) => {
+                try { localStorage.setItem('selectedMicDeviceId', v || ''); } catch (_) {}
+            });
+            watch(selectedSecondaryDeviceId, (v) => {
+                try { localStorage.setItem('selectedSecondaryDeviceId', v || ''); } catch (_) {}
+            });
+            const refreshInputAudioDevices = async () => {
+                if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+                try {
+                    const devs = await navigator.mediaDevices.enumerateDevices();
+                    inputAudioDevices.value = devs
+                        .filter(d => d.kind === 'audioinput')
+                        .map(d => ({
+                            deviceId: d.deviceId,
+                            label: d.label || '',
+                            // Tag virtual/monitor devices so the UI can badge them
+                            isVirtual: /\bmonitor of |blackhole|loopback|soundflower|vb[- ]?(audio|cable)|voicemeeter|stereo mix|what u hear|pulse.*monitor|pipewire.*monitor|monitor source/i.test(d.label || '')
+                        }));
+                } catch (_) {
+                    inputAudioDevices.value = [];
+                }
+            };
+            refreshInputAudioDevices();
             // Platform + capability state for the system-audio flow.
             // Detected once on init; the help modal uses these to
             // pre-select the right OS tab and to gate which paragraphs
@@ -1424,6 +1465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isRecording, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
                 canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError,
                 recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal, disableAudioProcessing,
+                inputAudioDevices, selectedMicDeviceId, selectedSecondaryDeviceId, refreshInputAudioDevices,
                 platformInfo, audioCaps, helpModalOsTab, virtualAudioDevices, refreshVirtualAudioDevices,
                 asrLanguage, asrMinSpeakers, asrMaxSpeakers,
                 audioContext, analyser, micAnalyser, systemAnalyser, visualizer, micVisualizer,
@@ -1780,7 +1822,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 getDateForSorting, isToday, isYesterday, isThisWeek, isLastWeek, isThisMonth, isLastMonth, isSameDay,
                 nextTick,
                 onChatComplete: loadTokenBudget,  // Refresh token budget after chat
-                refreshVirtualAudioDevices         // Re-scan installed BlackHole / VB-Cable / monitor sources
+                refreshVirtualAudioDevices,        // Re-scan installed BlackHole / VB-Cable / monitor sources
+                refreshInputAudioDevices           // Re-scan all audio inputs for the device picker
             };
 
             // =========================================================================

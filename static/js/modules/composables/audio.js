@@ -13,7 +13,9 @@ export function useAudio(state, utils) {
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
-        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing, isDarkMode, wakeLock, animationFrameId,
+        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing,
+        selectedMicDeviceId, selectedSecondaryDeviceId,
+        isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
@@ -275,28 +277,91 @@ export function useAudio(state, utils) {
                 // as a toggle in the upload modal next to the mic
                 // button and persisted in localStorage.
                 const skipProc = disableAudioProcessing && disableAudioProcessing.value;
-                stream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
+                const buildConstraints = (deviceId) => {
+                    const c = {
                         echoCancellation: !skipProc,
                         noiseSuppression: !skipProc,
                         autoGainControl: !skipProc,
                         sampleRate: 48000
-                    }
+                    };
+                    if (deviceId) c.deviceId = { exact: deviceId };
+                    return c;
+                };
+
+                const primaryDeviceId = (selectedMicDeviceId && selectedMicDeviceId.value) || '';
+                const secondaryDeviceId = (selectedSecondaryDeviceId && selectedSecondaryDeviceId.value) || '';
+                const wantsMix = !!secondaryDeviceId && secondaryDeviceId !== primaryDeviceId;
+
+                // Primary stream (the user's mic, or whatever they
+                // explicitly picked as the primary input).
+                const micStreamA = await navigator.mediaDevices.getUserMedia({
+                    audio: buildConstraints(primaryDeviceId)
                 });
-                activeStreams.value = [stream];
+
                 // Now that the user has granted mic permission,
                 // device labels populate — re-scan for virtual audio
                 // routing devices (BlackHole / VB-Cable / monitor
-                // sources) so the upload modal can offer them.
-                if (utils.refreshVirtualAudioDevices) {
-                    utils.refreshVirtualAudioDevices();
-                }
+                // sources) so the upload modal can offer them. Also
+                // refresh the full input-device list for the picker
+                // (post-permission the labels are real names instead
+                // of opaque IDs).
+                if (utils.refreshVirtualAudioDevices) utils.refreshVirtualAudioDevices();
+                if (utils.refreshInputAudioDevices)   utils.refreshInputAudioDevices();
 
                 audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioContext.value.createMediaStreamSource(stream);
-                analyser.value = audioContext.value.createAnalyser();
-                analyser.value.fftSize = 256;
-                source.connect(analyser.value);
+
+                if (wantsMix) {
+                    // Mix-mode: capture a second getUserMedia stream
+                    // from the chosen secondary device, then merge
+                    // both into a single MediaStream via Web Audio so
+                    // the rest of the pipeline (MediaRecorder, the
+                    // visualizer analyser) sees one consolidated
+                    // stream. Falls back to single-stream recording
+                    // if the secondary capture fails (e.g. the device
+                    // disappeared since the picker was populated).
+                    let micStreamB;
+                    try {
+                        micStreamB = await navigator.mediaDevices.getUserMedia({
+                            audio: buildConstraints(secondaryDeviceId)
+                        });
+                    } catch (mixErr) {
+                        console.warn('[Recording] Secondary input unavailable, falling back to primary only:', mixErr);
+                        if (utils.showToast) utils.showToast(
+                            'Secondary input unavailable — recording primary only.',
+                            'fa-exclamation-triangle'
+                        );
+                    }
+
+                    if (micStreamB) {
+                        const mixer = audioContext.value.createGain();
+                        audioContext.value.createMediaStreamSource(micStreamA).connect(mixer);
+                        audioContext.value.createMediaStreamSource(micStreamB).connect(mixer);
+                        const dest = audioContext.value.createMediaStreamDestination();
+                        mixer.connect(dest);
+                        stream = dest.stream;
+                        activeStreams.value = [micStreamA, micStreamB];
+                        analyser.value = audioContext.value.createAnalyser();
+                        analyser.value.fftSize = 256;
+                        mixer.connect(analyser.value);
+                    } else {
+                        stream = micStreamA;
+                        activeStreams.value = [micStreamA];
+                        const src = audioContext.value.createMediaStreamSource(stream);
+                        analyser.value = audioContext.value.createAnalyser();
+                        analyser.value.fftSize = 256;
+                        src.connect(analyser.value);
+                    }
+                } else {
+                    // Single-stream path (preserved from the original
+                    // behaviour). The MediaRecorder consumes micStreamA
+                    // directly so there's no needless Web Audio hop.
+                    stream = micStreamA;
+                    activeStreams.value = [stream];
+                    const src = audioContext.value.createMediaStreamSource(stream);
+                    analyser.value = audioContext.value.createAnalyser();
+                    analyser.value.fftSize = 256;
+                    src.connect(analyser.value);
+                }
 
             } else if (mode === 'system') {
                 if (!canRecordSystemAudio.value) {

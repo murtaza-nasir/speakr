@@ -284,6 +284,62 @@
                     </span>
                 </label>
 
+                <!-- Input device picker (collapsed by default). Lets
+                     the user pick the primary input AND an optional
+                     secondary input which Speakr mixes in via Web
+                     Audio at recording time — the canonical solution
+                     for capturing your voice + remote participants on
+                     macOS / Linux where the browser can't capture full
+                     OS audio natively. Pre-permission the device
+                     labels are empty; the inline button calls
+                     getUserMedia briefly to populate them. -->
+                <details class="text-[11px] mt-1 group">
+                    <summary class="cursor-pointer flex items-center gap-1 px-2 py-1 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors" style="color: var(--text-muted); list-style: none;">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Input devices</span>
+                        <span v-if="selectedSecondaryDeviceId" class="text-green-500 font-medium">· Mixing 2 inputs</span>
+                        <i class="fas fa-chevron-down ml-auto text-[10px] transition-transform group-open:rotate-180"></i>
+                    </summary>
+                    <div class="mt-2 space-y-2 px-2 py-2 rounded-md" style="background: var(--bg-tertiary);">
+                        <div v-if="!inputAudioDevices || inputAudioDevices.length === 0 || !(inputAudioDevices[0] && inputAudioDevices[0].label)"
+                             class="text-[11px]" style="color: var(--text-muted);">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Grant microphone permission once so device names can populate.
+                            <button @click.prevent="navigator.mediaDevices.getUserMedia({audio:true}).then(s => { s.getTracks().forEach(t => t.stop()); refreshInputAudioDevices(); })"
+                                    class="underline mt-1 block" style="color: var(--text-accent);">
+                                Request microphone permission
+                            </button>
+                        </div>
+                        <template v-else>
+                            <div>
+                                <label class="block text-[11px] mb-1" style="color: var(--text-muted);">Primary input</label>
+                                <select v-model="selectedMicDeviceId"
+                                        class="w-full text-[11px] px-2 py-1 rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option value="">System default</option>
+                                    <option v-for="d in inputAudioDevices" :key="d.deviceId" :value="d.deviceId">
+                                        ${ d.label }${ d.isVirtual ? ' · virtual / monitor' : '' }
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] mb-1" style="color: var(--text-muted);">
+                                    Also mix in (optional)
+                                </label>
+                                <select v-model="selectedSecondaryDeviceId"
+                                        class="w-full text-[11px] px-2 py-1 rounded border border-[var(--border-secondary)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option value="">None</option>
+                                    <option v-for="d in inputAudioDevices" :key="'sec-' + d.deviceId" :value="d.deviceId">
+                                        ${ d.label }${ d.isVirtual ? ' · virtual / monitor' : '' }
+                                    </option>
+                                </select>
+                                <p class="text-[10px] mt-1" style="color: var(--text-muted);">
+                                    Pick a monitor source ("Monitor of …" on Linux, BlackHole on macOS, VB-Cable on Windows) to mix system audio with your mic. Both streams combine into one recording.
+                                </p>
+                            </div>
+                        </template>
+                    </div>
+                </details>
+
                 <!-- Help Text - Compact -->
                 <div class="text-[10px] text-[var(--text-muted)] space-y-0.5 mt-2">
                     <div class="flex items-center justify-between">
