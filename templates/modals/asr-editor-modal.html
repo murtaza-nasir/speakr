@@ -73,19 +73,17 @@
             </div>
         </div>
 
-        <!-- Editor table — renders ALL segments natively (no virtual
-             scroll spacers). content-visibility: auto on each <tr>
-             (set in styles.css under .asr-editor-table tbody > tr)
-             lets the browser skip layout + paint for off-screen rows
-             so we keep the perf win, while scrollHeight stays stable
-             (placeholder size for off-screen rows = 44 px via
-             contain-intrinsic-size). v-memo on each row stops Vue
-             from re-rendering rows whose data didn't change when an
-             unrelated row's input updates. table-layout: fixed
-             (see styles.css) is required for content-visibility to
-             work on table rows — without it the browser must lay out
-             every row to compute column widths. -->
-        <div ref="asrEditorRef" class="flex-grow overflow-y-auto custom-scrollbar" @scroll="closeAllSpeakerSuggestions()">
+        <!-- Editor table uses VIRTUAL SCROLLING with fixed itemHeight=44
+             (set in app.modular.js's asrEditorVirtualScroll). This
+             modal is spreadsheet-like — every row carries the same
+             single-line inputs and a textarea capped at max-h-20 (80
+             px), so row heights are bounded and uniform enough for
+             the fixed-height estimate to be accurate. The variable-
+             height tricks the speaker modal uses (content-visibility
+             + bounded hydration) are overkill here and were caught
+             introducing CLS shifts of ~3.0 in the editor — exactly
+             the regression we were trying to avoid. -->
+        <div ref="asrEditorRef" class="flex-grow overflow-y-auto custom-scrollbar" @scroll="closeAllSpeakerSuggestions(); onAsrEditorScroll($event)">
             <table class="min-w-full asr-editor-table border border-[var(--border-primary)]">
                 <thead class="sticky top-0 z-10">
                     <tr class="text-xs uppercase text-[var(--text-muted)]">
@@ -97,81 +95,60 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="(segment, idx) in editingSegments"
-                        :key="`asr-${idx}-${segment.start_time}`"
-                        v-memo="[idx, segment.speaker, segment.start_time, segment.end_time, segment.sentence, asrEditorHighlightIndex === idx, asrEditorHydratedRows.has(idx), isDropdownOpen(idx)]"
-                        :data-segment-index="idx"
-                        @focusin="hydrateAsrEditorRow(idx)"
-                        :class="['hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]', { 'asr-editor-row--highlighted': asrEditorHighlightIndex === idx }]">
-                        <!-- Hydrated (interactive) version: only mounted once
-                             the IntersectionObserver in app.modular.js has
-                             promoted this row, or the user has focused into
-                             it via @focusin. Carries all the v-models,
-                             event handlers, and the dropdown teleport. -->
-                        <template v-if="asrEditorHydratedRows.has(idx)">
-                            <td class="border-r border-[var(--border-primary)] align-middle">
-                                <div class="relative h-full">
-                                    <div class="flex items-center h-full">
-                                        <input type="text" v-model="editingSegments[idx].speaker"
-                                               @input="filterSpeakerSuggestions(idx); openSpeakerSuggestions(idx)"
-                                               @focus="openSpeakerSuggestions(idx)"
-                                               class="w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
-                                        <button type="button" @click.stop="openSpeakerSuggestions(idx)"
-                                                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                                            <i class="fas fa-chevron-down text-xs"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <teleport to="body">
-                                    <div v-if="isDropdownOpen(idx)"
-                                         class="fixed z-[100] w-40 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto"
-                                         :style="getDropdownPosition(idx)">
-                                        <div v-for="speaker in editingSegments[idx].filteredSpeakers" :key="speaker" @mousedown.prevent="selectSpeaker(idx, speaker)" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] text-sm">${speaker}</div>
-                                        <div @mousedown.prevent="openEditSpeakersModal" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-accent)] text-sm text-[var(--text-accent)] border-t border-[var(--border-primary)] flex items-center">
-                                            <i class="fas fa-user-edit mr-2"></i> <span v-text="t('buttons.editSpeakers')"></span>
-                                        </div>
-                                    </div>
-                                </teleport>
-                            </td>
-                            <td class="border-r border-[var(--border-primary)] align-middle">
-                                <input type="number" step="0.01" v-model.number="editingSegments[idx].start_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
-                            </td>
-                            <td class="border-r border-[var(--border-primary)] align-middle">
-                                <input type="number" step="0.01" v-model.number="editingSegments[idx].end_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
-                            </td>
-                            <td class="border-r border-[var(--border-primary)] align-top">
-                                <textarea v-model="editingSegments[idx].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none max-h-20 overflow-y-auto custom-scrollbar block" @input="autoResizeTextarea($event)"></textarea>
-                            </td>
-                            <td class="px-1 text-center align-middle">
-                                <div class="flex items-center justify-center gap-1">
-                                    <button @click="$refs.asrEditorAudioRef && ($refs.asrEditorAudioRef.currentTime = segment.start_time, $refs.asrEditorAudioRef.play())" class="p-1.5 rounded hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" :title="t('help.playFromHere')">
-                                        <i class="fas fa-play text-xs"></i>
-                                    </button>
-                                    <button @click="addSegmentBelow(idx)" class="p-1.5 rounded hover:bg-green-600/20 text-[var(--text-muted)] hover:text-green-500 transition-colors" :title="t('help.addSegmentBelow')">
-                                        <i class="fas fa-plus text-xs"></i>
-                                    </button>
-                                    <button @click="removeSegment(idx)" class="p-1.5 rounded hover:bg-red-600/20 text-[var(--text-muted)] hover:text-red-500 transition-colors" :title="t('help.deleteSegment')">
-                                        <i class="fas fa-trash text-xs"></i>
+                    <!-- Virtual scroll spacer (top) -->
+                    <tr v-if="asrEditorSpacerBefore > 0"><td colspan="5" :style="{ height: asrEditorSpacerBefore + 'px', padding: 0 }"></td></tr>
+
+                    <tr v-for="segment in asrEditorVisibleSegments" :key="`asr-${segment._originalIndex}-${segment.start_time}`" :data-segment-index="segment._originalIndex" :class="['hover:bg-[var(--bg-tertiary)] transition-colors border-b border-[var(--border-primary)]', { 'asr-editor-row--highlighted': asrEditorHighlightIndex === segment._originalIndex }]">
+                        <td class="border-r border-[var(--border-primary)] align-middle">
+                            <div class="relative h-full">
+                                <div class="flex items-center h-full">
+                                    <input type="text" v-model="editingSegments[segment._originalIndex].speaker"
+                                           @input="filterSpeakerSuggestions(segment._originalIndex); openSpeakerSuggestions(segment._originalIndex)"
+                                           @focus="openSpeakerSuggestions(segment._originalIndex)"
+                                           class="w-full h-full px-3 py-2.5 pr-7 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)]" />
+                                    <button type="button" @click.stop="openSpeakerSuggestions(segment._originalIndex)"
+                                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                                        <i class="fas fa-chevron-down text-xs"></i>
                                     </button>
                                 </div>
-                            </td>
-                        </template>
-                        <!-- Placeholder version for off-screen rows: just
-                             4 read-only `<td>`s rendering the current
-                             values. No v-model, no event handlers, no
-                             dropdown teleport — cheap to mount. The
-                             padding intentionally matches the hydrated
-                             version's input padding (px-3 py-2.5) so
-                             promotion in place doesn't cause a visible
-                             layout shift. -->
-                        <template v-else>
-                            <td class="border-r border-[var(--border-primary)] align-middle px-3 py-2.5 text-sm text-[var(--text-primary)] truncate">${ segment.speaker }</td>
-                            <td class="border-r border-[var(--border-primary)] align-middle px-3 py-2.5 text-sm text-[var(--text-primary)] text-center">${ segment.start_time }</td>
-                            <td class="border-r border-[var(--border-primary)] align-middle px-3 py-2.5 text-sm text-[var(--text-primary)] text-center">${ segment.end_time }</td>
-                            <td class="border-r border-[var(--border-primary)] align-top px-3 py-2.5 text-sm text-[var(--text-primary)]">${ segment.sentence }</td>
-                            <td></td>
-                        </template>
+                            </div>
+                            <teleport to="body">
+                                <div v-if="isDropdownOpen(segment._originalIndex)"
+                                     class="fixed z-[100] w-40 bg-[var(--bg-secondary)] border border-[var(--border-primary)] rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                     :style="getDropdownPosition(segment._originalIndex)">
+                                    <div v-for="speaker in editingSegments[segment._originalIndex].filteredSpeakers" :key="speaker" @mousedown.prevent="selectSpeaker(segment._originalIndex, speaker)" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-tertiary)] text-sm">${speaker}</div>
+                                    <div @mousedown.prevent="openEditSpeakersModal" class="px-3 py-2 cursor-pointer hover:bg-[var(--bg-accent)] text-sm text-[var(--text-accent)] border-t border-[var(--border-primary)] flex items-center">
+                                        <i class="fas fa-user-edit mr-2"></i> <span v-text="t('buttons.editSpeakers')"></span>
+                                    </div>
+                                </div>
+                            </teleport>
+                        </td>
+                        <td class="border-r border-[var(--border-primary)] align-middle">
+                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].start_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                        </td>
+                        <td class="border-r border-[var(--border-primary)] align-middle">
+                            <input type="number" step="0.01" v-model.number="editingSegments[segment._originalIndex].end_time" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] text-center" />
+                        </td>
+                        <td class="border-r border-[var(--border-primary)] align-top">
+                            <textarea v-model="editingSegments[segment._originalIndex].sentence" rows="1" class="w-full px-3 py-2.5 bg-transparent border-0 focus:outline-none text-sm text-[var(--text-primary)] resize-none max-h-20 overflow-y-auto custom-scrollbar block" @input="autoResizeTextarea($event)"></textarea>
+                        </td>
+                        <td class="px-1 text-center align-middle">
+                            <div class="flex items-center justify-center gap-1">
+                                <button @click="$refs.asrEditorAudioRef && ($refs.asrEditorAudioRef.currentTime = segment.start_time, $refs.asrEditorAudioRef.play())" class="p-1.5 rounded hover:bg-[var(--bg-accent)] text-[var(--text-muted)] hover:text-[var(--text-accent)] transition-colors" :title="t('help.playFromHere')">
+                                    <i class="fas fa-play text-xs"></i>
+                                </button>
+                                <button @click="addSegmentBelow(segment._originalIndex)" class="p-1.5 rounded hover:bg-green-600/20 text-[var(--text-muted)] hover:text-green-500 transition-colors" :title="t('help.addSegmentBelow')">
+                                    <i class="fas fa-plus text-xs"></i>
+                                </button>
+                                <button @click="removeSegment(segment._originalIndex)" class="p-1.5 rounded hover:bg-red-600/20 text-[var(--text-muted)] hover:text-red-500 transition-colors" :title="t('help.deleteSegment')">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
+
+                    <!-- Virtual scroll spacer (bottom) -->
+                    <tr v-if="asrEditorSpacerAfter > 0"><td colspan="5" :style="{ height: asrEditorSpacerAfter + 'px', padding: 0 }"></td></tr>
                 </tbody>
             </table>
             <div class="py-4 flex justify-center">

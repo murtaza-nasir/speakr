@@ -3398,28 +3398,6 @@ body {
 .asr-editor-table {
     width: 100%;
     border-collapse: collapse; /* Changed to collapse */
-    /* table-layout: fixed lets the browser ignore row contents when
-       computing column widths (instead of measuring every row to find
-       the widest cell). Required for content-visibility on <tr> to
-       work, because the auto algorithm forces a full table layout on
-       every row to determine column widths — which defeats the whole
-       point of skipping off-screen rows. Columns are explicitly sized
-       in the template (w-40 / w-20 / etc.), so fixed layout produces
-       the same visual result. */
-    table-layout: fixed;
-}
-
-/* Skip layout + paint for off-screen ASR-editor rows. Same pattern
-   used on .speaker-segment: every row stays in the DOM (so the
-   scrollbar is stable and scrollIntoView lands on real positions),
-   but only the on-screen ones pay the per-row layout cost.
-   contain-intrinsic-size gives the browser a 44 px placeholder size
-   for off-screen rows — the typical row height with one line of
-   sentence text. Rows whose textarea has grown to multiple lines
-   simply contribute their real height when scrolled into view. */
-.asr-editor-table tbody > tr {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 44px;
 }
 
 .asr-editor-table th {

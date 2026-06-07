@@ -1202,25 +1202,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const asrEditorHighlightIndex = ref(null);  // Segment index briefly highlighted after double-click open
 
             // -------------------------------------------------------------
-            // Lazy-hydration wiring for the ASR editor + speaker modal
-            // long lists (declared above as asrEditorHydratedRows /
-            // speakerModalHydratedRows). The factory creates one
-            // IntersectionObserver per pane. Rows entering the watch
-            // region (viewport ± 600 px) get added to the hydrated Set;
-            // rows leaving get REMOVED — bounded membership so the
-            // hydrated count stays around one viewport's worth (~50–100
-            // rows) regardless of transcript length. Without bounded
-            // dehydration, scrolling top → bottom would gradually
-            // promote every row and re-introduce the 1400 ms INP /
-            // 142k DOM nodes regression we saw at 2500 segments. A row
-            // is never dehydrated while it contains
-            // document.activeElement, so the user editing an input
-            // mid-scroll never gets it yanked away.
+            // Lazy-hydration wiring for the SPEAKER modal long transcript
+            // pane (declared above as speakerModalHydratedRows). The
+            // factory creates an IntersectionObserver against the
+            // scrollable container. Rows entering the watch region
+            // (viewport ± 600 px) get added to the hydrated Set; rows
+            // leaving get REMOVED — bounded membership so the hydrated
+            // count stays around one viewport's worth regardless of
+            // transcript length. A row is never dehydrated while it
+            // contains document.activeElement, so editing mid-scroll
+            // never yanks an input away.
             //
-            // Same factory is shared between modals; each gets its own
-            // observer + Set so they can run independently. Modal-open /
-            // close cycles re-set up / tear down via watch on
-            // showAsrEditorModal / showSpeakerModal.
+            // The ASR editor uses a different approach (fixed-height
+            // virtual scrolling) because its rows are spreadsheet-like
+            // — uniform single-line inputs + a textarea capped at
+            // max-h-20. Variable-height tricks aren't worth the CLS
+            // cost there.
             // -------------------------------------------------------------
             const _makeRowHydrator = (containerRef, hydratedRef, options = {}) => {
                 const observer = { current: null };
@@ -1260,18 +1257,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 };
                 return { setup, teardown, hydrate };
             };
-            const _asrEditorHydrator = _makeRowHydrator(asrEditorRef, asrEditorHydratedRows);
-            const hydrateAsrEditorRow = _asrEditorHydrator.hydrate;
-            watch(showAsrEditorModal, (open) => {
-                if (open) nextTick(() => _asrEditorHydrator.setup());
-                else _asrEditorHydrator.teardown();
-            });
             const _speakerModalHydrator = _makeRowHydrator(speakerModalTranscriptRef, speakerModalHydratedRows);
             const hydrateSpeakerModalRow = _speakerModalHydrator.hydrate;
             watch(showSpeakerModal, (open) => {
                 if (open) nextTick(() => _speakerModalHydrator.setup());
                 else _speakerModalHydrator.teardown();
             });
+            // ASR editor uses virtual scroll; no hydration wiring needed.
+            // Keep hydrateAsrEditorRow as a no-op for any leftover refs.
+            const hydrateAsrEditorRow = () => {};
 
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
@@ -2344,22 +2338,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Add scrollToSegmentIndex to utils for composables that need it
             utils.scrollToSegmentIndex = scrollToSegmentIndex;
             utils.resetModalAudioState = resetModalAudioState;
-            utils.resetAsrEditorScroll = () => {
-                if (asrEditorRef.value) asrEditorRef.value.scrollTop = 0;
-            };
-            // Scroll the editor table to a specific row by index. The
-            // table no longer uses virtual scrolling — all rows are in
-            // the DOM (with content-visibility skipping off-screen paint),
-            // so this is just a real-DOM lookup + scrollIntoView using
-            // measured positions. block: 'center' centres the row in the
-            // viewport so it lands well clear of the sticky table header
-            // without us having to know the header's height.
-            utils.scrollAsrEditorToIndex = (index) => {
-                const container = asrEditorRef.value;
-                if (!container) return;
-                const target = container.querySelector(`[data-segment-index="${index}"]`);
-                if (target) target.scrollIntoView({ block: 'center', behavior: 'auto' });
-            };
+            utils.resetAsrEditorScroll = () => asrEditorVirtualScroll.reset();
+            // Scroll to the target row but offset upward so the row lands
+            // comfortably below the sticky table header (~2 rows of clearance)
+            // instead of being clipped at the top.
+            utils.scrollAsrEditorToIndex = (index) => asrEditorVirtualScroll.scrollToIndex(Math.max(0, index - 2), 'auto');
             utils.setAsrEditorScrollTop = (scrollTop) => {
                 if (asrEditorRef.value) {
                     asrEditorRef.value.scrollTop = scrollTop;
