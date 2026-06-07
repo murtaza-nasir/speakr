@@ -1165,8 +1165,48 @@ html.dark .modal-overlay {
 .prose-flush h3 { font-size: 1rem; }
 .prose-flush h4 { font-size: 0.95rem; }
 .prose-flush p { margin: 0 0 var(--sp-3) 0; }
-.prose-flush ul, .prose-flush ol { margin: 0 0 var(--sp-3) var(--sp-5); padding: 0; }
-.prose-flush li { margin: 0 0 var(--sp-1) 0; }
+/* Lists. The global Tailwind preflight reset strips list markers
+   (list-style: none), so we must re-assert list-style-type explicitly
+   or bullets/numbers disappear — which is exactly what was happening to
+   rendered summary/notes markdown after the .summary-box → .prose-flush
+   migration (the marker CSS lived only on the old box classes). */
+.prose-flush ul, .prose-flush ol {
+    margin: 0 0 var(--sp-3) var(--sp-5);
+    padding: 0;
+    list-style-position: outside;
+}
+.prose-flush ul { list-style-type: disc; }
+.prose-flush ol { list-style-type: decimal; }
+.prose-flush li { margin: 0 0 var(--sp-1) 0; display: list-item; }
+/* Nested lists: tighter vertical rhythm + distinct marker so depth reads. */
+.prose-flush li > ul, .prose-flush li > ol {
+    margin-top: var(--sp-1);
+    margin-bottom: 0;
+}
+.prose-flush ul ul { list-style-type: circle; }
+.prose-flush ul ul ul { list-style-type: square; }
+
+/* Tables (e.g. the "Next Steps" two-column table in summaries). The
+   block + overflow-x lets wide tables scroll instead of overflowing the
+   rail. */
+.prose-flush table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 0 var(--sp-3) 0;
+    display: block;
+    overflow-x: auto;
+    font-size: 0.95em;
+}
+.prose-flush th, .prose-flush td {
+    border: var(--border-hairline) solid var(--border-secondary);
+    padding: var(--sp-2);
+    text-align: left;
+    vertical-align: top;
+}
+.prose-flush th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+}
 .prose-flush strong { color: var(--text-primary); font-weight: 600; }
 .prose-flush em { color: var(--text-primary); }
 .prose-flush code {
