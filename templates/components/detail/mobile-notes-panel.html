@@ -7,10 +7,12 @@
     </div>
     <div class="flex-grow overflow-y-auto px-3 pb-3">
         <div v-if="editingNotes" class="h-full flex flex-col">
-            <textarea ref="notesMarkdownEditor"
-                      v-model="selectedRecording.notes"
-                      class="field flex-1"
-                      style="resize: none; padding: var(--sp-3);"></textarea>
+            <!-- See mobile-summary-panel.html for the rationale behind
+                 the .markdown-editor-container wrapper. -->
+            <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
+                <textarea ref="notesMarkdownEditor"
+                          v-model="selectedRecording.notes"></textarea>
+            </div>
             <div class="flex justify-end gap-2 mt-2">
                 <button @click="cancelEditNotes" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
                 <button @click="saveEditNotes" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>

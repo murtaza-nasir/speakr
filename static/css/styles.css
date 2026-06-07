@@ -2052,23 +2052,30 @@ body {
 .speaker-color-15 { background-color: #E0F2F1; color: #00695C; --speaker-fg: #00695C; } /* Teal */
 .speaker-color-16 { background-color: #FBE9E7; color: #BF360C; --speaker-fg: #BF360C; } /* Deep Orange */
 
-/* Dark mode speaker colors - tasteful muted pastels with 16 colors */
-.dark .speaker-color-1 { background-color: #1E3A5F; color: #A5C9EA; } /* Blue */
-.dark .speaker-color-2 { background-color: #4A2C5A; color: #D4A5D4; } /* Purple */
-.dark .speaker-color-3 { background-color: #1F4A3C; color: #A8D5A8; } /* Green */
-.dark .speaker-color-4 { background-color: #5A3A1F; color: #E6B366; } /* Orange */
-.dark .speaker-color-5 { background-color: #5A2C3E; color: #E6A5C4; } /* Pink */
-.dark .speaker-color-6 { background-color: #1F4A47; color: #A5D5D0; } /* Cyan */
-.dark .speaker-color-7 { background-color: #4A4A1F; color: #E6E266; } /* Yellow */
-.dark .speaker-color-8 { background-color: #3E2723; color: #D7CCC8; } /* Brown */
-.dark .speaker-color-9 { background-color: #1A237E; color: #9FA8DA; } /* Indigo */
-.dark .speaker-color-10 { background-color: #33691E; color: #C5E1A5; } /* Lime */
-.dark .speaker-color-11 { background-color: #5A1F1F; color: #EF9A9A; } /* Red */
-.dark .speaker-color-12 { background-color: #263238; color: #B0BEC5; } /* Blue Grey */
-.dark .speaker-color-13 { background-color: #4A3F1F; color: #FFE082; } /* Amber */
-.dark .speaker-color-14 { background-color: #311B92; color: #B39DDB; } /* Deep Purple */
-.dark .speaker-color-15 { background-color: #004D40; color: #80CBC4; } /* Teal */
-.dark .speaker-color-16 { background-color: #4E2C1F; color: #FFAB91; } /* Deep Orange */
+/* Dark mode speaker colors - tasteful muted pastels with 16 colors.
+   --speaker-fg is set to the same dark surface colour used as the
+   speaker-color background so consumers that read it (e.g. the
+   speaker-tablet-time half) get the matching dark-mode hue rather
+   than inheriting the unrelated light-mode value. The current
+   .speaker-tablet-time dark-mode rule doesn't read it (uses an
+   overlay path), but exposing it keeps the variable consistent
+   between modes so any future consumer behaves correctly. */
+.dark .speaker-color-1  { background-color: #1E3A5F; color: #A5C9EA; --speaker-fg: #1E3A5F; } /* Blue */
+.dark .speaker-color-2  { background-color: #4A2C5A; color: #D4A5D4; --speaker-fg: #4A2C5A; } /* Purple */
+.dark .speaker-color-3  { background-color: #1F4A3C; color: #A8D5A8; --speaker-fg: #1F4A3C; } /* Green */
+.dark .speaker-color-4  { background-color: #5A3A1F; color: #E6B366; --speaker-fg: #5A3A1F; } /* Orange */
+.dark .speaker-color-5  { background-color: #5A2C3E; color: #E6A5C4; --speaker-fg: #5A2C3E; } /* Pink */
+.dark .speaker-color-6  { background-color: #1F4A47; color: #A5D5D0; --speaker-fg: #1F4A47; } /* Cyan */
+.dark .speaker-color-7  { background-color: #4A4A1F; color: #E6E266; --speaker-fg: #4A4A1F; } /* Yellow */
+.dark .speaker-color-8  { background-color: #3E2723; color: #D7CCC8; --speaker-fg: #3E2723; } /* Brown */
+.dark .speaker-color-9  { background-color: #1A237E; color: #9FA8DA; --speaker-fg: #1A237E; } /* Indigo */
+.dark .speaker-color-10 { background-color: #33691E; color: #C5E1A5; --speaker-fg: #33691E; } /* Lime */
+.dark .speaker-color-11 { background-color: #5A1F1F; color: #EF9A9A; --speaker-fg: #5A1F1F; } /* Red */
+.dark .speaker-color-12 { background-color: #263238; color: #B0BEC5; --speaker-fg: #263238; } /* Blue Grey */
+.dark .speaker-color-13 { background-color: #4A3F1F; color: #FFE082; --speaker-fg: #4A3F1F; } /* Amber */
+.dark .speaker-color-14 { background-color: #311B92; color: #B39DDB; --speaker-fg: #311B92; } /* Deep Purple */
+.dark .speaker-color-15 { background-color: #004D40; color: #80CBC4; --speaker-fg: #004D40; } /* Teal */
+.dark .speaker-color-16 { background-color: #4E2C1F; color: #FFAB91; --speaker-fg: #4E2C1F; } /* Deep Orange */
 
 /* Meeting/Created time styling improvements */
 .recording-metadata {

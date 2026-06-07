@@ -8,10 +8,16 @@
     </div>
     <div class="flex-grow overflow-y-auto px-3 pb-3">
         <div v-if="editingSummary" class="h-full flex flex-col">
-            <textarea ref="summaryMarkdownEditor"
-                      v-model="selectedRecording.summary"
-                      class="field flex-1"
-                      style="resize: none; padding: var(--sp-3);"></textarea>
+            <!-- EasyMDE replaces this textarea with its toolbar +
+                 CodeMirror DOM. The .markdown-editor-container
+                 wrapper is what hooks the editor's theme + height
+                 CSS at styles.css line 3498+ (and the mobile-specific
+                 overrides at line 2348+); without it the editor
+                 renders un-themed and auto-grows past the viewport. -->
+            <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
+                <textarea ref="summaryMarkdownEditor"
+                          v-model="selectedRecording.summary"></textarea>
+            </div>
             <div class="flex justify-end gap-2 mt-2">
                 <button @click="cancelEditSummary" class="btn btn--sm btn--ghost" v-text="t('common.cancel')"></button>
                 <button @click="saveEditSummary" class="btn btn--sm btn--primary" v-text="t('common.save')"></button>
