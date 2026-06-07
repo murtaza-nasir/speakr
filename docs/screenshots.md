@@ -2,6 +2,79 @@
 
 Explore Speakr's powerful features through our visual gallery. Click on any image to view it in full size.
 
+## What's New in v0.9.0
+
+### Recording Stats
+
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/stats-tab.png" alt="Recording Stats Tab" />
+  <p class="caption">Per-recording metrics: total length, speaker count, conversation turns, words, plus a per-speaker breakdown table with speaking time, percentage of audio, turns, words, and WPM. A silence row at the bottom shows how much of the meeting was actually quiet.</p>
+</div>
+
+### Per-OS System Audio Help
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/system-audio-help-windows.png" alt="System Audio help — Windows" />
+    <p class="caption">Windows setup: "Share system audio" checkbox in the share dialog</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/system-audio-help-macos.png" alt="System Audio help — macOS" />
+    <p class="caption">macOS setup: BlackHole + Multi-Output Device workflow</p>
+  </div>
+</div>
+
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/system-audio-help-linux.png" alt="System Audio help — Linux" />
+  <p class="caption">Linux setup: three options including the one-line <code>pactl module-virtual-source</code> recipe that exposes a Pulse monitor as a regular source Chrome will list</p>
+</div>
+
+### Input Device Picker & Multi-Input Recording
+
+<div class="screenshot-item">
+  <img src="../assets/images/screenshots/recording-input-device-picker.png" alt="Input device picker" />
+  <p class="caption">Collapsible Input devices section with primary + optional "Also mix in" secondary device dropdowns — the canonical solution for capturing your voice + meeting participants in one Web Audio mixed track</p>
+</div>
+
+### Mobile-First Detail View
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/mobile-summary.png" alt="Mobile summary tab" />
+    <p class="caption">Summary tab with single header, participants strip, contextual icons in chevron row</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript with sticky pills" />
+    <p class="caption">Transcript with sticky speaker pills + the new bottom-sheet processing queue anchored above player + nav</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/mobile-chat.png" alt="Mobile chat" />
+    <p class="caption">Chat panel — same prose primitives as desktop, with the message badge in the bottom nav</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/mobile-stats.png" alt="Mobile stats" />
+    <p class="caption">Stats tab on mobile — same data as desktop in a 2-column metric grid and per-speaker card stack</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/mobile-more-menu.png" alt="Mobile More overflow" />
+    <p class="caption">More overflow opens as a bottom-sheet with Notes / Stats / Events when those tabs are available</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/mobile-upload-sheet.png" alt="Mobile upload bottom sheet" />
+    <p class="caption">Upload modal as a full-width bottom sheet with drag-to-dismiss + sticky Cancel/Upload footer</p>
+  </div>
+</div>
+
 ## Main Interface
 
 ### Main Views
