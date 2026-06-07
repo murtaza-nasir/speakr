@@ -227,20 +227,26 @@ function useUserMenu() {
         isUserMenuOpen.value = false;
     };
     
-    // Close menu when clicking outside
+    // Close menu when clicking outside. Use the two purpose-built
+    // data attributes (data-user-menu-toggle on the trigger button,
+    // data-user-menu-dropdown on the dropdown panel) instead of class
+    // pattern matching — the previous class-substring matcher
+    // ('flex items-center gap...') broke as soon as the trigger
+    // button was rewritten to use design-system primitives (.btn,
+    // .btn--ghost, etc.) because the substring no longer matched and
+    // every click read as "outside the menu", so the dropdown was
+    // closed in the same tick it was opened.
     Vue.onMounted(() => {
         const handleClickOutside = (e) => {
-            const userMenuButton = e.target.closest('button[class*="flex items-center gap"]');
-            const userMenuDropdown = e.target.closest('div[class*="absolute right-0"]');
-            const isUserMenuButtonClick = userMenuButton && userMenuButton.querySelector('i.fa-user-circle');
-            
-            if (!isUserMenuButtonClick && !userMenuDropdown) {
+            const userMenuToggle = e.target.closest('[data-user-menu-toggle]');
+            const userMenuDropdown = e.target.closest('[data-user-menu-dropdown]');
+            if (!userMenuToggle && !userMenuDropdown) {
                 isUserMenuOpen.value = false;
             }
         };
-        
+
         document.addEventListener('click', handleClickOutside);
-        
+
         Vue.onUnmounted(() => {
             document.removeEventListener('click', handleClickOutside);
         });
