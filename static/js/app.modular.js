@@ -557,6 +557,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showSharesListModal = ref(false);
             const showTextEditorModal = ref(false);
             const showAsrEditorModal = ref(false);
+            // Placeholder refs — the actual hydration Sets are wired up
+            // later (after speakerModalTranscriptRef and asrEditorRef are
+            // declared). Declared here so the rest of this state block
+            // can reference them without temporal-dead-zone errors.
+            const asrEditorHydratedRows = ref(new Set());
+            const speakerModalHydratedRows = ref(new Set());
             const showCustomizeSummaryModal = ref(false);
             const customizeSummaryPrompt = ref('');
             const customizeSummaryMode = ref('append');  // 'append' | 'replace'
@@ -1195,6 +1201,78 @@ document.addEventListener('DOMContentLoaded', async () => {
             const asrEditorSaveFlash = ref(false);  // Brief "Saved" indicator after Save (without close)
             const asrEditorHighlightIndex = ref(null);  // Segment index briefly highlighted after double-click open
 
+            // -------------------------------------------------------------
+            // Lazy-hydration wiring for the ASR editor + speaker modal
+            // long lists (declared above as asrEditorHydratedRows /
+            // speakerModalHydratedRows). The factory creates one
+            // IntersectionObserver per pane. Rows entering the watch
+            // region (viewport ± 600 px) get added to the hydrated Set;
+            // rows leaving get REMOVED — bounded membership so the
+            // hydrated count stays around one viewport's worth (~50–100
+            // rows) regardless of transcript length. Without bounded
+            // dehydration, scrolling top → bottom would gradually
+            // promote every row and re-introduce the 1400 ms INP /
+            // 142k DOM nodes regression we saw at 2500 segments. A row
+            // is never dehydrated while it contains
+            // document.activeElement, so the user editing an input
+            // mid-scroll never gets it yanked away.
+            //
+            // Same factory is shared between modals; each gets its own
+            // observer + Set so they can run independently. Modal-open /
+            // close cycles re-set up / tear down via watch on
+            // showAsrEditorModal / showSpeakerModal.
+            // -------------------------------------------------------------
+            const _makeRowHydrator = (containerRef, hydratedRef, options = {}) => {
+                const observer = { current: null };
+                const rootMargin = options.rootMargin || '600px 0px 600px 0px';
+                const setup = () => {
+                    if (observer.current) { observer.current.disconnect(); observer.current = null; }
+                    if (!containerRef.value) return;
+                    observer.current = new IntersectionObserver((entries) => {
+                        let changed = false;
+                        const next = new Set(hydratedRef.value);
+                        for (const entry of entries) {
+                            const idx = parseInt(entry.target.dataset.segmentIndex, 10);
+                            if (Number.isNaN(idx)) continue;
+                            if (entry.isIntersecting) {
+                                if (!next.has(idx)) { next.add(idx); changed = true; }
+                            } else {
+                                if (entry.target.contains(document.activeElement)) continue;
+                                if (next.has(idx)) { next.delete(idx); changed = true; }
+                            }
+                        }
+                        if (changed) hydratedRef.value = next;
+                    }, { root: containerRef.value, rootMargin });
+                    nextTick(() => {
+                        const rows = containerRef.value.querySelectorAll('[data-segment-index]');
+                        rows.forEach(r => observer.current.observe(r));
+                    });
+                };
+                const teardown = () => {
+                    if (observer.current) { observer.current.disconnect(); observer.current = null; }
+                    hydratedRef.value = new Set();
+                };
+                const hydrate = (idx) => {
+                    if (hydratedRef.value.has(idx)) return;
+                    const next = new Set(hydratedRef.value);
+                    next.add(idx);
+                    hydratedRef.value = next;
+                };
+                return { setup, teardown, hydrate };
+            };
+            const _asrEditorHydrator = _makeRowHydrator(asrEditorRef, asrEditorHydratedRows);
+            const hydrateAsrEditorRow = _asrEditorHydrator.hydrate;
+            watch(showAsrEditorModal, (open) => {
+                if (open) nextTick(() => _asrEditorHydrator.setup());
+                else _asrEditorHydrator.teardown();
+            });
+            const _speakerModalHydrator = _makeRowHydrator(speakerModalTranscriptRef, speakerModalHydratedRows);
+            const hydrateSpeakerModalRow = _speakerModalHydrator.hydrate;
+            watch(showSpeakerModal, (open) => {
+                if (open) nextTick(() => _speakerModalHydrator.setup());
+                else _speakerModalHydrator.teardown();
+            });
+
             // --- Computed properties needed by composables ---
             const isMobileScreen = computed(() => windowWidth.value < 1024);
 
@@ -1513,7 +1591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Modals
                 showEditModal, showDeleteModal, showEditTagsModal, selectedNewTagId, tagSearchFilter,
                 showReprocessModal, showResetModal, showSpeakerModal, speakerModalTab, speakerModalVideoCollapsed, toggleSpeakerModalVideo, showShareModal, showSharesListModal,
-                showTextEditorModal, showAsrEditorModal, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
+                showTextEditorModal, showAsrEditorModal, asrEditorHydratedRows, hydrateAsrEditorRow, speakerModalHydratedRows, hydrateSpeakerModalRow, showCustomizeSummaryModal, customizeSummaryPrompt, customizeSummaryMode, editingRecording, editingTranscriptionContent,
                 editingSegments, availableSpeakers, showEditSpeakersModal, editingSpeakersList,
                 databaseSpeakers, editingSpeakerSuggestions,
                 showEditParticipantsModal, editingParticipantsList, editingParticipantSuggestions, allParticipants,
