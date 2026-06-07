@@ -9,8 +9,18 @@
      @keydown.esc="closeUploadView"
      tabindex="-1"
      class="modal-overlay">
-    <div class="modal-panel modal-panel--lg modal-panel--bottom-sheet" style="max-height: 92vh;">
-        <div class="modal-header">
+    <div class="modal-panel modal-panel--lg modal-panel--bottom-sheet"
+         :style="[{ maxHeight: '92vh' }, bottomSheetDragStyle]">
+        <!-- Drag-to-dismiss handlers attached on the header area only
+             (and on the panel's ::before drag handle, which lives inside
+             this header's expanded top padding) — keeps the scrollable
+             modal-body free for normal touch-scrolling without
+             swallowing the gesture. -->
+        <div class="modal-header"
+             @touchstart.passive="onSheetDragStart"
+             @touchmove.passive="onSheetDragMove"
+             @touchend.passive="onSheetDragEnd"
+             @touchcancel.passive="onSheetDragEnd">
             <i class="fas fa-microphone text-[var(--text-accent)]"></i>
             <h3 class="modal-title" v-text="t('upload.title')"></h3>
             <button @click="closeUploadView" class="modal-close" :title="t('buttons.close')">

@@ -198,6 +198,73 @@ export function useUI(state, utils, processedTranscription) {
         showUploadModal.value = false;
     };
 
+    // Drag-to-dismiss for the .modal-panel--bottom-sheet variant on
+    // mobile. Attached to the modal-header area only so dragging
+    // inside the scrollable modal-body doesn't fight the gesture.
+    // Pulling the sheet down past the threshold (120 px or 25 % of
+    // viewport, whichever is smaller) closes the modal; releasing
+    // before the threshold snaps back via the CSS transition. The
+    // offset is exposed as bottomSheetDragStyle which the template
+    // binds to the modal-panel's :style.
+    const bottomSheetDragOffset = ref(0);
+    const bottomSheetDragStartY = ref(null);
+    const bottomSheetDragStyle = computed(() => {
+        if (bottomSheetDragOffset.value <= 0) {
+            return { transition: 'transform 200ms cubic-bezier(0.16, 1, 0.3, 1)' };
+        }
+        // No transition while the finger is actively dragging so it
+        // tracks 1:1; transition is restored on release.
+        return {
+            transform: `translateY(${bottomSheetDragOffset.value}px)`,
+            transition: 'none'
+        };
+    });
+
+    const onSheetDragStart = (e) => {
+        // Only engage on mobile (the bottom-sheet variant is
+        // viewport-gated to ≤ 640 px in primitives.css; mirroring
+        // the gate here avoids touch handler overhead on desktop).
+        if (window.innerWidth > 640) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        bottomSheetDragStartY.value = t.clientY;
+        bottomSheetDragOffset.value = 0;
+    };
+
+    const onSheetDragMove = (e) => {
+        if (bottomSheetDragStartY.value == null) return;
+        const t = e.touches && e.touches[0];
+        if (!t) return;
+        const delta = t.clientY - bottomSheetDragStartY.value;
+        // Only follow downward drags; upward gestures fall through
+        // so the user can scroll content in the body normally if
+        // they drift onto the header by accident.
+        if (delta > 0) {
+            bottomSheetDragOffset.value = delta;
+        } else {
+            bottomSheetDragOffset.value = 0;
+        }
+    };
+
+    const onSheetDragEnd = () => {
+        if (bottomSheetDragStartY.value == null) return;
+        const threshold = Math.min(120, window.innerHeight * 0.25);
+        if (bottomSheetDragOffset.value > threshold) {
+            // Snap fully off-screen before dismissing so the close
+            // reads as the natural continuation of the gesture
+            // rather than a hard jump.
+            bottomSheetDragOffset.value = window.innerHeight;
+            setTimeout(() => {
+                closeUploadView();
+                bottomSheetDragOffset.value = 0;
+                bottomSheetDragStartY.value = null;
+            }, 180);
+            return;
+        }
+        bottomSheetDragOffset.value = 0;
+        bottomSheetDragStartY.value = null;
+    };
+
     // Switch to recording view
     const switchToRecordingView = () => {
         currentView.value = 'recording';
@@ -2054,6 +2121,10 @@ export function useUI(state, utils, processedTranscription) {
         switchToUploadView,
         switchToDetailView,
         closeUploadView,
+        bottomSheetDragStyle,
+        onSheetDragStart,
+        onSheetDragMove,
+        onSheetDragEnd,
         switchToRecordingView,
         setGlobalError,
         formatFileSize,
