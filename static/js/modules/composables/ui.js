@@ -187,6 +187,15 @@ export function useUI(state, utils, processedTranscription) {
         currentView.value = 'detail';
     };
 
+    // Close the upload modal. If a recording was already open behind it,
+    // return to its detail view; otherwise drop back to the empty/list
+    // state by clearing currentView. Mirrors the "previous view" mental
+    // model the user has when dismissing a modal.
+    const closeUploadView = () => {
+        if (currentView.value !== 'upload') return;
+        currentView.value = selectedRecording.value ? 'detail' : null;
+    };
+
     // Switch to recording view
     const switchToRecordingView = () => {
         currentView.value = 'recording';
@@ -2042,6 +2051,7 @@ export function useUI(state, utils, processedTranscription) {
         initializeSidebar,
         switchToUploadView,
         switchToDetailView,
+        closeUploadView,
         switchToRecordingView,
         setGlobalError,
         formatFileSize,

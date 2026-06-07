@@ -79,8 +79,6 @@
             <main :class="['flex-1 flex flex-col overflow-hidden main-content', !isSidebarCollapsed && !isMobileScreen ? 'sidebar-open' : '']">
                 <!-- Custom Banner -->
                 {% include 'components/banner.html' %}
-                <!-- Upload View -->
-                {% include 'components/upload-view.html' %}
 
                 <!-- Recording View -->
                 {% include 'components/recording-view.html' %}
@@ -89,6 +87,12 @@
                 {% include 'components/detail-view.html' %}
             </main>
         </div>
+
+        <!-- Upload View — now a real modal so the underlying view (list
+             or detail) stays visible behind the backdrop. Lives outside
+             <main> alongside the other modals so it overlays the whole
+             chrome. -->
+        {% include 'components/upload-view.html' %}
 
         <!-- Upload Progress Popup -->
         {% include 'components/progress-popup.html' %}

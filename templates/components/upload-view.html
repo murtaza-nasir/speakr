@@ -1,15 +1,23 @@
-<!-- Upload View -->
-<div v-if="currentView === 'upload'" class="flex-1 flex items-center justify-center p-4 md:p-8 overflow-y-auto">
-    <div class="max-w-lg w-full my-auto">
-        <!-- Compact Header -->
-        <div class="text-center mb-3">
-            <h2 class="text-lg font-semibold flex items-center justify-center gap-2">
-                <i class="fas fa-microphone text-[var(--text-accent)]"></i>
-                <span v-text="t('upload.title')"></span>
-            </h2>
+<!-- Upload View — rendered as a modal (overlay + panel) instead of the
+     previous full-screen takeover. The Vue gate is currentView ==='upload'
+     so the existing switchToUploadView entrypoints stay unchanged; closing
+     the modal calls closeUploadView() which restores currentView to either
+     'detail' (if a recording is open behind it) or null (drops back to
+     the empty/list view). Backdrop-click and Esc both dismiss. -->
+<div v-if="currentView === 'upload'"
+     @click.self="closeUploadView"
+     @keydown.esc="closeUploadView"
+     tabindex="-1"
+     class="modal-overlay">
+    <div class="modal-panel modal-panel--lg" style="max-height: 92vh;">
+        <div class="modal-header">
+            <i class="fas fa-microphone text-[var(--text-accent)]"></i>
+            <h3 class="modal-title" v-text="t('upload.title')"></h3>
+            <button @click="closeUploadView" class="modal-close" :title="t('buttons.close')">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-
-        <div class="bg-[var(--bg-secondary)] p-4 md:p-6 rounded-xl border border-[var(--border-primary)]">
+        <div class="modal-body">
             <!-- File Upload Area -->
             <div @drop="handleDrop" @dragover="handleDragOver" @dragleave="handleDragLeave" @click="$refs.fileInput.click()"
                  :class="['border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-300', dragover ? 'border-[var(--border-accent)] bg-[var(--bg-accent)]' : 'border-[var(--border-secondary)] hover:border-[var(--border-accent)]']">
