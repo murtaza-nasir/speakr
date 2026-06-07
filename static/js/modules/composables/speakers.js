@@ -604,37 +604,49 @@ export function useSpeakers(state, utils, processedTranscription) {
             speakerGroups.value = findSpeakerGroups(speakerId);
 
             if (speakerGroups.value.length > 0) {
-                // Pick the nearest group to whatever's currently in view
-                // (so quickly cycling between speakers feels local) and
-                // ALWAYS scroll to it. The previous "if it's already in
-                // the visible range, don't scroll" optimization fought
-                // the user's expectation: clicking into a speaker's
-                // textbox should snap to that speaker's first
-                // occurrence, not silently leave the viewport where it
-                // happened to be. With the smooth-scroll polish in
-                // scrollToSegmentIndex the scroll feels natural even
-                // when the target was already on screen — it just
-                // re-centres the row, which makes the highlight obvious.
+                // Get the current visible range from the virtual scroll
                 const visibleRange = utils.getSpeakerModalVisibleRange ? utils.getSpeakerModalVisibleRange() : null;
-                const visibleCenter = visibleRange
-                    ? Math.floor((visibleRange.start + visibleRange.end) / 2)
-                    : 0;
 
-                let nearestIndex = 0;
-                let nearestDistance = Infinity;
-                speakerGroups.value.forEach((group, index) => {
-                    const distance = Math.abs(group.startIndex - visibleCenter);
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        nearestIndex = index;
+                if (visibleRange) {
+                    const { start: visibleStart, end: visibleEnd } = visibleRange;
+                    const visibleCenter = Math.floor((visibleStart + visibleEnd) / 2);
+
+                    // Check if any group is already visible
+                    const visibleGroupIndex = speakerGroups.value.findIndex(group =>
+                        group.startIndex >= visibleStart && group.startIndex < visibleEnd
+                    );
+
+                    if (visibleGroupIndex !== -1) {
+                        // A group is already visible, just set it as current (no scroll needed)
+                        currentSpeakerGroupIndex.value = visibleGroupIndex;
+                    } else {
+                        // No group visible - find the nearest group to the visible center
+                        let nearestIndex = 0;
+                        let nearestDistance = Infinity;
+
+                        speakerGroups.value.forEach((group, index) => {
+                            const distance = Math.abs(group.startIndex - visibleCenter);
+                            if (distance < nearestDistance) {
+                                nearestDistance = distance;
+                                nearestIndex = index;
+                            }
+                        });
+
+                        currentSpeakerGroupIndex.value = nearestIndex;
+
+                        // Scroll to the nearest group
+                        const nearestGroup = speakerGroups.value[nearestIndex];
+                        if (nearestGroup && typeof nearestGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
+                            utils.scrollToSegmentIndex(nearestGroup.startIndex);
+                        }
                     }
-                });
-
-                currentSpeakerGroupIndex.value = nearestIndex;
-
-                const nearestGroup = speakerGroups.value[nearestIndex];
-                if (nearestGroup && typeof nearestGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
-                    utils.scrollToSegmentIndex(nearestGroup.startIndex);
+                } else {
+                    // Fallback: no visible range available, scroll to first group
+                    currentSpeakerGroupIndex.value = 0;
+                    const firstGroup = speakerGroups.value[0];
+                    if (firstGroup && typeof firstGroup.startIndex === 'number' && utils.scrollToSegmentIndex) {
+                        utils.scrollToSegmentIndex(firstGroup.startIndex);
+                    }
                 }
             } else {
                 currentSpeakerGroupIndex.value = -1;

@@ -1,15 +1,19 @@
-<!-- Speaker Identification Modal (design system v1).
-     IMPORTANT: explicit height: 85vh (was h-[85vh] in the original
-     speaker-modal pre-design-system migration). The .modal-panel
-     primitive uses max-height: 88vh which lets the panel SHRINK to its
-     content — and when content shrinks below the viewport, the
-     transcript pane's clientHeight changes too. That was the root cause
-     of the scroll oscillation; the ResizeObserver fired on every
-     content change, the visibleRange recomputed, different items
-     rendered, height changed again, repeat. Locking the modal to a
-     fixed height stops the feedback loop. -->
-<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="modal-overlay">
-    <div @click="closeSpeakerSuggestionsOnClick" class="modal-panel modal-panel--xl" style="height: 90vh;">
+<!-- Speaker Identification Modal.
+     Outer wrapper deliberately kept as raw Tailwind (fixed inset-0 +
+     custom h-[85vh] panel), NOT migrated to modal-overlay/.modal-panel
+     primitives. The primitive variant kept introducing layout bugs in
+     the virtual-scroll'd transcript pane (.modal-panel's max-height
+     vs fixed-height, the stacked .modal-content scrollable container,
+     the panel shrinking to content height — all symptoms of the same
+     underlying mismatch between the column-flex primitive and this
+     modal's specific need for a STABLE-height transcript pane so
+     virtualScroll's ResizeObserver doesn't oscillate). Reverted to
+     the exact v0.8.21-alpha wrapper markup that's known to work. The
+     inner buttons / fields / footer still use the design-system
+     primitives (btn, btn--primary, etc.) so visual consistency with
+     the rest of the app is preserved. -->
+<div v-if="showSpeakerModal" @click.self="closeSpeakerModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
+    <div @click="closeSpeakerSuggestionsOnClick" class="bg-[var(--bg-secondary)] rounded-xl shadow-2xl w-full max-w-4xl flex flex-col h-[95vh] sm:h-[85vh]">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.identifySpeakers')"></h3>
             <button @click="closeSpeakerModal" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
