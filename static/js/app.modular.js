@@ -2239,25 +2239,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Helper to scroll to a segment by index (for speaker navigation).
             //
-            // This is intentionally identical to the v0.8.21-alpha
-            // implementation that the user remembers working. The ACTUAL
-            // regression was the modal-panel primitive migration (commit
-            // 8e1c080) which replaced the modal's fixed h-[85vh] with
-            // max-height: 88vh — that broke the ResizeObserver feedback
-            // (containerHeight became unstable as content rendered) and
-            // virtual scroll started oscillating. With the modal's
-            // height locked back to a fixed value (style="height: 90vh"
-            // on the modal-panel in speaker-modal.html), virtualScroll's
-            // scrollToIndex works exactly as it did before. Don't add
-            // querySelector/scrollIntoView gymnastics here — those
-            // helped during the broken-height window but now they only
-            // race against the browser's native smooth-scroll animation.
+            // The flicker the user was seeing comes from smooth-scrolling
+            // a virtual scroll container where item heights vary. The
+            // browser animates scrollTop continuously; every frame the
+            // scroll event fires, visibleRange recomputes, and different
+            // items render. When their REAL heights differ from the
+            // fixed 52 px estimate, the total scrollHeight changes mid-
+            // animation, the relative scroll position shifts, the smooth
+            // scroll target snaps to a slightly different place, and the
+            // viewport visibly stutters until the animation ends.
+            //
+            // The fix is to NOT smooth-scroll the virtual scroll itself.
+            // Instead:
+            //   1. Instant jump via virtualScroll.scrollToIndex('auto')
+            //      to get the target's DOM node into the rendered window.
+            //      This fires ONE scroll event, range recomputes ONCE.
+            //   2. Two RAFs to let Vue's reactive update + the browser's
+            //      paint pass finish, so the target node exists with its
+            //      measured height.
+            //   3. scrollIntoView({block:'center', behavior:'smooth'}) on
+            //      the real element. Because the target is already in the
+            //      rendered window, the smooth animation just moves the
+            //      element into the centre of the viewport — visibleRange
+            //      doesn't change during this final adjustment (the
+            //      animation is small enough that the same items remain
+            //      visible), so no flicker.
+            //
+            // No scroll-event suppression — that interferes with the
+            // user's own mouse-wheel scrolling. The native scroll path
+            // stays plain virtualScroll.onScroll.
             const scrollToSegmentIndex = (index) => {
-                if (showSpeakerModal.value) {
-                    speakerModalVirtualScroll.scrollToIndex(index, 'smooth');
-                } else {
-                    mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
-                }
+                const inModal = showSpeakerModal.value;
+                const vs = inModal ? speakerModalVirtualScroll : mainTranscriptVirtualScroll;
+                const containerRef = inModal ? speakerModalTranscriptRef : mainTranscriptRef;
+                if (!containerRef.value) return;
+
+                // Step 1: instant rough position (offset upward so the
+                // smooth fine-tune is a small downward movement, not a
+                // large jump that would re-trigger range changes).
+                vs.scrollToIndex(Math.max(0, index - 5), 'auto');
+
+                // Step 2 + 3: after the visible range paints, smooth-
+                // scroll the actual DOM node to centre. Two RAFs because
+                // Vue's render is one microtask + browser paint is one
+                // animation frame.
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        const target = containerRef.value && containerRef.value.querySelector(`[data-segment-index="${index}"]`);
+                        if (target) {
+                            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        }
+                    });
+                });
             };
 
             // Add scrollToSegmentIndex to utils for composables that need it
