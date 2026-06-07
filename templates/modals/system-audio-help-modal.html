@@ -188,6 +188,64 @@
                 </div>
             </div>
 
+            <!-- Privacy notes — collapsed by default so the modal
+                 stays focused on setup; expandable for users who
+                 care about the trade-offs each capture mode makes,
+                 especially the Linux virtual-source workaround
+                 which removes a Chrome-level privacy protection
+                 on the user's machine. -->
+            <details style="margin-top: var(--sp-4);">
+                <summary class="cursor-pointer t-body-strong" style="color: var(--text-secondary);">
+                    <i class="fas fa-shield-halved"></i>
+                    Privacy notes
+                </summary>
+                <div class="space-y-3" style="margin-top: var(--sp-3);">
+                    <p class="t-body" style="color: var(--text-secondary);">
+                        Most of these capture modes use standard browser APIs and have the same privacy properties as any other web app that records audio. A couple of them have specific trade-offs worth knowing about.
+                    </p>
+
+                    <div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Microphone, System Audio, Mic + System</div>
+                        <p class="t-body" style="color: var(--text-secondary);">
+                            All gated by the browser's permission system. The browser shows an explicit prompt before capture starts, displays a persistent recording indicator while it's running, and lets you revoke access at any time from the site settings. No new privacy surface beyond what's already in any voice-recording web app.
+                        </p>
+                    </div>
+
+                    <div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Disable echo cancellation, noise suppression &amp; auto-gain</div>
+                        <p class="t-body" style="color: var(--text-secondary);">
+                            Not a privacy setting — these are audio-quality processors. With them off the recording captures more of the ambient room (background voices, typing, notifications). The data path doesn't change; everything still goes to the same place.
+                        </p>
+                    </div>
+
+                    <div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1); color: var(--text-warn, var(--text-accent));">
+                            <i class="fas fa-triangle-exclamation"></i>
+                            Linux virtual source (<code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">speakr_loopback</code>)
+                        </div>
+                        <p class="t-body" style="color: var(--text-secondary);">
+                            This is the one to think about. Chrome's filtering of PulseAudio monitor sources is a deliberate privacy protection — without it, a malicious site with mic permission could silently record everything you're listening to (calls, sensitive content, private music) with no "screen sharing" indicator. The <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">module-virtual-source</code> wrap explicitly undoes that protection on your machine.
+                        </p>
+                        <p class="t-body" style="color: var(--text-secondary); margin-top: var(--sp-2);">
+                            After the module is loaded, any site you've granted mic access to can enumerate <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">speakr_loopback</code> and capture system audio through it.
+                        </p>
+                        <div class="t-body-strong" style="margin-top: var(--sp-2); margin-bottom: var(--sp-1);">Mitigations:</div>
+                        <ul class="list-disc list-inside space-y-1 t-body" style="color: var(--text-secondary);">
+                            <li><strong>Load on-demand</strong>: don't add the <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">load-module</code> line to <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">~/.config/pulse/default.pa</code>. Run <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">pactl load-module …</code> before recording and <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">pactl unload-module module-virtual-source</code> after.</li>
+                            <li><strong>Audit your mic permissions</strong> at <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">chrome://settings/content/microphone</code> and remove any site that doesn't strictly need it.</li>
+                            <li><strong>Use a less obvious source name</strong> (e.g. <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">aux_in</code> instead of <code style="background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px;">speakr_loopback</code>). Doesn't stop a determined enumerator but raises the bar.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Where the audio ends up</div>
+                        <p class="t-body" style="color: var(--text-secondary);">
+                            Captured audio goes to your Speakr server (self-hosted by you) and then to whichever ASR endpoint you've configured. If you're running a local Whisper / self-hosted ASR, audio never leaves your network. If your ASR is OpenAI or another cloud provider, audio gets sent there — same as any other recording you upload to Speakr. That's a deployment-config decision, not specific to these capture modes.
+                        </p>
+                    </div>
+                </div>
+            </details>
+
         </div>
         <div class="modal-footer">
             <button @click="showSystemAudioHelp = false" class="btn btn--primary">Got it</button>
