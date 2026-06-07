@@ -1,40 +1,148 @@
-<!-- System Audio Help Modal (design system v1) -->
+<!-- System Audio Setup Guide.
+
+     Per-OS instructions. The active tab is pre-selected to the user's
+     detected platform (helpModalOsTab) when the modal opens, but the
+     user can switch to read the others. The capability matrix at the
+     top is sourced from the detectPlatform() / getAudioCapabilities()
+     helpers in static/js/modules/utils/platform.js. -->
 <div v-if="showSystemAudioHelp" @click.self="showSystemAudioHelp = false" class="modal-overlay">
-    <div class="modal-panel modal-panel--md">
+    <div class="modal-panel modal-panel--lg">
         <div class="modal-header">
-            <h3 class="modal-title" v-text="t('help.systemAudioHelp')"></h3>
+            <i class="fas fa-desktop text-2xl" style="color: var(--text-accent);"></i>
+            <h3 class="modal-title">Capturing system audio</h3>
             <button @click="showSystemAudioHelp = false" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-4);">
-                <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
+
+            <!-- Capability summary banner -->
+            <div class="banner" :class="audioCaps.supportsSystemAudio ? 'banner--success' : 'banner--warn'" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-4);">
+                <i :class="['fas', audioCaps.supportsSystemAudio ? 'fa-check-circle' : 'fa-info-circle']" style="margin-top: 2px;"></i>
                 <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Browser Compatibility</div>
-                    <div class="t-meta">System audio recording works best in Chrome, Edge, and Brave. Firefox is supported but requires the tab to be actively playing audio. Not supported on Safari or mobile devices.</div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">
+                        You're on <span v-text="platformInfo.os"></span> · <span v-text="platformInfo.browser"></span>
+                    </div>
+                    <div class="t-meta" v-if="audioCaps.supportsSystemAudio">
+                        Full system-audio capture is supported. When you click <strong>System Audio</strong> or <strong>Mic + System</strong>, pick <strong>Entire Screen</strong> in the share dialog and tick <strong>Share system audio</strong>.
+                    </div>
+                    <div class="t-meta" v-else-if="audioCaps.supportsTabAudio">
+                        Browser-level system-audio is not available on this OS / browser combination. The browser can still capture <strong>tab audio</strong> (when you share a tab playing sound), or you can route system audio through a virtual audio device — see your tab below.
+                    </div>
+                    <div class="t-meta" v-else>
+                        This browser doesn't support audio capture via screen sharing at all. Use Chrome or Edge to record system audio, or record from a microphone instead.
+                    </div>
                 </div>
             </div>
 
-            <div style="margin-bottom: var(--sp-4);">
-                <div class="t-body-strong" style="margin-bottom: var(--sp-2);">How to record system audio:</div>
-                <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
-                    <li>Click "System Audio" or "Mic + System" button</li>
-                    <li>A screen sharing dialog will appear</li>
-                    <li>Select a tab or window that is <strong>actively playing audio</strong></li>
-                    <li>Make sure "Share audio" checkbox is <strong>checked</strong></li>
-                    <li>Click "Share" to start recording</li>
-                </ol>
+            <!-- OS tab strip -->
+            <div class="tabs" style="margin-bottom: var(--sp-4);">
+                <button @click="helpModalOsTab = 'macOS'"   class="tab" :class="{'is-active': helpModalOsTab === 'macOS'}">
+                    <i class="fab fa-apple"></i><span>macOS</span>
+                </button>
+                <button @click="helpModalOsTab = 'Windows'" class="tab" :class="{'is-active': helpModalOsTab === 'Windows'}">
+                    <i class="fab fa-windows"></i><span>Windows</span>
+                </button>
+                <button @click="helpModalOsTab = 'Linux'"   class="tab" :class="{'is-active': helpModalOsTab === 'Linux'}">
+                    <i class="fab fa-linux"></i><span>Linux</span>
+                </button>
             </div>
 
-            <div>
-                <div class="t-body-strong" style="margin-bottom: var(--sp-2);">Troubleshooting:</div>
-                <ul class="list-disc list-inside space-y-1 t-meta">
-                    <li><strong>Important:</strong> The tab/window must be playing audio when you share it</li>
-                    <li>Check that "Share audio" checkbox is checked in the sharing dialog</li>
-                    <li>In Firefox, start playing audio first, then click record</li>
-                    <li>Some content may have DRM protection that blocks recording</li>
-                    <li>Not supported on Safari or mobile browsers</li>
-                </ul>
+            <!-- macOS -->
+            <div v-if="helpModalOsTab === 'macOS'" class="space-y-3">
+                <p class="t-body">
+                    macOS doesn't let any browser capture system audio directly — the OS treats audio capture as a privileged operation that browsers (sandboxed apps) can't request. The standard workaround is a free virtual audio driver that routes the system output back into an input device the browser can read like a microphone.
+                </p>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option A — Tab audio (no install)</div>
+                    <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
+                        <li>Open the source content in a <strong>tab</strong> (YouTube, Zoom web, etc.)</li>
+                        <li>Click <strong>System Audio</strong> in Speakr and pick the tab in the share dialog</li>
+                        <li>Tick <strong>Share tab audio</strong> before clicking Share</li>
+                    </ol>
+                    <p class="t-meta" style="margin-top: var(--sp-2);">Works only for content playing in a browser tab. App audio (Slack, native Zoom client, etc.) won't be captured.</p>
+                </div>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Option B — Virtual audio device (recommended)</div>
+                    <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
+                        <li>Install <a href="https://existential.audio/blackhole/" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">BlackHole 2ch</a> (free) — installer signs in, no kernel-extension prompts.</li>
+                        <li>Open <strong>Audio MIDI Setup</strong> → create a <strong>Multi-Output Device</strong> containing your speakers + BlackHole. Set this as the system output.</li>
+                        <li>In Speakr, click <strong>Microphone</strong> and pick <strong>BlackHole 2ch</strong> as the input.</li>
+                    </ol>
+                    <p class="t-meta" style="margin-top: var(--sp-2);">After this is set up, system audio captures continuously regardless of which tab/window is active.</p>
+                </div>
+                <p class="t-meta">
+                    Alternative paid tools: <a href="https://rogueamoeba.com/loopback/" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">Loopback</a> (Rogue Amoeba) is the most polished UX.
+                </p>
             </div>
+
+            <!-- Windows -->
+            <div v-else-if="helpModalOsTab === 'Windows'" class="space-y-3">
+                <p class="t-body">
+                    Windows is the easiest platform — Chrome and Edge can capture audio from any source the OS plays, including specific apps. No extra software needed.
+                </p>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">System-wide capture</div>
+                    <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
+                        <li>Click <strong>System Audio</strong> or <strong>Mic + System</strong> in Speakr</li>
+                        <li>In the share dialog, pick <strong>Entire Screen</strong></li>
+                        <li>Tick <strong>Share system audio</strong> (bottom-left of the dialog)</li>
+                        <li>Click <strong>Share</strong></li>
+                    </ol>
+                </div>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Per-window capture</div>
+                    <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
+                        <li>Pick <strong>Window</strong> instead of Entire Screen</li>
+                        <li>Choose the specific app's window</li>
+                        <li>Tick <strong>Share window audio</strong></li>
+                    </ol>
+                    <p class="t-meta" style="margin-top: var(--sp-2);">Captures only the chosen app's audio — useful for meeting recordings without your own keyboard/typing noise.</p>
+                </div>
+                <p class="t-meta">
+                    Stuck on "no audio track" errors? Some apps (Spotify desktop, DRM-protected video) suppress system-audio capture. Use a virtual cable like <a href="https://vb-audio.com/Cable/" target="_blank" rel="noopener" style="color: var(--text-accent); text-decoration: underline;">VB-Audio Cable</a> as a workaround.
+                </p>
+            </div>
+
+            <!-- Linux -->
+            <div v-else-if="helpModalOsTab === 'Linux'" class="space-y-3">
+                <p class="t-body">
+                    Browsers on Linux can only capture tab audio directly. For full system audio, route the desktop output through a PulseAudio or PipeWire monitor source and pick it as the input device when recording.
+                </p>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">PulseAudio / PipeWire monitor source</div>
+                    <ol class="list-decimal list-inside space-y-1 t-body" style="color: var(--text-secondary);">
+                        <li>Open <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">pavucontrol</code> (PulseAudio Volume Control)</li>
+                        <li>Click <strong>System Audio</strong> in Speakr — a Chrome share dialog appears</li>
+                        <li>In pavucontrol → <strong>Recording</strong> tab, find the Speakr capture entry and change its source to <strong>Monitor of &lt;your output sink&gt;</strong></li>
+                        <li>Audio now flows from system playback into Speakr</li>
+                    </ol>
+                </div>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">PipeWire (newer distros)</div>
+                    <p class="t-body" style="color: var(--text-secondary);">
+                        Same idea: use <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">qpwgraph</code> or <code style="background: var(--bg-tertiary); padding: 1px 4px; border-radius: 3px;">helvum</code> to wire the playback sink's monitor into Chrome's capture input.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Detected virtual audio devices -->
+            <div v-if="virtualAudioDevices && virtualAudioDevices.length > 0"
+                 class="banner banner--success"
+                 style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-top: var(--sp-4);">
+                <i class="fas fa-check-circle" style="margin-top: 2px;"></i>
+                <div>
+                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">Virtual audio device detected</div>
+                    <div class="t-meta">
+                        Speakr found these on your system — they're already wired up:
+                        <ul class="list-disc list-inside" style="margin-top: var(--sp-1);">
+                            <li v-for="d in virtualAudioDevices" :key="d.deviceId">
+                                <span style="font-family: var(--font-mono, ui-monospace, monospace);" v-text="d.label"></span>
+                                — pick this from the Microphone dropdown to capture system audio.
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
         </div>
         <div class="modal-footer">
             <button @click="showSystemAudioHelp = false" class="btn btn--primary">Got it</button>

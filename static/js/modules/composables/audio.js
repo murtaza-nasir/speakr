@@ -13,7 +13,7 @@ export function useAudio(state, utils) {
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
         maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
-        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, isDarkMode, wakeLock, animationFrameId,
+        showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, isDarkMode, wakeLock, animationFrameId,
         activeStreams, visualizer, micVisualizer, systemVisualizer, canRecordAudio,
         canRecordSystemAudio, systemAudioSupported, systemAudioError, globalError,
         selectedTagIds, selectedFolderId, asrLanguage, asrMinSpeakers, asrMaxSpeakers, uploadQueue,
@@ -199,7 +199,10 @@ export function useAudio(state, utils) {
                 const audioTrack = displayStream.getAudioTracks()[0];
                 if (!audioTrack) {
                     displayStream.getTracks().forEach(track => track.stop());
-                    showToast('No audio track - check "Share audio" option', 'error');
+                    // Open the platform-aware help modal so the user
+                    // gets per-OS guidance instead of a bare toast.
+                    if (showSystemAudioHelp) showSystemAudioHelp.value = true;
+                    showToast('No audio track came through — see the help guide for per-OS setup.', 'fa-exclamation-triangle');
                     return;
                 }
 
@@ -270,6 +273,13 @@ export function useAudio(state, utils) {
                     }
                 });
                 activeStreams.value = [stream];
+                // Now that the user has granted mic permission,
+                // device labels populate — re-scan for virtual audio
+                // routing devices (BlackHole / VB-Cable / monitor
+                // sources) so the upload modal can offer them.
+                if (utils.refreshVirtualAudioDevices) {
+                    utils.refreshVirtualAudioDevices();
+                }
 
                 audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
                 const source = audioContext.value.createMediaStreamSource(stream);
@@ -303,12 +313,17 @@ export function useAudio(state, utils) {
                 const audioTrack = stream.getAudioTracks()[0];
                 if (!audioTrack) {
                     stream.getTracks().forEach(track => track.stop());
-                    const browserName = isFirefox ? 'Firefox' : 'your browser';
+                    // Open the platform-aware help modal so the user
+                    // sees the per-OS setup instructions instead of
+                    // just a generic error toast. The thrown error
+                    // still surfaces as a toast so the failure is
+                    // acknowledged.
+                    if (showSystemAudioHelp) showSystemAudioHelp.value = true;
                     throw new Error(
-                        `No system audio track available. In ${browserName}, please:\n` +
-                        `1. Share a BROWSER TAB that is actively playing audio\n` +
-                        `2. Make sure "Share tab audio" checkbox is checked\n` +
-                        `3. The audio must be playing when you start sharing`
+                        'No audio track came through with the screen share. ' +
+                        'Make sure you ticked "Share system audio" / "Share tab audio" ' +
+                        'in the share dialog. The help guide that just opened has ' +
+                        'platform-specific instructions.'
                     );
                 }
 
@@ -357,12 +372,14 @@ export function useAudio(state, utils) {
                 if (!systemAudioTrack) {
                     micStream.getTracks().forEach(track => track.stop());
                     displayStream.getTracks().forEach(track => track.stop());
-                    const browserName = isFirefox ? 'Firefox' : 'your browser';
+                    // Open the platform-aware help modal so the user
+                    // sees per-OS setup instead of a generic error.
+                    if (showSystemAudioHelp) showSystemAudioHelp.value = true;
                     throw new Error(
-                        `No system audio track available. In ${browserName}, please:\n` +
-                        `1. Share a BROWSER TAB that is actively playing audio\n` +
-                        `2. Make sure "Share tab audio" checkbox is checked\n` +
-                        `3. The audio must be playing when you start sharing`
+                        'No audio track came through with the screen share. ' +
+                        'Make sure you ticked "Share system audio" / "Share tab audio" ' +
+                        'in the share dialog. The help guide that just opened has ' +
+                        'platform-specific instructions.'
                     );
                 }
 

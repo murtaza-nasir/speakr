@@ -22,6 +22,7 @@ import { useFolders } from './modules/composables/folders.js';
 import { showToast } from './modules/utils/toast.js';
 import { getContrastTextColor } from './modules/utils/colors.js';
 import { buildVariableList } from './modules/utils/prompt-variables.js';
+import { detectPlatform, getAudioCapabilities, enumerateVirtualAudioDevices } from './modules/utils/platform.js';
 
 // Number of speaker colors available in CSS (must match styles.css)
 const SPEAKER_COLOR_COUNT = 16;
@@ -357,6 +358,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             const recordingNotes = ref('');
             const showSystemAudioHelp = ref(false);
             const showSystemAudioHelpModal = ref(false);
+            // Platform + capability state for the system-audio flow.
+            // Detected once on init; the help modal uses these to
+            // pre-select the right OS tab and to gate which paragraphs
+            // it shows. Virtual audio devices are scanned after the
+            // user grants a microphone permission since labels are
+            // empty before then.
+            const platformInfo = ref(detectPlatform());
+            const audioCaps = ref(getAudioCapabilities());
+            const helpModalOsTab = ref(platformInfo.value.os === 'iOS' || platformInfo.value.os === 'Android'
+                ? 'macOS' // mobile users get the desktop guide as a default; the modal still shows a mobile note
+                : (platformInfo.value.os === 'ChromeOS' ? 'Windows' : (platformInfo.value.os || 'Windows')));
+            const virtualAudioDevices = ref([]);
+            const refreshVirtualAudioDevices = async () => {
+                try {
+                    virtualAudioDevices.value = await enumerateVirtualAudioDevices();
+                } catch (_) {
+                    virtualAudioDevices.value = [];
+                }
+            };
+            // Initial probe — labels are usually empty pre-permission
+            // so the result is often []; refreshed again after the
+            // first getUserMedia / getDisplayMedia grant.
+            refreshVirtualAudioDevices();
             const showRecoveryModal = ref(false);
             const recoverableRecording = ref(null);
             const asrLanguage = ref('');
@@ -1386,7 +1410,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Audio Recording
                 isRecording, mediaRecorder, audioChunks, audioBlobURL, recordingTime, recordingInterval,
                 canRecordAudio, canRecordSystemAudio, systemAudioSupported, systemAudioError,
-                recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal, asrLanguage, asrMinSpeakers, asrMaxSpeakers,
+                recordingNotes, showSystemAudioHelp, showSystemAudioHelpModal,
+                platformInfo, audioCaps, helpModalOsTab, virtualAudioDevices, refreshVirtualAudioDevices,
+                asrLanguage, asrMinSpeakers, asrMaxSpeakers,
                 audioContext, analyser, micAnalyser, systemAnalyser, visualizer, micVisualizer,
                 systemVisualizer, animationFrameId, recordingMode, activeStreams,
                 wakeLock, recordingNotification, isPageVisible,
@@ -1740,7 +1766,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formatStatus, getStatusClass, formatTime, formatDuration, formatEventDateTime,
                 getDateForSorting, isToday, isYesterday, isThisWeek, isLastWeek, isThisMonth, isLastMonth, isSameDay,
                 nextTick,
-                onChatComplete: loadTokenBudget  // Refresh token budget after chat
+                onChatComplete: loadTokenBudget,  // Refresh token budget after chat
+                refreshVirtualAudioDevices         // Re-scan installed BlackHole / VB-Cable / monitor sources
             };
 
             // =========================================================================

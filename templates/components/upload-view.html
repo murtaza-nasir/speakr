@@ -216,23 +216,56 @@
                     <span v-text="t('recording.microphone')"></span>
                 </button>
 
-                <!-- System Audio and Both - Side by Side -->
+                <!-- System Audio and Both - Side by Side. Buttons stay
+                     visible whenever the browser supports getDisplayMedia
+                     at all (incl. tab-only-audio platforms) — the help
+                     modal explains the per-OS limitations and routing
+                     options. A small amber dot appears on the buttons
+                     when full system audio isn't expected to work on
+                     this platform so the user knows BEFORE clicking. -->
                 <div v-if="canRecordSystemAudio" class="grid grid-cols-2 gap-2">
                     <!-- System Audio Recording -->
                     <button @click="startRecording('system')"
-                            class="px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-sm">
+                            class="relative px-3 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-1.5 text-sm">
+                        <span v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
+                              class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400"
+                              title="Tab audio only on this platform — see help"></span>
                         <i class="fas fa-desktop"></i>
                         <span v-text="t('recording.systemAudio')"></span>
                     </button>
 
                     <!-- Both Audio Sources -->
                     <button @click="startRecording('both')"
-                            class="px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1 text-sm">
+                            class="relative px-3 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-1 text-sm">
+                        <span v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
+                              class="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-400"
+                              title="Tab audio only on this platform — see help"></span>
                         <i class="fas fa-microphone"></i>
                         <i class="fas fa-desktop"></i>
                         <span class="hidden sm:inline" v-text="t('recording.microphoneAndSystem')"></span>
                         <span class="sm:hidden">${ t('recording.micPlusSys') }</span>
                     </button>
+                </div>
+
+                <!-- Compact platform-aware hint when full system audio is
+                     not available on this OS / browser combination. -->
+                <div v-if="audioCaps && audioCaps.supportsTabAudio && !audioCaps.supportsSystemAudio"
+                     class="text-[11px] text-[var(--text-muted)] flex items-center gap-1 mt-1">
+                    <i class="fas fa-circle-info text-amber-500"></i>
+                    <span>
+                        On <span v-text="platformInfo.os"></span> the browser can only capture <strong>tab audio</strong> directly —
+                        <button @click="showSystemAudioHelp = true" class="underline" style="color: var(--text-accent);">how to enable full system audio</button>.
+                    </span>
+                </div>
+
+                <!-- Detected virtual audio device — surfaced as an
+                     alternative microphone input. -->
+                <div v-if="virtualAudioDevices && virtualAudioDevices.length > 0"
+                     class="text-[11px] flex items-center gap-1 mt-1">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    <span style="color: var(--text-secondary);">
+                        Detected <span v-text="virtualAudioDevices[0].label"></span> — pick it from the microphone dropdown to route system audio in.
+                    </span>
                 </div>
 
                 <!-- Help Text - Compact -->
