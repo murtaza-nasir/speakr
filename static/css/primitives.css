@@ -1463,3 +1463,21 @@ textarea:focus-visible {
 .upload-options-group[open] .upload-options-chevron {
     transform: rotate(180deg);
 }
+
+
+/* ---- Mobile editor flat corners ----------------------------------------
+   On phones the EasyMDE editor spans screen-edge to screen-edge inside
+   the mobile-summary-panel / mobile-notes-panel editing shells (no
+   horizontal panel padding), so the inherited 0.75rem rounded corners
+   on the EasyMDEContainer + toolbar + CodeMirror look like a card
+   floating inside the viewport instead of a flat editing surface.
+   Flatten them at ≤ 640 px so the editor reads as one continuous
+   surface from edge to edge. */
+@media (max-width: 640px) {
+    .markdown-editor-container .EasyMDEContainer,
+    .markdown-editor-container .EasyMDEContainer .editor-toolbar,
+    .markdown-editor-container .EasyMDEContainer .CodeMirror,
+    .markdown-editor-container .EasyMDEContainer .CodeMirror-scroll {
+        border-radius: 0 !important;
+    }
+}
