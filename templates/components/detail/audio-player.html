@@ -153,12 +153,15 @@
                     <span class="text-xs text-[var(--text-muted)] font-mono">${ formatAudioTime(audioDuration) }</span>
                 </div>
 
-                <!-- Playback Speed Control -->
+                <!-- Playback Speed Control. Uses .btn--icon.btn--sm
+                     for visual rhythm with the other player buttons;
+                     speed text remains as inner content. -->
                 <div class="relative flex-shrink-0">
                     <button ref="speedButtonMobile"
                             @click="showSpeedMenu = !showSpeedMenu; $nextTick(() => updateSpeedMenuPosition($refs.speedButtonMobile))"
                             data-speed-toggle
-                            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all"
+                            class="btn btn--icon btn--sm"
+                            style="color: var(--text-accent);"
                             :title="t('tooltips.playbackSpeed') || 'Playback speed'">
                         <span class="text-xs font-semibold font-mono">${ formatPlaybackRate(playbackRate) }</span>
                     </button>
@@ -188,8 +191,8 @@
                      @mouseenter="showVolumeSlider = true"
                      @mouseleave="showVolumeSlider = false">
                     <button @click="toggleAudioMute"
-                            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all"
-                            :class="audioIsMuted || playerVolume === 0 ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
+                            class="btn btn--icon btn--sm"
+                            :style="audioIsMuted || playerVolume === 0 ? '' : 'color: var(--text-accent);'"
                             :title="audioIsMuted ? t('tooltips.unmute') : t('tooltips.mute')">
                         <i :class="audioIsMuted || playerVolume === 0 ? 'fas fa-volume-mute' : playerVolume < 0.5 ? 'fas fa-volume-down' : 'fas fa-volume-up'" class="text-sm"></i>
                     </button>
@@ -212,7 +215,8 @@
                 <!-- Download Button -->
                 <a :href="'/audio/' + selectedRecording.id + '?download=true'"
                    download
-                   class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
+                   class="btn btn--icon btn--sm flex-shrink-0"
+                   style="color: var(--text-accent);"
                    :title="t('buttons.downloadAudio') || 'Download audio'">
                     <i class="fas fa-download text-sm"></i>
                 </a>
@@ -220,7 +224,8 @@
                 <!-- Video Fullscreen Button -->
                 <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') && !videoCollapsed"
                         @click="enterVideoFullscreen"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] text-[var(--text-accent)] hover:opacity-80 transition-all flex-shrink-0"
+                        class="btn btn--icon btn--sm flex-shrink-0"
+                        style="color: var(--text-accent);"
                         :title="t('tooltips.fullscreenVideo')">
                     <i class="fas fa-expand text-sm"></i>
                 </button>
@@ -228,8 +233,8 @@
                 <!-- Video Toggle Button -->
                 <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
                         @click="videoCollapsed = !videoCollapsed"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--bg-primary)] transition-all flex-shrink-0"
-                        :class="videoCollapsed ? 'text-[var(--text-muted)]' : 'text-[var(--text-accent)]'"
+                        class="btn btn--icon btn--sm flex-shrink-0"
+                        :style="videoCollapsed ? '' : 'color: var(--text-accent);'"
                         :title="videoCollapsed ? t('tooltips.showVideo') : t('tooltips.hideVideo')">
                     <i :class="videoCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
                 </button>

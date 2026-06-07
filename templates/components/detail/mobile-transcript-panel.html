@@ -1,24 +1,47 @@
-<!-- Mobile Transcript Panel -->
-<div v-if="mobileTab === 'transcript'" class="h-full flex flex-col space-y-4">
-    <div class="flex items-center justify-between gap-2 flex-shrink-0 px-3">
-        <!-- Follow Player Checkbox -->
-        <div v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
-             class="follow-player-control text-[var(--text-muted)]"
-             @click="toggleFollowPlayerMode"
-             :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
-            <input type="checkbox"
-                   :checked="followPlayerMode"
-                   @click.stop="toggleFollowPlayerMode">
-            <i class="fas fa-arrows-alt-v follow-icon"></i>
-        </div>
-        <div class="flex items-center gap-2">
-            <div v-if="processedTranscription.hasDialogue" class="view-mode-toggle">
-                <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'simple' ? 'active' : '']"><i class="fas fa-list"></i></button>
-                <button @click="toggleTranscriptionViewMode" :class="['toggle-button', transcriptionViewMode === 'bubble' ? 'active' : '']"><i class="fas fa-comments"></i></button>
+<!-- Mobile Transcript Panel. Toolbar consolidated to use the design
+     system primitives (.btn .btn--icon .btn--sm, segmented .tabs for
+     the simple/bubble view toggle) so it matches the desktop look
+     and feel. Previous version used bespoke .copy-btn, .toggle-button,
+     .follow-player-control classes that read as a different visual
+     language from the rest of the app. -->
+<div v-if="mobileTab === 'transcript'" class="h-full flex flex-col">
+    <div class="flex items-center justify-between gap-2 flex-shrink-0 px-3 py-2">
+        <!-- Follow-player toggle: now a .btn--icon toggle with a
+             distinct active state (text-accent + bg-accent) so the
+             on/off state reads at a glance. -->
+        <button v-if="processedTranscription.isJson && processedTranscription.hasDialogue"
+                @click="toggleFollowPlayerMode"
+                class="btn btn--icon btn--sm"
+                :style="followPlayerMode ? 'color: var(--text-accent); background: var(--bg-accent);' : ''"
+                :title="followPlayerMode ? t('tooltips.followPlayerEnabled') : t('tooltips.followPlayerDisabled')">
+            <i class="fas fa-arrows-alt-v"></i>
+        </button>
+        <span v-else></span>
+
+        <div class="flex items-center gap-1">
+            <!-- Simple / bubble view toggle as a segmented mini-tabs
+                 control. Uses the same .btn--icon visual rhythm but
+                 wrapped in a single rounded container so they read
+                 as a connected segmented switch. -->
+            <div v-if="processedTranscription.hasDialogue"
+                 class="inline-flex items-stretch rounded-md p-0.5 mr-1"
+                 style="background: var(--bg-tertiary);">
+                <button @click="toggleTranscriptionViewMode"
+                        class="px-2 py-1 rounded text-xs transition-colors"
+                        :style="transcriptionViewMode === 'simple' ? 'background: var(--bg-accent); color: var(--text-accent);' : 'color: var(--text-muted);'"
+                        :title="t('tooltips.simpleView') || 'Simple view'">
+                    <i class="fas fa-list"></i>
+                </button>
+                <button @click="toggleTranscriptionViewMode"
+                        class="px-2 py-1 rounded text-xs transition-colors"
+                        :style="transcriptionViewMode === 'bubble' ? 'background: var(--bg-accent); color: var(--text-accent);' : 'color: var(--text-muted);'"
+                        :title="t('tooltips.bubbleView') || 'Bubble view'">
+                    <i class="fas fa-comments"></i>
+                </button>
             </div>
-            <button @click="copyTranscription" class="copy-btn" :title="t('tooltips.copyTranscript')"><i class="fas fa-copy"></i></button>
-            <button @click="downloadTranscript" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" :title="t('tooltips.downloadTranscriptWithTemplate')"><i class="fas fa-download"></i></button>
-            <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="copy-btn" :title="t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>
+            <button @click="copyTranscription" class="btn btn--icon btn--sm" :title="t('tooltips.copyTranscript')"><i class="fas fa-copy"></i></button>
+            <button @click="downloadTranscript" v-if="selectedRecording && selectedRecording.transcription" class="btn btn--icon btn--sm" :title="t('tooltips.downloadTranscriptWithTemplate')"><i class="fas fa-download"></i></button>
+            <button @click="openTranscriptionEditor" v-if="selectedRecording && selectedRecording.transcription" class="btn btn--icon btn--sm" :title="t('tooltips.editTranscript')"><i class="fas fa-edit"></i></button>
         </div>
     </div>
     <div class="flex-grow overflow-y-auto mobile-content-box relative">
@@ -93,8 +116,9 @@
                 <div class="mt-3 pt-3 border-t border-[var(--border-secondary)]">
                     <button @click="reprocessTranscription(selectedRecording.id)"
                             v-if="selectedRecording.can_edit !== false"
-                            class="w-full px-3 py-2 bg-[var(--bg-accent)] hover:bg-[var(--bg-accent-hover)] text-white rounded-lg transition-colors text-sm">
-                        <i class="fas fa-redo-alt mr-2"></i>Reprocess
+                            class="btn btn--primary w-full">
+                        <i class="fas fa-redo-alt"></i>
+                        <span>Reprocess</span>
                     </button>
                 </div>
             </div>
