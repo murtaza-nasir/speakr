@@ -59,6 +59,34 @@ export function useUpload(state, utils) {
 
     const { setGlobalError, showToast, formatFileSize, onChatComplete, t } = utils;
 
+    // Probe a File for its audio/video duration without uploading it.
+    // Uses a hidden <audio> or <video> element with preload="metadata"
+    // so the browser only reads the container headers, not the whole
+    // payload. Resolves to seconds (number) or null if the file can't
+    // be parsed (corrupt, unsupported codec, etc.). Used by the upload
+    // queue to populate item.duration on each queued file so the user
+    // sees length + size next to the filename before uploading.
+    const computeFileDuration = (file) => new Promise((resolve) => {
+        try {
+            const isVideo = /^video\//i.test(file.type)
+                || /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts|mpeg|mpg|ogv|vob|asf)$/i.test(file.name);
+            const url = URL.createObjectURL(file);
+            const el = document.createElement(isVideo ? 'video' : 'audio');
+            el.preload = 'metadata';
+            const done = (val) => {
+                try { URL.revokeObjectURL(url); } catch (_) {}
+                resolve(val);
+            };
+            el.onloadedmetadata = () => done(isFinite(el.duration) ? el.duration : null);
+            el.onerror = () => done(null);
+            // Safety timeout — some browsers stall on unsupported codecs
+            setTimeout(() => done(null), 8000);
+            el.src = url;
+        } catch (_) {
+            resolve(null);
+        }
+    });
+
     // Compute selected tags from IDs
     const selectedTags = computed(() => {
         return selectedTagIds.value.map(id =>
@@ -228,7 +256,7 @@ export function useUpload(state, utils) {
                 // which is extremely expensive for binary File/Blob payloads
                 // and was a likely cause of the UI freeze seen when 10+ files
                 // were queued at once (issue #280).
-                uploadQueue.value.push({
+                const queueItem = {
                     file: markRaw ? markRaw(fileObject) : fileObject,
                     notes: notes,
                     tags: tags,
@@ -237,8 +265,22 @@ export function useUpload(state, utils) {
                     recordingId: null,
                     clientId: clientId,
                     error: null,
+                    // Populated asynchronously by computeFileDuration
+                    // below — the queue display reads item.duration to
+                    // show e.g. "12:34" next to the filename. Leaving
+                    // it null shows just size until probing finishes
+                    // (usually well under a second).
+                    duration: null,
                     willAutoSummarize: false // Server will tell us via SUMMARIZING status
-                });
+                };
+                uploadQueue.value.push(queueItem);
+                // Fire-and-forget duration probe. Mutating the queue
+                // item's `duration` field after the push is reactive
+                // because the item itself is a plain object Vue
+                // tracks; only the inner File is markRaw.
+                computeFileDuration(fileObject).then(d => {
+                    queueItem.duration = d;
+                }).catch(() => {});
                 filesAdded++;
             } else if (fileObject) {
                 setGlobalError(t('upload.invalidFileType', { name: fileObject.name }));

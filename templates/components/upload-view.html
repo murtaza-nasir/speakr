@@ -40,9 +40,26 @@
                          class="flex flex-col gap-0.5 px-2 py-1.5 bg-[var(--bg-tertiary)] rounded border border-[var(--border-secondary)]">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-1.5 min-w-0 flex-1">
-                                <i class="fas fa-file-audio text-[var(--text-muted)] text-xs"></i>
-                                <span class="text-xs text-[var(--text-primary)] truncate">${item.file.name}</span>
-                                <span class="text-[10px] text-[var(--text-muted)] flex-shrink-0">(${formatFileSize(item.file.size)})</span>
+                                <!-- File-type icon: video files get a
+                                     video glyph so users instantly see
+                                     which queue items are video at a
+                                     glance (relevant for the audio-
+                                     only / video-retention toggles). -->
+                                <i :class="[
+                                       'text-xs flex-shrink-0',
+                                       /\.(mp4|mov|mkv|avi|webm|m4v|wmv|flv|ts|mts|mpeg|mpg|ogv|vob|asf)$/i.test(item.file.name)
+                                         ? 'fas fa-file-video text-sky-500'
+                                         : 'fas fa-file-audio text-[var(--text-muted)]'
+                                   ]"></i>
+                                <span class="text-xs text-[var(--text-primary)] truncate" v-text="item.file.name"></span>
+                                <!-- Size + duration. Duration is
+                                     populated asynchronously by the
+                                     computeFileDuration probe in
+                                     upload.js; while null we just show
+                                     size. -->
+                                <span class="text-[10px] text-[var(--text-muted)] flex-shrink-0">
+                                    (${ formatFileSize(item.file.size) }<span v-if="item.duration">, ${ formatDuration(item.duration) }</span>)
+                                </span>
                             </div>
                             <button @click="removeFromQueue(item.clientId)"
                                     class="ml-1.5 p-0.5 text-[var(--text-muted)] hover:text-red-500 transition-colors flex-shrink-0"
@@ -170,32 +187,9 @@
                     </button>
                 </div>
 
-                <!-- Upload Buttons -->
-                <div class="mt-2 space-y-2">
-                    <!-- Normal Upload Button (when not in incognito mode or feature disabled) -->
-                    <button v-if="!incognitoMode || !enableIncognitoMode"
-                            @click="startUpload"
-                            class="btn btn--lg btn--primary w-full">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <span v-text="t('upload.uploadNFiles', { count: pendingQueueFiles.length })"></span>
-                    </button>
-
-                    <!-- Incognito Upload Button (only when feature enabled and mode selected) -->
-                    <button v-else-if="enableIncognitoMode && incognitoMode"
-                            @click="startIncognitoUpload"
-                            :disabled="incognitoProcessing || pendingQueueFiles.length !== 1"
-                            class="w-full px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg hover:from-violet-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 font-medium text-sm shadow-sm">
-                        <i :class="incognitoProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-user-secret'"></i>
-                        <span v-if="incognitoProcessing">${ t('incognito.processing') }</span>
-                        <span v-else-if="pendingQueueFiles.length !== 1">${ t('incognito.selectExactlyOneFile') }</span>
-                        <span v-else>${ t('incognito.processInIncognito') }</span>
-                    </button>
-
-                    <p v-if="enableIncognitoMode && incognitoMode && pendingQueueFiles.length > 1" class="text-xs text-violet-600 dark:text-violet-400 text-center">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        ${ t('incognito.oneFileAtATime') }
-                    </p>
-                </div>
+                <!-- Note: Upload + Incognito-upload buttons moved to
+                     the sticky modal-footer below so the primary
+                     action is always reachable without scrolling. -->
             </div>
 
             <!-- Divider (hidden when files are selected) -->
@@ -727,6 +721,45 @@
 
                 </div><!-- end .mt-2 wrapper inside details -->
             </details><!-- end Options progressive-disclosure group -->
+        </div>
+
+        <!-- Sticky modal-footer: primary Upload action always visible
+             without scrolling. The button is enabled only when the
+             queue has files; otherwise it's a clear, disabled
+             affordance pointing at the next required step. The
+             Incognito variant swaps in when incognito mode is active. -->
+        <p v-if="enableIncognitoMode && incognitoMode && pendingQueueFiles.length > 1"
+           class="text-xs text-violet-600 dark:text-violet-400 text-center px-5 py-2 border-t"
+           style="border-top-color: var(--border-primary);">
+            <i class="fas fa-info-circle mr-1"></i>
+            ${ t('incognito.oneFileAtATime') }
+        </p>
+        <div class="modal-footer modal-footer--between">
+            <button @click="closeUploadView" class="btn btn--ghost">
+                <span v-text="t('common.cancel')"></span>
+            </button>
+
+            <!-- Normal Upload Button (when not in incognito mode or feature disabled) -->
+            <button v-if="!incognitoMode || !enableIncognitoMode"
+                    @click="startUpload"
+                    :disabled="pendingQueueFiles.length === 0"
+                    class="btn btn--primary">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <span v-if="pendingQueueFiles.length === 0">${ t('upload.title') || 'Upload' }</span>
+                <span v-else v-text="t('upload.uploadNFiles', { count: pendingQueueFiles.length })"></span>
+            </button>
+
+            <!-- Incognito Upload Button (only when feature enabled and mode selected) -->
+            <button v-else
+                    @click="startIncognitoUpload"
+                    :disabled="incognitoProcessing || pendingQueueFiles.length !== 1"
+                    class="btn btn--primary"
+                    style="background: linear-gradient(to right, #8b5cf6, #9333ea); border-color: transparent; color: white;">
+                <i :class="incognitoProcessing ? 'fas fa-spinner fa-spin' : 'fas fa-user-secret'"></i>
+                <span v-if="incognitoProcessing">${ t('incognito.processing') }</span>
+                <span v-else-if="pendingQueueFiles.length !== 1">${ t('incognito.selectExactlyOneFile') }</span>
+                <span v-else>${ t('incognito.processInIncognito') }</span>
+            </button>
         </div>
     </div>
 </div>
