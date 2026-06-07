@@ -51,17 +51,19 @@
          v-html="selectedRecording.summary_html || selectedRecording.summary">
     </div>
 
-    <!-- Editing mode — textarea fills the full rail height; the
-         textarea's OWN scrollbar handles overflow. No outer scroll
-         here so the tab-bar Save button stays in reach for any
-         summary length. -->
+    <!-- Editing mode — EasyMDE is mounted onto the textarea below.
+         The .markdown-editor-container wrapper is what hooks all the
+         existing theme + height CSS (.markdown-editor-container
+         .EasyMDEContainer { ... } in styles.css) — without it the
+         editor falls back to its un-themed default appearance with
+         auto-grow height that extends past the viewport. -->
     <div v-else class="flex-1 flex flex-col overflow-hidden px-4 py-4">
-        <textarea ref="summaryMarkdownEditor"
-                  v-model="selectedRecording.summary"
-                  class="field flex-1 w-full"
-                  style="resize: none; min-height: 0;"
-                  :placeholder="t('form.enterSummaryMarkdown')">
-        </textarea>
+        <div class="markdown-editor-container flex-1 min-h-0 flex flex-col">
+            <textarea ref="summaryMarkdownEditor"
+                      v-model="selectedRecording.summary"
+                      :placeholder="t('form.enterSummaryMarkdown')">
+            </textarea>
+        </div>
         <div class="t-meta" style="margin-top: var(--sp-2); flex-shrink: 0;">
             <i class="fas fa-circle" style="font-size: 6px; color: var(--text-accent); margin-right: var(--sp-1);"></i>
             <span>Editing — save from the tab bar above</span>
