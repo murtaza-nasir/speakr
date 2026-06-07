@@ -19,7 +19,7 @@
                                 ${ reprocessRecording.title || t('reprocessModal.untitledRecording') }
                             </h4>
                             <p class="text-sm text-[var(--text-muted)] mt-1">
-                                ${ t('reprocessModal.createdPrefix') } ${ new Date(reprocessRecording.created_at).toLocaleDateString(window.i18n?.currentLocale || 'en') }
+                                ${ t('reprocessModal.createdPrefix') } ${ formatDisplayDate(reprocessRecording.created_at) }
                             </p>
                         </div>
                     </div>
