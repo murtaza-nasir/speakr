@@ -1,8 +1,13 @@
-<!-- Desktop Notes Tab (design system v1).
-     Per-tab actions live in the right-rail tab-bar; in-place edit. -->
-<div v-if="selectedTab === 'notes'" class="h-full px-4 py-4 overflow-y-auto">
-    <!-- Reading mode -->
-    <div v-if="!editingNotes" class="prose-flush h-full" @click="clickToEditNotes">
+<!-- Desktop Notes Tab. Flex-column shell so editing mode's textarea
+     fills the rail with its own scrollbar instead of stretching the
+     outer container (which pushed the tab-bar save buttons offscreen
+     for long notes). Per-tab actions live in the right-rail tab-bar. -->
+<div v-if="selectedTab === 'notes'" class="h-full flex flex-col overflow-hidden">
+
+    <!-- Reading mode — single flex-1 scroll surface. -->
+    <div v-if="!editingNotes"
+         class="flex-1 overflow-y-auto px-4 py-4 prose-flush"
+         @click="clickToEditNotes">
         <div v-if="selectedRecording.notes_html"
              v-html="selectedRecording.notes_html">
         </div>
@@ -16,15 +21,16 @@
         </div>
     </div>
 
-    <!-- Editing mode -->
-    <div v-else class="h-full flex flex-col">
+    <!-- Editing mode — textarea fills the panel; its own scrollbar
+         handles overflow so the tab-bar save buttons stay in reach. -->
+    <div v-else class="flex-1 flex flex-col overflow-hidden px-4 py-4">
         <textarea ref="notesMarkdownEditor"
                   v-model="selectedRecording.notes"
-                  class="field flex-1"
-                  style="resize: none; min-height: 0; padding: var(--sp-4);"
+                  class="field flex-1 w-full"
+                  style="resize: none; min-height: 0;"
                   :placeholder="t('form.enterNotesMarkdown')">
         </textarea>
-        <div class="t-meta" style="margin-top: var(--sp-2);">
+        <div class="t-meta" style="margin-top: var(--sp-2); flex-shrink: 0;">
             <i class="fas fa-circle" style="font-size: 6px; color: var(--text-accent); margin-right: var(--sp-1);"></i>
             <span>Editing — save from the tab bar above</span>
         </div>

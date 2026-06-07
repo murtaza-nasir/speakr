@@ -927,6 +927,11 @@ html.dark .modal-overlay {
     margin-top: var(--sp-5);
     margin-bottom: var(--sp-2);
 }
+/* Zero the leading margin on the first element so markdown that
+   starts with a heading doesn't leave a big visible gap above it. */
+.prose-flush > *:first-child {
+    margin-top: 0;
+}
 .prose-flush h1 { font-size: 1.25rem; letter-spacing: -0.01em; }
 .prose-flush h2 { font-size: 1.125rem; }
 .prose-flush h3 { font-size: 1rem; }

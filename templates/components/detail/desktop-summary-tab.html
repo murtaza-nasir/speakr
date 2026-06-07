@@ -1,52 +1,68 @@
-<!-- Desktop Summary Tab (design system v1).
-     No per-tab action buttons here — they live in the right-rail's
-     tab-bar action toolbar so editing transitions in-place. -->
-<div v-if="selectedTab === 'summary'" class="h-full px-4 py-4 overflow-y-auto">
+<!-- Desktop Summary Tab. Rebuilt as a flex column shell so the
+     editing mode keeps its textarea at a FIXED full-height surface
+     with the textarea's own scrollbar handling overflow — the
+     previous layout had an outer overflow-y-auto whose content
+     stretched with the textarea's scrollHeight, pushing the
+     editing-hint and the tab-bar save buttons offscreen for long
+     summaries. The reading view still scrolls inside the same flex
+     surface via .tab-rail-scroll.
+     Per-tab action buttons (Edit / Save) live in the right-rail
+     tab-bar action toolbar — that's why there's no save bar here. -->
+<div v-if="selectedTab === 'summary'" class="h-full flex flex-col overflow-hidden">
+
     <!-- In progress -->
-    <div v-if="selectedRecording.status === 'SUMMARIZING'" class="empty">
-        <div class="spinner spinner--lg"></div>
-        <div class="empty__title" v-text="t('summary.summaryInProgress')"></div>
+    <div v-if="selectedRecording.status === 'SUMMARIZING'" class="flex-1 overflow-y-auto px-4 py-4">
+        <div class="empty">
+            <div class="spinner spinner--lg"></div>
+            <div class="empty__title" v-text="t('summary.summaryInProgress')"></div>
+        </div>
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="!selectedRecording.summary" class="empty">
-        <div class="empty__icon"><i class="fas fa-file-alt"></i></div>
-        <div class="empty__title" v-text="t('summary.noSummary')"></div>
-        <div v-if="processedTranscription.isError" class="banner banner--warn" style="margin-top: var(--sp-2);">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Cannot generate summary: transcription failed</span>
-        </div>
-        <div class="flex items-center gap-2" style="margin-top: var(--sp-3);">
-            <button class="btn btn--primary"
-                    @click="generateSummary()"
-                    :disabled="processedTranscription.isError">
-                <i class="fas fa-magic"></i>
-                <span>${ t('summary.generateSummary') }</span>
-            </button>
-            <button v-if="!processedTranscription.isError"
-                    class="btn btn--ghost btn--icon"
-                    @click="openCustomizeSummaryModal"
-                    :title="t('summary.customizePrompt') || 'Customise prompt'">
-                <i class="fas fa-sliders-h"></i>
-            </button>
+    <div v-else-if="!selectedRecording.summary" class="flex-1 overflow-y-auto px-4 py-4">
+        <div class="empty">
+            <div class="empty__icon"><i class="fas fa-file-alt"></i></div>
+            <div class="empty__title" v-text="t('summary.noSummary')"></div>
+            <div v-if="processedTranscription.isError" class="banner banner--warn" style="margin-top: var(--sp-2);">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Cannot generate summary: transcription failed</span>
+            </div>
+            <div class="flex items-center gap-2" style="margin-top: var(--sp-3);">
+                <button class="btn btn--primary"
+                        @click="generateSummary()"
+                        :disabled="processedTranscription.isError">
+                    <i class="fas fa-magic"></i>
+                    <span>${ t('summary.generateSummary') }</span>
+                </button>
+                <button v-if="!processedTranscription.isError"
+                        class="btn btn--ghost btn--icon"
+                        @click="openCustomizeSummaryModal"
+                        :title="t('summary.customizePrompt') || 'Customise prompt'">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Reading mode -->
+    <!-- Reading mode — single flex-1 scroll surface, content padding
+         is inside so the scrollbar runs the full edge. -->
     <div v-else-if="!editingSummary"
-         class="prose-flush"
+         class="flex-1 overflow-y-auto px-4 py-4 prose-flush"
          v-html="selectedRecording.summary_html || selectedRecording.summary">
     </div>
 
-    <!-- Editing mode (in-place; Cancel/Save live in the tab-bar action slot) -->
-    <div v-else class="h-full flex flex-col">
+    <!-- Editing mode — textarea fills the full rail height; the
+         textarea's OWN scrollbar handles overflow. No outer scroll
+         here so the tab-bar Save button stays in reach for any
+         summary length. -->
+    <div v-else class="flex-1 flex flex-col overflow-hidden px-4 py-4">
         <textarea ref="summaryMarkdownEditor"
                   v-model="selectedRecording.summary"
-                  class="field flex-1"
-                  style="resize: none; min-height: 0; padding: var(--sp-4);"
+                  class="field flex-1 w-full"
+                  style="resize: none; min-height: 0;"
                   :placeholder="t('form.enterSummaryMarkdown')">
         </textarea>
-        <div class="t-meta" style="margin-top: var(--sp-2);">
+        <div class="t-meta" style="margin-top: var(--sp-2); flex-shrink: 0;">
             <i class="fas fa-circle" style="font-size: 6px; color: var(--text-accent); margin-right: var(--sp-1);"></i>
             <span>Editing — save from the tab bar above</span>
         </div>
