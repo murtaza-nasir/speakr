@@ -1,186 +1,176 @@
 #!/usr/bin/env python3
 """
-Test script for Inquire Mode functionality
+Test script for Inquire Mode functionality.
+
+These tests create their own isolated data inside the app context rather than
+relying on rows already present in the database, so they run correctly against
+the fresh, empty DB that conftest.py provisions for the pytest suite.
 """
 import os
 import sys
+import uuid
 
 # Add the parent directory to the path to import app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.app import app, db, User, Recording, TranscriptChunk, InquireSession, Tag
+from src.app import app, db, User, Recording, TranscriptChunk, InquireSession
+
+
+def _unique_suffix():
+    """Return a short unique token so test rows never collide on unique cols."""
+    return uuid.uuid4().hex[:8]
+
 
 def test_database_models():
-    """Test that the new database models work correctly."""
+    """Create a user, recording, chunk and inquire session and assert they persist."""
     with app.app_context():
-        print("🔍 Testing Inquire Mode Database Models...")
-        
-        # Test that tables exist
+        # The schema must contain the inquire-mode tables.
         from sqlalchemy import inspect
         inspector = inspect(db.engine)
         tables = inspector.get_table_names()
-        
-        required_tables = ['transcript_chunk', 'inquire_session']
-        for table in required_tables:
-            if table in tables:
-                print(f"✅ Table '{table}' exists")
-            else:
-                print(f"❌ Table '{table}' missing")
-                return False
-        
-        # Test creating sample data
+        assert 'transcript_chunk' in tables, "transcript_chunk table missing from schema"
+        assert 'inquire_session' in tables, "inquire_session table missing from schema"
+
+        suffix = _unique_suffix()
+        user = User(username=f"inq_{suffix}", email=f"inq_{suffix}@example.com")
+        db.session.add(user)
+        db.session.commit()
+
+        recording = Recording(
+            user_id=user.id,
+            title=f"Test Recording {suffix}",
+            status="COMPLETED",
+        )
+        db.session.add(recording)
+        db.session.commit()
+
+        chunk = TranscriptChunk(
+            recording_id=recording.id,
+            user_id=user.id,
+            chunk_index=0,
+            content="This is a test transcription chunk.",
+            start_time=0.0,
+            end_time=5.0,
+            speaker_name="Test Speaker",
+        )
+        db.session.add(chunk)
+
+        session = InquireSession(
+            user_id=user.id,
+            session_name="Test Session",
+            filter_tags='[]',
+            filter_speakers='["Test Speaker"]',
+        )
+        db.session.add(session)
+        db.session.commit()
+
         try:
-            # Create a test user (or get existing one)
-            user = User.query.first()
-            if not user:
-                print("❌ No users found. Please create a user first.")
-                return False
-            
-            print(f"📝 Using test user: {user.username}")
-            
-            # Create a test recording if none exist
-            recording = Recording.query.filter_by(user_id=user.id).first()
-            if not recording:
-                print("❌ No recordings found. Please create a recording first.")
-                return False
-            
-            print(f"🎵 Using test recording: {recording.title}")
-            
-            # Test TranscriptChunk creation
-            chunk = TranscriptChunk(
-                recording_id=recording.id,
-                user_id=user.id,
-                chunk_index=0,
-                content="This is a test transcription chunk.",
-                start_time=0.0,
-                end_time=5.0,
-                speaker_name="Test Speaker"
-            )
-            
-            db.session.add(chunk)
-            
-            # Test InquireSession creation
-            session = InquireSession(
-                user_id=user.id,
-                session_name="Test Session",
-                filter_tags='[]',
-                filter_speakers='["Test Speaker"]'
-            )
-            
-            db.session.add(session)
-            db.session.commit()
-            
-            print("✅ Successfully created test TranscriptChunk and InquireSession")
-            
-            # Clean up test data
+            # The rows must be retrievable and carry the data we stored.
+            stored_chunk = TranscriptChunk.query.get(chunk.id)
+            assert stored_chunk is not None
+            assert stored_chunk.recording_id == recording.id
+            assert stored_chunk.user_id == user.id
+            assert stored_chunk.content == "This is a test transcription chunk."
+            assert stored_chunk.speaker_name == "Test Speaker"
+
+            stored_session = InquireSession.query.get(session.id)
+            assert stored_session is not None
+            assert stored_session.user_id == user.id
+            assert stored_session.session_name == "Test Session"
+            assert stored_session.filter_speakers == '["Test Speaker"]'
+        finally:
+            # Clean up so repeat runs / other tests start from a clean slate.
             db.session.delete(chunk)
             db.session.delete(session)
+            db.session.delete(recording)
+            db.session.delete(user)
             db.session.commit()
-            
-            print("✅ Test data cleaned up")
-            
-        except Exception as e:
-            print(f"❌ Error testing models: {e}")
-            return False
-        
-        return True
+
 
 def test_chunking_functions():
-    """Test the chunking and embedding functions."""
+    """Exercise the real chunking/embedding helpers re-exported by src.app."""
     with app.app_context():
-        print("🔧 Testing Chunking Functions...")
-        
-        try:
-            from src.app import chunk_transcription, generate_embeddings, serialize_embedding, deserialize_embedding
-            
-            # Test chunking
-            test_text = "This is a test sentence. This is another sentence for testing. And here's a third sentence to make sure chunking works properly with longer text that should be split into multiple chunks."
-            chunks = chunk_transcription(test_text, max_chunk_length=100, overlap=20)
-            
-            if len(chunks) > 1:
-                print(f"✅ Chunking works: {len(chunks)} chunks created")
-            else:
-                print("✅ Text too short for chunking (expected behavior)")
-            
-            # Test embeddings (will only work if sentence-transformers is installed)
-            try:
-                embeddings = generate_embeddings(["test sentence", "another test"])
-                if len(embeddings) == 2:
-                    print("✅ Embedding generation works")
-                    
-                    # Test serialization
-                    if embeddings[0] is not None:
-                        serialized = serialize_embedding(embeddings[0])
-                        deserialized = deserialize_embedding(serialized)
-                        if deserialized is not None and len(deserialized) > 0:
-                            print("✅ Embedding serialization/deserialization works")
-                        else:
-                            print("❌ Embedding serialization/deserialization failed")
-                else:
-                    print("❌ Embedding generation returned wrong number of embeddings")
-                    
-            except Exception as e:
-                print(f"⚠️  Embedding test skipped (sentence-transformers may not be installed): {e}")
-                
-        except Exception as e:
-            print(f"❌ Error testing chunking functions: {e}")
-            return False
-            
-        return True
+        from src.app import (
+            chunk_transcription,
+            generate_embeddings,
+            serialize_embedding,
+            deserialize_embedding,
+        )
+
+        # chunk_transcription must split a long passage into ordered chunks.
+        test_text = (
+            "This is a test sentence. This is another sentence for testing. "
+            "And here's a third sentence to make sure chunking works properly "
+            "with longer text that should be split into multiple chunks."
+        )
+        chunks = chunk_transcription(test_text, max_chunk_length=100, overlap=20)
+        assert isinstance(chunks, list)
+        assert len(chunks) >= 1
+        # Every chunk must be a non-empty string.
+        assert all(isinstance(c, str) and c.strip() for c in chunks)
+        # With max_chunk_length=100 on this ~190-char passage we expect a split.
+        assert len(chunks) > 1, f"expected multiple chunks, got {len(chunks)}"
+
+        # Embeddings depend on sentence-transformers, which may not be installed
+        # in every environment. When it is unavailable generate_embeddings
+        # returns a list of None placeholders rather than raising.
+        embeddings = generate_embeddings(["test sentence", "another test"])
+        assert isinstance(embeddings, list)
+        assert len(embeddings) == 2
+
+        if embeddings[0] is not None:
+            serialized = serialize_embedding(embeddings[0])
+            assert serialized is not None
+            deserialized = deserialize_embedding(serialized)
+            assert deserialized is not None
+            assert len(deserialized) > 0
+
 
 def test_api_imports():
-    """Test that all API endpoints can be imported."""
-    print("🔌 Testing API Endpoint Imports...")
-    
-    try:
-        from src.app import (
-            get_inquire_sessions, create_inquire_session, inquire_search, 
-            inquire_chat, get_available_filters, process_recording_chunks_endpoint
-        )
-        print("✅ All inquire mode API endpoints imported successfully")
-        return True
-    except ImportError as e:
-        print(f"❌ Failed to import API endpoints: {e}")
-        return False
+    """The inquire-mode endpoint functions must be importable and callable."""
+    from src.api.inquire import (
+        get_inquire_sessions,
+        create_inquire_session,
+        inquire_search,
+        inquire_chat,
+        get_available_filters,
+    )
+    from src.api.recordings import process_recording_chunks_endpoint
+
+    for fn in (
+        get_inquire_sessions,
+        create_inquire_session,
+        inquire_search,
+        inquire_chat,
+        get_available_filters,
+        process_recording_chunks_endpoint,
+    ):
+        assert callable(fn), f"{getattr(fn, '__name__', fn)} is not callable"
+
 
 def main():
-    """Run all tests."""
-    print("🚀 Starting Inquire Mode Tests...\n")
-    
+    """Run all tests (standalone, without pytest)."""
+    print("Starting Inquire Mode Tests...\n")
+
     tests = [
         ("Database Models", test_database_models),
-        ("Chunking Functions", test_chunking_functions), 
-        ("API Imports", test_api_imports)
+        ("Chunking Functions", test_chunking_functions),
+        ("API Imports", test_api_imports),
     ]
-    
-    results = []
-    for test_name, test_func in tests:
-        print(f"\n--- {test_name} ---")
-        try:
-            success = test_func()
-            results.append((test_name, success))
-        except Exception as e:
-            print(f"❌ {test_name} failed with exception: {e}")
-            results.append((test_name, False))
-    
-    print("\n" + "="*50)
-    print("📊 Test Results Summary:")
-    print("="*50)
-    
+
     all_passed = True
-    for test_name, success in results:
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status} - {test_name}")
-        if not success:
+    for test_name, test_func in tests:
+        print(f"--- {test_name} ---")
+        try:
+            test_func()
+            print(f"PASS - {test_name}")
+        except Exception as e:
+            print(f"FAIL - {test_name}: {e}")
             all_passed = False
-    
-    print("\n" + "="*50)
-    if all_passed:
-        print("🎉 All tests passed! Inquire Mode is ready to use.")
-    else:
-        print("⚠️  Some tests failed. Please check the output above.")
-        
+
+    print("\nAll tests passed!" if all_passed else "\nSome tests failed.")
     return all_passed
+
 
 if __name__ == "__main__":
     success = main()

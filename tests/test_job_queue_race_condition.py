@@ -5,259 +5,204 @@ Test script for job queue race condition fix.
 This script verifies that the atomic job claiming mechanism prevents
 multiple workers from claiming the same job simultaneously.
 
-The fix uses an atomic UPDATE with WHERE clause to ensure only one
-worker can claim a job, even with multiple processes/threads.
+The fix lives in FairJobQueue._claim_next_job() in src/services/job_queue.py,
+which uses an atomic UPDATE ... WHERE status='queued' so only one worker can
+flip a job from 'queued' to 'processing'. These tests exercise that REAL
+method (via the module-level `job_queue` singleton) rather than re-implementing
+the claim SQL inline, so a regression in the source claim logic would fail here.
 """
 
 import os
 import sys
 import threading
-import time
 from pathlib import Path
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
+def _make_user(db, User):
+    """Get the first existing user or create a throwaway test user."""
+    user = User.query.first()
+    if user:
+        return user, False
+    user = User(username='test_race_condition_user', email='test_race@example.com')
+    # Different User models expose different password attributes; set whatever
+    # exists so the row is valid without depending on a specific hashing path.
+    if hasattr(user, 'password_hash'):
+        user.password_hash = 'unused'
+    db.session.add(user)
+    db.session.commit()
+    return user, True
+
+
 def test_atomic_job_claiming():
     """
-    Test that only one worker can claim a job even with concurrent attempts.
-
-    This simulates the race condition where multiple workers try to claim
-    the same job simultaneously.
+    Test that only one worker can claim a single queued job even with
+    concurrent attempts against the REAL _claim_next_job method.
     """
-    print("\n=== Testing Atomic Job Claiming ===\n")
+    print("\n=== Testing Atomic Job Claiming (real _claim_next_job) ===\n")
 
-    # Import Flask app and models
     from src.app import app
     from src.database import db
     from src.models import ProcessingJob, User, Recording
-    from sqlalchemy import update
+    from src.services.job_queue import job_queue
 
+    # Bind the singleton queue to the test app so its internal _app_context()
+    # opens the test DB. We never call start(), so no worker threads spawn.
+    job_queue.init_app(app)
+
+    created_user = False
     with app.app_context():
-        # Use the first existing user for testing, or create a minimal test user
-        test_user = User.query.first()
-        if not test_user:
-            test_user = User(
-                username='test_race_condition_user',
-                email='test_race@example.com',
-                password='not_used'  # Password not needed for this test
-            )
-            db.session.add(test_user)
-            db.session.commit()
+        test_user, created_user = _make_user(db, User)
 
-        # Create a test recording
-        test_recording = Recording(
+        recording = Recording(
             user_id=test_user.id,
             title='Test Race Condition Recording',
             audio_path='/tmp/test_audio.mp3',
-            status='QUEUED'
+            status='QUEUED',
         )
-        db.session.add(test_recording)
+        db.session.add(recording)
         db.session.commit()
 
-        # Create a test job in 'queued' status
-        test_job = ProcessingJob(
-            recording_id=test_recording.id,
+        job = ProcessingJob(
+            recording_id=recording.id,
             user_id=test_user.id,
             job_type='transcribe',
-            status='queued'
+            status='queued',
         )
-        db.session.add(test_job)
+        db.session.add(job)
         db.session.commit()
 
-        job_id = test_job.id
+        job_id = job.id
+        recording_id = recording.id
         print(f"Created test job {job_id} with status 'queued'")
 
-        # Track which threads successfully claimed the job
-        successful_claims = []
-        claim_lock = threading.Lock()
+    successful_claims = []
+    claim_lock = threading.Lock()
+    num_workers = 10
+    barrier = threading.Barrier(num_workers)
 
-        def attempt_claim(worker_id):
-            """Simulate a worker attempting to claim the job."""
-            with app.app_context():
-                try:
-                    # This is the atomic claim logic from the fix
-                    claim_time = datetime.utcnow()
-                    result = db.session.execute(
-                        update(ProcessingJob)
-                        .where(
-                            ProcessingJob.id == job_id,
-                            ProcessingJob.status == 'queued'
-                        )
-                        .values(status='processing', started_at=claim_time)
-                    )
+    def worker(worker_id):
+        # Each worker calls the REAL claim method. Exactly one should win.
+        barrier.wait()
+        claimed = job_queue._claim_next_job(['transcribe'], 'transcription')
+        if claimed is not None and claimed.id == job_id:
+            with claim_lock:
+                successful_claims.append(worker_id)
 
-                    if result.rowcount == 1:
-                        db.session.commit()
-                        with claim_lock:
-                            successful_claims.append(worker_id)
-                        return f"Worker {worker_id}: Successfully claimed job"
-                    else:
-                        db.session.rollback()
-                        return f"Worker {worker_id}: Job already claimed (rowcount=0)"
+    print(f"\nSpawning {num_workers} workers to claim job {job_id} simultaneously...")
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        futures = [executor.submit(worker, i) for i in range(num_workers)]
+        for f in as_completed(futures):
+            f.result()
 
-                except Exception as e:
-                    db.session.rollback()
-                    return f"Worker {worker_id}: Error - {e}"
+    try:
+        with app.app_context():
+            db.session.expire_all()
+            final_job = db.session.get(ProcessingJob, job_id)
+            final_status = final_job.status
+            print(f"\n=== Results ===")
+            print(f"Total workers: {num_workers}")
+            print(f"Successful claims: {len(successful_claims)} -> {successful_claims}")
+            print(f"Final job status: {final_status}")
 
-        # Spawn multiple threads to claim simultaneously
-        num_workers = 10
-        print(f"\nSpawning {num_workers} workers to claim job {job_id} simultaneously...")
-
-        # Use a barrier to ensure all threads start at the same time
-        barrier = threading.Barrier(num_workers)
-
-        def worker_with_barrier(worker_id):
-            barrier.wait()  # Wait for all threads to be ready
-            return attempt_claim(worker_id)
-
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = {executor.submit(worker_with_barrier, i): i for i in range(num_workers)}
-
-            for future in as_completed(futures):
-                result = future.result()
-                print(f"  {result}")
-
-        # Verify results
-        print(f"\n=== Results ===")
-        print(f"Total workers: {num_workers}")
-        print(f"Successful claims: {len(successful_claims)}")
-        print(f"Workers that claimed: {successful_claims}")
-
-        # Check final job status
-        db.session.expire_all()
-        final_job = db.session.get(ProcessingJob, job_id)
-        print(f"Final job status: {final_job.status}")
-
-        # Cleanup
-        db.session.delete(final_job)
-        db.session.delete(test_recording)
-        db.session.commit()
-
-        # Assert only one worker claimed the job
-        assert len(successful_claims) == 1, f"Expected 1 successful claim, got {len(successful_claims)}"
-        assert final_job.status == 'processing', f"Expected status 'processing', got {final_job.status}"
+            assert len(successful_claims) == 1, \
+                f"Expected exactly 1 successful claim, got {len(successful_claims)}"
+            assert final_status == 'processing', \
+                f"Expected status 'processing', got {final_status}"
 
         print("\n[PASS] Only one worker successfully claimed the job!")
-        return True
+    finally:
+        with app.app_context():
+            j = db.session.get(ProcessingJob, job_id)
+            if j:
+                db.session.delete(j)
+            r = db.session.get(Recording, recording_id)
+            if r:
+                db.session.delete(r)
+            db.session.commit()
 
 
 def test_multiple_jobs_fair_distribution():
     """
-    Test that multiple jobs are distributed fairly across workers.
+    Test that the REAL _claim_next_job hands out N distinct jobs exactly once
+    each (no double-claims) when called repeatedly.
     """
-    print("\n=== Testing Multiple Jobs Distribution ===\n")
+    print("\n=== Testing Multiple Jobs Distribution (real _claim_next_job) ===\n")
 
     from src.app import app
     from src.database import db
     from src.models import ProcessingJob, User, Recording
-    from sqlalchemy import update
+    from src.services.job_queue import job_queue
+
+    job_queue.init_app(app)
+
+    num_jobs = 5
+    job_ids = []
+    recording_ids = []
 
     with app.app_context():
-        # Use the first existing user for testing
-        test_user = User.query.first()
-        if not test_user:
-            test_user = User(
-                username='test_distribution_user',
-                email='test_dist@example.com',
-                password='not_used'
-            )
-            db.session.add(test_user)
-            db.session.commit()
-
-        # Create multiple test jobs
-        num_jobs = 5
-        job_ids = []
-        recording_ids = []
+        test_user, _ = _make_user(db, User)
 
         for i in range(num_jobs):
             recording = Recording(
                 user_id=test_user.id,
                 title=f'Test Distribution Recording {i}',
                 audio_path=f'/tmp/test_audio_{i}.mp3',
-                status='QUEUED'
+                status='QUEUED',
             )
             db.session.add(recording)
             db.session.commit()
             recording_ids.append(recording.id)
 
-            job = ProcessingJob(
+            jb = ProcessingJob(
                 recording_id=recording.id,
                 user_id=test_user.id,
                 job_type='transcribe',
-                status='queued'
+                status='queued',
             )
-            db.session.add(job)
+            db.session.add(jb)
             db.session.commit()
-            job_ids.append(job.id)
+            job_ids.append(jb.id)
 
         print(f"Created {num_jobs} test jobs: {job_ids}")
 
-        # Have workers claim jobs
-        claimed_jobs = []
+    claimed_jobs = []
+    try:
+        # Claim repeatedly via the real method until it returns None.
+        # Extra attempts beyond num_jobs must yield no further claims.
+        for i in range(num_jobs + 2):
+            claimed = job_queue._claim_next_job(['transcribe'], 'transcription')
+            if claimed is not None and claimed.id in job_ids:
+                claimed_jobs.append(claimed.id)
+                print(f"  Attempt {i} claimed job {claimed.id}")
+            else:
+                # Could be None, or (in a shared dev DB) a pre-existing job from
+                # another user; ignore anything not in our created set.
+                print(f"  Attempt {i} claimed no job of ours")
 
-        def claim_any_job(worker_id):
-            with app.app_context():
-                # Find a queued job
-                candidate = ProcessingJob.query.filter(
-                    ProcessingJob.status == 'queued',
-                    ProcessingJob.job_type == 'transcribe'
-                ).first()
+        print(f"\nClaimed jobs: {claimed_jobs}")
+        print(f"Unique jobs claimed: {len(set(claimed_jobs))}")
 
-                if not candidate:
-                    return None
+        assert len(claimed_jobs) == len(set(claimed_jobs)), "Duplicate job claims detected!"
+        assert len(claimed_jobs) == num_jobs, \
+            f"Expected {num_jobs} claims, got {len(claimed_jobs)}"
 
-                # Atomic claim
-                result = db.session.execute(
-                    update(ProcessingJob)
-                    .where(
-                        ProcessingJob.id == candidate.id,
-                        ProcessingJob.status == 'queued'
-                    )
-                    .values(status='processing', started_at=datetime.utcnow())
-                )
-
-                if result.rowcount == 1:
-                    db.session.commit()
-                    return candidate.id
-                else:
-                    db.session.rollback()
-                    return None
-
-        try:
-            # Each "worker" claims one job
-            for i in range(num_jobs + 2):  # Extra attempts to ensure no double claims
-                job_id = claim_any_job(i)
-                if job_id:
-                    claimed_jobs.append(job_id)
-                    print(f"  Worker {i} claimed job {job_id}")
-                else:
-                    print(f"  Worker {i} found no available jobs")
-
-            print(f"\nClaimed jobs: {claimed_jobs}")
-            print(f"Unique jobs claimed: {len(set(claimed_jobs))}")
-
-            # Verify no duplicates
-            assert len(claimed_jobs) == len(set(claimed_jobs)), "Duplicate job claims detected!"
-            assert len(claimed_jobs) == num_jobs, f"Expected {num_jobs} claims, got {len(claimed_jobs)}"
-
-            print("\n[PASS] All jobs claimed exactly once!")
-            return True
-        finally:
-            # Cleanup must run even if the assertions above fail. Without this
-            # the synthetic 'Test Distribution Recording N' rows leak into the
-            # dev DB and show up in admin and user-facing recording lists.
-            for job_id in job_ids:
-                job = db.session.get(ProcessingJob, job_id)
-                if job:
-                    db.session.delete(job)
-            for rec_id in recording_ids:
-                rec = db.session.get(Recording, rec_id)
-                if rec:
-                    db.session.delete(rec)
+        print("\n[PASS] All jobs claimed exactly once!")
+    finally:
+        # Cleanup must run even if the assertions above fail, so synthetic
+        # 'Test Distribution Recording N' rows don't leak into the dev DB.
+        with app.app_context():
+            for jid in job_ids:
+                j = db.session.get(ProcessingJob, jid)
+                if j:
+                    db.session.delete(j)
+            for rid in recording_ids:
+                r = db.session.get(Recording, rid)
+                if r:
+                    db.session.delete(r)
             db.session.commit()
 
 

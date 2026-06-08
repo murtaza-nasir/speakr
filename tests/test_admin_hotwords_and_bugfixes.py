@@ -205,24 +205,36 @@ def test_azure_empty_choices():
     """Test handling of empty choices in streaming responses."""
     print("\n=== Testing Azure Empty Choices Fix (#246) ===")
 
+    # Exercise the REAL shared streaming consumer used by inquire.py for chat
+    # streaming. It is responsible for the empty-choices guard (Azure content
+    # filter returns chunks with choices=[]); a regression that dropped the
+    # `if chunk.choices and ...` guard would raise IndexError here.
+    from src.services.llm import process_streaming_with_thinking
+
+    class MockDelta:
+        def __init__(self, content=None):
+            self.content = content
+
+    class MockChoice:
+        def __init__(self, content=None):
+            self.delta = MockDelta(content)
+
+    class MockChunk:
+        def __init__(self, choices=None):
+            self.choices = choices if choices is not None else []
+
+    def _collect_deltas(chunks):
+        """Run chunks through the real generator and reassemble its 'delta' SSE payloads."""
+        collected = ""
+        for sse in process_streaming_with_thinking(iter(chunks)):
+            # SSE frames look like: "data: {json}\n\n"
+            payload = json.loads(sse[len("data: "):].strip())
+            if 'delta' in payload:
+                collected += payload['delta']
+        return collected
+
     def t1():
-        """Empty choices array should be skipped, not crash."""
-        # Simulate the streaming loop logic from inquire.py
-        collected_content = ""
-
-        # Create mock chunks - some with empty choices (Azure content filter)
-        class MockDelta:
-            def __init__(self, content=None):
-                self.content = content
-
-        class MockChoice:
-            def __init__(self, content=None):
-                self.delta = MockDelta(content)
-
-        class MockChunk:
-            def __init__(self, choices=None):
-                self.choices = choices if choices is not None else []
-
+        """Empty choices array should be skipped by the real generator, not crash."""
         chunks = [
             MockChunk(choices=[]),                          # Empty choices (Azure filter)
             MockChunk(choices=[MockChoice("Hello ")]),      # Normal chunk
@@ -230,36 +242,16 @@ def test_azure_empty_choices():
             MockChunk(choices=[MockChoice("world")]),       # Normal chunk
             MockChunk(choices=[MockChoice(None)]),          # Choice with None content
         ]
-
-        for chunk in chunks:
-            if not chunk.choices:
-                continue
-            content = chunk.choices[0].delta.content
-            if content:
-                collected_content += content
-
+        collected_content = _collect_deltas(chunks)
         assert collected_content == "Hello world", f"Expected 'Hello world', got '{collected_content}'"
-    run_test("Empty choices array is safely skipped in streaming", t1)
+    run_test("Empty choices array is safely skipped in streaming (real generator)", t1)
 
     def t2():
-        """All-empty stream produces no output (doesn't crash)."""
-        chunks = []
-
-        class MockChunk:
-            def __init__(self):
-                self.choices = []
-
-        chunks = [MockChunk(), MockChunk(), MockChunk()]
-        collected = ""
-        for chunk in chunks:
-            if not chunk.choices:
-                continue
-            content = chunk.choices[0].delta.content
-            if content:
-                collected += content
-
-        assert collected == ""
-    run_test("All-empty-choices stream produces empty output", t2)
+        """All-empty stream produces no delta output (doesn't crash)."""
+        chunks = [MockChunk(choices=[]), MockChunk(choices=[]), MockChunk(choices=[])]
+        collected = _collect_deltas(chunks)
+        assert collected == "", f"Expected empty output, got '{collected}'"
+    run_test("All-empty-choices stream produces empty output (real generator)", t2)
 
 
 # =============================================================================
