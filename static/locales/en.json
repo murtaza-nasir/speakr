@@ -1525,6 +1525,8 @@
     "editTranscript": "Edit transcript",
     "exitFullscreen": "Exit fullscreen",
     "video": "Video",
+    "bubbleView": "Bubble view",
+    "simpleView": "Simple view",
     "enterFullscreen": "Fullscreen",
     "dockLeft": "Move to left column",
     "dockRight": "Move to right column",
