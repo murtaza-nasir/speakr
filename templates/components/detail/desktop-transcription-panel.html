@@ -277,4 +277,34 @@
             </div>
         </div>
     </div>
+
+    <!-- Docked video (desktop). A SEPARATE muted <video> that mirrors the
+         main player (synced in ui.js syncDockVideo) — NOT a teleported copy
+         of the player element, which previously crashed Vue's patcher. It
+         carries no audio; the bottom player remains the single audio source.
+         As a flex-shrink-0 child after the flex-1 transcript scroller it
+         pushes the transcript up rather than overlaying it. v-if so it (and
+         its second video download) only exist while enabled. -->
+    <div v-if="isVideoRecording && videoDockEnabled && !videoFullscreen" class="video-dock">
+        <div class="video-dock__bar">
+            <i class="fas fa-video text-[var(--text-muted)]" style="font-size: 11px;"></i>
+            <span class="video-dock__title" v-text="t('tooltips.video')"></span>
+            <div class="flex-1"></div>
+            <button @click="enterVideoFullscreen" class="btn btn--icon btn--sm" :title="t('tooltips.enterFullscreen')">
+                <i class="fas fa-expand" style="font-size: 11px;"></i>
+            </button>
+            <button @click="toggleVideoDock" class="btn btn--icon btn--sm" :title="t('tooltips.hideVideo')">
+                <i class="fas fa-times text-xs"></i>
+            </button>
+        </div>
+        <video id="dockVideoElement"
+               class="video-dock__video"
+               :src="'/audio/' + selectedRecording.id"
+               muted
+               playsinline
+               preload="auto"
+               @loadedmetadata="syncDockVideo"
+               @canplay="syncDockVideo"
+               @click="toggleAudioPlayback()"></video>
+    </div>
 </div>

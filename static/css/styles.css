@@ -4399,6 +4399,40 @@ select:disabled {
 }
 
 /* ===== Video Fullscreen Overlay ===== */
+/* Docked video panel (desktop). A flex-shrink-0 strip at the bottom of the
+   transcript column; the flex-1 transcript scroller above shrinks to make
+   room (content pushed up, not overlaid). Holds a separate muted <video>
+   that mirrors the main player. */
+.video-dock {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    height: clamp(160px, 32vh, 380px);
+    border-top: var(--border-hairline) solid var(--border-primary);
+    background: var(--bg-secondary);
+}
+.video-dock__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
+    border-bottom: var(--border-hairline) solid var(--border-primary);
+    flex-shrink: 0;
+}
+.video-dock__title {
+    font-size: var(--fs-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.video-dock__video {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    object-fit: contain;
+    background: #000;
+    cursor: pointer;
+}
+
 .video-fullscreen-overlay {
     position: fixed;
     inset: 0;

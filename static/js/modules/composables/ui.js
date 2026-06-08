@@ -959,11 +959,14 @@ export function useUI(state, utils, processedTranscription) {
         if (context === 'modal') {
             audioPlayer = document.querySelector('audio.speaker-modal-transcript') || document.querySelector('video.speaker-modal-transcript');
         } else {
-            audioPlayer = document.querySelector('.main-content-area audio') || document.querySelector('.main-content-area video');
+            // Prefer the main player by id so we never seek the muted dock follower.
+            audioPlayer = document.getElementById('mainPlayerMedia')
+                || document.querySelector('.main-content-area audio')
+                || document.querySelector('.main-content-area video');
         }
 
         if (!audioPlayer) {
-            audioPlayer = document.querySelector('audio') || document.querySelector('video');
+            audioPlayer = document.querySelector('audio') || document.querySelector('video:not(#dockVideoElement)');
         }
 
         if (audioPlayer && isFinite(time)) {
@@ -1008,13 +1011,43 @@ export function useUI(state, utils, processedTranscription) {
         if (modalMedia) {
             return modalMedia;
         }
-        // Fall back to main player in right column (desktop) or detail view (mobile)
+        // The main player element, addressed by id so it is never confused
+        // with the muted docked-video follower (#dockVideoElement), which
+        // must NOT be driven by the playback controls.
+        const mainMedia = document.getElementById('mainPlayerMedia');
+        if (mainMedia) return mainMedia;
+        // Fall back to main player in right column (desktop) or detail view
+        // (mobile). All generic matches exclude the dock follower.
         return document.querySelector('#rightMainColumn audio') ||
                document.querySelector('#rightMainColumn video') ||
-               document.querySelector('.detail-view audio') ||
-               document.querySelector('.detail-view video') ||
+               document.querySelector('.detail-view audio:not(#dockVideoElement)') ||
+               document.querySelector('.detail-view video:not(#dockVideoElement)') ||
                document.querySelector('audio') ||
-               document.querySelector('video');
+               document.querySelector('video:not(#dockVideoElement)');
+    };
+
+    // Keep the muted docked-video follower (#dockVideoElement, rendered in
+    // the transcript column when the user enables it) in step with the main
+    // player. It carries no audio — the main element is the single audio
+    // source — and just mirrors time / rate / play-state, correcting drift
+    // past a small threshold. No-op when the dock isn't mounted.
+    const syncDockVideo = () => {
+        const dock = document.getElementById('dockVideoElement');
+        if (!dock) return;
+        const main = getAudioElement();
+        if (!main || main === dock) return;
+        try {
+            if (!dock.muted) dock.muted = true;
+            if (Math.abs((dock.currentTime || 0) - (main.currentTime || 0)) > 0.3) {
+                dock.currentTime = main.currentTime;
+            }
+            if (dock.playbackRate !== main.playbackRate) dock.playbackRate = main.playbackRate;
+            if (main.paused) {
+                if (!dock.paused) dock.pause();
+            } else if (dock.paused) {
+                dock.play().catch(() => {});
+            }
+        } catch (e) { /* ignore transient media state errors */ }
     };
 
     const toggleAudioPlayback = () => {
@@ -1124,6 +1157,7 @@ export function useUI(state, utils, processedTranscription) {
 
     const handleAudioPlayPause = (event) => {
         audioIsPlaying.value = !event.target.paused;
+        syncDockVideo();
     };
 
     const handleAudioLoadedMetadata = (event) => {
@@ -1150,6 +1184,8 @@ export function useUI(state, utils, processedTranscription) {
 
     const handleCustomAudioTimeUpdate = (event) => {
         audioCurrentTime.value = event.target.currentTime;
+        // Keep the docked-video follower in step (drift-corrected; no-op when off).
+        syncDockVideo();
 
         // Fallback: if duration wasn't set yet, try to get it now
         if (!audioDuration.value || audioDuration.value === 0) {
@@ -2185,6 +2221,7 @@ export function useUI(state, utils, processedTranscription) {
         // Audio player
         seekAudio,
         seekAudioFromEvent,
+        syncDockVideo,
         onPlayerVolumeChange,
         handleAudioTimeUpdate,
         toggleFollowPlayerMode,

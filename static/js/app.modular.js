@@ -1128,6 +1128,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showModalVolumeSlider = ref(false);
             const showDuplicatesModal = ref(false);
             const videoCollapsed = ref(false);
+            // Desktop docked-video panel: shows the video in a strip across
+            // the bottom of the transcript column via a SEPARATE muted
+            // <video id="dockVideoElement"> that follows the main player
+            // (no teleport — that crashed Vue's patcher previously).
+            // In-memory ref: off on fresh load, sticky across video
+            // recordings during the session.
+            const videoDockEnabled = ref(false);
+            const isVideoRecording = computed(() =>
+                !!(selectedRecording.value
+                   && selectedRecording.value.mime_type
+                   && selectedRecording.value.mime_type.startsWith('video/'))
+            );
+            const toggleVideoDock = () => { videoDockEnabled.value = !videoDockEnabled.value; };
             const videoFullscreen = ref(false);
             const fullscreenControlsVisible = ref(true);
             const fullscreenControlsTimer = ref(null);
@@ -1582,6 +1595,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying, modalPlaybackRate,
                 playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider, showModalVolumeSlider,
                 videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
+                videoDockEnabled, isVideoRecording, toggleVideoDock,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,

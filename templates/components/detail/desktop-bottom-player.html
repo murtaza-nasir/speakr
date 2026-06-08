@@ -29,6 +29,7 @@
 
                 <component :is="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/') ? 'video' : 'audio'"
                        ref="audioPlayerElement"
+                       id="mainPlayerMedia"
                        :src="'/audio/' + selectedRecording.id"
                        :volume="playerVolume"
                        @play="handleAudioPlayPause"
@@ -138,6 +139,17 @@
                      :style="{ left: 'clamp(0px, calc(' + audioProgressPercent + '% - 8px), calc(100% - 16px))' }"
                      style="box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
             </div>
+
+            <!-- Video toggle (video files only): shows/hides the docked
+                 video strip at the bottom of the transcript column. Accent
+                 when on. -->
+            <button v-if="isVideoRecording"
+                    @click="toggleVideoDock"
+                    class="btn btn--icon flex-shrink-0"
+                    :style="videoDockEnabled ? 'color: var(--text-accent);' : ''"
+                    :title="videoDockEnabled ? t('tooltips.hideVideo') : t('tooltips.showVideo')">
+                <i :class="videoDockEnabled ? 'fas fa-video' : 'fas fa-video-slash'" class="text-sm"></i>
+            </button>
 
             <!-- Playback speed -->
             <div class="relative flex-shrink-0">
