@@ -388,8 +388,14 @@ def clear_speaker_embeddings(speaker_id):
         if not speaker:
             return jsonify({'error': 'Speaker not found'}), 404
 
-        # Clear all embeddings
-        speaker.voice_embeddings = None
+        # Clear all embeddings. NOTE: the matchable vector lives in the
+        # `average_embedding` column (and the history in `embeddings_history`)
+        # — there is NO `voice_embeddings` column. The previous code set a
+        # phantom `voice_embeddings` attribute that never persisted, so the
+        # real average_embedding survived and voice matching kept working
+        # after a "clear". Null out the actual columns.
+        speaker.average_embedding = None
+        speaker.embeddings_history = None
         speaker.embedding_count = 0
         speaker.confidence_score = None
 
