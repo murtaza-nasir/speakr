@@ -75,42 +75,39 @@ def test_admin_default_hotwords():
 
     def t3():
         """Admin hotwords only apply when user hotwords are empty (priority chain)."""
-        # This tests the logic: if not hotwords -> use admin default
-        # Simulate the processing.py logic
+        # Assert the REAL pure helper extracted from src/tasks/processing.py
+        # rather than an inline copy of its logic.
+        from src.tasks.processing import resolve_hotwords
+
+        # Case 1: explicit user hotwords win, admin default ignored.
+        assert resolve_hotwords('UserWord1, UserWord2', 'AdminWord1, AdminWord2') == 'UserWord1, UserWord2', \
+            "User hotwords should take priority"
+
+        # Case 2: no user hotwords -> admin default used as fallback.
+        assert resolve_hotwords('', 'AdminWord1, AdminWord2') == 'AdminWord1, AdminWord2', \
+            "Admin hotwords should be used as fallback"
+
+        # Case 3: no user hotwords AND no admin default -> stays falsy.
+        assert resolve_hotwords('', '') == '', "Should remain empty when no hotwords at any level"
+
+        # Edge: None inputs preserve the original falsy value (no crash).
+        assert resolve_hotwords(None, '') is None
+        assert resolve_hotwords(None, 'AdminWord') == 'AdminWord'
+    run_test("Hotword priority chain: user > admin > none", t3)
+
+    def t4():
+        """End-to-end SystemSetting round-trip feeding the real helper."""
+        from src.tasks.processing import resolve_hotwords
         with app.app_context():
             SystemSetting.set_setting('admin_default_hotwords', 'AdminWord1, AdminWord2')
-
-            # Case 1: User has hotwords - admin should NOT be used
-            user_hotwords = 'UserWord1, UserWord2'
-            hotwords = user_hotwords
-            if not hotwords:
-                admin_hotwords = SystemSetting.get_setting('admin_default_hotwords', '')
-                if admin_hotwords:
-                    hotwords = admin_hotwords
-            assert hotwords == 'UserWord1, UserWord2', "User hotwords should take priority"
-
-            # Case 2: User has no hotwords - admin SHOULD be used
-            user_hotwords = ''
-            hotwords = user_hotwords
-            if not hotwords:
-                admin_hotwords = SystemSetting.get_setting('admin_default_hotwords', '')
-                if admin_hotwords:
-                    hotwords = admin_hotwords
-            assert hotwords == 'AdminWord1, AdminWord2', "Admin hotwords should be used as fallback"
-
-            # Case 3: No user hotwords AND no admin hotwords
-            SystemSetting.set_setting('admin_default_hotwords', '')
-            user_hotwords = ''
-            hotwords = user_hotwords
-            if not hotwords:
-                admin_hotwords = SystemSetting.get_setting('admin_default_hotwords', '')
-                if admin_hotwords:
-                    hotwords = admin_hotwords
-            assert hotwords == '', "Should remain empty when no hotwords at any level"
-
+            admin_default = SystemSetting.get_setting('admin_default_hotwords', '')
+            assert resolve_hotwords('', admin_default) == 'AdminWord1, AdminWord2'
+            assert resolve_hotwords('UserWord', admin_default) == 'UserWord'
             # Clean up
             SystemSetting.set_setting('admin_default_hotwords', '')
-    run_test("Hotword priority chain: user > admin > none", t3)
+            empty_default = SystemSetting.get_setting('admin_default_hotwords', '')
+            assert resolve_hotwords('', empty_default) == ''
+    run_test("Hotword resolution via SystemSetting round-trip", t4)
 
 
 # =============================================================================

@@ -81,26 +81,22 @@ def restore_env(saved):
 
 
 def run_compat_check():
-    """Replays the inline migration block from src/init_db.py."""
+    """Drives the REAL pure decision function extracted from src/init_db.py
+    using live SystemSetting values, so this is a true integration check of the
+    function the startup path calls (not an inline copy of its logic)."""
     from src.app import app
-    from src.models import SystemSetting, TranscriptChunk
+    from src.models import SystemSetting
     from src.services.embeddings import EMBEDDING_IDENTIFIER
+    from src.init_db import classify_embedding_identifier_state
 
     with app.app_context():
         current = EMBEDDING_IDENTIFIER
-        stored = SystemSetting.get_setting('embedding_identifier', None)
+        raw_stored = SystemSetting.get_setting('embedding_identifier', None)
         legacy = SystemSetting.get_setting('embedding_model_name', None)
-        migrated_from_legacy = False
-        if stored is None and legacy:
-            stored = f"local::{legacy}"
-            migrated_from_legacy = True
 
-        if stored is None:
-            outcome = 'first-run'
-        elif stored == current:
-            outcome = 'silent-migration' if migrated_from_legacy else 'no-change'
-        else:
-            outcome = 'warn-mismatch'
+        stored, migrated_from_legacy, outcome = classify_embedding_identifier_state(
+            current, raw_stored, legacy
+        )
 
         return {
             'stored': stored,

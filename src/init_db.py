@@ -22,6 +22,37 @@ from src.utils import add_column_if_not_exists, migrate_column_type, create_inde
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 
 
+def classify_embedding_identifier_state(current_identifier, stored_identifier, legacy_identifier):
+    """Decide the embedding-identifier compatibility outcome at startup.
+
+    Pure, side-effect-free decision logic extracted from initialize_database.
+    Pre-v0.8.16-alpha instances stored only the bare model name under the
+    legacy 'embedding_model_name' key; such a value is by definition a local
+    sentence-transformers model, so it is wrapped as 'local::<name>' before
+    comparison to avoid a false-positive mismatch warning on first upgrade.
+
+    Returns a 3-tuple (effective_stored, migrated_from_legacy, outcome) where
+    outcome is one of:
+        'first-run'        - nothing stored yet; record the current identifier.
+        'silent-migration' - legacy value matches current; promote to new key.
+        'no-change'        - stored identifier already matches current.
+        'warn-mismatch'    - stored identifier differs from current.
+    """
+    migrated_from_legacy = False
+    if stored_identifier is None and legacy_identifier:
+        stored_identifier = f"local::{legacy_identifier}"
+        migrated_from_legacy = True
+
+    if stored_identifier is None:
+        outcome = 'first-run'
+    elif stored_identifier == current_identifier:
+        outcome = 'silent-migration' if migrated_from_legacy else 'no-change'
+    else:
+        outcome = 'warn-mismatch'
+
+    return stored_identifier, migrated_from_legacy, outcome
+
+
 def initialize_database(app):
     """
     Initialize database schema and run migrations.
@@ -709,21 +740,21 @@ def initialize_database(app):
             from src.services.embeddings import EMBEDDING_IDENTIFIER
             current_identifier = EMBEDDING_IDENTIFIER
 
-            stored_identifier = SystemSetting.get_setting('embedding_identifier', None)
+            raw_stored_identifier = SystemSetting.get_setting('embedding_identifier', None)
             # Backwards-compat path: pre-v0.8.16-alpha instances stored only the
             # bare model name under the legacy 'embedding_model_name' key. Any
             # such value is by definition a local sentence-transformers model,
             # so wrap it in the new 'local::<name>' format before comparing.
             # This prevents a false-positive warning on first upgrade.
             legacy_model_name = SystemSetting.get_setting('embedding_model_name', None)
-            migrated_from_legacy = False
-            if stored_identifier is None and legacy_model_name:
-                stored_identifier = f"local::{legacy_model_name}"
-                migrated_from_legacy = True
+
+            stored_identifier, migrated_from_legacy, outcome = classify_embedding_identifier_state(
+                current_identifier, raw_stored_identifier, legacy_model_name
+            )
 
             chunk_count = TranscriptChunk.query.filter(TranscriptChunk.embedding.isnot(None)).count()
 
-            if stored_identifier is None:
+            if outcome == 'first-run':
                 SystemSetting.set_setting(
                     key='embedding_identifier',
                     value=current_identifier,
@@ -732,20 +763,19 @@ def initialize_database(app):
                 )
                 if chunk_count:
                     app.logger.info(f"Recorded embedding_identifier={current_identifier} (existing {chunk_count} chunks assumed to match)")
-            elif stored_identifier == current_identifier:
-                if migrated_from_legacy:
-                    # Same configuration, just promote the value into the new key
-                    # so subsequent restarts skip the legacy lookup.
-                    SystemSetting.set_setting(
-                        key='embedding_identifier',
-                        value=current_identifier,
-                        description='Identifier of the embedding provider and model that produced the stored chunk vectors. Used to detect dimensionality and semantic-space mismatches at startup.',
-                        setting_type='string',
-                    )
-                    app.logger.info(
-                        f"Migrated legacy embedding_model_name={legacy_model_name!r} to embedding_identifier={current_identifier!r}"
-                    )
-            else:
+            elif outcome == 'silent-migration':
+                # Same configuration, just promote the value into the new key
+                # so subsequent restarts skip the legacy lookup.
+                SystemSetting.set_setting(
+                    key='embedding_identifier',
+                    value=current_identifier,
+                    description='Identifier of the embedding provider and model that produced the stored chunk vectors. Used to detect dimensionality and semantic-space mismatches at startup.',
+                    setting_type='string',
+                )
+                app.logger.info(
+                    f"Migrated legacy embedding_model_name={legacy_model_name!r} to embedding_identifier={current_identifier!r}"
+                )
+            elif outcome == 'warn-mismatch':
                 if chunk_count:
                     app.logger.warning(
                         f"Embedding identifier changed from {stored_identifier!r} to {current_identifier!r} "
@@ -759,6 +789,7 @@ def initialize_database(app):
                     setting_type='string',
                 )
                 app.logger.info(f"Updated embedding_identifier in system_setting: {stored_identifier!r} -> {current_identifier!r}")
+            # outcome == 'no-change': stored value already matches current; nothing to do.
         except Exception as e:
             db.session.rollback()
             app.logger.warning(f"embedding_identifier compatibility check skipped: {e}")
