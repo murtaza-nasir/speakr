@@ -3973,9 +3973,10 @@ body.fullscreen-mode {
     display: flex;
     flex-direction: column;
     background: var(--bg-input);
-    border: none;
+    border: 1px solid var(--border-secondary); /* defining edge around the editor card */
     border-radius: 0.5rem;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .summary-editor-container {
@@ -4046,12 +4047,16 @@ body.fullscreen-mode {
     max-height: none !important;
 }
 
-/* In the accordion (recording-finished) state the editor fills the
-   section edge-to-edge, so square off the corners — rounded corners would
-   leave gaps against the square section. */
-.recording-notes-editor.accordion-expanded .EasyMDEContainer,
-.recording-notes-editor.accordion-expanded .editor-toolbar {
-    border-radius: 0 !important;
+/* Recess the input area below the (lighter) toolbar so they read as
+   distinct surfaces. Needed especially in dark mode where --bg-input and
+   --bg-tertiary are the same colour, which made the toolbar and input
+   indistinguishable. Light mode keeps the near-white --bg-input field;
+   dark mode drops the input to the darker --bg-primary so it sits visibly
+   recessed under the gray-700 toolbar. */
+.dark .recording-notes-editor .CodeMirror,
+.dark .recording-notes-editor .editor-preview,
+.dark .recording-notes-editor .editor-preview-side {
+    background: var(--bg-primary);
 }
 
 .recording-notes-editor .EasyMDEContainer {
