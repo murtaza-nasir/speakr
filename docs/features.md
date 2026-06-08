@@ -16,6 +16,10 @@ A new Input devices picker in the upload modal lets you pick a primary microphon
 
 A per-recording Stats tab shows total length, speaker count, conversation turns, and word count as headline metrics, then a per-speaker breakdown table (desktop) or card stack (mobile) showing each speaker's speaking time, percentage of total audio, turn count, words, and WPM. A silence row shows how much of the recording was actually quiet. Stats appear automatically when the transcript has speaker diarisation with per-segment timestamps.
 
+### Server-Side Recording Sessions
+
+An opt-in mode (`ENABLE_SERVER_RECORDING_CHUNKS`) streams in-app recording chunks to the server as you record instead of buffering them in browser memory, raising the practical recording ceiling to hours-long sessions and letting you resume a recording after a page reload. See the [Recording guide](user-guide/recording.md#server-side-recording-sessions-long-recordings) and [admin setup](admin-guide/recording-sessions.md).
+
 ## Core Transcription Features
 
 ### Multi-Engine Support
@@ -198,6 +202,12 @@ Build powerful workflows with popular automation platforms:
 ### Token Security
 
 All tokens are hashed using SHA-256 before storage - the plaintext token is shown only once at creation. Set custom expiration periods for temporary integrations, or create non-expiring tokens for permanent workflows. Revoke tokens instantly from the Account Settings if compromised.
+
+### Webhooks
+
+Speakr can push outbound, HMAC-signed webhooks to your own endpoints when recordings move through their lifecycle. Subscriptions are managed from the account UI or the `/api/v1/webhooks` API, and delivery is resilient: failed sends are retried with exponential backoff, a subscription is auto-paused after repeated failures, and outbound requests are guarded by SSRF protection.
+
+The events that can be subscribed to are `recording.created`, `recording.transcription.started`, `recording.transcription.completed`, `recording.transcription.failed`, `recording.summary.completed`, `recording.summary.failed`, `recording.events.extracted`, `recording.updated`, and `recording.deleted`. See the [Webhooks admin guide](admin-guide/webhooks.md) for payload formats and setup.
 
 ## Advanced Capabilities
 

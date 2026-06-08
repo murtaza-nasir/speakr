@@ -223,7 +223,7 @@ Tag and folder custom prompts may contain `{{name}}` placeholders that are fille
 
 **Drop-folder uploads.** Recordings ingested through the auto-process watch directory bypass the upload form and therefore have no opportunity to fill variables. Their stored `prompt_variables` is empty and any placeholders substitute to empty strings on the first summary run. Reprocess after upload to fill values, or use only non-templated prompts on tags applied to drop-folder content.
 
-**Editing values after upload.** Stored variable values are not yet editable from the recording detail or reprocess modal. To change a value, re-upload the recording or wait for that capability in a future release.
+**Editing values after upload.** Stored variable values are editable after the fact. Open the reprocess modal on the recording, change the values, and reprocess — the updated values are applied and substituted into the prompt on the next summary run. There is no need to re-upload the recording.
 
 **Where variables are surfaced.** The upload form mirrors the same priority chain that the summarisation task uses to pick a prompt. The first non-empty layer wins and its variables become inputs on the form: selected tags first, then the selected folder, then your personal summary prompt, then the site default set by the admin. Lower layers are not scanned because their prompt would not run.
 
@@ -301,6 +301,12 @@ Click the trash icon on any token card to revoke it immediately. Revoked tokens 
 
 For detailed API documentation and integration examples, see the [API Tokens Guide](api-tokens.md).
 
+## Webhooks Tab
+
+The Webhooks tab lets you register your own endpoints to receive HTTP notifications when your recordings change — for example when transcription completes or a summary is generated. Each delivery is signed with HMAC-SHA256 so your receiver can verify it came from Speakr, and failed deliveries are retried automatically. Add, edit, and remove subscriptions directly from this tab.
+
+For the full event list, payload formats, and signature verification details, see the [Webhooks admin guide](../admin-guide/webhooks.md).
+
 ## About Tab
 
 ![About](../assets/images/screenshots/settings about page.png)
@@ -309,7 +315,7 @@ The About tab presents a comprehensive overview of your Speakr installation, com
 
 ### Version Information
 
-At the top, the Speakr logo and tagline "AI-Powered Audio Transcription & Note-Taking" remind you of the system's core purpose. The version badge (v0.5.5 in the example) immediately tells you which release you're running, essential information for troubleshooting and determining available features.
+At the top, the Speakr logo and tagline "AI-Powered Audio Transcription & Note-Taking" remind you of the system's core purpose. The version badge (v0.9.0 in the example) immediately tells you which release you're running, essential information for troubleshooting and determining available features.
 
 ### System Configuration
 

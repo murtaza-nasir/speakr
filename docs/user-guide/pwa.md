@@ -70,6 +70,15 @@ The mobile recording detail view is a first-class member of the design system. W
 - **Upload modal as a bottom sheet** — Drag the modal header down to dismiss; the sheet animates fully off-screen if you drag past 120 px or 25 % of viewport height.
 - **Processing queue as a bottom sheet** — When background jobs are running, the queue sits above the player + nav strip (was overlapping them in earlier versions).
 
+### Share to Speakr (Share Target)
+
+Once the PWA is installed, Speakr appears in your phone's native share sheet. From any app that can share a file — a recorder, a file manager, a messaging app — pick **Speakr** to send an audio or video file straight in. Speakr saves the file, creates the recording, and starts transcribing automatically.
+
+Accepted file types are the common audio formats plus the following video containers: `mp4`, `mov` (QuickTime), `mkv`, and `webm`.
+
+!!! warning "Installed PWA only"
+    Share-to-Speakr works only for the **installed PWA**, not a browser tab. If you installed the PWA before this feature shipped, reopen the app, then uninstall and reinstall it so Android registers the new share entry.
+
 ### Offline Support
 
 Once installed, Speakr caches essential files for offline use:
@@ -273,6 +282,13 @@ To force an update:
 2. **Check HTTPS** - PWA requires secure connection (https://)
 3. **Try different browser** - Use Chrome/Edge for best support
 4. **Clear browser cache** - Force refresh of manifest
+
+### Speakr Not Appearing in the Share Sheet
+
+**Solutions:**
+
+1. **Confirm the PWA is installed** - Share-to-Speakr only works for the installed app, not a browser tab
+2. **Reinstall the PWA** - If you installed before share support shipped, reopen the app, then uninstall and reinstall it so Android registers the share entry
 
 ### Service Worker Not Registering
 

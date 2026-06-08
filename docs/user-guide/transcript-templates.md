@@ -358,8 +358,4 @@ If you encounter issues or have questions about transcript templates:
 
 1. Check this guide for examples and troubleshooting
 2. Try the default templates as a starting point
-3. Report issues at [GitHub Issues](https://github.com/anthropics/claude-code/issues)
-
----
-
-*Last updated: December 2024*
+3. Report issues at [GitHub Issues](https://github.com/murtaza-nasir/speakr/issues)

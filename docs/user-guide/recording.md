@@ -284,6 +284,15 @@ When you return to Speakr after a crash, you'll see a recovery modal offering to
 
 This feature provides peace of mind for long recordings - you can now record multi-hour sessions without fear of losing everything if something goes wrong.
 
+### Server-Side Recording Sessions (long recordings)
+
+If your administrator has enabled **server-side recording sessions**, in-app recordings stream their audio chunks to the server as you record, instead of buffering everything in your browser's memory. This unlocks two things:
+
+- **Multi-hour recordings** — recordings are no longer limited by available browser RAM, so you can capture sessions that run for hours (up to a ceiling set by your administrator, 8 hours by default).
+- **Resume after reload** — because the audio lives on the server, you can reload the page mid-recording and pick the session back up rather than losing it.
+
+This is an opt-in feature that is off by default. If you don't see it, ask your administrator to enable it. See [Recording Sessions](../admin-guide/recording-sessions.md) in the admin guide for setup details.
+
 ## Best Practices for Quality Recordings
 
 ### Mobile Recording Considerations

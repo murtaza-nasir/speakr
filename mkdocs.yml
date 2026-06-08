@@ -166,21 +166,33 @@ nav:
     - Inquire Mode: user-guide/inquire-mode.md
     - Sharing Recordings: user-guide/sharing.md
     - Folders: user-guide/folders.md
+    - Groups: user-guide/groups.md
+    - Progressive Web App: user-guide/pwa.md
     - Account Settings: user-guide/settings.md
     - API Tokens: user-guide/api-tokens.md
     - API Reference: user-guide/api-reference.md
-    
+
   - Admin Guide:
     - admin-guide/index.md
     - User Management: admin-guide/user-management.md
+    - Group Management: admin-guide/group-management.md
     - System Statistics: admin-guide/statistics.md
     - System Settings: admin-guide/system-settings.md
     - Default Prompts: admin-guide/prompts.md
+    - Model Configuration: admin-guide/model-configuration.md
     - Vector Store: admin-guide/vector-store.md
     - Recording Sessions: admin-guide/recording-sessions.md
     - Webhooks: admin-guide/webhooks.md
+    - Email Setup: admin-guide/email-setup.md
+    - SSO Setup: admin-guide/sso-setup.md
+    - WhisperX Setup: admin-guide/whisperx-setup.md
+    - Retention: admin-guide/retention.md
     - Migration Guide: admin-guide/migration-guide.md
-  
+
+  - Advanced:
+    - Custom Connectors: advanced/custom-connectors.md
+    - Job Queue System: advanced/job-queue-system.md
+
   - Troubleshooting: troubleshooting.md
   - FAQ: faq.md
   - Roadmap: roadmap.md

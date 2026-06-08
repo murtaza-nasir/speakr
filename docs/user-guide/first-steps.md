@@ -66,7 +66,7 @@ The right panel contains three tabbed sections that enhance your transcription w
 
 ### Playback Controls
 
-At the top of the right panel, you'll find the audio player controls. The play button starts and pauses playback, while the timeline shows your current position in the recording. You can click anywhere on the timeline to jump to that point. The speed control lets you adjust playback from 0.5x to 2x speed, which is particularly useful for quickly reviewing content or carefully analyzing specific sections.
+At the top of the right panel, you'll find the audio player controls. The play button starts and pauses playback, while the timeline shows your current position in the recording. You can click anywhere on the timeline to jump to that point. The speed control lets you adjust playback from 0.5x to 3x speed, which is particularly useful for quickly reviewing content or carefully analyzing specific sections.
 
 If your recording has speaker diarization, clicking on any sentence in the transcription will automatically seek the audio player to that exact moment, providing seamless navigation through the recording.
 
