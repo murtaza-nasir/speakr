@@ -3202,17 +3202,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             watch(isRecording, async (newVal, oldVal) => {
                 if (oldVal === true && newVal === false && currentView.value === 'recording') {
                     uiComposable.destroyRecordingNotesEditor();
-                    expandedSection.value = recordingNotes.value ? 'notes' : 'settings';
+                    // Default to the notes section expanded so the smart
+                    // editor mounts on a VISIBLE textarea. EasyMDE renders
+                    // blank if initialised while its textarea is display:none
+                    // (the collapsed-accordion case), which is why the editor
+                    // sometimes showed as a plain box.
+                    expandedSection.value = 'notes';
                     await nextTick();
                     uiComposable.initializeRecordingNotesEditor();
                 }
             });
 
-            // Refresh CodeMirror when notes section becomes visible in accordion
+            // When the notes section becomes visible in the accordion:
+            // refresh CodeMirror if the editor already exists (so it
+            // remeasures now that it's visible), or initialise it if it
+            // doesn't yet — covers the case where the editor was never
+            // mounted because the section was collapsed at view entry.
             watch(expandedSection, async (newSection) => {
-                if (newSection === 'notes' && recordingMarkdownEditorInstance.value) {
+                if (newSection === 'notes') {
                     await nextTick();
-                    recordingMarkdownEditorInstance.value.codemirror.refresh();
+                    if (recordingMarkdownEditorInstance.value) {
+                        recordingMarkdownEditorInstance.value.codemirror.refresh();
+                    } else {
+                        uiComposable.initializeRecordingNotesEditor();
+                    }
                 }
             });
 
