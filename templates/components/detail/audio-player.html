@@ -245,13 +245,17 @@
                     <i class="fas fa-expand text-sm"></i>
                 </button>
 
-                <!-- Video Toggle Button -->
+                <!-- Video Toggle Button. Matches the desktop player's
+                     video toggle (fa-video / fa-video-slash, accent when
+                     shown). Mobile's video state is videoCollapsed
+                     (true = hidden), so it's negated to read the same way
+                     as desktop's videoDockEnabled (true = shown). -->
                 <button v-if="selectedRecording.mime_type && selectedRecording.mime_type.startsWith('video/')"
                         @click="videoCollapsed = !videoCollapsed"
                         class="btn btn--icon btn--sm flex-shrink-0"
-                        :style="videoCollapsed ? '' : 'color: var(--text-accent);'"
-                        :title="videoCollapsed ? t('tooltips.showVideo') : t('tooltips.hideVideo')">
-                    <i :class="videoCollapsed ? 'fas fa-eye-slash' : 'fas fa-eye'" class="text-sm"></i>
+                        :style="!videoCollapsed ? 'color: var(--text-accent);' : ''"
+                        :title="!videoCollapsed ? t('tooltips.hideVideo') : t('tooltips.showVideo')">
+                    <i :class="!videoCollapsed ? 'fas fa-video' : 'fas fa-video-slash'" class="text-sm"></i>
                 </button>
             </div>
         </div>
