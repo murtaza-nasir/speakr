@@ -6,7 +6,7 @@
 export function useUI(state, utils, processedTranscription) {
     const {
         isDarkMode, currentColorScheme, colorSchemes, isSidebarCollapsed,
-        showColorSchemeModal, isUserMenuOpen, currentView, showUploadModal, selectedRecording,
+        showColorSchemeModal, isUserMenuOpen, showHeaderFolderMenu, currentView, showUploadModal, selectedRecording,
         windowWidth, isMobileScreen, showAdvancedFilters, showSortOptions,
         searchTipsExpanded, isMetadataExpanded, editingParticipants, editingMeetingDate,
         editingSummary, tempSummaryContent, summaryMarkdownEditorInstance,
@@ -1926,6 +1926,15 @@ export function useUI(state, utils, processedTranscription) {
 
                 if (!userMenuButton && !userMenuDropdown) {
                     isUserMenuOpen.value = false;
+                }
+            }
+
+            // Close the detail-header folder menu if clicking outside
+            if (showHeaderFolderMenu.value) {
+                const folderToggle = target.closest('[data-header-folder-toggle]');
+                const folderDropdown = target.closest('[data-header-folder-dropdown]');
+                if (!folderToggle && !folderDropdown) {
+                    showHeaderFolderMenu.value = false;
                 }
             }
 

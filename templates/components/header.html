@@ -88,17 +88,36 @@
              on narrow screens; mobile-header.html surfaces them in the
              expanded meta panel. -->
         <template v-if="currentView === 'detail' && selectedRecording && !selectedRecording.incognito">
-            <div v-if="foldersEnabled && selectedRecording.can_edit !== false"
-                 class="btn btn--icon relative hidden md:inline-flex"
-                 :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
-                <select @change="assignFolderToRecording(selectedRecording.id, $event.target.value || null)"
-                        :value="selectedRecording.folder_id || ''"
-                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
-                    <option value="">No Folder</option>
-                    <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">${ folder.name }</option>
-                </select>
-                <i class="fas fa-folder"
-                   :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+            <!-- Assign-folder dropdown. A custom themed menu, not a raw
+                 <select> (whose OS-rendered option list ignored the app
+                 theme — looked out of place against the dark UI). -->
+            <div v-if="foldersEnabled && selectedRecording.can_edit !== false" class="relative hidden md:inline-flex">
+                <button @click.stop="showHeaderFolderMenu = !showHeaderFolderMenu"
+                        data-header-folder-toggle
+                        class="btn btn--icon"
+                        :title="selectedRecording.folder_id ? getFolderName(selectedRecording.folder_id) : t('tooltips.assignFolder')">
+                    <i class="fas fa-folder"
+                       :style="{ color: selectedRecording.folder_id ? getFolderColor(selectedRecording.folder_id) : '' }"></i>
+                </button>
+                <div v-if="showHeaderFolderMenu"
+                     data-header-folder-dropdown
+                     class="absolute left-0 mt-2 min-w-[12rem] max-h-72 overflow-y-auto surface-raised z-50 py-1">
+                    <button @click="assignFolderToRecording(selectedRecording.id, null); showHeaderFolderMenu = false"
+                            class="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="!selectedRecording.folder_id ? 'text-[var(--text-accent)] font-medium' : ''">
+                        <i class="fas fa-ban w-4 text-center text-[var(--text-muted)]"></i>
+                        <span class="flex-1 truncate">${ t('folders.noFolder') }</span>
+                        <i v-if="!selectedRecording.folder_id" class="fas fa-check text-xs text-[var(--text-accent)]"></i>
+                    </button>
+                    <button v-for="folder in availableFolders" :key="folder.id"
+                            @click="assignFolderToRecording(selectedRecording.id, folder.id); showHeaderFolderMenu = false"
+                            class="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
+                            :class="selectedRecording.folder_id == folder.id ? 'font-medium' : ''">
+                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: getFolderColor(folder.id) }"></span>
+                        <span class="flex-1 truncate">${ folder.name }</span>
+                        <i v-if="selectedRecording.folder_id == folder.id" class="fas fa-check text-xs text-[var(--text-accent)]"></i>
+                    </button>
+                </div>
             </div>
             <button @click="toggleInbox(selectedRecording)" class="btn btn--icon hidden md:inline-flex"
                     :style="selectedRecording.is_inbox ? 'color: #3b82f6;' : ''"

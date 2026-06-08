@@ -306,6 +306,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const isSidebarCollapsed = ref(false);
             const searchTipsExpanded = ref(false);
             const isUserMenuOpen = ref(false);
+            // Detail-header "assign folder" dropdown (replaces a raw <select>
+            // whose OS-rendered option list ignored the app theme).
+            const showHeaderFolderMenu = ref(false);
             const tokenBudget = ref({
                 has_budget: false,
                 budget: null,
@@ -1566,7 +1569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 isLoadingMore, searchDebounceTimer,
 
                 // UI
-                browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, tokenBudget, isDarkMode,
+                browser, isSidebarCollapsed, searchTipsExpanded, isUserMenuOpen, showHeaderFolderMenu, tokenBudget, isDarkMode,
                 currentColorScheme, showColorSchemeModal, windowWidth, mobileTab, mobileMoreOpen, isMetadataExpanded, expandedSection,
                 showSortOptions, currentLanguage, currentLanguageName, availableLanguages, showLanguageMenu,
                 colorSchemes, isMobileScreen, isMobileDevice,
