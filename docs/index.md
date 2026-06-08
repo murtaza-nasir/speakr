@@ -100,7 +100,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <div class="feature-card">
     <h4>🌍 International</h4>
     <ul>
-      <li>5+ languages supported</li>
+      <li>7 languages supported</li>
       <li>Automatic UI translation</li>
       <li>Localized summaries</li>
     </ul>
@@ -141,6 +141,32 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.9.0 - Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
+    The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. Backwards compatible with v0.8.x; database migrations run automatically.
+
+    - **System Audio & Multi-Input Recording** - Platform detection with a per-OS help guide (macOS BlackHole + Multi-Output Device, Windows "Share system audio", Linux pavucontrol + `pactl module-virtual-source`). New Input devices picker mixes a primary mic plus an optional secondary device via Web Audio into one track, with a toggle to disable Chrome's echo cancellation / noise suppression / auto-gain and virtual-audio-device discovery.
+    - **Stats Tab** - New per-recording tab: total length, speaker count, turns, and words as headline cards; per-speaker time / % / turns / words / WPM breakdown; silence row. Available on desktop and mobile.
+    - **Upload Modal Redesign** - Real modal overlay (not a full-screen takeover), progressive disclosure of Options behind a chip summary, inline file preview with duration probe, sticky-footer Upload action, last-used tag / folder / language auto-restore, and a mobile bottom-sheet with drag-to-dismiss.
+    - **Mobile UI Rebuild** - 56 px bottom navigation, contextual icons in the chevron row, edge-to-edge content, sticky speaker pills, sticky editor Cancel / Save footer, and audio-player polish.
+    - **PWA Web Share Target** - Pick Speakr from your phone's native share sheet to send a recording straight in.
+    - **Webhooks** - HMAC-SHA256-signed outbound notifications on recording lifecycle events, with SSRF guard and exponential-backoff retries, managed per-user from Account settings → Webhooks.
+    - **Server-side recording sessions** - Long recordings stream chunks to the server during capture; the size cap is replaced by a configurable hours-based ceiling with resume-on-reload.
+    - **Design-system unification** - 22 modals on shared `.modal-*` primitives, `.btn` + `.field` everywhere, dark-mode `<select>` theming, header consolidation, sidebar redesign, floating dockable chat panel.
+    - **Inquire mode** - "+ New Recording" opens the upload modal directly via `?upload=1`. Also: `GET /api/v1/users/me`, an audio-player position preference, and a localization refresh across all seven languages.
+
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.0.md) for the complete list.
+
+!!! info "Version 0.8.21-alpha - Security: CSRF bypass and SSO account takeover"
+    Security patch release on top of v0.8.20-alpha. Tracked as a GitHub Security Advisory; reported by **@Irench1k**.
+
+    - Fixed a CSRF bypass where the `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter (CWE-287). The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`.
+    - `change_password` no longer silently sets a password on an SSO-only account, closing the chained account-takeover path.
+
+!!! info "Version 0.8.20-alpha - Security: open-redirect fix"
+    Security patch release on top of v0.8.19-alpha. Reported by RacerZ and Fushuling.
+
+    - `is_safe_url()` now validates the raw target against a local-path allowlist instead of an URL-joined form, closing the `////evil.com` open-redirect bypass (CWE-601).
 
 !!! info "Version 0.8.19-alpha - Inquire-mode performance and re-embed reliability"
     Patch release on top of v0.8.18-alpha. No new features, no breaking changes.
