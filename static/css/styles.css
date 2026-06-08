@@ -4046,6 +4046,14 @@ body.fullscreen-mode {
     max-height: none !important;
 }
 
+/* In the accordion (recording-finished) state the editor fills the
+   section edge-to-edge, so square off the corners — rounded corners would
+   leave gaps against the square section. */
+.recording-notes-editor.accordion-expanded .EasyMDEContainer,
+.recording-notes-editor.accordion-expanded .editor-toolbar {
+    border-radius: 0 !important;
+}
+
 .recording-notes-editor .EasyMDEContainer {
     height: 100% !important; /* Fill parent container */
     display: flex !important;

@@ -107,8 +107,9 @@
                         <i :class="['fas text-[var(--text-muted)] transition-transform duration-200',
                                     expandedSection === 'notes' ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                     </button>
-                    <!-- Content (when expanded) -->
-                    <div v-show="expandedSection === 'notes'" class="flex-1 min-h-0 flex flex-col p-2 md:p-3">
+                    <!-- Content (when expanded). No padding — the editor
+                         fills the section edge-to-edge. -->
+                    <div v-show="expandedSection === 'notes'" class="flex-1 min-h-0 flex flex-col">
                         <div class="recording-notes-editor accordion-expanded">
                             <textarea ref="recordingNotesEditor" v-model="recordingNotes"
                                       class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-2 md:p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"
