@@ -250,6 +250,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             // to the detail view. Defaults to false so the user lands on
             // the recordings list / empty state, not on an auto-open modal.
             const showUploadModal = ref(false);
+            // Set true on mount when arriving via the ?upload=1 deep-link
+            // (inquire mode's "+ New Recording"). The auto-select of the last
+            // recording during loadRecordings calls selectRecording(), which
+            // resets showUploadModal=false AFTER an awaited fetch — beating any
+            // setTimeout race. This flag tells that first selectRecording to
+            // leave the modal alone (and consumes itself) so the deep-linked
+            // upload modal stays open behind the freshly-loaded detail view.
+            const uploadDeepLinkPending = ref(false);
             const dragover = ref(false);
             const recordings = ref([]);
             const selectedRecording = ref(null);
@@ -1545,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // =========================================================================
             const state = {
                 // Core
-                currentView, showUploadModal, dragover, recordings, selectedRecording, selectedTab, searchQuery,
+                currentView, showUploadModal, uploadDeepLinkPending, dragover, recordings, selectedRecording, selectedTab, searchQuery,
                 isLoadingRecordings, globalError, csrfToken,
 
                 // Filters
@@ -3417,6 +3425,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.warn('[App] Server-session resume check failed:', error);
                 }
 
+                // Detect the ?upload=1 deep-link (inquire mode's "+ New
+                // Recording") BEFORE loading recordings. loadRecordings
+                // auto-selects the last viewed recording via an unawaited
+                // selectRecording(), which sets showUploadModal=false AFTER an
+                // awaited fetch — so a post-load setTimeout race always loses.
+                // Instead we set uploadDeepLinkPending now so that first
+                // selectRecording leaves the modal alone, then open the modal
+                // once data has loaded. Strip the query param so a refresh
+                // doesn't re-trigger.
+                let wantUploadDeepLink = false;
+                try {
+                    const params = new URLSearchParams(window.location.search);
+                    if (params.get('upload') === '1') {
+                        wantUploadDeepLink = true;
+                        uploadDeepLinkPending.value = true;
+                        params.delete('upload');
+                        const qs = params.toString();
+                        const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+                        window.history.replaceState({}, '', newUrl);
+                    }
+                } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
+
                 // Load initial data
                 await Promise.all([
                     recordingsComposable.loadRecordings(),
@@ -3426,32 +3456,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     loadTokenBudget()
                 ]);
 
-                // Open the upload modal directly when arriving from
-                // inquire mode's "+ New Recording" button (or any
-                // other entry point that wants to deep-link into the
-                // upload flow). loadRecordings auto-selects the last
-                // viewed recording via an async selectRecording() it
-                // does NOT await, so that async body completes after
-                // the current task and resets showUploadModal=false
-                // on the detail-view transition; we defer the modal
-                // open with a setTimeout(0) so it runs in a later
-                // task after the pending select resolves, plus
-                // another nextTick to be defensive. Strip the query
-                // param after handling so a refresh doesn't
-                // re-trigger.
-                try {
-                    const params = new URLSearchParams(window.location.search);
-                    if (params.get('upload') === '1') {
-                        params.delete('upload');
-                        const qs = params.toString();
-                        const newUrl = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
-                        window.history.replaceState({}, '', newUrl);
-                        setTimeout(async () => {
-                            await nextTick();
-                            uiComposable.switchToUploadView();
-                        }, 0);
-                    }
-                } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
+                // Now open the upload modal. The pending flag (set above)
+                // prevents the auto-selected recording's selectRecording() from
+                // closing it once its fetch resolves.
+                if (wantUploadDeepLink) {
+                    await nextTick();
+                    uiComposable.switchToUploadView();
+                }
 
                 // Clean up orphaned incognito data if we're not viewing incognito recording
                 // This can happen if user navigated away without the cleanup triggering

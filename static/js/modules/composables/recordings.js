@@ -13,7 +13,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         filterTags, filterSpeakers, filterDatePreset, filterDateRange, filterTextQuery,
         filterStarred, filterInbox, filterFolder, sortBy,
         availableTags, availableSpeakers, availableFolders, selectedTagIds, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt,
-        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal,
+        useAsrEndpoint, connectorSupportsDiarization, globalError, uploadQueue, isProcessingActive, currentView, showUploadModal, uploadDeepLinkPending,
         isMobileScreen, isSidebarCollapsed, isRecording, audioBlobURL,
         speakerColorMap,
         // Incognito mode
@@ -261,8 +261,16 @@ export function useRecordings(state, utils, reprocessComposable) {
         currentView.value = 'detail';
         // If the upload modal happened to be open, dismiss it so the
         // user's click on a recording resolves to the detail view
-        // without a competing overlay.
-        showUploadModal.value = false;
+        // without a competing overlay. EXCEPTION: when arriving via the
+        // ?upload=1 deep-link, the last recording is auto-selected behind
+        // the upload modal on mount — this first selectRecording must NOT
+        // close it. Consume the one-shot flag so subsequent selections
+        // behave normally.
+        if (uploadDeepLinkPending && uploadDeepLinkPending.value) {
+            uploadDeepLinkPending.value = false;
+        } else {
+            showUploadModal.value = false;
+        }
 
         if (isRecording.value) {
             // Don't interrupt recording
