@@ -3022,6 +3022,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return unifiedProgressItems.value.length > 0;
             });
 
+            // On phones the queue shows as a compact top-right pill by
+            // default — auto-minimize it when it first appears so it doesn't
+            // pop open over the content. The user can tap to expand. Desktop
+            // (and tablets ≥ 641 px) keep the existing expanded card.
+            watch(showProcessingPopup, (show) => {
+                if (show && windowWidth.value <= 640) {
+                    progressPopupMinimized.value = true;
+                }
+            });
+
             // All completed items count
             const allCompletedCount = computed(() => {
                 return completedProgressItems.value.length + failedProgressItems.value.length;

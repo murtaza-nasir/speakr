@@ -18,27 +18,30 @@
          progressPopupMinimized ? 'minimized' : ''
      ]">
     <div class="progress-popup__card bg-[var(--bg-secondary)] border border-[var(--bg-accent)] shadow-xl overflow-hidden backdrop-blur-sm bg-opacity-95">
-        <!-- Compact Header -->
-        <div class="bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2">
+        <!-- Compact Header. On mobile, when minimized this collapses (via
+             CSS) to a compact pill — icon + count + expand chevron — and
+             tapping it expands. -->
+        <div class="progress-popup__header bg-gradient-to-r from-[var(--bg-accent)] to-[var(--bg-accent-hover)] px-3 py-2"
+             @click="progressPopupMinimized && (progressPopupMinimized = false)">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 min-w-0">
                     <i class="fas fa-tasks text-sm text-gray-800 dark:text-white"></i>
-                    <span class="font-medium text-sm text-gray-800 dark:text-white">${ t('progressQueue.title') }</span>
+                    <span class="progress-popup__title-text font-medium text-sm text-gray-800 dark:text-white">${ t('progressQueue.title') }</span>
                     <span class="text-xs bg-black dark:bg-white bg-opacity-20 dark:bg-opacity-20 px-1.5 py-0.5 rounded-full text-gray-800 dark:text-white font-medium">
                         ${totalProcessingCount}
                     </span>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                    <button v-if="allCompletedCount > 0" @click="clearAllCompleted()"
-                            class="px-1.5 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all text-gray-800 dark:text-white">
+                    <button v-if="allCompletedCount > 0" @click.stop="clearAllCompleted()"
+                            class="progress-popup__clear px-1.5 py-0.5 text-xs bg-black dark:bg-white bg-opacity-10 dark:bg-opacity-20 hover:bg-opacity-20 dark:hover:bg-opacity-30 rounded transition-all text-gray-800 dark:text-white">
                         ${ t('progressQueue.clear') }
                     </button>
-                    <button @click="progressPopupMinimized = !progressPopupMinimized"
+                    <button @click.stop="progressPopupMinimized = !progressPopupMinimized"
                             class="p-1 rounded hover:bg-black dark:hover:bg-white hover:bg-opacity-10 dark:hover:bg-opacity-20 transition-colors text-gray-800 dark:text-white">
                         <i :class="progressPopupMinimized ? 'fas fa-chevron-up text-xs' : 'fas fa-chevron-down text-xs'"></i>
                     </button>
-                    <button @click="progressPopupClosed = true"
-                            class="p-1 rounded hover:bg-red-500 hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                    <button @click.stop="progressPopupClosed = true"
+                            class="progress-popup__close p-1 rounded hover:bg-red-500 hover:bg-opacity-30 text-gray-800 dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
                         <i class="fas fa-times text-xs"></i>
                     </button>
                 </div>
@@ -49,7 +52,7 @@
                  object literal like `{ count: ... }`, so we keep the count and
                  the localized noun as separate interpolations and translate the
                  label alone via progressQueue.*Short keys. -->
-            <div v-if="activeProgressItems.length > 0" class="text-xs text-gray-800 dark:text-white opacity-70 mt-1">
+            <div v-if="activeProgressItems.length > 0" class="progress-popup__summary text-xs text-gray-800 dark:text-white opacity-70 mt-1">
                 <span v-if="activeProgressItems.filter(i => i.status === 'uploading').length > 0">
                     ${ activeProgressItems.filter(i => i.status === 'uploading').length } ${ t('progressQueue.uploadingShort') }<span v-if="activeProgressItems.filter(i => i.status !== 'uploading').length > 0">, </span>
                 </span>
