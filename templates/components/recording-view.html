@@ -76,7 +76,7 @@
 
             <!-- STATE 1: Recording in progress — notes fill space, no accordion -->
             <template v-if="isRecording">
-                <div class="flex-1 min-h-0 flex flex-col p-3 md:p-6">
+                <div class="flex-1 min-h-0 flex flex-col p-2 md:p-3">
                     <label for="recordingNotes" class="block text-sm font-medium text-[var(--text-secondary)] mb-1.5 flex-shrink-0">
                         <i class="fas fa-pencil-alt mr-1"></i>
                         Recording Notes (Markdown)
@@ -108,7 +108,7 @@
                                     expandedSection === 'notes' ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
                     </button>
                     <!-- Content (when expanded) -->
-                    <div v-show="expandedSection === 'notes'" class="flex-1 min-h-0 flex flex-col p-3 md:p-6">
+                    <div v-show="expandedSection === 'notes'" class="flex-1 min-h-0 flex flex-col p-2 md:p-3">
                         <div class="recording-notes-editor accordion-expanded">
                             <textarea ref="recordingNotesEditor" v-model="recordingNotes"
                                       class="w-full h-full bg-[var(--bg-input)] border border-[var(--border-secondary)] rounded-lg p-2 md:p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] resize-none"

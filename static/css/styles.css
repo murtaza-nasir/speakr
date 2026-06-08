@@ -3961,12 +3961,19 @@ body.fullscreen-mode {
     font-weight: 600;
 }
 
-/* Recording notes editor styles */
+/* Recording notes editor styles.
+   Matches the Summary/Notes .markdown-editor-container treatment: the
+   editor IS the surface (bg-input fill, rounded), with NO outer border —
+   the previous 1px border-secondary outline made it read as a box inside
+   the section's padded box ("box in a box"). EasyMDE's own default
+   CodeMirror/toolbar borders are neutralised below so it's one seamless
+   surface that fills the container. */
 .recording-notes-editor .EasyMDEContainer {
     height: 100%;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border-secondary);
+    background: var(--bg-input);
+    border: none;
     border-radius: 0.5rem;
     overflow: hidden;
 }
@@ -3985,11 +3992,20 @@ body.fullscreen-mode {
     flex-grow: 1;
     background: var(--bg-input);
     color: var(--text-primary);
+    border: none !important; /* neutralise EasyMDE's default CodeMirror border (the inner box) */
+}
+
+/* Only the wrapper scrolls — keeps a single scrollbar inside the editor. */
+.recording-notes-editor .CodeMirror-scroll {
+    overflow: auto !important;
+    height: 100% !important;
 }
 
 .recording-notes-editor .editor-toolbar {
     background: var(--bg-tertiary);
+    border: none; /* drop EasyMDE's default toolbar outline */
     border-bottom: 1px solid var(--border-secondary);
+    border-radius: 0.5rem 0.5rem 0 0;
 }
 
 .recording-notes-editor .editor-toolbar button {

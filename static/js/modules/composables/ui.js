@@ -1986,7 +1986,9 @@ export function useUI(state, utils, processedTranscription) {
                 element: recordingNotesEditor.value,
                 spellChecker: false,
                 autofocus: false,
-                placeholder: t('form.enterNotesMarkdown'),
+                // Use the same placeholder key as the plain textarea so the
+                // wording is consistent ("Type your notes in Markdown format…").
+                placeholder: t('form.notesPlaceholder'),
                 initialValue: recordingNotes.value || '',
                 status: false,
                 toolbar: [
