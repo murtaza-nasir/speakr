@@ -52,17 +52,9 @@ def test_upload_requires_file():
                 headers={"X-API-Token": token}
             )
 
-            if response.status_code != 400:
-                print(f"❌ Expected 400, got {response.status_code}")
-                return False
-
+            assert response.status_code == 400, f"Expected 400, got {response.status_code}"
             payload = response.get_json(silent=True) or {}
-            if payload.get("error") != "No file provided":
-                print(f"❌ Unexpected error payload: {payload}")
-                return False
-
-            print("✅ Token auth works and missing file returns 400 as expected")
-            return True
+            assert payload.get("error") == "No file provided", f"Unexpected error payload: {payload}"
         finally:
             db.session.delete(token_record)
             db.session.commit()
@@ -73,9 +65,13 @@ def test_upload_requires_file():
 
 def main():
     print("🚀 Running API v1 upload test...\n")
-    ok = test_upload_requires_file()
-    print("\n" + ("✅ PASS" if ok else "❌ FAIL"))
-    sys.exit(0 if ok else 1)
+    try:
+        test_upload_requires_file()
+        print("\n✅ PASS")
+        sys.exit(0)
+    except AssertionError as e:
+        print(f"\n❌ FAIL: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
