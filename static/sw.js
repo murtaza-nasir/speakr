@@ -218,6 +218,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // The web app manifest must NEVER be served stale. Android/Chrome re-reads
+  // it to (re)register the PWA's share_target (and file_handlers, shortcuts,
+  // etc). Cache-first pins whatever manifest was cached at first install —
+  // e.g. one from before share_target existed — so the Android share sheet
+  // never gains "Speakr" as a target no matter how many times the manifest
+  // is updated server-side. Serve it network-first: fresh from the network,
+  // falling back to cache only when offline.
+  if (url.pathname === '/static/manifest.json') {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
   // For static assets listed in ASSETS_TO_CACHE, use cache-first.
   // This ensures that if an asset path is directly requested, it's served from cache if possible.
   // We need to match against the origin + pathname for ASSETS_TO_CACHE.
