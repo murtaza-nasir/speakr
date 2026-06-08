@@ -306,22 +306,25 @@ def apply_auto_speaker_labels(recording, user):
         if not embedding_data or not isinstance(embedding_data, list):
             continue
 
-        # Find matching speakers with base similarity threshold
+        # Find matching speakers using the USER'S chosen threshold as the
+        # filter. Previously this filtered with the hardcoded 0.70
+        # BASE_SIMILARITY_THRESHOLD and only then applied the user's
+        # confidence_threshold — which meant 'low' (0.3) and 'medium' (0.6)
+        # were both effectively 0.70 (nothing under 0.70 ever reached the
+        # second check), so those settings did nothing. Filtering at
+        # confidence_threshold directly makes the setting actually take
+        # effect: low=0.30, medium=0.60, high=0.80.
         matches = find_matching_speakers(
             target_embedding=embedding_data,
             user_id=user.id,
-            threshold=BASE_SIMILARITY_THRESHOLD
+            threshold=confidence_threshold
         )
 
         if not matches:
             continue
 
-        # Check if the best match exceeds the user's confidence threshold
         best_match = matches[0]
         best_similarity = best_match['similarity'] / 100.0  # Convert from percentage
-
-        if best_similarity < confidence_threshold:
-            continue
 
         # Check for ambiguity: if top 2 matches are within 5% similarity, skip
         if len(matches) >= 2:
