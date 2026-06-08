@@ -3276,6 +3276,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
+            // Measure the mobile bottom UI (persistent audio player + bottom
+            // nav) and publish it as the --mobile-bottom-inset CSS variable,
+            // so the processing-queue bar can anchor just above it regardless
+            // of whether the player is shown or how tall it is (audio vs
+            // video). This replaces the old magic 60+56px offset that
+            // overlapped the player once it grew taller.
+            let _mobileInsetObserver = null;
+            const updateMobileBottomInset = () => {
+                const player = document.querySelector('[data-mobile-player]');
+                const nav = document.querySelector('[data-mobile-bottom-nav]');
+                const h = (player ? player.offsetHeight : 0) + (nav ? nav.offsetHeight : 0);
+                document.documentElement.style.setProperty('--mobile-bottom-inset', h + 'px');
+                // Re-observe the current elements so live height changes
+                // (e.g. toggling video in the player) keep the inset in sync.
+                if (typeof ResizeObserver !== 'undefined') {
+                    if (!_mobileInsetObserver) {
+                        _mobileInsetObserver = new ResizeObserver(() => {
+                            const p = document.querySelector('[data-mobile-player]');
+                            const n = document.querySelector('[data-mobile-bottom-nav]');
+                            const hh = (p ? p.offsetHeight : 0) + (n ? n.offsetHeight : 0);
+                            document.documentElement.style.setProperty('--mobile-bottom-inset', hh + 'px');
+                        });
+                    }
+                    _mobileInsetObserver.disconnect();
+                    if (player) _mobileInsetObserver.observe(player);
+                    if (nav) _mobileInsetObserver.observe(nav);
+                }
+            };
+            // Re-measure whenever the bottom layout can change (view switch,
+            // recording change, player position, video toggle, or the bar
+            // first appearing) — this also catches the player mounting /
+            // unmounting, which the ResizeObserver alone can't.
+            watch([currentView, () => selectedRecording.value?.id, mobileTab,
+                   videoCollapsed, audioPlayerPosition, showProcessingPopup],
+                  () => nextTick(updateMobileBottomInset));
+
             // =========================================================================
             // LIFECYCLE
             // =========================================================================
@@ -3529,7 +3565,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Window resize handler
                 window.addEventListener('resize', () => {
                     windowWidth.value = window.innerWidth;
+                    updateMobileBottomInset();
                 });
+                // Initial measurement once the layout has painted.
+                nextTick(updateMobileBottomInset);
 
                 // Visibility change handler for wake lock
                 document.addEventListener('visibilitychange', audioComposable.handleVisibilityChange);

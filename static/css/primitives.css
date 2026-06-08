@@ -1914,25 +1914,29 @@ details.disclosure-card[open] {
 }
 
 @media (max-width: 640px) {
-    /* On phones the queue is a compact notification parked at the top
-       right, just below the header's metadata row — never the old
-       bottom-sheet, which overlapped the (now taller, video-capable)
-       audio player + bottom nav. Top offset clears the title row +
-       metadata row + safe-area. */
+    /* On phones the queue is a compact status bar pinned just ABOVE the
+       bottom audio player + nav, full width. The height of that bottom
+       cluster is measured into --mobile-bottom-inset (set in app.modular.js)
+       so the bar never overlaps it whether the player is shown, hidden, or
+       taller for video — and being anchored to the bottom it stays well
+       clear of the header / metadata row. The nav's offsetHeight already
+       includes its safe-area padding, so the inset accounts for that.
+       Collapsed it's a thin counter strip; tapping expands the list, which
+       grows upward from the bottom edge. */
     .progress-popup {
-        top: calc(env(safe-area-inset-top, 0px) + 104px) !important;
+        bottom: calc(var(--mobile-bottom-inset, 116px) + 8px) !important;
+        left: 0.5rem !important;
         right: 0.5rem !important;
-        left: auto !important;
-        bottom: auto !important;
+        top: auto !important;
         width: auto !important;
-        max-width: min(20rem, calc(100vw - 1rem));
+        max-width: none !important;
         animation: progressPopIn 180ms ease;
     }
-    /* Expanded: a top-right dropdown card, height-capped + scrollable so a
-       long queue can't run off-screen. */
+    /* Expanded: height-capped + scrollable so a long queue can't run off
+       the top of the screen. */
     .progress-popup__card {
         border-radius: 0.6rem;
-        max-height: 60vh;
+        max-height: 50vh;
         display: flex;
         flex-direction: column;
     }
@@ -1940,18 +1944,16 @@ details.disclosure-card[open] {
         overflow-y: auto;
     }
 
-    /* Minimized = super-compact pill: tasks icon + count + expand chevron
-       only. The desktop "slide down to show header" transform is dropped
-       (the pill IS the header), and the title text / summary line /
-       clear+close are hidden so it stays tiny and out of the way. Tap the
-       pill to expand. */
+    /* Collapsed = compact counter strip: icon + count + expand chevron +
+       close. Drop the desktop slide transform (the strip IS the header)
+       and hide the long title text, the summary line, and the clear
+       button so it stays slim. Keep the close so it can be dismissed. */
     .progress-popup.minimized {
         transform: none !important;
     }
     .progress-popup.minimized .progress-popup__title-text,
     .progress-popup.minimized .progress-popup__summary,
-    .progress-popup.minimized .progress-popup__clear,
-    .progress-popup.minimized .progress-popup__close {
+    .progress-popup.minimized .progress-popup__clear {
         display: none;
     }
     .progress-popup.minimized .progress-popup__card {
@@ -1963,7 +1965,7 @@ details.disclosure-card[open] {
 }
 
 @keyframes progressPopIn {
-    from { opacity: 0; transform: translateY(-6px); }
+    from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 

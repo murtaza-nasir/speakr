@@ -5,7 +5,7 @@
      items there's no overflow menu so the user can reach every tab in
      one tap (queue #9). 56px tall to accommodate icon + label + 44×44
      touch target per HIG. -->
-<div class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-stretch" style="min-height: 56px; padding-bottom: env(safe-area-inset-bottom);">
+<div data-mobile-bottom-nav class="flex-shrink-0 border-t border-[var(--border-primary)] bg-[var(--bg-secondary)] flex items-stretch" style="min-height: 56px; padding-bottom: env(safe-area-inset-bottom);">
     <button @click="mobileTab = 'summary'"
             class="flex-1 flex flex-col items-center justify-center gap-0.5 px-2 transition-colors"
             :class="mobileTab === 'summary' ? 'text-[var(--text-accent)]' : 'text-[var(--text-muted)]'">
