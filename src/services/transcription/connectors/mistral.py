@@ -180,8 +180,11 @@ class MistralTranscriptionConnector(BaseTranscriptionConnector):
             # Determine detected language
             detected_language = result.get('language', request.language)
 
-            # Build speaker list from segments
-            speakers = list({s.speaker for s in segments if s.speaker})
+            # Build speaker list from segments — distinct, in order of first
+            # appearance. dict.fromkeys dedupes while preserving order; a plain
+            # set() gave hash-randomised (non-deterministic) ordering, which
+            # produced an unstable speakers list across runs.
+            speakers = list(dict.fromkeys(s.speaker for s in segments if s.speaker))
 
             return TranscriptionResponse(
                 text=result.get('text', ''),
