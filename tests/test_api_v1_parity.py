@@ -32,9 +32,13 @@ def run(name, func):
     except AssertionError as e:
         print(f"  ✗ {name}: {e}")
         FAILED += 1
+        if "pytest" in sys.modules:
+            raise
     except Exception as e:
         print(f"  ✗ {name}: EXCEPTION - {e}")
         FAILED += 1
+        if "pytest" in sys.modules:
+            raise
 
 
 def setup_user_and_recording():

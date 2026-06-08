@@ -39,10 +39,14 @@ def run_test(name, func):
         print(f"  ✗ {name}: {e}")
         FAILED += 1
         ERRORS.append((name, str(e)))
+        if "pytest" in sys.modules:
+            raise
     except Exception as e:
         print(f"  ✗ {name}: EXCEPTION - {e}")
         FAILED += 1
         ERRORS.append((name, f"Exception: {e}"))
+        if "pytest" in sys.modules:
+            raise
 
 
 def clear_env():

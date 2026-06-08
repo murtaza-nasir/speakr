@@ -39,9 +39,13 @@ def run(name, func):
     except AssertionError as e:
         print(f"  FAIL {name}: {e}")
         FAILED += 1
+        if "pytest" in sys.modules:
+            raise
     except Exception as e:
         print(f"  FAIL {name}: EXCEPTION - {e}")
         FAILED += 1
+        if "pytest" in sys.modules:
+            raise
 
 
 def reset_settings(stored_identifier=None, legacy_model_name=None):
