@@ -349,6 +349,17 @@ MAX_CONCURRENT_UPLOADS=3  # default
 
 Higher values speed up batch uploads but use more bandwidth and server resources.
 
+#### Server-Side Recording Sessions (optional)
+
+By default, in-app recordings are buffered in the browser's memory and uploaded when you press Stop, which limits how long a single recording can run. You can opt into server-side recording sessions instead, where audio chunks stream to the server as they are produced:
+
+```bash
+ENABLE_SERVER_RECORDING_CHUNKS=true
+RECORDING_MAX_HOURS=8  # default
+```
+
+When enabled, recordings are no longer constrained by browser RAM, so you can capture hours-long sessions, and an interrupted recording can resume if the tab is reloaded or closed. `RECORDING_MAX_HOURS` sets an absolute ceiling on a single recording (default 8 hours). For tuning the per-user storage cap and other details, see the [Server-Side Recording Sessions](../admin-guide/recording-sessions.md) guide.
+
 #### Inquire Mode for Semantic Search
 
 Inquire Mode transforms Speakr from a simple transcription tool into a knowledge base of all your recordings. When enabled, you can search across all your transcriptions using natural language questions:
