@@ -33,6 +33,16 @@ os.environ["UPLOAD_FOLDER"] = os.path.join(_TEST_DIR, "uploads")
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key")
 os.environ.setdefault("ENABLE_AUTO_PROCESSING", "false")   # no black-hole file monitor
 os.environ.setdefault("TEXT_MODEL_API_KEY", "test-key")    # avoid config hard-fails
+
+# Run ZERO background job-queue workers during tests. These counts are read at
+# job_queue import time, so they must be set before src.app is imported. With
+# workers running, enqueue() auto-starts daemon threads that claim and process
+# test-created jobs in the background — racing tests that exercise the queue
+# directly (e.g. test_job_queue_race_condition) and spraying FileNotFound
+# errors as they try to transcribe nonexistent test files. Tests that need to
+# exercise claiming drive _claim_next_job themselves.
+os.environ["JOB_QUEUE_WORKERS"] = "0"
+os.environ["SUMMARY_QUEUE_WORKERS"] = "0"
 # NB: do NOT force WEBHOOK_GLOBAL_ENABLED=false here — the webhook suite needs
 # delivery enabled (it mocks the actual HTTP POST), so leave the default (true).
 
