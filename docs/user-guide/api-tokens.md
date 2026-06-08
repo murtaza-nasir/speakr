@@ -86,6 +86,10 @@ Speakr provides a comprehensive REST API with endpoints for recordings, tags, sp
 | `/api/v1/recordings/<id>/summarize` | POST | Queue summarization |
 | `/api/v1/tags` | GET | List your tags |
 | `/api/v1/speakers` | GET | List your speakers |
+| `/api/v1/users/me` | GET | Get the current user's profile and group memberships |
+| `/api/v1/folders` | GET / POST | List or create folders (requires folders enabled) |
+| `/api/v1/transcription` | GET | Discover the active transcription connector and selectable models |
+| `/api/v1/webhooks` | GET / POST | List or create event webhooks |
 
 ### Example: List Recordings
 
