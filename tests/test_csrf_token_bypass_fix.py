@@ -424,9 +424,13 @@ def test_api_v1_post_with_query_string_token_still_works():
             db.session.add(rec)
             db.session.commit()
 
-            # Pure-query-string authentication on a v1 POST endpoint
+            # Pure-query-string authentication on a v1 POST endpoint.
+            # The v1 route delegates to src.api.recordings.regenerate_title,
+            # which calls _generate_ai_title (a real LLM call). Mock that so
+            # the test exercises the auth/CSRF path without needing a live LLM
+            # — otherwise it returns 500 in CI and masks what we're asserting.
             from unittest.mock import patch
-            with patch('src.api.api_v1._enqueue_title_regeneration', create=True), \
+            with patch('src.tasks.processing._generate_ai_title', return_value='Mock Title'), \
                  patch('src.services.job_queue.job_queue.enqueue', return_value=999):
                 resp = client.post(
                     f'/api/v1/recordings/{rec.id}/regenerate_title?token={plaintext}',
