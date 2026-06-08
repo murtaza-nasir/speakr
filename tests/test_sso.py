@@ -42,6 +42,7 @@ _SSO_ENV_KEYS = [
     "SSO_DISCOVERY_URL", "SSO_REDIRECT_URI", "SSO_AUTO_REGISTER",
     "SSO_ALLOWED_DOMAINS", "SSO_DEFAULT_USERNAME_CLAIM",
     "SSO_DEFAULT_NAME_CLAIM", "SSO_DISABLE_PASSWORD_LOGIN",
+    "SSO_REQUIRE_VERIFIED_EMAIL",
 ]
 
 
@@ -415,6 +416,97 @@ def test_no_email_uses_placeholder(cleanup_users):
     sub = "sub-" + uuid.uuid4().hex
     with env(SSO_ALLOWED_DOMAINS="example.com"):
         # No email claim at all → domain check is skipped, placeholder email set.
+        user = sso.create_or_update_sso_user({"sub": sub, "preferred_username": "noemail" + sub[:6]})
+        _track(cleanup_users, user)
+        assert user.email == f"{sub}@placeholder.local"
+
+
+# ---------------------------------------------------------------------------
+# SSO_REQUIRE_VERIFIED_EMAIL (opt-in; default off = backwards compatible)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("value,expected", [
+    (True, True), (False, False),
+    ("true", True), ("True", True), ("1", True), ("yes", True),
+    ("false", False), ("no", False), ("", False), (None, False), (0, False),
+])
+def test_claim_is_truthy(value, expected):
+    assert sso._claim_is_truthy(value) is expected
+
+
+def test_require_verified_email_defaults_off_and_links_unverified(cleanup_users):
+    """Default (flag unset): an unverified/absent email_verified still links to
+    an existing-by-email account — the original behaviour, preserved."""
+    with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL=None):
+        existing = _mk_user(cleanup_users, email="legacy@example.com")
+        assert existing.sso_subject is None
+        sub = "sub-" + uuid.uuid4().hex[:10]
+        user = sso.create_or_update_sso_user({"sub": sub, "email": "legacy@example.com"})
+        _track(cleanup_users, user)
+        # Linked to the existing account despite no email_verified claim.
+        assert user.id == existing.id
+        assert user.sso_subject == sub
+
+
+def test_require_verified_email_on_rejects_unverified_link(cleanup_users):
+    """Flag on: linking to an existing account by an UNVERIFIED email is refused
+    (the account-takeover vector), and the existing account is left untouched."""
+    with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL="true"):
+        existing = _mk_user(cleanup_users, email="victim@example.com")
+        sub = "sub-" + uuid.uuid4().hex[:10]
+        for claims in (
+            {"sub": sub, "email": "victim@example.com"},                       # absent
+            {"sub": sub, "email": "victim@example.com", "email_verified": False},
+            {"sub": sub, "email": "victim@example.com", "email_verified": "false"},
+        ):
+            with pytest.raises(PermissionError):
+                sso.create_or_update_sso_user(claims)
+        db.session.expire_all()
+        # The existing account was NOT hijacked.
+        refreshed = User.query.get(existing.id)
+        assert refreshed.sso_subject is None
+
+
+def test_require_verified_email_on_allows_verified_link(cleanup_users):
+    """Flag on + email_verified true (bool or string): linking proceeds."""
+    with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL="true"):
+        existing = _mk_user(cleanup_users, email="ok@example.com")
+        sub = "sub-" + uuid.uuid4().hex[:10]
+        user = sso.create_or_update_sso_user(
+            {"sub": sub, "email": "ok@example.com", "email_verified": True}
+        )
+        _track(cleanup_users, user)
+        assert user.id == existing.id
+        assert user.sso_subject == sub
+
+
+def test_require_verified_email_on_rejects_new_user_with_unverified_email(cleanup_users):
+    """Flag on: provisioning a NEW account with an unverified email is refused
+    too (no account is created)."""
+    with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL="true"):
+        sub = "sub-" + uuid.uuid4().hex[:10]
+        email = uuid.uuid4().hex[:10] + "@example.com"
+        with pytest.raises(PermissionError):
+            sso.create_or_update_sso_user({"sub": sub, "email": email, "email_verified": False})
+        assert User.query.filter_by(sso_subject=sub).first() is None
+
+
+def test_require_verified_email_on_does_not_affect_already_linked_subject(cleanup_users):
+    """Flag on: a user already linked by subject keeps logging in even if the
+    IdP omits email_verified (no email trust is involved on that path)."""
+    with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL="true"):
+        sub = "sub-" + uuid.uuid4().hex[:10]
+        linked = _mk_user(cleanup_users, email="linked@example.com", sso_subject=sub)
+        user = sso.create_or_update_sso_user({"sub": sub, "email": "linked@example.com"})
+        _track(cleanup_users, user)
+        assert user.id == linked.id
+
+
+def test_require_verified_email_on_allows_no_email_claim(cleanup_users):
+    """Flag on: a login with no email claim is unaffected (nothing to verify);
+    a placeholder email is assigned as before."""
+    with env(SSO_ALLOWED_DOMAINS=None, SSO_REQUIRE_VERIFIED_EMAIL="true"):
+        sub = "sub-" + uuid.uuid4().hex[:10]
         user = sso.create_or_update_sso_user({"sub": sub, "preferred_username": "noemail" + sub[:6]})
         _track(cleanup_users, user)
         assert user.email == f"{sub}@placeholder.local"

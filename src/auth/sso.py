@@ -16,6 +16,19 @@ def _str_to_bool(value: str) -> bool:
     return str(value or "").lower() == "true"
 
 
+def _claim_is_truthy(value) -> bool:
+    """Whether an OIDC claim should be treated as true.
+
+    The spec says ``email_verified`` is a boolean, but some providers send it
+    as a string ("true"/"false"). Accept both.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes")
+    return bool(value)
+
+
 def get_sso_config() -> Dict[str, Optional[str]]:
     """Load SSO configuration from environment variables."""
     return {
@@ -30,6 +43,12 @@ def get_sso_config() -> Dict[str, Optional[str]]:
         "username_claim": os.environ.get("SSO_DEFAULT_USERNAME_CLAIM", "preferred_username"),
         "name_claim": os.environ.get("SSO_DEFAULT_NAME_CLAIM", "name"),
         "disable_password_login": _str_to_bool(os.environ.get("SSO_DISABLE_PASSWORD_LOGIN", "false")),
+        # When true, an SSO login whose email claim is not marked verified is
+        # refused before that email is used to link to (or provision) a local
+        # account. Default false to preserve existing behaviour; enable it when
+        # your IdP reliably sends email_verified, to prevent a malicious or
+        # misconfigured IdP from taking over an account by asserting its email.
+        "require_verified_email": _str_to_bool(os.environ.get("SSO_REQUIRE_VERIFIED_EMAIL", "false")),
     }
 
 
@@ -127,12 +146,21 @@ def create_or_update_sso_user(userinfo: Dict[str, str]) -> User:
     if email and not is_domain_allowed(email):
         raise PermissionError("Email domain is not allowed for SSO sign-up")
 
-    # Existing by subject
+    # Existing by subject — already linked, so no email trust is involved.
+    # This path is unaffected by require_verified_email (an already-linked user
+    # keeps logging in even if the IdP omits email_verified).
     user = User.query.filter_by(sso_subject=subject).first()
     if user:
         _update_profile_fields(user, userinfo, name_claim)
         db.session.commit()
         return user
+
+    # From here the email claim is used to LINK to an existing local account or
+    # to PROVISION a new one. When require_verified_email is on, refuse an
+    # unverified email so a malicious/misconfigured IdP can't take over an
+    # account (or provision under someone else's address) by asserting it.
+    if email and cfg["require_verified_email"] and not _claim_is_truthy(userinfo.get("email_verified")):
+        raise PermissionError("SSO email address is not verified")
 
     # Existing by email: attach SSO
     if email:
