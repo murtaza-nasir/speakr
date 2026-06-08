@@ -3,6 +3,9 @@
      spans the full content width and stays anchored at the bottom. -->
 <div id="rightMainColumn" class="flex flex-col overflow-hidden" :style="{width: rightColumnWidth + '%'}">
 
+    <!-- Docked video, top-of-right-column slot (see _video-dock.html). -->
+    {% with dock_pos = 'right-top' %}{% include 'components/detail/_video-dock.html' %}{% endwith %}
+
     <!-- Right-rail tab strip + per-tab action toolbar (design system v1).
          One row carries tab navigation on the left and per-tab actions on
          the right. No card chrome around the content — sections live
@@ -78,6 +81,9 @@
             {% include 'components/detail/desktop-events-tab.html' %}
         </div>
     </div>
+
+    <!-- Docked video, bottom-of-right-column slot (see _video-dock.html). -->
+    {% with dock_pos = 'right-bottom' %}{% include 'components/detail/_video-dock.html' %}{% endwith %}
 
     <!-- Chat is no longer inline — it lives in the floating dockable
          panel (components/detail/floating-chat.html) which is mounted

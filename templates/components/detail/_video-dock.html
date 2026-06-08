@@ -1,0 +1,47 @@
+{# Reusable docked-video panel.
+   `dock_pos` (Jinja var, set by the caller via {% with %}) is one of:
+     'left-top' | 'left-bottom' | 'right-top' | 'right-bottom'
+   This partial is included in all four column slots; only the one whose
+   dock_pos matches videoDockPosition actually renders (v-if), so a single
+   <video id="dockVideoElement"> exists at any time — no teleport, no
+   duplicate ids in the DOM. The video is a muted follower kept in step
+   with the main player by syncDockVideo() in ui.js.
+
+   The two arrow buttons are contextual:
+     - column button : move between the left and right columns
+     - vertical button: move between the top and bottom of the current column
+   so the dock can be parked in any of the four column tiles. The choice is
+   persisted to localStorage (videoDockPosition). #}
+<div v-if="isVideoRecording && videoDockEnabled && !videoFullscreen && videoDockPosition === '{{ dock_pos }}'"
+     class="video-dock">
+    <div class="video-dock__bar">
+        <i class="fas fa-video text-[var(--text-muted)]" style="font-size: 11px;"></i>
+        <span class="video-dock__title" v-text="t('tooltips.video')"></span>
+        <div class="flex-1"></div>
+        <!-- Move to the other column (left <-> right) -->
+        <button @click="cycleVideoDockColumn" class="btn btn--icon btn--sm"
+                :title="videoDockPosition.startsWith('left') ? t('tooltips.dockRight') : t('tooltips.dockLeft')">
+            <i :class="videoDockPosition.startsWith('left') ? 'fas fa-arrow-right' : 'fas fa-arrow-left'" style="font-size: 11px;"></i>
+        </button>
+        <!-- Move within the column (top <-> bottom) -->
+        <button @click="cycleVideoDockVertical" class="btn btn--icon btn--sm"
+                :title="videoDockPosition.endsWith('bottom') ? t('tooltips.dockTop') : t('tooltips.dockBottom')">
+            <i :class="videoDockPosition.endsWith('bottom') ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" style="font-size: 11px;"></i>
+        </button>
+        <button @click="enterVideoFullscreen" class="btn btn--icon btn--sm" :title="t('tooltips.enterFullscreen')">
+            <i class="fas fa-expand" style="font-size: 11px;"></i>
+        </button>
+        <button @click="toggleVideoDock" class="btn btn--icon btn--sm" :title="t('tooltips.hideVideo')">
+            <i class="fas fa-times text-xs"></i>
+        </button>
+    </div>
+    <video id="dockVideoElement"
+           class="video-dock__video"
+           :src="'/audio/' + selectedRecording.id"
+           muted
+           playsinline
+           preload="auto"
+           @loadedmetadata="syncDockVideo"
+           @canplay="syncDockVideo"
+           @click="toggleAudioPlayback()"></video>
+</div>

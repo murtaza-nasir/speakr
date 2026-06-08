@@ -1141,6 +1141,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                    && selectedRecording.value.mime_type.startsWith('video/'))
             );
             const toggleVideoDock = () => { videoDockEnabled.value = !videoDockEnabled.value; };
+            // Which of the four column tiles the docked video parks in.
+            // Persisted to localStorage (unlike the on/off toggle, which is
+            // session-only). Validated against the known set so a stale/bad
+            // value can't render the dock into nowhere.
+            const _validDockPositions = ['left-top', 'left-bottom', 'right-top', 'right-bottom'];
+            const _storedDockPosition = (() => {
+                try { return localStorage.getItem('videoDockPosition'); } catch (e) { return null; }
+            })();
+            const videoDockPosition = ref(_validDockPositions.includes(_storedDockPosition) ? _storedDockPosition : 'left-bottom');
+            const _persistVideoDockPosition = () => {
+                try { localStorage.setItem('videoDockPosition', videoDockPosition.value); } catch (e) { /* ignore */ }
+            };
+            const cycleVideoDockColumn = () => {
+                const [col, vert] = videoDockPosition.value.split('-');
+                videoDockPosition.value = (col === 'left' ? 'right' : 'left') + '-' + vert;
+                _persistVideoDockPosition();
+            };
+            const cycleVideoDockVertical = () => {
+                const [col, vert] = videoDockPosition.value.split('-');
+                videoDockPosition.value = col + '-' + (vert === 'bottom' ? 'top' : 'bottom');
+                _persistVideoDockPosition();
+            };
             const videoFullscreen = ref(false);
             const fullscreenControlsVisible = ref(true);
             const fullscreenControlsTimer = ref(null);
@@ -1596,6 +1618,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider, showModalVolumeSlider,
                 videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
                 videoDockEnabled, isVideoRecording, toggleVideoDock,
+                videoDockPosition, cycleVideoDockColumn, cycleVideoDockVertical,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,
