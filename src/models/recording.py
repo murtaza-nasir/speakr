@@ -282,6 +282,7 @@ class Recording(db.Model):
             'meeting_date': local_datetime_filter(self.meeting_date),
             'file_size': self.file_size,
             'original_filename': self.original_filename,
+            'mime_type': self.mime_type,  # cheap column read; lets the sidebar mark video recordings without opening them
             'is_inbox': self.is_inbox,
             'is_highlighted': self.is_highlighted,
             'audio_deleted_at': local_datetime_filter(self.audio_deleted_at),
