@@ -12,7 +12,7 @@
        widget on a phone. When minimized on mobile the sheet
        collapses to just its header strip, still sitting above the
        player / nav — never obscures content. -->
-<div v-if="showProcessingPopup && !progressPopupClosed"
+<div v-if="showProcessingPopup && !progressPopupClosed && !(isMobileScreen && !isSidebarCollapsed)"
      :class="[
          'progress-popup fixed z-[100] transition-all duration-300',
          progressPopupMinimized ? 'minimized' : ''

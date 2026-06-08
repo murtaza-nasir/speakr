@@ -18,16 +18,13 @@
          class="cursor-pointer px-4 py-2 flex items-center gap-3">
 
         <div class="flex-1 min-w-0">
-            <!-- Participants + status, single line, truncates -->
+            <!-- Participants, single line, truncates. The processing
+                 status badge is intentionally NOT duplicated here — it
+                 already shows in the title area (components/header.html). -->
             <div class="flex items-center gap-2 min-w-0">
                 <i class="fas fa-users flex-shrink-0" style="color: var(--text-muted); font-size: 11px;"></i>
                 <span class="text-sm truncate" style="color: var(--text-secondary);"
                       v-text="selectedRecording.participants || t('help.noParticipants')"></span>
-                <span v-if="selectedRecording.status !== 'COMPLETED'"
-                      :class="getStatusClass(selectedRecording.status)"
-                      class="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap flex-shrink-0">
-                    ${ formatStatus(selectedRecording.status) }
-                </span>
             </div>
 
             <!-- Folder / tag / share pill row, only when present -->
