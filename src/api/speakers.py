@@ -293,8 +293,15 @@ def get_speaker_suggestions(recording_id):
         except (json.JSONDecodeError, TypeError):
             return jsonify({'error': 'Invalid speaker embeddings data'}), 500
 
-        # Get similarity threshold from query params (default 70%)
-        threshold = float(request.args.get('threshold', 0.70))
+        # Similarity floor for showing a voice-match suggestion. Default
+        # 60% (was 70%). Rationale: when auto-labelling is on, confident
+        # matches are already applied automatically, so the suggestion pill
+        # is most useful for the BORDERLINE matches that auto-label didn't
+        # take. A 0.70 floor hid exactly those (e.g. a 0.69 match), making
+        # the pill rarely appear. 0.60 surfaces them for one-click manual
+        # acceptance while still filtering out weak/noise matches. Callers
+        # can still override via ?threshold=.
+        threshold = float(request.args.get('threshold', 0.60))
 
         # Find matches for each speaker
         suggestions = {}
