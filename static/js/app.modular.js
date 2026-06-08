@@ -2037,6 +2037,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const isNewSpeaker = segment.speakerId !== lastSpeakerId;
                         processedSimpleSegments.push({
                             ...segment,
+                            // The true index into the raw transcription array.
+                            // The speaker modal MUST use this (not the v-for
+                            // loop index) for change-speaker / edit-text so the
+                            // edit hits the exact segment — matches the public
+                            // release and avoids v-memo/index drift.
+                            _originalIndex: idx,
                             showSpeaker: isNewSpeaker
                         });
                         if (isNewSpeaker) {

@@ -28,6 +28,15 @@ export function useSpeakers(state, utils, processedTranscription) {
     // Current speaker highlight state
     let currentSpeakerId = null;
 
+    // Snapshot of the recording's transcription taken when the modal opens.
+    // Per-line speaker/text edits are now STAGED in memory (changeSpeaker /
+    // saveEditedText mutate selectedRecording.transcription for live preview
+    // but don't persist). If the user Cancels with unsaved staged edits, we
+    // restore this snapshot so the cancelled edits don't leak into the
+    // detail view. On a real save the staged flag is cleared first so no
+    // revert happens.
+    let originalTranscriptionSnapshot = null;
+
     // Number of speaker colors available in CSS (must match styles.css and app.modular.js)
     const SPEAKER_COLOR_COUNT = 16;
 
@@ -63,6 +72,11 @@ export function useSpeakers(state, utils, processedTranscription) {
 
         // Pause outer audio player to avoid conflicts with modal's player
         pauseOuterAudioPlayer();
+
+        // Snapshot the committed transcription and clear any stale staged
+        // edits so this modal session starts from a clean, saved state.
+        originalTranscriptionSnapshot = selectedRecording.value.transcription || null;
+        editedTranscriptData.value = null;
 
         // Clear any existing speaker map data first
         speakerMap.value = {};
@@ -177,6 +191,16 @@ export function useSpeakers(state, utils, processedTranscription) {
             utils.resetModalAudioState();
         }
 
+        // If the modal is closing with UNSAVED staged per-line edits (the
+        // user hit Cancel/X, not Save), discard them by restoring the
+        // snapshot taken on open. A real save clears editedTranscriptData
+        // before calling this, so saved edits are never reverted.
+        if (editedTranscriptData.value && originalTranscriptionSnapshot != null && selectedRecording.value) {
+            selectedRecording.value.transcription = originalTranscriptionSnapshot;
+        }
+        editedTranscriptData.value = null;
+        originalTranscriptionSnapshot = null;
+
         showSpeakerModal.value = false;
         showAutoIdDropdown.value = false;
         highlightedSpeaker.value = null;
@@ -262,6 +286,10 @@ export function useSpeakers(state, utils, processedTranscription) {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to update transcript');
 
+            // The edits are now persisted on the server — clear the staged
+            // flag BEFORE closing so closeSpeakerModal doesn't mistake this
+            // for a Cancel and revert the just-saved changes.
+            editedTranscriptData.value = null;
             closeSpeakerModal();
 
             // If summary regeneration was requested, update status immediately
@@ -1139,23 +1167,20 @@ export function useSpeakers(state, utils, processedTranscription) {
         editedText.value = '';
     };
 
-    const saveEditedText = async () => {
+    const saveEditedText = () => {
         if (editingSegmentIndex.value === null || !selectedRecording.value?.transcription) return;
 
         try {
             const transcriptionData = JSON.parse(selectedRecording.value.transcription);
             if (transcriptionData && Array.isArray(transcriptionData) && transcriptionData[editingSegmentIndex.value]) {
                 transcriptionData[editingSegmentIndex.value].sentence = editedText.value;
-                editedTranscriptData.value = transcriptionData;
 
-                // Update the recording's transcription temporarily for UI update
+                // Stage in memory only (same as changeSpeaker) — persisted on
+                // "Save Names". No surprise live save.
+                editedTranscriptData.value = transcriptionData;
                 selectedRecording.value.transcription = JSON.stringify(transcriptionData);
 
                 closeEditTextModal();
-
-                // Immediately persist the change
-                showToast(t('help.savingProgress'), 'fa-spinner fa-spin');
-                await saveTranscriptImmediately(transcriptionData);
             }
         } catch (e) {
             console.error('Error saving text:', e);
@@ -1171,23 +1196,32 @@ export function useSpeakers(state, utils, processedTranscription) {
         editingSpeakerIndex.value = editingSpeakerIndex.value === segmentIndex ? null : segmentIndex;
     };
 
-    const changeSpeaker = async (segmentIndex, newSpeakerId) => {
+    const changeSpeaker = (segmentIndex, newSpeakerId) => {
         if (!selectedRecording.value?.transcription) return;
 
         try {
             const transcriptionData = JSON.parse(selectedRecording.value.transcription);
             if (transcriptionData && Array.isArray(transcriptionData) && transcriptionData[segmentIndex]) {
                 transcriptionData[segmentIndex].speaker = newSpeakerId;
+
+                // STAGE the change in memory only. It is persisted when the
+                // user clicks "Save Names" (saveSpeakerNames sees
+                // editedTranscriptData and calls saveTranscriptEdits).
+                //
+                // We deliberately do NOT save immediately here. The old
+                // behaviour called saveTranscriptImmediately on every single
+                // per-line change, which (a) saved without the user asking
+                // (the surprise "changes saved" toast) and (b) re-sent the
+                // full speaker_map, which the backend applies by renaming
+                // EVERY segment matching a mapped speaker — so changing one
+                // line silently rewrote all the other lines of that speaker.
                 editedTranscriptData.value = transcriptionData;
 
-                // Update the recording's transcription temporarily for UI update
+                // Update the recording's transcription in memory so the
+                // modal reflects the change live (still unsaved).
                 selectedRecording.value.transcription = JSON.stringify(transcriptionData);
 
                 editingSpeakerIndex.value = null;
-
-                // Immediately persist the change
-                showToast(t('help.savingProgress'), 'fa-spinner fa-spin');
-                await saveTranscriptImmediately(transcriptionData);
             }
         } catch (e) {
             console.error('Error changing speaker:', e);
