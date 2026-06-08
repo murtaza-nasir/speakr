@@ -121,6 +121,27 @@
                 </div>
             </div>
             <div v-else-if="transcriptionViewMode === 'bubble'" class="transcription-with-speakers">
+                <!-- Speaker legend (bubble view) — same collapsible legend
+                     as desktop; was missing on mobile so users couldn't see
+                     who the bubble colours map to. -->
+                <div v-if="processedTranscription.speakers && processedTranscription.speakers.length > 0"
+                     :class="['speaker-legend', legendExpanded ? 'expanded' : '']">
+                    <div class="speaker-legend-header" @click="legendExpanded = !legendExpanded">
+                        <div class="speaker-legend-title">
+                            <i class="fas fa-users"></i>
+                            <span v-text="t('help.speakers')"></span>
+                            <span class="speaker-count-indicator">(${processedTranscription.speakers.length})</span>
+                        </div>
+                        <i class="fas fa-chevron-down speaker-legend-toggle"></i>
+                    </div>
+                    <div class="speaker-legend-content">
+                        <div v-for="(speaker, index) in processedTranscription.speakers"
+                             :key="`${selectedRecording.id}-mobile-speaker-legend-${index}`"
+                             :class="['speaker-legend-item', speaker.color]">
+                            <span class="speaker-name">${speaker.name}</span>
+                        </div>
+                    </div>
+                </div>
                 <template v-for="(row, rowIndex) in processedTranscription.bubbleRows" :key="`${selectedRecording.id}-bubble-row-${rowIndex}`">
                     <div :class="['bubble-row', row.isMe ? 'speaker-me' : '']">
                         <div v-for="(bubble, bubbleIndex) in row.bubbles" :key="`bubble-${rowIndex}-${bubbleIndex}-${bubble.startTime}`" :class="['speaker-bubble', bubble.color, row.isMe ? 'speaker-me' : '', { 'active-playing-segment': currentPlayingSegmentIndex === getBubbleGlobalIndex(rowIndex, bubbleIndex) }]" @click="seekAudioFromEvent" :data-start-time="bubble.startTime" :data-segment-index="getBubbleGlobalIndex(rowIndex, bubbleIndex)">
