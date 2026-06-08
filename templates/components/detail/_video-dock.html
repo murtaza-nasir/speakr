@@ -13,7 +13,13 @@
    so the dock can be parked in any of the four column tiles. The choice is
    persisted to localStorage (videoDockPosition). #}
 <div v-if="isVideoRecording && videoDockEnabled && !videoFullscreen && videoDockPosition === '{{ dock_pos }}'"
-     class="video-dock">
+     class="video-dock"
+     :style="{ height: videoDockHeight + 'px' }">
+    {# Resize handle on the content-facing edge: top edge for a bottom dock,
+       bottom edge for a top dock. Drag to change the dock height. #}
+    {% if dock_pos.endswith('bottom') %}
+    <div class="video-dock__resizer" @mousedown="startVideoDockResize" :title="t('tooltips.dragToResize') || 'Drag to resize'"></div>
+    {% endif %}
     <div class="video-dock__bar">
         <i class="fas fa-video text-[var(--text-muted)]" style="font-size: 11px;"></i>
         <span class="video-dock__title" v-text="t('tooltips.video')"></span>
@@ -44,4 +50,7 @@
            @loadedmetadata="syncDockVideo"
            @canplay="syncDockVideo"
            @click="toggleAudioPlayback()"></video>
+    {% if dock_pos.endswith('top') %}
+    <div class="video-dock__resizer" @mousedown="startVideoDockResize" :title="t('tooltips.dragToResize') || 'Drag to resize'"></div>
+    {% endif %}
 </div>

@@ -1530,6 +1530,7 @@
     "dockRight": "Move to right column",
     "dockTop": "Move to top",
     "dockBottom": "Move to bottom",
+    "dragToResize": "Drag to resize",
     "expand": "Expand",
     "followPlayerDisabled": "Enable auto-scroll - transcript follows audio playback",
     "followPlayerEnabled": "Disable auto-scroll - transcript stays in place",

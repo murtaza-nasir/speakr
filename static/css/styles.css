@@ -4407,9 +4407,34 @@ select:disabled {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    height: clamp(160px, 32vh, 380px);
+    /* Height is driven by an inline style bound to videoDockHeight
+       (drag-resizable, persisted). min-height is a floor in case. */
+    min-height: 120px;
     border-top: var(--border-hairline) solid var(--border-primary);
     background: var(--bg-secondary);
+}
+/* Drag handle on the dock's content-facing edge. Thin, ns-resize, with a
+   centred grip line that strengthens on hover. */
+.video-dock__resizer {
+    flex-shrink: 0;
+    height: 6px;
+    cursor: ns-resize;
+    position: relative;
+}
+.video-dock__resizer::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--border-primary);
+    transition: background-color 0.15s ease;
+}
+.video-dock__resizer:hover::before {
+    background: var(--border-accent);
 }
 .video-dock__bar {
     display: flex;

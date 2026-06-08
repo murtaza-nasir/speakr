@@ -1521,6 +1521,7 @@
     "dockRight": "移到右栏",
     "dockTop": "移到顶部",
     "dockBottom": "移到底部",
+    "dragToResize": "拖动以调整大小",
     "expand": "展开",
     "followPlayerDisabled": "启用自动滚动 - 文字记录跟随音频播放",
     "followPlayerEnabled": "禁用自动滚动 - 文字记录保持位置",

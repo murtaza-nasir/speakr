@@ -1521,6 +1521,7 @@
     "dockRight": "Déplacer vers la colonne de droite",
     "dockTop": "Déplacer en haut",
     "dockBottom": "Déplacer en bas",
+    "dragToResize": "Glisser pour redimensionner",
     "expand": "Développer",
     "followPlayerDisabled": "Activer le défilement automatique - la transcription suit la lecture audio",
     "followPlayerEnabled": "Désactiver le défilement automatique - la transcription reste en place",

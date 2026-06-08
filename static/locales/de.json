@@ -1521,6 +1521,7 @@
     "dockRight": "In rechte Spalte verschieben",
     "dockTop": "Nach oben verschieben",
     "dockBottom": "Nach unten verschieben",
+    "dragToResize": "Zum Ändern der Größe ziehen",
     "expand": "Erweitern",
     "followPlayerDisabled": "Automatisches Scrollen aktivieren - Transkript folgt der Audiowiedergabe",
     "followPlayerEnabled": "Automatisches Scrollen deaktivieren - Transkript bleibt an Ort und Stelle",

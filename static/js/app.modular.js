@@ -1163,6 +1163,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 videoDockPosition.value = col + '-' + (vert === 'bottom' ? 'top' : 'bottom');
                 _persistVideoDockPosition();
             };
+            // Adjustable dock height, persisted to localStorage. Clamped to a
+            // sane min and a viewport-relative max at drag time.
+            const VIDEO_DOCK_MIN_H = 120;
+            const _videoDockMaxH = () => Math.round((window.innerHeight || 800) * 0.7);
+            const _storedDockHeight = (() => {
+                try { return parseInt(localStorage.getItem('videoDockHeight'), 10); } catch (e) { return NaN; }
+            })();
+            const videoDockHeight = ref(Number.isFinite(_storedDockHeight) && _storedDockHeight >= VIDEO_DOCK_MIN_H ? _storedDockHeight : 260);
+            // Drag the dock's content-facing edge to resize. Direction depends
+            // on which tile it's in: a bottom dock grows when its top edge is
+            // dragged up; a top dock grows when its bottom edge is dragged down.
+            const startVideoDockResize = (event) => {
+                event.preventDefault();
+                const startY = event.clientY;
+                const startH = videoDockHeight.value;
+                const isBottom = videoDockPosition.value.endsWith('bottom');
+                const maxH = _videoDockMaxH();
+                document.body.style.userSelect = 'none';
+                document.body.style.cursor = 'ns-resize';
+                const onMove = (e) => {
+                    const dy = e.clientY - startY;
+                    let h = startH + (isBottom ? -dy : dy);
+                    h = Math.max(VIDEO_DOCK_MIN_H, Math.min(maxH, h));
+                    videoDockHeight.value = h;
+                };
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.body.style.userSelect = '';
+                    document.body.style.cursor = '';
+                    try { localStorage.setItem('videoDockHeight', String(videoDockHeight.value)); } catch (e) { /* ignore */ }
+                };
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            };
             const videoFullscreen = ref(false);
             const fullscreenControlsVisible = ref(true);
             const fullscreenControlsTimer = ref(null);
@@ -1619,6 +1654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
                 videoDockEnabled, isVideoRecording, toggleVideoDock,
                 videoDockPosition, cycleVideoDockColumn, cycleVideoDockVertical,
+                videoDockHeight, startVideoDockResize,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,
