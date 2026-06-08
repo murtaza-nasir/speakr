@@ -106,7 +106,7 @@
                             class="w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--bg-tertiary)] transition-colors"
                             :class="!selectedRecording.folder_id ? 'text-[var(--text-accent)] font-medium' : ''">
                         <i class="fas fa-ban w-4 text-center text-[var(--text-muted)]"></i>
-                        <span class="flex-1 truncate">${ t('folders.noFolder') }</span>
+                        <span class="flex-1 truncate">${ t('folderManagement.noFolder') }</span>
                         <i v-if="!selectedRecording.folder_id" class="fas fa-check text-xs text-[var(--text-accent)]"></i>
                     </button>
                     <button v-for="folder in availableFolders" :key="folder.id"
