@@ -277,27 +277,4 @@
             </div>
         </div>
     </div>
-
-    <!-- Docked video panel (desktop). Shows the video feed in a strip
-         across the bottom of the transcript column when the user enables
-         it from the player bar. The single <video> element is teleported
-         in here (#videoDockSlot) from the bottom player so playback is
-         continuous; going fullscreen teleports the same element to the
-         fullscreen overlay instead. As a flex-shrink-0 child after the
-         flex-1 transcript scroller it pushes the transcript up rather
-         than overlaying it. -->
-    <div v-show="isVideoRecording && videoDockEnabled && !videoFullscreen" class="video-dock">
-        <div class="video-dock__bar">
-            <i class="fas fa-video text-[var(--text-muted)]" style="font-size: 11px;"></i>
-            <span class="video-dock__title" v-text="t('tooltips.video')"></span>
-            <div class="flex-1"></div>
-            <button @click="enterVideoFullscreen" class="btn btn--icon btn--sm" :title="t('tooltips.enterFullscreen')">
-                <i class="fas fa-expand" style="font-size: 11px;"></i>
-            </button>
-            <button @click="toggleVideoDock" class="btn btn--icon btn--sm" :title="t('tooltips.hideVideo')">
-                <i class="fas fa-times text-xs"></i>
-            </button>
-        </div>
-        <div id="videoDockSlot" class="video-dock__slot"></div>
-    </div>
 </div>

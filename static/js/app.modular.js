@@ -1128,19 +1128,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const showModalVolumeSlider = ref(false);
             const showDuplicatesModal = ref(false);
             const videoCollapsed = ref(false);
-            // Desktop docked-video panel (strip across the bottom of the
-            // transcript column). Off by default; an in-memory ref so it
-            // stays on as the user moves between video recordings during
-            // the session but resets to off on a fresh page load, per the
-            // chosen behaviour. Audio recordings simply never show it
-            // (isVideoRecording gates visibility).
-            const videoDockEnabled = ref(false);
-            const isVideoRecording = computed(() =>
-                !!(selectedRecording.value
-                   && selectedRecording.value.mime_type
-                   && selectedRecording.value.mime_type.startsWith('video/'))
-            );
-            const toggleVideoDock = () => { videoDockEnabled.value = !videoDockEnabled.value; };
             const videoFullscreen = ref(false);
             const fullscreenControlsVisible = ref(true);
             const fullscreenControlsTimer = ref(null);
@@ -1595,7 +1582,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 modalAudioCurrentTime, modalAudioDuration, modalAudioIsPlaying, modalPlaybackRate,
                 playbackRate, showSpeedMenu, playbackSpeeds, speedMenuPosition, showVolumeSlider, showModalVolumeSlider,
                 videoFullscreen, fullscreenControlsVisible, fullscreenControlsTimer, videoCollapsed,
-                videoDockEnabled, isVideoRecording, toggleVideoDock,
 
                 // Column Resizing
                 leftColumnWidth, rightColumnWidth, isResizing,
