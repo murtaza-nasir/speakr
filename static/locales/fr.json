@@ -310,6 +310,7 @@
     "addSegment": "Ajouter un Segment",
     "addSpeaker": "Ajouter un orateur",
     "cancel": "Annuler",
+    "startRecording": "Démarrer l'enregistrement",
     "clearAllFilters": "Effacer tous les filtres",
     "clearCompleted": "Effacer les téléchargements terminés",
     "clearSearchText": "Effacer le texte de recherche",
