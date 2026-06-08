@@ -470,7 +470,7 @@
                                  visible recording is in it and the pill would be
                                  redundant. Hidden for incognito recordings (no
                                  folder association). -->
-                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || getRecordingTags(recording).length > 0 || recording.duplicate_info"
+                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || getRecordingTags(recording).length > 0 || recording.duplicate_info || (recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito)"
                                  class="flex flex-wrap items-center gap-1 mt-1">
                                 <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito"
                                         @click.stop="filterFolder = recording.folder_id"
@@ -499,6 +499,14 @@
                                         :title="recording.duplicate_info.total_copies + ' ' + (t('upload.copies') || 'copies')">
                                     <i class="fas fa-copy text-xs"></i>
                                 </button>
+                                <!-- Subtle video marker: only for recordings
+                                     that are videos AND still have their media
+                                     retained (not archived, not incognito). -->
+                                <span v-if="recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito"
+                                      class="inline-flex items-center text-[var(--text-muted)]"
+                                      :title="t('tooltips.video')">
+                                    <i class="fas fa-video text-[10px]"></i>
+                                </span>
                             </div>
                         </div>
                     </div>
