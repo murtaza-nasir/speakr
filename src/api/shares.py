@@ -12,6 +12,7 @@ import re
 import json
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, send_file, current_app
 from flask_login import login_required, current_user
+from werkzeug.exceptions import HTTPException
 
 from src.database import db
 from src.models import Recording, Share, InternalShare, SharedRecordingState, User, TranscriptChunk, ShareAuditLog
@@ -160,6 +161,10 @@ def get_shared_audio(public_id):
             current_app.logger.error(f"Audio file missing from server: {recording.audio_path}")
             return jsonify({'error': 'Audio file missing from server'}), 404
         return send_file(recording.audio_path, conditional=True)
+    except HTTPException:
+        # Let first_or_404() (and any other HTTP error) keep its real status —
+        # an unknown public_id must stay a 404, not be masked as a 500.
+        raise
     except Exception as e:
         current_app.logger.error(f"Error serving shared audio for public_id {public_id}: {e}", exc_info=True)
         return jsonify({'error': 'An unexpected error occurred.'}), 500

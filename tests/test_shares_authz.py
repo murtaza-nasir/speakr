@@ -233,18 +233,16 @@ def test_public_view_revoked_public_id_returns_404():
 # Public shared-audio endpoint
 # =============================================================================
 
-def test_shared_audio_nonexistent_public_id_returns_500():
-    """REAL BEHAVIOUR (and a minor bug): an unknown public_id on the audio
-    endpoint returns 500, not 404.
+def test_shared_audio_nonexistent_public_id_returns_404():
+    """An unknown public_id on the audio endpoint must be a 404, not a 500.
 
-    get_shared_audio() wraps first_or_404() in a broad ``except Exception`` that
-    catches the werkzeug NotFound (404) it raises and re-reports it as a generic
-    500. No data leaks (still no audio served), but the status is wrong. This
-    test pins the current behaviour; if the route is fixed to let the 404
-    propagate, update this to expect 404.
+    get_shared_audio() now re-raises HTTPException so first_or_404()'s 404
+    propagates instead of being masked as a generic 500 by the broad
+    ``except Exception``. No audio is served either way; this asserts the
+    correct status (matches the sibling HTML view /share/<public_id>).
     """
     resp = _anon_client().get("/share/audio/nope-not-a-real-id")
-    assert resp.status_code == 500
+    assert resp.status_code == 404
 
 
 def test_shared_audio_valid_share_missing_file_returns_404():
