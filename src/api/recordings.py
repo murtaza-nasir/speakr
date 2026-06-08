@@ -73,6 +73,7 @@ def _resolve_transcription_model(value):
     return default or None
 from src.tasks.processing import format_transcription_for_llm
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
+from src.utils.titles import resolve_upload_title
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
 from src.services.speaker_embedding_matcher import update_speaker_embedding
 from src.services.speaker_snippets import create_speaker_snippets
@@ -2131,8 +2132,12 @@ def share_target():
     # Build the recording row. Tags and folder cannot be inferred from a
     # share sheet, so we leave them empty; the user can adjust from the
     # recording detail view. Title comes from the share sheet's title field
-    # if present, else from the filename stem.
-    share_title = (request.form.get('title') or os.path.splitext(safe_filename)[0]).strip() or 'Shared recording'
+    # if present; otherwise we use the SAME placeholder a normal upload gets
+    # (resolve_upload_title) so the AI title task recognises it and generates
+    # a title — previously the filename stem was used, which the title task
+    # treated as a user-chosen title and skipped, leaving shared files untitled.
+    from src.utils.titles import resolve_upload_title
+    share_title = resolve_upload_title(request.form.get('title'), original_filename)
 
     notes_parts = []
     for key in ('title', 'text', 'url'):
@@ -2613,7 +2618,7 @@ def upload_file():
         recording = Recording(
             audio_path=filepath,
             original_filename=original_filename,
-            title=user_title.strip() if user_title and user_title.strip() else f"Recording - {original_filename}",
+            title=resolve_upload_title(user_title, original_filename),
             file_size=final_file_size,
             status='PENDING',
             meeting_date=meeting_date,

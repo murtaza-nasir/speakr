@@ -244,12 +244,12 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             current_app.logger.error(f"Error: Recording {recording_id} not found for title generation.")
             return
 
-        # Skip title generation if user provided a non-placeholder title
-        placeholder_patterns = [
-            f"Recording - {recording.original_filename}",
-            f"Auto-processed - {recording.original_filename}",
-        ]
-        if recording.title and recording.title not in placeholder_patterns:
+        # Skip title generation if the user provided a non-placeholder title.
+        # is_placeholder_title is the shared source of truth (also used by the
+        # upload + share-target routes) so every entry point's title is
+        # recognised here and gets an AI title unless the user chose one.
+        from src.utils.titles import is_placeholder_title
+        if not is_placeholder_title(recording.title, recording.original_filename):
             current_app.logger.info(f"Recording {recording_id} has user-provided title '{recording.title}', skipping AI title generation")
             if not will_auto_summarize:
                 recording.status = 'COMPLETED'

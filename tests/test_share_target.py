@@ -118,6 +118,47 @@ def test_share_target_creates_recording_and_enqueues_job():
         db.session.commit()
 
 
+def test_share_target_without_title_gets_ai_titleable_placeholder():
+    """Regression: a file shared WITHOUT an explicit title must get the same
+    placeholder ('Recording - <filename>') a normal upload gets, so the AI
+    title task recognises it and generates a title. Previously the share
+    target used the filename STEM, which the title task treated as a
+    user-chosen title and skipped, leaving shared files untitled."""
+    from src.utils.titles import is_placeholder_title
+
+    with app.app_context():
+        user = _setup_user("share_notitle")
+        client = app.test_client()
+        _login(client, user)
+
+        with patch("src.services.job_queue.job_queue.enqueue", return_value=1), \
+             patch("src.api.recordings.os.path.getsize", return_value=12345):
+            resp = client.post(
+                "/share-target",
+                data={
+                    # No "title" field — the common case from a share sheet.
+                    "shared_audio": (io.BytesIO(b"fake-audio-bytes"), "voice_memo_001.webm"),
+                },
+                content_type="multipart/form-data",
+                follow_redirects=False,
+            )
+        assert resp.status_code == 302, resp.data
+
+        rec = Recording.query.filter_by(user_id=user.id).one()
+        # The title must be the recognised placeholder, NOT the filename stem.
+        assert rec.title == "Recording - voice_memo_001.webm", rec.title
+        assert is_placeholder_title(rec.title, rec.original_filename) is True
+
+        if rec.audio_path and os.path.exists(rec.audio_path):
+            try:
+                os.remove(rec.audio_path)
+            except OSError:
+                pass
+        db.session.delete(rec)
+        db.session.delete(user)
+        db.session.commit()
+
+
 def test_share_target_requires_login():
     """Unauthenticated POSTs hit @login_required and redirect to /login."""
     with app.app_context():

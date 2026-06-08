@@ -11,25 +11,26 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Real source helpers (single source of truth for upload/share-target/title-task).
+from src.utils.titles import resolve_upload_title, is_placeholder_title
+
 
 def test_placeholder_pattern_detection():
-    """Placeholder titles should be detected, user titles should not."""
-    original_filename = "interview.mp3"
-    placeholder_patterns = [
-        f"Recording - {original_filename}",
-        f"Auto-processed - {original_filename}",
-    ]
+    """is_placeholder_title (the real helper the title task uses) detects
+    placeholders and empties, and treats user titles as non-placeholders."""
+    fn = "interview.mp3"
 
-    # Placeholders match
-    assert "Recording - interview.mp3" in placeholder_patterns
-    assert "Auto-processed - interview.mp3" in placeholder_patterns
+    # Placeholders + empty/None are overwritable by the AI title generator
+    assert is_placeholder_title(f"Recording - {fn}", fn) is True
+    assert is_placeholder_title(f"Auto-processed - {fn}", fn) is True
+    assert is_placeholder_title("", fn) is True
+    assert is_placeholder_title(None, fn) is True
 
-    # User titles don't match
-    assert "My Custom Title" not in placeholder_patterns
-    assert "Interview with John" not in placeholder_patterns
-    assert "" not in placeholder_patterns
-
-    print("  PASS: placeholder pattern detection")
+    # User titles are NOT placeholders -> AI title generation is skipped
+    assert is_placeholder_title("My Custom Title", fn) is False
+    assert is_placeholder_title("Interview with John", fn) is False
+    # A placeholder for a DIFFERENT filename must not match
+    assert is_placeholder_title("Recording - other.mp3", fn) is False
 
 
 def test_meeting_date_iso_parsing():
@@ -63,25 +64,29 @@ def test_meeting_date_iso_parsing():
 
 
 def test_user_title_applied():
-    """User-provided title should be used instead of placeholder."""
-    original_filename = "test.mp3"
+    """resolve_upload_title: a user title is used (trimmed); blank/None falls
+    back to the placeholder."""
+    fn = "test.mp3"
+    assert resolve_upload_title("  My Custom Title  ", fn) == "My Custom Title"
+    assert resolve_upload_title("   ", fn) == f"Recording - {fn}"
+    assert resolve_upload_title(None, fn) == f"Recording - {fn}"
 
-    # With user title
-    user_title = "  My Custom Title  "
-    result = user_title.strip() if user_title and user_title.strip() else f"Recording - {original_filename}"
-    assert result == "My Custom Title"
 
-    # Empty string falls back to placeholder
-    user_title = "   "
-    result = user_title.strip() if user_title and user_title.strip() else f"Recording - {original_filename}"
-    assert result == f"Recording - {original_filename}"
-
-    # None falls back to placeholder
-    user_title = None
-    result = user_title.strip() if user_title and user_title.strip() else f"Recording - {original_filename}"
-    assert result == f"Recording - {original_filename}"
-
-    print("  PASS: user title application logic")
+def test_resolve_upload_title_produces_recognized_placeholder():
+    """THE invariant the share-target bug violated: when no user title is
+    given, resolve_upload_title must produce a title that is_placeholder_title
+    recognises — otherwise the AI title task skips generation and the
+    recording is left with a non-AI title (e.g. the filename stem). Every
+    entry point (upload, share-target) must satisfy this."""
+    for fn in ("interview.mp3", "voice memo 001.m4a", "clip.webm"):
+        # No user-supplied title -> placeholder -> AI generation runs
+        title = resolve_upload_title(None, fn)
+        assert is_placeholder_title(title, fn) is True, (
+            f"resolve_upload_title({fn!r}) returned {title!r}, which the title "
+            f"task would NOT treat as a placeholder -> no AI title (the share bug)"
+        )
+        # A real user title -> NOT a placeholder -> AI generation skipped
+        assert is_placeholder_title(resolve_upload_title("Chosen", fn), fn) is False
 
 
 def test_meeting_date_priority():
@@ -149,7 +154,7 @@ def test_neither_title_nor_date():
     user_meeting_date = None
 
     # Title falls back to placeholder
-    title = user_title.strip() if user_title and user_title.strip() else f"Recording - {original_filename}"
+    title = resolve_upload_title(user_title, original_filename)
     assert title == "Recording - audio.mp3"
 
     # meeting_date falls through to next priority
@@ -173,6 +178,7 @@ def main():
         test_placeholder_pattern_detection,
         test_meeting_date_iso_parsing,
         test_user_title_applied,
+        test_resolve_upload_title_produces_recognized_placeholder,
         test_meeting_date_priority,
         test_summary_context_includes_metadata,
         test_neither_title_nor_date,
