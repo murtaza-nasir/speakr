@@ -1,10 +1,10 @@
-name: Docker Build and Publish
+name: Publish to Docker Hub
 
-# MANUAL-ONLY. This workflow is never triggered by a push, tag, or merge.
-# Images are built and/or pushed ONLY when you start it yourself from the
-# Actions tab ("Run workflow") or via the API, choosing the tag and whether to
-# actually push. Default is a build-only dry run (push: false) so nothing is
-# published unless you explicitly opt in.
+# MANUAL-ONLY publish action, kept separate from CI. The "Tests" workflow runs
+# automatically on every push/PR; this one does NOT. This is the deliberate
+# "release the images" step: when you run it, it builds the multi-arch images
+# and pushes them to Docker Hub. Start it from the Actions tab (or via the API),
+# choosing the tag to publish. It never runs on a push, tag, or merge.
 
 on:
   workflow_dispatch:
@@ -13,16 +13,14 @@ on:
         description: "Image tag to publish (e.g. v0.6.0 or latest)"
         required: true
         default: latest
-      push:
-        description: "Push to Docker Hub? Leave off for a build-only dry run."
-        type: boolean
-        default: false
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: learnedmachine/speakr
 
 jobs:
+  # Quick gate so a broken migration never gets published, even if someone runs
+  # this against an untested commit. The full suite lives in the Tests workflow.
   test:
     runs-on: ubuntu-latest
 
@@ -77,19 +75,18 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log into Docker Hub
-        if: ${{ inputs.push }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build (and optionally push) image
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ inputs.push }}
+          push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}
           build-args: |
             PRODUCTION=1
@@ -109,19 +106,18 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log into Docker Hub
-        if: ${{ inputs.push }}
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build (and optionally push) lite image
+      - name: Build and push lite image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: ${{ inputs.push }}
+          push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}-lite
           build-args: |
             PRODUCTION=1

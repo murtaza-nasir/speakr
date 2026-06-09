@@ -33,6 +33,13 @@ os.environ["UPLOAD_FOLDER"] = os.path.join(_TEST_DIR, "uploads")
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key")
 os.environ.setdefault("ENABLE_AUTO_PROCESSING", "false")   # no black-hole file monitor
 os.environ.setdefault("TEXT_MODEL_API_KEY", "test-key")    # avoid config hard-fails
+# initialize_config() hard-exits at import if no transcription service is set.
+# The app loads .env via load_dotenv(), so a developer with a populated .env
+# passes, but a clean checkout / CI has none. Supply harmless defaults so the
+# suite is self-contained (mirrors TEXT_MODEL_API_KEY above); tests exercising
+# real transcription behaviour override these.
+os.environ.setdefault("TRANSCRIPTION_API_KEY", "test-key")
+os.environ.setdefault("TRANSCRIPTION_BASE_URL", "https://api.openai.com/v1")
 
 # Run ZERO background job-queue workers during tests. These counts are read at
 # job_queue import time, so they must be set before src.app is imported. With
