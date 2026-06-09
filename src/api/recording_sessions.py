@@ -32,7 +32,10 @@ Per-user storage of in-progress sessions is bounded by
 ``RECORDING_SESSION_MAX_BYTES_PER_USER`` (default 5 GB). Sessions whose
 ``last_seen_at`` is older than ``RECORDING_SESSION_TTL_HOURS`` (default
 24) are reaped by :func:`cleanup_expired_sessions` from an APScheduler
-job; cleanup flips status to ``expired`` before removing the directory.
+job. To avoid losing audio from users who disappear mid-recording,
+cleanup AUTO-FINALIZES abandoned sessions that have chunks (assembling
+what was uploaded into the user's library) and only deletes sessions that
+have nothing to recover. See that function for the full policy.
 """
 
 import json
@@ -133,6 +136,65 @@ def _write_session_manifest(session):
             json.dump(session.to_dict(), f, indent=2)
     except Exception as e:
         current_app.logger.warning(f"Could not write session manifest for {session.id}: {e}")
+
+
+def _remove_session_dir(session_id, app=None):
+    """Best-effort removal of a session's on-disk chunk directory."""
+    logger = (app.logger if app is not None else current_app.logger)
+    try:
+        dir_path = _session_dir(session_id)
+        if os.path.isdir(dir_path):
+            shutil.rmtree(dir_path, ignore_errors=True)
+    except Exception as e:
+        logger.warning(f"Could not remove session dir {session_id}: {e}")
+
+
+def _finalize_session_into_stitch(session, *, user_id, title, notes=None,
+                                  resolved_folder_id=None, metadata=None):
+    """Create the placeholder Recording, flip the session to ``finalizing``,
+    and enqueue the stitch job.
+
+    This is the single code path used by BOTH the user-initiated finalize
+    endpoint and the abandoned-session auto-finalize in cleanup, so the two
+    behave identically (same Recording shape, same job, same downstream
+    transcription kickoff). Returns ``(recording, enqueue_error)`` where
+    ``enqueue_error`` is ``None`` on success.
+    """
+    recording = Recording(
+        user_id=user_id,
+        title=(title or 'Recording')[:200],
+        status='STITCHING',
+        notes=notes,
+        folder_id=resolved_folder_id,
+        processing_source='recording_session',
+        mime_type=session.mime_type,
+        # Set meeting_date up front (= when recording started) so the
+        # sidebar sorts it into the right position the instant it appears,
+        # instead of sorting as null until the stitch worker fills it in
+        # (which left newly-finalized recordings at the bottom of "Today").
+        meeting_date=session.created_at,
+    )
+    db.session.add(recording)
+    db.session.flush()
+
+    session.status = 'finalizing'
+    session.finalize_metadata = json.dumps(metadata or {})
+    session.finalized_recording_id = recording.id
+    session.last_seen_at = datetime.utcnow()
+    db.session.commit()
+
+    try:
+        job_queue.enqueue(
+            user_id=user_id,
+            recording_id=recording.id,
+            job_type='stitch',
+            params={'session_id': session.id},
+            is_new_upload=True,
+        )
+        return recording, None
+    except Exception as e:
+        current_app.logger.error(f"Could not enqueue stitch job for session {session.id}: {e}")
+        return recording, e
 
 
 # --- Endpoints --------------------------------------------------------------
@@ -359,43 +421,26 @@ def finalize_session(session_id):
                 return jsonify({'error': 'No access to target folder'}), 403
         resolved_folder_id = target.id
 
-    recording = Recording(
+    # Create the placeholder Recording, flip the session to finalizing, and
+    # enqueue the async stitch job — shared with the cleanup auto-finalize
+    # path so both behave identically. The worker dispatches to _run_stitch
+    # which assembles the audio, writes it into UPLOAD_FOLDER, and enqueues a
+    # downstream 'transcribe' job.
+    recording, enqueue_error = _finalize_session_into_stitch(
+        session,
         user_id=current_user.id,
-        title=title[:200],
-        status='STITCHING',
+        title=title,
         notes=notes,
-        folder_id=resolved_folder_id,
-        processing_source='recording_session',
-        mime_type=session.mime_type,
+        resolved_folder_id=resolved_folder_id,
+        metadata=metadata,
     )
-    db.session.add(recording)
-    db.session.flush()
-
-    session.status = 'finalizing'
-    session.finalize_metadata = json.dumps(metadata)
-    session.finalized_recording_id = recording.id
-    session.last_seen_at = datetime.utcnow()
-    db.session.commit()
-
-    # Enqueue the async stitch job. The job-queue worker dispatches to
-    # _run_stitch which performs the ffmpeg concat, writes the final file
-    # into UPLOAD_FOLDER, and then enqueues a downstream 'transcribe' job.
-    try:
-        job_queue.enqueue(
-            user_id=current_user.id,
-            recording_id=recording.id,
-            job_type='stitch',
-            params={'session_id': session.id},
-            is_new_upload=True,
-        )
-    except Exception as e:
-        current_app.logger.error(f"Could not enqueue stitch job for session {session_id}: {e}")
+    if enqueue_error is not None:
         # Leave the session in `finalizing` so the client can retry; the
         # placeholder recording stays in STITCHING so the user can see it.
         return jsonify({
             'recording_id': recording.id,
             'status': session.status,
-            'queue_error': str(e),
+            'queue_error': str(enqueue_error),
         }), 500
 
     return jsonify({
@@ -426,12 +471,7 @@ def abort_session(session_id):
 
     # Best-effort directory cleanup; if the dir is already gone or the FS
     # complains, the periodic cleanup job will catch it.
-    try:
-        dir_path = _session_dir(session_id)
-        if os.path.isdir(dir_path):
-            shutil.rmtree(dir_path, ignore_errors=True)
-    except Exception as e:
-        current_app.logger.warning(f"Could not remove session dir for {session_id}: {e}")
+    _remove_session_dir(session_id)
 
     return ('', 204)
 
@@ -441,9 +481,20 @@ def abort_session(session_id):
 def cleanup_expired_sessions(app=None):
     """Reap sessions whose ``last_seen_at`` is older than the TTL.
 
-    Called from APScheduler. Flips status to ``expired`` (so the client
-    can detect that a resume-on-reload attempt missed the window) before
-    removing the directory.
+    Called from APScheduler. The policy prioritises NOT losing a user's
+    audio when they disappear mid-recording (crash, closed laptop, dropped
+    connection):
+
+    - ``recording`` with chunks on the books → **auto-finalize**: assemble
+      what was uploaded and land it in the user's library (same path as a
+      manual finalize), rather than discarding it.
+    - ``recording`` with no chunks → expire and delete the empty directory.
+    - ``finalizing`` (already has a placeholder recording) but never reached
+      a terminal stitch state → **re-enqueue** the stitch to unstick it
+      (enqueue dedupes an already-active job). Bumping ``last_seen_at`` here
+      naturally rate-limits this to once per TTL window.
+
+    Returns the number of sessions acted on.
     """
     if app is None:
         from flask import current_app as _ca
@@ -455,15 +506,52 @@ def cleanup_expired_sessions(app=None):
             RecordingSession.last_seen_at < cutoff,
             RecordingSession.status.in_(('recording', 'finalizing')),
         ).all()
+
+        finalized = rekicked = expired = 0
         for s in candidates:
-            s.status = 'expired'
             try:
-                dir_path = _session_dir(s.id)
-                if os.path.isdir(dir_path):
-                    shutil.rmtree(dir_path, ignore_errors=True)
+                if s.status == 'recording' and (s.chunk_count or 0) > 0:
+                    when = s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else ''
+                    title = f"Recovered recording {when}".strip()
+                    _finalize_session_into_stitch(
+                        s, user_id=s.user_id, title=title,
+                        metadata={'recovered': True},
+                    )
+                    finalized += 1
+                    app.logger.info(
+                        f"Auto-finalized abandoned recording session {s.id} "
+                        f"({s.chunk_count} chunks) for user {s.user_id}"
+                    )
+                elif s.status == 'finalizing' and s.finalized_recording_id:
+                    s.last_seen_at = datetime.utcnow()
+                    db.session.commit()
+                    try:
+                        job_queue.enqueue(
+                            user_id=s.user_id,
+                            recording_id=s.finalized_recording_id,
+                            job_type='stitch',
+                            params={'session_id': s.id},
+                            is_new_upload=True,
+                        )
+                        rekicked += 1
+                        app.logger.info(f"Re-enqueued stitch for stalled session {s.id}")
+                    except Exception as e:
+                        app.logger.warning(f"Could not re-enqueue stitch for {s.id}: {e}")
+                else:
+                    # No chunks to save (or finalizing without a recording):
+                    # nothing recoverable — expire and remove the directory.
+                    s.status = 'expired'
+                    db.session.commit()
+                    _remove_session_dir(s.id, app)
+                    expired += 1
             except Exception as e:
-                app.logger.warning(f"Cleanup could not remove session dir {s.id}: {e}")
-        if candidates:
-            db.session.commit()
-            app.logger.info(f"Reaped {len(candidates)} expired recording session(s)")
-        return len(candidates)
+                app.logger.error(f"Cleanup failed for session {s.id}: {e}", exc_info=True)
+                db.session.rollback()
+
+        total = finalized + rekicked + expired
+        if total:
+            app.logger.info(
+                f"Recording-session cleanup: {finalized} auto-finalized, "
+                f"{rekicked} re-enqueued, {expired} expired"
+            )
+        return total

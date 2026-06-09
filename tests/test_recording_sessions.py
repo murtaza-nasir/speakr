@@ -390,50 +390,106 @@ def test_ownership_enforced_other_user_gets_404():
     shutil.rmtree(upload_folder, ignore_errors=True)
 
 
-def test_cleanup_reaps_expired_sessions():
+def test_cleanup_auto_finalizes_with_chunks_expires_empty_and_rekicks_stalled():
+    """Cleanup policy (#287 unification):
+      - stale 'recording' WITH chunks  → auto-finalize (don't lose audio)
+      - stale 'recording' WITHOUT chunks → expire + delete dir
+      - stale 'finalizing' (has a recording) → re-enqueue stitch to unstick
+      - fresh session → untouched
+
+    job_queue.enqueue is patched so the async stitch worker never starts;
+    we assert on the synchronous decisions cleanup makes.
+    """
     upload_folder = _make_tmp_upload_folder()
     from src.api.recording_sessions import cleanup_expired_sessions
+    from src.services.job_queue import job_queue
+    old = datetime.utcnow() - timedelta(hours=48)
+
+    enqueued = []
+
+    def _fake_enqueue(**kw):
+        enqueued.append(kw)
+        return 999
+
     with app.app_context():
         app.config["UPLOAD_FOLDER"] = upload_folder
         user = _setup_user("sess_expire")
-        # Plant a stale session (last_seen_at well in the past)
-        stale = RecordingSession(
-            user_id=user.id,
-            mime_type="audio/webm",
-            status="recording",
-            chunk_count=1,
-            bytes_received=128,
-        )
-        db.session.add(stale)
+
+        # stale recording WITH chunks → auto-finalize
+        with_chunks = RecordingSession(user_id=user.id, mime_type="audio/webm",
+                                       status="recording", chunk_count=3, bytes_received=512)
+        db.session.add(with_chunks)
         db.session.flush()
-        stale.last_seen_at = datetime.utcnow() - timedelta(hours=48)
-        # Plant a fresh session
-        fresh = RecordingSession(
-            user_id=user.id,
-            mime_type="audio/webm",
-            status="recording",
-            chunk_count=1,
-            bytes_received=128,
-        )
+        with_chunks.last_seen_at = old
+
+        # stale recording WITHOUT chunks → expire
+        empty = RecordingSession(user_id=user.id, mime_type="audio/webm",
+                                 status="recording", chunk_count=0, bytes_received=0)
+        db.session.add(empty)
+        db.session.flush()
+        empty.last_seen_at = old
+
+        # stale finalizing (already has a placeholder recording) → re-enqueue
+        stalled_rec = Recording(user_id=user.id, title="stalled", status="STITCHING",
+                                processing_source="recording_session", mime_type="audio/webm")
+        db.session.add(stalled_rec)
+        db.session.flush()
+        stalled = RecordingSession(user_id=user.id, mime_type="audio/webm",
+                                   status="finalizing", chunk_count=2, bytes_received=256,
+                                   finalized_recording_id=stalled_rec.id)
+        db.session.add(stalled)
+        db.session.flush()
+        stalled.last_seen_at = old
+
+        # fresh recording → untouched
+        fresh = RecordingSession(user_id=user.id, mime_type="audio/webm",
+                                 status="recording", chunk_count=1, bytes_received=128)
         db.session.add(fresh)
         db.session.flush()
-        # Plant their dirs so cleanup can remove them
-        stale_dir = os.path.join(upload_folder, "_sessions", stale.id)
-        fresh_dir = os.path.join(upload_folder, "_sessions", fresh.id)
-        os.makedirs(stale_dir, exist_ok=True)
-        os.makedirs(fresh_dir, exist_ok=True)
+
+        for s in (with_chunks, empty, stalled, fresh):
+            os.makedirs(os.path.join(upload_folder, "_sessions", s.id), exist_ok=True)
         db.session.commit()
+        with_chunks_dir = os.path.join(upload_folder, "_sessions", with_chunks.id)
+        empty_dir = os.path.join(upload_folder, "_sessions", empty.id)
 
-        reaped = cleanup_expired_sessions(app=app)
-        assert reaped == 1
-        assert db.session.get(RecordingSession, stale.id).status == "expired"
+        with patch.object(job_queue, "enqueue", _fake_enqueue):
+            reaped = cleanup_expired_sessions(app=app)
+
+        # cleanup committed on its own nested-app-context session; drop the
+        # outer session's identity-map cache so our reads hit the DB.
+        db.session.expire_all()
+
+        assert reaped == 3  # auto-finalize + expire + re-enqueue (fresh untouched)
+
+        # WITH chunks → finalizing, recording created, dir kept (stitch owns it)
+        wc = db.session.get(RecordingSession, with_chunks.id)
+        assert wc.status == "finalizing"
+        assert wc.finalized_recording_id is not None
+        assert os.path.isdir(with_chunks_dir)
+        assert any(c.get("job_type") == "stitch" and c.get("recording_id") == wc.finalized_recording_id
+                   for c in enqueued)
+
+        # EMPTY → expired, dir removed
+        em = db.session.get(RecordingSession, empty.id)
+        assert em.status == "expired"
+        assert not os.path.isdir(empty_dir)
+
+        # STALLED finalizing → stitch re-enqueued for its recording, last_seen bumped
+        st = db.session.get(RecordingSession, stalled.id)
+        assert st.status == "finalizing"
+        assert st.last_seen_at > old
+        assert any(c.get("job_type") == "stitch" and c.get("recording_id") == stalled_rec.id
+                   for c in enqueued)
+
+        # FRESH → untouched
         assert db.session.get(RecordingSession, fresh.id).status == "recording"
-        assert not os.path.isdir(stale_dir)
-        assert os.path.isdir(fresh_dir)
 
-        # Cleanup
-        db.session.delete(db.session.get(RecordingSession, stale.id))
-        db.session.delete(db.session.get(RecordingSession, fresh.id))
+        # Cleanup (including the placeholder Recording auto-finalize created)
+        for s in RecordingSession.query.filter_by(user_id=user.id).all():
+            db.session.delete(s)
+        for r in Recording.query.filter_by(user_id=user.id).all():
+            db.session.delete(r)
         db.session.delete(user)
         db.session.commit()
     shutil.rmtree(upload_folder, ignore_errors=True)
@@ -474,5 +530,5 @@ if __name__ == "__main__":
     test_finalize_rejects_when_no_chunks()
     test_abort_removes_session_dir()
     test_ownership_enforced_other_user_gets_404()
-    test_cleanup_reaps_expired_sessions()
+    test_cleanup_auto_finalizes_with_chunks_expires_empty_and_rekicks_stalled()
     print("All recording-session tests passed.")

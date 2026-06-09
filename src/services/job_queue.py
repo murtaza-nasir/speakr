@@ -26,8 +26,16 @@ SUMMARY_WORKERS = int(os.environ.get('SUMMARY_QUEUE_WORKERS', '2'))
 MAX_RETRIES = int(os.environ.get('JOB_MAX_RETRIES', '3'))
 POLL_INTERVAL = 1.0  # seconds between checking for new jobs
 
-# Job type categories
-TRANSCRIPTION_JOBS = ['transcribe', 'reprocess_transcription']
+# Job type categories.
+#
+# 'stitch' (server-side recording-session assembly, #287 c/d) lives in the
+# transcription category on purpose: it is the local ffmpeg concat step that
+# gates the recording's transcription, and putting it here means the existing
+# transcription workers claim it, get_queue_status counts it, and
+# get_position_in_queue places it — no separate worker pool or queue needed.
+# Every consumer routes via "SUMMARY_JOBS if ... else TRANSCRIPTION_JOBS", so
+# membership in this list is the single source of truth for the whole pipeline.
+TRANSCRIPTION_JOBS = ['transcribe', 'reprocess_transcription', 'stitch']
 SUMMARY_JOBS = ['summarize', 'reprocess_summary']
 
 
@@ -731,6 +739,14 @@ class FairJobQueue:
         'summarize': 'recording.summary.failed',
         'reprocess_transcription': 'recording.transcription.failed',
         'reprocess_summary': 'recording.summary.failed',
+        # A permanent stitch failure means the recording will never reach
+        # transcription, so subscribers should hear about it under the
+        # transcription.failed event (the follow-up transcribe job that would
+        # normally emit this is never enqueued on a stitch failure, so there
+        # is no double-emit). Stitch deliberately has NO started/completed
+        # mapping: those fire from the real transcribe job after a successful
+        # stitch.
+        'stitch': 'recording.transcription.failed',
     }
 
     # No `summary.started` in the vocabulary today; if one is added later,
