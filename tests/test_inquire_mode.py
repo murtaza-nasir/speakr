@@ -150,6 +150,36 @@ def test_api_imports():
         assert callable(fn), f"{getattr(fn, '__name__', fn)} is not callable"
 
 
+def test_speaker_and_transcript_edits_reindex_inquire_chunks():
+    """Editing a transcript or applying speaker names must rebuild the Inquire
+    chunks; otherwise semantic search keeps answering from the stale pre-edit
+    text (e.g. 'SPEAKER_00' instead of the applied name)."""
+    import inspect as _inspect
+    from src.api import recordings as rec
+
+    assert hasattr(rec, 'reindex_recording_chunks_async'), "reindex helper missing"
+    us = _inspect.getsource(rec.update_speakers)
+    ut = _inspect.getsource(rec.update_transcript)
+    assert 'reindex_recording_chunks_async(recording_id)' in us, \
+        "update_speakers must reindex Inquire chunks after a speaker rename"
+    assert 'reindex_recording_chunks_async(recording_id)' in ut, \
+        "update_transcript must reindex Inquire chunks after a transcript edit"
+
+
+def test_reindex_is_noop_when_inquire_disabled():
+    """The reindex helper is a guarded no-op when Inquire mode is off, so it
+    never spawns work or errors on installs without an embedding backend."""
+    from unittest.mock import patch
+    from src.api import recordings as rec
+
+    with patch.object(rec, 'ENABLE_INQUIRE_MODE', False), \
+         patch.object(rec, 'process_recording_chunks') as pc, \
+         patch('threading.Thread') as th:
+        rec.reindex_recording_chunks_async(123)
+        pc.assert_not_called()
+        th.assert_not_called()
+
+
 def main():
     """Run all tests (standalone, without pytest)."""
     print("Starting Inquire Mode Tests...\n")
@@ -158,6 +188,8 @@ def main():
         ("Database Models", test_database_models),
         ("Chunking Functions", test_chunking_functions),
         ("API Imports", test_api_imports),
+        ("Edits Reindex Chunks", test_speaker_and_transcript_edits_reindex_inquire_chunks),
+        ("Reindex No-op When Disabled", test_reindex_is_noop_when_inquire_disabled),
     ]
 
     all_passed = True

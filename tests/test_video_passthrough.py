@@ -168,7 +168,9 @@ class TestProcessingMainPath(unittest.TestCase):
         self.assertIn('if effective_video_retention:', passthrough_block,
                        "Passthrough branch should conditionally handle retention")
         self.assertIn('recording.audio_path = filepath', passthrough_block)
-        self.assertIn("mimetypes.guess_type(filepath)", passthrough_block)
+        # mime_type is derived from the actual container via the shared
+        # probe-driven resolver (corrects audio/webm-style mislabels).
+        self.assertIn('recording.mime_type = resolve_media_mime(filepath, has_video=True)', passthrough_block)
 
     def test_video_passthrough_active_flag_set(self):
         """video_passthrough_active flag is computed from is_video and VIDEO_PASSTHROUGH_ASR."""

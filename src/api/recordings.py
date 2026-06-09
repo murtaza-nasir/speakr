@@ -9,6 +9,7 @@ import json
 import re
 import mimetypes
 import time
+import threading
 import subprocess
 from datetime import datetime, timedelta
 from src.services.job_queue import job_queue
@@ -101,6 +102,32 @@ VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
+
+def reindex_recording_chunks_async(recording_id):
+    """Rebuild a recording's semantic-search (Inquire) chunks in the background.
+
+    The Inquire/RAG chunks are a snapshot of recording.transcription. When the
+    transcription text changes — speaker names applied, transcript edited — the
+    chunks must be rebuilt or Inquire keeps answering from the stale text (e.g.
+    'SPEAKER_00' instead of the applied name). Runs in a daemon thread so the
+    edit's HTTP response isn't blocked on embedding generation; no-op when
+    Inquire mode is off. process_recording_chunks deletes-then-recreates with
+    rollback safety, so a failure leaves the previous chunks intact.
+    """
+    if not ENABLE_INQUIRE_MODE:
+        return
+    app_obj = current_app._get_current_object()
+
+    def _run():
+        with app_obj.app_context():
+            try:
+                process_recording_chunks(recording_id)
+                app_obj.logger.info(f"Reindexed Inquire chunks for recording {recording_id} after edit")
+            except Exception as e:
+                app_obj.logger.error(f"Failed to reindex Inquire chunks for recording {recording_id}: {e}", exc_info=True)
+
+    threading.Thread(target=_run, name=f"reindex-chunks-{recording_id}", daemon=True).start()
+
 
 # Global helpers (will be injected from app)
 has_recording_access = None
@@ -832,6 +859,11 @@ def update_speakers(recording_id):
 
         db.session.commit()
 
+        # Speaker names changed the transcription text — rebuild the Inquire
+        # chunks so semantic search answers with the applied names, not the
+        # raw SPEAKER_XX labels. Background + best-effort.
+        reindex_recording_chunks_async(recording_id)
+
         summary_queued = False
         if regenerate_summary:
             current_app.logger.info(f"Queueing summary regeneration for recording {recording_id} after speaker update.")
@@ -915,6 +947,10 @@ def update_transcript(recording_id):
             update_speaker_usage(speaker_names_used)
 
         db.session.commit()
+
+        # The transcript text changed — rebuild Inquire chunks so semantic
+        # search reflects the edits (names, corrections). Background + best-effort.
+        reindex_recording_chunks_async(recording_id)
 
         summary_queued = False
         if regenerate_summary:
@@ -1386,6 +1422,17 @@ def index():
     except (TypeError, ValueError):
         recording_max_hours = 8.0
 
+    # MediaRecorder timeslice (seconds) for in-app recordings: how often a
+    # chunk is emitted and streamed to the server. Smaller = finer crash
+    # recovery but more requests / files / DB commits; larger = less server
+    # load. Default 5s. At scale (many concurrent recorders on SQLite) raise
+    # this and/or RECORDING_SESSION_COMMIT_BATCH_SIZE. Clamped to [1, 60].
+    try:
+        recording_chunk_seconds = int(float(os.environ.get('RECORDING_CHUNK_SECONDS', '5')))
+    except (TypeError, ValueError):
+        recording_chunk_seconds = 5
+    recording_chunk_seconds = max(1, min(60, recording_chunk_seconds))
+
     return render_template('index.html',
                          use_asr_endpoint=USE_ASR_ENDPOINT,  # Backwards compat
                          connector_supports_diarization=connector_supports_diarization,
@@ -1398,7 +1445,8 @@ def index():
                          user_language=user_language,
                          is_team_admin=is_team_admin,
                          server_recording_chunks_enabled=server_recording_chunks_enabled,
-                         recording_max_hours=recording_max_hours)
+                         recording_max_hours=recording_max_hours,
+                         recording_chunk_seconds=recording_chunk_seconds)
 
 
 
@@ -2427,6 +2475,20 @@ def upload_file():
 
         # Determine MIME type of the final file
         mime_type, _ = mimetypes.guess_type(filepath)
+
+        # For a retained-video file, derive the MIME from the file's ACTUAL
+        # container via the shared probe-driven resolver (the same one the
+        # processing task uses) rather than the extension guess, which
+        # mislabels ambiguous containers — notably '.webm', registered as
+        # audio/webm in app.py — and would hide the video player in the UI.
+        # We already have codec_info from the probe above, so no second probe.
+        if keep_video_for_this_upload:
+            from src.utils.mime import resolve_media_mime
+            corrected = resolve_media_mime(filepath, codec_info=codec_info, has_video=True)
+            if corrected != mime_type:
+                current_app.logger.info(f"Resolved video mime {mime_type!r} -> {corrected!r} from container for {filepath}")
+            mime_type = corrected
+
         current_app.logger.info(f"Final MIME type: {mime_type} for file {filepath}")
 
         # Get notes from the form

@@ -1660,9 +1660,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                     current_app.logger.info(f"Video passthrough: sending original video to ASR (no audio extraction)")
                     actual_filepath = filepath  # Send video as-is to connector
                     if effective_video_retention:
-                        # Also keep the video for playback
+                        # Also keep the video for playback. Derive the MIME from
+                        # the file's actual container (we're in the is_video
+                        # branch, so has_video=True) rather than guessing.
+                        from src.utils.mime import resolve_media_mime
                         recording.audio_path = filepath
-                        recording.mime_type = mimetypes.guess_type(filepath)[0] or 'video/mp4'
+                        recording.mime_type = resolve_media_mime(filepath, has_video=True)
                         db.session.commit()
                 elif effective_video_retention:
                     # Video retention: keep original video, extract audio to temp for transcription only
@@ -1674,9 +1677,12 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         actual_content_type = audio_mime_type
                         actual_filename = os.path.basename(audio_filepath)
 
-                        # Keep original video file as the stored media
+                        # Keep original video file as the stored media. Derive
+                        # the MIME from the actual container (is_video branch →
+                        # has_video=True) instead of guessing from extension.
+                        from src.utils.mime import resolve_media_mime
                         recording.audio_path = filepath
-                        recording.mime_type = mimetypes.guess_type(filepath)[0] or 'video/mp4'
+                        recording.mime_type = resolve_media_mime(filepath, has_video=True)
                         db.session.commit()
                         current_app.logger.info(f"Video retained at: {filepath}, temp audio extracted: {audio_filepath}")
                     except Exception as e:

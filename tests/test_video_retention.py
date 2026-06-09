@@ -104,8 +104,12 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
         self.assertIn('audio_filepath = None', self.content)
 
     def test_video_mime_type_set_for_retention(self):
-        """When retaining video, mime_type reflects actual video type."""
-        self.assertIn("mimetypes.guess_type(filepath)[0] or 'video/mp4'", self.content)
+        """When retaining video, mime_type is derived from the file's actual
+        container via the shared probe-driven resolver (not a guess, which
+        mislabels ambiguous containers like .webm as audio/webm and hid the
+        video player in the UI)."""
+        self.assertIn('recording.mime_type = resolve_media_mime(filepath, has_video=True)', self.content)
+        self.assertNotIn("mimetypes.guess_type(filepath)[0] or 'video/mp4'", self.content)
 
     def test_duration_uses_recording_audio_path(self):
         """Duration lookup uses recording.audio_path (always valid), not filepath."""
@@ -456,6 +460,88 @@ class TestVideoRetentionMatrix(unittest.TestCase):
         convert_pos = content.find('convert_if_needed(\n                    filepath=actual_filepath,')
         self.assertGreater(convert_pos, video_block_pos,
                           "convert_if_needed must run after video extraction block")
+
+
+class TestVideoMimeHelper(unittest.TestCase):
+    """Behavioural tests for the shared video_mime_for_path helper.
+
+    Pins the actual bug: a .webm with video must resolve to video/webm even
+    though src/app.py registers .webm as audio/webm for in-app audio
+    recordings (which makes mimetypes.guess_type return audio/webm).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Import app first so its mimetypes.add_type('audio/webm', '.webm')
+        # registration is in effect — the exact condition that caused the bug.
+        import src.app  # noqa: F401
+        from src.utils.mime import video_mime_for_path
+        cls.video_mime_for_path = staticmethod(video_mime_for_path)
+
+    def test_webm_with_video_resolves_to_video_webm(self):
+        # This is the regression: guess_type would say audio/webm here.
+        import mimetypes
+        self.assertEqual(mimetypes.guess_type('x.webm')[0], 'audio/webm')
+        self.assertEqual(self.video_mime_for_path('/data/uploads/x.webm'), 'video/webm')
+
+    def test_mp4_resolves_to_video_mp4(self):
+        self.assertEqual(self.video_mime_for_path('/data/uploads/clip.mp4'), 'video/mp4')
+
+    def test_known_video_containers(self):
+        cases = {
+            '/a/b.mkv': 'video/x-matroska',
+            '/a/b.mov': 'video/quicktime',
+            '/a/b.m4v': 'video/x-m4v',
+            '/a/b.ts': 'video/mp2t',
+        }
+        for path, expected in cases.items():
+            self.assertEqual(self.video_mime_for_path(path), expected, path)
+
+    def test_unknown_extension_defaults_to_video_mp4(self):
+        self.assertEqual(self.video_mime_for_path('/a/b.weirdext'), 'video/mp4')
+
+
+class TestProbeDrivenMime(unittest.TestCase):
+    """The probe-driven mapper: ffprobe format_name + has_video -> MIME.
+
+    This is the real architectural fix — derive the MIME from the file's
+    actual container/streams instead of guessing from the extension.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from src.utils.mime import _mime_from_format
+        cls.f = staticmethod(_mime_from_format)
+
+    def test_webm_container_audio_vs_video(self):
+        # Same container, decided by has_video — the exact bug case.
+        self.assertEqual(self.f('matroska,webm', True, '/x.webm'), 'video/webm')
+        self.assertEqual(self.f('matroska,webm', False, '/x.webm'), 'audio/webm')
+
+    def test_matroska_vs_webm_by_extension(self):
+        self.assertEqual(self.f('matroska,webm', True, '/x.mkv'), 'video/x-matroska')
+
+    def test_mp4_family(self):
+        self.assertEqual(self.f('mov,mp4,m4a,3gp,3g2,mj2', True, '/x.mp4'), 'video/mp4')
+        self.assertEqual(self.f('mov,mp4,m4a,3gp,3g2,mj2', False, '/x.m4a'), 'audio/mp4')
+
+    def test_audio_only_containers(self):
+        self.assertEqual(self.f('mp3', False, '/x.mp3'), 'audio/mpeg')
+        self.assertEqual(self.f('flac', False, '/x.flac'), 'audio/flac')
+        self.assertEqual(self.f('wav', False, '/x.wav'), 'audio/wav')
+        self.assertEqual(self.f('ogg', False, '/x.ogg'), 'audio/ogg')
+
+    def test_video_only_containers(self):
+        self.assertEqual(self.f('avi', True, '/x.avi'), 'video/x-msvideo')
+        self.assertEqual(self.f('flv', True, '/x.flv'), 'video/x-flv')
+        self.assertEqual(self.f('mpegts', True, '/x.ts'), 'video/mp2t')
+
+    def test_asf_audio_vs_video(self):
+        self.assertEqual(self.f('asf', True, '/x.wmv'), 'video/x-ms-wmv')
+        self.assertEqual(self.f('asf', False, '/x.wma'), 'audio/x-ms-wma')
+
+    def test_unknown_container_returns_none(self):
+        self.assertIsNone(self.f('some_weird_format', False, '/x.bin'))
 
 
 if __name__ == '__main__':
