@@ -111,12 +111,21 @@ def test_chunking_functions():
         # With max_chunk_length=100 on this ~190-char passage we expect a split.
         assert len(chunks) > 1, f"expected multiple chunks, got {len(chunks)}"
 
-        # Embeddings depend on sentence-transformers, which may not be installed
-        # in every environment. When it is unavailable generate_embeddings
-        # returns a list of None placeholders rather than raising.
+        # generate_embeddings' documented contract: one vector per input when an
+        # embedding backend is available (API mode via EMBEDDING_BASE_URL, or a
+        # local sentence-transformers model), otherwise an EMPTY list — it does
+        # not return None placeholders. sentence-transformers isn't a hard
+        # dependency (it's absent in CI), so assert whichever applies here.
+        from src.services.embeddings import USE_API_EMBEDDINGS, LOCAL_EMBEDDINGS_AVAILABLE
         embeddings = generate_embeddings(["test sentence", "another test"])
         assert isinstance(embeddings, list)
-        assert len(embeddings) == 2
+        if USE_API_EMBEDDINGS or LOCAL_EMBEDDINGS_AVAILABLE:
+            assert len(embeddings) == 2, "one embedding per input when a backend is available"
+            # The vectors must survive a serialize/deserialize round-trip.
+            restored = deserialize_embedding(serialize_embedding(embeddings[0]))
+            assert restored is not None
+        else:
+            assert embeddings == [], "no embedding backend -> documented empty-list contract"
 
         if embeddings[0] is not None:
             serialized = serialize_embedding(embeddings[0])
