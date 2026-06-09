@@ -1,22 +1,29 @@
 name: Publish to Docker Hub
 
-# MANUAL-ONLY publish action, kept separate from CI. The "Tests" workflow runs
-# automatically on every push/PR; this one does NOT. This is the deliberate
-# "release the images" step: when you run it, it builds the multi-arch images
-# and pushes them to Docker Hub. Start it from the Actions tab (or via the API),
-# choosing the tag to publish. It never runs on a push, tag, or merge.
-
+# Publish step, kept separate from CI. The "Tests" workflow runs on every
+# push/PR; this one does NOT run on ordinary pushes. It publishes when you
+# create a version tag (deliberate "cut a release" act) and can also be run by
+# hand from the Actions tab. Building/pushing the multi-arch images needs the
+# DOCKERHUB_USERNAME / DOCKERHUB_TOKEN repo secrets.
+#
+#   git tag v0.6.0 && git push forgejo v0.6.0   ->   publishes :v0.6.0
+#
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag to publish (e.g. v0.6.0 or latest)"
-        required: true
+        description: "Image tag to publish (manual runs only; tag pushes use the git tag)"
+        required: false
         default: latest
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: learnedmachine/speakr
+  # Manual run -> the input; tag push -> the git tag name (e.g. v0.6.0).
+  IMAGE_TAG: ${{ github.event.inputs.image_tag || github.ref_name }}
 
 jobs:
   # Quick gate so a broken migration never gets published, even if someone runs
@@ -87,7 +94,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
           build-args: |
             PRODUCTION=1
 
@@ -118,7 +125,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}-lite
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}-lite
           build-args: |
             PRODUCTION=1
             LIGHTWEIGHT=1

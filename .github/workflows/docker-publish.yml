@@ -1,8 +1,13 @@
 name: Docker Build and Publish
 
+# Publishing is owned by Forgejo (.forgejo/workflows/docker-publish.yml fires on
+# a v* tag). This GitHub workflow is kept as a MANUAL fallback only — it no
+# longer auto-publishes on a GitHub release, so there's no double-publish while
+# Forgejo owns CD. To revert to GitHub auto-publishing (e.g. if the Forgejo CD
+# doesn't work out), restore the `release: { types: [published] }` trigger below.
 on:
-  release:
-    types: [published]
+  # release:
+  #   types: [published]
   workflow_dispatch:
 
 env:
