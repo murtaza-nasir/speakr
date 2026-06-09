@@ -281,7 +281,7 @@ def test_hotwords_splitting():
     run_test("Single word produces one-item list", t6)
 
     def t7():
-        """Each item must match ^[^,\s]+$ per Mistral spec."""
+        r"""Each item must match ^[^,\s]+$ per Mistral spec."""
         result = split_hotwords("hello world, foo bar, baz")
         for item in result:
             assert re.match(r'^[^,\s]+$', item), f"'{item}' contains comma or whitespace"

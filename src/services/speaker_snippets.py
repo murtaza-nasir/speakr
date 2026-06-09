@@ -35,7 +35,7 @@ def create_speaker_snippets(recording_id, speaker_map):
     Returns:
         int: Number of snippets created
     """
-    recording = Recording.query.get(recording_id)
+    recording = db.session.get(Recording, recording_id)
     if not recording or not recording.transcription:
         return 0
 
@@ -150,7 +150,7 @@ def _generate_dynamic_snippets(speaker_id, limit=3):
               [{'recording_id': 123, 'start_time': 45.2, 'duration': 3.5, ...}, ...]
     """
     # Get the speaker
-    speaker = Speaker.query.get(speaker_id)
+    speaker = db.session.get(Speaker, speaker_id)
     if not speaker:
         return []
 

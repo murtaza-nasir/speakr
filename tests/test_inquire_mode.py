@@ -66,14 +66,14 @@ def test_database_models():
 
         try:
             # The rows must be retrievable and carry the data we stored.
-            stored_chunk = TranscriptChunk.query.get(chunk.id)
+            stored_chunk = db.session.get(TranscriptChunk, chunk.id)
             assert stored_chunk is not None
             assert stored_chunk.recording_id == recording.id
             assert stored_chunk.user_id == user.id
             assert stored_chunk.content == "This is a test transcription chunk."
             assert stored_chunk.speaker_name == "Test Speaker"
 
-            stored_session = InquireSession.query.get(session.id)
+            stored_session = db.session.get(InquireSession, session.id)
             assert stored_session is not None
             assert stored_session.user_id == user.id
             assert stored_session.session_name == "Test Session"
@@ -126,13 +126,6 @@ def test_chunking_functions():
             assert restored is not None
         else:
             assert embeddings == [], "no embedding backend -> documented empty-list contract"
-
-        if embeddings[0] is not None:
-            serialized = serialize_embedding(embeddings[0])
-            assert serialized is not None
-            deserialized = deserialize_embedding(serialized)
-            assert deserialized is not None
-            assert len(deserialized) > 0
 
 
 def test_api_imports():

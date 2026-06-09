@@ -83,7 +83,7 @@ def cleanup_orphaned_speakers(dry_run=False):
         if dry_run:
             # Report what would be deleted
             for speaker_id in orphaned_speaker_ids:
-                speaker = Speaker.query.get(speaker_id)
+                speaker = db.session.get(Speaker, speaker_id)
                 if speaker:
                     stats['orphaned_speakers'].append({
                         'id': speaker.id,
@@ -95,7 +95,7 @@ def cleanup_orphaned_speakers(dry_run=False):
         else:
             # Actually delete orphaned speakers
             for speaker_id in orphaned_speaker_ids:
-                speaker = Speaker.query.get(speaker_id)
+                speaker = db.session.get(Speaker, speaker_id)
                 if speaker:
                     logger.debug(
                         "Deleting orphaned speaker: id=%d, name='%s', user_id=%d, embedding_count=%d",

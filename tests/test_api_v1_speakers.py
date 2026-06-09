@@ -132,7 +132,6 @@ def test_assign_no_auth():
             resp = client.put(f"/api/v1/recordings/{rec.id}/speakers/assign",
                               json={"speaker_map": {}})
             assert resp.status_code in (302, 401), f"Expected 302/401, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec)
             if cu:
@@ -150,7 +149,6 @@ def test_assign_recording_not_found():
                               headers={"X-API-Token": token},
                               json={"speaker_map": {}})
             assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
-            return True
         finally:
             _cleanup(token_rec)
             if cu:
@@ -170,7 +168,6 @@ def test_assign_wrong_user_recording():
                               headers={"X-API-Token": token},
                               json={"speaker_map": {"SPEAKER_00": "Alice"}})
             assert resp.status_code == 403, f"Expected 403, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -193,7 +190,6 @@ def test_assign_missing_speaker_map():
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
             body = resp.get_json()
             assert "speaker_map" in body.get("error", "").lower(), f"Unexpected error: {body}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -212,7 +208,6 @@ def test_assign_invalid_speaker_map_type():
                               headers={"X-API-Token": token},
                               json={"speaker_map": "not a dict"})
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -241,7 +236,6 @@ def test_assign_string_value_json_transcript():
             segments = json.loads(rec.transcription)
             assert segments[0]["speaker"] == "Alice"
             assert segments[1]["speaker"] == "Bob"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -265,7 +259,6 @@ def test_assign_object_value_with_name():
             db.session.refresh(rec)
             segments = json.loads(rec.transcription)
             assert segments[0]["speaker"] == "Alice"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -289,7 +282,6 @@ def test_assign_is_me_flag_with_user_name():
             db.session.refresh(rec)
             segments = json.loads(rec.transcription)
             assert segments[0]["speaker"] == "Test User", f"Got {segments[0]['speaker']}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -316,7 +308,6 @@ def test_assign_is_me_flag_without_user_name():
             db.session.refresh(rec)
             segments = json.loads(rec.transcription)
             assert segments[0]["speaker"] == "Me", f"Got {segments[0]['speaker']}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -339,7 +330,6 @@ def test_assign_plain_text_transcript():
             assert "[Alice]" in rec.transcription
             assert "[Bob]" in rec.transcription
             assert "[SPEAKER_00]" not in rec.transcription
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -363,7 +353,6 @@ def test_assign_speaker_xx_filtered_from_participants():
             participants = body["recording"]["participants"]
             assert "SPEAKER_01" not in participants, f"SPEAKER_01 should be filtered: {participants}"
             assert "Alice" in participants
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -384,7 +373,6 @@ def test_assign_invalid_value_type():
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
             body = resp.get_json()
             assert "invalid value type" in body.get("error", "").lower(), f"Unexpected: {body}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -409,7 +397,6 @@ def test_assign_empty_speaker_map():
             db.session.refresh(rec)
             segments = json.loads(rec.transcription)
             assert segments[0]["speaker"] == "SPEAKER_00"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -437,7 +424,6 @@ def test_assign_regenerate_summary():
             body = resp.get_json()
             assert body.get("summary_queued") is True
             mock_jq.enqueue.assert_called_once()
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -468,7 +454,6 @@ def test_assign_embeddings_updated():
             body = resp.get_json()
             assert body.get("embeddings_updated") >= 1, f"embeddings_updated: {body}"
             mock_update.assert_called()
-            return True
         finally:
             _cleanup(rec, speaker, token_rec)
             if cu:
@@ -488,7 +473,6 @@ def test_assign_no_transcription():
                               json={"speaker_map": {"SPEAKER_00": "Alice"}})
             # Should succeed (or at least not 500)
             assert resp.status_code in (200, 400), f"Expected 200/400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -510,7 +494,6 @@ def test_assign_whitespace_name_trimmed():
             db.session.refresh(rec)
             segments = json.loads(rec.transcription)
             assert segments[0]["speaker"] == "Alice", f"Name not trimmed: '{segments[0]['speaker']}'"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -531,7 +514,6 @@ def test_identify_no_auth():
         try:
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify")
             assert resp.status_code in (302, 401), f"Expected 302/401, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec)
             if cu:
@@ -548,7 +530,6 @@ def test_identify_recording_not_found():
             resp = client.post("/api/v1/recordings/999999/speakers/identify",
                                headers={"X-API-Token": token})
             assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
-            return True
         finally:
             _cleanup(token_rec)
             if cu:
@@ -567,7 +548,6 @@ def test_identify_wrong_user_recording():
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                headers={"X-API-Token": token})
             assert resp.status_code == 403, f"Expected 403, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -587,7 +567,6 @@ def test_identify_no_transcription():
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                headers={"X-API-Token": token})
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -605,7 +584,6 @@ def test_identify_non_json_transcription():
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                headers={"X-API-Token": token})
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -623,7 +601,6 @@ def test_identify_json_but_not_list():
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                headers={"X-API-Token": token})
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -658,7 +635,6 @@ def test_identify_happy_path():
             sm = body.get("speaker_map", {})
             assert sm.get("SPEAKER_00") == "Alice"
             assert sm.get("SPEAKER_01") == "Bob"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -691,7 +667,6 @@ def test_identify_post_processing_unknown_values():
             sm = body.get("speaker_map", {})
             assert sm.get("SPEAKER_00") == "", f"Expected empty, got {sm.get('SPEAKER_00')}"
             assert sm.get("SPEAKER_01") == "", f"Expected empty, got {sm.get('SPEAKER_01')}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -710,7 +685,6 @@ def test_identify_no_speakers_in_transcript():
             resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                headers={"X-API-Token": token})
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -732,7 +706,6 @@ def test_identify_llm_error():
                 resp = client.post(f"/api/v1/recordings/{rec.id}/speakers/identify",
                                    headers={"X-API-Token": token})
             assert resp.status_code == 500, f"Expected 500, got {resp.status_code}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -751,7 +724,6 @@ def test_auto_summarization_no_auth():
         resp = client.put("/api/v1/settings/auto-summarization",
                           json={"enabled": True})
         assert resp.status_code in (302, 401), f"Expected 302/401, got {resp.status_code}"
-        return True
 
 
 def test_auto_summarization_missing_enabled():
@@ -767,7 +739,6 @@ def test_auto_summarization_missing_enabled():
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
             body = resp.get_json()
             assert "enabled" in body.get("error", "").lower(), f"Unexpected: {body}"
-            return True
         finally:
             _cleanup(token_rec)
             if cu:
@@ -786,7 +757,6 @@ def test_auto_summarization_invalid_json():
                                        "Content-Type": "application/json"},
                               data="not valid json")
             assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
-            return True
         finally:
             _cleanup(token_rec)
             if cu:
@@ -810,7 +780,6 @@ def test_auto_summarization_enable():
             assert body.get("auto_summarization") is True
             db.session.refresh(user)
             assert user.auto_summarization is True
-            return True
         finally:
             _cleanup(token_rec)
             if cu:
@@ -834,7 +803,6 @@ def test_auto_summarization_disable():
             assert body.get("auto_summarization") is False
             db.session.refresh(user)
             assert user.auto_summarization is False
-            return True
         finally:
             _cleanup(token_rec)
             if cu:
@@ -860,7 +828,6 @@ def test_regression_get_speakers_list():
             body = resp.get_json()
             names = [s["name"] for s in body.get("speakers", [])]
             assert "Regression Speaker" in names, f"Speaker not found: {names}"
-            return True
         finally:
             _cleanup(speaker, token_rec)
             if cu:
@@ -882,7 +849,6 @@ def test_regression_get_recording_speakers():
             body = resp.get_json()
             labels = [s["label"] for s in body.get("speakers", [])]
             assert "SPEAKER_00" in labels and "SPEAKER_01" in labels, f"Labels: {labels}"
-            return True
         finally:
             _cleanup(rec, token_rec)
             if cu:
@@ -943,15 +909,12 @@ def main():
 
     for test_fn in ALL_TESTS:
         name = test_fn.__name__
+        # Tests assert (raising on failure) and no longer `return True`, so a
+        # clean call == pass; any exception == fail. Mirrors pytest semantics.
         try:
-            result = test_fn()
-            if result:
-                print(f"  PASS  {name}")
-                passed += 1
-            else:
-                print(f"  FAIL  {name} (returned False)")
-                failed += 1
-                errors.append(name)
+            test_fn()
+            print(f"  PASS  {name}")
+            passed += 1
         except Exception as e:
             print(f"  ERROR {name}: {e}")
             failed += 1

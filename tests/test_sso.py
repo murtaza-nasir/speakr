@@ -463,7 +463,7 @@ def test_require_verified_email_on_rejects_unverified_link(cleanup_users):
                 sso.create_or_update_sso_user(claims)
         db.session.expire_all()
         # The existing account was NOT hijacked.
-        refreshed = User.query.get(existing.id)
+        refreshed = db.session.get(User, existing.id)
         assert refreshed.sso_subject is None
 
 

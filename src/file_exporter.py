@@ -224,10 +224,11 @@ def get_user_export_template(user, recording=None):
         ExportTemplate object or None
     """
     from src.models import ExportTemplate
+    from src.database import db
 
     # 1. Check folder's export template
     if recording and recording.folder and recording.folder.export_template_id:
-        template = ExportTemplate.query.get(recording.folder.export_template_id)
+        template = db.session.get(ExportTemplate, recording.folder.export_template_id)
         if template:
             return template
 
@@ -235,7 +236,7 @@ def get_user_export_template(user, recording=None):
     if recording and recording.tags:
         for tag in recording.tags:
             if tag.export_template_id:
-                template = ExportTemplate.query.get(tag.export_template_id)
+                template = db.session.get(ExportTemplate, tag.export_template_id)
                 if template:
                     return template
 

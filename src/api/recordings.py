@@ -1822,7 +1822,7 @@ def get_recordings_paginated():
 
             if not is_owner:
                 # This is a shared recording - get owner info and share permissions
-                owner = User.query.get(recording.user_id)
+                owner = db.session.get(User, recording.user_id)
                 rec_dict['owner_username'] = owner.username if owner else "Unknown"
                 rec_dict['is_shared'] = True
                 # Don't show outgoing share count for recordings you don't own
@@ -3239,7 +3239,7 @@ def get_recording_detail(recording_id):
         # Add sharing-related fields
         if not is_owner:
             # This is a shared recording - get owner info and share permissions
-            owner = User.query.get(recording.user_id)
+            owner = db.session.get(User, recording.user_id)
             rec_dict['owner_username'] = owner.username if owner else "Unknown"
             rec_dict['is_shared'] = True
             # Don't show outgoing share count for recordings you don't own

@@ -1956,7 +1956,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         update_speaker_profiles_from_recording
                     )
 
-                    user = User.query.get(recording.user_id)
+                    user = db.session.get(User, recording.user_id)
                     if user and user.auto_speaker_labelling:
                         current_app.logger.info(f"Applying auto speaker labelling for recording {recording.id}")
                         speaker_map = apply_auto_speaker_labels(recording, user)
@@ -1981,7 +1981,7 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
             # Check if auto-summarization is disabled (admin setting or user preference)
             admin_setting = SystemSetting.get_setting('disable_auto_summarization', False)
             admin_disabled = admin_setting if isinstance(admin_setting, bool) else str(admin_setting).lower() == 'true'
-            user = User.query.get(recording.user_id)
+            user = db.session.get(User, recording.user_id)
             user_disabled = user and user.auto_summarization is False
             will_auto_summarize = not admin_disabled and not user_disabled
 
