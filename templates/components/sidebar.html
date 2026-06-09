@@ -227,40 +227,40 @@
                     <!-- Sort Toggle -->
                     <button @click="sortBy = sortBy === 'created_at' ? 'meeting_date' : 'created_at'"
                             :class="[
-                                'flex-1 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
                             ]"
                             :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
                         <i :class="['fas', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
-                        <span class="hidden sm:inline" v-text="t('common.sort')"></span>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('common.sort')"></span>
                         <i class="fas fa-exchange-alt text-[var(--text-muted)] text-[10px]"></i>
                     </button>
 
                     <!-- Archived Toggle (only show when audio-only deletion mode is active) -->
                     <button v-if="enableArchiveToggle" @click="showArchivedRecordings = !showArchivedRecordings"
                             :class="[
-                                'flex-1 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 showArchivedRecordings
                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
                                     : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
                             ]"
                             :title="t('sidebar.archivedRecordings')">
                         <i class="fas fa-archive"></i>
-                        <span class="hidden sm:inline" v-text="t('sidebar.archived')"></span>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('sidebar.archived')"></span>
                         <i :class="['fas text-[10px]', showArchivedRecordings ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
 
                     <!-- Shared Toggle -->
                     <button v-if="enableInternalSharing" @click="showSharedWithMe = !showSharedWithMe"
                             :class="[
-                                'flex-1 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
+                                'flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-1.5 border rounded-md text-xs transition-colors',
                                 showSharedWithMe
                                     ? 'bg-[var(--bg-accent)] border-[var(--border-accent)] text-[var(--text-accent)]'
                                     : 'bg-[var(--bg-input)] border-[var(--border-secondary)] hover:bg-[var(--bg-tertiary)]'
                             ]"
                             :title="t('sidebar.sharedWithMe')">
                         <i class="fas fa-users"></i>
-                        <span class="hidden sm:inline" v-text="t('sidebar.shared')"></span>
+                        <span class="hidden sm:inline truncate min-w-0" v-text="t('sidebar.shared')"></span>
                         <i :class="['fas text-[10px]', showSharedWithMe ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
                 </div>
