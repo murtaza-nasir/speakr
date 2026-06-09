@@ -172,6 +172,23 @@ describe('createUploader queue', () => {
         ]);
     });
 
+    it('resumes from startIndex so a new segment appends in order', async () => {
+        // After a reload, the server already has 5 chunks; the resumed
+        // MediaRecorder must POST its first chunk as index 6.
+        global.fetch = _installFetchMock([
+            { status: 204 }, { status: 204 },
+        ]);
+        const uploader = createUploader('sid', { startIndex: 6 });
+        uploader.enqueue(new Uint8Array([1]));
+        uploader.enqueue(new Uint8Array([2]));
+        await uploader.drain();
+        const urls = global.fetch.mock.calls.map(c => c[0]);
+        expect(urls).toEqual([
+            '/upload/session/sid/chunks/6',
+            '/upload/session/sid/chunks/7',
+        ]);
+    });
+
     it('retries with backoff on 500 then succeeds', async () => {
         global.fetch = _installFetchMock([
             { status: 500, body: { error: 'transient' } },

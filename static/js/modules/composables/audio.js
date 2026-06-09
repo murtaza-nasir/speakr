@@ -30,6 +30,13 @@ export function useAudio(state, utils) {
     // Local state for pending streams and chunk tracking
     let pendingDisplayStream = null;
     let currentChunkIndex = 0;
+    // Carries resume info ({sessionId, mimeType, startIndex, priorSeconds,
+    // priorBytes}) across the disclaimer detour when resuming an existing
+    // server session.
+    let pendingResumeContext = null;
+    // Bytes already uploaded to the server before a resume, so the live size
+    // estimate reflects the WHOLE recording, not just the new segment.
+    let serverResumePriorBytes = 0;
 
     // Phase B: server-side chunk streaming (#287 c/d). Feature-flagged via
     // the page-level dataset attribute `data-server-recording-chunks`
@@ -49,6 +56,16 @@ export function useAudio(state, utils) {
         const el = document.getElementById('app');
         if (!el || !el.dataset) return false;
         return (el.dataset.serverRecordingChunks || '').toLowerCase() === 'true';
+    }
+
+    // MediaRecorder timeslice in ms, from the page dataset (env
+    // RECORDING_CHUNK_SECONDS, default 5). Controls chunk emit + upload
+    // cadence. Clamped to [1, 60] seconds to match the server.
+    function _recordingChunkMs() {
+        const el = document.getElementById('app');
+        const raw = el && el.dataset ? el.dataset.recordingChunkSeconds : '';
+        const secs = parseInt(raw, 10);
+        return (Number.isFinite(secs) && secs >= 1 && secs <= 60 ? secs : 5) * 1000;
     }
 
     function _resetServerSessionState() {
@@ -185,7 +202,7 @@ export function useAudio(state, utils) {
 
     // Start recording
     // IMPORTANT: For Firefox, getDisplayMedia MUST be the first async call from user gesture
-    const startRecording = async (mode = 'microphone') => {
+    const startRecording = async (mode = 'microphone', resumeContext = null) => {
         const needsDisplayMedia = mode === 'system' || mode === 'both';
 
         // For system audio modes, get display media FIRST before any other operations
@@ -225,16 +242,19 @@ export function useAudio(state, utils) {
         if (recordingDisclaimer.value && recordingDisclaimer.value.trim() !== '') {
             showRecordingDisclaimerModal.value = true;
             pendingRecordingMode.value = mode;
+            pendingResumeContext = resumeContext;
             return;
         }
 
-        await startRecordingInternal(mode);
+        await startRecordingInternal(mode, resumeContext);
     };
 
     // Accept recording disclaimer and start recording
     const acceptRecordingDisclaimer = async () => {
         showRecordingDisclaimerModal.value = false;
-        await startRecordingInternal(pendingRecordingMode.value || 'microphone');
+        const resumeContext = pendingResumeContext;
+        pendingResumeContext = null;
+        await startRecordingInternal(pendingRecordingMode.value || 'microphone', resumeContext);
     };
 
     // Cancel recording disclaimer
@@ -246,15 +266,23 @@ export function useAudio(state, utils) {
             pendingDisplayStream = null;
         }
         pendingRecordingMode.value = null;
+        pendingResumeContext = null;
     };
 
-    // Internal start recording function
-    const startRecordingInternal = async (mode) => {
+    // Internal start recording function. resumeContext (optional) continues an
+    // existing server session after a page reload: a fresh MediaRecorder keeps
+    // POSTing chunks to the same session id, and its header chunk starts a new
+    // segment that the server-side assembly concatenates onto the prior audio.
+    const startRecordingInternal = async (mode, resumeContext = null) => {
         try {
             recordingMode.value = mode;
             audioChunks.value = [];
-            recordingTime.value = 0;
-            estimatedFileSize.value = 0;
+            // On resume, continue the on-screen timer and size estimate from
+            // where the prior segment left off so both reflect the WHOLE
+            // recording, not just the new segment.
+            recordingTime.value = (resumeContext && resumeContext.priorSeconds) || 0;
+            serverResumePriorBytes = (resumeContext && resumeContext.priorBytes) || 0;
+            estimatedFileSize.value = serverResumePriorBytes;
             fileSizeWarningShown.value = false;
 
             // Initialize IndexedDB session
@@ -520,10 +548,24 @@ export function useAudio(state, utils) {
             // a network round-trip.
             if (_serverRecordingChunksEnabled()) {
                 try {
-                    serverSessionMimeType = mimeType.split(';')[0]; // strip codecs= suffix
-                    const session = await ServerSessions.createSession(serverSessionMimeType);
-                    serverSessionId = session.session_id;
+                    let startIndex = 1;
+                    if (resumeContext && resumeContext.sessionId) {
+                        // RESUME: reuse the existing session; the new
+                        // MediaRecorder's chunks append after what the server
+                        // already has (its header chunk opens a new segment).
+                        serverSessionId = resumeContext.sessionId;
+                        serverSessionMimeType = resumeContext.mimeType || mimeType.split(';')[0];
+                        startIndex = (resumeContext.startIndex && resumeContext.startIndex > 1)
+                            ? resumeContext.startIndex : 1;
+                        console.log('[Recording] Resuming server session', serverSessionId, 'from chunk', startIndex);
+                    } else {
+                        serverSessionMimeType = mimeType.split(';')[0]; // strip codecs= suffix
+                        const session = await ServerSessions.createSession(serverSessionMimeType);
+                        serverSessionId = session.session_id;
+                        console.log('[Recording] Opened server session', serverSessionId);
+                    }
                     serverSessionUploader = ServerSessions.createUploader(serverSessionId, {
+                        startIndex,
                         onError: (info) => {
                             serverSessionLastError = info.error;
                             if (info.droppedFromQueue) {
@@ -531,7 +573,6 @@ export function useAudio(state, utils) {
                             }
                         },
                     });
-                    console.log('[Recording] Opened server session', serverSessionId);
                 } catch (e) {
                     serverSessionLastError = e;
                     console.warn('[Recording] Could not open server session; falling back to local-only:', e);
@@ -562,6 +603,20 @@ export function useAudio(state, utils) {
                     // serverSessionUploader.lastError().
                     if (serverSessionUploader) {
                         serverSessionUploader.enqueue(event.data);
+
+                        // Storage dedupe (#287 task 5): when the server is the
+                        // durable copy and keeping up, keep only a small rolling
+                        // IndexedDB buffer instead of every chunk — avoids the
+                        // IndexedDB quota blowing out on hours-long recordings.
+                        // Guard: only prune when the backlog is smaller than the
+                        // window we keep, so a not-yet-uploaded chunk is never
+                        // dropped from the local fallback. If the server falls
+                        // behind / is unreachable, the backlog grows past the
+                        // window and we keep the FULL buffer as the safety net.
+                        const ROLLING_KEEP = 5;
+                        if (serverSessionUploader.getBacklog() < ROLLING_KEEP) {
+                            RecordingDB.pruneOldChunks(ROLLING_KEEP).catch(() => {});
+                        }
                     }
                 }
             };
@@ -573,7 +628,9 @@ export function useAudio(state, utils) {
             };
 
             mediaRecorder.value = recorder;
-            recorder.start(5000); // 5-second chunks for less overhead while still enabling crash recovery
+            // Timeslice is configurable (RECORDING_CHUNK_SECONDS, default 5s):
+            // smaller = finer crash recovery, larger = less server load.
+            recorder.start(_recordingChunkMs());
             isRecording.value = true;
             // Switch to recording view immediately so pending wake-lock/notification awaits don't block Safari rendering
             currentView.value = 'recording';
@@ -703,8 +760,12 @@ export function useAudio(state, utils) {
         if (serverSessionId && serverSessionUploader) {
             try {
                 await serverSessionUploader.drain();
+                // No title here on purpose: the in-app recorder has no title
+                // field, so we must NOT fabricate one. The server resolves the
+                // title through the shared resolve_upload_title helper — an
+                // absent title becomes a recognised placeholder and the
+                // recording gets an AI title, exactly like a drag-drop upload.
                 const metadata = {
-                    title: `Recording ${new Date().toLocaleString()}`,
                     notes: recordingNotes.value || null,
                     folder_id: selectedFolderId.value || null,
                     tags: selectedTags,
@@ -731,11 +792,15 @@ export function useAudio(state, utils) {
                 await hideRecordingNotification();
                 try { await RecordingDB.clearRecordingSession(); } catch (_) { /* ignore */ }
                 _resetServerSessionState();
-                // Drop the recording view and reopen the upload modal
-                // over whatever was underneath so the finalized
-                // recording lands in the queue ready to finish.
+                // The recording is already finalized server-side — there is
+                // nothing left to "finish" in the upload modal. Drop back to
+                // the main view and refresh the sidebar + processing-queue
+                // panel so the queued recording appears immediately, the same
+                // way a drag-drop upload does (instead of only after a manual
+                // page refresh).
                 currentView.value = null;
-                showUploadModal.value = true;
+                showUploadModal.value = false;
+                try { await utils.onServerRecordingQueued?.(); } catch (_) { /* non-fatal */ }
                 return result;
             } catch (e) {
                 console.error('[Recording] finalize failed; falling back to single-shot upload:', e);
@@ -1046,7 +1111,11 @@ export function useAudio(state, utils) {
     const updateFileSizeEstimate = () => {
         if (!isRecording.value || !audioChunks.value.length) return;
 
-        const totalSize = audioChunks.value.reduce((sum, chunk) => sum + chunk.size, 0);
+        // Include bytes already uploaded before a resume so the estimate (and
+        // the derived bitrate) reflect the whole recording, not just the new
+        // segment. serverResumePriorBytes is 0 for a fresh recording.
+        const totalSize = serverResumePriorBytes
+            + audioChunks.value.reduce((sum, chunk) => sum + chunk.size, 0);
         estimatedFileSize.value = totalSize;
 
         if (recordingTime.value > 0) {

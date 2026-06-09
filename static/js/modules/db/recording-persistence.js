@@ -150,6 +150,33 @@ export const updateRecordingMetadata = async (updates) => {
 };
 
 /**
+ * Prune the IndexedDB buffer to the last `keepLast` chunks.
+ *
+ * Storage dedupe (#287 task 5): when server chunking is on and the server is
+ * keeping up, the server is the durable copy, so the browser only needs a
+ * small rolling buffer for the in-flight gap instead of every chunk (which
+ * would blow the IndexedDB quota on hours-long recordings and double-store
+ * everything). The caller MUST only prune when the upload backlog is smaller
+ * than keepLast, so a not-yet-uploaded chunk is never dropped from the local
+ * fallback. Non-fatal on error — pruning is an optimization, not correctness.
+ */
+export const pruneOldChunks = async (keepLast = 5) => {
+    try {
+        const db = await initDB();
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const session = await promisifyRequest(objectStore.get('current'));
+        if (!session || !Array.isArray(session.chunks) || session.chunks.length <= keepLast) {
+            return;
+        }
+        session.chunks = session.chunks.slice(-keepLast);
+        await promisifyRequest(objectStore.put(session));
+    } catch (error) {
+        // Pruning is best-effort; recording continues regardless.
+    }
+};
+
+/**
  * Check if there's a recoverable recording
  */
 export const checkForRecoverableRecording = async () => {
@@ -167,8 +194,11 @@ export const checkForRecoverableRecording = async () => {
         // Calculate total size
         const totalSize = session.chunks.reduce((sum, chunk) => sum + chunk.size, 0);
 
-        // Calculate approximate duration (1 second chunks)
-        const duration = session.chunks.length;
+        // Real elapsed seconds are tracked on the session (updated every chunk
+        // via updateRecordingMetadata). Fall back to an estimate from the chunk
+        // count at the MediaRecorder timeslice (5s) — NOT 1s, which made a
+        // 20s recording read as "4s".
+        const duration = session.duration || (session.chunks.length * 5);
 
         console.log('[RecordingDB] Found recoverable recording:', {
             chunks: session.chunks.length,
@@ -219,7 +249,7 @@ export const recoverRecording = async () => {
                 tags: session.tags,
                 asrOptions: session.asrOptions,
                 mimeType: session.mimeType,
-                duration: session.chunks.length,
+                duration: session.duration || (session.chunks.length * 5),
                 startTime: session.startTime
             }
         };

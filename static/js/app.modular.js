@@ -2266,6 +2266,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             utils.startUploadQueue = uploadComposable.startUpload;
 
             const audioComposable = useAudio(state, utils);
+            // Expose the full discard (clears the blob, aborts any server
+            // session, clears IndexedDB) so the navigation guard can actually
+            // tear down an unsaved/recovered recording when the user chooses to
+            // leave — otherwise audioBlobURL lingers and the "unsaved recording"
+            // prompt fires on every subsequent navigation.
+            utils.discardActiveRecording = audioComposable.discardRecording;
             const uiComposable = useUI(state, utils, processedTranscription);
             const modalsComposable = useModals(state, utils);
             const sharingComposable = useSharing(state, utils);
@@ -2677,6 +2683,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // Bridge for the in-app recorder (#287): a server-side recording
+            // finalizes entirely on the backend, so nothing enters the client
+            // uploadQueue to trip hasActiveProcessing. Without this nudge the
+            // new recording + its stitch/transcribe jobs only appear after a
+            // manual refresh. The audio composable calls this right after a
+            // successful finalize so the sidebar and processing-queue panel
+            // update live, exactly like a drag-drop upload.
+            utils.onServerRecordingQueued = async () => {
+                try { await recordingsComposable.loadRecordings(); } catch (_) { /* non-fatal */ }
+                await fetchJobQueueStatus(true);
+                startJobQueuePolling();
+            };
+
             // Check if we have active items that need polling
             const hasActiveProcessing = computed(() => {
                 const completedStatuses = ['completed', 'failed', 'COMPLETED', 'FAILED'];
@@ -2716,6 +2735,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Watch allJobs for completed/failed transitions - update local recordings state
             watch(allJobs, async (jobs) => {
                 for (const job of jobs) {
+                    // A 'stitch' job is an intermediate step for server-side
+                    // recordings (#287): a 'transcribe' job always follows it.
+                    // Only the terminal job is the recording's completion. If
+                    // we acted on the stitch completion we would capture the
+                    // still-processing state and then dedupe away the real
+                    // transcribe completion — leaving the recording stuck on
+                    // "Processing". A FAILED stitch IS terminal (no transcribe
+                    // follows), so only skip the completed case.
+                    if (job.job_type === 'stitch' && job.job_status === 'completed') continue;
                     if (job.job_status === 'completed' && !completedRecordingIds.has(job.recording_id)) {
                         completedRecordingIds.add(job.recording_id);
                         try {
@@ -3377,55 +3405,61 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.warn('[App] share-target query handling failed:', e);
                 }
 
-                // Check for recoverable recording from IndexedDB
-                try {
-                    const recoverable = await audioComposable.checkForRecoverableRecording();
-                    if (recoverable && recoverable.chunks && recoverable.chunks.length > 0) {
-                        recoverableRecording.value = recoverable;
-                        showRecoveryModal.value = true;
-                        console.log('[App] Found recoverable recording, showing recovery dialog');
-                    }
-                } catch (error) {
-                    console.error('[App] Failed to check for recoverable recording:', error);
-                }
-
-                // Phase C of #287 (c)(d): also check for an in-progress
-                // server-side recording session. If localStorage remembers
-                // a session id and the server confirms it is still in the
-                // 'recording' state, surface a toast offering to abort it
-                // (the streaming client cannot resume a MediaRecorder mid-
-                // stream because the captured audio track does not survive
-                // page reload). For now we let the user confirm an abort
-                // to clean up the server-side chunks; full resume lands in
-                // a follow-up with a chunked-playback fallback.
+                // Unified recording recovery (#287 task #4): ONE decision so
+                // the user never sees two prompts for the same recording.
+                // Preference order:
+                //   1. A durable in-progress SERVER session (survives device
+                //      loss) → themed recovery modal (finish / discard).
+                //   2. Otherwise a local IndexedDB copy → themed modal
+                //      (restore / discard). This is the fallback path used
+                //      when server chunking is off or the server was
+                //      unreachable.
+                // If a remembered server session exists but is no longer
+                // recoverable (already finalized / aborted / expired), we
+                // forget it AND clear the now-redundant local copy so the old
+                // double-prompt + duplicate-restore bug can't recur.
                 try {
                     const ServerSessions = await import('./modules/db/server-recording-sessions.js');
                     const remembered = ServerSessions.getRememberedSession();
+                    let serverSession = null;
                     if (remembered && remembered.session_id) {
-                        const status = await ServerSessions.getSessionStatus(remembered.session_id);
-                        if (status && status.status === 'recording' && status.chunk_count > 0) {
-                            const msg = t('toasts.recordingResumeFound') || 'An in-progress recording from this browser was detected on the server.';
-                            const confirmFinalize = window.confirm(msg);
-                            if (confirmFinalize) {
-                                // Finalize using the remembered session; the
-                                // server stitches what was already uploaded.
-                                try {
-                                    await ServerSessions.finalizeSession(remembered.session_id, {
-                                        title: `Recovered recording ${new Date().toLocaleString()}`,
-                                    });
-                                    showToast(t('toasts.recordingFinalized') || 'Recording uploaded for processing', 'fa-cloud-upload-alt');
-                                    await recordingsComposable.loadRecordings();
-                                } catch (e) {
-                                    console.warn('[App] Could not finalize recovered server session:', e);
-                                    setGlobalError(`Could not recover the session: ${e.message}`);
-                                }
-                            } else {
-                                try { await ServerSessions.abortSession(remembered.session_id); } catch (_) { /* ignore */ }
-                            }
+                        try { serverSession = await ServerSessions.getSessionStatus(remembered.session_id); }
+                        catch (_) { serverSession = null; }
+                    }
+
+                    if (serverSession && serverSession.status === 'recording' && serverSession.chunk_count > 0) {
+                        // Pull any local metadata (mode/notes) just for display.
+                        let localMeta = null;
+                        try { localMeta = await audioComposable.checkForRecoverableRecording(); } catch (_) { /* ignore */ }
+                        recoverableRecording.value = {
+                            source: 'server',
+                            sessionId: remembered.session_id,
+                            mimeType: remembered.mime_type || (localMeta && localMeta.mimeType) || 'audio/webm',
+                            chunkCount: serverSession.chunk_count,
+                            totalSize: serverSession.bytes_received,
+                            duration: (localMeta && localMeta.duration) || null,
+                            startTime: serverSession.created_at,
+                            mode: (localMeta && localMeta.mode) || null,
+                            notes: (localMeta && localMeta.notes) || null,
+                        };
+                        showRecoveryModal.value = true;
+                        console.log('[App] In-progress server recording detected, offering recovery');
+                    } else if (remembered && remembered.session_id) {
+                        // Remembered session is no longer recoverable → forget
+                        // the pointer and clear the redundant local copy.
+                        ServerSessions.forgetActiveSession();
+                        try { await audioComposable.clearRecordingSession(); } catch (_) { /* ignore */ }
+                    } else {
+                        // No server session involved → legacy local recovery.
+                        const recoverable = await audioComposable.checkForRecoverableRecording();
+                        if (recoverable && recoverable.chunks && recoverable.chunks.length > 0) {
+                            recoverableRecording.value = { source: 'local', ...recoverable };
+                            showRecoveryModal.value = true;
+                            console.log('[App] Found local recoverable recording, showing recovery dialog');
                         }
                     }
                 } catch (error) {
-                    console.warn('[App] Server-session resume check failed:', error);
+                    console.warn('[App] Recording recovery check failed:', error);
                 }
 
                 // Detect the ?upload=1 deep-link (inquire mode's "+ New
@@ -3647,6 +3681,90 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
+            // Non-destructive close (X button / click-outside): just dismiss
+            // the modal without finalizing or discarding. The recording stays
+            // recoverable and is offered again next load.
+            const dismissRecovery = () => {
+                showRecoveryModal.value = false;
+                recoverableRecording.value = null;
+            };
+
+            // Server-session recovery: finish processing what was uploaded.
+            // Routes through the same finalize → stitch → transcribe pipeline
+            // as a normal Stop+Upload, and clears the redundant local copy so
+            // it isn't offered again.
+            const finalizeRecoveredSession = async () => {
+                const rec = recoverableRecording.value;
+                showRecoveryModal.value = false;
+                recoverableRecording.value = null;
+                if (!rec || !rec.sessionId) return;
+                try {
+                    const ServerSessions = await import('./modules/db/server-recording-sessions.js');
+                    await ServerSessions.finalizeSession(rec.sessionId, {});
+                    try { await audioComposable.clearRecordingSession(); } catch (_) { /* ignore */ }
+                    showToast(safeT('messages.recordingRecovered') || safeT('toasts.recordingFinalized') || 'Recording uploaded for processing', 'success');
+                    // Surface it live in the sidebar + processing-queue panel.
+                    try { await utils.onServerRecordingQueued?.(); } catch (_) { /* non-fatal */ }
+                } catch (e) {
+                    console.warn('[App] Could not finalize recovered server session:', e);
+                    setGlobalError(`Could not recover the session: ${e.message}`);
+                }
+            };
+
+            // Server-session recovery: RESUME. Continue recording into the
+            // same server session — a fresh MediaRecorder appends a new segment
+            // after the audio already on the server (the segment-aware stitch
+            // concatenates them at finalize). We re-read the live chunk count so
+            // the new segment starts at the correct index.
+            const resumeRecoveredSession = async () => {
+                const rec = recoverableRecording.value;
+                showRecoveryModal.value = false;
+                recoverableRecording.value = null;
+                if (!rec || !rec.sessionId) return;
+                try {
+                    const ServerSessions = await import('./modules/db/server-recording-sessions.js');
+                    let chunkCount = rec.chunkCount || 0;
+                    let priorBytes = rec.totalSize || 0;
+                    try {
+                        const status = await ServerSessions.getSessionStatus(rec.sessionId);
+                        if (!status || status.status !== 'recording') {
+                            setGlobalError(safeT('errors.recordingNotResumable') || 'That recording can no longer be resumed.');
+                            ServerSessions.forgetActiveSession();
+                            return;
+                        }
+                        if (typeof status.chunk_count === 'number') chunkCount = status.chunk_count;
+                        if (typeof status.bytes_received === 'number') priorBytes = status.bytes_received;
+                    } catch (_) { /* fall back to the modal's count */ }
+                    const mode = rec.mode || 'microphone';
+                    const priorSeconds = rec.duration || (chunkCount * 5);
+                    await audioComposable.startRecording(mode, {
+                        sessionId: rec.sessionId,
+                        mimeType: rec.mimeType,
+                        startIndex: chunkCount + 1,
+                        priorSeconds,
+                        priorBytes,
+                    });
+                } catch (e) {
+                    console.warn('[App] Could not resume server session:', e);
+                    setGlobalError(`Could not resume the recording: ${e.message}`);
+                }
+            };
+
+            // Server-session recovery: discard. Abort on the server (reaps the
+            // chunks now) and clear the local copy.
+            const discardRecoveredSession = async () => {
+                const rec = recoverableRecording.value;
+                showRecoveryModal.value = false;
+                recoverableRecording.value = null;
+                if (!rec || !rec.sessionId) return;
+                try {
+                    const ServerSessions = await import('./modules/db/server-recording-sessions.js');
+                    await ServerSessions.abortSession(rec.sessionId);
+                } catch (_) { /* ignore */ }
+                try { await audioComposable.clearRecordingSession(); } catch (_) { /* ignore */ }
+                showToast(safeT('messages.recordingDiscarded'), 'info');
+            };
+
             const formatRecordingMode = (mode) => {
                 const modes = {
                     'microphone': t('recording.modeMicrophone'),
@@ -3789,6 +3907,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recoverableRecording,
                 recoverRecording,
                 cancelRecovery,
+                dismissRecovery,
+                finalizeRecoveredSession,
+                discardRecoveredSession,
+                resumeRecoveredSession,
 
                 // Composable methods
                 ...recordingsComposable,

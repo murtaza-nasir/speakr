@@ -1,52 +1,120 @@
 <!-- Recording Recovery Modal (design system v1) -->
-<div v-if="showRecoveryModal" @click.self="cancelRecovery" class="modal-overlay">
+<!--
+  Unified recovery modal (#287 task #4). Handles two sources:
+    - 'server': an in-progress server-side recording session (durable). The
+      user can finish processing what was uploaded, or discard it.
+    - 'local' : an unfinished recording buffered in the browser's IndexedDB
+      (the legacy path, used when server chunking is off / was unreachable).
+      The user can restore it into the recorder, or discard it.
+  The X / click-outside is non-destructive (dismiss only) for both.
+-->
+<div v-if="showRecoveryModal" @click.self="dismissRecovery" class="modal-overlay">
     <div class="modal-panel modal-panel--sm">
         <div class="modal-header">
             <i class="fas fa-history text-2xl text-[var(--text-accent)]"></i>
             <h3 class="modal-title" v-text="t('recording.recoveryTitle')"></h3>
-            <button @click="cancelRecovery" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
+            <button @click="dismissRecovery" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-4);">
-                <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
-                <div>
-                    <div class="t-body-strong" style="margin-bottom: var(--sp-1);">${ t('recording.recoveryFound') }</div>
-                    <div class="t-meta">${ t('recording.recoveryDescription') }</div>
+            <!-- SERVER session recovery -->
+            <template v-if="recoverableRecording && recoverableRecording.source === 'server'">
+                <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-4);">
+                    <i class="fas fa-cloud" style="margin-top: 2px;"></i>
+                    <div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">${ t('recording.recoveryServerFound') }</div>
+                        <div class="t-meta">${ t('recording.recoveryServerDescription') }</div>
+                    </div>
                 </div>
-            </div>
 
-            <div v-if="recoverableRecording" class="space-y-2 t-meta">
-                <div class="flex justify-between">
-                    <span>${ t('recording.recordingMode') }:</span>
-                    <span class="t-body-strong">${ formatRecordingMode(recoverableRecording.mode) }</span>
+                <div class="space-y-2 t-meta">
+                    <div v-if="recoverableRecording.mode" class="flex justify-between">
+                        <span>${ t('recording.recordingMode') }:</span>
+                        <span class="t-body-strong">${ formatRecordingMode(recoverableRecording.mode) }</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>${ t('recording.recoveryChunksUploaded') }:</span>
+                        <span class="t-body-strong">${ recoverableRecording.chunkCount }</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>${ t('recording.size') }:</span>
+                        <span class="t-body-strong">${ formatFileSize(recoverableRecording.totalSize) }</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>${ t('recording.startedAt') }:</span>
+                        <span class="t-body-strong">${ formatDateTime(recoverableRecording.startTime) }</span>
+                    </div>
+                    <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-primary)]">
+                        <span>${ t('recording.notes') }:</span>
+                        <p class="mt-1 t-body max-h-32 overflow-y-auto whitespace-pre-wrap">${ recoverableRecording.notes }</p>
+                    </div>
                 </div>
-                <div class="flex justify-between">
-                    <span>${ t('recording.duration') }:</span>
-                    <span class="t-body-strong">${ formatTime(recoverableRecording.duration) }</span>
+            </template>
+
+            <!-- LOCAL (IndexedDB) recovery -->
+            <template v-else-if="recoverableRecording">
+                <div class="banner banner--info" style="display: flex; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-4);">
+                    <i class="fas fa-info-circle" style="margin-top: 2px;"></i>
+                    <div>
+                        <div class="t-body-strong" style="margin-bottom: var(--sp-1);">${ t('recording.recoveryFound') }</div>
+                        <div class="t-meta">${ t('recording.recoveryDescription') }</div>
+                    </div>
                 </div>
-                <div class="flex justify-between">
-                    <span>${ t('recording.size') }:</span>
-                    <span class="t-body-strong">${ formatFileSize(recoverableRecording.totalSize) }</span>
+
+                <div class="space-y-2 t-meta">
+                    <div class="flex justify-between">
+                        <span>${ t('recording.recordingMode') }:</span>
+                        <span class="t-body-strong">${ formatRecordingMode(recoverableRecording.mode) }</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>${ t('recording.duration') }:</span>
+                        <span class="t-body-strong">${ formatTime(recoverableRecording.duration) }</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>${ t('recording.size') }:</span>
+                        <span class="t-body-strong">${ formatFileSize(recoverableRecording.totalSize) }</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>${ t('recording.startedAt') }:</span>
+                        <span class="t-body-strong">${ formatDateTime(recoverableRecording.startTime) }</span>
+                    </div>
+                    <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-primary)]">
+                        <span>${ t('recording.notes') }:</span>
+                        <p class="mt-1 t-body max-h-32 overflow-y-auto whitespace-pre-wrap">${ recoverableRecording.notes }</p>
+                    </div>
                 </div>
-                <div class="flex justify-between">
-                    <span>${ t('recording.startedAt') }:</span>
-                    <span class="t-body-strong">${ formatDateTime(recoverableRecording.startTime) }</span>
-                </div>
-                <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-primary)]">
-                    <span>${ t('recording.notes') }:</span>
-                    <p class="mt-1 t-body max-h-32 overflow-y-auto whitespace-pre-wrap">${ recoverableRecording.notes }</p>
-                </div>
-            </div>
+            </template>
         </div>
+
         <div class="modal-footer modal-footer--between">
-            <button @click="cancelRecovery" class="btn btn--ghost">
-                <i class="fas fa-trash"></i>
-                <span>${ t('recording.discardRecovery') }</span>
-            </button>
-            <button @click="recoverRecording" class="btn btn--primary">
-                <i class="fas fa-undo"></i>
-                <span>${ t('recording.restoreRecording') }</span>
-            </button>
+            <!-- SERVER actions: discard | finish processing | resume -->
+            <template v-if="recoverableRecording && recoverableRecording.source === 'server'">
+                <button @click="discardRecoveredSession" class="btn btn--ghost">
+                    <i class="fas fa-trash"></i>
+                    <span>${ t('recording.discardRecovery') }</span>
+                </button>
+                <div style="display: flex; gap: var(--sp-2);">
+                    <button @click="finalizeRecoveredSession" class="btn btn--ghost">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>${ t('recording.recoveryFinishProcessing') }</span>
+                    </button>
+                    <button @click="resumeRecoveredSession" class="btn btn--primary">
+                        <i class="fas fa-microphone"></i>
+                        <span>${ t('recording.resumeRecording') }</span>
+                    </button>
+                </div>
+            </template>
+
+            <!-- LOCAL actions -->
+            <template v-else>
+                <button @click="cancelRecovery" class="btn btn--ghost">
+                    <i class="fas fa-trash"></i>
+                    <span>${ t('recording.discardRecovery') }</span>
+                </button>
+                <button @click="recoverRecording" class="btn btn--primary">
+                    <i class="fas fa-undo"></i>
+                    <span>${ t('recording.restoreRecording') }</span>
+                </button>
+            </template>
         </div>
     </div>
 </div>

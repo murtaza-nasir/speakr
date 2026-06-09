@@ -189,6 +189,13 @@ export function useRecordings(state, utils, reprocessComposable) {
             if (!confirm('You have an unsaved recording. Are you sure you want to leave?')) {
                 return;
             }
+            // User chose to leave → actually discard the unsaved/recovered
+            // recording so the guard doesn't keep firing on every subsequent
+            // navigation (clears the blob, aborts any server session, clears
+            // IndexedDB).
+            if (utils.discardActiveRecording) {
+                try { await utils.discardActiveRecording(); } catch (_) { /* non-fatal */ }
+            }
         }
 
         // Check if switching away from incognito recording to a regular recording

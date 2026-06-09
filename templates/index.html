@@ -60,6 +60,7 @@
          data-audio-player-position="{{ (current_user.audio_player_position or 'bottom') if current_user.is_authenticated else 'bottom' }}"
          data-server-recording-chunks="{{ 'True' if server_recording_chunks_enabled else 'False' }}"
          data-recording-max-hours="{{ recording_max_hours }}"
+         data-recording-chunk-seconds="{{ recording_chunk_seconds }}"
          class="h-full flex flex-col opacity-0 transition-opacity duration-500">
 
         <!-- Header -->

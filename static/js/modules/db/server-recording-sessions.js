@@ -41,7 +41,7 @@ function rememberActiveSession(sessionId, mimeType) {
     } catch (_) { /* private mode: best-effort */ }
 }
 
-function forgetActiveSession() {
+export function forgetActiveSession() {
     try { localStorage.removeItem(PENDING_KEY); } catch (_) { /* ignore */ }
 }
 
@@ -199,7 +199,10 @@ export function createUploader(sessionId, opts = {}) {
     const maxDelayMs = opts.maxDelayMs || 30000;
 
     const queue = [];          // [{blob, attempts}]
-    let nextIndex = 1;         // server expects 1-based, monotonic
+    // 1-based, monotonic. On RESUME (a new MediaRecorder continuing an existing
+    // session after a page reload), start from the server's next expected index
+    // so the new segment's chunks append in order rather than colliding at 1.
+    let nextIndex = opts.startIndex && opts.startIndex > 1 ? opts.startIndex : 1;
     let pumpRunning = false;
     let lastErrorObj = null;
     let drainResolvers = [];
