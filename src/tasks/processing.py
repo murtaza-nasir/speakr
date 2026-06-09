@@ -571,11 +571,9 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
                 current_app.logger.info(f"Using admin default prompt for recording {recording_id}")
                 summarization_instructions = admin_default_prompt
             else:
-                # Fallback to hardcoded default if admin hasn't set one
-                summarization_instructions = """Generate a comprehensive summary that includes the following sections:
-- **Key Issues Discussed**: A bulleted list of the main topics
-- **Key Decisions Made**: A bulleted list of any decisions reached
-- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+                # Fallback to the shipped default if admin hasn't set one.
+                from src.config.prompts import DEFAULT_SUMMARY_PROMPT
+                summarization_instructions = DEFAULT_SUMMARY_PROMPT
                 current_app.logger.info(f"Using hardcoded default prompt for recording {recording_id}")
 
         # Append the user's per-run additions on top of the resolved default
@@ -2366,10 +2364,8 @@ def generate_incognito_summary(transcription_text, user=None):
             if admin_default_prompt:
                 summarization_instructions = admin_default_prompt
             else:
-                summarization_instructions = """Generate a comprehensive summary that includes the following sections:
-- **Key Issues Discussed**: A bulleted list of the main topics
-- **Key Decisions Made**: A bulleted list of any decisions reached
-- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+                from src.config.prompts import DEFAULT_SUMMARY_PROMPT
+                summarization_instructions = DEFAULT_SUMMARY_PROMPT
 
         # Build messages
         system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format."

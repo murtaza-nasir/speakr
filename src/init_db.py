@@ -665,13 +665,10 @@ def initialize_database(app):
             app.logger.info("Initialized default asr_timeout_seconds setting")
         
         if not SystemSetting.query.filter_by(key='admin_default_summary_prompt').first():
-            default_prompt = """Generate a comprehensive summary that includes the following sections:
-- **Key Issues Discussed**: A bulleted list of the main topics
-- **Key Decisions Made**: A bulleted list of any decisions reached
-- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+            from src.config.prompts import DEFAULT_SUMMARY_PROMPT
             SystemSetting.set_setting(
                 key='admin_default_summary_prompt',
-                value=default_prompt,
+                value=DEFAULT_SUMMARY_PROMPT,
                 description='Default summarization prompt used when users have not set their own prompt. This serves as the base prompt for all users.',
                 setting_type='string'
             )

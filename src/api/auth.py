@@ -632,11 +632,9 @@ def account():
     if admin_default_prompt:
         default_summary_prompt_text = admin_default_prompt
     else:
-        # Fallback to hardcoded default if admin hasn't set one
-        default_summary_prompt_text = """Generate a comprehensive summary that includes the following sections:
-- **Key Issues Discussed**: A bulleted list of the main topics
-- **Key Decisions Made**: A bulleted list of any decisions reached
-- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+        # Fallback to the shipped default if admin hasn't set one.
+        from src.config.prompts import DEFAULT_SUMMARY_PROMPT
+        default_summary_prompt_text = DEFAULT_SUMMARY_PROMPT
 
     asr_diarize_locked = 'ASR_DIARIZE' in os.environ
     ASR_DIARIZE = os.environ.get('ASR_DIARIZE', 'false').lower() == 'true'
