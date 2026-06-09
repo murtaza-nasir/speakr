@@ -43,8 +43,9 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, or any custom ASR webservice. The right connector is auto-detected from your configuration.
 - **Speaker diarization** - automatic who-said-what labeling (WhisperX, or OpenAI's diarizing models).
 - **Voice profiles** - recognize the same person across different recordings via voice embeddings (requires the WhisperX ASR backend).
+- **Custom vocabulary and hotwords** (most effective with the WhisperX backend) - bias the transcriber toward names, jargon, and acronyms it would otherwise mishear; configurable globally or per tag / folder.
 - **Synced playback** - click any line to jump to that moment, follow-along highlighting during playback, and a chat-style bubble view.
-- **Language support** - automatic language detection plus a quick-pick of 11 common languages, with custom vocabulary / hotword hints to bias tricky terms.
+- **Language support** - automatic language detection plus a quick-pick of 11 common languages.
 
 ### Understand
 - **Summaries** - generated automatically, with prompts you can fully customize per recording, tag, or folder (including reusable prompt variables).

@@ -70,7 +70,8 @@ Speakr takes a recording from raw audio to organized, searchable, shareable know
     <ul>
       <li><a href="features#multi-engine-support">Bring your own engine: WhisperX, OpenAI, Mistral, custom ASR</a></li>
       <li><a href="features#speaker-diarization">Speaker diarization</a> and <a href="features#speaker-management">voice profiles</a> (WhisperX backend)</li>
-      <li><a href="features#language-support">Auto-detect plus 11 common languages</a> with custom vocabulary hints</li>
+      <li><a href="features#language-support">Auto-detect plus 11 common languages</a></li>
+      <li>Custom vocabulary and hotwords (most effective with WhisperX)</li>
     </ul>
   </div>
 
