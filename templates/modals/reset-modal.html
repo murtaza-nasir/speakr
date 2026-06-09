@@ -7,11 +7,11 @@
             <button @click="cancelReset" class="modal-close" :title="t('buttons.close')"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <p class="t-meta">This will mark the recording as 'Failed'. This is useful if processing is stuck. You will be able to reprocess it afterwards.</p>
+            <p class="t-meta">${ t('modal.resetStatusBody') }</p>
         </div>
         <div class="modal-footer">
             <button @click="cancelReset" class="btn btn--ghost">${ t('buttons.cancel') }</button>
-            <button @click="executeReset" class="btn btn--primary" style="background: #f97316; border-color: #f97316;">Yes, Reset Status</button>
+            <button @click="executeReset" class="btn btn--primary" style="background: #f97316; border-color: #f97316;">${ t('modal.resetStatusConfirm') }</button>
         </div>
     </div>
 </div>

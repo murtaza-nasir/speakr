@@ -452,7 +452,7 @@ export function useReprocess(state, utils) {
                         }
 
                         if (statusData.status === 'COMPLETED') {
-                            showToast('Processing completed!', 'fa-check-circle');
+                            showToast((utils.t && utils.t('toasts.processingCompleted')) || 'Processing completed!', 'fa-check-circle');
                             // Refresh token budget after LLM operations complete
                             if (onChatComplete) onChatComplete();
                         }
@@ -461,6 +461,7 @@ export function useReprocess(state, utils) {
                     stopReprocessingPoll(recordingId);
 
                     // Fetch full recording data to get error details for display
+                    let failureReason = '';
                     try {
                         const failedResponse = await fetch(`/api/recordings/${recordingId}`);
                         if (failedResponse.ok) {
@@ -477,12 +478,20 @@ export function useReprocess(state, utils) {
                                 selectedRecording.value = failedData;
                                 await nextTick();
                             }
+
+                            // The backend stores the failure reason as a marker in
+                            // the summary (e.g. "[Summary generation failed: Monthly
+                            // token budget exceeded ...]"). Pull the reason out so the
+                            // toast explains WHY, not just "failed".
+                            const m = (failedData.summary || '').match(/^\[Summary[^:\]]*:\s*([\s\S]+?)\]\s*$/);
+                            if (m) failureReason = m[1].trim();
                         }
                     } catch (err) {
                         console.error('Failed to fetch error details:', err);
                     }
 
-                    showToast('Processing failed', 'fa-exclamation-circle');
+                    const base = (utils.t && utils.t('toasts.processingFailed')) || 'Processing failed';
+                    showToast(failureReason ? `${base}: ${failureReason}` : base, 'fa-exclamation-circle', 6000, 'error');
                 }
             } catch (error) {
                 console.error('Polling error:', error);

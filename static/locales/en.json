@@ -1158,6 +1158,8 @@
     "reprocessSummary": "Reprocess Summary",
     "reprocessTranscription": "Reprocess Transcription",
     "resetStatus": "Reset Recording Status?",
+    "resetStatusBody": "This will mark the recording as 'Failed'. This is useful if processing is stuck. You will be able to reprocess it afterwards.",
+    "resetStatusConfirm": "Yes, Reset Status",
     "shareRecording": "Share Recording",
     "sharedTranscripts": "Shared Transcripts",
     "systemAudioHelp": "System Audio Help",
@@ -1693,6 +1695,8 @@
     "discardUnsavedRecording": "You have an unsaved recording. Leaving will discard it. Continue?"
   },
   "toasts": {
+    "processingFailed": "Processing failed",
+    "processingCompleted": "Processing completed!",
     "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
     "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
     "shareTargetReceived": "Shared audio received and queued for transcription",

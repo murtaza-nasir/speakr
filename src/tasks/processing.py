@@ -23,7 +23,7 @@ from openai import OpenAI
 from src.database import db
 from src.models import Recording, Tag, Event, TranscriptChunk, SystemSetting, GroupMembership, RecordingTag, InternalShare, SharedRecordingState, User, NamingTemplate
 from src.services.embeddings import process_recording_chunks
-from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy
+from src.services.llm import is_using_openai_api, call_llm_completion, format_api_error_message, TEXT_MODEL_NAME, client, http_client_no_proxy, TokenBudgetExceeded
 from src.utils import extract_json_object, safe_json_loads
 from src.utils.ffprobe import get_codec_info, is_video_file, is_lossless_audio, FFProbeError
 from src.utils.ffmpeg_utils import convert_to_mp3, extract_audio_from_video as ffmpeg_extract_audio, compress_audio, FFmpegError, FFmpegNotFoundError
@@ -293,8 +293,14 @@ def generate_title_task(app_context, recording_id, will_auto_summarize=False):
             current_app.logger.warning(f"Transcription for recording {recording_id} is too short or empty. Skipping AI title generation.")
             ai_title = None
         else:
-            # Generate AI title via LLM
-            ai_title = _generate_ai_title(recording)
+            # Generate AI title via LLM. A budget-exceeded error is actionable
+            # by the user but must not fail the whole recording here — skip
+            # titling and continue (the interactive endpoint surfaces it).
+            try:
+                ai_title = _generate_ai_title(recording)
+            except TokenBudgetExceeded as e:
+                current_app.logger.warning(f"Skipping AI title for recording {recording_id}: {e}")
+                ai_title = None
 
         # Apply naming template if we have one
         final_title = None
@@ -426,6 +432,12 @@ Title:"""
 
         return title
 
+    except TokenBudgetExceeded:
+        # Budget-exceeded is actionable by the user, so let it propagate: the
+        # interactive regenerate-title endpoint surfaces the real reason
+        # instead of a generic "Failed to generate a title". Background callers
+        # catch it and skip titling gracefully (see generate_title_task).
+        raise
     except Exception as e:
         current_app.logger.error(f"Error generating AI title for recording {recording.id}: {str(e)}")
         current_app.logger.error(f"Exception details:", exc_info=True)

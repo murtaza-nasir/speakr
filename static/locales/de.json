@@ -1156,6 +1156,8 @@
     "reprocessSummary": "Zusammenfassung neu verarbeiten",
     "reprocessTranscription": "Transkription neu verarbeiten",
     "resetStatus": "Aufnahme-Status zurücksetzen?",
+    "resetStatusBody": "Dies markiert die Aufnahme als „Fehlgeschlagen“. Das ist nützlich, wenn die Verarbeitung hängen bleibt. Sie können sie anschließend erneut verarbeiten.",
+    "resetStatusConfirm": "Ja, Status zurücksetzen",
     "shareRecording": "Aufnahme teilen",
     "sharedTranscripts": "Meine geteilten Transkripte",
     "systemAudioHelp": "System-Audio Hilfe",
@@ -1687,6 +1689,8 @@
     "discardUnsavedRecording": "Sie haben eine nicht gespeicherte Aufnahme. Beim Verlassen geht sie verloren. Fortfahren?"
   },
   "toasts": {
+    "processingFailed": "Verarbeitung fehlgeschlagen",
+    "processingCompleted": "Verarbeitung abgeschlossen!",
     "uploadFailedDownloadedLocally": "Upload fehlgeschlagen. Audio wurde im Downloads-Ordner für einen späteren Versuch gespeichert.",
     "uploadFailedNoRecovery": "Upload fehlgeschlagen und Audio konnte nicht lokal gespeichert werden. Bitte erneut aufnehmen.",
     "shareTargetReceived": "Geteilte Audiodatei empfangen und zur Transkription eingereiht",
