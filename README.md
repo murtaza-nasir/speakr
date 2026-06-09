@@ -32,33 +32,43 @@ Speakr transforms your audio recordings into organized, searchable, and intellig
 
 ## Key Features
 
-### Core Functionality
-- **Smart Recording & Upload** - Record from your microphone, system audio, or a mix of both — with a per-OS setup guide and a virtual-device picker that exposes Pulse monitor sources, BlackHole, VB-Cable, etc. as alternative inputs
-- **AI Transcription** - High-accuracy transcription with speaker identification
-- **Voice Profiles** - AI-powered speaker recognition with voice embeddings (requires WhisperX ASR service)
-- **Recording Stats** - At-a-glance per-recording metrics — total length, speaker count, conversation turns, per-speaker share with WPM, silence row
-- **REST API v1** - Complete API with Swagger UI for automation tools (n8n, Zapier, Make) and dashboard widgets
-- **Webhooks** - HMAC-signed outbound webhooks for `recording.transcription.*`, `events.extracted`, lifecycle events; built-in retry, SSRF protection, account-settings UI
-- **Single Sign-On** - Authenticate with any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID)
-- **Audio-Transcript Sync** - Click transcript to jump to audio, auto-highlight current text, follow mode for hands-free playback
-- **Interactive Chat** - Floating, dockable chat panel that snaps to any corner, maximises, or docks into the right column
-- **Inquire Mode** - Semantic search across all recordings using natural language
-- **Mobile-First Detail View** - Bottom nav with Summary / Transcript / Chat / More, sticky speaker pills, drag-to-dismiss upload sheet
-- **Internationalization** - Full support for English, Spanish, French, German, Chinese, Russian, and Brazilian Portuguese
-- **Beautiful Themes** - Light and dark modes with customizable color schemes
+Speakr turns a recording into organized, searchable, shareable knowledge. Here is the pipeline:
 
-### Collaboration & Sharing
-- **Internal Sharing** - Share recordings with specific users with granular permissions (view/edit/reshare)
-- **Group Management** - Create groups with automatic sharing via group-scoped tags
-- **Public Sharing** - Generate secure links to share recordings externally (admin-controlled)
-- **Group Tags** - Tags that automatically share recordings with all group members
+### Capture
+- **Flexible input** - record from your microphone, your computer's system or browser-tab audio, or both mixed together; or drag and drop existing files. A per-OS setup guide and a virtual-device picker surface Pulse / PipeWire monitors, BlackHole, VB-Cable, Voicemeeter, and Stereo Mix as inputs.
+- **Long sessions** - in-app recordings stream to the server during capture, so sessions can run for hours and survive a page reload.
+- **Hands-off intake** - a watched "black hole" folder auto-imports and processes any audio dropped into it.
 
-### Organization & Management
-- **Smart Tagging** - Organize with tags that include custom AI prompts and ASR settings
-- **Tag Prompt Stacking** - Combine multiple tags to layer AI instructions for powerful transformations
-- **Tag Protection** - Prevent specific recordings from being auto-deleted
-- **Group Retention Policies** - Set custom retention periods per group tag
-- **Auto-Deletion** - Automatic cleanup of old recordings with flexible retention policies
+### Transcribe
+- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, or any custom ASR webservice. The right connector is auto-detected from your configuration.
+- **Speaker diarization** - automatic who-said-what labeling (WhisperX, or OpenAI's diarizing models).
+- **Voice profiles** - recognize the same person across different recordings via voice embeddings (requires the WhisperX ASR backend).
+- **Synced playback** - click any line to jump to that moment, follow-along highlighting during playback, and a chat-style bubble view.
+- **Broad language support** - transcription across 40+ locales, with custom vocabulary / hotword hints to bias tricky terms.
+
+### Understand
+- **Summaries** - generated automatically, with prompts you can fully customize per recording, tag, or folder (including reusable prompt variables).
+- **Event extraction** - surface action items and calendar-worthy events from a transcript.
+- **Per-recording chat** - ask questions about a single recording in a floating, dockable panel.
+- **Inquire Mode** - semantic search and natural-language chat across your entire library at once.
+
+### Organize
+- **Folders and bulk operations** to keep a large library tidy.
+- **Smart tags** that carry their own AI prompt and ASR settings - and stack, so multiple tags layer their instructions.
+- **Retention policies** with auto-deletion and per-recording protection from cleanup.
+- **Automated export** to templated files when a recording finishes.
+
+### Collaborate
+- **Multi-user** with **Single Sign-On** against any OIDC provider (Keycloak, Azure AD, Google, Auth0, Pocket ID).
+- **Groups** with group-scoped tags that auto-share recordings to every member.
+- **Granular internal sharing** (view / edit / reshare) and admin-controlled, secure **public links**.
+
+### Automate
+- **REST API v1** with a Swagger UI, for automation tools (n8n, Zapier, Make) and dashboards.
+- **Signed webhooks** - HMAC-signed, SSRF-guarded, retrying outbound notifications on recording lifecycle events.
+- **Usage budgets** for LLM tokens and transcription minutes, per user.
+
+Speakr is also an installable Progressive Web App - mobile-first, offline-capable, with a phone share-target - and ships light/dark themes, an incognito mode, and a UI translated into seven languages.
 
 ## Real-World Use Cases
 
@@ -134,11 +144,11 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 
 | Option | Setup | Speaker Diarization | Voice Profiles |
 |--------|-------|---------------------|----------------|
-| **OpenAI Transcribe** | Just API key | ✅ `gpt-4o-transcribe-diarize` | ❌ |
-| **WhisperX ASR** | GPU container | ✅ Best quality | ✅ |
-| **Mistral Voxtral** | Just API key | ✅ Built-in | ❌ |
-| **VibeVoice ASR** | Self-hosted (vLLM) | ✅ Built-in | ❌ |
-| **Legacy Whisper** | Just API key | ❌ | ❌ |
+| **OpenAI Transcribe** | Just API key | Yes (`gpt-4o-transcribe-diarize`) | No |
+| **WhisperX ASR** | GPU container | Yes (best quality) | Yes |
+| **Mistral Voxtral** | Just API key | Yes (built-in) | No |
+| **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
+| **Legacy Whisper** | Just API key | No | No |
 
 **Simplest setup (OpenAI with diarization):**
 ```bash
@@ -168,7 +178,7 @@ TRANSCRIPTION_MODEL=vibevoice
 ```
 Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
 
-> **⚠️ PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
+> **PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
 
 **[View Full Installation Guide →](https://murtaza-nasir.github.io/speakr/getting-started/installation)**
 
@@ -212,114 +222,6 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 
 **Localization** refreshed across en, fr, de, es, ru, zh, pt-BR.
 
-### Previous Release (v0.8.21-alpha)
-
-**Security: CSRF bypass via unauthenticated API token parameter, plus chained SSO-only account takeover (CWE-287).** Patch release on top of v0.8.20-alpha.
-
-- The `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter. The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`.
-- `change_password` no longer silently sets a password on an SSO-only account.
-- Reported by **@Irench1k**. Tracked as a GitHub Security Advisory.
-
-### Previous Release (v0.8.20-alpha)
-
-**Security: open-redirect fix in `is_safe_url` (CWE-601).** Patch release on top of v0.8.19-alpha. The `is_safe_url()` helper now validates the raw target against a local-path allowlist instead of an URL-joined form, closing the `////evil.com` bypass. Reported by RacerZ and Fushuling.
-
-### Previous Release (v0.8.19-alpha)
-
-**Inquire-mode performance and re-embed reliability.** Patch release on top of v0.8.18-alpha. Vectorised chunk similarity search (60s → 2-3s on large libraries), embedding API retries with backoff, transactional rollback when a partial embedding response would otherwise drop chunks, and Re-embed all retry passes that include stale-chunk recordings regardless of status.
-
-### Previous Release (v0.8.18-alpha)
-
-**API v1 folder operations.** Patch release on top of v0.8.17-alpha (#274 follow-up).
-
-- `GET /api/v1/recordings?folder_id=<id>` (or `?folder_id=none`) filters list responses by folder
-- `PATCH /api/v1/recordings/{id}` accepts `folder_id` to move a recording (or `null` to remove it from any folder)
-- `PATCH /api/v1/recordings/batch` accepts `folder_id` inside `updates` for bulk moves
-- OpenAPI schema documents all of the above plus the previously-undocumented batch fields (`is_inbox`, `is_highlighted`, `add_tag_ids`, `remove_tag_ids`)
-
-No breaking changes. The folder *resource* endpoints (CRUD on `/api/v1/folders`) shipped in v0.8.16-alpha; this release lets recordings actually be moved into and out of those folders.
-
-### Previous Release (v0.8.17-alpha)
-
-**Bug fixes and CI maintenance.** Patch release on top of v0.8.16-alpha.
-
-- Reprocess summary modal: prompt-variables panel and Append/Replace toggle now reflect the prompt source the user actually picked (was showing the recording's original tag variables and offering Append/Replace for tag-source prompts where it does not apply)
-- Docs: corrected reverse-proxy nginx example so the WebSocket `Connection: upgrade` header is forwarded conditionally rather than set unconditionally (caused 500s on file uploads through the proxy with Gunicorn). Added a Nginx Proxy Manager section noting that NPM's default `client_max_body_size` is `2000m` and that the `Advanced` tab is the right place for per-host overrides.
-- CI: bumped all GitHub Actions to Node 24 versions to clear deprecation warnings.
-
-No new features, no breaking changes.
-
-### Previous Release (v0.8.16-alpha)
-
-**Prompt Templating, Transcription UX Polish, Per-Recording Model Selection, and Observability**
-
-**Prompt templating and summary control**
-
-- **Prompt Template Variables** - Tag, folder, user-default, and admin-default summary prompts can contain `{{name}}` placeholders. Selecting a tag with `{{agenda}}` exposes an agenda input on the upload form; the value is stored on the recording, substituted into the prompt at summarisation time, and remains editable from the reprocess summary modal. Caps: 8,000 chars per value, 32,000 total. Single-pass `re.sub` substitution so values cannot introduce new placeholders or reach Python attributes.
-- **Append vs Replace Mode** - The reprocess summary modal and the new "Customise summary prompt" modal each let you Append text to the resolved prompt (combine your saved prompt with extra context) or Replace it entirely (use only the text you paste). Append mode runs variable substitution after the append step so appended text can use the same `{{var}}` placeholders.
-- **Customise Summary Prompt Split-Button** - A new control next to **Generate Summary** opens the Append/Replace modal for recordings that don't have a summary yet, so one-off context (an agenda, custom focus instructions) can be passed in without rewriting your saved prompt.
-- **Full LLM Prompt Structure Preview** - Both the admin Default Prompts page and the user Customise-prompts tab now show the complete two-message payload (system prompt with context block, user message with transcription wrapper and language directive). Placeholder chips colour-code system tokens (blue, replaced by the framework) versus user-supplied variables (amber). The user-side preview re-renders live as you type into your custom prompt.
-
-**Per-recording transcription control**
-
-- **Per-Upload / Per-Tag / Per-Folder Transcription Model** - Set `TRANSCRIPTION_MODELS_AVAILABLE` and the upload form, reprocess modal, and tag/folder edit forms all gain a model dropdown. Tag and folder edit forms warn if a previously-selected default is no longer in the configured list. The dropdown is hidden when only one option would be visible.
-- **Admin-Managed Transcription Model List** - When the connector exposes `/v1/models` discovery, admins can curate the list from the dashboard rather than via env var. Stored in the database; overrides `TRANSCRIPTION_MODELS_AVAILABLE` when set.
-- **Per-Connector Capability Gating** - The hotwords, initial-prompt, and speaker-count UI elements are now hidden for connectors that don't support them, instead of accepting input that is silently ignored.
-- **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` (with `MISTRAL_MAX_DURATION_SECONDS`) opts the Mistral connector into app-side chunking for recordings approaching Voxtral's 3-hour timeout.
-
-**ASR transcript editor**
-
-- **Autosave** - Saves edits 2 seconds after the last keystroke when the user opts in (`Account → Preferences → Autosave editor`).
-- **Save Without Closing + Ctrl+S** - New button keeps the editor open after saving; Ctrl+S triggers a save from anywhere in the editor.
-- **Scroll Memory** - Reopening the editor restores the previous scroll position instead of jumping to the top.
-- **Double-Click to Edit** - Double-clicking a transcript row in the simple view jumps into the editor with that segment highlighted.
-- **Row Highlight After Jump** - Briefly tints the row when navigating into it from the simple view so the target is obvious.
-
-**Account preferences**
-
-- **Preferences Tab** - Account settings has a new **Preferences** tab (split from the language settings) using a two-column layout for transcript display, editor behaviour, and language preferences.
-- **Compact Timestamps** - Optional `mm:ss` (or `h:mm:ss`) timestamps in the simple transcript view, rendered as a two-part pill alongside the speaker label. The leading segment shows "Start" instead of `00:00`.
-- **Persist Recording-List Sort** - The Created date / Meeting date toggle now sticks across reloads and sessions on the same browser (#263).
-
-**Embeddings and inquire mode**
-
-- **Configurable Embedding Model** - `EMBEDDING_MODEL` swaps `all-MiniLM-L6-v2` for any sentence-transformers model.
-- **API-Mode Embeddings** - `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, and `EMBEDDING_DIMENSIONS` route embeddings through any OpenAI-compatible provider (vLLM, OpenRouter, OpenAI, Together, etc.). Inquire startup banner reflects the active provider.
-- **Embedding Token Tracking + Re-Embed-All** - The Vector Store admin tab now tracks embedding API token usage and cost separately from LLM usage, and exposes a "Re-embed all" action for after a model or dimensionality change. Speakr warns at startup if the embedding identifier changed since data was stored.
-
-**Observability and admin**
-
-- **Per-Operation Token Stats** - Admin token statistics now break out title, summary, chat, event extraction, and embeddings as separate categories with their own cards and charts. Embedding usage is shown as a distinct cost line.
-- **Granular Token Budgets** - `TITLE_MAX_TOKENS` and `EVENT_MAX_TOKENS` join the existing `SUMMARY_MAX_TOKENS` / `CHAT_MAX_TOKENS` so reasoning models that consume budget on hidden thinking tokens can be tuned per operation. The resolved `max_tokens` is logged with each LLM call.
-- **LLM Timeout Visibility** - The configured `LLM_REQUEST_TIMEOUT` is logged at startup, and `APITimeoutError` log entries now include elapsed time so it is clear whether the timeout was the actual bound that fired.
-
-**API v1**
-
-- **Folder CRUD** - New `/api/v1/folders` endpoints for list, create, update, delete.
-- **Connector Discovery** - New endpoint exposing the active transcription connector and its capabilities for companion-app integrations.
-- **Recording Field Parity** - `/api/v1/recordings` and `/api/v1/recordings/{id}` now expose `audio_duration`, transcription/summarization durations, folder, events (detail only), `deletion_exempt`, `prompt_variables`, and the per-recording transcription model.
-- **Forwarded Per-Request Overrides** - The `/api/v1/transcribe` endpoint now forwards `transcription_model`, `hotwords`, and `initial_prompt`. The custom-ASR-endpoint connector forwards a `?model=` query param so WhisperX runtime model switching works through the API.
-
-**Bug fixes**
-
-- Reprocessing now applies tag/folder/user default hotwords + initial_prompt (#265, previously only at upload time)
-- Legacy user records with `transcription_language="français"` are normalised to ISO 639-1 codes on upgrade so WhisperX no longer 500s on display names (#256)
-- Title generation no longer leaks `\\uXXXX` escape sequences into the LLM prompt for non-ASCII transcripts; truncation now happens after `format_transcription_for_llm` (#260)
-- The Vector Store "recordings to process" message now uses the i18n params API instead of inline brace replace
-- CSRF token added to the Preferences form so submissions are accepted
-
-**Infrastructure**
-
-- **Vitest Frontend Tests** - Pure-helper modules in `static/js/modules/utils/` are now covered by Vitest. Run `npm test`. Currently exercises the prompt-variable extraction and priority-chain logic.
-
-**Docs**
-
-- nginx reverse-proxy `proxy_request_buffering off` and `client_max_body_size` notes for large uploads
-- Google Gemini OpenAI-compatible endpoint setup example
-- Prompt template variables guide
-- Per-upload / per-tag / per-folder model selection documentation
-- `EMBEDDING_BASE_URL` API mode documentation across inquire-mode, vector-store, and troubleshooting
-
 ---
 
 **Older releases:** see the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases) for tagged versions, or the [release history on the docs site](https://murtaza-nasir.github.io/speakr/#latest-updates) for narrative changelog entries going back to earlier v0.x lines.
@@ -362,18 +264,18 @@ No new features, no breaking changes.
 ## Roadmap
 
 ### Completed
-- ✅ Speaker voice profiles with AI-powered identification (v0.5.9)
-- ✅ Group workspaces with shared recordings (v0.5.9)
-- ✅ PWA enhancements with offline support and background sync (v0.5.10)
-- ✅ Multi-user job queue with fair scheduling (v0.6.0)
-- ✅ SSO integration with OIDC providers (v0.7.0)
-- ✅ Token usage tracking and per-user budgets (v0.7.2)
-- ✅ Connector-based transcription architecture with auto-detection (v0.8.0)
-- ✅ Comprehensive REST API with Swagger UI documentation (v0.8.0)
-- ✅ Video retention with in-browser video playback (v0.8.11)
-- ✅ Parallel uploads with duplicate detection (v0.8.11)
-- ✅ Fullscreen video mode with live subtitles (v0.8.14)
-- ✅ Custom vocabulary and transcription hints (v0.8.14)
+- Speaker voice profiles with AI-powered identification (v0.5.9)
+- Group workspaces with shared recordings (v0.5.9)
+- PWA enhancements with offline support and background sync (v0.5.10)
+- Multi-user job queue with fair scheduling (v0.6.0)
+- SSO integration with OIDC providers (v0.7.0)
+- Token usage tracking and per-user budgets (v0.7.2)
+- Connector-based transcription architecture with auto-detection (v0.8.0)
+- Comprehensive REST API with Swagger UI documentation (v0.8.0)
+- Video retention with in-browser video playback (v0.8.11)
+- Parallel uploads with duplicate detection (v0.8.11)
+- Fullscreen video mode with live subtitles (v0.8.14)
+- Custom vocabulary and transcription hints (v0.8.14)
 
 ### Near-term
 - Quick language switching for transcription

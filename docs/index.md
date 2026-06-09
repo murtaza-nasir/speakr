@@ -15,42 +15,36 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 
 <div class="grid cards">
   <div class="card">
-    <div class="card-icon">📚</div>
     <h3>Getting Started</h3>
     <p>New to Speakr? Start here for a quick overview and setup guide.</p>
     <a href="getting-started" class="card-link">Get Started →</a>
   </div>
   
   <div class="card">
-    <div class="card-icon">🚀</div>
     <h3>Installation</h3>
     <p>Step-by-step instructions for Docker and manual installation.</p>
     <a href="getting-started/installation" class="card-link">Install Now →</a>
   </div>
   
   <div class="card">
-    <div class="card-icon">👤</div>
     <h3>User Guide</h3>
     <p>Learn how to <a href="user-guide/recording">record</a>, <a href="user-guide/transcripts">transcribe</a>, and manage your audio content.</p>
     <a href="user-guide/" class="card-link">Learn More →</a>
   </div>
   
   <div class="card">
-    <div class="card-icon">⚙️</div>
     <h3>Admin Guide</h3>
     <p>Configure <a href="admin-guide/user-management">users</a>, <a href="admin-guide/prompts">system settings</a>, and manage your instance.</p>
     <a href="admin-guide/" class="card-link">Configure →</a>
   </div>
   
   <div class="card">
-    <div class="card-icon">❓</div>
     <h3>FAQ</h3>
     <p>Find answers to commonly asked questions about Speakr.</p>
     <a href="faq" class="card-link">View FAQ →</a>
   </div>
   
   <div class="card">
-    <div class="card-icon">🔧</div>
     <h3>Troubleshooting</h3>
     <p>Solutions for <a href="troubleshooting#transcription-problems">transcription issues</a> and <a href="troubleshooting#performance-issues">performance problems</a>.</p>
     <a href="troubleshooting" class="card-link">Get Help →</a>
@@ -59,68 +53,59 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 
 ## Core Features
 
+Speakr takes a recording from raw audio to organized, searchable, shareable knowledge. The pipeline:
+
 <div class="feature-grid">
   <div class="feature-card">
-    <h4>🎙️ Smart Recording</h4>
+    <h4>Capture</h4>
     <ul>
-      <li>Audio capture from mic or system</li>
-      <li>Take notes while recording</li>
-      <li>Generate <a href="features#automatic-summarization">smart summaries</a></li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <h4>🤖 AI Transcription</h4>
-    <ul>
-      <li><a href="features#language-support">Multi-language support</a></li>
-      <li><a href="features#speaker-diarization">Speaker identification</a></li>
-      <li><a href="features#speaker-management">Voice profiles with AI recognition</a></li>
-      <li>Custom vocabularies</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <h4>🔍 Intelligent Search</h4>
-    <ul>
-      <li><a href="user-guide/inquire-mode">Semantic search</a></li>
-      <li>Natural language queries</li>
-      <li>Cross-recording search</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <h4>📊 Organization</h4>
-    <ul>
-      <li><a href="features#tagging-system">Smart tagging system</a></li>
-      <li><a href="admin-guide/prompts">Custom AI prompts with stacking</a></li>
-      <li><a href="features#speaker-management">Speaker voice profiles with auto-cleanup</a></li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <h4>🌍 International</h4>
-    <ul>
-      <li>7 languages supported</li>
-      <li>Automatic UI translation</li>
-      <li>Localized summaries</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <h4>🔒 Privacy First</h4>
-    <ul>
-      <li><a href="getting-started/installation">Self-hosting ready</a></li>
-      <li><a href="troubleshooting#offline-deployment">Offline-ready</a></li>
-      <li><a href="user-guide/sharing">Secure sharing</a></li>
+      <li><a href="user-guide/recording">Mic, system/tab audio, or both mixed</a></li>
+      <li>Hours-long server-side recording sessions</li>
+      <li>Drag-and-drop upload and black-hole auto-import</li>
     </ul>
   </div>
 
   <div class="feature-card">
-    <h4>🔑 REST API</h4>
+    <h4>Transcribe</h4>
     <ul>
-      <li><a href="user-guide/api-reference">Full REST API v1</a></li>
-      <li><a href="user-guide/api-tokens">Personal access tokens</a></li>
-      <li>Interactive <a href="user-guide/api-reference#openapi-specification">Swagger UI docs</a></li>
+      <li><a href="features#multi-engine-support">Bring your own engine: WhisperX, OpenAI, Mistral, custom ASR</a></li>
+      <li><a href="features#speaker-diarization">Speaker diarization</a> and <a href="features#speaker-management">voice profiles</a> (WhisperX backend)</li>
+      <li><a href="features#language-support">40+ languages</a> with custom vocabulary hints</li>
+    </ul>
+  </div>
+
+  <div class="feature-card">
+    <h4>Understand</h4>
+    <ul>
+      <li><a href="features#automatic-summarization">Customizable AI summaries</a></li>
+      <li>Event extraction and per-recording chat</li>
+      <li><a href="user-guide/inquire-mode">Inquire Mode: semantic search across everything</a></li>
+    </ul>
+  </div>
+
+  <div class="feature-card">
+    <h4>Organize</h4>
+    <ul>
+      <li><a href="features#tagging-system">Smart tags with custom prompts, stackable</a></li>
+      <li>Folders and bulk operations</li>
+      <li><a href="features#retention-policies-and-auto-deletion">Retention policies and auto-deletion</a></li>
+    </ul>
+  </div>
+
+  <div class="feature-card">
+    <h4>Collaborate</h4>
+    <ul>
+      <li><a href="user-guide/sharing">Granular internal sharing and public links</a></li>
+      <li>Groups with auto-share group tags</li>
+      <li><a href="features#single-sign-on-sso">Multi-user with Single Sign-On (OIDC)</a></li>
+    </ul>
+  </div>
+
+  <div class="feature-card">
+    <h4>Automate</h4>
+    <ul>
+      <li><a href="user-guide/api-reference">REST API v1 with Swagger UI</a></li>
+      <li><a href="features#webhooks">Signed webhooks</a> on lifecycle events</li>
       <li>n8n, Zapier, Make integration</li>
     </ul>
   </div>
@@ -163,220 +148,8 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - Fixed a CSRF bypass where the `csrf_exempt_for_api_tokens` before_request hook permanently disabled CSRF protection on the targeted view as soon as any request carried a `?token=` query parameter (CWE-287). The hook is gone; CSRF skipping is now a per-request decision driven by `load_user_from_token_headers_only()`.
     - `change_password` no longer silently sets a password on an SSO-only account, closing the chained account-takeover path.
 
-!!! info "Version 0.8.20-alpha - Security: open-redirect fix"
-    Security patch release on top of v0.8.19-alpha. Reported by RacerZ and Fushuling.
-
-    - `is_safe_url()` now validates the raw target against a local-path allowlist instead of an URL-joined form, closing the `////evil.com` open-redirect bypass (CWE-601).
-
-!!! info "Version 0.8.19-alpha - Inquire-mode performance and re-embed reliability"
-    Patch release on top of v0.8.18-alpha. No new features, no breaking changes.
-
-    - Vectorised chunk similarity search. Per-query Inquire search drops from 13-20s to under 1s on a ~17k-chunk library. A 4-enriched-query inquire turn now completes in 2-3s instead of ~60s.
-    - Embedding API retries on transient errors (rate limits, timeouts, 5xx, connection blips) with exponential backoff. Tunable via `EMBEDDING_API_MAX_RETRIES` and `EMBEDDING_API_BACKOFF_SECONDS`.
-    - `process_recording_chunks` rolls back when `generate_embeddings` returns fewer vectors than expected, preserving existing chunks instead of silently deleting them. Fixes the silent partial-failure mode that produced stale chunks across embedding-model swaps.
-    - Re-embed all loop has retry passes (default 2) and now picks up any recording with chunks in the table, regardless of current status.
-
-!!! info "Version 0.8.18-alpha - API v1 folder operations"
-    Patch release on top of v0.8.17-alpha. Closes the gap from #274 follow-up where folder CRUD shipped in v0.8.16-alpha but recordings could not actually be moved between folders via the API.
-
-    - `GET /api/v1/recordings?folder_id=<id>` (or `?folder_id=none`) filters list responses by folder
-    - `PATCH /api/v1/recordings/{id}` accepts `folder_id` (null to remove from any folder)
-    - `PATCH /api/v1/recordings/batch` accepts `folder_id` inside `updates`
-    - OpenAPI schema documents these plus previously-undocumented batch fields
-
-!!! info "Version 0.8.17-alpha - Bug fixes and CI maintenance"
-    Patch release on top of v0.8.16-alpha. No new features, no breaking changes.
-
-    - Reprocess summary modal: prompt-variables panel and Append/Replace toggle now reflect the prompt source the user picked, rather than the recording's original tag
-    - Docs: corrected reverse-proxy nginx example (`Connection` header forwarded conditionally to avoid 500s on uploads through the proxy with Gunicorn). New Nginx Proxy Manager section.
-    - CI: bumped all GitHub Actions to Node 24 versions to clear deprecation warnings
-
-!!! info "Version 0.8.16-alpha - Prompt Templating, Transcription UX, and Observability"
-    **Prompt templating and summary control**
-
-    - **Prompt Template Variables** - `{{name}}` placeholders in tag, folder, user-default, and admin-default summary prompts; values entered on the upload form, stored on the recording, and editable via reprocess
-    - **Append vs Replace Mode** - Reprocess summary modal and the new Customise summary prompt modal each let you Append to or Replace the resolved prompt
-    - **Customise Summary Prompt Split-Button** - A control next to **Generate Summary** opens the Append/Replace modal for recordings without a summary yet
-    - **Full LLM Prompt Structure Preview** - Admin and account pages show the complete two-message payload with chip-coded placeholders (blue for system tokens, amber for user variables); the user-side preview re-renders live as you type
-
-    **Per-recording transcription control**
-
-    - **Per-Upload / Per-Tag / Per-Folder Transcription Model** - `TRANSCRIPTION_MODELS_AVAILABLE` exposes a model dropdown across upload, reprocess, and tag/folder edit forms
-    - **Admin-Managed Model List** - Connectors with `/v1/models` discovery let admins curate the list from the dashboard
-    - **Per-Connector Capability Gating** - Hotwords, initial-prompt, and speaker-count UI hidden for connectors that don't support them
-    - **Mistral Voxtral Chunking** - `MISTRAL_ENABLE_CHUNKING=true` opts into app-side chunking for long recordings
-
-    **ASR transcript editor**
-
-    - **Autosave** - Saves 2s after the last keystroke when opted in
-    - **Save Without Closing + Ctrl+S** - New button keeps the editor open; Ctrl+S triggers save from anywhere in the editor
-    - **Scroll Memory** - Reopening the editor restores the previous scroll position
-    - **Double-Click to Edit** - Double-clicking a transcript row jumps into the editor with that segment highlighted
-
-    **Account preferences**
-
-    - **Preferences Tab** - New tab (split from Languages) with two-column layout for transcript display, editor behaviour, and language preferences
-    - **Compact Timestamps** - Opt-in `mm:ss` timestamps as two-part pill with speaker label; "Start" label on the leading segment
-    - **Persist Recording-List Sort** - Created/Meeting date toggle persists across sessions per browser (#263)
-
-    **Embeddings and inquire mode**
-
-    - **Configurable Embedding Model** - `EMBEDDING_MODEL` for local models
-    - **API-Mode Embeddings** - `EMBEDDING_BASE_URL`, `EMBEDDING_API_KEY`, `EMBEDDING_DIMENSIONS` route embeddings through any OpenAI-compatible provider
-    - **Embedding Token Tracking + Re-Embed-All** - Vector Store tab tracks embedding API cost separately and exposes a re-embed action
-
-    **Observability and admin**
-
-    - **Per-Operation Token Stats** - Title, summary, chat, event extraction, and embeddings as separate cards and charts
-    - **Granular Token Budgets** - `TITLE_MAX_TOKENS` and `EVENT_MAX_TOKENS` join the existing `SUMMARY_MAX_TOKENS` / `CHAT_MAX_TOKENS`
-    - **LLM Timeout Visibility** - Configured timeout logged at startup; `APITimeoutError` log entries include elapsed time
-
-    **API v1**
-
-    - **Folder CRUD** + **Connector Discovery** endpoints
-    - **Recording Field Parity** - `audio_duration`, durations, folder, events, `deletion_exempt`, `prompt_variables`, transcription model
-    - **Forwarded Overrides** - `/api/v1/transcribe` forwards `transcription_model`, `hotwords`, `initial_prompt`; custom-ASR connector forwards `?model=` for WhisperX runtime switching
-
-    **Bug fixes**
-
-    - Reprocess now applies tag/folder/user default hotwords + initial_prompt (#265)
-    - Legacy `transcription_language="français"` normalised to ISO 639-1 on upgrade (#256)
-    - Title generation no longer leaks `\\uXXXX` escapes for non-ASCII transcripts (#260)
-    - CSRF token on Preferences form
-
-    **Docs** - prompt template variables guide; per-upload/tag/folder model selection; `EMBEDDING_BASE_URL` API mode across inquire-mode/vector-store/troubleshooting; nginx large-upload settings; Google Gemini OpenAI-compatible setup
-
-!!! info "Version 0.8.15-alpha - New Transcription Connectors & Upload API"
-    - **Mistral/Voxtral Connector** - Cloud-based transcription with built-in speaker diarization via Mistral's Voxtral models
-    - **VibeVoice Connector** - Self-hosted transcription via vLLM with speaker diarization and automatic chunking
-    - **Upload API: title & meeting_date** - Optional metadata fields for integrations
-    - **Regenerate Title** - Button to re-generate recording title with AI
-    - **Default Transcription Language** - User-configurable default that auto-fills forms
-    - **Tag-Driven Auto-Processing** - Watch folders auto-apply tags and trigger via API
-    - **Bug Fixes** - Azure inquire crash, chat API serialization, user deletion, chunking limits
-
-!!! info "Version 0.8.13-alpha - Video Retention Fix"
-    - Fixed large video files silently losing their video stream during upload when `VIDEO_RETENTION=true`
-    - Probe timeout now scales with file size; falls back to extension-based detection if probing fails
-
-!!! info "Version 0.8.12-alpha - Speaker Search, Shared Page Improvements & Bug Fixes"
-    - **Speaker Name Filter** - Search/filter speakers by name on the Speakers Management page with bulk operation support
-    - **Shared Page Auto-scroll** - Follow-along mode on public shared transcript pages, matching the main app experience
-    - **Dynamic Footer Year** - Shared page footer year no longer hardcoded
-    - **Duplicate Detection** - SHA-256 file hashing with warning toasts and clickable copies indicator in sidebar/header
-    - **Volume Controls** - Volume slider popups and mute visual indicators on all audio/video players
-    - **Speaker Enhancements** - Split button UI, apply suggested names, name sanitization, JSON schema option, new speaker API endpoints
-    - **Localization** - Complete translations for folders, API tokens, recording recovery, events, and speakers management
-    - **Bug Fixes** - ASR_DIARIZE=false ignored, bulk delete cascade, file monitor stability, speaker snippets, null transcription, clean_llm_response too aggressive
-
-!!! info "Version 0.8.7 - Export Templates & Localization"
-    - **Customizable Export Templates** - Create markdown templates for exports with variables (`{{title}}`, `{{summary}}`, `{{notes}}`) and conditionals for optional sections
-    - **Localized Labels** - Use `{{label.metadata}}`, `{{label.summary}}` etc. for automatically translated labels based on user's UI language
-    - **Localized Dates** - Export dates formatted per user's language preference (e.g., "15. Januar 2026" for German)
-    - **Improvements** - Opt-in ASR chunking, speaker ID remapping, ASR validation fixes
-
-    Fully backwards compatible with v0.8.x.
-
-!!! info "Version 0.8.3 - Naming Templates"
-    - **Custom Title Formatting** - Create templates with variables (`{{ai_title}}`, `{{filename}}`, `{{date}}`) and regex patterns to extract data from filenames
-    - **Tag or User Default** - Assign templates to tags or set a user-wide default; templates without `{{ai_title}}` skip the AI call to save tokens
-    - **API v1 Upload** - New `/api/v1/upload` endpoint for programmatic recording uploads
-    - **Improvements** - Tag drag-and-drop reordering, registration domain restriction, event delete button, WebM seeking fix
-
-    Fully backwards compatible with v0.8.x.
-
-!!! info "Version 0.8.2 - Transcription Usage Tracking"
-    - **Transcription Budget Management** - Set monthly transcription limits (in minutes) per user with 80% warnings and 100% blocking
-    - **Usage Statistics** - Track transcription minutes and estimated costs across all connectors
-    - **Admin Dashboard Improvements** - Redesigned stats layout with summary cards and per-user tables
-
-!!! info "Version 0.8.0 - Connector Architecture & REST API"
-    - **Connector-Based Transcription** - Modular architecture with auto-detection for transcription providers
-    - **OpenAI Diarization** - Use `gpt-4o-transcribe-diarize` for speaker identification without self-hosting
-    - **REST API v1** - Complete API for automation tools with Swagger UI at `/api/v1/docs`
-
-    See the [Migration Guide](admin-guide/migration-guide.md) and [API Reference](user-guide/api-reference.md).
-
-!!! warning "PyTorch 2.6 Compatibility Issue with WhisperX ASR"
-    If you're using the WhisperX ASR service and encounter a "Weights only load failed" error after a recent update, add this environment variable to your ASR container in docker-compose.yml:
-    ```yaml
-    environment:
-      - TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true
-    ```
-    This is caused by a PyTorch 2.6 change. See [troubleshooting](troubleshooting.md#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
-
-!!! info "Version 0.6.6 - Filter & Compress"
-    **New Features** - Audio compression and enhanced filtering
-
-    - **Auto Compression** - Lossless uploads automatically compressed (configurable codec/bitrate)
-    - **Speaker Filtering** - Filter recordings by speaker, starred/inbox toggles
-    - **Sorting Fix** - Sort toggle works correctly, added Upcoming group for future dates
-    - **Format Support** - .weba format, FFmpeg fallback for unknown formats
-
-    ✅ Fully backward compatible. Optional env vars: `AUDIO_COMPRESS_UPLOADS`, `AUDIO_CODEC`, `AUDIO_BITRATE`
-
-!!! info "Version 0.6.5 - Separate Chat Model Configuration"
-    **New Feature** - Configure different AI models for chat vs background tasks
-
-    - **Separate Chat Model** - Use different service tiers for chat and summarization (#143)
-    - **Custom Datetime Picker** - New themed calendar and time selection modal
-    - **Bug Fixes** - Audio chunking after refactor (#140), username display (#138)
-
-    ✅ Fully backward compatible. Optional `CHAT_MODEL_*` environment variables.
-
-!!! success "Version 0.6.3 - API Token Authentication"
-    **New Feature** - Programmatic API access for automation tools
-
-    - **API Tokens** - Create personal access tokens for programmatic API access
-    - **Multiple Auth Methods** - Bearer token, X-API-Token header, API-Token header, or query parameter
-    - **Token Management** - Create, revoke, and track token usage from Account Settings
-    - **Flexible Expiration** - Set custom expiration periods or create non-expiring tokens
-    - **Secure Storage** - Tokens are hashed (SHA-256) and never stored in plaintext
-
-    ✅ Fully backward compatible with v0.6.x. No configuration changes required.
-
-!!! success "Version 0.6.2 - UX Polish & Bug Fixes"
-    - Standardized modal UX with backdrop click and consistent X button placement
-    - Recording disclaimer markdown support
-    - IndexedDB crash recovery fixes
-    - Processing queue cleanup on delete
-
-!!! success "Version 0.6.1 - Offline Ready"
-    - **HuggingFace Model Caching** - Embedding model persists across container restarts
-    - **Offline Deployment** - Run once with internet, then works fully offline
-
-!!! success "Version 0.6.0 - Queue Control"
-    - **Multi-User Job Queue** - Fair round-robin scheduling with automatic retry for failed jobs
-    - **Unified Progress Tracking** - Single view merging uploads and backend processing
-    - **Media Support** - Added video format support and fixed Firefox system audio recording
-
-!!! warning "Version 0.5.9 - Major Release"
-    **⚠️ Major architectural changes** - Backup data before upgrading!
-
-    - **Internal Sharing System** - Share recordings with granular permissions (view/edit/reshare)
-    - **Group Management** - Create groups with leads, group tags, custom retention policies
-    - **Speaker Voice Profiles** - AI-powered recognition with embeddings (requires WhisperX)
-    - **Audio-Transcript Sync** - Click-to-jump, auto-highlight, and follow mode
-    - **Auto-Deletion & Retention** - Global and group-level policies with tag protection
-    - **Modular Architecture** - Backend refactored into blueprints, frontend composables
-
-    Previous release (v0.5.8):
-
-    - **Inline Transcript Editing** - Edit speaker assignments and text directly in the speaker identification modal
-    - **Add Speaker Functionality** - Dynamically add new speakers during transcript review
-    - **Enhanced Speaker Modal** - Improved UX with hover-based edit controls and real-time updates
-
-    Previous release (v0.5.7):
-
-    - **GPT-5 Support** - Full support for OpenAI's GPT-5 model family with automatic parameter detection
-    - **Custom Summary Prompts on Reprocessing** - Experiment with different prompts when regenerating summaries
-    - **PWA Enhancements** - Service worker for wake lock to prevent screen sleep on mobile
-
-    Previous release (v0.5.6):
-
-    - Event extraction for automatically identifying calendar-worthy events
-    - Transcript templates for customizable download formats
-    - Enhanced export options and improved mobile UI
+!!! note "Earlier releases"
+    The full version history (the rest of the v0.8.x line and the v0.5 to v0.7 releases) is on the [GitHub Releases page](https://github.com/murtaza-nasir/speakr/releases).
 
 ## Getting Help
 
@@ -384,7 +157,7 @@ Need assistance? We're here to help:
 
 <div class="help-grid">
   <div class="help-card">
-    <h4>📖 Documentation</h4>
+    <h4>Documentation</h4>
     <p>You're already here! Browse our comprehensive guides:</p>
     <ul>
       <li><a href="faq">Frequently Asked Questions</a></li>
@@ -395,7 +168,7 @@ Need assistance? We're here to help:
   </div>
   
   <div class="help-card">
-    <h4>💬 Community</h4>
+    <h4>Community</h4>
     <p>Connect with other users and get support:</p>
     <ul>
       <li><a href="https://github.com/murtaza-nasir/speakr/issues">Report Issues</a></li>
