@@ -44,7 +44,7 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **Speaker diarization** - automatic who-said-what labeling (WhisperX, or OpenAI's diarizing models).
 - **Voice profiles** - recognize the same person across different recordings via voice embeddings (requires the WhisperX ASR backend).
 - **Synced playback** - click any line to jump to that moment, follow-along highlighting during playback, and a chat-style bubble view.
-- **Broad language support** - transcription across 40+ locales, with custom vocabulary / hotword hints to bias tricky terms.
+- **Language support** - automatic language detection plus a quick-pick of 11 common languages, with custom vocabulary / hotword hints to bias tricky terms.
 
 ### Understand
 - **Summaries** - generated automatically, with prompts you can fully customize per recording, tag, or folder (including reusable prompt variables).
