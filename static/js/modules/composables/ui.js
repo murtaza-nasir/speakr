@@ -1409,14 +1409,38 @@ export function useUI(state, utils, processedTranscription) {
     };
 
     const scrollToActiveSegment = (segmentIndex) => {
-        // Find the active segment element
-        const segments = document.querySelectorAll('.transcript-segment[data-segment-index], .speaker-segment[data-segment-index], .speaker-bubble[data-segment-index]');
-        if (segments[segmentIndex]) {
-            segments[segmentIndex].scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
+        if (segmentIndex === null || segmentIndex === undefined) return;
+
+        // Select the element BY its data-segment-index (not by NodeList
+        // position). Positional indexing breaks in bubble view, where
+        // consecutive same-speaker segments are merged into fewer elements, so
+        // element[i] is not segment i. The active highlight is keyed off the
+        // same data-segment-index, so this always targets the highlighted row.
+        const sel = `.transcript-segment[data-segment-index="${segmentIndex}"], .speaker-segment[data-segment-index="${segmentIndex}"], .speaker-bubble[data-segment-index="${segmentIndex}"]`;
+        const el = document.querySelector(sel);
+        if (!el) return;
+
+        // The transcript renders ALL segments but uses content-visibility:auto
+        // with an estimated 60px intrinsic size for off-screen ones (for paint
+        // perf). A single long-distance scrollIntoView therefore targets that
+        // ESTIMATE and lands minutes off (real paragraphs are taller than
+        // 60px), only self-correcting on the next segment change. For a far
+        // jump (a seek), scroll INSTANTLY first — that forces content-visibility
+        // to render the real heights around the target — then re-center with a
+        // smooth scroll on the next frame using the now-measured layout. For a
+        // near target (normal playback advancing one segment) a single smooth
+        // scroll is already accurate, so skip the two-phase to avoid a jolt.
+        const rect = el.getBoundingClientRect();
+        const far = rect.bottom < -200 || rect.top > window.innerHeight + 200;
+        if (!far) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
         }
+        el.scrollIntoView({ behavior: 'auto', block: 'center' });
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            const real = document.querySelector(sel);
+            if (real) real.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }));
     };
 
     const toggleFollowPlayerMode = () => {
