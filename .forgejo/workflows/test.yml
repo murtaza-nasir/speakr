@@ -1,0 +1,79 @@
+name: Tests
+
+# Forgejo Actions version of the test suite. Forgejo reads .forgejo/workflows
+# in preference to .github/workflows, so this file (not the GitHub one) runs on
+# git.murtaza.cc, while the GitHub copy keeps running on github.com untouched.
+#
+# Syntax is standard GitHub Actions. runs-on: ubuntu-latest is mapped by the
+# Forgejo runner to a real container image (see the runner's labels config).
+# The Python suite isolates itself to a throwaway SQLite DB via conftest.py;
+# test_postgres_migrations.py uses the postgres service below.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: speakr
+          POSTGRES_PASSWORD: speakr
+          POSTGRES_DB: speakr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U speakr"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install ffmpeg (needed by stitch / ffprobe tests)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Run test suite
+        env:
+          # App tests run against an isolated SQLite DB (see conftest.py).
+          # test_postgres_migrations.py reads TEST_DATABASE_URI separately so it
+          # exercises real PostgreSQL compatibility against the service above.
+          TEST_DATABASE_URI: postgresql://speakr:speakr@postgres:5432/speakr_test
+        run: pytest tests/ -q
+
+  js-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # No npm cache: package-lock.json is gitignored in this repo, so it's
+          # never in the CI checkout. cache: npm (and npm ci) both require a
+          # committed lock file, so we use `npm install` below instead.
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Vitest
+        run: npm test

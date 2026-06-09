@@ -1,0 +1,124 @@
+name: Publish to Docker Hub
+
+# MANUAL-ONLY publish action, kept separate from CI. The "Tests" workflow runs
+# automatically on every push/PR; this one does NOT. This is the deliberate
+# "release the images" step: when you run it, it builds the multi-arch images
+# and pushes them to Docker Hub. Start it from the Actions tab (or via the API),
+# choosing the tag to publish. It never runs on a push, tag, or merge.
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to publish (e.g. v0.6.0 or latest)"
+        required: true
+        default: latest
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: learnedmachine/speakr
+
+jobs:
+  # Quick gate so a broken migration never gets published, even if someone runs
+  # this against an untested commit. The full suite lives in the Tests workflow.
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: speakr
+          POSTGRES_PASSWORD: speakr
+          POSTGRES_DB: speakr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U speakr"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run static migration compatibility tests
+        run: python tests/test_migration_compatibility.py
+
+      - name: Run migrations against PostgreSQL
+        env:
+          TEST_DATABASE_URI: postgresql://speakr:speakr@postgres:5432/speakr_test
+        run: python tests/test_postgres_migrations.py
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # arm64 is built via QEMU emulation (no native arm runner). Slow but works.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}
+          build-args: |
+            PRODUCTION=1
+
+  build-lite:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push lite image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}-lite
+          build-args: |
+            PRODUCTION=1
+            LIGHTWEIGHT=1
