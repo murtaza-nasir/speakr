@@ -1420,27 +1420,14 @@ export function useUI(state, utils, processedTranscription) {
         const el = document.querySelector(sel);
         if (!el) return;
 
-        // The transcript renders ALL segments but uses content-visibility:auto
-        // with an estimated 60px intrinsic size for off-screen ones (for paint
-        // perf). A single long-distance scrollIntoView therefore targets that
-        // ESTIMATE and lands minutes off (real paragraphs are taller than
-        // 60px), only self-correcting on the next segment change. For a far
-        // jump (a seek), scroll INSTANTLY first — that forces content-visibility
-        // to render the real heights around the target — then re-center with a
-        // smooth scroll on the next frame using the now-measured layout. For a
-        // near target (normal playback advancing one segment) a single smooth
-        // scroll is already accurate, so skip the two-phase to avoid a jolt.
-        const rect = el.getBoundingClientRect();
-        const far = rect.bottom < -200 || rect.top > window.innerHeight + 200;
-        if (!far) {
+        // Use the shared content-visibility-aware scroll: it converges on the
+        // real measured position for far jumps (seeks) so it doesn't overshoot,
+        // and uses a single smooth scroll for near targets (normal playback).
+        if (utils.scrollSegmentIntoView) {
+            utils.scrollSegmentIntoView(el);
+        } else {
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return;
         }
-        el.scrollIntoView({ behavior: 'auto', block: 'center' });
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            const real = document.querySelector(sel);
-            if (real) real.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }));
     };
 
     const toggleFollowPlayerMode = () => {

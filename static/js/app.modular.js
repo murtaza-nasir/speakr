@@ -2366,17 +2366,51 @@ document.addEventListener('DOMContentLoaded', async () => {
             // The main transcript panel STILL uses virtual scrolling
             // (smaller panel, different perf characteristics, no Prev/Next
             // nav buttons to expose the variable-height inaccuracy).
+            // Robust scroll-to-element for the transcript. Both the main panel
+            // and the speaker modal use content-visibility:auto with an
+            // ESTIMATED 60px intrinsic size for off-screen segments (paint
+            // perf). A single scrollIntoView is inaccurate for a far jump: it
+            // targets the estimate, and the act of scrolling then renders the
+            // real (taller) heights, which shifts the target out from under the
+            // animation — the "moving target" — so it overshoots and only
+            // settles on a later change. This converges on the REAL measured
+            // position by re-centering INSTANTLY each frame until the target
+            // stops moving. A near target (normal playback advancing one
+            // segment) is already rendered, so a single smooth scroll is
+            // accurate and keeps the follow animation smooth.
+            const scrollSegmentIntoView = (el) => {
+                if (!el) return;
+                const r0 = el.getBoundingClientRect();
+                const near = r0.bottom > -50 && r0.top < window.innerHeight + 50;
+                if (near) {
+                    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    return;
+                }
+                let attempts = 0;
+                let lastTop = null;
+                const step = () => {
+                    if (!el.isConnected) return;
+                    el.scrollIntoView({ block: 'center', behavior: 'auto' });
+                    const top = el.getBoundingClientRect().top;
+                    attempts += 1;
+                    if ((lastTop !== null && Math.abs(top - lastTop) < 1) || attempts >= 8) return;
+                    lastTop = top;
+                    requestAnimationFrame(step);
+                };
+                requestAnimationFrame(step);
+            };
+            utils.scrollSegmentIntoView = scrollSegmentIntoView;
+
             const scrollToSegmentIndex = (index) => {
+                let el = null;
                 if (showSpeakerModal.value) {
                     const container = speakerModalTranscriptRef.value;
                     if (!container) return;
-                    const target = container.querySelector(`[data-segment-index="${index}"]`);
-                    if (target) {
-                        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    }
+                    el = container.querySelector(`[data-segment-index="${index}"]`);
                 } else {
-                    mainTranscriptVirtualScroll.scrollToIndex(index, 'smooth');
+                    el = document.querySelector(`.transcript-segment[data-segment-index="${index}"], .speaker-segment[data-segment-index="${index}"], .speaker-bubble[data-segment-index="${index}"]`);
                 }
+                if (el) scrollSegmentIntoView(el);
             };
 
             // Add scrollToSegmentIndex to utils for composables that need it
