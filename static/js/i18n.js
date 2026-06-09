@@ -118,7 +118,14 @@ class I18n {
         }
         
         if (!translation) {
-            console.warn(`Translation not found for key: ${key}`);
+            // Warn ONCE per missing key. Without this, a missing key used in a
+            // component that re-renders rapidly (e.g. the chat modal during a
+            // drag) floods the console with the same warning every frame.
+            if (!this._warnedMissingKeys) this._warnedMissingKeys = new Set();
+            if (!this._warnedMissingKeys.has(key)) {
+                this._warnedMissingKeys.add(key);
+                console.warn(`Translation not found for key: ${key}`);
+            }
             return key; // Return the key itself as fallback
         }
         

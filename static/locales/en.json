@@ -315,6 +315,7 @@
     "clearCompleted": "Clear completed uploads",
     "clearSearchText": "Clear search text",
     "close": "Close",
+    "send": "Send",
     "copy": "Copy",
     "copyMessage": "Copy message",
     "copyNotes": "Copy notes",
@@ -655,7 +656,8 @@
     "shareTarget_too_large": "The shared audio file is larger than Speakr's upload limit.",
     "shareTarget_save_failed": "Speakr could not save the shared audio. Please try uploading directly.",
     "shareTarget_queue_failed": "The shared audio was saved but could not be queued for transcription.",
-    "recordingFinalizeFallback": "Server-side stitch failed; uploading as a single file instead."
+    "recordingFinalizeFallback": "Server-side stitch failed; uploading as a single file instead.",
+    "recordingNotResumable": "That recording can no longer be resumed."
   },
   "eventExtraction": {
     "description": "When enabled, the AI will identify meetings, appointments, and deadlines mentioned in your recordings and create downloadable calendar events.",
@@ -1261,6 +1263,10 @@
     "recoveryDescription": "We found an unfinished recording from a previous session. Would you like to restore it?",
     "recoveryFound": "Unsaved Recording Detected",
     "recoveryTitle": "Recover Recording",
+    "recoveryServerFound": "In-progress recording found on the server",
+    "recoveryServerDescription": "A recording from this browser was still being saved on the server. You can finish processing it now, or discard it.",
+    "recoveryChunksUploaded": "Chunks uploaded",
+    "recoveryFinishProcessing": "Finish processing",
     "restoreRecording": "Restore",
     "resumeRecording": "Resume",
     "saveRecording": "Save Recording",
