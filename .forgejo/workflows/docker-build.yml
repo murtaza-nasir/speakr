@@ -1,0 +1,57 @@
+name: Build images (no publish)
+
+# Manual "does everything still build?" check. Builds BOTH images (main + lite)
+# for BOTH architectures (linux/amd64 + linux/arm64) using the exact same steps
+# as the publish workflow — but with push: false and NO Docker Hub login/secrets,
+# so nothing is ever published. Use it to validate the Dockerfile (incl. the arm
+# build) before cutting a v* release tag.
+#
+# Start it from the Forgejo Actions tab → "Build images (no publish)" → Run.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build main image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: speakr:build-test
+          build-args: |
+            PRODUCTION=1
+
+  build-lite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build lite image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: speakr:build-test-lite
+          build-args: |
+            PRODUCTION=1
+            LIGHTWEIGHT=1
