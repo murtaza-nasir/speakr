@@ -520,8 +520,11 @@ def get_stats():
     pending = Recording.query.filter(recording_filter, Recording.status == 'PENDING').count()
     failed = Recording.query.filter(recording_filter, Recording.status == 'FAILED').count()
 
-    # Storage calculation
-    storage_query = db.session.query(func.sum(Recording.file_size)).filter(recording_filter)
+    # Storage calculation. Exclude recordings whose audio was removed by
+    # audio-only retention (audio_deleted_at set) — the file is gone but
+    # file_size is still recorded, so summing it overcounts actual storage.
+    storage_query = db.session.query(func.sum(Recording.file_size)).filter(
+        recording_filter, Recording.audio_deleted_at.is_(None))
     storage_bytes = storage_query.scalar() or 0
 
     # Queue status

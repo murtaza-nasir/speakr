@@ -127,8 +127,12 @@ def admin_get_users():
         .group_by(Recording.user_id)
         .all()
     )
+    # Storage = audio bytes actually on disk. Exclude recordings whose audio
+    # was removed by audio-only retention (audio_deleted_at set): the file is
+    # gone but file_size is still recorded, so summing it overcounts storage.
     sizes_by_uid = dict(
         db.session.query(Recording.user_id, db.func.sum(Recording.file_size))
+        .filter(Recording.audio_deleted_at.is_(None))
         .group_by(Recording.user_id)
         .all()
     )
@@ -281,7 +285,7 @@ def admin_update_user(user_id):
 
     # Get recordings count and storage used
     recordings_count = len(user.recordings)
-    storage_used = sum(r.file_size for r in user.recordings if r.file_size) or 0
+    storage_used = sum(r.file_size for r in user.recordings if r.file_size and not r.audio_deleted_at) or 0
 
     # Get current month token usage
     current_usage = token_tracker.get_monthly_usage(user.id)
@@ -399,9 +403,11 @@ def admin_get_stats():
     pending_recordings = Recording.query.filter_by(status='PENDING').count()
     failed_recordings = Recording.query.filter_by(status='FAILED').count()
     
-    # Get total storage used
-    total_storage = db.session.query(db.func.sum(Recording.file_size)).scalar() or 0
-    
+    # Get total storage used (exclude retention-removed audio — file gone but
+    # file_size still recorded; see the user-list query above).
+    total_storage = db.session.query(db.func.sum(Recording.file_size)) \
+        .filter(Recording.audio_deleted_at.is_(None)).scalar() or 0
+
     # Get top users by storage
     top_users_query = db.session.query(
         User.id,
@@ -409,6 +415,7 @@ def admin_get_stats():
         db.func.count(Recording.id).label('recordings_count'),
         db.func.sum(Recording.file_size).label('storage_used')
     ).join(Recording, User.id == Recording.user_id, isouter=True) \
+     .filter(Recording.audio_deleted_at.is_(None)) \
      .group_by(User.id) \
      .order_by(db.func.sum(Recording.file_size).desc()) \
      .limit(5)
