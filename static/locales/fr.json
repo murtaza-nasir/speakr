@@ -358,7 +358,8 @@
     "delete": "Supprimer",
     "save": "Enregistrer",
     "startReprocessing": "Lancer le retraitement",
-    "saveFolder": "Enregistrer le dossier"
+    "saveFolder": "Enregistrer le dossier",
+    "send": "Envoyer"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmer le Nouveau Mot de Passe",
@@ -655,7 +656,8 @@
     "shareTarget_too_large": "Le fichier audio partagé dépasse la limite d'envoi de Speakr.",
     "shareTarget_save_failed": "Speakr n'a pas pu enregistrer l'audio partagé. Veuillez l'envoyer directement.",
     "shareTarget_queue_failed": "L'audio partagé a été enregistré mais n'a pas pu être mis en file pour transcription.",
-    "recordingFinalizeFallback": "Assemblage côté serveur en échec ; envoi en tant que fichier unique à la place."
+    "recordingFinalizeFallback": "Assemblage côté serveur en échec ; envoi en tant que fichier unique à la place.",
+    "recordingNotResumable": "Cet enregistrement ne peut plus être repris."
   },
   "eventExtraction": {
     "description": "Lorsqu'activé, l'IA identifiera les réunions, rendez-vous et échéances mentionnés dans vos enregistrements et créera des événements de calendrier téléchargeables.",
@@ -1160,7 +1162,9 @@
     "sharedTranscripts": "Mes Transcriptions Partagées",
     "systemAudioHelp": "Aide Audio Système",
     "uploadFiles": "Télécharger les fichiers",
-    "uploadNotice": "Avis de Téléchargement"
+    "uploadNotice": "Avis de Téléchargement",
+    "resetStatusBody": "Cela marquera l'enregistrement comme « Échec ». C'est utile si le traitement est bloqué. Vous pourrez le retraiter ensuite.",
+    "resetStatusConfirm": "Oui, réinitialiser le statut"
   },
   "namingTemplates": {
     "addPattern": "Ajouter un Motif",
@@ -1284,7 +1288,11 @@
     "mixHelp": "Choisissez un monitor / périphérique audio virtuel (BlackHole sur macOS, VB-Cable sur Windows, ou un monitor Pulse encapsulé sous Linux) pour mixer l'audio système avec votre micro. Les deux flux se combinent en un seul enregistrement.",
     "linuxMonitorHintPrefix": "Vous ne voyez pas les entrées \"Monitor of …\" ? Chrome sous Linux les filtre. La section Linux → Option C du guide montre une commande",
     "linuxMonitorHintSuffix": "d'une seule ligne pour exposer un monitor Pulse comme une source normale que Chrome listera.",
-    "openGuide": "Ouvrir le guide"
+    "openGuide": "Ouvrir le guide",
+    "recoveryServerFound": "Enregistrement en cours trouvé sur le serveur",
+    "recoveryServerDescription": "Un enregistrement de ce navigateur était encore en cours d'enregistrement sur le serveur. Vous pouvez terminer son traitement maintenant ou le supprimer.",
+    "recoveryChunksUploaded": "Segments téléversés",
+    "recoveryFinishProcessing": "Terminer le traitement"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "L'audio sera re-transcrit à partir de zéro. Cela régénérera également le titre et le résumé basés sur la nouvelle transcription.",
@@ -1383,7 +1391,8 @@
     "upcoming": "À venir",
     "yesterday": "Hier",
     "allRecordings": "Tous les enregistrements",
-    "unfiled": "Non classés"
+    "unfiled": "Non classés",
+    "shared": "Partagé"
   },
   "speakers": {
     "filterBySpeaker": "Filtrer par intervenant",
@@ -1693,7 +1702,9 @@
     "recordingSizeSoftWarning": "L'enregistrement fait {{size}}. Pensez à l'arrêter quand vous pourrez.",
     "recordingMaxDurationReached": "L'enregistrement a atteint la durée maximale et s'est arrêté automatiquement.",
     "recordingFinalized": "Enregistrement envoyé pour traitement",
-    "recordingResumeFound": "Un enregistrement en cours dans ce navigateur a été détecté sur le serveur. Reprendre ?"
+    "recordingResumeFound": "Un enregistrement en cours dans ce navigateur a été détecté sur le serveur. Reprendre ?",
+    "processingFailed": "Échec du traitement",
+    "processingCompleted": "Traitement terminé !"
   },
   "webhooks": {
     "title": "Webhooks",

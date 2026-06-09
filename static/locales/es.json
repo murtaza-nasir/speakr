@@ -358,7 +358,8 @@
     "delete": "Eliminar",
     "save": "Guardar",
     "startReprocessing": "Iniciar reprocesamiento",
-    "saveFolder": "Guardar carpeta"
+    "saveFolder": "Guardar carpeta",
+    "send": "Enviar"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmar Nueva Contraseña",
@@ -655,7 +656,8 @@
     "shareTarget_too_large": "El archivo de audio compartido supera el límite de subida de Speakr.",
     "shareTarget_save_failed": "Speakr no pudo guardar el audio compartido. Por favor, súbalo directamente.",
     "shareTarget_queue_failed": "El audio compartido se guardó pero no se pudo poner en cola para transcripción.",
-    "recordingFinalizeFallback": "El ensamblaje en el servidor falló; subiendo como un solo archivo en su lugar."
+    "recordingFinalizeFallback": "El ensamblaje en el servidor falló; subiendo como un solo archivo en su lugar.",
+    "recordingNotResumable": "Esa grabación ya no se puede reanudar."
   },
   "eventExtraction": {
     "description": "Cuando está habilitado, la IA identificará reuniones, citas y plazos mencionados en tus grabaciones y creará eventos de calendario descargables.",
@@ -1160,7 +1162,9 @@
     "sharedTranscripts": "Mis Transcripciones Compartidas",
     "systemAudioHelp": "Ayuda de Audio del Sistema",
     "uploadFiles": "Subir Archivos",
-    "uploadNotice": "Aviso de Carga"
+    "uploadNotice": "Aviso de Carga",
+    "resetStatusBody": "Esto marcará la grabación como 'Fallida'. Es útil si el procesamiento se queda bloqueado. Podrás volver a procesarla después.",
+    "resetStatusConfirm": "Sí, restablecer estado"
   },
   "namingTemplates": {
     "addPattern": "Añadir Patrón",
@@ -1284,7 +1288,11 @@
     "mixHelp": "Elige un dispositivo de monitor / audio virtual (BlackHole en macOS, VB-Cable en Windows, o un monitor de Pulse encapsulado en Linux) para mezclar el audio del sistema con tu micrófono. Ambas señales se combinan en una sola grabación.",
     "linuxMonitorHintPrefix": "¿No ves las entradas \"Monitor of …\"? Chrome en Linux las filtra. La sección Linux → Opción C de la guía muestra un comando",
     "linuxMonitorHintSuffix": "que expone un monitor de Pulse como una fuente normal que Chrome sí listará.",
-    "openGuide": "Abrir guía"
+    "openGuide": "Abrir guía",
+    "recoveryServerFound": "Grabación en curso encontrada en el servidor",
+    "recoveryServerDescription": "Una grabación de este navegador todavía se estaba guardando en el servidor. Puedes terminar de procesarla ahora o descartarla.",
+    "recoveryChunksUploaded": "Fragmentos subidos",
+    "recoveryFinishProcessing": "Finalizar procesamiento"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "El audio será re-transcrito desde cero. Esto también regenerará el título y resumen basado en la nueva transcripción.",
@@ -1383,7 +1391,8 @@
     "upcoming": "Próximo",
     "yesterday": "Ayer",
     "allRecordings": "Todas las grabaciones",
-    "unfiled": "Sin clasificar"
+    "unfiled": "Sin clasificar",
+    "shared": "Compartido"
   },
   "speakers": {
     "filterBySpeaker": "Filtrar por orador",
@@ -1693,7 +1702,9 @@
     "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",
     "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",
     "recordingFinalized": "Grabación subida para procesamiento",
-    "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?"
+    "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?",
+    "processingFailed": "Error en el procesamiento",
+    "processingCompleted": "¡Procesamiento completado!"
   },
   "webhooks": {
     "title": "Webhooks",

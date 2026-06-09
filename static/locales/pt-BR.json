@@ -358,7 +358,8 @@
     "delete": "Excluir",
     "save": "Salvar",
     "startReprocessing": "Iniciar reprocessamento",
-    "saveFolder": "Salvar pasta"
+    "saveFolder": "Salvar pasta",
+    "send": "Enviar"
   },
   "changePasswordModal": {
     "confirmPassword": "Confirmar Nova Senha",
@@ -655,7 +656,8 @@
     "shareTarget_too_large": "O arquivo de áudio compartilhado excede o limite de upload do Speakr.",
     "shareTarget_save_failed": "Speakr não conseguiu salvar o áudio compartilhado. Faça o upload diretamente.",
     "shareTarget_queue_failed": "O áudio compartilhado foi salvo, mas não pôde ser enfileirado para transcrição.",
-    "recordingFinalizeFallback": "Junção no servidor falhou; enviando como um único arquivo no lugar."
+    "recordingFinalizeFallback": "Junção no servidor falhou; enviando como um único arquivo no lugar.",
+    "recordingNotResumable": "Essa gravação não pode mais ser retomada."
   },
   "eventExtraction": {
     "description": "Quando ativado, a IA identificará reuniões, compromissos e prazos mencionados em suas gravações e criará eventos de calendário para inserir na agenda.",
@@ -1160,7 +1162,9 @@
     "sharedTranscripts": "Transcrições Compartilhadas",
     "systemAudioHelp": "Ajuda de Áudio do Sistema",
     "uploadFiles": "Enviar Arquivos",
-    "uploadNotice": "Aviso de Envio"
+    "uploadNotice": "Aviso de Envio",
+    "resetStatusBody": "Isso marcará a gravação como 'Falhou'. É útil quando o processamento trava. Você poderá reprocessá-la depois.",
+    "resetStatusConfirm": "Sim, redefinir status"
   },
   "namingTemplates": {
     "addPattern": "Adicionar Padrão",
@@ -1284,7 +1288,11 @@
     "mixHelp": "Escolha um dispositivo monitor / áudio virtual (BlackHole no macOS, VB-Cable no Windows ou um monitor do Pulse encapsulado no Linux) para misturar áudio do sistema com seu microfone. Ambas as faixas se combinam em uma única gravação.",
     "linuxMonitorHintPrefix": "Não vê entradas \"Monitor of …\"? O Chrome no Linux as filtra. A seção Linux → Opção C do guia mostra um comando",
     "linuxMonitorHintSuffix": "de uma linha para expor um monitor do Pulse como uma fonte comum que o Chrome irá listar.",
-    "openGuide": "Abrir guia"
+    "openGuide": "Abrir guia",
+    "recoveryServerFound": "Gravação em andamento encontrada no servidor",
+    "recoveryServerDescription": "Uma gravação deste navegador ainda estava sendo salva no servidor. Você pode concluir o processamento agora ou descartá-la.",
+    "recoveryChunksUploaded": "Fragmentos enviados",
+    "recoveryFinishProcessing": "Concluir processamento"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "O áudio será retranscrito do zero. Isso também regenerará o título e o resumo com base na nova transcrição.",
@@ -1383,7 +1391,8 @@
     "upcoming": "Próximos",
     "yesterday": "Ontem",
     "allRecordings": "Todas as gravações",
-    "unfiled": "Sem pasta"
+    "unfiled": "Sem pasta",
+    "shared": "Compartilhado"
   },
   "speakers": {
     "filterBySpeaker": "Filtrar por orador",
@@ -1693,7 +1702,9 @@
     "recordingSizeSoftWarning": "A gravação tem {{size}}. Considere parar quando for conveniente.",
     "recordingMaxDurationReached": "A gravação atingiu a duração máxima e foi parada automaticamente.",
     "recordingFinalized": "Gravação enviada para processamento",
-    "recordingResumeFound": "Uma gravação em andamento deste navegador foi detectada no servidor. Retomar?"
+    "recordingResumeFound": "Uma gravação em andamento deste navegador foi detectada no servidor. Retomar?",
+    "processingFailed": "Falha no processamento",
+    "processingCompleted": "Processamento concluído!"
   },
   "webhooks": {
     "title": "Webhooks",

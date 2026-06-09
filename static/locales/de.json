@@ -358,7 +358,8 @@
     "delete": "Löschen",
     "save": "Speichern",
     "startReprocessing": "Neuverarbeitung starten",
-    "saveFolder": "Ordner speichern"
+    "saveFolder": "Ordner speichern",
+    "send": "Senden"
   },
   "changePasswordModal": {
     "confirmPassword": "Neues Passwort Bestätigen",
@@ -655,7 +656,8 @@
     "shareTarget_too_large": "Die geteilte Audiodatei überschreitet Speakrs Upload-Limit.",
     "shareTarget_save_failed": "Speakr konnte die geteilte Audiodatei nicht speichern. Bitte direkt hochladen.",
     "shareTarget_queue_failed": "Die geteilte Audiodatei wurde gespeichert, konnte aber nicht zur Transkription eingereiht werden.",
-    "recordingFinalizeFallback": "Server-seitiges Zusammenführen fehlgeschlagen; Upload als einzelne Datei stattdessen."
+    "recordingFinalizeFallback": "Server-seitiges Zusammenführen fehlgeschlagen; Upload als einzelne Datei stattdessen.",
+    "recordingNotResumable": "Diese Aufnahme kann nicht mehr fortgesetzt werden."
   },
   "eventExtraction": {
     "description": "Wenn aktiviert, identifiziert die KI Meetings, Termine und Fristen in Ihren Aufnahmen und erstellt herunterladbare Kalenderereignisse.",
@@ -1286,7 +1288,11 @@
     "mixHelp": "Wählen Sie ein Monitor / virtuelles Audiogerät (BlackHole auf macOS, VB-Cable auf Windows oder ein gewrapptes Pulse-Monitor unter Linux), um System-Audio mit Ihrem Mikrofon zu mischen. Beide Streams werden zu einer Aufnahme kombiniert.",
     "linuxMonitorHintPrefix": "\"Monitor of …\"-Einträge nicht zu sehen? Chrome unter Linux filtert diese heraus. Linux → Option C im Hilfeleitfaden zeigt einen einzeiligen",
     "linuxMonitorHintSuffix": "-Befehl, um einen Pulse-Monitor als reguläre Quelle bereitzustellen, die Chrome auflistet.",
-    "openGuide": "Anleitung öffnen"
+    "openGuide": "Anleitung öffnen",
+    "recoveryServerFound": "Laufende Aufnahme auf dem Server gefunden",
+    "recoveryServerDescription": "Eine Aufnahme aus diesem Browser wurde noch auf dem Server gespeichert. Sie können die Verarbeitung jetzt abschließen oder sie verwerfen.",
+    "recoveryChunksUploaded": "Hochgeladene Segmente",
+    "recoveryFinishProcessing": "Verarbeitung abschließen"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "Das Audio wird von Grund auf neu transkribiert. Dies wird auch den Titel und die Zusammenfassung basierend auf der neuen Transkription neu generieren.",

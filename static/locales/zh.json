@@ -358,7 +358,8 @@
     "delete": "删除",
     "save": "保存",
     "startReprocessing": "开始重新处理",
-    "saveFolder": "保存文件夹"
+    "saveFolder": "保存文件夹",
+    "send": "发送"
   },
   "changePasswordModal": {
     "confirmPassword": "确认新密码",
@@ -655,7 +656,8 @@
     "shareTarget_too_large": "共享的音频文件超过 Speakr 的上传限制。",
     "shareTarget_save_failed": "Speakr 无法保存共享的音频。请改为直接上传。",
     "shareTarget_queue_failed": "共享的音频已保存,但无法加入转录队列。",
-    "recordingFinalizeFallback": "服务端拼接失败,改为作为单个文件上传。"
+    "recordingFinalizeFallback": "服务端拼接失败,改为作为单个文件上传。",
+    "recordingNotResumable": "该录音无法再继续。"
   },
   "eventExtraction": {
     "description": "启用后，AI将识别录音中提到的会议、约会和截止日期，并创建可下载的日历事件。",
@@ -1160,7 +1162,9 @@
     "sharedTranscripts": "我的共享转录",
     "systemAudioHelp": "系统音频帮助",
     "uploadFiles": "上传文件",
-    "uploadNotice": "上传提示"
+    "uploadNotice": "上传提示",
+    "resetStatusBody": "这会将该录音标记为“失败”。当处理卡住时这很有用。之后您可以重新处理它。",
+    "resetStatusConfirm": "是，重置状态"
   },
   "namingTemplates": {
     "addPattern": "添加模式",
@@ -1284,7 +1288,11 @@
     "mixHelp": "选择一个 monitor / 虚拟音频设备(macOS 上的 BlackHole、Windows 上的 VB-Cable,或 Linux 上包装好的 Pulse monitor),将系统音频与您的麦克风混合。两路音频流将合并为一段录音。",
     "linuxMonitorHintPrefix": "没有看到 \"Monitor of …\" 条目?Linux 上的 Chrome 会过滤掉它们。帮助指南 Linux → 选项 C 中展示了一行",
     "linuxMonitorHintSuffix": "命令,可将 Pulse monitor 暴露为 Chrome 可识别的普通源。",
-    "openGuide": "打开指南"
+    "openGuide": "打开指南",
+    "recoveryServerFound": "在服务器上发现进行中的录音",
+    "recoveryServerDescription": "此浏览器中的一段录音仍在服务器上保存。您可以现在完成处理，或将其丢弃。",
+    "recoveryChunksUploaded": "已上传的片段",
+    "recoveryFinishProcessing": "完成处理"
   },
   "reprocessModal": {
     "audioReTranscribedFromScratch": "音频将从头重新转录。这也将基于新转录重新生成标题和摘要。",
@@ -1694,7 +1702,9 @@
     "recordingSizeSoftWarning": "录音大小为 {{size}},可在方便时停止。",
     "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",
     "recordingFinalized": "录音已上传等待处理",
-    "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?"
+    "recordingResumeFound": "在服务器上检测到此浏览器的未完成录音。是否继续?",
+    "processingFailed": "处理失败",
+    "processingCompleted": "处理完成！"
   },
   "webhooks": {
     "title": "Webhook",
