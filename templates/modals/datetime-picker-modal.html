@@ -1,6 +1,6 @@
 <!-- DateTime Picker Modal -->
 <div v-if="showDateTimePicker" @click.self="closeDateTimePicker" class="modal-overlay">
-    <div class="modal-panel modal-panel--xs overflow-hidden">
+    <div class="modal-panel modal-panel--xs">
         <div class="modal-header">
             <i class="fas fa-calendar-alt text-2xl text-[var(--text-accent)]"></i>
             <h3 class="modal-title">Select Date &amp; Time</h3>
@@ -8,7 +8,7 @@
         </div>
 
         <!-- Calendar Section -->
-        <div class="p-4">
+        <div class="modal-body">
             <!-- Month/Year Navigation -->
             <div class="flex items-center justify-between mb-4">
                 <button @click="prevMonth" class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">

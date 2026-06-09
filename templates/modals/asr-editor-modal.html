@@ -1,6 +1,6 @@
 <!-- ASR Editor Modal -->
 <div v-if="showAsrEditorModal" @click.self="closeAsrEditorModal" class="modal-overlay">
-    <div @click="closeAllSpeakerSuggestions" class="modal-panel modal-panel--xl flex flex max-h-[90vh">
+    <div @click="closeAllSpeakerSuggestions" class="modal-panel modal-panel--xl">
         <div class="modal-header">
             <h3 class="modal-title" v-text="t('modal.editAsrTranscription')"></h3>
             <span v-if="asrEditorSaveFlash" class="pill-status pill-status--success">

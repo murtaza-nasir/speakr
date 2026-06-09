@@ -2529,45 +2529,46 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <!-- Create API Token Modal -->
     <div id="createTokenModal" class="modal-overlay hidden">
         <div class="modal-panel modal-panel--sm">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]">
-                    <i class="fas fa-key mr-2 text-[var(--text-accent)]"></i>Create API Token
-                </h3>
-                <button id="closeCreateTokenModal" class="text-[var(--text-light)] hover:text-[var(--text-muted)] text-2xl leading-none">&times;</button>
+            <div class="modal-header">
+                <i class="fas fa-key text-[var(--text-accent)]"></i>
+                <h3 class="modal-title">Create API Token</h3>
+                <button id="closeCreateTokenModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
             </div>
 
-            <form id="createTokenForm" class="space-y-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <form id="createTokenForm" class="contents">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
-                <div>
-                    <label for="tokenNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Token Name *</label>
-                    <input type="text" id="tokenNameInput" name="name" required maxlength="100" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., n8n automation, CLI access">
-                    <p class="text-xs text-[var(--text-light)] mt-1">A descriptive name to help you identify this token</p>
-                </div>
+                    <div>
+                        <label for="tokenNameInput" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Token Name *</label>
+                        <input type="text" id="tokenNameInput" name="name" required maxlength="100" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" placeholder="e.g., n8n automation, CLI access">
+                        <p class="text-xs text-[var(--text-light)] mt-1">A descriptive name to help you identify this token</p>
+                    </div>
 
-                <div>
-                    <label for="tokenExpirationSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Expiration</label>
-                    <select id="tokenExpirationSelect" name="expires_in_days" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                        <option value="0">Never expires</option>
-                        <option value="7">7 days</option>
-                        <option value="30">30 days</option>
-                        <option value="90">90 days</option>
-                        <option value="365">1 year</option>
-                    </select>
-                    <p class="text-xs text-[var(--text-light)] mt-1">When this token should expire</p>
-                </div>
+                    <div>
+                        <label for="tokenExpirationSelect" class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Expiration</label>
+                        <select id="tokenExpirationSelect" name="expires_in_days" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <option value="0">Never expires</option>
+                            <option value="7">7 days</option>
+                            <option value="30">30 days</option>
+                            <option value="90">90 days</option>
+                            <option value="365">1 year</option>
+                        </select>
+                        <p class="text-xs text-[var(--text-light)] mt-1">When this token should expire</p>
+                    </div>
 
-                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <div class="flex">
-                        <i class="fas fa-info-circle text-amber-500 mr-2 mt-0.5"></i>
-                        <p class="text-xs text-amber-700">
-                            The token will only be shown once after creation. Make sure to copy and save it securely.
-                        </p>
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <div class="flex">
+                            <i class="fas fa-info-circle text-amber-500 mr-2 mt-0.5"></i>
+                            <p class="text-xs text-amber-700">
+                                The token will only be shown once after creation. Make sure to copy and save it securely.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex justify-end space-x-3 pt-2">
-                    <button type="button" id="cancelCreateTokenBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--border-secondary)]">Cancel</button>
+                <div class="modal-footer">
+                    <button type="button" id="cancelCreateTokenBtn" class="btn btn--ghost">Cancel</button>
                     <button type="submit" id="submitCreateTokenBtn" class="btn btn--primary">
                         <i class="fas fa-plus mr-2"></i>Create Token
                     </button>
@@ -2579,42 +2580,43 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
     <!-- Token Secret Modal (shown after creation) -->
     <div id="tokenSecretModal" class="modal-overlay hidden">
         <div class="modal-panel modal-panel--sm">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-[var(--text-primary)]">
-                    <i class="fas fa-check-circle mr-2 text-green-500"></i>Token Created!
-                </h3>
+            <div class="modal-header">
+                <i class="fas fa-check-circle text-green-500"></i>
+                <h3 class="modal-title">Token Created!</h3>
             </div>
 
-            <div class="space-y-4">
-                <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <div class="flex">
-                        <i class="fas fa-exclamation-triangle text-[var(--text-danger)] mr-2 mt-0.5"></i>
-                        <p class="text-xs text-[var(--text-danger-strong)]">
-                            <strong>Important!</strong> This is the only time you'll see this token. Copy it now and store it securely.
-                        </p>
+            <div class="modal-body">
+                <div class="space-y-4">
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <div class="flex">
+                            <i class="fas fa-exclamation-triangle text-[var(--text-danger)] mr-2 mt-0.5"></i>
+                            <p class="text-xs text-[var(--text-danger-strong)]">
+                                <strong>Important!</strong> This is the only time you'll see this token. Copy it now and store it securely.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Your API Token</label>
+                        <div class="relative">
+                            <input type="text" id="newTokenValue" readonly class="w-full px-3 py-2 pr-12 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-mono text-sm">
+                            <button type="button" id="copyTokenBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-md transition-all duration-200 flex items-center gap-1.5 border border-transparent hover:border-[var(--border-secondary)]" title="Copy to clipboard">
+                                <i id="copyTokenIcon" class="fas fa-copy text-[var(--text-muted)]"></i>
+                                <span id="copyTokenText" class="text-xs text-[var(--text-muted)] hidden">Copied!</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="newTokenInfo" class="space-y-2 text-sm">
+                        <!-- Populated dynamically -->
                     </div>
                 </div>
+            </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Your API Token</label>
-                    <div class="relative">
-                        <input type="text" id="newTokenValue" readonly class="w-full px-3 py-2 pr-12 border border-[var(--border-secondary)] rounded-md bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-mono text-sm">
-                        <button type="button" id="copyTokenBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-md transition-all duration-200 flex items-center gap-1.5 border border-transparent hover:border-[var(--border-secondary)]" title="Copy to clipboard">
-                            <i id="copyTokenIcon" class="fas fa-copy text-[var(--text-muted)]"></i>
-                            <span id="copyTokenText" class="text-xs text-[var(--text-muted)] hidden">Copied!</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="newTokenInfo" class="space-y-2 text-sm">
-                    <!-- Populated dynamically -->
-                </div>
-
-                <div class="flex justify-end pt-2">
-                    <button type="button" id="closeTokenSecretModal" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                        <i class="fas fa-check mr-2"></i>I've Saved My Token
-                    </button>
-                </div>
+            <div class="modal-footer">
+                <button type="button" id="closeTokenSecretModal" class="btn btn--primary">
+                    <i class="fas fa-check mr-2"></i>I've Saved My Token
+                </button>
             </div>
         </div>
     </div>

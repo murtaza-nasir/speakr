@@ -1312,11 +1312,12 @@ Summarization Instructions:
         <!-- Add User Modal -->
         <div v-if="showAddUserModal" @click.self="showAddUserModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${t('adminDashboard.addNewUser')}</h3>
-                    <button @click="showAddUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">${t('adminDashboard.addNewUser')}</h3>
+                    <button @click="showAddUserModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <form @submit.prevent="addUser">
+                <form @submit.prevent="addUser" class="contents">
+                    <div class="modal-body">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.usernameLabel')}</label>
                         <input v-model="newUser.username" type="text" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
@@ -1350,8 +1351,9 @@ Summarization Instructions:
                         <input v-model.number="newUser.monthlyTranscriptionBudgetMinutes" type="number" min="10" step="10" :placeholder="t('adminDashboard.transcriptionBudgetPlaceholder')" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
                         <p class="text-xs text-[var(--text-muted)] mt-1">${t('adminDashboard.transcriptionBudgetHelp')}</p>
                     </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" @click="showAddUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">${t('buttons.cancel')}</button>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" @click="showAddUserModal = false" class="btn btn--ghost">${t('buttons.cancel')}</button>
                         <button type="submit" class="btn btn--primary">${t('adminDashboard.addUser')}</button>
                     </div>
                 </form>
@@ -1361,11 +1363,12 @@ Summarization Instructions:
         <!-- Edit User Modal -->
         <div v-if="showEditUserModal" @click.self="showEditUserModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${t('adminDashboard.editUser')}</h3>
-                    <button @click="showEditUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">${t('adminDashboard.editUser')}</h3>
+                    <button @click="showEditUserModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <form @submit.prevent="updateUser">
+                <form @submit.prevent="updateUser" class="contents">
+                    <div class="modal-body">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.usernameLabel')}</label>
                         <input v-model="editingUser.username" type="text" required class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
@@ -1413,8 +1416,9 @@ Summarization Instructions:
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-end space-x-3">
-                        <button type="button" @click="showEditUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" @click="showEditUserModal = false" class="btn btn--ghost">Cancel</button>
                         <button type="submit" class="btn btn--primary">${t('adminDashboard.updateUser')}</button>
                     </div>
                 </form>
@@ -1424,27 +1428,29 @@ Summarization Instructions:
         <!-- Delete User Confirmation Modal -->
         <div v-if="showDeleteUserModal" @click.self="showDeleteUserModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Confirm Delete</h3>
-                    <button @click="showDeleteUserModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">Confirm Delete</h3>
+                    <button @click="showDeleteUserModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <p class="mb-4 text-[var(--text-secondary)]">Are you sure you want to delete the user <span class="font-semibold">${ userToDelete?.username }</span>? This action cannot be undone.</p>
-                <div class="flex justify-end space-x-3">
-                    <button @click="showDeleteUserModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="deleteUser" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">Delete User</button>
+                <div class="modal-body">
+                    <p class="text-[var(--text-secondary)]">Are you sure you want to delete the user <span class="font-semibold">${ userToDelete?.username }</span>? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button @click="showDeleteUserModal = false" class="btn btn--ghost">Cancel</button>
+                    <button @click="deleteUser" class="btn btn--danger">Delete User</button>
                 </div>
             </div>
         </div>
         
         <!-- Edit System Setting Modal -->
         <div v-if="showEditSettingModal" class="modal-overlay">
-            <div class="modal-panel modal-panel--md max-h-[85vh flex flex overflow-hidden">
-                <div class="flex-shrink-0 flex justify-between items-center p-6 pb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Edit System Setting</h3>
-                    <button @click="showEditSettingModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-2xl leading-none">&times;</button>
+            <div class="modal-panel modal-panel--md">
+                <div class="modal-header">
+                    <h3 class="modal-title">Edit System Setting</h3>
+                    <button @click="showEditSettingModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
 
-                <div v-if="editingSetting" class="flex-1 overflow-y-auto px-6 pb-6 space-y-4">
+                <div v-if="editingSetting" class="modal-body space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Setting Key</label>
                         <div class="px-3 py-2 bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded-md font-mono text-sm">
@@ -1561,9 +1567,9 @@ Summarization Instructions:
                     </div>
                 </div>
 
-                <div class="flex-shrink-0 flex justify-end space-x-3 p-6 border-t border-[var(--border-primary)] bg-[var(--bg-tertiary)] rounded-b-lg">
+                <div class="modal-footer">
                     <button @click="showEditSettingModal = false"
-                            class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
+                            class="btn btn--ghost">
                         Cancel
                     </button>
                     <button @click="saveSettingValue"
@@ -1577,11 +1583,12 @@ Summarization Instructions:
         <!-- Create/Edit Group Modal -->
         <div v-if="showTeamModal" @click.self="closeTeamModal" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
-                    <button @click="closeTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
+                    <button @click="closeTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <form @submit.prevent="saveTeam">
+                <form @submit.prevent="saveTeam" class="contents">
+                    <div class="modal-body">
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Name *</label>
@@ -1599,9 +1606,10 @@ Summarization Instructions:
                             ${ teamError }
                         </div>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
+                    </div>
+                    <div class="modal-footer">
                         <button type="button" @click="closeTeamModal"
-                                class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
+                                class="btn btn--ghost">
                             Cancel
                         </button>
                         <button type="submit"
@@ -1615,11 +1623,12 @@ Summarization Instructions:
 
         <!-- Manage Group Members Modal -->
         <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="modal-overlay">
-            <div class="modal-panel modal-panel--lg max-h-[90vh overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Group: ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+            <div class="modal-panel modal-panel--lg">
+                <div class="modal-header">
+                    <h3 class="modal-title">Manage Group: ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
+                <div class="modal-body">
 
                 <!-- Add Member Section -->
                 <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
@@ -1682,8 +1691,9 @@ Summarization Instructions:
                 <div v-if="teamMemberError" class="mt-4 p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
                     ${ teamMemberError }
                 </div>
+                </div>
 
-                <div class="flex justify-between mt-6">
+                <div class="modal-footer modal-footer--between">
                     <button @click="syncTeamShares"
                             class="btn btn--primary">
                         <i class="fas fa-sync-alt"></i>
@@ -1700,19 +1710,21 @@ Summarization Instructions:
         <!-- Sync Group Shares Confirmation Modal -->
         <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Sync Group Shares</h3>
-                    <button @click="showSyncSharesModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">Sync Group Shares</h3>
+                    <button @click="showSyncSharesModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
+                <div class="modal-body">
                 <p class="mb-4 text-[var(--text-secondary)]">
                     This will create shares for all recordings with group tags that have auto-sharing enabled.
                 </p>
-                <p class="mb-4 text-[var(--text-muted)] text-sm">
+                <p class="text-[var(--text-muted)] text-sm">
                     <i class="fas fa-info-circle mr-1"></i>
                     Only missing shares will be created - existing shares won't be duplicated.
                 </p>
-                <div class="flex justify-end space-x-3">
-                    <button @click="showSyncSharesModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
+                </div>
+                <div class="modal-footer">
+                    <button @click="showSyncSharesModal = false" class="btn btn--ghost">Cancel</button>
                     <button @click="confirmSyncShares" class="btn btn--primary">
                         <i class="fas fa-sync-alt mr-2"></i>Sync Now
                     </button>
@@ -1723,13 +1735,13 @@ Summarization Instructions:
         <!-- Sync Results Modal -->
         <div v-if="showSyncResultsModal" @click.self="showSyncResultsModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">
-                        <i class="fas fa-check-circle text-green-500 mr-2"></i>Sync Complete
-                    </h3>
-                    <button @click="showSyncResultsModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    <h3 class="modal-title">Sync Complete</h3>
+                    <button @click="showSyncResultsModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="mb-4 space-y-2">
+                <div class="modal-body">
+                <div class="space-y-2">
                     <div class="flex justify-between text-[var(--text-secondary)]">
                         <span>Shares created:</span>
                         <span class="font-semibold">${ syncResults.shares_created }</span>
@@ -1739,7 +1751,8 @@ Summarization Instructions:
                         <span class="font-semibold">${ syncResults.recordings_processed }</span>
                     </div>
                 </div>
-                <div class="flex justify-end">
+                </div>
+                <div class="modal-footer">
                     <button @click="showSyncResultsModal = false" class="btn btn--primary">
                         Done
                     </button>
@@ -1750,25 +1763,28 @@ Summarization Instructions:
         <!-- Delete Group Confirmation Modal -->
         <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="modal-overlay">
             <div class="modal-panel modal-panel--sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Delete Group</h3>
-                    <button @click="showDeleteTeamModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+                <div class="modal-header">
+                    <h3 class="modal-title">Delete Group</h3>
+                    <button @click="showDeleteTeamModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <p class="mb-4 text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
-                <div class="flex justify-end space-x-3">
-                    <button @click="showDeleteTeamModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="deleteTeam" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">Delete Group</button>
+                <div class="modal-body">
+                    <p class="text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button @click="showDeleteTeamModal = false" class="btn btn--ghost">Cancel</button>
+                    <button @click="deleteTeam" class="btn btn--danger">Delete Group</button>
                 </div>
             </div>
         </div>
 
         <!-- Manage Group Tags Modal -->
         <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="modal-overlay">
-            <div class="modal-panel modal-panel--lg max-h-[90vh overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Tags for ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamTagsModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+            <div class="modal-panel modal-panel--lg">
+                <div class="modal-header">
+                    <h3 class="modal-title">Manage Tags for ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamTagsModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
+                <div class="modal-body">
 
                 <!-- Create/Edit Tag Form -->
                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
@@ -1941,6 +1957,7 @@ Summarization Instructions:
                         <i class="fas fa-tags text-3xl mb-2"></i>
                         <p class="text-sm">No group tags created yet</p>
                     </div>
+                </div>
                 </div>
             </div>
         </div>

@@ -246,200 +246,186 @@
             Speakr &copy; {{ now.year }}
         </footer>
         <!-- Create/Edit Group Modal -->
-        <div v-if="showTeamModal" @click.self="closeTeamModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
-                    <button @click="closeTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showTeamModal" @click.self="closeTeamModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
+                <div class="modal-header">
+                    <h3 class="modal-title">${ editingTeam ? 'Edit Group' : 'Create Group' }</h3>
+                    <button @click="closeTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <form @submit.prevent="saveTeam">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Name *</label>
-                            <input v-model="teamForm.name" type="text" required
-                                   class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                   placeholder="Enter group name">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
-                            <textarea v-model="teamForm.description" rows="3"
-                                      class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
-                                      placeholder="Optional description"></textarea>
-                        </div>
-                        <div v-if="teamError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
-                            ${ teamError }
+                <form @submit.prevent="saveTeam" class="contents">
+                    <div class="modal-body">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Group Name *</label>
+                                <input v-model="teamForm.name" type="text" required class="field w-full" placeholder="Enter group name">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1">Description</label>
+                                <textarea v-model="teamForm.description" rows="3" class="field w-full" placeholder="Optional description"></textarea>
+                            </div>
+                            <div v-if="teamError" class="p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
+                                ${ teamError }
+                            </div>
                         </div>
                     </div>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button type="button" @click="closeTeamModal"
-                                class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
-                            ${ editingTeam ? 'Update Group' : 'Create Group' }
-                        </button>
+                    <div class="modal-footer">
+                        <button type="button" @click="closeTeamModal" class="btn btn--ghost">Cancel</button>
+                        <button type="submit" class="btn btn--primary">${ editingTeam ? 'Update Group' : 'Create Group' }</button>
                     </div>
                 </form>
             </div>
         </div>
 
         <!-- Manage Group Members Modal -->
-        <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Group: ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showManageTeamModal" @click.self="closeManageTeamModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--lg">
+                <div class="modal-header">
+                    <h3 class="modal-title">Manage Group: ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
 
-                <!-- Add Member Section -->
-                <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Add Member</h4>
-                    <div class="flex space-x-2">
-                        <div class="flex-1">
-                            <select v-model="newMemberUserId"
-                                    class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                <option value="">Select a user...</option>
-                                <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-                                    ${ user.username } (${ user.email })
-                                </option>
-                            </select>
-                        </div>
-                        <div>
-                            <select v-model="newMemberRole"
-                                    class="px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]">
-                                <option value="member">Member</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-                        <button @click="addTeamMember" :disabled="!newMemberUserId"
-                                class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] disabled:opacity-50 disabled:cursor-not-allowed">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Current Members -->
-                <div>
-                    <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Current Members (${ teamMembers.length })</h4>
-                    <div v-if="teamMembers.length > 0" class="space-y-2">
-                        <div v-for="member in teamMembers" :key="member.user_id"
-                             class="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-md">
-                            <div class="flex items-center space-x-3">
-                                <i class="fas fa-user text-[var(--text-muted)]"></i>
-                                <div>
-                                    <div class="text-sm font-medium text-[var(--text-primary)]">${ member.username }</div>
-                                    <div class="text-xs text-[var(--text-muted)]">${ member.email }</div>
-                                </div>
+                <div class="modal-body">
+                    <!-- Add Member Section -->
+                    <div class="mb-6 p-4 bg-[var(--bg-tertiary)] rounded-lg">
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Add Member</h4>
+                        <div class="flex space-x-2">
+                            <div class="flex-1">
+                                <select v-model="newMemberUserId" class="field w-full">
+                                    <option value="">Select a user...</option>
+                                    <option v-for="user in availableUsers" :key="user.id" :value="user.id">
+                                        ${ user.username } (${ user.email })
+                                    </option>
+                                </select>
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <select v-model="member.role" @change="updateMemberRole(member)"
-                                        class="px-2 py-1 text-sm border border-[var(--border-secondary)] rounded bg-[var(--bg-input)] text-[var(--text-primary)]">
+                            <div>
+                                <select v-model="newMemberRole" class="field">
                                     <option value="member">Member</option>
                                     <option value="admin">Admin</option>
                                 </select>
-                                <button @click="removeTeamMember(member)"
-                                        class="text-red-500 hover:text-red-700" title="Remove from group">
-                                    <i class="fas fa-times"></i>
-                                </button>
                             </div>
+                            <button @click="addTeamMember" :disabled="!newMemberUserId" class="btn btn--primary">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
                         </div>
                     </div>
-                    <div v-else class="text-center py-4 text-[var(--text-muted)]">
-                        No members yet
+
+                    <!-- Current Members -->
+                    <div>
+                        <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Current Members (${ teamMembers.length })</h4>
+                        <div v-if="teamMembers.length > 0" class="space-y-2">
+                            <div v-for="member in teamMembers" :key="member.user_id"
+                                 class="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-md">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fas fa-user text-[var(--text-muted)]"></i>
+                                    <div>
+                                        <div class="text-sm font-medium text-[var(--text-primary)]">${ member.username }</div>
+                                        <div class="text-xs text-[var(--text-muted)]">${ member.email }</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <select v-model="member.role" @change="updateMemberRole(member)" class="field field--sm">
+                                        <option value="member">Member</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                    <button @click="removeTeamMember(member)" class="btn btn--icon btn--danger btn--sm" title="Remove from group">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-4 text-[var(--text-muted)]">
+                            No members yet
+                        </div>
+                    </div>
+
+                    <div v-if="teamMemberError" class="mt-4 p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
+                        ${ teamMemberError }
                     </div>
                 </div>
 
-                <div v-if="teamMemberError" class="mt-4 p-3 bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)] rounded-md text-sm">
-                    ${ teamMemberError }
-                </div>
-
-                <div class="flex justify-between mt-6">
-                    <button @click="syncTeamShares"
-                            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2">
-                        <i class="fas fa-sync-alt"></i>
-                        Sync Group Shares
+                <div class="modal-footer modal-footer--between">
+                    <button @click="syncTeamShares" class="btn btn--primary">
+                        <i class="fas fa-sync-alt"></i> Sync Group Shares
                     </button>
-                    <button @click="closeManageTeamModal"
-                            class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
-                        Done
-                    </button>
+                    <button @click="closeManageTeamModal" class="btn btn--ghost">Done</button>
                 </div>
             </div>
         </div>
 
         <!-- Sync Group Shares Confirmation Modal -->
-        <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Sync Group Shares</h3>
-                    <button @click="showSyncSharesModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showSyncSharesModal" @click.self="showSyncSharesModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
+                <div class="modal-header">
+                    <h3 class="modal-title">Sync Group Shares</h3>
+                    <button @click="showSyncSharesModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <p class="mb-4 text-[var(--text-secondary)]">
-                    This will create shares for all recordings with group tags that have auto-sharing enabled.
-                </p>
-                <p class="mb-4 text-[var(--text-muted)] text-sm">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Only missing shares will be created - existing shares won't be duplicated.
-                </p>
-                <div class="flex justify-end space-x-3">
-                    <button @click="showSyncSharesModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="confirmSyncShares" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        <i class="fas fa-sync-alt mr-2"></i>Sync Now
-                    </button>
+                <div class="modal-body">
+                    <p class="mb-4 text-[var(--text-secondary)]">
+                        This will create shares for all recordings with group tags that have auto-sharing enabled.
+                    </p>
+                    <p class="text-[var(--text-muted)] text-sm">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Only missing shares will be created - existing shares won't be duplicated.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button @click="showSyncSharesModal = false" class="btn btn--ghost">Cancel</button>
+                    <button @click="confirmSyncShares" class="btn btn--primary"><i class="fas fa-sync-alt"></i> Sync Now</button>
                 </div>
             </div>
         </div>
 
         <!-- Sync Results Modal -->
-        <div v-if="showSyncResultsModal" @click.self="showSyncResultsModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">
-                        <i class="fas fa-check-circle text-green-500 mr-2"></i>Sync Complete
-                    </h3>
-                    <button @click="showSyncResultsModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showSyncResultsModal" @click.self="showSyncResultsModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm">
+                <div class="modal-header">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    <h3 class="modal-title">Sync Complete</h3>
+                    <button @click="showSyncResultsModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <div class="mb-4 space-y-2">
-                    <div class="flex justify-between text-[var(--text-secondary)]">
-                        <span>Shares created:</span>
-                        <span class="font-semibold">${ syncResults.shares_created }</span>
-                    </div>
-                    <div class="flex justify-between text-[var(--text-secondary)]">
-                        <span>Recordings processed:</span>
-                        <span class="font-semibold">${ syncResults.recordings_processed }</span>
+                <div class="modal-body">
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-[var(--text-secondary)]">
+                            <span>Shares created:</span>
+                            <span class="font-semibold">${ syncResults.shares_created }</span>
+                        </div>
+                        <div class="flex justify-between text-[var(--text-secondary)]">
+                            <span>Recordings processed:</span>
+                            <span class="font-semibold">${ syncResults.recordings_processed }</span>
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button @click="showSyncResultsModal = false" class="px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)]">
-                        Done
-                    </button>
+                <div class="modal-footer">
+                    <button @click="showSyncResultsModal = false" class="btn btn--primary">Done</button>
                 </div>
             </div>
         </div>
 
         <!-- Delete Group Confirmation Modal -->
-        <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-md">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Delete Group</h3>
-                    <button @click="showDeleteTeamModal = false" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showDeleteTeamModal" @click.self="showDeleteTeamModal = false" class="modal-overlay">
+            <div class="modal-panel modal-panel--sm modal-panel--danger">
+                <div class="modal-header">
+                    <h3 class="modal-title">Delete Group</h3>
+                    <button @click="showDeleteTeamModal = false" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
-                <p class="mb-4 text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
-                <div class="flex justify-end space-x-3">
-                    <button @click="showDeleteTeamModal = false" class="px-4 py-2 border border-[var(--border-secondary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-tertiary)]">Cancel</button>
-                    <button @click="deleteTeam" class="px-4 py-2 bg-[var(--bg-danger)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-danger-hover)]">Delete Group</button>
+                <div class="modal-body">
+                    <p class="text-[var(--text-secondary)]">Are you sure you want to delete the group <span class="font-semibold">${ teamToDelete?.name }</span>? This will remove all members from the group. This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button @click="showDeleteTeamModal = false" class="btn btn--ghost">Cancel</button>
+                    <button @click="deleteTeam" class="btn btn--danger">Delete Group</button>
                 </div>
             </div>
         </div>
 
         <!-- Manage Group Tags Modal -->
-        <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">Manage Tags for ${ currentTeam?.name }</h3>
-                    <button @click="closeManageTeamTagsModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showManageTeamTagsModal" @click.self="closeManageTeamTagsModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--lg">
+                <div class="modal-header">
+                    <h3 class="modal-title">Manage Tags for ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamTagsModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
+                <div class="modal-body">
 
                 <!-- Create/Edit Tag Form -->
                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
@@ -613,19 +599,19 @@
                         <p class="text-sm">No group tags created yet</p>
                     </div>
                 </div>
+                </div>
             </div>
         </div>
 
         <!-- Manage Group Folders Modal -->
-        <div v-if="showManageTeamFoldersModal" @click.self="closeManageTeamFoldersModal" class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div class="bg-[var(--bg-secondary)] p-6 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-[var(--text-primary)]">
-                        <i class="fas fa-folder mr-2 text-emerald-500"></i>
-                        Manage Folders for ${ currentTeam?.name }
-                    </h3>
-                    <button @click="closeManageTeamFoldersModal" class="text-[var(--text-muted)] hover:text-[var(--text-secondary)]">&times;</button>
+        <div v-if="showManageTeamFoldersModal" @click.self="closeManageTeamFoldersModal" class="modal-overlay">
+            <div class="modal-panel modal-panel--lg">
+                <div class="modal-header">
+                    <i class="fas fa-folder text-emerald-500"></i>
+                    <h3 class="modal-title">Manage Folders for ${ currentTeam?.name }</h3>
+                    <button @click="closeManageTeamFoldersModal" class="modal-close" title="Close"><i class="fas fa-times"></i></button>
                 </div>
+                <div class="modal-body">
 
                 <!-- Create/Edit Folder Form -->
                 <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg mb-4 border border-[var(--border-primary)]">
@@ -801,6 +787,7 @@
                         <i class="fas fa-folder text-3xl mb-2"></i>
                         <p class="text-sm">No group folders created yet</p>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
