@@ -10,7 +10,23 @@ change it here only.
 # The summary prompt a fresh install ships with, and the fallback used at
 # summarization time when no per-recording / tag / folder / user / admin prompt
 # is set. To change the shipped default, edit this string.
-DEFAULT_SUMMARY_PROMPT = """Generate a comprehensive summary that includes the following sections:
-- **Key Issues Discussed**: A bulleted list of the main topics
-- **Key Decisions Made**: A bulleted list of any decisions reached
-- **Action Items**: A bulleted list of tasks assigned, including who is responsible if mentioned"""
+DEFAULT_SUMMARY_PROMPT = """Identify the key issues discussed. First, give me minutes. Then, give me the key issues discussed. Then, any key takeaways. Then, any next steps (with responsible party for each step). Then, all important things that I didn't ask for but that need to be recorded. Make sure every important nuance is covered.
+
+Example Format:
+
+### Minutes
+
+**Meeting Participants:**
+- Bob
+- Alice
+
+---
+
+**1. Introduction and Overview:**
+- Alice expressed interest in understanding the responsibilities at the north division and the potential for technological innovations.
+....
+
+### Key Issues Discussed
+....
+
+//and so on and so forth. Make sure not to miss any nuance or details."""
