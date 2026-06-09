@@ -15,8 +15,8 @@
                     <select v-model="filterFolder"
                             class="w-full h-9 pl-8 pr-7 text-base font-semibold rounded-md cursor-pointer appearance-none border-0 bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
                             style="outline: none !important; box-shadow: none !important; background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 fill=%27%236B7280%27 viewBox=%270 0 16 16%27%3E%3Cpath d=%27M8 10.5l-4-4h8l-4 4z%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 8px center;">
-                        <option value="">All Recordings</option>
-                        <option value="none">Unfiled</option>
+                        <option value="">${ t('sidebar.allRecordings') }</option>
+                        <option value="none">${ t('sidebar.unfiled') }</option>
                         <option v-for="folder in availableFolders" :key="folder.id" :value="folder.id">
                             ${ folder.name }
                         </option>
@@ -232,7 +232,7 @@
                             ]"
                             :title="sortBy === 'meeting_date' ? t('sidebar.sortByMeetingDate') : t('sidebar.sortByDate')">
                         <i :class="['fas', sortBy === 'meeting_date' ? 'fa-calendar' : 'fa-upload']"></i>
-                        <span class="hidden sm:inline">Sort</span>
+                        <span class="hidden sm:inline" v-text="t('common.sort')"></span>
                         <i class="fas fa-exchange-alt text-[var(--text-muted)] text-[10px]"></i>
                     </button>
 
@@ -246,7 +246,7 @@
                             ]"
                             :title="t('sidebar.archivedRecordings')">
                         <i class="fas fa-archive"></i>
-                        <span class="hidden sm:inline">Archived</span>
+                        <span class="hidden sm:inline" v-text="t('sidebar.archived')"></span>
                         <i :class="['fas text-[10px]', showArchivedRecordings ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
 
@@ -260,7 +260,7 @@
                             ]"
                             :title="t('sidebar.sharedWithMe')">
                         <i class="fas fa-users"></i>
-                        <span class="hidden sm:inline">Shared</span>
+                        <span class="hidden sm:inline" v-text="t('sidebar.shared')"></span>
                         <i :class="['fas text-[10px]', showSharedWithMe ? 'fa-toggle-on' : 'fa-toggle-off']"></i>
                     </button>
                 </div>

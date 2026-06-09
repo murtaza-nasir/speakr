@@ -1355,6 +1355,7 @@
   "sidebar": {
     "advancedSearch": "高级搜索",
     "archived": "已归档",
+    "shared": "已共享",
     "archivedRecordings": "已归档录音",
     "dateRange": "日期范围",
     "filters": "筛选器",
