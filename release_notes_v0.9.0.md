@@ -68,6 +68,7 @@ The first non-patch release in the v0.8 line graduates Speakr's recording, mobil
 - **Toast positioning.** Notifications fire from a fixed `top: calc(--app-header-height + 16px); right: 16px` so they sit below the header instead of overlapping it.
 - **Sticky speaker pills (desktop).** Speaker tablets in the simple-view transcript now stick to the top of the scroll area for the entire speaker's run instead of disappearing with their first segment.
 - **Speaker pill outlines.** Pills get a softened 1 px outline in the speaker's identity colour. Time half uses a `color-mix` blend that keeps the speaker hue without going to grey.
+- **Auto-created admins are email-verified.** Admin accounts created via `create_admin.py` / `docker_create_admin.py` are now marked email-verified, so the first admin is no longer blocked by email verification at initial setup (which previously failed entirely when the admin domain was not allowlisted). Thanks to @checkmeck (#288, #289).
 
 ## Backend & Infrastructure
 
