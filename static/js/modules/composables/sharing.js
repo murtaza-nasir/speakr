@@ -25,7 +25,16 @@ export function useSharing(state, utils) {
         if (!dateString) return 'Unknown date';
 
         try {
-            const date = new Date(dateString);
+            // Backend sends naive UTC (isoformat with no zone). new Date() parses
+            // a zoneless datetime as LOCAL, which shows the raw UTC clock value
+            // instead of converting it. Append 'Z' when there's no zone so it's
+            // parsed as UTC; the toLocale* calls below then render it in the
+            // viewer's own timezone.
+            let normalized = dateString;
+            if (typeof normalized === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(normalized)) {
+                normalized = normalized.replace(' ', 'T') + 'Z';
+            }
+            const date = new Date(normalized);
             const now = new Date();
             const diffMs = now - date;
             const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
