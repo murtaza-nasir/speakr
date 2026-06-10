@@ -51,7 +51,7 @@ The account actions section provides quick access to essential functions. The pr
 
 ## Custom Prompts Tab
 
-![Custom Prompts](../assets/images/screenshots/settings custom prompts.png)
+![Custom Prompts](../assets/images/screenshots/custom-summary-prompt.png)
 
 The Custom Prompts tab unlocks one of Speakr's most powerful features - the ability to shape how AI interprets and summarizes your recordings.
 
@@ -139,7 +139,7 @@ The delete button (trash icon) immediately revokes access. Once deleted, anyone 
 
 ## Speakers Management Tab
 
-![Speakers Management with Voice Profiles](../assets/images/screenshots/speakers-management-voice-profiles.png)
+![Speakers Management with Voice Profiles](../assets/images/screenshots/speaker-id-voice-profiles.png)
 *Speakers Management with voice profile statistics, confidence scores, and voice sample playback*
 
 The Speakers Management tab provides a comprehensive interface for managing all speakers identified across your recordings, including advanced voice profile capabilities.
@@ -186,7 +186,7 @@ When recordings are deleted (either manually or through auto-deletion), Speakr a
 
 ## Tag Management Tab
 
-![Tag Management with Enhanced Badges](../assets/images/screenshots/tag-management-enhanced-badges.png)
+![Tag Management with Enhanced Badges](../assets/images/screenshots/tag-transcription-options.png)
 *Tag Management with visual badges for retention policies, protection status, sharing settings, and ASR defaults*
 
 Tag Management transforms simple labels into powerful processing instructions. Each tag you create carries multiple capabilities - a color for visual identification, an optional custom prompt that shapes AI summaries, default ASR (Automatic Speech Recognition) settings, retention policies, and sharing configurations.

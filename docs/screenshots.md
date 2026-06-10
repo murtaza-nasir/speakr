@@ -1,489 +1,320 @@
 # Screenshots Gallery
 
-Explore Speakr's powerful features through our visual gallery. Click on any image to view it in full size.
-
-## What's New in v0.9.0
-
-### Recording Stats
-
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/stats-tab.png" alt="Recording Stats Tab" />
-  <p class="caption">Per-recording metrics: total length, speaker count, conversation turns, words, plus a per-speaker breakdown table with speaking time, percentage of audio, turns, words, and WPM. A silence row at the bottom shows how much of the meeting was actually quiet.</p>
-</div>
-
-### Per-OS System Audio Help
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/system-audio-help-windows.png" alt="System Audio help — Windows" />
-    <p class="caption">Windows setup: "Share system audio" checkbox in the share dialog</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/system-audio-help-macos.png" alt="System Audio help — macOS" />
-    <p class="caption">macOS setup: BlackHole + Multi-Output Device workflow</p>
-  </div>
-</div>
-
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/system-audio-help-linux.png" alt="System Audio help — Linux" />
-  <p class="caption">Linux setup: three options including the one-line <code>pactl module-virtual-source</code> recipe that exposes a Pulse monitor as a regular source Chrome will list</p>
-</div>
-
-### Input Device Picker & Multi-Input Recording
-
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/recording-input-device-picker.png" alt="Input device picker" />
-  <p class="caption">Collapsible Input devices section with primary + optional "Also mix in" secondary device dropdowns — the canonical solution for capturing your voice + meeting participants in one Web Audio mixed track</p>
-</div>
-
-### Mobile-First Detail View
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/mobile-summary.png" alt="Mobile summary tab" />
-    <p class="caption">Summary tab with single header, participants strip, contextual icons in chevron row</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript with sticky pills" />
-    <p class="caption">Transcript with sticky speaker pills + the new bottom-sheet processing queue anchored above player + nav</p>
-  </div>
-</div>
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/mobile-chat.png" alt="Mobile chat" />
-    <p class="caption">Chat panel — same prose primitives as desktop, with the message badge in the bottom nav</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/mobile-stats.png" alt="Mobile stats" />
-    <p class="caption">Stats tab on mobile — same data as desktop in a 2-column metric grid and per-speaker card stack</p>
-  </div>
-</div>
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/mobile-more-menu.png" alt="Mobile More overflow" />
-    <p class="caption">More overflow opens as a bottom-sheet with Notes / Stats / Events when those tabs are available</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/mobile-upload-sheet.png" alt="Mobile upload bottom sheet" />
-    <p class="caption">Upload modal as a full-width bottom sheet with drag-to-dismiss + sticky Cancel/Upload footer</p>
-  </div>
-</div>
+A tour of Speakr, section by section. Click any image to view it full size.
 
 ## Main Interface
 
-### Main Views
-
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Main view.png" alt="Main Screen" />
-    <p class="caption">Main screen with chat interface and token usage indicator</p>
+    <img src="../assets/images/screenshots/main-view.png" alt="Main view" />
+    <p class="caption">The main view: recordings list, transcript, and summary</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main-view-token-usage.png" alt="Token Usage" />
-    <p class="caption">Token usage indicator showing monthly budget consumption</p>
+    <img src="../assets/images/screenshots/main-view-video.png" alt="Video playback" />
+    <p class="caption">Video playback synced to the transcript</p>
   </div>
 </div>
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main-view-recipe-example.png" alt="Recipe Example" />
-    <p class="caption">Recipe transcription with family sharing enabled</p>
+    <img src="../assets/images/screenshots/main-view-player.png" alt="Player and summary" />
+    <p class="caption">Audio player with the generated summary</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/filters-sidebar-expanded.png" alt="Expanded Filters" />
-    <p class="caption">Advanced filtering options in expanded sidebar</p>
+    <img src="../assets/images/screenshots/main-view-stats.png" alt="Recording stats" />
+    <p class="caption">Per-recording stats and speaker breakdown</p>
   </div>
 </div>
 
-### Multi-language Support
+## Recording &amp; Upload
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/ui-chinese.png" alt="Chinese UI" />
-    <p class="caption">Full interface in Chinese with language switching</p>
+    <img src="../assets/images/screenshots/recording-live-notes.png" alt="Live recording" />
+    <p class="caption">Recording live, with markdown notes alongside</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/multilingual-chinese.png" alt="Multilingual Chat" />
-    <p class="caption">AI chat and transcription translation in multiple languages</p>
+    <img src="../assets/images/screenshots/upload-modal.png" alt="Upload modal" />
+    <p class="caption">Uploading a file</p>
   </div>
 </div>
-
-## Recording & Upload
-
-### New Recording Interface
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Recording interface.png" alt="Recording Interface" />
-    <p class="caption">Upload or record audio directly in your browser</p>
+    <img src="../assets/images/screenshots/upload-options.png" alt="Upload options" />
+    <p class="caption">Upload options: tags, folder, and language</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/upload-interface.png" alt="File Upload Interface" />
-    <p class="caption">Multi-file drag and drop with advanced options and tag selection</p>
+    <img src="../assets/images/screenshots/upload-asr-options.png" alt="ASR options" />
+    <p class="caption">Per-upload transcription and diarization options</p>
   </div>
 </div>
-
-### Recording Options
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/recording-dual-source.png" alt="Dual Source Recording" />
-    <p class="caption">Record both system audio and microphone simultaneously</p>
+    <img src="../assets/images/screenshots/upload-multi-file.png" alt="Multi-file upload" />
+    <p class="caption">Uploading several files at once</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/recording-single-source.png" alt="Single Source Recording" />
-    <p class="caption">Single source recording with real-time notes</p>
+    <img src="../assets/images/screenshots/upload-duplicate-detection.png" alt="Duplicate detection" />
+    <p class="caption">Duplicate files are detected before upload</p>
   </div>
 </div>
 
-### Post-Recording
+### System Audio Setup
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/system-audio-help-windows.png" alt="System audio help, Windows" />
+    <p class="caption">Windows: the "Share system audio" checkbox</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/system-audio-help-macos.png" alt="System audio help, macOS" />
+    <p class="caption">macOS: BlackHole and a Multi-Output Device</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/system-audio-help-linux.png" alt="System audio help, Linux" />
+    <p class="caption">Linux: exposing a Pulse monitor as a source</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/recording-input-device-picker.png" alt="Input device picker" />
+    <p class="caption">Mixing a microphone with a second input device</p>
+  </div>
+</div>
+
+## Transcription
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/transcript-auto-follow.png" alt="Auto-follow" />
+    <p class="caption">The transcript auto-scrolls to follow playback</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/edit-transcript-modal.png" alt="Edit transcript" />
+    <p class="caption">Editing the transcript</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/speaker-id-voice-profiles.png" alt="Speaker identification" />
+    <p class="caption">Identifying speakers by their voice profile</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/auto-name-recognition.png" alt="Auto name recognition" />
+    <p class="caption">Speaker names recognised from the transcript</p>
+  </div>
+</div>
+
+## Summaries, Chat &amp; Search
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/summary-next-steps.png" alt="Summary with next steps" />
+    <p class="caption">A summary with action items and next steps</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/custom-summary-prompt.png" alt="Custom summary prompt" />
+    <p class="caption">Customising the summary prompt</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/main-view-chat-notes.png" alt="Chat and notes" />
+    <p class="caption">Floating chat and notes over the transcript</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/chat-docked.png" alt="Docked chat" />
+    <p class="caption">The chat panel docked into the layout</p>
+  </div>
+</div>
 
 <div class="screenshot-item">
-  <img src="../assets/images/screenshots/recording-upload-modal.png" alt="Post-Recording Options" />
-  <p class="caption">Add tags, notes, and configure settings before processing</p>
+  <img src="../assets/images/screenshots/inquire-semantic-search.png" alt="Inquire Mode semantic search" />
+  <p class="caption">Inquire Mode: ask questions across all your recordings, filtered by tag, speaker, or date</p>
 </div>
 
-## Transcription Features
-
-### Video Playback
-
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/video-playback.png" alt="Video Playback" />
-  <p class="caption">In-browser video playback alongside speaker-labeled transcript and summary</p>
-</div>
-
-### Interactive Audio Synchronization
+## Organization
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/audio-sync-simple-view.png" alt="Audio Sync Simple View" />
-    <p class="caption">Real-time transcript highlighting in simple view with auto-scroll follow mode</p>
+    <img src="../assets/images/screenshots/tag-prompt-recipe-example.png" alt="Tag prompt example" />
+    <p class="caption">A "Recipe" tag turning cooking narration into a formatted recipe</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/audio-sync-bubble-view.png" alt="Audio Sync Bubble View" />
-    <p class="caption">Interactive audio-transcript synchronization in bubble view</p>
+    <img src="../assets/images/screenshots/sidebar-filtering.png" alt="Filtering" />
+    <p class="caption">Advanced filtering in the sidebar</p>
   </div>
 </div>
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/highlighted-transcript-following-simple-light.png" alt="Follow Mode Light Theme" />
-    <p class="caption">Auto-scroll follow mode - click any text to jump to that point in audio</p>
+    <img src="../assets/images/screenshots/tag-transcription-options.png" alt="Tag transcription options" />
+    <p class="caption">Per-tag transcription and ASR settings</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/highlighted-transcript-following-simple-dark.png" alt="Follow Mode Dark Theme" />
-    <p class="caption">Follow mode in dark theme with active segment highlighting</p>
+    <img src="../assets/images/screenshots/tag-summary-template-options.png" alt="Tag summary and title options" />
+    <p class="caption">Per-tag summary prompt and title template</p>
   </div>
 </div>
 
-### Transcription Views
+## Sharing
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main-view-with-speakers.png" alt="Transcription with Speakers" />
-    <p class="caption">Transcription with identified speakers and metadata</p>
+    <img src="../assets/images/screenshots/share-modal.png" alt="Share modal" />
+    <p class="caption">Sharing a recording with users or a public link</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main-view-summary-tab.png" alt="Summary View" />
-    <p class="caption">AI-generated summary with key points</p>
+    <img src="../assets/images/screenshots/tag-sharing-options.png" alt="Tag sharing options" />
+    <p class="caption">Group tags that auto-share to every member</p>
   </div>
 </div>
 
-### Speaker Identification
+## Settings &amp; Templates
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/speaker-identification-voice-profiles.png" alt="Voice Profile Speaker Identification" />
-    <p class="caption">AI-powered speaker identification with voice profile suggestions and confidence scores</p>
+    <img src="../assets/images/screenshots/settings-templates.png" alt="Export templates" />
+    <p class="caption">Export templates for transcripts and titles</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/edit-transcription-modal.png" alt="ASR Transcript Editor" />
-    <p class="caption">Advanced segment-based editor for ASR transcriptions</p>
-  </div>
-</div>
-
-## AI-Powered Features
-
-### Interactive Chat
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/chat-interface.png" alt="AI Chat Interface" />
-    <p class="caption">Ask questions about your recordings with expanded chat view</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/main-view-notes-tab.png" alt="Notes Tab" />
-    <p class="caption">Organize your thoughts with markdown notes</p>
-  </div>
-</div>
-
-### Inquire Mode
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Inquire mode.png" alt="Inquire Mode Search" />
-    <p class="caption">Semantic search across all your recordings</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/inquire-dark-mode.png" alt="Inquire Mode Dark" />
-    <p class="caption">Inquire mode with dark theme</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/chat-chinese.png" alt="Multilingual Inquire" />
-    <p class="caption">Chat and inquire in multiple languages</p>
-  </div>
-</div>
-
-## Organization & Management
-
-### Tags and Filtering
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/edit-tags.png" alt="Edit Tags" />
-    <p class="caption">Edit and organize tags for recordings</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/tag-management-enhanced-badges.png" alt="Enhanced Tag Management" />
-    <p class="caption">Comprehensive tag management with visual badges for retention policies, sharing settings, and custom prompts</p>
-  </div>
-</div>
-
-### Recording Management
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/edit recording modal.png" alt="Edit Recording" />
-    <p class="caption">Edit recording metadata and settings</p>
-  </div>
-  
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/edit recording tags modal.png" alt="Edit Tags" />
-    <p class="caption">Manage tags for better organization</p>
-  </div>
-</div>
-
-## Sharing & Collaboration
-
-### Share Recordings
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Share modal.png" alt="Share Modal" />
-    <p class="caption">Generate secure share links with customizable permissions</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Share link.png" alt="Shared Recording View" />
-    <p class="caption">Clean public view for shared recordings</p>
-  </div>
-</div>
-
-### Manage Shares
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/share-notes-view.png" alt="Shared Notes View" />
-    <p class="caption">Public notes view for shared recordings</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/share-summary-view.png" alt="Shared Summary View" />
-    <p class="caption">Summary view of shared recordings</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/share-translated.png" alt="Shared Translated Recording" />
-    <p class="caption">Shared recording with AI translation</p>
-  </div>
-</div>
-
-## Content Creation & Editing
-
-### Markdown Editor
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/markdown-editor.png" alt="Markdown Editor" />
-    <p class="caption">Rich markdown editor for notes and summaries</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/markdown-editor-fullscreen.png" alt="Fullscreen Markdown Editor" />
-    <p class="caption">Fullscreen markdown editor with side-by-side preview</p>
-  </div>
-</div>
-
-### Template Export
-
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/template-selector.png" alt="Template Selector" />
-  <p class="caption">Select templates for downloading transcripts in various formats</p>
-</div>
-
-## User Settings
-
-### Account Configuration
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/settings account info.png" alt="Account Settings" />
-    <p class="caption">Personal information and language preferences</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/settings-create-tag-modal.png" alt="Create Tag" />
-    <p class="caption">Create custom tags with specific processing options</p>
-  </div>
-</div>
-
-### Speaker Management
-
-<div class="screenshot-item">
-  <img src="../assets/images/screenshots/speakers-management-voice-profiles.png" alt="Enhanced Speaker Management" />
-  <p class="caption">Manage your speaker library with voice profile statistics, confidence scores, and voice sample playback</p>
-</div>
-
-## Admin Features
-
-### User Management
-
-<div class="screenshot-grid">
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Admin dashboard.png" alt="Admin Dashboard" />
-    <p class="caption">Manage users and monitor system usage</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/admin-user-create-token-budget.png" alt="User Token Budget" />
-    <p class="caption">Create user with monthly token budget setting</p>
+    <img src="../assets/images/screenshots/settings-api-tokens.png" alt="API tokens" />
+    <p class="caption">Personal access tokens for the REST API</p>
   </div>
 </div>
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/admin-user-groups.png" alt="User Groups" />
-    <p class="caption">Manage user groups and permissions</p>
+    <img src="../assets/images/screenshots/settings-webhooks.png" alt="Webhooks" />
+    <p class="caption">Outbound webhooks on recording events</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/main-view-token-usage.png" alt="Token usage" />
+    <p class="caption">LLM token usage shown per recording</p>
   </div>
 </div>
 
-### Group Management
+## Reprocessing
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/admin-edit-group-modal.png" alt="Edit Group" />
-    <p class="caption">Edit group settings and properties</p>
+    <img src="../assets/images/screenshots/summary-reprocess.png" alt="Regenerate summary" />
+    <p class="caption">Regenerating a summary with a new prompt</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/admin-manage-group-modal.png" alt="Manage Group Members" />
-    <p class="caption">Manage group members and permissions</p>
-  </div>
-
-  <div class="screenshot-item">
-    <img src="../assets/images/screenshots/admin-manage-group-tags.png" alt="Manage Group Tags" />
-    <p class="caption">Configure tags for specific user groups</p>
+    <img src="../assets/images/screenshots/recording-reprocess.png" alt="Reprocess recording" />
+    <p class="caption">Reprocessing a recording end to end</p>
   </div>
 </div>
 
-### System Configuration
+## Mobile
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Admin system settings.png" alt="System Settings" />
-    <p class="caption">Configure global system parameters</p>
+    <img src="../assets/images/screenshots/mobile-main.png" alt="Mobile main view" />
+    <p class="caption">The main view on mobile</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Admin default prompts.png" alt="Default Prompts" />
-    <p class="caption">Set default AI prompts for all users</p>
+    <img src="../assets/images/screenshots/mobile-summary.png" alt="Mobile summary" />
+    <p class="caption">Summary tab with bottom navigation</p>
   </div>
 </div>
-
-### Monitoring & Analytics
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Admin stats.png" alt="System Statistics" />
-    <p class="caption">Monitor system health and usage patterns</p>
+    <img src="../assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript" />
+    <p class="caption">Transcript in bubble view</p>
   </div>
-  
+
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/Admin vector store.png" alt="Vector Store Management" />
-    <p class="caption">Manage semantic search infrastructure</p>
+    <img src="../assets/images/screenshots/mobile-recording.png" alt="Mobile recording" />
+    <p class="caption">Recording with notes on mobile</p>
   </div>
 </div>
-
-## Processing & Reprocessing
 
 <div class="screenshot-grid">
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/processing-tooltip.png" alt="Processing Tooltip" />
-    <p class="caption">View transcription and summary processing times</p>
+    <img src="../assets/images/screenshots/mobile-speaker-id.png" alt="Mobile speaker identification" />
+    <p class="caption">Identifying speakers on mobile</p>
   </div>
 
   <div class="screenshot-item">
-    <img src="../assets/images/screenshots/archived-recording.png" alt="Archived Recording" />
-    <p class="caption">Archived recordings are marked in sidebar with no audio playback</p>
+    <img src="../assets/images/screenshots/mobile-upload.png" alt="Mobile upload" />
+    <p class="caption">The upload sheet on mobile</p>
   </div>
 </div>
 
----
+## Multi-language
 
-<style>
-.screenshot-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 2rem;
-  margin: 2rem 0;
-}
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/ui-chinese.png" alt="Chinese interface" />
+    <p class="caption">The full interface in Chinese</p>
+  </div>
 
-.screenshot-item {
-  text-align: center;
-  margin: 2rem 0;
-}
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/ui-german.png" alt="German interface" />
+    <p class="caption">The full interface in German</p>
+  </div>
+</div>
 
-.screenshot-item img {
-  width: 100%;
-  max-width: 800px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: transform 0.2s;
-}
+## Admin
 
-.screenshot-item img:hover {
-  transform: scale(1.02);
-}
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-user-management.png" alt="User management" />
+    <p class="caption">Managing users</p>
+  </div>
 
-.caption {
-  margin-top: 0.5rem;
-  font-style: italic;
-  color: #666;
-}
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-group-management.png" alt="Group management" />
+    <p class="caption">Managing groups</p>
+  </div>
+</div>
 
-@media (max-width: 768px) {
-  .screenshot-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-system-settings.png" alt="System settings" />
+    <p class="caption">System settings</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-default-prompt.png" alt="Default prompt" />
+    <p class="caption">The default summarization prompt</p>
+  </div>
+</div>
+
+<div class="screenshot-grid">
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-token-budgets.png" alt="Token budgets" />
+    <p class="caption">Per-user monthly token budgets</p>
+  </div>
+
+  <div class="screenshot-item">
+    <img src="../assets/images/screenshots/admin-vector-store.png" alt="Vector store" />
+    <p class="caption">Vector store status for semantic search</p>
+  </div>
+</div>

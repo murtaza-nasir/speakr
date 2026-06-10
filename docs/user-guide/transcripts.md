@@ -6,7 +6,7 @@ Once your audio has been processed, Speakr provides a rich set of tools for view
 
 When you select a recording from the sidebar, the center panel displays the full transcription. The layout is designed for easy reading and navigation, with clear visual indicators for different speakers and timestamps.
 
-![Transcription View with Audio Sync](../assets/images/screenshots/audio-sync-bubble-view.png)
+![Transcription View with Audio Sync](../assets/images/screenshots/transcript-auto-follow.png)
 *Transcription view with real-time audio synchronization and active segment highlighting*
 
 ## Speaker Identification
@@ -17,7 +17,7 @@ If your recording was processed with [speaker diarization](../features.md#speake
 
 When you need to assign real names to speaker labels, click the speaker identification button in the toolbar. This opens a modal where you can:
 
-![Speaker ID Modal with Voice Profiles](../assets/images/screenshots/speaker-identification-voice-profiles.png)
+![Speaker ID Modal with Voice Profiles](../assets/images/screenshots/speaker-id-voice-profiles.png)
 *Speaker identification modal with AI-powered voice profile suggestions based on previous recordings*
 
 The speaker identification modal shows each detected speaker with a sample of their dialogue to help you identify them. When you've identified speakers in previous recordings, Speakr's voice recognition system analyzes voice embeddings and provides intelligent suggestions with confidence scores. You can enter real names for each speaker, and these names will replace the generic labels throughout the transcription. The system remembers these assignments and builds voice profiles, making it easier and faster to identify the same speakers in subsequent recordings.
@@ -46,7 +46,7 @@ For standard transcriptions without speaker diarization, click the Edit button i
 
 For transcriptions processed with [ASR](../features.md#speaker-diarization) and speaker diarization, Speakr offers a powerful segment-based editor that preserves the structure and timing of your transcription. If you encounter issues with speaker identification, see [troubleshooting](../troubleshooting.md#speaker-identification-not-working).
 
-![ASR Transcription Editor](../assets/images/screenshots/edit-transcription-modal.png)
+![ASR Transcription Editor](../assets/images/screenshots/edit-transcript-modal.png)
 
 The ASR editor presents your transcription as a table of segments, where each row represents a single utterance with its associated metadata. For each segment, you can:
 
@@ -102,7 +102,7 @@ A **Stats** tab appears in the right-rail tab strip when the recording has speak
 - **Per-speaker breakdown** — A table (desktop) or card stack (mobile) showing each speaker's speaking time, percentage of total audio, turn count, words, and words-per-minute (WPM, only when a meaningful sample is present). A slim proportion bar visualises each speaker's share.
 - **Silence row** — Detected silence is shown as its own row / card with the same proportion bar and duration so you can see how much of the meeting was actually quiet.
 
-![Stats Tab](../assets/images/screenshots/stats-tab.png)
+![Stats Tab](../assets/images/screenshots/main-view-stats.png)
 
 On mobile the Stats tab lives in the bottom-nav More overflow (alongside Notes and Events). Same data, narrower layout — the table becomes a card stack with each speaker as its own card, and the 4-column headline grid becomes a 2-column grid.
 
@@ -133,21 +133,13 @@ Your follow mode preference is saved automatically and persists across sessions 
 
 ### Follow Mode in Action
 
-The auto-scroll follow mode works seamlessly in both view modes and adapts to your theme preference:
-
-![Follow Mode Simple View - Dark Theme](../assets/images/screenshots/highlighted-transcript-following-simple-dark.png)
-*Auto-scroll follow mode in simple view with dark theme - transcript automatically scrolls to keep current segment visible*
-
-![Follow Mode Simple View - Light Theme](../assets/images/screenshots/highlighted-transcript-following-simple-light.png)
-*Follow mode works seamlessly in light theme, maintaining perfect readability and visual clarity*
-
-The highlighted segment uses rounded corners and subtle animations to draw your eye to the currently playing text without being distracting. The auto-scroll behavior is smooth and intelligent, maintaining the active segment in the center of your view for comfortable reading during long recordings.
+The auto-scroll follow mode works seamlessly in both view modes and adapts to your theme preference. The highlighted segment uses rounded corners and subtle animations to draw your eye to the currently playing text without being distracting. The auto-scroll behavior is smooth and intelligent, maintaining the active segment in the center of your view for comfortable reading during long recordings.
 
 ## Using the Summary Feature
 
 The Summary tab in the right panel contains an AI-generated overview of your recording. This summary is automatically created after transcription and captures key points, decisions, and action items.
 
-![Summary View](../assets/images/screenshots/main-view-summary-tab.png)
+![Summary View](../assets/images/screenshots/main-view-player.png)
 
 The summary is designed to save you time by highlighting the most important information from your recording. It typically includes main topics discussed, key decisions or conclusions reached, action items and assignments, important dates or deadlines mentioned, and any significant problems or concerns raised.
 
@@ -243,7 +235,7 @@ Event extraction can be toggled on or off in your Account Settings under the Cus
 
 The Chat tab provides an AI assistant that can answer questions about your recording. This feature is particularly powerful for long recordings where finding specific information might be time-consuming.
 
-![Chat Interface](../assets/images/screenshots/chat-interface.png)
+![Chat Interface](../assets/images/screenshots/main-view-chat-notes.png)
 
 ### Effective Chat Queries
 

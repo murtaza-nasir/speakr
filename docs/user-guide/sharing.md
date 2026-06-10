@@ -23,7 +23,7 @@ Your Speakr administrator must enable internal sharing before this feature becom
 
 ### Sharing a Recording with Another User
 
-![Share with User Modal](../assets/images/screenshots/Share modal.png)
+![Share modal](../assets/images/screenshots/share-modal.png)
 
 When viewing any recording you own, look for the blue users icon button in the toolbar. Clicking this opens the share modal where you can search for colleagues and configure access permissions.
 
@@ -40,8 +40,6 @@ Before sharing, consider what level of access makes sense for this collaboration
 To share with view-only access, simply search for the user and click their name in the results. For edit or re-share permissions, check the appropriate boxes before clicking the username. The share takes effect immediately, and the recipient gains access to the recording in their main interface.
 
 ### Managing Your Shares
-
-![Manage Shares Modal](../assets/images/screenshots/Share modal.png)
 
 The unified share modal shows everyone who has access to a recording, making it easy to track and control sharing. Each entry displays the recipient's name, their permissions level, and when you granted access. The red user-times icon lets you instantly revoke access when collaboration ends or circumstances change.
 
@@ -147,8 +145,6 @@ Before you can share recordings, your Speakr instance must meet two critical req
 These requirements exist because share links need to be accessible to recipients who don't have accounts and may be accessing from anywhere. A local network installation or non-HTTPS setup cannot generate shareable links - the share button will either be disabled or display an error message explaining that sharing requires a secure, internet-accessible connection. If you're running Speakr internally without SSL or public access, you'll need to work with your IT group to set up proper HTTPS and internet routing before the sharing feature becomes available.
 
 ## Creating a Share Link
-
-![Share Recording Modal](../assets/images/screenshots/Share modal.png)
 
 Once your instance meets the requirements, sharing a recording takes just a few clicks. While viewing any recording, click the share button in the toolbar to open the sharing modal. This presents you with two simple checkboxes that control what information will be visible to recipients.
 
