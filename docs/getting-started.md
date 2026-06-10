@@ -229,16 +229,6 @@ SMTP_FROM_NAME=Speakr
 
 When enabled, new users receive a verification email after registration. Password reset is available from the login page via "Forgot password?" link. See the [Email Setup Guide](admin-guide/email-setup.md) for detailed configuration including provider-specific examples for Gmail, SendGrid, Mailgun, and more.
 
-### Configure Your Timezone
-
-Set your local timezone for accurate timestamp display:
-
-```bash
-TIMEZONE="America/New_York"
-```
-
-Use any valid timezone from the TZ database like "Europe/London", "Asia/Tokyo", or "UTC".
-
 ## Stopping and Starting Speakr
 
 To stop Speakr while preserving all your data:
