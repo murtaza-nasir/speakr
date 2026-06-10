@@ -68,10 +68,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
+          # No npm cache: package-lock.json is gitignored in this repo, so it's
+          # never in the CI checkout. cache: npm (and npm ci) both require a
+          # committed lock file, so we use `npm install` below instead.
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run Vitest
         run: npm test
