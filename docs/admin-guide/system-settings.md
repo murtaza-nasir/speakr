@@ -2,7 +2,7 @@
 
 System Settings is where you configure the fundamental behaviors that affect every user and recording in your Speakr instance. These global parameters shape how the system operates, from technical limits to user-facing features.
 
-![System Settings](../assets/images/screenshots/Admin system settings.png)
+![System Settings](../assets/images/screenshots/admin-system-settings.png)
 
 ## Transcript Length Limit
 

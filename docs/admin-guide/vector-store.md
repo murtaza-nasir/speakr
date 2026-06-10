@@ -2,7 +2,7 @@
 
 The Vector Store tab controls the intelligence behind Inquire Mode, Speakr's semantic search capability that lets users find information across all their recordings using natural language questions. This is where you monitor and manage the embedding system that transforms transcripts into searchable knowledge.
 
-![Vector Store Management](../assets/images/screenshots/Admin vector store.png)
+![Vector Store Management](../assets/images/screenshots/admin-vector-store.png)
 
 ## Understanding Inquire Mode
 

@@ -12,7 +12,7 @@ When recording system audio, you'll grant screen sharing permission and tick a *
 
 Click the **+ New Recording** button in the top navigation bar (or from the empty-state landing card, or via the deep-link from Inquire mode). This opens the upload modal over your recordings list or the open recording's detail view — backdrop click and Esc dismiss without uploading.
 
-![Upload Modal](../assets/images/screenshots/recording-upload-modal.png)
+![Upload Modal](../assets/images/screenshots/upload-modal.png)
 
 ## Uploading Audio Files
 
@@ -177,7 +177,7 @@ A prominent timer at the top shows the elapsed recording time in minutes and sec
 
 One of Speakr's most powerful features is the ability to take structured notes while recording. The note-taking area appears below the audio visualizers and supports full markdown formatting.
 
-![Note Taking During Recording](../assets/images/screenshots/recording-single-source.png)
+![Live note-taking](../assets/images/screenshots/recording-live-notes.png)
 
 The markdown editor includes a formatting toolbar with buttons for common formatting options like bold, italic, headers, quotes, lists, and links. You can also type markdown syntax directly if you prefer. The editor supports all standard markdown elements, allowing you to create well-structured notes that complement your recording.
 

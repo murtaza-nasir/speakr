@@ -2,7 +2,7 @@
 
 The User Management tab is command central for controlling who has access to your Speakr instance and what they can do with it. Every user account flows through here, from initial creation to eventual removal, with all the monitoring and adjustments needed along the way. For system-wide usage patterns, check [system statistics](statistics.md).
 
-![User Management](../assets/images/screenshots/Admin dashboard.png)
+![User Management](../assets/images/screenshots/admin-user-management.png)
 
 ## Understanding the User Table
 
@@ -30,7 +30,7 @@ Use this permission to control external information sharing on a per-user basis.
 
 Control LLM costs by setting monthly token budgets for individual users. When creating or editing a user, you can specify a monthly token limit that restricts their AI usage.
 
-![User Token Budget](../assets/images/screenshots/admin-user-create-token-budget.png)
+![User Token Budget](../assets/images/screenshots/admin-token-budgets.png)
 
 **How Token Budgets Work**:
 

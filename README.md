@@ -27,7 +27,7 @@
 Speakr transforms your audio recordings into organized, searchable, and intelligent notes. Built for privacy-conscious groups and individuals, it runs entirely on your own infrastructure, ensuring your sensitive conversations remain completely private.
 
 <div align="center">
-    <img src="docs/assets/images/screenshots/Main view.png" alt="Speakr Main Interface" width="750"/>
+    <img src="docs/assets/images/screenshots/main-view.png" alt="Speakr Main Interface" width="750"/>
 </div>
 
 ## Key Features
@@ -232,22 +232,22 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 <table align="center" border="0">
   <tr>
     <td align="center">
-      <img src="docs/assets/images/screenshots/Main view.png" alt="Main Screen" width="400"/>
-      <br><em>Main Screen with Chat</em>
+      <img src="docs/assets/images/screenshots/main-view-chat-notes.png" alt="Main view with chat and notes" width="400"/>
+      <br><em>Main view with floating chat and notes</em>
     </td>
     <td align="center">
-      <img src="docs/assets/images/screenshots/video-playback.png" alt="Video Playback" width="400"/>
-      <br><em>Video Playback with Transcript</em>
+      <img src="docs/assets/images/screenshots/main-view-video.png" alt="Video playback" width="400"/>
+      <br><em>Video playback synced to the transcript</em>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="docs/assets/images/screenshots/Inquire mode.png" alt="Inquire Mode" width="400"/>
-      <br><em>AI-Powered Semantic Search</em>
+      <img src="docs/assets/images/screenshots/inquire-semantic-search.png" alt="Semantic search" width="400"/>
+      <br><em>Ask questions across all your recordings</em>
     </td>
     <td align="center">
-      <img src="docs/assets/images/screenshots/chat-interface.png" alt="Transcription with Chat" width="400"/>
-      <br><em>Interactive Transcription & Chat</em>
+      <img src="docs/assets/images/screenshots/main-view-stats.png" alt="Recording stats" width="400"/>
+      <br><em>Per-recording stats and speaker breakdown</em>
     </td>
   </tr>
 </table>

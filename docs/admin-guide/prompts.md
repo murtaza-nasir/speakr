@@ -2,7 +2,7 @@
 
 The Default Prompts tab lets you shape how AI interprets and [summarizes recordings](../features.md#automatic-summarization) across your entire Speakr instance. This is where you establish the baseline intelligence that users experience when they haven't customized their own [personal prompts](../user-guide/settings.md#custom-prompts-tab).
 
-![Default Prompts](../assets/images/screenshots/Admin default prompts.png)
+![Default Prompts](../assets/images/screenshots/admin-default-prompt.png)
 
 ## Understanding Prompt Hierarchy
 

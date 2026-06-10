@@ -2,7 +2,7 @@
 
 The Speakr main view is where you'll spend most of your time. It's designed as a three-panel interface that makes it easy to navigate your recordings, review transcriptions, and interact with your content. Understanding each component will help you work more efficiently with your audio recordings.
 
-![Main View Interface](../assets/images/screenshots/Main view.png)
+![Main View Interface](../assets/images/screenshots/main-view.png)
 
 ## Understanding the Interface Layout
 
@@ -20,7 +20,7 @@ The left sidebar is your command center for organizing and finding recordings. A
 
 ### Using Filters
 
-![Filter Interface](../assets/images/screenshots/filters-sidebar-expanded.png)
+![Filter Interface](../assets/images/screenshots/sidebar-filtering.png)
 
 The filter system in Speakr is designed to be both powerful and intuitive. Click on "Active filters" to expand the filtering panel. You can filter by tags, which appear as colored pills that you can click to select or deselect. The date range filter offers convenient presets like "Today", "Yesterday", "This Week", and "Last Week", or you can set a custom date range using the date pickers. When filters are active, their count appears next to the filter label, and a clear button lets you reset all filters at once.
 
@@ -34,8 +34,7 @@ The center panel is where you'll read and interact with your transcription. This
 
 ### Transcription Display
 
-![Transcription with Speakers](../assets/images/screenshots/main-view-with-speakers.png)
-![Summary View](../assets/images/screenshots/main-view-summary-tab.png)
+![Transcription with speakers and summary](../assets/images/screenshots/main-view-player.png)
 
 The transcription display varies depending on how your audio was processed. If you used a standard Whisper API endpoint, you'll see a simple continuous text transcription without speaker identification. The text flows as a single narrative, which works well for single-speaker recordings or when speaker identification isn't needed.
 
@@ -88,13 +87,13 @@ Speakr provides two types of reprocessing to update your recordings with improve
 
 ### Full Reprocessing
 
-![Full Reprocessing Modal](../assets/images/screenshots/full recording reprocessing.png)
+![Full Reprocessing Modal](../assets/images/screenshots/recording-reprocess.png)
 
 Full reprocessing completely re-transcribes your audio file using the ASR endpoint. This is useful when you want to change speaker diarization settings or use a different transcription model. Access this by clicking the refresh icon in the metadata bar and selecting "Transcription Reprocessing". You can adjust the language setting, minimum and maximum speakers for diarization, and other ASR-specific options. Note that full reprocessing will overwrite any manual edits you've made to the transcription.
 
 ### Summary Reprocessing
 
-![Summary Reprocessing Modal](../assets/images/screenshots/summary reprocessing modal.png)
+![Summary Reprocessing Modal](../assets/images/screenshots/summary-reprocess.png)
 
 Summary reprocessing generates a new title and summary based on the existing transcription. This is faster than full reprocessing and preserves any edits you've made to the transcription text. Use this when you want to regenerate the summary with different AI settings or after making significant edits to the transcription. Access this option from the same refresh menu by selecting "Summary Reprocessing".
 
