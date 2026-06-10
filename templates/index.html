@@ -14,43 +14,45 @@
       // keyboard, and inner panes scroll instead of the whole page.
       (function () {
         var vv = window.visualViewport, root = document.documentElement;
-        function apply() { root.style.setProperty('--app-height', (vv ? vv.height : window.innerHeight) + 'px'); }
+        var baseline = 0, lastH = -1, kbTimer = null;
+
+        function apply() {
+          var h = vv ? vv.height : window.innerHeight;
+          // Mirror the visible height into --app-height so the shell (#app) fits
+          // the space above the keyboard and inner panes scroll, instead of the
+          // whole page (worst on iOS, which ignores interactive-widget).
+          root.style.setProperty('--app-height', h + 'px');
+
+          // Skip the keyboard check when only the scroll offset changed (height
+          // is unchanged) — the keyboard state can't have changed.
+          if (h === lastH) return;
+          lastH = h;
+
+          // Detect keyboard visibility from the VISIBLE viewport, not focus.
+          // Android's back-gesture closes the keyboard WITHOUT blurring the
+          // field, so a focus-based signal would leave the player/nav hidden
+          // until the next tap. The visual viewport shrinks while the keyboard
+          // is up and grows back the instant it closes by ANY means, so it's
+          // the reliable signal. Track the tallest height seen as the
+          // "no keyboard" baseline; a drop of >150px means the keyboard is up.
+          // When set, CSS hides the mobile player + bottom nav (not useful while
+          // typing and only steal the limited space above the keyboard).
+          if (h > baseline) baseline = h;
+          if (baseline - h > 150) {
+            clearTimeout(kbTimer);
+            root.classList.add('keyboard-open');
+          } else {
+            // Debounce removal so a Send tap that briefly blurs+refocuses the
+            // field (closing then reopening the keyboard) doesn't flicker the
+            // player/nav or reflow the layout mid-tap.
+            clearTimeout(kbTimer);
+            kbTimer = setTimeout(function () { root.classList.remove('keyboard-open'); }, 250);
+          }
+        }
+
         apply();
         if (vv) { vv.addEventListener('resize', apply); vv.addEventListener('scroll', apply); }
-        window.addEventListener('orientationchange', function () { setTimeout(apply, 250); });
-
-        // While a text field is focused (keyboard up), flag <html> so CSS can
-        // hide the mobile player + bottom nav: they're not useful while typing
-        // and only steal the limited space above the keyboard. (Tapping them
-        // would dismiss the keyboard anyway.)
-        function isTextField(el) {
-          if (!el || !el.tagName) return false;
-          var tag = el.tagName.toLowerCase();
-          if (tag === 'textarea') return true;
-          if (tag === 'input') {
-            var t = (el.type || 'text').toLowerCase();
-            return ['text', 'search', 'email', 'url', 'tel', 'password', 'number'].indexOf(t) !== -1;
-          }
-          return el.isContentEditable === true;
-        }
-        // Defer removing keyboard-open on blur. Tapping a button next to the
-        // input (e.g. chat Send) briefly blurs the field, then code refocuses
-        // it to keep the keyboard up. Removing the class immediately would
-        // un-hide the player/nav and reflow the layout mid-tap — moving the
-        // button out from under the finger so the click misses. Deferring lets
-        // the refocus (focusin) cancel the removal, so the layout stays stable.
-        // It also means the blur fires normally, ending the mobile IME
-        // composition so the field actually clears after send.
-        var kbTimer = null;
-        document.addEventListener('focusin', function (e) {
-          if (isTextField(e.target)) { clearTimeout(kbTimer); root.classList.add('keyboard-open'); }
-        });
-        document.addEventListener('focusout', function (e) {
-          if (isTextField(e.target)) {
-            clearTimeout(kbTimer);
-            kbTimer = setTimeout(function () { root.classList.remove('keyboard-open'); }, 400);
-          }
-        });
+        window.addEventListener('orientationchange', function () { baseline = 0; setTimeout(apply, 300); });
       })();
     </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
