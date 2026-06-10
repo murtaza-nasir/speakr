@@ -36,12 +36,20 @@ def video_mime_for_path(path):
 
     Fallback used when no probe is available. Prefer :func:`resolve_media_mime`,
     which derives the type from the actual file contents.
+
+    Our explicit map is authoritative: ``mimetypes.guess_type`` reads the host's
+    ``/etc/mime.types`` and is NOT consistent across platforms (e.g. ``.m4v``
+    resolves to ``video/x-m4v`` on some systems and ``video/mp4`` on others), so
+    consulting it first made the result host-dependent. Only fall through to it
+    for extensions we don't explicitly know about.
     """
+    ext = os.path.splitext(path)[1].lower()
+    if ext in _VIDEO_MIME_BY_EXT:
+        return _VIDEO_MIME_BY_EXT[ext]
     guessed, _ = mimetypes.guess_type(path)
     if guessed and guessed.startswith('video/'):
         return guessed
-    ext = os.path.splitext(path)[1].lower()
-    return _VIDEO_MIME_BY_EXT.get(ext, 'video/mp4')
+    return 'video/mp4'
 
 
 def _mime_from_format(format_name, has_video, path=''):
