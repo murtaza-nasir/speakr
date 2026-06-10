@@ -2,7 +2,24 @@
 <html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- interactive-widget=resizes-content: on Android Chrome the on-screen
+         keyboard resizes the layout so the UI fits the space above it. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+    <script>
+      // Keyboard-safe viewport. The on-screen keyboard shrinks the VISUAL
+      // viewport but not the LAYOUT viewport, so a 100vh/100% shell overflows
+      // and content scrolls off-screen (worst on iOS, which ignores
+      // interactive-widget). Mirror the visible height into --app-height; the
+      // app shell (#app) is sized off it so it always fits the space above the
+      // keyboard, and inner panes scroll instead of the whole page.
+      (function () {
+        var vv = window.visualViewport, root = document.documentElement;
+        function apply() { root.style.setProperty('--app-height', (vv ? vv.height : window.innerHeight) + 'px'); }
+        apply();
+        if (vv) { vv.addEventListener('resize', apply); vv.addEventListener('scroll', apply); }
+        window.addEventListener('orientationchange', function () { setTimeout(apply, 250); });
+      })();
+    </script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Speakr - Audio Transcription & Summarization</title>

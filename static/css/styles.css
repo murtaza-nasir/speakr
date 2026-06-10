@@ -379,17 +379,30 @@ body {
         min-height: 4000px !important; /* Fixed viewport height for mobile */
     }
 }
-#app { 
-    min-height: 100%; /* Full viewport height */
-    display: flex; 
+#app {
+    /* Size off the VISIBLE viewport (--app-height is set by the keyboard-safe
+       script in the page head) so the on-screen keyboard can't push content
+       off-screen — it shrinks the visual viewport but not the layout viewport.
+       Progressive fallback: 100vh (universal) -> var(--app-height, 100dvh). */
+    height: 100vh;
+    height: var(--app-height, 100dvh);
+    display: flex;
     flex-direction: column;
 }
-main { 
-    flex: 1; 
+main {
+    flex: 1;
+    min-height: 0; /* allow the flex child to shrink so overflow-y actually scrolls */
     position: relative;
     display: flex;
     flex-direction: column;
     overflow-y: auto; /* Allow scrolling on main */
+}
+
+/* Inquire-mode page uses a separate Vue root; same keyboard-safe sizing so the
+   chat input never gets pushed under the on-screen keyboard. */
+#inquire-app {
+    height: 100vh;
+    height: var(--app-height, 100dvh);
 }
 
 /* Sidebar styles with flexible height */
