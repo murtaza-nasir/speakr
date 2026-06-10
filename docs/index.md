@@ -6,7 +6,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.9.0 — Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
+!!! success "Latest Release: v0.9.0-alpha — Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
     The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform with a per-OS help guide and a Web Audio mixing path for capturing both sides of a meeting; a new Stats tab shows per-recording metrics; the mobile detail view is a first-class member of the design system. Upload modal redesigned, inquire mode polished, dark-mode select dropdowns finally legible.
 
     See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.0.md) for the complete list. Backwards compatible with v0.8.x; database migrations run automatically.
@@ -128,7 +128,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.9.0 - Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
+!!! info "Version 0.9.0-alpha - Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
     The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. Backwards compatible with v0.8.x; database migrations run automatically.
 
     - **System Audio & Multi-Input Recording** - Platform detection with a per-OS help guide (macOS BlackHole + Multi-Output Device, Windows "Share system audio", Linux pavucontrol + `pactl module-virtual-source`). New Input devices picker mixes a primary mic plus an optional secondary device via Web Audio into one track, with a toggle to disable Chrome's echo cancellation / noise suppression / auto-gain and virtual-audio-device discovery.

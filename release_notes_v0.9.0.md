@@ -1,4 +1,4 @@
-# Release Notes - v0.9.0
+# Release Notes - v0.9.0-alpha
 
 The first non-patch release in the v0.8 line graduates Speakr's recording, mobile, and chrome work to a coherent v0.9 baseline. Three big user-facing themes: capturing audio is now multi-platform and properly documented, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone.
 
