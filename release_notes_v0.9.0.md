@@ -72,7 +72,7 @@ The first non-patch release in the v0.8 line graduates Speakr's recording, mobil
 ## Backend & Infrastructure
 
 - **Webhooks Phase 1–3.** Outbound webhook system with HMAC signing, exponential-backoff retry, SSRF protection (DNS resolve, IPv6 site-local rejection), event payloads for `recording.transcription.completed`, `recording.transcription.started`, `events.extracted`, `events.updated`, and the lifecycle events. Account settings → Webhooks tab carries list / edit / test / deliveries / rotate. See admin-guide/webhooks for full setup.
-- **Server-side recording sessions.** Long browser recordings now stream chunks to the server in the background instead of holding everything in memory. Hours-based hard ceiling replaces the size-based auto-stop. Resume after a page refresh is supported. `RECORDING_SESSION_MAX_BYTES_PER_USER` is a per-user soft limit.
+- **Server-side recording sessions (opt-in).** With `ENABLE_SERVER_RECORDING_CHUNKS=true`, long browser recordings stream chunks to the server in the background instead of holding everything in memory. The size-based auto-stop is replaced by an hours-based ceiling (`RECORDING_MAX_HOURS`, default 8), and recordings resume after a page refresh. It is off by default for now and is planned to become the default in an upcoming release once it has had wider testing. `RECORDING_SESSION_MAX_BYTES_PER_USER` is a per-user soft limit.
 - **Security fixes.** Folder ownership is validated in the recording-session finalize path (closes IDOR follow-up to #287); tag ownership is validated in the batch PATCH endpoint (closes a parallel IDOR). `SESSION_COOKIE_SECURE` is now env-configurable.
 - **Performance.** Eager-load `Recording.folder` and tag associations in v1 list responses; group admin user-list queries into two batches (counts + storage_used) instead of N+1; composite `(status, next_retry_at)` index on `webhook_delivery`; opt-in chunk-commit batching for recording sessions.
 - **`/api/v1/users/me`.** New endpoint exposes the authenticated user with their group memberships.
@@ -84,7 +84,7 @@ Full translation coverage refreshed across the seven supported languages (Englis
 
 ## Compatibility
 
-Backwards compatible with v0.8.x. Database migrations run automatically on startup. Existing recordings, tags, folders, groups, and shares are unaffected. Webhook system is opt-in (no webhooks fire until you create a subscription). Recording sessions are an internal backend change with no client-visible behaviour difference except for the longer max-recording ceiling.
+Backwards compatible with v0.8.x. Database migrations run automatically on startup. Existing recordings, tags, folders, groups, and shares are unaffected. Webhook system is opt-in (no webhooks fire until you create a subscription). Server-side recording sessions are opt-in and off by default, so existing installs see no change in recording behaviour unless you enable `ENABLE_SERVER_RECORDING_CHUNKS`.
 
 Timezone behaviour change (no migration): in-app timestamps now render in each viewer's own browser timezone instead of the server's `TIMEZONE` setting. Timestamps are stored unchanged (naive UTC) and served as UTC ISO; the browser localises them. The `TIMEZONE` environment variable is **no longer read by the application** and has been removed from the example configs and setup docs — any `.env` that still sets it is harmlessly ignored, no action required. Single-timezone deployments where `TIMEZONE` previously matched users' zones will see no visible difference.
 

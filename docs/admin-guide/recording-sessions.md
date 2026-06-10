@@ -6,7 +6,7 @@ recording in browser RAM and uploading it at Stop. This unlocks longer
 recordings, makes crash recovery reliable, and removes the legacy
 client-side size cap.
 
-Off by default; opt in with `ENABLE_SERVER_RECORDING_CHUNKS=true`.
+Off by default; opt in with `ENABLE_SERVER_RECORDING_CHUNKS=true`. It is planned to become the default in an upcoming release once it has had wider testing.
 
 ## What changes when it is on
 
