@@ -1767,10 +1767,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             };
 
-            const formatDisplayDate = (dateString) => {
+            // Parse a backend INSTANT timestamp. The backend stores/serializes
+            // naive UTC (no zone designator); new Date() would parse a zoneless
+            // string as LOCAL, showing the UTC clock value instead of converting
+            // it. Append 'Z' so it's parsed as UTC; toLocale* then renders it in
+            // the viewer's own timezone. Do NOT use this for calendar fields
+            // (meeting_date) or wall-clock event times — those are not UTC and
+            // must keep their literal value (parse with plain new Date()).
+            const parseServerInstant = (s) => {
+                if (s == null) return new Date(NaN);
+                if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+                    s = s.replace(' ', 'T') + 'Z';
+                }
+                return new Date(s);
+            };
+
+            const formatDisplayDate = (dateString, isCalendar = false) => {
                 if (!dateString) return '';
                 try {
-                    let date = new Date(dateString);
+                    let date = isCalendar ? new Date(dateString) : parseServerInstant(dateString);
                     if (isNaN(date.getTime())) {
                         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
                             const [year, month, day] = dateString.split('-').map(Number);
@@ -1791,10 +1806,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             };
 
-            const formatShortDate = (dateString) => {
+            const formatShortDate = (dateString, isCalendar = false) => {
                 if (!dateString) return '';
                 try {
-                    let date = new Date(dateString);
+                    let date = isCalendar ? new Date(dateString) : parseServerInstant(dateString);
                     if (isNaN(date.getTime())) {
                         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
                             const [year, month, day] = dateString.split('-').map(Number);
@@ -1880,12 +1895,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             };
 
-            // Date helper functions
+            // Date helper functions. meeting_date is a calendar day (parse local,
+            // no tz shift); created_at is a UTC instant (parseServerInstant).
             const getDateForSorting = (recording) => {
-                const dateStr = sortBy.value === 'meeting_date'
-                    ? (recording.meeting_date || recording.created_at)
-                    : recording.created_at;
-                return dateStr ? new Date(dateStr) : null;
+                if (sortBy.value === 'meeting_date' && recording.meeting_date) {
+                    return new Date(recording.meeting_date);
+                }
+                return recording.created_at ? parseServerInstant(recording.created_at) : null;
             };
 
             const isToday = (date) => {
@@ -1946,6 +1962,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Bundle utilities for composables
             const utils = {
                 t, tc, setGlobalError, showToast, formatFileSize, formatDisplayDate, formatShortDate,
+                parseServerInstant,
                 formatStatus, getStatusClass, formatTime, formatDuration, formatEventDateTime,
                 getDateForSorting, isToday, isYesterday, isThisWeek, isLastWeek, isThisMonth, isLastMonth, isSameDay,
                 nextTick,
@@ -3891,6 +3908,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // Utilities
                 formatFileSize,
+                parseServerInstant,
                 formatDisplayDate,
                 formatShortDate,
                 formatStatus,

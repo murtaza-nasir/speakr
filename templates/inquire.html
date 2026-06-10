@@ -602,7 +602,7 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="font-semibold">${share.recording_title}</p>
-                                    <p class="text-sm text-[var(--text-muted)]">${ t('help.sharedOn') }: ${share.created_at}</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${ t('help.sharedOn') }: ${ formatInstant(share.created_at) }</p>
                                 </div>
                                 <button @click="deleteShare(share.id)" class="text-[var(--text-danger)] hover:opacity-80 p-1"><i class="fas fa-trash"></i></button>
                             </div>
@@ -888,7 +888,19 @@
                         const date = new Date(dateString);
                         return date.toLocaleDateString();
                     };
-                    
+
+                    // For INSTANT timestamps (e.g. share created_at): backend sends
+                    // naive UTC, so append 'Z' to read it as UTC and render local.
+                    const formatInstant = (dateString) => {
+                        if (!dateString) return '';
+                        let s = dateString;
+                        if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+                            s = s.replace(' ', 'T') + 'Z';
+                        }
+                        const date = new Date(s);
+                        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    };
+
                     // Smart scrolling functions
                     const isNearBottom = () => {
                         if (!inquireMessagesRef.value) return true;
@@ -1036,6 +1048,7 @@
                         loadAvailableFilters,
                         setGlobalError,
                         formatDate,
+                        formatInstant,
                         handleScroll
                     };
                 },

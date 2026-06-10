@@ -19,7 +19,7 @@
                 <div @click="openDateTimePicker('edit_modal_meeting_date', editingRecording.meeting_date, (isoString) => { editingRecording.meeting_date = isoString; })"
                      class="field cursor-pointer hover:border-[var(--border-focus)] flex items-center justify-between">
                     <span :class="editingRecording.meeting_date ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'">
-                        ${editingRecording.meeting_date ? formatDisplayDate(editingRecording.meeting_date) : 'Select date and time...'}
+                        ${editingRecording.meeting_date ? formatDisplayDate(editingRecording.meeting_date, true) : 'Select date and time...'}
                     </span>
                     <i class="fas fa-calendar-alt text-[var(--text-muted)]"></i>
                 </div>

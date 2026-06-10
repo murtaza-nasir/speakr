@@ -5,6 +5,16 @@
 
 const { ref, computed } = Vue;
 
+// Parse a backend INSTANT timestamp (naive UTC) — append 'Z' so it's read as
+// UTC and rendered in the viewer's timezone instead of being mis-parsed as local.
+const parseServerInstant = (s) => {
+    if (s == null) return new Date(NaN);
+    if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+        s = s.replace(' ', 'T') + 'Z';
+    }
+    return new Date(s);
+};
+
 export function useTokens({ showToast, setGlobalError }) {
     // State
     const tokens = ref([]);
@@ -32,13 +42,13 @@ export function useTokens({ showToast, setGlobalError }) {
     // Helper methods
     const isTokenExpired = (token) => {
         if (!token.expires_at) return false;
-        const expiryDate = new Date(token.expires_at);
+        const expiryDate = parseServerInstant(token.expires_at);
         return expiryDate < new Date();
     };
 
     const formatTokenDate = (dateString) => {
         if (!dateString) return 'Never';
-        const date = new Date(dateString);
+        const date = parseServerInstant(dateString);
         return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
     };
 

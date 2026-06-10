@@ -451,7 +451,7 @@
                                 <!-- Date -->
                                 <div class="flex items-center flex-shrink-0">
                                     <i class="fas fa-calendar-alt mr-1 text-[var(--text-muted)]" style="font-size: 10px;"></i>
-                                    ${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at)}
+                                    ${formatShortDate(sortBy === 'meeting_date' ? recording.meeting_date : recording.created_at, sortBy === 'meeting_date')}
                                 </div>
 
                                 <!-- Participants -->

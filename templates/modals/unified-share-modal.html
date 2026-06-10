@@ -54,7 +54,7 @@
                             <div class="flex items-center justify-between gap-2 mb-2">
                                 <div class="flex items-center gap-2 flex-1 min-w-0">
                                     <i class="fas fa-calendar text-[var(--text-muted)] text-xs"></i>
-                                    <span class="text-xs text-[var(--text-muted)] truncate">Created: ${share.created_at}</span>
+                                    <span class="text-xs text-[var(--text-muted)] truncate">Created: ${ formatShareDate(share.created_at) }</span>
                                     <span v-if="share.share_summary" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
                                         <i class="fas fa-file-alt mr-1"></i>Summary
                                     </span>

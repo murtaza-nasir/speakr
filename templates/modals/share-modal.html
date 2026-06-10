@@ -33,7 +33,7 @@
                 <h4 class="t-label">Existing Share Links (${recordingPublicShares.length})</h4>
                 <div v-for="share in recordingPublicShares" :key="share.id" class="bg-[var(--bg-tertiary)] p-3 rounded-md border border-[var(--border-primary)]">
                     <div class="flex justify-between items-start mb-2">
-                        <p class="t-meta">${ t('help.sharedOn') }: ${share.created_at}</p>
+                        <p class="t-meta">${ t('help.sharedOn') }: ${ formatShareDate(share.created_at) }</p>
                         <button @click="confirmDeletePublicShare(share)" class="btn btn--icon btn--sm" style="color: var(--text-danger);">
                             <i class="fas fa-trash text-xs"></i>
                         </button>

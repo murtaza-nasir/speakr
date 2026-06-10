@@ -13,7 +13,7 @@
             <p class="t-body" style="margin-bottom: var(--sp-3);">Are you sure you want to delete the shared link for:</p>
             <div v-if="shareToDelete" class="banner" style="display: block;">
                 <div class="t-body-strong">${shareToDelete.recording_title}</div>
-                <div class="t-meta" style="margin-top: var(--sp-1);">Shared on: ${shareToDelete.created_at}</div>
+                <div class="t-meta" style="margin-top: var(--sp-1);">Shared on: ${ formatShareDate(shareToDelete.created_at) }</div>
             </div>
             <div class="banner banner--danger" style="margin-top: var(--sp-3); display: flex; align-items: flex-start;">
                 <i class="fas fa-exclamation-triangle" style="margin-top: 2px;"></i>

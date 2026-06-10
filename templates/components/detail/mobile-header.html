@@ -129,7 +129,7 @@
         <div class="flex flex-wrap gap-1.5">
             <button @click.stop="openMeetingDatePicker" class="chip-meta chip-meta--clickable">
                 <i class="fas fa-calendar"></i>
-                <span class="chip-meta__label" v-text="selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'"></span>
+                <span class="chip-meta__label" v-text="selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date, true) : 'No date set'"></span>
             </button>
             <span v-if="selectedRecording.is_shared" class="chip-meta">
                 <i class="fas fa-user"></i>

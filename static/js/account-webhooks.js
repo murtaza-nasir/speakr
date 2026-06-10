@@ -55,9 +55,19 @@
         return d.innerHTML;
     }
 
+    // Backend timestamps are naive UTC (no zone). Append 'Z' so they're parsed
+    // as UTC and rendered in the viewer's timezone, not mis-read as local.
+    function parseServerInstant(s) {
+        if (s == null) return new Date(NaN);
+        if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+            s = s.replace(' ', 'T') + 'Z';
+        }
+        return new Date(s);
+    }
+
     function fmt(dt) {
         if (!dt) return '—';
-        try { return new Date(dt).toLocaleString(); } catch (_) { return String(dt); }
+        try { return parseServerInstant(dt).toLocaleString(); } catch (_) { return String(dt); }
     }
 
     function statusBadge(wh) {

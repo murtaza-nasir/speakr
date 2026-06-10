@@ -44,7 +44,7 @@
                                 <div class="t-body-strong">${ suggestion.name }</div>
                                 <div class="t-meta">
                                     Used ${ suggestion.use_count } time${ suggestion.use_count !== 1 ? 's' : '' }
-                                    <span v-if="suggestion.last_used"> • Last: ${ new Date(suggestion.last_used).toLocaleDateString() }</span>
+                                    <span v-if="suggestion.last_used"> • Last: ${ parseServerInstant(suggestion.last_used).toLocaleDateString() }</span>
                                 </div>
                             </div>
                             <i class="fas fa-user text-[var(--text-muted)] ml-2"></i>

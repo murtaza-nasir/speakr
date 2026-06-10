@@ -103,7 +103,7 @@
             <!-- Meeting date -->
             <span class="chip-meta chip-meta--clickable" @click="openMeetingDatePicker">
                 <i class="fas fa-calendar"></i>
-                <span class="chip-meta__label">${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date) : 'No date set'}</span>
+                <span class="chip-meta__label">${selectedRecording.meeting_date ? formatDisplayDate(selectedRecording.meeting_date, true) : 'No date set'}</span>
             </span>
 
             <!-- File metadata facts -->

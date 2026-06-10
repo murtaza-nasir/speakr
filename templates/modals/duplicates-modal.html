@@ -20,7 +20,7 @@
                             ${ copy.title }
                             <span v-if="copy.is_self" class="t-meta ml-1">(current)</span>
                         </div>
-                        <div class="t-meta">${ copy.created_at }</div>
+                        <div class="t-meta">${ formatDisplayDate(copy.created_at) }</div>
                     </div>
                     <i v-if="!copy.is_self" class="fas fa-chevron-right text-xs text-[var(--text-muted)]"></i>
                 </button>

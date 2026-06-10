@@ -247,7 +247,18 @@ class I18n {
      * @returns {string} Formatted relative time
      */
     formatRelativeTime(date) {
-        const d = date instanceof Date ? date : new Date(date);
+        // Backend timestamps are naive UTC; append 'Z' for string inputs so the
+        // elapsed-time diff is computed against true UTC, not a local mis-parse.
+        let d;
+        if (date instanceof Date) {
+            d = date;
+        } else {
+            let s = date;
+            if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+                s = s.replace(' ', 'T') + 'Z';
+            }
+            d = new Date(s);
+        }
         const now = new Date();
         const diffSeconds = Math.floor((now - d) / 1000);
         

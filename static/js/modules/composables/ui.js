@@ -296,10 +296,11 @@ export function useUI(state, utils, processedTranscription) {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
-    // Format display date
+    // Format display date. (Shadowed by app.modular.js's version; kept correct
+    // for INSTANT timestamps via parseServerInstant in case it's ever wired.)
     const formatDisplayDate = (dateString) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        const date = utils.parseServerInstant(dateString);
         return date.toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'short',
@@ -312,7 +313,7 @@ export function useUI(state, utils, processedTranscription) {
     // Format short date
     const formatShortDate = (dateString) => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        const date = utils.parseServerInstant(dateString);
         const now = new Date();
         const diff = now - date;
         const oneDay = 24 * 60 * 60 * 1000;

@@ -153,7 +153,7 @@ def inquire_search():
             result = chunk.to_dict()
             result['similarity'] = similarity
             result['recording_title'] = chunk.recording.title
-            result['recording_meeting_date'] = local_datetime_filter(chunk.recording.meeting_date)
+            result['recording_meeting_date'] = chunk.recording.meeting_date.isoformat() if chunk.recording.meeting_date else None
             results.append(result)
         
         return jsonify({'results': results})

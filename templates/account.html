@@ -3256,8 +3256,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const activeFilter = searchInput ? searchInput.value : '';
 
                 speakersTabData.forEach(speaker => {
-                    const createdDate = new Date(speaker.created_at).toLocaleDateString();
-                    const lastUsedDate = new Date(speaker.last_used).toLocaleDateString();
+                    const createdDate = parseInstant(speaker.created_at).toLocaleDateString();
+                    const lastUsedDate = parseInstant(speaker.last_used).toLocaleDateString();
 
                     // Voice profile status
                     const hasVoiceProfile = speaker.embedding_count && speaker.embedding_count > 0;
@@ -3999,7 +3999,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                             <div class="flex justify-between items-start">
                                 <div>
                                     <p class="font-semibold">${escapeHtml(share.recording_title)}</p>
-                                    <p class="text-sm text-[var(--text-muted)]">${t('sharedTranscripts.sharedOn')}: ${share.created_at}</p>
+                                    <p class="text-sm text-[var(--text-muted)]">${t('sharedTranscripts.sharedOn')}: ${formatInstant(share.created_at)}</p>
                                 </div>
                                 <button data-share-id="${share.id}" class="delete-share-btn text-[var(--text-danger)] hover:opacity-80 p-1"><i class="fas fa-trash"></i></button>
                             </div>
@@ -4115,6 +4115,22 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
+            }
+
+            // Backend INSTANT timestamps are naive UTC (no zone); append 'Z' so
+            // they're read as UTC and rendered/compared in the viewer's local tz.
+            function parseInstant(s) {
+                if (s == null) return new Date(NaN);
+                if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+                    s = s.replace(' ', 'T') + 'Z';
+                }
+                return new Date(s);
+            }
+            function formatInstant(dateString) {
+                if (!dateString) return '';
+                const d = parseInstant(dateString);
+                if (isNaN(d.getTime())) return dateString;
+                return d.toLocaleString();
             }
 
             // ---- AJAX form submission for the settings forms --------
@@ -4407,8 +4423,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             const div = document.createElement('div');
             div.className = 'flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:bg-[var(--bg-accent)] transition-colors duration-200';
             
-            const createdDate = new Date(speaker.created_at).toLocaleDateString();
-            const lastUsedDate = new Date(speaker.last_used).toLocaleDateString();
+            const createdDate = parseInstant(speaker.created_at).toLocaleDateString();
+            const lastUsedDate = parseInstant(speaker.last_used).toLocaleDateString();
             
             div.innerHTML = `
                 <div class="flex-1">
@@ -6436,8 +6452,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 activeTokensList.innerHTML = activeTokens.map(token => {
                     const statusClass = getTokenStatusClass(token);
                     const status = getTokenStatus(token);
-                    const createdDate = new Date(token.created_at).toLocaleDateString();
-                    const lastUsed = token.last_used_at ? new Date(token.last_used_at).toLocaleDateString() : null;
+                    const createdDate = parseInstant(token.created_at).toLocaleDateString();
+                    const lastUsed = token.last_used_at ? parseInstant(token.last_used_at).toLocaleDateString() : null;
 
                     return `
                         <div class="bg-[var(--bg-tertiary)] rounded-lg border border-[var(--border-primary)] hover:border-[var(--border-accent)] transition-colors duration-200">
@@ -6475,7 +6491,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                                     ${token.expires_at ? `
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800">
                                             <i class="fas fa-hourglass-half"></i>
-                                            Expires ${new Date(token.expires_at).toLocaleDateString()}
+                                            Expires ${parseInstant(token.expires_at).toLocaleDateString()}
                                         </span>
                                     ` : `
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">
@@ -6496,7 +6512,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
 
         function isTokenExpired(token) {
             if (!token.expires_at) return false;
-            const expiryDate = new Date(token.expires_at);
+            const expiryDate = parseInstant(token.expires_at);
             return expiryDate < new Date();
         }
 

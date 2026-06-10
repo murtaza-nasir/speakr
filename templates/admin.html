@@ -1268,7 +1268,7 @@ Summarization Instructions:
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-muted)]">
-                                            ${ new Date(group.created_at).toLocaleDateString() }
+                                            ${ parseInstant(group.created_at).toLocaleDateString() }
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                                             <button @click="openManageTeamModal(group)" class="text-[var(--text-accent)] hover:opacity-80" title="Manage Members">
@@ -2642,9 +2642,18 @@ Summarization Instructions:
                     }
                 };
                 
+                // Backend INSTANT timestamps are naive UTC; append 'Z' so they're
+                // read as UTC and rendered in the viewer's local timezone.
+                const parseInstant = (s) => {
+                    if (s == null) return new Date(NaN);
+                    if (typeof s === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+                        s = s.replace(' ', 'T') + 'Z';
+                    }
+                    return new Date(s);
+                };
                 const formatDate = (dateString) => {
                     if (!dateString) return t('adminDashboard.never');
-                    const date = new Date(dateString);
+                    const date = parseInstant(dateString);
                     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
                 };
                 
@@ -3738,6 +3747,7 @@ Summarization Instructions:
                     saveSettingValue,
                     updateSetting,
                     formatDate,
+                    parseInstant,
                     getSettingDescription,
                     addUser,
                     editUser,

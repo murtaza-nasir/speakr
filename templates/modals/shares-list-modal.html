@@ -19,7 +19,7 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <p class="t-body-strong">${share.recording_title}</p>
-                            <p class="t-meta">${ t('help.sharedOn') }: ${share.created_at}</p>
+                            <p class="t-meta">${ t('help.sharedOn') }: ${ formatShareDate(share.created_at) }</p>
                         </div>
                         <button @click="confirmDeleteShare(share)" class="btn btn--icon btn--sm" style="color: var(--text-danger);"><i class="fas fa-trash"></i></button>
                     </div>

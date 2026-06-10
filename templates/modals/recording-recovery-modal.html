@@ -41,7 +41,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span>${ t('recording.startedAt') }:</span>
-                        <span class="t-body-strong">${ formatDateTime(recoverableRecording.startTime) }</span>
+                        <span class="t-body-strong">${ formatDisplayDate(recoverableRecording.startTime) }</span>
                     </div>
                     <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-primary)]">
                         <span>${ t('recording.notes') }:</span>
@@ -75,7 +75,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span>${ t('recording.startedAt') }:</span>
-                        <span class="t-body-strong">${ formatDateTime(recoverableRecording.startTime) }</span>
+                        <span class="t-body-strong">${ formatDisplayDate(recoverableRecording.startTime) }</span>
                     </div>
                     <div v-if="recoverableRecording.notes" class="pt-2 border-t border-[var(--border-primary)]">
                         <span>${ t('recording.notes') }:</span>

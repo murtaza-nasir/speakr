@@ -213,7 +213,7 @@ class Recording(db.Model):
                     {
                         'id': rid,
                         'title': title,
-                        'created_at': local_datetime_filter(created),
+                        'created_at': created.isoformat() if created else None,
                     }
                     for (rid, title, created) in items
                 ],
@@ -241,7 +241,7 @@ class Recording(db.Model):
                     {
                         'id': d.id,
                         'title': d.title or f'#{d.id}',
-                        'created_at': local_datetime_filter(d.created_at),
+                        'created_at': d.created_at.isoformat() if d.created_at else None,
                         'is_self': d.id == self.id
                     }
                     for d in dupes
@@ -277,15 +277,15 @@ class Recording(db.Model):
             'title': self.title,
             'participants': self.participants,
             'status': self.status,
-            'created_at': local_datetime_filter(self.created_at),
-            'completed_at': local_datetime_filter(self.completed_at),
-            'meeting_date': local_datetime_filter(self.meeting_date),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'meeting_date': self.meeting_date.isoformat() if self.meeting_date else None,
             'file_size': self.file_size,
             'original_filename': self.original_filename,
             'mime_type': self.mime_type,  # cheap column read; lets the sidebar mark video recordings without opening them
             'is_inbox': self.is_inbox,
             'is_highlighted': self.is_highlighted,
-            'audio_deleted_at': local_datetime_filter(self.audio_deleted_at),
+            'audio_deleted_at': self.audio_deleted_at.isoformat() if self.audio_deleted_at else None,
             'audio_available': self.audio_deleted_at is None,
             'deletion_exempt': self.deletion_exempt,
             'folder_id': self.folder_id,
@@ -353,19 +353,19 @@ class Recording(db.Model):
             'transcription': self.transcription,
             'summary': self.summary,
             'status': self.status,
-            'created_at': local_datetime_filter(self.created_at),
-            'completed_at': local_datetime_filter(self.completed_at),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'processing_time_seconds': self.processing_time_seconds,
             'transcription_duration_seconds': self.transcription_duration_seconds,
             'summarization_duration_seconds': self.summarization_duration_seconds,
-            'meeting_date': local_datetime_filter(self.meeting_date),
+            'meeting_date': self.meeting_date.isoformat() if self.meeting_date else None,
             'file_size': self.file_size,
             'original_filename': self.original_filename,
             'user_id': self.user_id,
             'is_inbox': self.is_inbox,
             'is_highlighted': self.is_highlighted,
             'mime_type': self.mime_type,
-            'audio_deleted_at': local_datetime_filter(self.audio_deleted_at),
+            'audio_deleted_at': self.audio_deleted_at.isoformat() if self.audio_deleted_at else None,
             'audio_available': self.audio_deleted_at is None,
             'audio_duration': self.get_audio_duration(),
             'deletion_exempt': self.deletion_exempt,

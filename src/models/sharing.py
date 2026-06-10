@@ -36,7 +36,7 @@ class Share(db.Model):
             'id': self.id,
             'public_id': self.public_id,
             'recording_id': self.recording_id,
-            'created_at': local_datetime_filter(self.created_at),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'share_summary': self.share_summary,
             'share_notes': self.share_notes,
             'recording_title': self.recording.title if self.recording else "N/A",
