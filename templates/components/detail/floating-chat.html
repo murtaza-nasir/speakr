@@ -185,6 +185,7 @@
                               style="resize: none;"
                               rows="2"></textarea>
                     <button @click="sendChatMessage"
+                            @mousedown.prevent
                             :disabled="!chatInput.trim() || isChatLoading || selectedRecording.status !== 'COMPLETED' || processedTranscription.isError"
                             class="btn btn--primary btn--icon btn--lg"
                             :title="t('buttons.send') || 'Send'">
