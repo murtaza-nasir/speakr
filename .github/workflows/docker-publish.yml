@@ -163,6 +163,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Never tag the lite image as `latest`; `latest` is the full image,
+          # set only by the build job above. Without this, metadata-action's
+          # default `latest=auto` makes the lite job also push `latest`, and
+          # since it runs last it clobbers the full image's `latest`.
+          flavor: |
+            latest=false
           tags: |
             type=raw,value=lite,enable=${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
             type=match,pattern=v(.*),group=1,suffix=-lite
