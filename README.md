@@ -250,6 +250,16 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
       <br><em>Per-recording stats and speaker breakdown</em>
     </td>
   </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/assets/images/screenshots/mobile-summary.png" alt="Mobile summary" width="220"/>
+      <br><em>On mobile: summary with bottom navigation</em>
+    </td>
+    <td align="center">
+      <img src="docs/assets/images/screenshots/mobile-transcript.png" alt="Mobile transcript" width="220"/>
+      <br><em>On mobile: transcript in bubble view</em>
+    </td>
+  </tr>
 </table>
 
 **[View Full Screenshot Gallery →](https://murtaza-nasir.github.io/speakr/screenshots)**
