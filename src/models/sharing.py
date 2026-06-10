@@ -9,7 +9,6 @@ import os
 import secrets
 from datetime import datetime
 from src.database import db
-from src.utils import local_datetime_filter
 
 
 # Get sharing configuration from environment

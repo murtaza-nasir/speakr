@@ -9,7 +9,7 @@ import os
 from datetime import datetime
 from sqlalchemy import func
 from src.database import db
-from src.utils import local_datetime_filter, md_to_html
+from src.utils import md_to_html
 
 logger = logging.getLogger(__name__)
 

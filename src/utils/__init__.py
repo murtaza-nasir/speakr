@@ -20,10 +20,6 @@ from .markdown import (
     sanitize_html
 )
 
-from .datetime import (
-    local_datetime_filter
-)
-
 from .security import (
     password_check,
     is_safe_url
@@ -58,8 +54,6 @@ __all__ = [
     # Markdown/HTML
     'md_to_html',
     'sanitize_html',
-    # Datetime
-    'local_datetime_filter',
     # Security
     'password_check',
     'is_safe_url',

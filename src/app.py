@@ -38,8 +38,6 @@ from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import pytz
-from babel.dates import format_datetime
 import ast
 import logging
 import secrets
@@ -417,7 +415,7 @@ from src.models import (
 # Import utility functions from extracted modules
 from src.utils import (
     auto_close_json, safe_json_loads, preprocess_json_escapes, extract_json_object,
-    md_to_html, sanitize_html, local_datetime_filter, password_check,
+    md_to_html, sanitize_html, password_check,
     add_column_if_not_exists, is_safe_url
 )
 
@@ -564,31 +562,6 @@ def inject_group_admin_status():
         ).first() is not None
 
     return {'is_group_admin': is_group_admin}
-
-# --- Timezone Formatting Filter ---
-@app.template_filter('localdatetime')
-def local_datetime_filter(dt):
-    """Format a UTC datetime object to the user's local timezone."""
-    if dt is None:
-        return ""
-    
-    # Get timezone from .env, default to UTC
-    user_tz_name = os.environ.get('TIMEZONE', 'UTC')
-    try:
-        user_tz = pytz.timezone(user_tz_name)
-    except pytz.UnknownTimeZoneError:
-        user_tz = pytz.utc
-        app.logger.warning(f"Invalid TIMEZONE '{user_tz_name}' in .env. Defaulting to UTC.")
-
-    # If the datetime object is naive, assume it's UTC
-    if dt.tzinfo is None:
-        dt = pytz.utc.localize(dt)
-
-    # Convert to the user's timezone
-    local_dt = dt.astimezone(user_tz)
-    
-    # Format it nicely
-    return format_datetime(local_dt, format='medium', locale='en_US')
 
 # Ensure upload and instance directories exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
