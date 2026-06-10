@@ -405,6 +405,18 @@ main {
     height: var(--app-height, 100dvh);
 }
 
+/* When a text field is focused (keyboard up, .keyboard-open set on <html> by
+   the head script), hide the mobile audio player + bottom tab nav. They're not
+   useful while typing and would only steal the limited space above the
+   keyboard; the chat input + content take that space instead. Mobile only —
+   these elements don't render on desktop anyway. */
+@media (max-width: 1023px) {
+    html.keyboard-open [data-mobile-player],
+    html.keyboard-open [data-mobile-bottom-nav] {
+        display: none !important;
+    }
+}
+
 /* Sidebar styles with flexible height */
 .sidebar-container {
     height: 100%; /* Use relative height */
