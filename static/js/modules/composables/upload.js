@@ -6,6 +6,7 @@
 import * as FailedUploads from '../db/failed-uploads.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import * as RecordingDB from '../db/recording-persistence.js';
+import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
 
 // Parse error message and return friendly error info
 function getFriendlyError(errorMessage, t) {
@@ -546,8 +547,16 @@ export function useUpload(state, utils) {
                 formData.append('keep_audio_only', 'true');
             }
 
-            // Use XMLHttpRequest for per-file upload progress
-            const data = await new Promise((resolve, reject) => {
+            // Use XMLHttpRequest for per-file upload progress. XHR bypasses
+            // the fetch interceptor in csrf-refresh.js, so this path must
+            // handle CSRF token expiry itself: Flask-WTF's default
+            // WTF_CSRF_TIME_LIMIT is one hour, and the meta-tag token goes
+            // stale after a long recording or laptop sleep (the 45-minute
+            // interval refresh in csrf-refresh.js doesn't fire in throttled /
+            // suspended tabs). Without this, the upload 400s and the
+            // recording never reaches the server (the IndexedDB retry path
+            // would then re-fail with the same stale token).
+            const sendUpload = (csrfToken) => new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
 
                 xhr.upload.onprogress = (e) => {
@@ -560,6 +569,12 @@ export function useUpload(state, utils) {
                 xhr.onload = () => {
                     const contentType = xhr.getResponseHeader('content-type') || '';
                     if (!contentType.includes('application/json')) {
+                        if (isCsrfRejection(xhr.status, xhr.responseText)) {
+                            const err = new Error(`CSRF token rejected (${xhr.status})`);
+                            err.isCsrfRejection = true;
+                            reject(err);
+                            return;
+                        }
                         const titleMatch = xhr.responseText.match(/<title>([^<]+)<\/title>/i);
                         const h1Match = xhr.responseText.match(/<h1>([^<]+)<\/h1>/i);
                         reject(new Error(titleMatch?.[1] || h1Match?.[1] ||
@@ -580,7 +595,11 @@ export function useUpload(state, utils) {
                     } else if (!String(xhr.status).startsWith('2')) {
                         let errorMsg = parsed.error || `Upload failed with status ${xhr.status}`;
                         if (xhr.status === 413) errorMsg = parsed.error || `File too large. Max: ${parsed.max_size_mb?.toFixed(0) || maxFileSizeMB.value} MB.`;
-                        reject(new Error(errorMsg));
+                        const err = new Error(errorMsg);
+                        if (isCsrfRejection(xhr.status, parsed.error || '')) {
+                            err.isCsrfRejection = true;
+                        }
+                        reject(err);
                     } else {
                         reject(new Error('Unexpected success response from server after upload.'));
                     }
@@ -594,12 +613,25 @@ export function useUpload(state, utils) {
 
                 xhr.open('POST', '/upload');
                 // Include CSRF token (required for POST requests)
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                 if (csrfToken) {
                     xhr.setRequestHeader('X-CSRFToken', csrfToken);
                 }
                 xhr.send(formData);
             });
+
+            // Refresh the token right before sending, and retry exactly once
+            // with another fresh token if the server still rejects it —
+            // mirroring what the fetch interceptor in csrf-refresh.js does
+            // for non-XHR requests.
+            let data;
+            try {
+                data = await sendUpload(await getUploadCsrfToken());
+            } catch (uploadError) {
+                if (!uploadError.isCsrfRejection) throw uploadError;
+                console.warn(`[Upload] CSRF rejection for ${fileItem.file.name}; refreshing token and retrying once.`);
+                fileItem.progress = 5;
+                data = await sendUpload(await getUploadCsrfToken());
+            }
 
             // Upload succeeded - recording is now on the server
             console.log(`File ${fileItem.file.name} uploaded. Recording ID: ${data.id}. Server will process via job queue.`);
