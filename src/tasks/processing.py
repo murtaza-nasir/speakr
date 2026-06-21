@@ -1495,7 +1495,7 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                             'size_mb': chunk['size_mb'],
                             'transcription': response.text,
                             'filename': chunk['filename'],
-                            'segments': response.segments if use_diarization else None,
+                            'segments': response.segments if use_diarization else (response.segments if response.has_timestamps() else None),
                             'speakers': response.speakers if use_diarization else None
                         }
                         chunk_results.append(chunk_result)
@@ -1550,15 +1550,71 @@ def transcribe_chunks_with_connector(connector, filepath, filename, mime_type, l
                     model=getattr(connector, 'model', 'unknown')
                 )
             else:
-                merged_transcription = chunking_service.merge_transcriptions(chunk_results)
+                # Check if any chunk has timestamped segments (even without diarization)
+                has_any_segments = any(
+                    chunk.get('segments') for chunk in chunk_results
+                )
 
-                if not merged_transcription.strip():
-                    raise ChunkProcessingError("Merged transcription is empty")
+                if has_any_segments:
+                    # Merge segments with adjusted timestamps (no speaker remapping needed)
+                    from src.services.transcription import TranscriptionSegment, TranscriptionResponse
+                    merged_segments = []
+                    sorted_chunks = sorted(chunk_results, key=lambda x: x.get('start_time', 0))
+                    merged_parts = []
 
-                # Log statistics
-                chunking_service.log_processing_statistics(chunk_results)
+                    for chunk in sorted_chunks:
+                        chunk_segments = chunk.get('segments') or []
+                        chunk_start_offset = chunk.get('start_time', 0)
+                        chunk_text = chunk.get('transcription', '').strip()
 
-                return merged_transcription
+                        if chunk_text:
+                            merged_parts.append(chunk_text)
+
+                        for seg in chunk_segments:
+                            if hasattr(seg, 'text'):
+                                text = seg.text
+                                start_time = seg.start_time
+                                end_time = seg.end_time
+                            else:
+                                text = seg.get('text', '')
+                                start_time = seg.get('start_time') or seg.get('start')
+                                end_time = seg.get('end_time') or seg.get('end')
+
+                            if not text or not text.strip():
+                                continue
+
+                            adjusted_start = (start_time or 0) + chunk_start_offset
+                            adjusted_end = (end_time or 0) + chunk_start_offset
+
+                            merged_segments.append(TranscriptionSegment(
+                                text=text,
+                                start_time=adjusted_start,
+                                end_time=adjusted_end
+                            ))
+
+                    merged_transcription = '\n'.join(merged_parts)
+                    if not merged_transcription.strip():
+                        raise ChunkProcessingError("Merged transcription is empty")
+
+                    chunking_service.log_processing_statistics(chunk_results)
+                    current_app.logger.info(f"Merged {len(merged_segments)} timestamped segments from {len(chunk_results)} chunks")
+
+                    return TranscriptionResponse(
+                        text=merged_transcription,
+                        segments=merged_segments,
+                        provider=connector.PROVIDER_NAME,
+                        model=getattr(connector, 'model', 'unknown')
+                    )
+                else:
+                    merged_transcription = chunking_service.merge_transcriptions(chunk_results)
+
+                    if not merged_transcription.strip():
+                        raise ChunkProcessingError("Merged transcription is empty")
+
+                    # Log statistics
+                    chunking_service.log_processing_statistics(chunk_results)
+
+                    return merged_transcription
 
         except Exception as e:
             current_app.logger.error(f"Chunking transcription failed for {filepath}: {e}")
@@ -1820,10 +1876,10 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                         )
 
                         # Handle result based on type (TranscriptionResponse for diarized, string for plain)
-                        if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
-                            # Diarized response - store with segments for click-to-seek and speaker identification
+                        if hasattr(chunk_result, 'segments') and chunk_result.segments and (chunk_result.has_diarization() or chunk_result.has_timestamps()):
+                            # Diarized or timestamped response - store with segments for click-to-seek and speaker identification
                             recording.transcription = chunk_result.to_storage_format()
-                            current_app.logger.info(f"Chunked diarized transcription completed: {len(chunk_result.text)} characters, {len(chunk_result.segments)} segments")
+                            current_app.logger.info(f"Chunked transcription completed: {len(chunk_result.text)} characters, {len(chunk_result.segments)} segments")
                         else:
                             # Plain text response
                             transcription_text = chunk_result.text if hasattr(chunk_result, 'text') else chunk_result
@@ -1849,8 +1905,8 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                             response = connector.transcribe(request)
 
                         # Store the result
-                        if response.segments and response.has_diarization():
-                            # Store as JSON with segments (diarized format)
+                        if response.segments and (response.has_diarization() or response.has_timestamps()):
+                            # Store as JSON with segments (diarized or timestamped format)
                             recording.transcription = response.to_storage_format()
                             current_app.logger.info(f"Transcription completed with {len(response.segments)} segments and {len(response.speakers or [])} speakers")
                         else:
@@ -2255,7 +2311,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
                 diarize=should_diarize
             )
 
-            if hasattr(chunk_result, 'segments') and chunk_result.segments and chunk_result.has_diarization():
+            if hasattr(chunk_result, 'segments') and chunk_result.segments and (chunk_result.has_diarization() or chunk_result.has_timestamps()):
                 result['transcription'] = chunk_result.to_storage_format()
             else:
                 result['transcription'] = chunk_result.text if hasattr(chunk_result, 'text') else chunk_result
@@ -2274,7 +2330,7 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
 
                 response = connector.transcribe(request)
 
-            if response.segments and response.has_diarization():
+            if response.segments and (response.has_diarization() or response.has_timestamps()):
                 result['transcription'] = response.to_storage_format()
             else:
                 result['transcription'] = response.text

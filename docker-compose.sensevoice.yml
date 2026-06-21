@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.sensevoice
+    image: speakr-sensevoice-new:latest
+    container_name: speakr-new
+    restart: unless-stopped
+    ports:
+      - "8900:8899"
+
+    # GPU support for SenseVoice inference
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    env_file:
+      - .env
+
+    environment:
+      - LOG_LEVEL=INFO
+      # SenseVoice model directory (mounted from host)
+      - SENSEVOICE_MODEL_DIR=/data/model
+      # Use SenseVoice as the transcription connector
+      - TRANSCRIPTION_CONNECTOR=sensevoice
+      - SENSEVOICE_DEVICE=cuda
+      # Chunk audio for accurate transcription
+      - CHUNK_LIMIT=90s
+
+    volumes:
+      - ./uploads:/data/uploads
+      - ./instance:/data/instance
+      # Mount the pre-downloaded SenseVoice model (read-only)
+      - ./model:/data/model:ro

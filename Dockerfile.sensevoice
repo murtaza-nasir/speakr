@@ -1,0 +1,24 @@
+###############################################################################
+# Use the existing speakr-sensevoice image as base (has CUDA 12.8 + PyTorch + funasr)
+# Just replace the application code with the new version
+###############################################################################
+FROM speakr-sensevoice:latest-fixed
+
+WORKDIR /app
+
+# Backup vendor assets from base image, then remove old app code
+RUN cp -r /app/static/vendor /tmp/vendor-backup 2>/dev/null && \
+    rm -rf src/ templates/ static/ scripts/ config/ requirements*.txt constraints.txt conftest.py VERSION .env Dockerfile* docker-compose*.yml .dockerignore
+
+# Copy new application code
+COPY . .
+
+# Restore vendor assets
+RUN mkdir -p /app/static/vendor && cp -r /tmp/vendor-backup/* /app/static/vendor/ 2>/dev/null && rm -rf /tmp/vendor-backup
+
+# Update environment for new app structure
+ENV FLASK_APP=src/app.py
+
+# Update entrypoint and command
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["gunicorn", "--workers", "1", "--bind", "0.0.0.0:8899", "--timeout", "600", "src.app:app"]

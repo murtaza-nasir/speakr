@@ -506,8 +506,8 @@ class AudioChunkingService:
             # Calculate chunk duration
             chunk_duration = total_duration / num_chunks
             
-            # Apply minimum duration (5 minutes) but don't exceed file duration
-            chunk_duration = min(max(300, chunk_duration), total_duration)
+            # Apply minimum duration (20 seconds) but don't exceed file duration
+            chunk_duration = min(max(20, chunk_duration), total_duration)
             
             # Log final chunking plan
             expected_chunk_size_mb = (converted_size / num_chunks) / (1024 * 1024)

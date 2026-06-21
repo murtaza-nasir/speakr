@@ -5,6 +5,7 @@
 # Docker
 .dockerignore
 Dockerfile
+Dockerfile.sensevoice
 docker-compose*.yml
 
 # Python
@@ -61,3 +62,10 @@ tests/
 !requirements*.txt
 LICENSE
 CLAUDE.md
+
+# Large files
+*.tar
+*.whl
+
+# Model directory (mounted as volume)
+model/

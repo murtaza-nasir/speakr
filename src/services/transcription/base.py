@@ -153,6 +153,13 @@ class TranscriptionResponse:
             return False
         return any(seg.speaker for seg in self.segments)
 
+    def has_timestamps(self) -> bool:
+        """Check if this response contains segments with timestamps."""
+        if not self.segments:
+            return False
+        return any(seg.start_time is not None or seg.end_time is not None
+                   for seg in self.segments)
+
 
 class BaseTranscriptionConnector(ABC):
     """Abstract base class for transcription connectors."""

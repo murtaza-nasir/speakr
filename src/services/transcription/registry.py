@@ -47,6 +47,7 @@ class ConnectorRegistry:
         from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
         from .connectors.mistral import MistralTranscriptionConnector
         from .connectors.vibevoice import VibeVoiceTranscriptionConnector
+        from .connectors.sensevoice import SenseVoiceConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
@@ -54,6 +55,7 @@ class ConnectorRegistry:
         self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
         self.register('mistral', MistralTranscriptionConnector)
         self.register('vibevoice', VibeVoiceTranscriptionConnector)
+        self.register('sensevoice', SenseVoiceConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -287,6 +289,17 @@ class ConnectorRegistry:
                 'base_url': base_url,
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'microsoft/VibeVoice-ASR'),
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+            }
+
+        elif connector_name == 'sensevoice':
+            return {
+                'model_name': os.environ.get('SENSEVOICE_MODEL', 'FunAudioLLM/SenseVoiceSmall'),
+                'device': os.environ.get('SENSEVOICE_DEVICE', 'cuda'),
+                'ncpu_thread': int(os.environ.get('SENSEVOICE_CPU_THREAD', '4')),
+                'disable_update': os.environ.get('SENSEVOICE_DISABLE_UPDATE', 'true').lower() == 'true',
+                'model_dir': os.environ.get('SENSEVOICE_MODEL_DIR', None),
+                'model_cache_dir': os.environ.get('SENSEVOICE_CACHE_DIR', None),
+                'use_punctuation_model': os.environ.get('SENSEVOICE_USE_PUNCTUATION_MODEL', 'true').lower() == 'true',
             }
 
         else:  # openai_whisper (default)
