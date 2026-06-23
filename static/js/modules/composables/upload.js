@@ -7,6 +7,7 @@ import * as FailedUploads from '../db/failed-uploads.js';
 import * as IncognitoStorage from '../db/incognito-storage.js';
 import * as RecordingDB from '../db/recording-persistence.js';
 import { getUploadCsrfToken, isCsrfRejection } from '../csrf.js';
+import { computeUploadTimeout } from '../utils/upload-timeout.js';
 
 // Parse error message and return friendly error info
 function getFriendlyError(errorMessage, t) {
@@ -607,6 +608,13 @@ export function useUpload(state, utils) {
 
                 xhr.onerror = () => reject(new Error('Network error during upload'));
                 xhr.ontimeout = () => reject(new Error('Upload timed out'));
+
+                // Without an explicit timeout, a stalled connection (no FIN/RST,
+                // just no progress) hangs forever and ontimeout never fires — so
+                // the upload never reaches the catch block that persists the file
+                // for retry / triggers the local-download fallback. Set a
+                // size-scaled ceiling so a stalled upload eventually fails over.
+                xhr.timeout = computeUploadTimeout(fileItem.file?.size || 0);
 
                 // Store abort controller on item for cancellation
                 fileItem._xhr = xhr;
