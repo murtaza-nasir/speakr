@@ -2679,17 +2679,6 @@ def upload_file():
             meeting_date = now
             current_app.logger.debug("No file date available, using current time")
 
-        # Cache audio duration up front from the codec probe so list and
-        # detail API endpoints don't have to ffprobe per row. Falls back
-        # to None if the probe failed; the post-transcription path will
-        # populate it later.
-        cached_duration = None
-        try:
-            if codec_info and isinstance(codec_info.get('duration'), (int, float)):
-                cached_duration = float(codec_info['duration'])
-        except Exception:
-            cached_duration = None
-
         recording = Recording(
             audio_path=None,
             original_filename=original_filename,
@@ -2710,7 +2699,6 @@ def upload_file():
             # regardless of the server's VIDEO_RETENTION setting. True when
             # the user explicitly toggled it or when VIDEO_RETENTION is off.
             keep_audio_only=effective_audio_only,
-            audio_duration_seconds=cached_duration,
         )
         db.session.add(recording)
         db.session.flush()  # Assign recording.id without committing transaction yet

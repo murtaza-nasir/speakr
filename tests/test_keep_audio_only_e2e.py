@@ -62,28 +62,29 @@ def test_upload_with_keep_audio_only_persists_flag_on_recording():
                 'video_codec': 'h264',
                 'duration': 30.0,
             }
+            # The storage layer now MOVES the converted file into the storage
+            # root, so the mocked conversion must produce a real file on disk
+            # (a fake path would FileNotFoundError on shutil.move). A real
+            # production conversion always yields a real file, so this keeps the
+            # test faithful to the post-storage upload flow.
+            import tempfile
+            conv_fd, conv_path = tempfile.mkstemp(suffix='.mp3')
+            os.write(conv_fd, b'\x00' * (1024 * 1024))
+            os.close(conv_fd)
             convert_result = MagicMock()
-            convert_result.output_path = '/tmp/converted-audio.mp3'
+            convert_result.output_path = conv_path
             convert_result.was_converted = True
             convert_result.was_compressed = False
             convert_result.original_codec = 'aac'
             convert_result.final_codec = 'mp3'
             mock_convert.return_value = convert_result
 
-            # Patch os.path.getsize so the post-conversion size check
-            # doesn't blow up on the fake output path.
-            real_getsize = os.path.getsize
-            def fake_getsize(p):
-                if p == '/tmp/converted-audio.mp3':
-                    return 1024 * 1024
-                return real_getsize(p)
-            with patch('src.api.recordings.os.path.getsize', side_effect=fake_getsize):
-                data = {
-                    'keep_audio_only': 'true',
-                    'title': 'e2e-test',
-                }
-                data['file'] = (io.BytesIO(b'\x00' * 16384), 'sample.mp4')
-                resp = client.post('/upload', data=data, content_type='multipart/form-data')
+            data = {
+                'keep_audio_only': 'true',
+                'title': 'e2e-test',
+            }
+            data['file'] = (io.BytesIO(b'\x00' * 16384), 'sample.mp4')
+            resp = client.post('/upload', data=data, content_type='multipart/form-data')
 
         # Upload handler returns 202 on success; some failure modes
         # return other 2xx. Tolerate either as long as a Recording row
