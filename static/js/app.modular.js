@@ -3680,6 +3680,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         e.returnValue = ''; // Chrome requires this
                         return 'You have an unsaved recording. Are you sure you want to leave?';
                     }
+                    // Check for uploads still in flight. A freshly-recorded file
+                    // may still be mid-transfer with no copy on the server yet;
+                    // leaving now risks losing it. (Items that already reached
+                    // 'pending'/'failed' are on the server or saved for retry.)
+                    const uploadsInFlight = uploadQueue.value.some(item =>
+                        item.status === 'queued' || item.status === 'ready' || item.status === 'uploading');
+                    if (uploadsInFlight) {
+                        e.preventDefault();
+                        e.returnValue = ''; // Chrome requires this
+                        return 'Uploads are still in progress. Leaving now may lose recordings that have not finished uploading.';
+                    }
                     // Check for incognito recording that would be lost
                     // Only warn if we're currently viewing the incognito recording
                     // (if user navigated away, they've implicitly abandoned it or already been warned)
