@@ -193,7 +193,11 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.9.0-alpha)
+## Latest Release (v0.9.1-alpha)
+
+**A patch release hardening the v0.9.0 upload path.** Fixes uploads failing with an expired CSRF token after long sessions or sleep (#310), Inquire embeddings not being generated when auto-summarization is enabled (#305), and the Account page's API token modals not opening (#308); adds a timeout so stalled uploads fail into the recovery path and a warning before leaving the page mid-upload. **Full release notes: [`release_notes_v0.9.1.md`](release_notes_v0.9.1.md).**
+
+### v0.9.0-alpha highlights (the major feature release this patches)
 
 **The first non-patch release in the v0.8 line.** Three big user-facing themes: capturing audio is now multi-platform and properly documented, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. **Full release notes: [`release_notes_v0.9.0.md`](release_notes_v0.9.0.md).**
 

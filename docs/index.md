@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.9.0-alpha — Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
-    The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform with a per-OS help guide and a Web Audio mixing path for capturing both sides of a meeting; a new Stats tab shows per-recording metrics; the mobile detail view is a first-class member of the design system. Upload modal redesigned, inquire mode polished, dark-mode select dropdowns finally legible.
+!!! success "Latest Release: v0.9.1-alpha — Upload-path fixes"
+    A patch release hardening the v0.9.0 upload path. Fixes uploads failing with an expired CSRF token after long sessions or sleep, Inquire embeddings not being generated when auto-summarization is enabled, and the Account page's API token modals not opening; adds a timeout so stalled uploads fail into the recovery path and a warning before leaving the page mid-upload.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.0.md) for the complete list. Backwards compatible with v0.8.x; database migrations run automatically.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.1.md) for the complete list. Backwards compatible with v0.8.x and v0.9.0; database migrations run automatically.
 
 ## Quick Navigation
 
@@ -127,6 +127,16 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.9.1-alpha - Upload-path fixes"
+    A patch release hardening the v0.9.0 upload path. Backwards compatible with v0.8.x and v0.9.0; database migrations run automatically.
+
+    - **CSRF token expiry on upload (#310)** - The upload path uses `XMLHttpRequest`, which bypassed the fetch-based CSRF refresh, so uploads failed with HTTP 400 once the page token crossed the one-hour limit. It now refreshes the token before sending and retries once on a CSRF rejection.
+    - **Inquire embeddings with auto-summarization (#305)** - Semantic-search chunks were only built in the non-summary path, so with auto-summarization enabled new recordings were never embedded. Summary completion now runs the same chunking step. Pre-existing recordings need a one-time "Re-embed all".
+    - **API token modals (#308)** - An unclosed `<div>` nested the Create Token modal inside the hidden folder modal; the markup is fixed so it opens again.
+    - **Stalled-upload timeout & leave-page warning** - A size-scaled `XMLHttpRequest` timeout routes a stalled upload into the recovery path instead of hanging, and the browser now warns before you leave the page with an upload still in flight.
+
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.1.md) for the complete list.
 
 !!! info "Version 0.9.0-alpha - Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
     The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. Backwards compatible with v0.8.x; database migrations run automatically.
