@@ -745,6 +745,15 @@ Summarization Instructions:
                 if ENABLE_AUTO_EXPORT:
                     export_recording(recording_id)
 
+            # Process chunks for semantic search after completion (if inquire mode is enabled).
+            # Mirrors the non-summary path in generate_title_task; without this, Inquire
+            # embeddings are never generated when auto-summarization is enabled (issue #305).
+            if ENABLE_INQUIRE_MODE:
+                try:
+                    process_recording_chunks(recording_id)
+                except Exception as chunk_err:
+                    current_app.logger.error(f"Error processing chunks for completed recording {recording_id}: {chunk_err}")
+
         except Exception as e:
             error_msg = format_api_error_message(str(e))
             current_app.logger.error(f"Error generating summary for recording {recording_id}: {str(e)}")
