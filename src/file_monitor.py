@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 import mimetypes
 from werkzeug.utils import secure_filename
-from src.utils.ffprobe import get_codec_info, get_creation_date, FFProbeError
+from src.utils.ffprobe import get_codec_info, get_creation_date, get_duration, FFProbeError
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.audio_conversion import convert_if_needed
 
@@ -336,9 +336,12 @@ class FileMonitor:
                 timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                 new_filename = f"auto_{timestamp}_{safe_filename}"
                 
-                uploads_dir = Path(app.config['UPLOAD_FOLDER'])
-                uploads_dir.mkdir(parents=True, exist_ok=True)
-                destination_path = uploads_dir / new_filename
+                from src.services.storage import get_storage_service
+
+                storage = get_storage_service()
+                staging_dir = Path(storage.get_staging_dir())
+                staging_dir.mkdir(parents=True, exist_ok=True)
+                destination_path = staging_dir / new_filename
                 
                 # Copy locked file to uploads directory
                 import shutil
@@ -443,8 +446,16 @@ class FileMonitor:
                             f"({existing.title}). Processing anyway."
                         )
 
+                audio_duration_seconds = None
+                try:
+                    detected_duration = get_duration(str(final_path), timeout=30)
+                    if detected_duration is not None and detected_duration > 0:
+                        audio_duration_seconds = float(detected_duration)
+                except Exception as e:
+                    self.logger.warning(f"Could not determine duration for auto-processed file {original_filename}: {e}")
+
                 recording = Recording(
-                    audio_path=str(final_path),
+                    audio_path=None,
                     original_filename=original_filename,
                     title=f"Auto-processed - {original_filename}",
                     file_size=file_size,
@@ -452,13 +463,27 @@ class FileMonitor:
                     meeting_date=meeting_date,
                     user_id=user_id,
                     mime_type=mime_type,
+                    audio_duration_seconds=audio_duration_seconds,
                     is_inbox=True,  # Auto-processed files go to inbox
                     processing_source='auto_process',  # Track that this was auto-processed
                     file_hash=file_hash
                 )
                 
                 db.session.add(recording)
-                db.session.commit()
+                db.session.flush()
+
+                storage_key = storage.build_recording_key(original_filename, recording.id, now=now)
+                stored_object = storage.upload_local_file(
+                    str(final_path),
+                    storage_key,
+                    content_type=mime_type,
+                    delete_source=True,
+                )
+                recording.audio_path = stored_object.locator
+
+                user_hotwords = (user.transcription_hotwords or '').strip() if getattr(user, 'transcription_hotwords', None) else None
+                user_initial_prompt = (user.transcription_initial_prompt or '').strip() if getattr(user, 'transcription_initial_prompt', None) else None
+                user_language = (user.transcription_language or '').strip() if getattr(user, 'transcription_language', None) else None
 
                 self.logger.info(f"Created recording record with ID: {recording.id} for user: {user.username}")
 
@@ -491,6 +516,15 @@ class FileMonitor:
                         if tag.custom_prompt:
                             job_params['custom_prompt'] = tag.custom_prompt
                         job_params['tag_id'] = tag_id
+
+                if 'language' not in job_params and user_language:
+                    job_params['language'] = user_language
+                if 'hotwords' not in job_params and user_hotwords:
+                    job_params['hotwords'] = user_hotwords
+                if 'initial_prompt' not in job_params and user_initial_prompt:
+                    job_params['initial_prompt'] = user_initial_prompt
+
+                db.session.commit()
 
                 # Queue for background processing
                 from src.services.job_queue import job_queue

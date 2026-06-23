@@ -65,10 +65,10 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
         with open(os.path.join(PROJECT_ROOT, 'src/tasks/processing.py'), 'r') as f:
             cls.content = f.read()
 
-    def test_video_retention_true_keeps_original(self):
-        """When VIDEO_RETENTION=True, recording.audio_path is set to original filepath."""
-        # The VIDEO_RETENTION=True branch should set recording.audio_path = filepath
-        self.assertIn('recording.audio_path = filepath', self.content)
+    def test_video_retention_true_preserves_stored_media_reference(self):
+        """When VIDEO_RETENTION=True, the persistent media reference is left untouched."""
+        self.assertIn('Video retained (media path unchanged)', self.content)
+        self.assertNotIn('recording.audio_path = filepath', self.content)
 
     def test_video_retention_true_extracts_without_cleanup(self):
         """When VIDEO_RETENTION=True, extract_audio_from_video is called with cleanup_original=False."""
@@ -112,10 +112,10 @@ class TestProcessingPipelineVideoRetention(unittest.TestCase):
         self.assertNotIn("mimetypes.guess_type(filepath)[0] or 'video/mp4'", self.content)
 
     def test_duration_uses_recording_audio_path(self):
-        """Duration lookup uses recording.audio_path (always valid), not filepath."""
-        self.assertIn('chunking_service.get_audio_duration(recording.audio_path)', self.content)
-        # Should NOT use bare filepath for duration (pre-existing bug was fixed)
-        self.assertNotIn('chunking_service.get_audio_duration(filepath)', self.content)
+        """Duration logic prefers cached DB values and local probe candidates."""
+        self.assertIn('recording.audio_duration_seconds = float(cached_audio_duration)', self.content)
+        self.assertIn('duration_probe_candidates = []', self.content)
+        self.assertIn('chunking_service.get_audio_duration(candidate_path)', self.content)
 
 
 class TestUploadHandlerVideoRetention(unittest.TestCase):
@@ -259,18 +259,20 @@ class TestSendFileConditional(unittest.TestCase):
     def test_recordings_streaming_has_conditional(self):
         """Streaming send_file in recordings.py has conditional=True."""
         content = self._read_file('src/api/recordings.py')
-        # Find the non-download send_file call
-        self.assertIn('send_file(recording.audio_path, mimetype=recording.mime_type, conditional=True)', content)
+        self.assertIn('return send_file(delivery.local_path, mimetype=recording.mime_type, conditional=True)', content)
 
     def test_recordings_download_has_conditional(self):
         """Download send_file in recordings.py has conditional=True."""
         content = self._read_file('src/api/recordings.py')
-        self.assertIn('as_attachment=True, download_name=filename, mimetype=recording.mime_type, conditional=True', content)
+        self.assertIn('as_attachment=True,', content)
+        self.assertIn('download_name=download_name,', content)
+        self.assertIn('mimetype=recording.mime_type,', content)
+        self.assertIn('conditional=True,', content)
 
     def test_shares_has_conditional(self):
         """send_file in shares.py has conditional=True."""
         content = self._read_file('src/api/shares.py')
-        self.assertIn('send_file(recording.audio_path, conditional=True)', content)
+        self.assertIn('send_file(delivery.local_path, mimetype=(recording.mime_type or delivery.mimetype), conditional=True)', content)
 
 
 class TestFrontendTemplates(unittest.TestCase):

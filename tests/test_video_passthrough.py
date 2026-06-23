@@ -159,15 +159,17 @@ class TestProcessingMainPath(unittest.TestCase):
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('actual_filepath = filepath', passthrough_block)
 
-    def test_passthrough_with_retention_sets_recording_path(self):
-        """When both passthrough and retention are on, recording.audio_path is set."""
+    def test_passthrough_with_retention_preserves_locator(self):
+        """When both passthrough and retention are on, persistent media locator is preserved."""
         video_block = PROCESSING_MAIN[PROCESSING_MAIN.find('if is_video:'):]
         pt_start = video_block.find('if VIDEO_PASSTHROUGH_ASR:')
         pt_end = video_block.find('elif effective_video_retention:')
         passthrough_block = video_block[pt_start:pt_end]
         self.assertIn('if effective_video_retention:', passthrough_block,
                        "Passthrough branch should conditionally handle retention")
-        self.assertIn('recording.audio_path = filepath', passthrough_block)
+        # Storage model: the persistent locator set at upload time is preserved,
+        # so the passthrough branch must NOT overwrite recording.audio_path.
+        self.assertNotIn('recording.audio_path = filepath', passthrough_block)
         # mime_type is derived from the actual container via the shared
         # probe-driven resolver (corrects audio/webm-style mislabels).
         self.assertIn('recording.mime_type = resolve_media_mime(filepath, has_video=True)', passthrough_block)

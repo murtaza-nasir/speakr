@@ -35,6 +35,7 @@ class Recording(db.Model):
     is_inbox = db.Column(db.Boolean, default=True)  # New recordings are marked as inbox by default
     is_highlighted = db.Column(db.Boolean, default=False)  # Recordings can be highlighted by the user
     mime_type = db.Column(db.String(100), nullable=True)
+    audio_duration_seconds = db.Column(db.Float, nullable=True)  # Cached audio duration to avoid materializing remote storage during serialization
     completed_at = db.Column(db.DateTime, nullable=True)
     processing_time_seconds = db.Column(db.Integer, nullable=True)
     transcription_duration_seconds = db.Column(db.Integer, nullable=True)  # Time taken for transcription
@@ -149,21 +150,18 @@ class Recording(db.Model):
             ).first()
             return state.personal_notes if state else None
 
-    def get_audio_duration(self, allow_probe=False):
+    def get_audio_duration(self, allow_probe_fallback=False):
         """
-        Get the audio duration in seconds.
+        Get cached audio duration in seconds.
 
-        Reads the cached ``audio_duration_seconds`` column when present
-        (populated at transcription completion in src/tasks/processing.py).
-        Falls back to a live ffprobe probe only when ``allow_probe=True``
-        AND the cached value is missing — list/detail API serializers
-        should leave this False to avoid an ffprobe subprocess per row.
+        By default this avoids materializing audio from storage (especially S3)
+        during normal API serialization (which would otherwise turn a list
+        serialization into an ffprobe subprocess per row). Optional probe
+        fallback is kept for explicit callers that need best-effort backfill.
 
         Args:
-            allow_probe: If True, ffprobe the file when no cached value
-                exists. Defaults to False so callers can't accidentally
-                turn a serialization step into a multi-row subprocess
-                blast.
+            allow_probe_fallback: When True, probe the stored file if cached
+                duration is missing.
 
         Returns:
             Float duration in seconds, or None if unavailable.
@@ -171,15 +169,29 @@ class Recording(db.Model):
         if self.audio_deleted_at is not None:
             return None
         if self.audio_duration_seconds is not None:
-            return float(self.audio_duration_seconds)
-        if not allow_probe:
+            try:
+                return float(self.audio_duration_seconds)
+            except (TypeError, ValueError):
+                return None
+
+        if not allow_probe_fallback:
             return None
-        if not self.audio_path or not os.path.exists(self.audio_path):
+
+        if not self.audio_path:
             return None
         try:
+            from src.services.storage import get_storage_service
             from src.utils.ffprobe import get_duration
-            duration = get_duration(self.audio_path, timeout=30)
-            return duration
+            storage = get_storage_service()
+            if not storage.exists(self.audio_path):
+                return None
+
+            with storage.materialize(self.audio_path) as materialized:
+                # Allow longer timeout for packet scanning fallback on files without duration metadata
+                duration = get_duration(materialized.local_path, timeout=30)
+                if duration is not None:
+                    self.audio_duration_seconds = float(duration)
+                return duration
         except Exception as e:
             logger.warning(f"Failed to get duration for recording {self.id}: {e}")
             return None
@@ -367,7 +379,7 @@ class Recording(db.Model):
             'mime_type': self.mime_type,
             'audio_deleted_at': self.audio_deleted_at.isoformat() if self.audio_deleted_at else None,
             'audio_available': self.audio_deleted_at is None,
-            'audio_duration': self.get_audio_duration(),
+            'audio_duration': self.get_audio_duration(allow_probe_fallback=False),
             'deletion_exempt': self.deletion_exempt,
             'folder_id': self.folder_id,
             'folder': self.folder.to_dict() if self.folder else None,
