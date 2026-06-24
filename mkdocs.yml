@@ -187,6 +187,7 @@ nav:
     - SSO Setup: admin-guide/sso-setup.md
     - WhisperX Setup: admin-guide/whisperx-setup.md
     - Retention: admin-guide/retention.md
+    - File Storage: admin-guide/storage.md
     - Migration Guide: admin-guide/migration-guide.md
 
   - Advanced:

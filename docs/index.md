@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.9.1-alpha — Upload-path fixes"
-    A patch release hardening the v0.9.0 upload path. Fixes uploads failing with an expired CSRF token after long sessions or sleep, Inquire embeddings not being generated when auto-summarization is enabled, and the Account page's API token modals not opening; adds a timeout so stalled uploads fail into the recovery path and a warning before leaving the page mid-upload.
+!!! success "Latest Release: v0.9.2-alpha — Local / S3 storage backend"
+    Recording audio can now live in S3-compatible object storage (AWS S3, MinIO, Backblaze B2, Cloudflare R2, Wasabi) instead of, or alongside, the local filesystem, with presigned-URL delivery and a migration script for existing recordings. Contributed by @Daabramov (#268).
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.1.md) for the complete list. Backwards compatible with v0.8.x and v0.9.0; database migrations run automatically.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.2.md) for the complete list. Backwards compatible; `FILE_STORAGE_BACKEND` defaults to `local`, so existing deployments are unaffected. Database migrations run automatically.
 
 ## Quick Navigation
 
@@ -127,6 +127,16 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.9.2-alpha - Local / S3 storage backend"
+    Recording audio can now be stored in S3-compatible object storage instead of, or alongside, the local filesystem. Backwards compatible; `FILE_STORAGE_BACKEND` defaults to `local`, so existing deployments are unaffected.
+
+    - **Pluggable backend** - Set `FILE_STORAGE_BACKEND=local` (default) or `s3`. The S3 path works with AWS S3, MinIO, Backblaze B2, Cloudflare R2, and Wasabi.
+    - **Presigned delivery** - In S3 mode, audio is served to the browser via short-lived presigned URLs straight from the object store rather than streamed through the app.
+    - **Migration tooling** - `scripts/migrate_local_recordings_to_s3.py` moves existing recordings into a bucket with a dry-run mode, size verification, and optional source deletion.
+    - **Configuration** - See the [File Storage](admin-guide/storage.md) admin guide for the full settings reference and per-provider examples, and the [Migration Guide](admin-guide/migration-guide.md#migrating-audio-files-to-s3) for moving historical files.
+
+    Contributed by @Daabramov (#268). See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.2.md) for details.
 
 !!! info "Version 0.9.1-alpha - Upload-path fixes"
     A patch release hardening the v0.9.0 upload path. Backwards compatible with v0.8.x and v0.9.0; database migrations run automatically.
