@@ -1,0 +1,16 @@
+[run]
+source = src
+branch = True
+omit =
+    */__pycache__/*
+    */tests/*
+
+[report]
+show_missing = True
+skip_covered = False
+# Don't count defensive/unreachable lines against coverage.
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:

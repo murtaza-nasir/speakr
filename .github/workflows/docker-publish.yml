@@ -48,14 +48,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest
+        run: pip install -r requirements.txt pytest pytest-cov
 
       - name: Run full test suite (gates the release)
         env:
           # App tests run on an isolated SQLite DB (conftest.py);
           # test_postgres_migrations reads TEST_DATABASE_URI for real PG.
           TEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_test
-        run: pytest tests/ -q
+        run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=53
 
   build:
     needs: test

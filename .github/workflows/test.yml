@@ -47,7 +47,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
-        run: pip install -r requirements.txt pytest
+        run: pip install -r requirements.txt pytest pytest-cov
 
       - name: Run test suite
         env:
@@ -55,7 +55,7 @@ jobs:
           # test_postgres_migrations.py reads TEST_DATABASE_URI separately so it
           # exercises real PostgreSQL compatibility against the service above.
           TEST_DATABASE_URI: postgresql://speakr:speakr@localhost:5432/speakr_test
-        run: pytest tests/ -q
+        run: pytest tests/ -q --cov=src --cov-report=term-missing --cov-fail-under=53
 
   js-tests:
     runs-on: ubuntu-latest
