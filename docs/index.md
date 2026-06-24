@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.9.2-alpha — Local / S3 storage backend"
-    Recording audio can now live in S3-compatible object storage (AWS S3, MinIO, Backblaze B2, Cloudflare R2, Wasabi) instead of, or alongside, the local filesystem, with presigned-URL delivery and a migration script for existing recordings. Contributed by @Daabramov (#268).
+!!! success "Latest Release: v0.9.3-alpha — Security patch (FFmpeg CVE-2026-8461)"
+    Updates the bundled FFmpeg to fix CVE-2026-8461 ("PixelSmash"), a MagicYUV decoder flaw that a crafted upload could use for a crash or remote code execution. FFmpeg now comes from the maintained BtbN builds pinned to the 8.1 branch (8.1.2). Recommended for all deployments, especially multi-user instances that accept untrusted uploads.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.2.md) for the complete list. Backwards compatible; `FILE_STORAGE_BACKEND` defaults to `local`, so existing deployments are unaffected. Database migrations run automatically.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.3.md) for details. No configuration or data changes; pull the new image to upgrade.
 
 ## Quick Navigation
 
@@ -127,6 +127,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.9.3-alpha - Security patch (FFmpeg CVE-2026-8461)"
+    A security patch. No configuration or data changes; pull the new image to upgrade.
+
+    - **Patches CVE-2026-8461 ("PixelSmash")** - Speakr runs FFmpeg/ffprobe on uploaded media. The previously bundled FFmpeg (johnvansickle static 7.0.2) carried a heap out-of-bounds write in the MagicYUV decoder that a crafted file could use for a crash or remote code execution. Fixed upstream in FFmpeg 8.1.2.
+    - **New FFmpeg source** - Because the johnvansickle static builds have been frozen at 7.0.2 since 2024, the image now sources FFmpeg from the maintained BtbN/FFmpeg-Builds project, pinned to the 8.1 release branch. This also resolves the intermittent build failures from the johnvansickle download.
+
+    Recommended for all deployments, especially any that accept uploads from untrusted users. See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.3.md).
 
 !!! info "Version 0.9.2-alpha - Local / S3 storage backend"
     Recording audio can now be stored in S3-compatible object storage instead of, or alongside, the local filesystem. Backwards compatible; `FILE_STORAGE_BACKEND` defaults to `local`, so existing deployments are unaffected.
