@@ -940,3 +940,65 @@ def test_semantic_exception_returns_empty(api_emb):
     with app.app_context():
         with patch.object(api_emb, "_api_embed", side_effect=RuntimeError("boom")):
             assert api_emb.semantic_search_chunks(1, "q") == []
+
+
+def test_semantic_combined_filters_no_duplicate_join(api_emb):
+    """Regression: combining tag + speaker + date filters previously appended a
+    second JOIN to Recording, raising an ambiguous-relationship / duplicate-JOIN
+    SQL error. They must now coexist."""
+    from datetime import datetime as _dt
+    from src.models import Tag, RecordingTag
+    with app.app_context():
+        user = _make_user()
+        rec = _make_recording(user, transcription="seed",
+                              participants="Alice, Bob",
+                              meeting_date=_dt(2026, 1, 15))
+        tag = Tag(name=f"cov-combo-sem-{os.getpid()}", user_id=user.id)
+        db.session.add(tag)
+        db.session.commit()
+        db.session.add(RecordingTag(recording_id=rec.id, tag_id=tag.id))
+        db.session.add(TranscriptChunk(
+            recording_id=rec.id, user_id=user.id, chunk_index=0, content="combined",
+            embedding=api_emb.serialize_embedding(np.array([1, 0, 0, 0], dtype=np.float32))))
+        db.session.commit()
+        query_vec = np.array([1, 0, 0, 0], dtype=np.float32)
+        with patch.object(api_emb, "_api_embed", return_value=[query_vec]):
+            results = api_emb.semantic_search_chunks(
+                user.id, "q",
+                filters={
+                    "tag_ids": [tag.id],
+                    "speaker_names": ["Alice"],
+                    "date_from": _dt(2025, 1, 1),
+                    "date_to": _dt(2027, 1, 1),
+                },
+                top_k=5)
+        assert len(results) == 1
+        assert results[0][0].content == "combined"
+
+
+def test_basic_combined_filters_no_duplicate_join(api_emb):
+    """Regression companion for basic_text_search_chunks: all filters at once."""
+    from datetime import datetime as _dt
+    from src.models import Tag, RecordingTag
+    with app.app_context():
+        user = _make_user()
+        rec = _make_recording(user, "the quick brown fox jumps",
+                              participants="Alice, Bob",
+                              meeting_date=_dt(2026, 1, 15))
+        tag = Tag(name=f"cov-combo-basic-{os.getpid()}", user_id=user.id)
+        db.session.add(tag)
+        db.session.commit()
+        db.session.add(RecordingTag(recording_id=rec.id, tag_id=tag.id))
+        db.session.commit()
+        _seed_chunks(api_emb, user, rec, ["the quick brown fox"])
+        results = api_emb.basic_text_search_chunks(
+            user.id, "quick fox",
+            filters={
+                "tag_ids": [tag.id],
+                "speaker_names": ["Alice"],
+                "date_from": _dt(2025, 1, 1),
+                "date_to": _dt(2027, 1, 1),
+            },
+            top_k=5)
+        assert isinstance(results, list)
+        assert len(results) >= 1

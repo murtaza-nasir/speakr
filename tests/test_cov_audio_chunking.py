@@ -922,3 +922,26 @@ def test_exception_classes():
         raise ChunkProcessingError("x")
     with pytest.raises(ChunkingNotSupportedError):
         raise ChunkingNotSupportedError("y")
+
+
+def test_extract_speaker_samples_zero_start_not_dropped(tmp_path):
+    """Regression: a segment starting at exactly 0.0 must be kept. The code
+    previously read ``start_time or start``, so a literal 0.0 start was treated
+    as missing and the speaker whose only segment began at 0s was dropped."""
+    audio = tmp_path / "a.mp3"
+    audio.write_bytes(b"audio")
+    segments = [
+        {"speaker": "A", "start_time": 0.0, "end_time": 6.0},
+        {"speaker": "B", "start_time": 7.0, "end_time": 13.0},
+    ]
+
+    def fake_run(cmd, **kwargs):
+        with open(cmd[-1], "wb") as f:
+            f.write(b"sample")
+        return completed(returncode=0)
+
+    with mock.patch("subprocess.run", side_effect=fake_run), \
+         mock.patch.object(ac, "get_audio_duration_ffprobe", return_value=4.0):
+        out = extract_speaker_samples(str(audio), segments, str(tmp_path))
+    assert "A" in out  # 0.0-start speaker no longer dropped
+    assert "B" in out

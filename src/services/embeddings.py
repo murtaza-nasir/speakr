@@ -440,40 +440,38 @@ def basic_text_search_chunks(user_id, query, filters=None, top_k=5):
             TranscriptChunk.recording_id.in_(accessible_recording_ids)
         )
         
-        # Apply filters if provided
+        # Apply filters if provided. The tag, speaker, and date filters all need
+        # a join to Recording; join it at most once so combining more than one of
+        # them does not raise a duplicate-JOIN / ambiguous-relationship error.
         if filters:
+            if (filters.get('tag_ids') or filters.get('speaker_names')
+                    or filters.get('date_from') or filters.get('date_to')):
+                chunks_query = chunks_query.join(Recording)
+
             if filters.get('tag_ids'):
-                chunks_query = chunks_query.join(Recording).join(
+                chunks_query = chunks_query.join(
                     RecordingTag, Recording.id == RecordingTag.recording_id
                 ).filter(RecordingTag.tag_id.in_(filters['tag_ids']))
-            
+
             if filters.get('speaker_names'):
-                # Filter by participants field in recordings instead of chunk speaker_name
-                if not any(hasattr(desc, 'name') and desc.name == 'recording' for desc in chunks_query.column_descriptions):
-                    chunks_query = chunks_query.join(Recording)
-                
-                # Build OR conditions for each speaker name in participants
-                speaker_conditions = []
-                for speaker_name in filters['speaker_names']:
-                    speaker_conditions.append(
-                        Recording.participants.ilike(f'%{speaker_name}%')
-                    )
-                
+                # Filter by the participants field on the recording.
+                speaker_conditions = [
+                    Recording.participants.ilike(f'%{speaker_name}%')
+                    for speaker_name in filters['speaker_names']
+                ]
                 chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
                 current_app.logger.info(f"Applied speaker filter for: {filters['speaker_names']}")
-            
+
             if filters.get('recording_ids'):
                 chunks_query = chunks_query.filter(
                     TranscriptChunk.recording_id.in_(filters['recording_ids'])
                 )
-            
-            if filters.get('date_from') or filters.get('date_to'):
-                chunks_query = chunks_query.join(Recording)
-                if filters.get('date_from'):
-                    chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
-                if filters.get('date_to'):
-                    chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
-        
+
+            if filters.get('date_from'):
+                chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
+            if filters.get('date_to'):
+                chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
+
         # Text search - filter stop words and rank by match count
         stop_words = {'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been',
                        'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
@@ -574,41 +572,38 @@ def semantic_search_chunks(user_id, query, filters=None, top_k=5):
             TranscriptChunk.recording_id.in_(accessible_recording_ids)
         )
         
-        # Apply filters if provided
+        # Apply filters if provided. The tag, speaker, and date filters all need
+        # a join to Recording; join it at most once so combining more than one of
+        # them does not raise a duplicate-JOIN / ambiguous-relationship error.
         if filters:
+            if (filters.get('tag_ids') or filters.get('speaker_names')
+                    or filters.get('date_from') or filters.get('date_to')):
+                chunks_query = chunks_query.join(Recording)
+
             if filters.get('tag_ids'):
-                # Join with recordings that have specified tags
-                chunks_query = chunks_query.join(Recording).join(
+                chunks_query = chunks_query.join(
                     RecordingTag, Recording.id == RecordingTag.recording_id
                 ).filter(RecordingTag.tag_id.in_(filters['tag_ids']))
-            
+
             if filters.get('speaker_names'):
-                # Filter by participants field in recordings instead of chunk speaker_name
-                if not any(hasattr(desc, 'name') and desc.name == 'recording' for desc in chunks_query.column_descriptions):
-                    chunks_query = chunks_query.join(Recording)
-                
-                # Build OR conditions for each speaker name in participants
-                speaker_conditions = []
-                for speaker_name in filters['speaker_names']:
-                    speaker_conditions.append(
-                        Recording.participants.ilike(f'%{speaker_name}%')
-                    )
-                
+                # Filter by the participants field on the recording.
+                speaker_conditions = [
+                    Recording.participants.ilike(f'%{speaker_name}%')
+                    for speaker_name in filters['speaker_names']
+                ]
                 chunks_query = chunks_query.filter(db.or_(*speaker_conditions))
                 current_app.logger.info(f"Applied speaker filter for: {filters['speaker_names']}")
-            
+
             if filters.get('recording_ids'):
                 chunks_query = chunks_query.filter(
                     TranscriptChunk.recording_id.in_(filters['recording_ids'])
                 )
-            
-            if filters.get('date_from') or filters.get('date_to'):
-                chunks_query = chunks_query.join(Recording)
-                if filters.get('date_from'):
-                    chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
-                if filters.get('date_to'):
-                    chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
-        
+
+            if filters.get('date_from'):
+                chunks_query = chunks_query.filter(Recording.meeting_date >= filters['date_from'])
+            if filters.get('date_to'):
+                chunks_query = chunks_query.filter(Recording.meeting_date <= filters['date_to'])
+
         # Get chunks that have embeddings
         chunks = chunks_query.filter(TranscriptChunk.embedding.isnot(None)).all()
         

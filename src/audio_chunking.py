@@ -1033,12 +1033,22 @@ def extract_speaker_samples(
         # Handle both dict and object segments
         if isinstance(seg, dict):
             speaker = seg.get('speaker', 'Unknown')
-            start = seg.get('start_time') or seg.get('start')
-            end = seg.get('end_time') or seg.get('end')
+            # Use explicit None checks: a literal 0.0 start (segment at the very
+            # beginning) is valid and must not be treated as missing.
+            start = seg.get('start_time')
+            if start is None:
+                start = seg.get('start')
+            end = seg.get('end_time')
+            if end is None:
+                end = seg.get('end')
         else:
             speaker = getattr(seg, 'speaker', 'Unknown')
-            start = getattr(seg, 'start_time', None) or getattr(seg, 'start', None)
-            end = getattr(seg, 'end_time', None) or getattr(seg, 'end', None)
+            start = getattr(seg, 'start_time', None)
+            if start is None:
+                start = getattr(seg, 'start', None)
+            end = getattr(seg, 'end_time', None)
+            if end is None:
+                end = getattr(seg, 'end', None)
 
         if speaker == 'Unknown' or start is None or end is None:
             continue
