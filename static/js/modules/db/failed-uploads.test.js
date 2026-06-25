@@ -83,3 +83,148 @@ describe('triggerLocalDownload', () => {
         expect(result).toBe(false);
     });
 });
+
+/**
+ * Regression tests for the IndexedDB transaction-lifetime bug (TransactionInactiveError).
+ *
+ * IndexedDB auto-commits ("finishes") a transaction once control returns to the
+ * event loop with no request pending against it. So `await`-ing a non-IndexedDB
+ * promise (e.g. File.arrayBuffer(), or a nested helper that opens its own
+ * transaction) between `db.transaction(...)` and the first request kills the
+ * transaction; a request chained from an earlier request's onsuccess, however,
+ * keeps it alive. The mock below models both: it commits only on a microtask
+ * checkpoint that finds no request pending, and add()/put()/get() throw if used
+ * after that, exactly like a real browser.
+ */
+describe('IndexedDB transaction lifetime', () => {
+    let originalIndexedDB;
+    let store;
+    let storeFailedUpload;
+    let updateRetryCount;
+
+    const inactiveError = (op) => new DOMException(
+        `Failed to execute '${op}' on 'IDBObjectStore': The transaction has finished.`,
+        'TransactionInactiveError'
+    );
+
+    // Build a mock that mirrors real auto-commit semantics: a transaction stays
+    // active while a request is outstanding, and commits on the first microtask
+    // checkpoint where none is.
+    const makeMockDB = () => {
+        store = new Map();
+        let nextId = 1;
+
+        const db = {
+            transaction() {
+                const tx = { _active: true, _pending: 0 };
+                // Commit if the turn yields with nothing pending against the tx.
+                const scheduleCommitCheck = () => queueMicrotask(() => {
+                    if (tx._pending === 0) tx._active = false;
+                });
+                scheduleCommitCheck();
+
+                const makeRequest = (opName, op) => {
+                    if (!tx._active) throw inactiveError(opName);
+                    tx._pending++;
+                    const request = {};
+                    queueMicrotask(() => {
+                        try {
+                            request.result = op();
+                            request.onsuccess?.();
+                        } catch (err) {
+                            request.error = err;
+                            request.onerror?.();
+                        } finally {
+                            tx._pending--;
+                            scheduleCommitCheck();
+                        }
+                    });
+                    return request;
+                };
+
+                const objectStore = {
+                    add: (value) => makeRequest('add', () => {
+                        const id = nextId++;
+                        store.set(id, { ...value, id });
+                        return id;
+                    }),
+                    put: (value) => makeRequest('put', () => {
+                        store.set(value.id, { ...value });
+                        return value.id;
+                    }),
+                    get: (id) => makeRequest('get', () => store.get(id)),
+                };
+                tx.objectStore = () => objectStore;
+                return tx;
+            },
+            objectStoreNames: { contains: () => true },
+        };
+        return db;
+    };
+
+    beforeEach(async () => {
+        // Reset the module so its cached dbInstance does not leak between tests;
+        // re-import after wiring the fresh indexedDB mock so initDB() opens it.
+        vi.resetModules();
+        originalIndexedDB = global.indexedDB;
+        const db = makeMockDB();
+        global.indexedDB = {
+            open: vi.fn(() => {
+                const request = {};
+                queueMicrotask(() => {
+                    request.result = db;
+                    request.onsuccess?.();
+                });
+                return request;
+            }),
+        };
+        ({ storeFailedUpload, updateRetryCount } = await import('./failed-uploads.js'));
+    });
+
+    afterEach(() => {
+        global.indexedDB = originalIndexedDB;
+    });
+
+    it('storeFailedUpload persists a record when the file must be read to an ArrayBuffer', async () => {
+        const file = {
+            name: 'recording.webm',
+            size: 2048,
+            type: 'audio/webm',
+            arrayBuffer: async () => new ArrayBuffer(8),
+        };
+
+        const id = await storeFailedUpload({
+            file,
+            clientId: 'client-123',
+            notes: 'n',
+            tags: ['t'],
+            asrOptions: {},
+            error: '413 Payload Too Large',
+        });
+
+        expect(id).toBeTruthy();
+        const stored = store.get(id);
+        expect(stored.fileName).toBe('recording.webm');
+        expect(stored.fileData).toBeInstanceOf(ArrayBuffer);
+        expect(stored.lastError).toBe('413 Payload Too Large');
+    });
+
+    it('updateRetryCount reads and writes in one transaction without a finished transaction', async () => {
+        // Seed a record first.
+        const file = {
+            name: 'r.webm', size: 10, type: 'audio/webm',
+            arrayBuffer: async () => new ArrayBuffer(4),
+        };
+        const id = await storeFailedUpload({ file, clientId: 'c' });
+
+        await expect(updateRetryCount(id, 2, 'still failing')).resolves.not.toThrow();
+        const updated = store.get(id);
+        expect(updated.retryCount).toBe(2);
+        expect(updated.lastError).toBe('still failing');
+    });
+
+    it('updateRetryCount resolves without writing when the id is absent', async () => {
+        await expect(updateRetryCount(999, 1, 'nope')).resolves.not.toThrow();
+        expect(store.has(999)).toBe(false);
+    });
+});

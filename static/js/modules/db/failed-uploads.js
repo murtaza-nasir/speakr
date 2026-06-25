@@ -52,8 +52,6 @@ export const initDB = () => {
 export const storeFailedUpload = async (uploadData) => {
     try {
         const db = await initDB();
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const objectStore = transaction.objectStore(STORE_NAME);
 
         const failedUpload = {
             timestamp: Date.now(),
@@ -69,11 +67,17 @@ export const storeFailedUpload = async (uploadData) => {
             mimeType: uploadData.file?.type || uploadData.mimeType || 'audio/webm'
         };
 
-        // Convert File to ArrayBuffer if needed
+        // Convert File to ArrayBuffer if needed. This MUST complete before the
+        // transaction is opened: an IndexedDB transaction auto-commits as soon
+        // as control returns to the event loop with no pending request against
+        // it, so awaiting here after opening the transaction would let it
+        // finish before objectStore.add() runs (TransactionInactiveError).
         if (uploadData.file && !failedUpload.fileData) {
             failedUpload.fileData = await uploadData.file.arrayBuffer();
         }
 
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
         const request = objectStore.add(failedUpload);
 
         return new Promise((resolve, reject) => {
@@ -153,32 +157,48 @@ export const getFailedUpload = async (id) => {
 export const updateRetryCount = async (id, retryCount, error = null) => {
     try {
         const db = await initDB();
+
+        // Read and write in a single readwrite transaction. The get() and put()
+        // are chained through onsuccess (no await between them), so a request is
+        // always pending against the transaction and it cannot auto-commit early
+        // (TransactionInactiveError). Keeping both in one transaction also makes
+        // the read-modify-write atomic against concurrent writers.
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const objectStore = transaction.objectStore(STORE_NAME);
 
-        const upload = await getFailedUpload(id);
-        if (!upload) {
-            console.warn('[FailedUploadsDB] Upload not found for retry count update');
-            return;
-        }
-
-        upload.retryCount = retryCount;
-        upload.lastRetry = Date.now();
-        if (error) {
-            upload.lastError = error;
-        }
-
         return new Promise((resolve, reject) => {
-            const request = objectStore.put(upload);
+            const getRequest = objectStore.get(id);
 
-            request.onsuccess = () => {
-                console.log(`[FailedUploadsDB] Updated retry count for upload ${id}: ${retryCount}`);
-                resolve();
+            getRequest.onsuccess = () => {
+                const upload = getRequest.result;
+                if (!upload) {
+                    console.warn('[FailedUploadsDB] Upload not found for retry count update');
+                    resolve();
+                    return;
+                }
+
+                upload.retryCount = retryCount;
+                upload.lastRetry = Date.now();
+                if (error) {
+                    upload.lastError = error;
+                }
+
+                const putRequest = objectStore.put(upload);
+
+                putRequest.onsuccess = () => {
+                    console.log(`[FailedUploadsDB] Updated retry count for upload ${id}: ${retryCount}`);
+                    resolve();
+                };
+
+                putRequest.onerror = () => {
+                    console.error('[FailedUploadsDB] Failed to update retry count:', putRequest.error);
+                    reject(putRequest.error);
+                };
             };
 
-            request.onerror = () => {
-                console.error('[FailedUploadsDB] Failed to update retry count:', request.error);
-                reject(request.error);
+            getRequest.onerror = () => {
+                console.error('[FailedUploadsDB] Failed to read upload for retry count update:', getRequest.error);
+                reject(getRequest.error);
             };
         });
     } catch (error) {
