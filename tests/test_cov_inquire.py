@@ -801,6 +801,251 @@ def test_chat_token_budget_exceeded(client):
 
 
 # --------------------------------------------------------------------------- #
+# RAG generator internals: dedup, sort, speaker post-filter (mutation-targeted)
+#
+# These drive the streaming chat generator and inspect either the system prompt
+# handed to call_chat_completion (which embeds the retrieved context) or the
+# sequence of queries handed to semantic_search_chunks. Each test below is
+# pinned to a specific surviving mutant in src/api/inquire.py.
+# --------------------------------------------------------------------------- #
+
+def _rag_router_then(enrichment_json):
+    """call_llm_completion side_effect: route to RAG, then return the given JSON
+    string as the query-enrichment response."""
+    def _se(messages, **kwargs):
+        if kwargs.get('operation_type') == 'query_routing':
+            return _llm_msg("RAG")
+        return _llm_msg(enrichment_json)
+    return _se
+
+
+def _capturing_chat_completion(captured, texts=("answer",)):
+    """call_chat_completion side_effect that records the system prompt + kwargs of
+    the (first) answer call, then streams `texts` back."""
+    def _se(messages, **kwargs):
+        if 'system_prompt' not in captured:
+            captured['system_prompt'] = messages[0]['content']
+            captured['kwargs'] = kwargs
+        return _stream_chunks(list(texts))
+    return _se
+
+
+def test_chat_rag_dedups_repeated_chunks(client):
+    """inquire.py:398 — a chunk returned twice by search must appear once in context.
+
+    MUTATION-VERIFIED: 398 `not in`->`in` makes the dedup guard reject every chunk
+    (the seen-set starts empty), so the context ends up empty and the marker count
+    drops to 0 -> this test FAILS.
+    """
+    user_id = _make_user()
+    rec_id = _make_recording(user_id, title="Dedup Rec", participants=None)
+    marker = "DEDUPUNIQUECONTENT_" + _suffix()
+    chunk_id = _make_chunk(user_id, rec_id, content=marker, chunk_index=0)
+
+    def search_se(uid, query, filters, top_k):
+        # Same chunk id returned twice within a single search result.
+        return [_get_chunk_pair(chunk_id, 0.8), _get_chunk_pair(chunk_id, 0.8)]
+
+    captured = {}
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
+         patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
+         patch('src.api.inquire.call_chat_completion',
+               side_effect=_capturing_chat_completion(captured)):
+        resp = client.post('/api/inquire/chat', json={'message': 'tell me about the topic'})
+        assert resp.status_code == 200
+        _sse_events(resp)
+    assert captured.get('system_prompt', '').count(marker) == 1
+
+
+def test_chat_rag_sorts_by_similarity_desc(client):
+    """inquire.py:403 — combined results are sorted by similarity DESCENDING before
+    the top-N truncation, so the highest-scored chunk survives a top-1 cut.
+
+    MUTATION-VERIFIED: 403 `reverse=True`->`reverse=False` sorts ascending, so the
+    top-1 cut keeps the LOW-scored chunk instead -> this test FAILS.
+    """
+    user_id = _make_user()
+    rec_id = _make_recording(user_id, title="Sort Rec", participants=None)
+    high = "HIGHSCORECONTENT_" + _suffix()
+    low = "LOWSCORECONTENT_" + _suffix()
+    high_id = _make_chunk(user_id, rec_id, content=high, chunk_index=0)
+    low_id = _make_chunk(user_id, rec_id, content=low, chunk_index=1)
+
+    def search_se(uid, query, filters, top_k):
+        # Returned low-first so input order differs from the sorted order.
+        return [_get_chunk_pair(low_id, 0.1), _get_chunk_pair(high_id, 0.9)]
+
+    captured = {}
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
+         patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
+         patch('src.api.inquire.call_chat_completion',
+               side_effect=_capturing_chat_completion(captured)):
+        resp = client.post('/api/inquire/chat',
+                           json={'message': 'budget', 'context_chunks': 1})
+        assert resp.status_code == 200
+        _sse_events(resp)
+    sp = captured.get('system_prompt', '')
+    assert high in sp
+    assert low not in sp
+
+
+def test_chat_rag_speaker_postfilter(client):
+    """inquire.py:427-436/458 — when a mentioned speaker is absent from the initial
+    results, a speaker-filtered re-search runs; non-matching chunk is dropped and
+    the matching speaker's chunks are kept (and deduped).
+
+    MUTATION-VERIFIED:
+      * 436 `if not speaker_in_results`->`if speaker_in_results` suppresses the
+        auto speaker filter, so the non-Alice chunk is kept -> this test FAILS.
+      * 458 `not in`->`in` makes the re-search dedup reject every chunk, so the
+        auto-filtered set is empty and the code keeps the original chunk -> FAILS.
+    """
+    user_id = _make_user()
+    # alice_rec's participants make 'Alice' an available speaker for this user.
+    alice_rec = _make_recording(user_id, title="Alice Rec", participants="Alice")
+    other_rec = _make_recording(user_id, title="Other Rec", participants=None)
+
+    other_content = "OTHERSPEAKERCONTENT_" + _suffix()
+    alice1_content = "ALICEONECONTENT_" + _suffix()
+    alice2_content = "ALICETWOCONTENT_" + _suffix()
+    other_id = _make_chunk(user_id, other_rec, content=other_content,
+                           speaker_name="Bob", chunk_index=0)
+    alice1_id = _make_chunk(user_id, alice_rec, content=alice1_content,
+                            speaker_name="Alice", chunk_index=0)
+    alice2_id = _make_chunk(user_id, alice_rec, content=alice2_content,
+                            speaker_name="Alice", chunk_index=1)
+
+    def search_se(uid, query, filters, top_k):
+        if filters.get('speaker_names'):
+            # Speaker-filtered re-search: Alice chunks, with alice1 duplicated to
+            # also exercise the 458 dedup guard. Two distinct ids -> len >= 2 so the
+            # downstream "<2 results" broader re-search is skipped.
+            return [_get_chunk_pair(alice1_id, 0.95),
+                    _get_chunk_pair(alice1_id, 0.95),
+                    _get_chunk_pair(alice2_id, 0.85)]
+        return [_get_chunk_pair(other_id, 0.5)]
+
+    captured = {}
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
+         patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
+         patch('src.api.inquire.call_chat_completion',
+               side_effect=_capturing_chat_completion(captured)):
+        resp = client.post('/api/inquire/chat', json={'message': 'what did Alice say?'})
+        assert resp.status_code == 200
+        _sse_events(resp)
+    sp = captured.get('system_prompt', '')
+    assert alice1_content in sp          # matching speaker kept
+    assert alice2_content in sp
+    assert other_content not in sp       # non-matching speaker dropped
+    assert sp.count(alice1_content) == 1  # 458: re-search dedup
+
+
+def test_chat_rag_uses_enriched_terms(client):
+    """inquire.py:360 — a non-empty enrichment response is parsed and its terms are
+    actually searched (not discarded as if empty).
+
+    MUTATION-VERIFIED: 360 `not raw_content`->`raw_content` treats the (truthy)
+    enrichment JSON as empty, raises, and falls back to the original query only, so
+    the enriched term is never searched -> this test FAILS.
+    """
+    user_id = _make_user()
+    rec_id = _make_recording(user_id, participants=None)
+    chunk_id = _make_chunk(user_id, rec_id, content="enr content " + _suffix())
+
+    queries_seen = []
+
+    def search_se(uid, query, filters, top_k):
+        queries_seen.append(query)
+        return [_get_chunk_pair(chunk_id, 0.7)]
+
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.call_llm_completion',
+               side_effect=_rag_router_then('["alphaterm"]')), \
+         patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
+         patch('src.api.inquire.call_chat_completion',
+               return_value=_stream_chunks(["answer"])):
+        resp = client.post('/api/inquire/chat', json={'message': 'orig query'})
+        assert resp.status_code == 200
+        _sse_events(resp)
+    assert 'orig query' in queries_seen   # original query always searched
+    assert 'alphaterm' in queries_seen    # enriched term also searched
+
+
+def test_chat_direct_path_passes_stream_true(client):
+    """inquire.py:284 — the DIRECT-path completion is invoked with stream=True.
+
+    MUTATION-VERIFIED: 284 `stream=True`->`stream=False` changes the kwarg passed
+    to call_llm_completion for the 'chat' operation -> this test FAILS.
+    """
+    user_id = _make_user()
+    router = MagicMock(return_value=_llm_msg("DIRECT"))
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.call_llm_completion', router), \
+         patch('src.api.inquire.process_streaming_with_thinking',
+               return_value=iter(["data: " + json.dumps({'end_of_stream': True}) + "\n\n"])), \
+         patch('src.api.inquire.semantic_search_chunks') as search:
+        resp = client.post('/api/inquire/chat', json={'message': 'format this'})
+        assert resp.status_code == 200
+        _sse_events(resp)
+        search.assert_not_called()
+    chat_calls = [c for c in router.call_args_list
+                  if c.kwargs.get('operation_type') == 'chat']
+    assert len(chat_calls) == 1
+    assert chat_calls[0].kwargs.get('stream') is True
+
+
+def test_chat_empty_router_falls_back_to_rag(client):
+    """inquire.py:257 — an empty router response is treated as a failure: the code
+    must NOT take the DIRECT path and instead falls through to RAG (search + the
+    streaming answer via call_chat_completion).
+    """
+    user_id = _make_user()
+    rec_id = _make_recording(user_id, participants=None)
+    chunk_id = _make_chunk(user_id, rec_id, content="rag content " + _suffix())
+
+    def llm_se(messages, **kwargs):
+        if kwargs.get('operation_type') == 'query_routing':
+            return _llm_msg("")   # empty router content
+        return _llm_msg('["t"]')
+
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.call_llm_completion', side_effect=llm_se), \
+         patch('src.api.inquire.semantic_search_chunks',
+               side_effect=lambda *a, **k: [_get_chunk_pair(chunk_id, 0.7)]), \
+         patch('src.api.inquire.process_streaming_with_thinking') as pst, \
+         patch('src.api.inquire.call_chat_completion',
+               return_value=_stream_chunks(["rag answer"])):
+        resp = client.post('/api/inquire/chat', json={'message': 'who said what?'})
+        assert resp.status_code == 200
+        events = _sse_events(resp)
+        deltas = "".join(e['delta'] for e in events if 'delta' in e)
+        # RAG answer streamed (DIRECT path, which uses process_streaming_with_thinking,
+        # was not taken).
+        assert 'rag answer' in deltas
+        pst.assert_not_called()
+
+
+# --------------------------------------------------------------------------- #
 # available_filters endpoint
 # --------------------------------------------------------------------------- #
 

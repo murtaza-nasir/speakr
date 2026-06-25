@@ -182,6 +182,31 @@ def test_logout_clears_session(cleanup_users):
             assert '_user_id' not in s
 
 
+def test_login_blocked_when_email_unverified(cleanup_users):
+    # auth.py:205 — verification required AND user not verified ⇒ login
+    # is gated: the check-email page renders and no session is established.
+    user = _mk_user(cleanup_users, email_verified=False)
+    with mock.patch.object(auth_mod, 'is_email_verification_required', return_value=True):
+        client = app.test_client()
+        resp = client.post('/login', data={'email': user.email, 'password': GOOD_PW})
+        assert resp.status_code == 200  # check_email page, not a login redirect
+        with client.session_transaction() as s:
+            assert '_user_id' not in s
+
+
+def test_login_succeeds_when_email_verified(cleanup_users):
+    # The companion: even with verification required, a VERIFIED user logs
+    # in. This kills the and->or mutation on auth.py:205 (under `or`, a
+    # verified user would be wrongly blocked).
+    user = _mk_user(cleanup_users, email_verified=True)
+    with mock.patch.object(auth_mod, 'is_email_verification_required', return_value=True):
+        client = app.test_client()
+        resp = client.post('/login', data={'email': user.email, 'password': GOOD_PW})
+        assert resp.status_code == 302
+        with client.session_transaction() as s:
+            assert s.get('_user_id') == str(user.id)
+
+
 def test_login_sso_only_user_prompted_to_use_sso(cleanup_users):
     # User with no local password → account uses SSO, password login refused.
     user = _mk_user(cleanup_users, password=None, sso_subject="sub-" + uuid.uuid4().hex)
@@ -556,6 +581,34 @@ def test_sso_login_disabled_redirects():
         resp = client.get('/auth/sso/login')
         assert resp.status_code == 302
         assert '/login' in resp.headers['Location']
+
+
+def test_sso_login_does_not_store_unsafe_next(cleanup_users):
+    # auth.py:249 open-redirect guard — a dangerous ?next must NOT be
+    # persisted to session['sso_next'] (it would be honoured after the
+    # IdP round-trip). Both an absolute and a scheme-relative target.
+    oauth = mock.MagicMock()
+    oauth.sso.authorize_redirect.return_value = 'redirecting'  # valid view return
+    with _sso_on(), mock.patch.object(auth_mod, 'get_sso_client', return_value=oauth):
+        for evil in ('http://evil.com', '//evil.com'):
+            client = app.test_client()
+            resp = client.get('/auth/sso/login', query_string={'next': evil})
+            assert resp.status_code == 200
+            with client.session_transaction() as s:
+                assert s.get('sso_next') != evil
+                assert 'sso_next' not in s
+
+
+def test_sso_login_stores_safe_next(cleanup_users):
+    # The safe-path companion: a local relative target IS stored.
+    oauth = mock.MagicMock()
+    oauth.sso.authorize_redirect.return_value = 'redirecting'
+    with _sso_on(), mock.patch.object(auth_mod, 'get_sso_client', return_value=oauth):
+        client = app.test_client()
+        resp = client.get('/auth/sso/login', query_string={'next': '/recordings'})
+        assert resp.status_code == 200
+        with client.session_transaction() as s:
+            assert s.get('sso_next') == '/recordings'
 
 
 def test_sso_unlink_with_password(cleanup_users):

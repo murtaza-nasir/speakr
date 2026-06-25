@@ -22,7 +22,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pytest
 
 from src.app import app, db
-from src.models import User, Recording, Event, SystemSetting
+from src.models import (
+    User, Recording, Event, SystemSetting,
+    Group, GroupMembership, Tag, RecordingTag, InternalShare,
+    SharedRecordingState, NamingTemplate,
+)
 import src.tasks.processing as proc
 
 
@@ -638,6 +642,192 @@ def test_transcribe_audio_task_sets_processing_time():
         out = db.session.get(Recording, rid)
         assert out.processing_time_seconds is not None
         assert out.processing_time_seconds >= 0
+
+
+# ---------------------------------------------------------------------------
+# apply_team_tag_auto_shares — group-tag -> auto-share fan-out
+# ---------------------------------------------------------------------------
+
+def _make_group(prefix):
+    grp = Group(name=f"{prefix}_{uuid.uuid4().hex[:8]}")
+    db.session.add(grp)
+    db.session.commit()
+    return grp
+
+
+def _add_membership(group_id, user_id, role="member"):
+    m = GroupMembership(group_id=group_id, user_id=user_id, role=role)
+    db.session.add(m)
+    db.session.commit()
+    return m
+
+
+def _make_group_tag(owner_id, group_id, auto_share=True, share_lead=False):
+    tag = Tag(
+        name=f"gtag_{uuid.uuid4().hex[:8]}",
+        user_id=owner_id,
+        group_id=group_id,
+        auto_share_on_apply=auto_share,
+        share_with_group_lead=share_lead,
+    )
+    db.session.add(tag)
+    db.session.commit()
+    return tag
+
+
+def _apply_tag(recording_id, tag_id):
+    db.session.add(RecordingTag(recording_id=recording_id, tag_id=tag_id, order=0))
+    db.session.commit()
+
+
+class TestApplyTeamTagAutoShares:
+    """Coverage for apply_team_tag_auto_shares — every assertion scoped to the
+    recording/user IDs this test creates (shared session DB)."""
+
+    def _build(self, prefix, auto_share=True, share_lead=False):
+        """Build a group with an owner + two other members, a group tag, and a
+        recording owned by the owner with that tag applied. Returns a dict of ids."""
+        owner = _make_user(f"{prefix}_owner")
+        member_a = _make_user(f"{prefix}_a")
+        member_b = _make_user(f"{prefix}_b")
+        grp = _make_group(prefix)
+        _add_membership(grp.id, owner.id, role="member")
+        _add_membership(grp.id, member_a.id, role="member")
+        _add_membership(grp.id, member_b.id, role="admin")
+        tag = _make_group_tag(owner.id, grp.id, auto_share=auto_share, share_lead=share_lead)
+        rec = _make_recording(owner.id)
+        _apply_tag(rec.id, tag.id)
+        return {
+            "owner": owner.id,
+            "member_a": member_a.id,
+            "member_b": member_b.id,
+            "group": grp.id,
+            "tag": tag.id,
+            "rid": rec.id,
+        }
+
+    def test_auto_share_creates_shares_for_other_members_only(self):
+        with app.app_context():
+            ids = self._build("ats_main")
+            with patch.object(proc, "ENABLE_INTERNAL_SHARING", True):
+                proc.apply_team_tag_auto_shares(ids["rid"])
+
+            # Drop any uncommitted pending state, then read fresh from the DB.
+            # This proves the function COMMITTED (lines 162-163): if the commit
+            # were skipped the pending rows would be discarded by the rollback.
+            db.session.rollback()
+
+            shares = InternalShare.query.filter_by(recording_id=ids["rid"]).all()
+            by_user = {s.shared_with_user_id: s for s in shares}
+
+            # Owner is NOT self-shared (line 127).
+            assert ids["owner"] not in by_user
+            # Each OTHER group member gets exactly one share.
+            assert set(by_user.keys()) == {ids["member_a"], ids["member_b"]}
+
+            # Flag assertions (lines 143-147).
+            for s in shares:
+                assert s.can_reshare is False           # line 144
+                assert s.source_type == "group_tag"
+                assert s.source_tag_id == ids["tag"]
+                assert s.owner_id == ids["owner"]
+            # Group admin gets edit, regular member does not (line 143).
+            assert by_user[ids["member_b"]].can_edit is True
+            assert by_user[ids["member_a"]].can_edit is False
+
+            # Per-recipient state created with inbox=True, highlighted=False.
+            states = SharedRecordingState.query.filter_by(recording_id=ids["rid"]).all()
+            states_by_user = {st.user_id: st for st in states}
+            assert set(states_by_user.keys()) == {ids["member_a"], ids["member_b"]}
+            for st in states:
+                assert st.is_inbox is True               # line 154
+                assert st.is_highlighted is False        # line 155
+
+    def test_auto_share_is_idempotent_no_duplicates(self):
+        with app.app_context():
+            ids = self._build("ats_dup")
+            with patch.object(proc, "ENABLE_INTERNAL_SHARING", True):
+                proc.apply_team_tag_auto_shares(ids["rid"])
+                first = InternalShare.query.filter_by(recording_id=ids["rid"]).count()
+                # Second call must NOT create duplicates (line 136).
+                proc.apply_team_tag_auto_shares(ids["rid"])
+                second = InternalShare.query.filter_by(recording_id=ids["rid"]).count()
+            assert first == 2
+            assert second == 2
+
+    def test_disabled_internal_sharing_creates_no_shares(self):
+        with app.app_context():
+            ids = self._build("ats_disabled")
+            with patch.object(proc, "ENABLE_INTERNAL_SHARING", False):
+                proc.apply_team_tag_auto_shares(ids["rid"])
+            assert InternalShare.query.filter_by(recording_id=ids["rid"]).count() == 0
+
+    def test_missing_recording_returns_quietly(self):
+        with app.app_context():
+            with patch.object(proc, "ENABLE_INTERNAL_SHARING", True):
+                # Non-existent recording must return without raising (line 99).
+                assert proc.apply_team_tag_auto_shares(99999999) is None
+            assert InternalShare.query.filter_by(recording_id=99999999).count() == 0
+
+    def test_non_auto_share_tag_creates_nothing(self):
+        """A group tag with both auto_share_on_apply and share_with_group_lead
+        False is filtered out (lines 104/106/108/111)."""
+        with app.app_context():
+            ids = self._build("ats_noflag", auto_share=False, share_lead=False)
+            with patch.object(proc, "ENABLE_INTERNAL_SHARING", True):
+                proc.apply_team_tag_auto_shares(ids["rid"])
+            assert InternalShare.query.filter_by(recording_id=ids["rid"]).count() == 0
+
+    def test_personal_tag_is_ignored(self):
+        """A non-group (personal) tag with auto_share_on_apply True must NOT
+        trigger any share — the Tag.group_id.isnot(None) filter excludes it."""
+        with app.app_context():
+            owner = _make_user("ats_personal_owner")
+            other = _make_user("ats_personal_other")
+            grp = _make_group("ats_personal")
+            _add_membership(grp.id, owner.id, role="member")
+            _add_membership(grp.id, other.id, role="member")
+            # Personal tag: group_id is None.
+            tag = Tag(name=f"ptag_{uuid.uuid4().hex[:8]}", user_id=owner.id,
+                      group_id=None, auto_share_on_apply=True)
+            db.session.add(tag)
+            db.session.commit()
+            rec = _make_recording(owner.id)
+            _apply_tag(rec.id, tag.id)
+            with patch.object(proc, "ENABLE_INTERNAL_SHARING", True):
+                proc.apply_team_tag_auto_shares(rec.id)
+            assert InternalShare.query.filter_by(recording_id=rec.id).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# generate_title_task — user default naming-template resolution (line 276)
+# ---------------------------------------------------------------------------
+
+def test_title_uses_user_default_naming_template():
+    """When the recording has no tag-supplied template, the owner's default
+    naming template must be applied (line 276)."""
+    with app.app_context():
+        user = _make_user("title_deftmpl")
+        # Template needs no AI title, so no LLM call is required.
+        tmpl = NamingTemplate(user_id=user.id, name="Call template",
+                              template="Call {{filename}}")
+        db.session.add(tmpl)
+        db.session.commit()
+        user.default_naming_template_id = tmpl.id
+        db.session.commit()
+
+        # Placeholder title + no tags -> falls through to the user-default path.
+        rec = _make_recording(user.id, title="Recording - cov.mp3")
+        rid = rec.id
+        with patch.object(proc, "client", None), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False):
+            proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
+
+        db.session.expire_all()
+        out = db.session.get(Recording, rid)
+        # original_filename is "cov.mp3" -> {{filename}} == "cov".
+        assert out.title == "Call cov"
+        assert out.status == "COMPLETED"
 
 
 if __name__ == "__main__":

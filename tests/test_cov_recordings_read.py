@@ -69,6 +69,7 @@ import src.api.recordings as rec_module
 from src.app import app, db
 from src.models import User, Recording
 from src.models.organization import Tag, Folder, RecordingTag
+from src.models.templates import TranscriptTemplate
 
 app.config["WTF_CSRF_ENABLED"] = False
 
@@ -1122,3 +1123,279 @@ def test_process_chunks_non_owner_denied(owner, other):
     login(c, other)
     resp = c.post(f"/api/recording/{rid}/process_chunks")
     assert resp.status_code == 403
+
+
+# =========================================================================== #
+# DOWNLOAD: transcript-with-template / summary / chat  (owner content checks +
+# diarized-vs-plain template formatting).  These close mutation survivors in the
+# download handlers that no other test reaches; the 403/authz side is owned by
+# tests/test_cov_recordings_download_authz.py.
+# =========================================================================== #
+
+def _diarized_json():
+    """A speaker-labelled (diarized) transcript: a JSON list of segments.
+
+    download_transcript_with_template treats a JSON *list* as diarized and runs
+    the per-segment template formatter; anything else is plain text returned
+    verbatim.  Keys match what the handler reads: speaker / sentence /
+    start_time / end_time.
+    """
+    return json.dumps([
+        {"speaker": "Alice", "sentence": "Hello there", "start_time": 0.0, "end_time": 1.5},
+        {"speaker": "Bob", "sentence": "Hi back", "start_time": 1.5, "end_time": 3.0},
+    ])
+
+
+def _make_template(user, *, name, template, is_default=False):
+    t = TranscriptTemplate(user_id=user.id, name=name, template=template,
+                           is_default=is_default)
+    db.session.add(t)
+    db.session.commit()
+    return t
+
+
+# --- /download/transcript : content-presence guard (line 173) ------------- #
+
+def test_download_transcript_empty_transcription_400(owner):
+    """No transcription -> 400 (guard at recordings.py:173).
+
+    MUTATION-VERIFIED: `if not recording.transcription` -> `if recording.transcription`
+    makes the empty-transcript recording fall through to a 200 download; this test
+    then FAILS.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription="").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 400
+    assert "transcription" in resp.get_json()["error"].lower()
+
+
+def test_download_transcript_present_returns_file_not_400(owner):
+    """A transcription present -> a 200 text file, NOT a 400 (line 173 inverse)."""
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription="hello plain transcript body").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    assert b"hello plain transcript body" in resp.data
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+
+# --- /download/transcript : plain-text vs diarized branch (221/226/232) ---- #
+
+def test_download_transcript_plain_text_returned_verbatim(owner):
+    """A non-JSON transcription is returned as-is (is_diarized False path).
+
+    MUTATION-VERIFIED: flipping line 232 `if not is_diarized` -> `if is_diarized`
+    sends plain text down the segment-iteration branch (iterating None) -> 500;
+    this test (expecting 200 + verbatim body) then FAILS.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription="just some words, not json").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    assert resp.data.decode() == "just some words, not json"
+    # Plain-text filename branch (line 272): no "_formatted" / template suffix.
+    cd = resp.headers.get("Content-Disposition", "")
+    assert "_formatted" not in cd
+
+
+def test_download_transcript_diarized_no_template_basic_format(owner):
+    """A diarized transcript with no template uses the basic `[speaker]: text`
+    format and a `_formatted` filename.
+
+    MUTATION-VERIFIED: line 226 (`is_diarized = True`) or line 232 flips send the
+    JSON list down the plain-text branch (raw JSON returned), failing the body
+    assertion; line 193 (`if not template`) flipped dereferences None.template
+    -> 500; line 266/268 filename branch flip drops `_formatted`.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, transcription=_diarized_json(), title="diar-basic").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    # Template applied per segment -> formatted lines, NOT the raw JSON string.
+    assert "[Alice]: Hello there" in body
+    assert "[Bob]: Hi back" in body
+    assert '"sentence"' not in body  # raw JSON would contain this key
+    assert "_formatted" in resp.headers.get("Content-Disposition", "")
+
+
+def test_download_transcript_diarized_uses_default_template(owner):
+    """Without an explicit template_id, the user's *default* template is chosen
+    (lines 187-189) and used to format (line 196), and its name lands in the
+    filename (line 266).
+
+    MUTATION-VERIFIED: line 189 `is_default=True` -> `is_default=False` selects the
+    non-default template ("OTH ..."), failing the "DEF ..." body assertion; line 193
+    flip uses the basic `[..]` format instead of template.template, also failing.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        _make_template(u, name="OtherTmpl", template="OTH {{speaker}}={{text}}",
+                       is_default=False)
+        _make_template(u, name="DefaultTmpl", template="DEF {{speaker}}={{text}}",
+                       is_default=True)
+        rid = make_recording(u, transcription=_diarized_json(), title="diar-tmpl").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript")
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert "DEF Alice=Hello there" in body
+    assert "DEF Bob=Hi back" in body
+    assert "OTH " not in body
+    # is_diarized and template -> filename embeds the template name (line 266/267).
+    assert "DefaultTmpl" in resp.headers.get("Content-Disposition", "")
+
+
+def test_download_transcript_explicit_template_id(owner):
+    """An explicit ?template_id= selects that template (lines 180-184) over the
+    default."""
+    with _db():
+        u = db.session.get(User, owner)
+        _make_template(u, name="DefaultTmpl", template="DEF {{speaker}}={{text}}",
+                       is_default=True)
+        chosen = _make_template(u, name="ChosenTmpl",
+                                template="PICK {{speaker}}/{{text}}", is_default=False)
+        chosen_id = chosen.id
+        rid = make_recording(u, transcription=_diarized_json(), title="diar-pick").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/transcript?template_id={chosen_id}")
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert "PICK Alice/Hello there" in body
+    assert "DEF " not in body
+
+
+# --- /download/summary : content-presence guard (line 303) ---------------- #
+
+def test_download_summary_empty_400(owner):
+    """No summary -> 400 (guard at recordings.py:303).
+
+    MUTATION-VERIFIED: `if not recording.summary` -> `if recording.summary` lets the
+    empty-summary recording fall through to a 200 .docx; this test then FAILS.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, summary="").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/summary")
+    assert resp.status_code == 400
+    assert "summary" in resp.get_json()["error"].lower()
+
+
+def test_download_summary_present_returns_docx(owner):
+    """A summary present -> a 200 Word document, not a 400 (line 303 inverse).
+
+    Also pins recordings.py:368 `as_attachment=False`: the doc is a BytesIO with
+    no download_name, so MUTATION-VERIFIED flipping it to `as_attachment=True`
+    raises "No name provided for attachment" -> 500, and this 200 assertion FAILS.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u, summary="## Heading\n\nSome **summary** content.").id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/recording/{rid}/download/summary")
+    assert resp.status_code == 200
+    assert "wordprocessingml" in resp.headers["Content-Type"]
+    assert len(resp.data) > 0
+
+
+# --- /download/chat : messages-presence guard (line 421) ------------------ #
+
+def test_download_chat_empty_messages_400(owner):
+    """An empty messages list -> 400 (guard at recordings.py:421, distinct from
+    the missing-key guard at 417).
+
+    MUTATION-VERIFIED: `if not messages` -> `if messages` lets the empty list build
+    an empty .docx and return 200; this test then FAILS.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.post(f"/recording/{rid}/download/chat", json={"messages": []})
+    assert resp.status_code == 400
+    assert "messages" in resp.get_json()["error"].lower()
+
+
+def test_download_chat_missing_key_400(owner):
+    """No 'messages' key at all -> 400 (guard at recordings.py:417)."""
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.post(f"/recording/{rid}/download/chat", json={})
+    assert resp.status_code == 400
+
+
+def test_download_chat_with_messages_returns_docx(owner):
+    """Messages present -> a 200 Word document (line 421 inverse).
+
+    Also pins recordings.py:507 `as_attachment=False` (same BytesIO/no-name
+    mechanism as the summary download): MUTATION-VERIFIED flipping it to True -> 500.
+    """
+    with _db():
+        u = db.session.get(User, owner)
+        rid = make_recording(u).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.post(
+        f"/recording/{rid}/download/chat",
+        json={"messages": [
+            {"role": "user", "content": "What was discussed?"},
+            {"role": "assistant", "content": "The **roadmap**."},
+        ]},
+    )
+    assert resp.status_code == 200
+    assert "wordprocessingml" in resp.headers["Content-Type"]
+    assert len(resp.data) > 0
+
+
+# --- ENABLE_INQUIRE_MODE gate on the async reindex helper (line 118) ------- #
+
+def test_reindex_chunks_noop_when_inquire_disabled(owner):
+    """reindex_recording_chunks_async is a no-op when Inquire mode is off
+    (guard at recordings.py:118).
+
+    MUTATION-VERIFIED: `if not ENABLE_INQUIRE_MODE` -> `if ENABLE_INQUIRE_MODE`
+    makes the disabled-mode call spawn a reindex thread; this test (asserting no
+    thread / no process_recording_chunks call) then FAILS.
+    """
+    # Force the disabled state (the test image may have inquire enabled), so the
+    # gate is exercised regardless of environment.
+    with _db():
+        with patch.object(rec_module, "ENABLE_INQUIRE_MODE", False), \
+             patch.object(rec_module, "process_recording_chunks") as proc, \
+             patch.object(rec_module.threading, "Thread") as thread_cls:
+            rec_module.reindex_recording_chunks_async(987654321)
+            thread_cls.assert_not_called()
+            proc.assert_not_called()

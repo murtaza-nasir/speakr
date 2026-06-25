@@ -31,6 +31,7 @@ from src.services.webhook_dispatch import (
     emit_webhook_event,
     run_dispatcher_pass,
     _delay_for_attempt,
+    _is_retryable_status,
 )
 
 
@@ -689,6 +690,85 @@ def test_autopaused_webhook_resumes_on_successful_trial_delivery():
         db.session.delete(wh_after)
         db.session.delete(user)
         db.session.commit()
+
+
+def test_is_url_safe_rejects_reserved_ip():
+    """webhook_dispatch.py:193 — an address flagged is_reserved (but not
+    otherwise private/multicast in this Python) must be rejected. Mocks
+    DNS to a reserved-only IPv6 (5f00::/16). Kills the
+    `or ip.is_reserved` -> `and ip.is_reserved` survivor: under the
+    mutation this address is no longer caught and is wrongly allowed."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop('WEBHOOK_INTRANET_HOST_ALLOWLIST', None)
+        with patch('src.services.webhook_dispatch.socket.getaddrinfo') as mock_resolve:
+            mock_resolve.return_value = [
+                (None, None, None, None, ('5f00::1', 0, 0, 0)),
+            ]
+            ok, reason = is_url_safe_for_webhook('http://reserved.example.test/x', allow_http=True)
+            assert not ok
+            assert '5f00::1' in reason
+
+
+def test_is_url_safe_rejects_multicast_ip():
+    """webhook_dispatch.py:193 — a multicast address (224.0.0.0/4) must be
+    rejected. 224.0.0.1 is multicast but NOT private, so only the
+    is_multicast clause catches it."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop('WEBHOOK_INTRANET_HOST_ALLOWLIST', None)
+        with patch('src.services.webhook_dispatch.socket.getaddrinfo') as mock_resolve:
+            mock_resolve.return_value = [
+                (None, None, None, None, ('224.0.0.1', 0)),
+            ]
+            ok, reason = is_url_safe_for_webhook('http://multicast.example.test/x', allow_http=True)
+            assert not ok
+            assert '224.0.0.1' in reason
+
+
+def test_is_url_safe_allows_public_ip():
+    """A host resolving to a genuinely public address is allowed."""
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop('WEBHOOK_INTRANET_HOST_ALLOWLIST', None)
+        with patch('src.services.webhook_dispatch.socket.getaddrinfo') as mock_resolve:
+            mock_resolve.return_value = [
+                (None, None, None, None, ('8.8.8.8', 0)),
+            ]
+            ok, reason = is_url_safe_for_webhook('http://public.example.test/x', allow_http=True)
+            assert ok, reason
+
+
+def test_dispatcher_post_does_not_follow_redirects():
+    """webhook_dispatch.py:317 — the delivery POST must be made with
+    allow_redirects=False so a 3xx from the receiver cannot bounce the
+    signed payload to an attacker-controlled location (SSRF via
+    redirect). Kills the allow_redirects=False -> True survivor."""
+    with app.app_context():
+        user = _make_user('wh_noredir')
+        wh, d = _seed_pending(user.id)
+        mock_resp = MagicMock(status_code=204, text='')
+        with patch('src.services.webhook_dispatch.requests.post', return_value=mock_resp) as post:
+            run_dispatcher_pass()
+            post.assert_called_once()
+            assert post.call_args.kwargs.get('allow_redirects') is False
+
+        for x in WebhookDelivery.query.filter_by(webhook_id=wh.id).all():
+            db.session.delete(x)
+        db.session.delete(wh)
+        db.session.delete(user)
+        db.session.commit()
+
+
+def test_is_retryable_status_classification():
+    """webhook_dispatch.py:_is_retryable_status — network errors and
+    transient HTTP statuses retry; success and permanent 4xx do not.
+    The 2xx case (`return False`) is the line-329 survivor: under the
+    `return True` mutation a delivered 2xx would be retried forever."""
+    assert _is_retryable_status(None) is True   # network/timeout error
+    assert _is_retryable_status(200) is False   # success — must NOT retry
+    assert _is_retryable_status(204) is False   # success — must NOT retry
+    assert _is_retryable_status(408) is True    # request timeout
+    assert _is_retryable_status(429) is True    # rate limited
+    assert _is_retryable_status(503) is True    # server error
+    assert _is_retryable_status(404) is False   # permanent client error
 
 
 def test_is_url_safe_inspects_all_resolved_addresses():

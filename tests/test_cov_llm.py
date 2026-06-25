@@ -672,3 +672,277 @@ def test_streaming_usage_record_error_non_blocking(monkeypatch):
         )
     # Generator must still complete despite recording failure.
     assert events[-1] == {"end_of_stream": True}
+
+
+# ===========================================================================
+# MUTATION-VERIFIED coverage for budget / token-usage / GPT-5 / stream-options
+# logic that no existing test catches.
+#
+# Each test below is paired with the exact source line + mutation it kills.
+# ===========================================================================
+
+def _msgs():
+    return [{"role": "user", "content": "q"}]
+
+
+# --- line 192: budget check only when BOTH user_id and operation_type set ---
+
+def test_call_llm_budget_skipped_with_only_user_id(monkeypatch):
+    # user_id set but operation_type None -> budget check AND usage record must
+    # both be skipped. Kills line 192 `and operation_type`->`or operation_type`
+    # and line 261 `and operation_type`->`or operation_type`.
+    install_client(monkeypatch, return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_tracker = MagicMock()
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_llm_completion(_msgs(), user_id=42)  # no operation_type
+    fake_tracker.check_budget.assert_not_called()
+    fake_tracker.record_usage.assert_not_called()
+
+
+def test_call_llm_budget_skipped_with_only_operation_type(monkeypatch):
+    # operation_type set but user_id None -> still skipped. Kills line 192/261
+    # `user_id and`->`user_id or` mutations.
+    install_client(monkeypatch, return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_tracker = MagicMock()
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_llm_completion(_msgs(), operation_type="chat")  # no user_id
+    fake_tracker.check_budget.assert_not_called()
+    fake_tracker.record_usage.assert_not_called()
+
+
+# --- line 261: usage recorded only on non-stream response with all conditions ---
+
+def test_call_llm_records_usage_only_when_not_streaming(monkeypatch):
+    # stream=True with usage present -> record_usage must NOT fire (the
+    # `not stream` guard). Kills line 261 `not stream`->`stream`.
+    install_client(monkeypatch, return_value=iter([]))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_tracker = MagicMock()
+    fake_tracker.check_budget.return_value = (True, 10.0, None)
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_llm_completion(_msgs(), user_id=1, operation_type="chat", stream=True)
+    fake_tracker.record_usage.assert_not_called()
+
+
+# --- line 198: near-limit WARNING logged at usage_pct >= 80 (exactly) ---
+
+def test_call_llm_budget_warning_logged_at_80(monkeypatch):
+    install_client(monkeypatch, return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_logger = MagicMock()
+    monkeypatch.setattr(llm, "logger", fake_logger)
+    fake_tracker = MagicMock()
+    fake_tracker.check_budget.return_value = (True, 80.0, None)
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_llm_completion(_msgs(), user_id=7, operation_type="chat")
+    assert any("of token budget" in str(c.args[0]) for c in fake_logger.warning.call_args_list)
+
+
+def test_call_llm_budget_no_warning_below_80(monkeypatch):
+    install_client(monkeypatch, return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_logger = MagicMock()
+    monkeypatch.setattr(llm, "logger", fake_logger)
+    fake_tracker = MagicMock()
+    fake_tracker.check_budget.return_value = (True, 79.0, None)
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_llm_completion(_msgs(), user_id=7, operation_type="chat")
+    assert not any("of token budget" in str(c.args[0]) for c in fake_logger.warning.call_args_list)
+
+
+# --- line 208: GPT-5 path requires gpt-5 model AND OpenAI API ---
+
+def test_call_llm_gpt5_not_triggered_on_non_openai_api(monkeypatch):
+    # gpt-5 model name but a non-OpenAI base URL -> GPT-5 branch must NOT be
+    # taken. Kills line 208 `and is_using_openai_api()`->`or is_using_openai_api()`.
+    fake = install_client(monkeypatch, return_value=make_completion("ok"))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-5")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    call_llm_completion(_msgs(), temperature=0.5, max_tokens=100)
+    kwargs = fake.create.call_args.kwargs
+    assert "reasoning_effort" not in kwargs
+    assert "verbosity" not in kwargs
+    assert "max_completion_tokens" not in kwargs
+    assert kwargs["temperature"] == 0.5
+    assert kwargs["max_tokens"] == 100
+
+
+# --- line 279: empty-content path logs a warning; non-empty does not ---
+
+def test_call_llm_empty_content_logs_warning(monkeypatch):
+    install_client(monkeypatch, return_value=make_completion(content=""))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_logger = MagicMock()
+    monkeypatch.setattr(llm, "logger", fake_logger)
+    call_llm_completion(_msgs())
+    assert any("empty content" in str(c.args[0]).lower() for c in fake_logger.warning.call_args_list)
+
+
+def test_call_llm_nonempty_content_no_empty_warning(monkeypatch):
+    install_client(monkeypatch, return_value=make_completion("hello"))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_logger = MagicMock()
+    monkeypatch.setattr(llm, "logger", fake_logger)
+    call_llm_completion(_msgs())
+    assert not any("empty content" in str(c.args[0]).lower() for c in fake_logger.warning.call_args_list)
+
+
+# --- line 218: stream_options only added when streaming AND the flag ---
+
+def test_call_llm_no_stream_options_when_not_streaming(monkeypatch):
+    # stream=False with flag enabled -> no stream_options. Kills line 218
+    # `stream and ENABLE_STREAM_OPTIONS`->`stream or ENABLE_STREAM_OPTIONS`.
+    fake = install_client(monkeypatch, return_value=make_completion("ok"))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    monkeypatch.setattr(llm, "ENABLE_STREAM_OPTIONS", True)
+    call_llm_completion(_msgs())  # stream defaults to False
+    assert "stream_options" not in fake.create.call_args.kwargs
+
+
+# --- line 364: same gating in call_chat_completion ---
+
+def test_call_chat_no_stream_options_when_not_streaming(monkeypatch):
+    fake = FakeClient(return_value=make_completion("ok"))
+    monkeypatch.setattr(llm, "chat_client", fake)
+    monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", None)
+    monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setattr(llm, "ENABLE_STREAM_OPTIONS", True)
+    call_chat_completion(_msgs())  # stream defaults to False
+    assert "stream_options" not in fake.create.call_args.kwargs
+
+
+def test_call_chat_no_stream_options_when_flag_disabled(monkeypatch):
+    fake = FakeClient(return_value=iter([]))
+    monkeypatch.setattr(llm, "chat_client", fake)
+    monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", None)
+    monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    monkeypatch.setattr(llm, "ENABLE_STREAM_OPTIONS", False)
+    call_chat_completion(_msgs(), stream=True)
+    assert "stream_options" not in fake.create.call_args.kwargs
+
+
+# --- lines 335/341/395: budget/usage gating mirrored in call_chat_completion ---
+
+def test_call_chat_budget_skipped_with_only_user_id(monkeypatch):
+    fake = FakeClient(return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "chat_client", fake)
+    monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", None)
+    monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    fake_tracker = MagicMock()
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_chat_completion(_msgs(), user_id=42)  # no operation_type
+    fake_tracker.check_budget.assert_not_called()
+    fake_tracker.record_usage.assert_not_called()
+
+
+def test_call_chat_budget_warning_logged_at_80(monkeypatch):
+    fake = FakeClient(return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "chat_client", fake)
+    monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", None)
+    monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    fake_logger = MagicMock()
+    monkeypatch.setattr(llm, "logger", fake_logger)
+    fake_tracker = MagicMock()
+    fake_tracker.check_budget.return_value = (True, 80.0, None)
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_chat_completion(_msgs(), user_id=7, operation_type="chat")
+    assert any("of token budget" in str(c.args[0]) for c in fake_logger.warning.call_args_list)
+
+
+def test_call_chat_budget_no_warning_below_80(monkeypatch):
+    fake = FakeClient(return_value=make_completion("ok", usage=make_usage()))
+    monkeypatch.setattr(llm, "chat_client", fake)
+    monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", None)
+    monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
+    fake_logger = MagicMock()
+    monkeypatch.setattr(llm, "logger", fake_logger)
+    fake_tracker = MagicMock()
+    fake_tracker.check_budget.return_value = (True, 79.0, None)
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_chat_completion(_msgs(), user_id=7, operation_type="chat")
+    assert not any("of token budget" in str(c.args[0]) for c in fake_logger.warning.call_args_list)
+
+
+# --- line 68: get_chat_config selects dedicated chat only when BOTH key+name set ---
+
+def test_get_chat_config_falls_back_when_chat_name_missing(monkeypatch):
+    # CHAT_MODEL_API_KEY set but CHAT_MODEL_NAME None -> must fall back to TEXT.
+    # Kills line 68 `and CHAT_MODEL_NAME`->`or CHAT_MODEL_NAME`.
+    monkeypatch.setattr(llm, "CHAT_MODEL_API_KEY", "chat-key")
+    monkeypatch.setattr(llm, "CHAT_MODEL_NAME", None)
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "text-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_BASE_URL", "https://text.example/v1")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "text-model")
+    cfg = get_chat_config()
+    assert cfg["api_key"] == "text-key"
+    assert cfg["model_name"] == "text-model"
+
+
+# --- line 122: separate chat client only when CHAT key set AND differs from TEXT ---
+
+def _load_fresh_llm(monkeypatch, env):
+    """Import a fresh, isolated copy of src.services.llm under the given env so
+    the module-level chat-client selection (line 122) can be exercised without
+    clobbering the shared module instance other tests rely on."""
+    import importlib.util
+    for k, v in env.items():
+        if v is None:
+            monkeypatch.delenv(k, raising=False)
+        else:
+            monkeypatch.setenv(k, v)
+    spec = importlib.util.spec_from_file_location("src.services._llm_fresh", llm.__file__)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_chat_client_separate_when_keys_differ(monkeypatch):
+    mod = _load_fresh_llm(monkeypatch, {
+        "TEXT_MODEL_API_KEY": "text-key",
+        "TEXT_MODEL_BASE_URL": "https://openrouter.ai/api/v1",
+        "CHAT_MODEL_API_KEY": "chat-key",
+        "CHAT_MODEL_NAME": "chat-model",
+        "CHAT_MODEL_BASE_URL": "https://chat.example/v1",
+    })
+    assert mod.client is not None
+    assert mod.chat_client is not None
+    assert mod.chat_client is not mod.client
+
+
+def test_chat_client_shared_when_keys_match(monkeypatch):
+    # CHAT key equals TEXT key -> reuse the main client. Kills line 122
+    # `and CHAT_MODEL_API_KEY != TEXT_MODEL_API_KEY`->`or ...`.
+    mod = _load_fresh_llm(monkeypatch, {
+        "TEXT_MODEL_API_KEY": "same-key",
+        "TEXT_MODEL_BASE_URL": "https://openrouter.ai/api/v1",
+        "CHAT_MODEL_API_KEY": "same-key",
+        "CHAT_MODEL_NAME": "chat-model",
+        "CHAT_MODEL_BASE_URL": None,
+    })
+    assert mod.chat_client is mod.client
