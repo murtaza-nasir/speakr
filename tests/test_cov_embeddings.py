@@ -172,6 +172,24 @@ def test_chunk_respects_sentence_boundary(local_emb):
     assert chunks[0].endswith(".")
 
 
+def test_chunk_sentence_boundary_requires_following_space(local_emb):
+    # MUTATION TARGET (line 248): the boundary check is
+    #   `i + 1 < len(transcription) and transcription[i + 1].isspace()`
+    # i.e. a '.'/'!'/'?' only counts as a sentence break when the NEXT
+    # character is whitespace. This rejects the dot inside "3.14".
+    #
+    # With max_chunk_length=40 the window scans indices 0..39, which contains
+    # two periods: index 11 ("home.", followed by a space) and index 18 (the
+    # dot in "3.14", followed by '1'). The `and` keeps only the period+space
+    # break at 12, so chunk 0 == "I went home.". If `and` is mutated to `or`,
+    # the bare '3.' dot at 18 also qualifies, pushing the split to index 19 and
+    # making chunk 0 == "I went home. The 3." instead.
+    text = "I went home. The 3.14 value is large and stuff here too."
+    assert len(text) > 40  # ensure it actually splits
+    chunks = local_emb.chunk_transcription(text, max_chunk_length=40, overlap=10)
+    assert chunks[0] == "I went home."
+
+
 def test_chunk_no_overlap_infinite_loop_guard(local_emb):
     # A single huge token with no sentence boundaries still terminates.
     text = "a" * 2000
@@ -251,6 +269,24 @@ def test_get_embedding_model_none_without_local_lib(local_emb):
         assert local_emb.get_embedding_model() is None
 
 
+def test_get_embedding_model_none_in_api_mode_even_with_local_lib(api_emb):
+    # MUTATION TARGET (line 77): `if USE_API_EMBEDDINGS or not
+    # LOCAL_EMBEDDINGS_AVAILABLE: return None`. In API mode the local
+    # sentence-transformers model must NEVER be loaded, even if the local lib
+    # is present. Force LOCAL_EMBEDDINGS_AVAILABLE True and stub
+    # SentenceTransformer so that, were the guard mutated `or`->`and`
+    # (USE_API_EMBEDDINGS True, not LOCAL == False => the whole guard goes
+    # False), the function would fall through and construct/return a model.
+    # The original short-circuits on USE_API_EMBEDDINGS and returns None.
+    fake_model = MagicMock()
+    with app.app_context():
+        with patch.object(api_emb, "LOCAL_EMBEDDINGS_AVAILABLE", True):
+            with patch.object(api_emb, "SentenceTransformer",
+                              MagicMock(return_value=fake_model)):
+                api_emb._embedding_model = None
+                assert api_emb.get_embedding_model() is None
+
+
 def test_get_api_client_initialises_and_caches(api_emb):
     fake_client = MagicMock()
     fake_openai = MagicMock(return_value=fake_client)
@@ -290,6 +326,21 @@ def test_api_embed_empty_texts_returns_empty(api_emb):
     with app.app_context():
         with patch.object(api_emb, "get_embedding_api_client", return_value=MagicMock()):
             assert api_emb._api_embed([]) == []
+
+
+def test_api_embed_empty_texts_does_not_call_client(api_emb):
+    # MUTATION TARGET (line 158): `if client is None or not texts:` must
+    # short-circuit on empty `texts` EVEN WHEN a client exists. The earlier
+    # `== []` assertion alone is insufficient: with the `or`->`and` mutation
+    # the function would proceed to call the client (whose MagicMock response
+    # then raises inside the comprehension and is swallowed back to []), so the
+    # result stays [] but the client IS now hit. Asserting the client was never
+    # called is what actually kills the mutation.
+    client = MagicMock()
+    with app.app_context():
+        with patch.object(api_emb, "get_embedding_api_client", return_value=client):
+            assert api_emb._api_embed([]) == []
+    client.embeddings.create.assert_not_called()
 
 
 def test_api_embed_no_client_returns_empty(api_emb):

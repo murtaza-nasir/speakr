@@ -313,5 +313,80 @@ class TestProcessAutoDeletion(RetentionTestBase):
         self.assertIsNotNone(db.session.get(Recording, rec_id))
 
 
+# ---------------------------------------------------------------------------
+# process_auto_deletion: the GLOBAL_RETENTION_DAYS > 0 / has_global_retention
+# flag (retention.py lines 94 & 97).
+#
+# `has_global_retention = GLOBAL_RETENTION_DAYS > 0` and the subsequent
+# `if not has_global_retention:` only gate an informational log line. They have
+# no other behavioral effect (actual deletion eligibility is computed per
+# recording by get_retention_days_for_recording). So killing mutations to these
+# lines requires asserting on whether the "No global retention configured" log
+# message is emitted, in addition to pinning the > 0 boundary behaviorally.
+# ---------------------------------------------------------------------------
+
+class TestGlobalRetentionFlag(RetentionTestBase):
+    NO_GLOBAL_MSG = "No global retention configured"
+
+    def _run_capturing_logs(self, global_days, mode='full_recording', storage=None):
+        if storage is None:
+            storage = _make_storage_mock(exists=True)
+        with patch.object(retention, 'ENABLE_AUTO_DELETION', True), \
+             patch.object(retention, 'GLOBAL_RETENTION_DAYS', global_days), \
+             patch.object(retention, 'DELETION_MODE', mode), \
+             patch.object(retention, 'get_storage_service', return_value=storage), \
+             patch('src.services.speaker_cleanup.cleanup_orphaned_speakers',
+                   return_value={'speakers_deleted': 0, 'embeddings_removed': 0,
+                                 'speakers_evaluated': 0}), \
+             patch.object(app.logger, 'info') as mock_info:
+            stats = retention.process_auto_deletion()
+        logged_no_global = any(
+            c.args and self.NO_GLOBAL_MSG in str(c.args[0])
+            for c in mock_info.call_args_list
+        )
+        return stats, storage, logged_no_global
+
+    def test_global_days_zero_is_no_policy_old_recording_kept_and_logs_no_global(self):
+        # Boundary: GLOBAL_RETENTION_DAYS == 0 means "no global policy", NOT
+        # "delete everything older than 0 days". An old, untagged recording must
+        # survive, and the "No global retention configured" branch must run.
+        rec = self.make_recording(age_days=100, audio_path='user/zero.mp3')
+        rec_id = rec.id
+        stats, storage, logged_no_global = self._run_capturing_logs(global_days=0)
+        # Behavioral: no policy => skipped, nothing deleted, row + bytes intact.
+        self.assertEqual(stats['skipped_no_retention'], 1)
+        self.assertEqual(stats['deleted_full'], 0)
+        self.assertIsNotNone(db.session.get(Recording, rec_id))
+        storage.delete.assert_not_called()
+        # has_global_retention must be False at GLOBAL==0, so the
+        # `if not has_global_retention:` log fires. Inverting line 97 suppresses
+        # this log, breaking the assertion.
+        self.assertTrue(
+            logged_no_global,
+            "Expected 'No global retention configured' log when GLOBAL_RETENTION_DAYS == 0",
+        )
+
+    def test_global_days_positive_makes_old_recording_eligible_and_no_global_log(self):
+        # GLOBAL_RETENTION_DAYS > 0 => a global policy applies. An old recording
+        # is eligible and gets deleted, and the "No global retention configured"
+        # branch must NOT run.
+        rec = self.make_recording(age_days=100, audio_path='user/pos.mp3')
+        rec_id = rec.id
+        stats, storage, logged_no_global = self._run_capturing_logs(global_days=30)
+        # Behavioral: global policy applies => old recording deleted.
+        self.assertEqual(stats['deleted_full'], 1)
+        self.assertEqual(stats['skipped_no_retention'], 0)
+        self.assertIsNone(db.session.get(Recording, rec_id))
+        storage.delete.assert_called_with('user/pos.mp3', missing_ok=True)
+        # has_global_retention must be True at GLOBAL==30, so the no-global log
+        # must NOT fire. Mutating line 94 (> 0 -> < 0) makes it False (log fires);
+        # mutating line 97 (if not -> if) makes it log too. Either breaks this.
+        self.assertFalse(
+            logged_no_global,
+            "Did not expect 'No global retention configured' log when "
+            "GLOBAL_RETENTION_DAYS > 0",
+        )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

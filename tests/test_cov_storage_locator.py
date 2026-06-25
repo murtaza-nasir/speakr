@@ -71,3 +71,56 @@ def test_build_locators_normalize():
     assert loc.build_local_locator("recordings/x.mp3") == "local://recordings/x.mp3"
     assert loc.build_local_locator("/leading/slash") == "local://leading/slash"
     assert loc.build_s3_locator("bkt", "k/x.mp3") == "s3://bkt/k/x.mp3"
+
+
+# ---------------------------------------------------------------------------
+# is_probably_windows_abs / is_absolute_local_path
+# Mutation survivors (2026-06-25): the length guard and both return branches
+# in is_probably_windows_abs, plus the return branches of is_absolute_local_path.
+# ---------------------------------------------------------------------------
+
+def test_is_probably_windows_abs_true_cases():
+    assert loc.is_probably_windows_abs("C:\\x") is True
+    assert loc.is_probably_windows_abs("C:/x") is True
+    assert loc.is_probably_windows_abs("D:\\path\\file") is True
+    # exactly len 3 must still be True (kills a `< 3` -> `<= 3` style mutation)
+    assert loc.is_probably_windows_abs("C:\\") is True
+
+
+def test_is_probably_windows_abs_false_cases():
+    # None / empty / too short -> the `not path or len(path) < 3` guard
+    assert loc.is_probably_windows_abs(None) is False
+    assert loc.is_probably_windows_abs("") is False
+    assert loc.is_probably_windows_abs("ab") is False
+    assert loc.is_probably_windows_abs("C:") is False
+    # third char is not a separator -> the final `return ...` evaluates False
+    assert loc.is_probably_windows_abs("C:x") is False
+    # second char is not a colon
+    assert loc.is_probably_windows_abs("abc") is False
+
+
+def test_is_absolute_local_path():
+    # empty -> the `if not value: return False` branch
+    assert loc.is_absolute_local_path("") is False
+    # windows abs -> the `return True` branch (would fall through to
+    # os.path.isabs() and become False on POSIX if that return is broken)
+    assert loc.is_absolute_local_path("C:\\x") is True
+    assert loc.is_absolute_local_path("/abs/path") is True
+    assert loc.is_absolute_local_path("relative/path") is False
+
+
+# ---------------------------------------------------------------------------
+# parse_locator s3 validation (line 64: `if not bucket or not key`)
+# ---------------------------------------------------------------------------
+
+def test_parse_locator_s3_missing_bucket_raises():
+    # empty bucket: `not bucket` is True. An `or`->`and` mutation would let
+    # this through, so it must raise.
+    with pytest.raises(ValueError):
+        loc.parse_locator("s3:///key.mp3")
+
+
+def test_parse_locator_s3_missing_key_raises():
+    # trailing slash leaves an empty key after normalization.
+    with pytest.raises(ValueError):
+        loc.parse_locator("s3://bucket/")

@@ -12,6 +12,10 @@ import pytest
 from botocore.exceptions import ClientError
 
 from src.services.storage.s3 import S3StorageBackend
+from src.services.storage.local import LocalStorageBackend
+from src.services.storage.locator import local_path_from_key
+from src.services.storage.service import StorageService
+from src.services.storage.factory import StorageSettings
 from src.services.storage.interfaces import (
     MaterializedFile,
     ObjectStat,
@@ -420,3 +424,172 @@ def test_get_client_is_cached():
         second = backend._get_client()
     assert first is second
     mock_client.assert_called_once()
+
+
+# ===========================================================================
+# LocalStorageBackend (src/services/storage/local.py)
+# Mutation survivors (2026-06-25): the empty key/path guards in resolve_path,
+# the same-path no-op in upload_local_file, the missing-file delete branch,
+# and the cleanup_required=False flag in materialize.
+# ===========================================================================
+
+def make_local_backend():
+    root = tempfile.mkdtemp(prefix='speakr_local_')
+    return LocalStorageBackend(root), root
+
+
+def _write(path, data=b'x'):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'wb') as f:
+        f.write(data)
+
+
+def test_local_resolve_path_local_scheme_missing_key_raises():
+    backend, _ = make_local_backend()
+    loc = StorageLocator(scheme='local', raw='local://', key='')
+    with pytest.raises(ValueError):
+        backend.resolve_path(loc)
+
+
+def test_local_resolve_path_legacy_abs_missing_path_raises():
+    backend, _ = make_local_backend()
+    loc = StorageLocator(scheme='legacy_local_abs', raw='', path='')
+    with pytest.raises(ValueError):
+        backend.resolve_path(loc)
+
+
+def test_local_resolve_path_legacy_rel_missing_key_raises():
+    backend, _ = make_local_backend()
+    loc = StorageLocator(scheme='legacy_local_rel', raw='', key='')
+    with pytest.raises(ValueError):
+        backend.resolve_path(loc)
+
+
+def test_local_upload_same_path_is_noop():
+    # The source IS the destination. The `src_resolved != dst_resolved` guard
+    # must skip the copy/move (a `!=`->`==` mutation would attempt copy2 on an
+    # identical path and raise SameFileError).
+    backend, root = make_local_backend()
+    key = 'recordings/same.mp3'
+    dst = local_path_from_key(root, key)
+    _write(dst, b'hello')
+    result = backend.upload_local_file(dst, key, delete_source=False)
+    assert os.path.exists(dst)
+    with open(dst, 'rb') as f:
+        assert f.read() == b'hello'
+    assert result.size == 5
+
+
+def test_local_upload_different_path_copies():
+    backend, root = make_local_backend()
+    fd, src = tempfile.mkstemp(prefix='speakr_src_')
+    os.write(fd, b'data123')
+    os.close(fd)
+    try:
+        result = backend.upload_local_file(src, 'recordings/copied.mp3', delete_source=False)
+        assert os.path.exists(src)  # copy, not move -> source survives
+        dst = local_path_from_key(root, 'recordings/copied.mp3')
+        assert os.path.exists(dst)
+        assert result.size == 7
+    finally:
+        if os.path.exists(src):
+            os.remove(src)
+
+
+def test_local_delete_missing_returns_missing_ok():
+    backend, root = make_local_backend()
+    loc = StorageLocator(scheme='local', raw='local://nope.mp3', key='nope.mp3')
+    assert backend.delete(loc, missing_ok=True) is True
+    assert backend.delete(loc, missing_ok=False) is False
+
+
+def test_local_delete_existing_returns_true_and_removes():
+    backend, root = make_local_backend()
+    key = 'recordings/del.mp3'
+    dst = local_path_from_key(root, key)
+    _write(dst)
+    loc = StorageLocator(scheme='local', raw=f'local://{key}', key=key)
+    assert backend.delete(loc) is True
+    assert not os.path.exists(dst)
+
+
+def test_local_materialize_does_not_request_cleanup():
+    # A local file is already on disk; materialize must NOT flag it for
+    # deletion (cleanup_required must stay False, else the real file is removed).
+    backend, root = make_local_backend()
+    key = 'recordings/m.mp3'
+    dst = local_path_from_key(root, key)
+    _write(dst)
+    loc = StorageLocator(scheme='local', raw=f'local://{key}', key=key)
+    mat = backend.materialize(loc)
+    assert mat.cleanup_required is False
+    assert mat.local_path == dst
+
+
+# ===========================================================================
+# StorageService (src/services/storage/service.py) without an S3 backend
+# Mutation survivors (2026-06-25): empty-locator guards and the
+# "S3 not configured" RuntimeErrors.
+# ===========================================================================
+
+def make_no_s3_service(backend='local'):
+    root = tempfile.mkdtemp(prefix='speakr_svc_')
+    settings = StorageSettings(
+        backend=backend,
+        local_root=root,
+        key_prefix='recordings',
+        staging_dir=os.path.join(root, 'staging'),
+        presign_ttl_seconds=300,
+        presign_public_ttl_seconds=600,
+        s3_bucket_name=None,  # -> build_s3_backend returns None
+    )
+    return StorageService(settings=settings), root
+
+
+def test_service_no_s3_backend_is_none():
+    svc, _ = make_no_s3_service()
+    assert svc.s3 is None
+
+
+def test_service_parse_empty_raises():
+    svc, _ = make_no_s3_service()
+    with pytest.raises(ValueError, match='Empty storage locator'):
+        svc.exists('')
+
+
+def test_service_delete_empty_returns_missing_ok():
+    svc, _ = make_no_s3_service()
+    assert svc.delete('', missing_ok=True) is True
+    assert svc.delete(None, missing_ok=False) is False
+
+
+def test_service_normalize_empty_returns_input_unchanged():
+    svc, _ = make_no_s3_service()
+    assert svc.maybe_normalize_local_legacy_locator('') == ''
+    assert svc.maybe_normalize_local_legacy_locator(None) is None
+
+
+def test_service_normalize_unparseable_returns_input():
+    # whitespace-only -> parse_locator returns None -> the `if not locator`
+    # guard returns the input rather than dereferencing None.
+    svc, _ = make_no_s3_service()
+    assert svc.maybe_normalize_local_legacy_locator('   ') == '   '
+
+
+def test_service_s3_locator_without_backend_raises():
+    # _resolve_backend_for_locator: s3 scheme + no s3 client -> RuntimeError.
+    svc, _ = make_no_s3_service()
+    with pytest.raises(RuntimeError, match='not configured'):
+        svc.exists('s3://bucket/key.mp3')
+
+
+def test_service_build_default_locator_s3_backend_no_client_raises():
+    svc, _ = make_no_s3_service(backend='s3')
+    with pytest.raises(RuntimeError, match='not configured'):
+        svc.build_default_locator('recordings/x.mp3')
+
+
+def test_service_upload_local_file_s3_backend_no_client_raises():
+    svc, _ = make_no_s3_service(backend='s3')
+    with pytest.raises(RuntimeError, match='not configured'):
+        svc.upload_local_file('/tmp/x.mp3', 'recordings/x.mp3')

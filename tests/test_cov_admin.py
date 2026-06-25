@@ -18,12 +18,16 @@ Run:
 """
 
 import uuid
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from src.app import app, db
-from src.models import User, SystemSetting
+from src.models import (
+    User, SystemSetting, Recording, InternalShare,
+    Group, GroupMembership, TranscriptChunk,
+)
 
 app.config['WTF_CSRF_ENABLED'] = False
 app.config['TESTING'] = True
@@ -533,3 +537,298 @@ def test_auto_process_trigger_not_running_400(admin_client):
     with patch('src.file_monitor.file_monitor', None):
         resp = admin_client.post('/admin/auto-process/trigger')
     assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# MUTATION-TARGETED TESTS
+# Each test below kills a specific surviving mutant in src/api/admin.py.
+# ---------------------------------------------------------------------------
+
+def _mk_recording(user, file_size=None, audio_path=None,
+                  audio_deleted_at=None, status='COMPLETED'):
+    r = Recording(user_id=user.id, title='t', status=status,
+                  file_size=file_size, audio_path=audio_path,
+                  audio_deleted_at=audio_deleted_at)
+    db.session.add(r)
+    db.session.commit()
+    return r
+
+
+def _mk_share(recording, owner, shared_with):
+    s = InternalShare(recording_id=recording.id, owner_id=owner.id,
+                      shared_with_user_id=shared_with.id)
+    db.session.add(s)
+    db.session.commit()
+    return s
+
+
+def _delete_all(*objs):
+    for o in objs:
+        if o is None:
+            continue
+        fresh = db.session.get(type(o), o.id)
+        if fresh is not None:
+            db.session.delete(fresh)
+    db.session.commit()
+
+
+# --- line 351: InternalShare cleanup on user delete (owner OR recipient) ----
+
+def test_delete_user_cleans_shares_both_directions_and_spares_others(admin_client):
+    """Deleting a user removes InternalShares where they are owner OR recipient,
+    while leaving shares between unrelated users untouched.
+
+    Kills the `owner_id == user_id` -> `owner_id != user_id` mutant: that
+    mutant would (a) leave the victim's owner-side share behind and
+    (b) wrongly delete an unrelated third-party share whose owner != victim.
+    """
+    victim = _mk_user(is_admin=False)
+    b = _mk_user(is_admin=False)
+    c = _mk_user(is_admin=False)
+    d = _mk_user(is_admin=False)
+
+    rec_a = _mk_recording(victim)   # owned by victim
+    rec_b = _mk_recording(b)        # owned by b
+    rec_c = _mk_recording(c)        # owned by c (no victim involvement)
+
+    share_owner = _mk_share(rec_a, owner=victim, shared_with=b)
+    share_recipient = _mk_share(rec_b, owner=b, shared_with=victim)
+    share_unrelated = _mk_share(rec_c, owner=c, shared_with=d)
+
+    owner_id = share_owner.id
+    recipient_id = share_recipient.id
+    unrelated_id = share_unrelated.id
+    vid = victim.id
+
+    storage = MagicMock()
+    try:
+        with patch('src.services.storage.get_storage_service', return_value=storage):
+            resp = admin_client.delete(f'/admin/users/{vid}')
+        assert resp.status_code == 200, resp.data
+
+        # Victim's owner-side AND recipient-side shares are gone.
+        assert db.session.get(InternalShare, owner_id) is None
+        assert db.session.get(InternalShare, recipient_id) is None
+        # Unrelated third-party share survives (would be wrongly deleted by
+        # the `!=` mutant).
+        assert db.session.get(InternalShare, unrelated_id) is not None
+    finally:
+        _delete_all(share_unrelated, rec_b, rec_c)
+        _delete_all(b, c, d)
+        # victim already deleted by the endpoint (or cleaned if it wasn't)
+        leftover = db.session.get(User, vid)
+        if leftover:
+            _delete_all(leftover)
+
+
+# --- line 344: storage.delete(path, missing_ok=True) on user delete ---------
+
+def test_delete_user_calls_storage_delete_with_missing_ok_true(admin_client):
+    """On user delete, each recording's audio is removed via
+    storage.delete(path, missing_ok=True). Kills the `missing_ok=True` ->
+    `missing_ok=False` mutant.
+    """
+    victim = _mk_user(is_admin=False)
+    audio_path = f"{victim.username}/clip.wav"
+    _mk_recording(victim, audio_path=audio_path)
+    vid = victim.id
+
+    storage = MagicMock()
+    try:
+        with patch('src.services.storage.get_storage_service', return_value=storage):
+            resp = admin_client.delete(f'/admin/users/{vid}')
+        assert resp.status_code == 200, resp.data
+        storage.delete.assert_called_once_with(audio_path, missing_ok=True)
+    finally:
+        leftover = db.session.get(User, vid)
+        if leftover:
+            _delete_all(leftover)
+
+
+# --- line 288: update_user storage_used excludes deleted-audio recordings ----
+
+def test_update_user_storage_used_excludes_deleted_audio(admin_client):
+    """admin_update_user reports storage_used summed only over recordings whose
+    audio is still present. Kills `... and not r.audio_deleted_at` ->
+    `... or not r.audio_deleted_at` (the deleted-audio recording would be
+    wrongly counted, inflating the total).
+    """
+    victim = _mk_user(is_admin=False)
+    rec_live = _mk_recording(victim, file_size=1000, audio_deleted_at=None)
+    rec_dead = _mk_recording(victim, file_size=5000,
+                             audio_deleted_at=datetime.utcnow())
+    vid = victim.id
+    try:
+        resp = admin_client.put(f'/admin/users/{vid}', json={'is_admin': False})
+        assert resp.status_code == 200, resp.data
+        assert resp.get_json()['storage_used'] == 1000
+    finally:
+        _delete_all(rec_live, rec_dead)
+        leftover = db.session.get(User, vid)
+        if leftover:
+            _delete_all(leftover)
+
+
+# --- lines 135/142: list_users storage_used aggregation -----------------------
+
+def test_list_users_storage_used_excludes_deleted_audio_and_none_is_zero(admin_client):
+    """The user-list grouped aggregation excludes deleted-audio bytes and
+    reports a user with no stored audio as 0 (not null).
+
+    Kills `sizes_by_uid.get(user.id) or 0` -> `... and 0` (real storage would
+    collapse to 0) and validates the `audio_deleted_at.is_(None)` filter on the
+    SQL sum.
+    """
+    with_storage = _mk_user(is_admin=False)
+    rec_live = _mk_recording(with_storage, file_size=1234, audio_deleted_at=None)
+    rec_dead = _mk_recording(with_storage, file_size=9999,
+                             audio_deleted_at=datetime.utcnow())
+    empty = _mk_user(is_admin=False)  # no recordings at all
+    sid = with_storage.id
+    eid = empty.id
+    try:
+        resp = admin_client.get('/admin/users')
+        assert resp.status_code == 200
+        rows = {u['id']: u for u in resp.get_json()}
+        # Only the live recording's bytes count.
+        assert rows[sid]['storage_used'] == 1234
+        # No recordings -> 0, not null (the `or 0` fallback).
+        assert rows[eid]['storage_used'] == 0
+    finally:
+        _delete_all(rec_live, rec_dead)
+        _delete_all(db.session.get(User, sid), db.session.get(User, eid))
+
+
+# --- lines 337/358: inquire chunk-count logging guard on user delete ---------
+
+def test_delete_user_no_chunks_skips_chunk_log(admin_client):
+    """With Inquire mode on but the victim owning zero transcript chunks, the
+    "Deleting N transcript chunks" info log must NOT fire. Kills both
+    `if total_chunks > 0:` (line 337) and `if ENABLE_INQUIRE_MODE and
+    total_chunks > 0:` (line 358) when mutated to `>= 0`, which would log at
+    zero chunks.
+    """
+    victim = _mk_user(is_admin=False)
+    vid = victim.id
+    storage = MagicMock()
+    try:
+        with patch('src.api.admin.ENABLE_INQUIRE_MODE', True), \
+             patch('src.services.storage.get_storage_service', return_value=storage), \
+             patch.object(app.logger, 'info') as log_info:
+            resp = admin_client.delete(f'/admin/users/{vid}')
+        assert resp.status_code == 200, resp.data
+        logged = " ".join(str(c.args[0]) for c in log_info.call_args_list if c.args)
+        assert 'transcript chunks' not in logged
+        assert 'embeddings and chunks' not in logged
+    finally:
+        leftover = db.session.get(User, vid)
+        if leftover:
+            _delete_all(leftover)
+
+
+def test_delete_user_with_chunks_logs_chunk_count(admin_client):
+    """Complementary positive case: a victim WITH transcript chunks does fire
+    the chunk-count info logs. Confirms lines 337/358 are reached and the guard
+    is genuinely `> 0` (further pinning the `>= 0` / branch-removal mutants).
+    """
+    victim = _mk_user(is_admin=False)
+    rec = _mk_recording(victim)
+    chunk = TranscriptChunk(recording_id=rec.id, user_id=victim.id,
+                            chunk_index=0, content='hello')
+    db.session.add(chunk)
+    db.session.commit()
+    vid = victim.id
+    storage = MagicMock()
+    try:
+        with patch('src.api.admin.ENABLE_INQUIRE_MODE', True), \
+             patch('src.services.storage.get_storage_service', return_value=storage), \
+             patch.object(app.logger, 'info') as log_info:
+            resp = admin_client.delete(f'/admin/users/{vid}')
+        assert resp.status_code == 200, resp.data
+        logged = " ".join(str(c.args[0]) for c in log_info.call_args_list if c.args)
+        assert 'transcript chunks' in logged
+    finally:
+        leftover = db.session.get(User, vid)
+        if leftover:
+            _delete_all(leftover)
+
+
+# --- lines 68/77: /admin gating for team-admins vs global admins -------------
+
+def _mk_team_admin():
+    """Create a non-global user who is admin of a fresh group."""
+    u = _mk_user(is_admin=False)
+    g = Group(name=f"grp_{uuid.uuid4().hex[:8]}")
+    db.session.add(g)
+    db.session.commit()
+    m = GroupMembership(group_id=g.id, user_id=u.id, role='admin')
+    db.session.add(m)
+    db.session.commit()
+    return u, g, m
+
+
+def test_team_admin_redirected_from_admin_to_group_management(ctx):
+    """A team-admin (group role=admin) who is NOT a global admin is redirected
+    from /admin to /group-management. Kills the line-68 guard
+    `if is_team_admin and not current_user.is_admin:`.
+    """
+    u, g, m = _mk_team_admin()
+    try:
+        c = app.test_client()
+        _login(c, u)
+        resp = c.get('/admin')
+        assert resp.status_code == 302
+        assert '/group-management' in resp.headers.get('Location', '')
+    finally:
+        _delete_all(u)        # cascades the membership
+        _delete_all(g)
+
+
+def test_global_admin_who_is_also_team_admin_sees_dashboard(admin_user):
+    """A GLOBAL admin who also happens to be a group admin still lands on the
+    full admin dashboard (not redirected to group management). Kills the
+    line-68 `and` -> `or` mutant, and the line-77 `is_group_admin_only=False`
+    mutant (the rendered <title> would flip to "Group Management").
+    """
+    g = Group(name=f"grp_{uuid.uuid4().hex[:8]}")
+    db.session.add(g)
+    db.session.commit()
+    m = GroupMembership(group_id=g.id, user_id=admin_user.id, role='admin')
+    db.session.add(m)
+    db.session.commit()
+    try:
+        c = app.test_client()
+        _login(c, admin_user)
+        resp = c.get('/admin')
+        assert resp.status_code == 200
+        assert b'<title>Admin Dashboard - Speakr</title>' in resp.data
+        assert b'<title>Group Management - Speakr</title>' not in resp.data
+    finally:
+        _delete_all(m, g)
+
+
+# --- line 91: /group-management requires team-admin --------------------------
+
+def test_group_management_requires_team_admin(normal_client):
+    """A plain (non-team, non-global) user is bounced from /group-management.
+    Kills the line-91 `if not is_team_admin:` -> `if is_team_admin:` mutant
+    (which would let the plain user through and render the page).
+    """
+    resp = normal_client.get('/group-management')
+    assert resp.status_code == 302
+    assert '/group-management' not in resp.headers.get('Location', '')
+
+
+def test_group_management_team_admin_gets_page(ctx):
+    """A team-admin (non-global) successfully reaches /group-management.
+    Complements the line-91 mutant kill (the inverted guard would 302 them).
+    """
+    u, g, m = _mk_team_admin()
+    try:
+        c = app.test_client()
+        _login(c, u)
+        resp = c.get('/group-management')
+        assert resp.status_code == 200
+    finally:
+        _delete_all(u)
+        _delete_all(g)
