@@ -202,24 +202,16 @@ def get_effective_chunking_config(
             source='connector_recommended'
         )
 
-    # App defaults
-    if enable_chunking_env != 'false':
-        logger.info("Chunking: Using app defaults (20MB size-based)")
-        return EffectiveChunkingConfig(
-            enabled=True,
-            mode='size',
-            limit_value=20.0,
-            overlap_seconds=overlap_seconds,
-            source='app_default'
-        )
-
-    # Final fallback: disabled
+    # App defaults. The ENABLE_CHUNKING=false case has already returned a
+    # 'disabled' config above, so this is the only remaining path (the previous
+    # 'final fallback: disabled' return here was unreachable dead code).
+    logger.info("Chunking: Using app defaults (20MB size-based)")
     return EffectiveChunkingConfig(
-        enabled=False,
-        mode='none',
-        limit_value=0,
+        enabled=True,
+        mode='size',
+        limit_value=20.0,
         overlap_seconds=overlap_seconds,
-        source='disabled'
+        source='app_default'
     )
 
 class AudioChunkingService:

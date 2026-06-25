@@ -830,5 +830,53 @@ def test_title_uses_user_default_naming_template():
         assert out.status == "COMPLETED"
 
 
+def test_title_tag_template_takes_precedence_over_owner_default():
+    """A tag-supplied naming template must override the owner's default template
+    (processing.py:276).
+
+    MUTATION-VERIFIED: line 276 `and recording.owner`->`or recording.owner` turns
+    the guard into `if (not naming_template) or (recording.owner and ...)`, which
+    is True even once the tag template is set, so the owner default WRONGLY
+    overwrites the tag template and the title becomes "Owner cov" -> this test
+    FAILS.
+    """
+    with app.app_context():
+        user = _make_user("title_tagprec")
+
+        # Two distinct templates, neither needing an AI title (no LLM call).
+        tag_tmpl = NamingTemplate(user_id=user.id, name="Tag template",
+                                  template="Tag {{filename}}")
+        owner_tmpl = NamingTemplate(user_id=user.id, name="Owner template",
+                                    template="Owner {{filename}}")
+        db.session.add_all([tag_tmpl, owner_tmpl])
+        db.session.commit()
+
+        # Owner has a default template that differs from the tag's template.
+        user.default_naming_template_id = owner_tmpl.id
+        db.session.commit()
+
+        rec = _make_recording(user.id, title="Recording - cov.mp3")
+
+        # Attach a tag that carries its own naming template.
+        tag = Tag(user_id=user.id, name=f"tagprec_{uuid.uuid4().hex[:8]}",
+                  naming_template_id=tag_tmpl.id)
+        db.session.add(tag)
+        db.session.commit()
+        db.session.add(RecordingTag(recording_id=rec.id, tag_id=tag.id, order=0))
+        db.session.commit()
+
+        rid = rec.id
+        with patch.object(proc, "client", None), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False):
+            proc.generate_title_task(app.app_context(), rid, will_auto_summarize=False)
+
+        db.session.expire_all()
+        out = db.session.get(Recording, rid)
+        # The TAG template must win, not the owner default.
+        assert out.title == "Tag cov"
+        assert out.title != "Owner cov"
+        assert out.status == "COMPLETED"
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

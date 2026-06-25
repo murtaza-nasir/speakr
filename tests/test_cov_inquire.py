@@ -1080,3 +1080,59 @@ def test_available_filters_error_500(client):
         resp = client.get('/api/inquire/available_filters')
         assert resp.status_code == 500
         assert 'error' in resp.get_json()
+
+
+def test_chat_rag_present_speaker_not_auto_filtered(client):
+    """inquire.py:433 — a mentioned speaker who is ALREADY present in the initial
+    chunk results must NOT trigger the auto speaker-filter re-search.
+
+    The user message mentions 'Alice', who is an available speaker (a recording
+    lists her as a participant) AND whose chunks are already in the results. So
+    `speaker_in_results` becomes True, Alice is NOT appended to
+    `mentioned_speakers`, and no speaker-filtered re-search is run.
+
+    MUTATION-VERIFIED: line 433 `speaker_in_results = True`->`False` makes the
+    present speaker look missing, so Alice is appended and the auto speaker
+    filter fires — semantic_search_chunks gets called with
+    filters['speaker_names'] == ['Alice'] and a 'filtering' status event is
+    emitted -> this test FAILS.
+    """
+    user_id = _make_user()
+    # alice_rec's participants make 'Alice' an available speaker for this user.
+    alice_rec = _make_recording(user_id, title="Alice Rec", participants="Alice")
+
+    a1 = "ALICEPRESENTONE_" + _suffix()
+    a2 = "ALICEPRESENTTWO_" + _suffix()
+    a1_id = _make_chunk(user_id, alice_rec, content=a1,
+                        speaker_name="Alice", chunk_index=0)
+    a2_id = _make_chunk(user_id, alice_rec, content=a2,
+                        speaker_name="Alice", chunk_index=1)
+
+    search_filters = []
+
+    def search_se(uid, query, filters, top_k):
+        # Record the filters of every search so we can assert no speaker re-search.
+        search_filters.append(dict(filters) if filters else {})
+        # Alice is already present in the initial results (two distinct chunks so
+        # len >= 2 skips the downstream "<2 results" broader re-search).
+        return [_get_chunk_pair(a1_id, 0.9), _get_chunk_pair(a2_id, 0.8)]
+
+    captured = {}
+    with _login(client, user_id), \
+         patch('src.api.inquire.ENABLE_INQUIRE_MODE', True), \
+         patch('src.api.inquire.client', MagicMock()), \
+         patch('src.api.inquire.EMBEDDINGS_AVAILABLE', True), \
+         patch('src.api.inquire.call_llm_completion', side_effect=_rag_router_then('[]')), \
+         patch('src.api.inquire.semantic_search_chunks', side_effect=search_se), \
+         patch('src.api.inquire.call_chat_completion',
+               side_effect=_capturing_chat_completion(captured)):
+        resp = client.post('/api/inquire/chat', json={'message': 'what did Alice say?'})
+        assert resp.status_code == 200
+        events = _sse_events(resp)
+
+    # No search call may carry a speaker filter — the auto re-search never runs.
+    assert all(not f.get('speaker_names') for f in search_filters), \
+        f"unexpected speaker-filtered re-search: {search_filters}"
+    # And no 'filtering' status event should be emitted for a present speaker.
+    statuses = [e.get('status') for e in events]
+    assert 'filtering' not in statuses, f"unexpected filtering event: {events}"
