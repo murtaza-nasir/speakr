@@ -92,8 +92,11 @@ class TestScanDirectoryFiltering(unittest.TestCase):
     def test_nonexistent_directory_is_noop(self):
         monitor = _make_monitor(self.temp_dir, self.uid)
         missing = monitor.base_watch_directory / 'does-not-exist'
-        # Should simply return, not raise.
-        monitor._scan_directory_for_user(missing, self.uid)
+        monitor._process_file = MagicMock()
+        # Should simply return, not raise, and process nothing.
+        ret = monitor._scan_directory_for_user(missing, self.uid)
+        self.assertIsNone(ret)
+        monitor._process_file.assert_not_called()
 
     def test_hidden_and_processing_and_unsupported_files_skipped(self):
         _write_file(os.path.join(self.temp_dir, '.hidden.mp3'))
@@ -315,8 +318,11 @@ class TestModeDispatch(unittest.TestCase):
                                 mode='user_directories')
         # base dir was created by __init__, so remove it to hit the not-exists path.
         shutil.rmtree(str(monitor.base_watch_directory), ignore_errors=True)
-        monitor._scan_directory_for_user = lambda *a, **kw: self.fail("should not scan")
-        monitor._scan_user_directories()  # returns silently
+        monitor._scan_directory_for_user = MagicMock()
+        ret = monitor._scan_user_directories()  # returns silently
+        self.assertIsNone(ret)
+        # Missing base dir -> nothing should be scanned.
+        monitor._scan_directory_for_user.assert_not_called()
 
     def test_single_user_configured(self):
         monitor = _make_monitor(self.temp_dir, self.uid, mode='single_user')
@@ -330,17 +336,23 @@ class TestModeDispatch(unittest.TestCase):
 
     def test_single_user_not_configured(self):
         monitor = _make_monitor(self.temp_dir, self.uid, mode='single_user')
-        monitor._scan_directory_for_user = lambda *a, **kw: self.fail("should not scan")
+        monitor._scan_directory_for_user = MagicMock()
         env = {k: v for k, v in os.environ.items() if k != 'AUTO_PROCESS_DEFAULT_USERNAME'}
         with patch.dict(os.environ, env, clear=True):
-            monitor._scan_single_user_directory()
+            ret = monitor._scan_single_user_directory()
+        self.assertIsNone(ret)
+        # No default username configured -> nothing should be scanned.
+        monitor._scan_directory_for_user.assert_not_called()
 
     def test_single_user_invalid_username(self):
         monitor = _make_monitor(self.temp_dir, self.uid, mode='single_user')
         monitor._username_to_id = {}
-        monitor._scan_directory_for_user = lambda *a, **kw: self.fail("should not scan")
+        monitor._scan_directory_for_user = MagicMock()
         with patch.dict(os.environ, {'AUTO_PROCESS_DEFAULT_USERNAME': 'ghost_user'}):
-            monitor._scan_single_user_directory()
+            ret = monitor._scan_single_user_directory()
+        self.assertIsNone(ret)
+        # Configured username isn't a valid user -> nothing should be scanned.
+        monitor._scan_directory_for_user.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -784,14 +796,19 @@ class TestModuleHelpers(unittest.TestCase):
         # Force the query to return an empty list -> early return (line 598-599).
         with patch('src.models.Tag') as TagMock:
             TagMock.query.filter_by.return_value.all.return_value = []
-            _ensure_tag_folders_on_startup(app, self.temp_dir, 'admin_only')
+            ret = _ensure_tag_folders_on_startup(app, self.temp_dir, 'admin_only')
+        self.assertIsNone(ret)
+        # No auto-process tags -> early return, so no folders were created.
+        self.assertEqual(os.listdir(self.temp_dir), [])
 
     def test_ensure_tag_folders_handles_query_error(self):
         # Force the inner Tag query to raise; the helper swallows and logs.
         with patch('src.models.Tag') as TagMock:
             TagMock.query.filter_by.side_effect = RuntimeError("db down")
-            # Should not raise.
-            _ensure_tag_folders_on_startup(app, self.temp_dir, 'admin_only')
+            # Should swallow the error (not raise) and create no folders.
+            result = _ensure_tag_folders_on_startup(app, self.temp_dir, 'admin_only')
+        assert result is None
+        assert os.listdir(self.temp_dir) == []
 
 
 if __name__ == '__main__':

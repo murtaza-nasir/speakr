@@ -239,7 +239,12 @@ def test_summary_event_extraction_invoked_when_user_extract_events():
 def test_summary_missing_recording_returns_quietly():
     with app.app_context():
         # An ID that does not exist must not raise.
-        proc.generate_summary_only_task(app.app_context(), 99999999)
+        with _patch_llm(content="should never run") as mock_call:
+            ret = proc.generate_summary_only_task(app.app_context(), 99999999)
+        assert ret is None
+        # Missing record -> must bail out before doing any LLM work.
+        mock_call.assert_not_called()
+        assert db.session.get(Recording, 99999999) is None
 
 
 def test_summary_user_id_viewer_filtering():
@@ -351,7 +356,12 @@ def test_title_client_not_configured_falls_back_to_filename():
 
 def test_title_missing_recording_returns_quietly():
     with app.app_context():
-        proc.generate_title_task(app.app_context(), 99999999)
+        with _patch_llm(content="should never run") as mock_call:
+            ret = proc.generate_title_task(app.app_context(), 99999999)
+        assert ret is None
+        # Missing record -> must bail out before doing any LLM work.
+        mock_call.assert_not_called()
+        assert db.session.get(Recording, 99999999) is None
 
 
 def test_title_budget_exceeded_skips_gracefully():
@@ -562,9 +572,14 @@ def test_transcribe_with_connector_missing_recording():
     import time as _time
     with app.app_context():
         # Must return quietly, not raise.
-        proc.transcribe_with_connector(
-            app.app_context(), 99999999, "/x.mp3", "x.mp3", _time.time(),
-        )
+        with patch("src.services.transcription.get_connector") as mock_get_conn:
+            ret = proc.transcribe_with_connector(
+                app.app_context(), 99999999, "/x.mp3", "x.mp3", _time.time(),
+            )
+        assert ret is None
+        # Missing record -> must bail out before resolving any connector.
+        mock_get_conn.assert_not_called()
+        assert db.session.get(Recording, 99999999) is None
 
 
 def test_transcribe_with_connector_error_reraises():

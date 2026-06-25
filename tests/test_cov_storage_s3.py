@@ -205,7 +205,13 @@ def test_upload_local_file_delete_source_missing_file_ignored():
     missing = '/tmp/definitely_not_here_speakr_xyz.mp3'
     with patch_client(backend, fake):
         # should not raise even though the file doesn't exist
-        backend.upload_local_file(missing, 'audio/del.mp3', delete_source=True)
+        result = backend.upload_local_file(missing, 'audio/del.mp3', delete_source=True)
+    # The missing-source deletion is swallowed; the upload still completes and
+    # returns a valid StoredObject pointing at the uploaded key.
+    assert isinstance(result, StoredObject)
+    assert result.locator == 's3://mybucket/audio/del.mp3'
+    assert result.key == 'audio/del.mp3'
+    fake.upload_file.assert_called_once_with(missing, 'mybucket', 'audio/del.mp3')
 
 
 # ---------------------------------------------------------------------------

@@ -705,8 +705,14 @@ def test_log_processing_statistics_with_outliers():
         {"processing_time": 12, "size_mb": 16, "duration": 300},
         {"processing_time": 90, "size_mb": 18, "duration": 300},  # outlier
     ]
-    # Just ensure it runs through the outlier / summary branches without error.
-    svc.log_processing_statistics(results)
+    with mock.patch.object(ac, "logger") as mock_logger:
+        ret = svc.log_processing_statistics(results)
+    assert ret is None
+    # The 90s outlier (vs ~37s avg) must trip the performance-outlier warning
+    # branch — proving the outlier path actually ran, not just "didn't crash".
+    assert mock_logger.warning.called
+    warned = " ".join(str(c.args[0]) for c in mock_logger.warning.call_args_list)
+    assert "outlier" in warned.lower()
 
 
 def test_get_performance_recommendations_empty():
@@ -761,7 +767,12 @@ def test_cleanup_chunks_missing_files_no_error(tmp_path):
     svc = AudioChunkingService()
     chunks = [{"path": str(tmp_path / "gone.mp3"), "filename": "gone.mp3"}]
     # Should not raise even though file doesn't exist.
-    svc.cleanup_chunks(chunks, temp_mp3_path=str(tmp_path / "alsogone.mp3"))
+    with mock.patch("os.remove") as mock_remove:
+        ret = svc.cleanup_chunks(chunks, temp_mp3_path=str(tmp_path / "alsogone.mp3"))
+    assert ret is None
+    # Neither the (missing) chunk nor the (missing) temp mp3 exists, so removal
+    # must never be attempted.
+    mock_remove.assert_not_called()
 
 
 def test_cleanup_chunks_remove_error_swallowed(tmp_path):
@@ -769,8 +780,11 @@ def test_cleanup_chunks_remove_error_swallowed(tmp_path):
     f1.write_bytes(b"x")
     svc = AudioChunkingService()
     chunks = [{"path": str(f1), "filename": "c0.mp3"}]
-    with mock.patch("os.remove", side_effect=OSError("denied")):
-        svc.cleanup_chunks(chunks)  # warning logged, no raise
+    with mock.patch("os.remove", side_effect=OSError("denied")) as mock_remove:
+        ret = svc.cleanup_chunks(chunks)  # warning logged, no raise
+    assert ret is None
+    # The file exists, so removal WAS attempted; the OSError was swallowed.
+    mock_remove.assert_called_once_with(str(f1))
 
 
 # ---------------------------------------------------------------------------
