@@ -295,6 +295,53 @@ def test_round_robin_across_two_users(track):
     assert third.user_id == u1
 
 
+def test_round_robin_cursor_advances_across_three_users(track):
+    """The fairness cursor must advance to the user AFTER the last-claimed one.
+
+    Mutation guard for `_claim_next_job` line 188
+    (`if last_user_id is not None and last_user_id in user_ids:`):
+    the `is not None`->`is None` mutation collapses the round-robin to always
+    picking ``user_ids[0]`` (the lowest min(created_at) user). We make the
+    just-claimed user u1 *retain* the globally-oldest queued job so it stays at
+    ``user_ids[0]``; correct round-robin must still skip past it to u2, while the
+    mutant would re-pick u1.
+    """
+    u1 = _make_user(); track.user_ids.append(u1)
+    u2 = _make_user(); track.user_ids.append(u2)
+    u3 = _make_user(); track.user_ids.append(u3)
+    # u1 owns TWO recordings/jobs so it keeps a queued job after the first claim.
+    r1a = _make_recording(u1); track.recording_ids.append(r1a)
+    r1b = _make_recording(u1); track.recording_ids.append(r1b)
+    r2 = _make_recording(u2); track.recording_ids.append(r2)
+    r3 = _make_recording(u3); track.recording_ids.append(r3)
+
+    j1a = job_queue.enqueue(u1, r1a, "transcribe"); track.job_ids.append(j1a)
+    j1b = job_queue.enqueue(u1, r1b, "transcribe"); track.job_ids.append(j1b)
+    j2 = job_queue.enqueue(u2, r2, "transcribe"); track.job_ids.append(j2)
+    j3 = job_queue.enqueue(u3, r3, "transcribe"); track.job_ids.append(j3)
+
+    # Force created_at so the user ordering by min(created_at) is u1 < u2 < u3,
+    # AND u1 still holds the oldest queued job even after one of its jobs is
+    # claimed (both u1 jobs predate u2/u3).
+    now = datetime.utcnow()
+    db.session.get(ProcessingJob, j1a).created_at = now - timedelta(minutes=30)
+    db.session.get(ProcessingJob, j1b).created_at = now - timedelta(minutes=29)
+    db.session.get(ProcessingJob, j2).created_at = now - timedelta(minutes=20)
+    db.session.get(ProcessingJob, j3).created_at = now - timedelta(minutes=10)
+    db.session.commit()
+
+    first = job_queue._claim_next_job(["transcribe"], "transcription")
+    assert first.user_id == u1            # cursor was None -> user_ids[0] == u1
+    assert job_queue._last_user_id_transcription == u1
+
+    second = job_queue._claim_next_job(["transcribe"], "transcription")
+    # u1 still owns the globally-oldest queued job (j1b), so user_ids stays
+    # [u1, u2, u3]. Correct round-robin advances PAST u1 to u2. The mutant
+    # (is None) ignores the cursor and re-picks user_ids[0] == u1.
+    assert second.user_id == u2
+    assert job_queue._last_user_id_transcription == u2
+
+
 # --------------------------------------------------------------------------
 # _process_job dispatch routing
 # --------------------------------------------------------------------------
@@ -336,6 +383,65 @@ def test_process_job_transcribe_dispatches_task_and_completes(track):
     refreshed = db.session.get(ProcessingJob, jid)
     assert refreshed.status == "completed"
     assert refreshed.completed_at is not None
+
+
+def test_transcribe_uses_original_filename_when_set(track):
+    """When recording.original_filename is set, it is passed to the ASR task.
+
+    Mutation guard for `_run_transcription` line 432
+    (`recording.original_filename or os.path.basename(filepath)`): the
+    `or`->`and` mutation yields `original_filename and basename` == basename
+    whenever original_filename is truthy, wrongly dropping the real filename.
+    The materialized basename ("mat_name.mp3") is deliberately different from
+    the original_filename ("my recording.mp3") so the two are distinguishable.
+    """
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED",
+                          original_filename="my recording.mp3")
+    track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "transcribe"); track.job_ids.append(jid)
+    job = _claim(rid, ["transcribe"], "transcription")
+
+    fake_task = MagicMock()
+    storage = _fake_materialized("/var/tmp/mat_name.mp3")
+    with patch("src.tasks.processing.transcribe_audio_task", fake_task), \
+         patch("src.services.storage.get_storage_service", return_value=storage), \
+         patch("os.path.exists", return_value=True), \
+         patch.object(job_queue, "_emit_started_webhook"), \
+         patch.object(job_queue, "_emit_completion_webhook"):
+        job_queue._process_job(job)
+
+    fake_task.assert_called_once()
+    # positional: app_context, recording_id, filepath, filename_for_asr, start
+    args = fake_task.call_args[0]
+    assert args[3] == "my recording.mp3"     # original filename, NOT basename
+
+
+def test_transcribe_falls_back_to_basename_when_no_original_filename(track):
+    """When original_filename is empty, the materialized basename is used.
+
+    Same line-432 guard from the other direction: with an empty
+    original_filename, the correct `or` expression returns
+    basename(filepath); the `and` mutant would return the empty string.
+    """
+    uid = _make_user(); track.user_ids.append(uid)
+    rid = _make_recording(uid, status="QUEUED", original_filename="")
+    track.recording_ids.append(rid)
+    jid = job_queue.enqueue(uid, rid, "transcribe"); track.job_ids.append(jid)
+    job = _claim(rid, ["transcribe"], "transcription")
+
+    fake_task = MagicMock()
+    storage = _fake_materialized("/var/tmp/materialized_basename.mp3")
+    with patch("src.tasks.processing.transcribe_audio_task", fake_task), \
+         patch("src.services.storage.get_storage_service", return_value=storage), \
+         patch("os.path.exists", return_value=True), \
+         patch.object(job_queue, "_emit_started_webhook"), \
+         patch.object(job_queue, "_emit_completion_webhook"):
+        job_queue._process_job(job)
+
+    fake_task.assert_called_once()
+    args = fake_task.call_args[0]
+    assert args[3] == "materialized_basename.mp3"   # basename fallback, not ""
 
 
 def test_process_job_summarize_dispatches_summary_task(track):

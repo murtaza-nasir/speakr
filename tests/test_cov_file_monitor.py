@@ -386,6 +386,80 @@ class TestUpdateUserCache(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Admin user selection in _update_user_cache (line 101: is_admin=True)
+# ---------------------------------------------------------------------------
+
+class TestAdminUserSelection(unittest.TestCase):
+    """Guards the admin-directory scan against picking the wrong user.
+
+    _update_user_cache caches the admin via User.query.filter_by(is_admin=True).
+    _scan_admin_directory then processes that cached user's directory. If the
+    query flips to is_admin=False it would cache a NON-admin user, so every
+    assertion below checks that the user driving the admin scan is_admin=True.
+    """
+
+    def setUp(self):
+        self.ctx = app.app_context()
+        self.ctx.push()
+        self.temp_dir = tempfile.mkdtemp()
+        self.admin_username = _uniq('cov_fm_admin')
+        self.normal_username = _uniq('cov_fm_normal')
+        self.admin = User(
+            username=self.admin_username,
+            email=f'{self.admin_username}@test.com',
+            password='fakehash',
+            is_admin=True,
+        )
+        self.normal = User(
+            username=self.normal_username,
+            email=f'{self.normal_username}@test.com',
+            password='fakehash',
+            is_admin=False,
+        )
+        db.session.add_all([self.admin, self.normal])
+        db.session.commit()
+        self.admin_id = self.admin.id
+        self.normal_id = self.normal.id
+
+    def tearDown(self):
+        for uid in (self.admin_id, self.normal_id):
+            u = db.session.get(User, uid)
+            if u:
+                db.session.delete(u)
+                db.session.commit()
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+        self.ctx.pop()
+
+    def test_admin_scan_targets_an_admin_user_not_a_normal_user(self):
+        monitor = FileMonitor(self.temp_dir, check_interval=30, mode='admin_only')
+        monitor._last_user_cache_update = 0  # force a real refresh
+
+        monitor._update_user_cache()
+
+        # The cached admin id must resolve to a user flagged is_admin=True.
+        # (Shared DB: there may be other admins; we don't assume *which* admin
+        # is picked, only that it IS an admin. The is_admin=True->False mutant
+        # would cache a non-admin user, failing this.)
+        self.assertIsNotNone(monitor._admin_user_id)
+        selected = db.session.get(User, monitor._admin_user_id)
+        self.assertIsNotNone(selected)
+        self.assertTrue(selected.is_admin)
+        # The normal user we created must never be the one selected.
+        self.assertNotEqual(monitor._admin_user_id, self.normal_id)
+
+        # And the admin directory scan drives _process_file with that admin's id.
+        scanned = []
+        monitor._scan_directory_for_user = lambda d, u, **kw: scanned.append(u)
+        monitor._scan_tag_subdirectories = lambda *a, **kw: None
+        monitor._scan_admin_directory()
+
+        self.assertEqual(scanned, [monitor._admin_user_id])
+        scanned_user = db.session.get(User, scanned[0])
+        self.assertTrue(scanned_user.is_admin)
+        self.assertNotEqual(scanned[0], self.normal_id)
+
+
+# ---------------------------------------------------------------------------
 # Full _process_file flow (heavy externals mocked)
 # ---------------------------------------------------------------------------
 

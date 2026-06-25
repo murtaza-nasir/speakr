@@ -672,5 +672,104 @@ def test_update_auto_speaker_labelling_persists(cleanup_users):
     assert refreshed.auto_speaker_labelling_threshold == 'high'
 
 
+# ---------------------------------------------------------------------------
+# Registration-domain parsing edge cases (is_registration_domain_allowed)
+# ---------------------------------------------------------------------------
+
+def test_registration_domain_empty_env_allows_all(app_ctx):
+    # auth.py:112-113 — REGISTRATION_ALLOWED_DOMAINS unset/empty ⇒ no
+    # restriction ⇒ every domain is allowed.
+    with _envset(REGISTRATION_ALLOWED_DOMAINS=''):
+        assert auth_mod.is_registration_domain_allowed('a@anywhere.com') is True
+        assert auth_mod.is_registration_domain_allowed('b@evil.example') is True
+
+
+def test_registration_domain_whitespace_env_allows_all(app_ctx):
+    # auth.py:112 — a whitespace-only value strips to nothing ⇒ still no
+    # restriction. (The `or not domains_env.strip()` clause covers this.)
+    with _envset(REGISTRATION_ALLOWED_DOMAINS='   '):
+        assert auth_mod.is_registration_domain_allowed('a@anywhere.com') is True
+
+
+def test_registration_domain_commas_only_allows_all(app_ctx):
+    # auth.py:115-117 — a value with content but no real domains after the
+    # comma split (so `allowed` is empty) ⇒ treated as no restriction ⇒ True.
+    # This reaches line 117 specifically; `return True`->`return False` here
+    # would wrongly reject every registration.
+    with _envset(REGISTRATION_ALLOWED_DOMAINS=', ,'):
+        assert auth_mod.is_registration_domain_allowed('a@anywhere.com') is True
+        assert auth_mod.is_registration_domain_allowed('b@example.com') is True
+
+
+def test_registration_domain_allowlist_in_and_out(app_ctx):
+    # auth.py:119-124 — a real allowlist gates by domain: in-list True,
+    # out-of-list False. Case-insensitive on both env and email side.
+    with _envset(REGISTRATION_ALLOWED_DOMAINS='Example.com, corp.net'):
+        assert auth_mod.is_registration_domain_allowed('user@example.com') is True
+        assert auth_mod.is_registration_domain_allowed('user@CORP.NET') is True
+        assert auth_mod.is_registration_domain_allowed('user@evil.com') is False
+
+
+# ---------------------------------------------------------------------------
+# SSO client initialization on the login route (auth.py:243-244)
+# ---------------------------------------------------------------------------
+
+@contextlib.contextmanager
+def _sso_enabled_with_config():
+    """SSO enabled + a usable config, WITHOUT patching the client helpers so
+    each test controls get_sso_client / init_sso_client itself."""
+    with mock.patch.object(auth_mod, 'is_sso_enabled', return_value=True), \
+            mock.patch.object(auth_mod, 'get_sso_config',
+                              return_value={'provider_name': 'Keycloak',
+                                            'redirect_uri': 'https://app/cb'}):
+        yield
+
+
+def test_sso_login_uses_cached_client_without_reinit():
+    # auth.py:243 — when get_sso_client() returns a client, the `or` must
+    # short-circuit and init_sso_client must NOT be called. The `or`->`and`
+    # mutation would call init_sso_client (and use ITS return value instead).
+    oauth = mock.MagicMock()
+    oauth.sso.authorize_redirect.return_value = 'redirecting'
+    with _sso_enabled_with_config(), \
+            mock.patch.object(auth_mod, 'get_sso_client', return_value=oauth), \
+            mock.patch.object(auth_mod, 'init_sso_client') as init_mock:
+        client = app.test_client()
+        resp = client.get('/auth/sso/login')
+        assert resp.status_code == 200
+        init_mock.assert_not_called()
+        oauth.sso.authorize_redirect.assert_called_once()
+
+
+def test_sso_login_inits_client_when_none_cached():
+    # auth.py:243 — get_sso_client() None ⇒ init_sso_client IS invoked and its
+    # client is used. Under `or`->`and`, `None and init_sso_client(...)`
+    # short-circuits, init is never called, and the route bails to /login.
+    oauth = mock.MagicMock()
+    oauth.sso.authorize_redirect.return_value = 'redirecting'
+    with _sso_enabled_with_config(), \
+            mock.patch.object(auth_mod, 'get_sso_client', return_value=None), \
+            mock.patch.object(auth_mod, 'init_sso_client', return_value=oauth) as init_mock:
+        client = app.test_client()
+        resp = client.get('/auth/sso/login')
+        assert resp.status_code == 200
+        init_mock.assert_called_once()
+        oauth.sso.authorize_redirect.assert_called_once()
+
+
+def test_sso_login_bails_to_login_when_client_unavailable():
+    # auth.py:244 — when neither a cached nor a freshly-initialized client is
+    # available (both None), `if not oauth` must redirect to login. The
+    # `if not oauth`->`if oauth` mutation would instead fall through and
+    # dereference None (no 302-to-login).
+    with _sso_enabled_with_config(), \
+            mock.patch.object(auth_mod, 'get_sso_client', return_value=None), \
+            mock.patch.object(auth_mod, 'init_sso_client', return_value=None):
+        client = app.test_client()
+        resp = client.get('/auth/sso/login')
+        assert resp.status_code == 302
+        assert '/login' in resp.headers['Location']
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))

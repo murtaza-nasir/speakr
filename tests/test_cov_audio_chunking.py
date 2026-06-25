@@ -208,6 +208,54 @@ def test_config_connector_recommended_soft():
 
 
 # ---------------------------------------------------------------------------
+# get_effective_chunking_config: cfg.enabled assertions
+#
+# These pin the `enabled` flag of the EffectiveChunkingConfig returned by each
+# distinct branch. The mode/limit/source assertions above don't touch `enabled`,
+# so a mutated `enabled=` field in these branches would otherwise go unnoticed.
+# ---------------------------------------------------------------------------
+
+def test_config_connector_hard_size_limit_enabled():
+    # Connector hard size-limit branch (no user override): chunking is REQUIRED,
+    # so enabled must be True.
+    specs = make_specs(max_file_size_bytes=100 * 1024 * 1024)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.enabled is True
+    assert cfg.source == "connector_limit"
+
+
+def test_config_connector_and_user_size_min_enabled(monkeypatch):
+    # Same hard size-limit return, now via the MIN(user, connector) path: still
+    # a required-chunking branch, enabled must be True.
+    monkeypatch.setenv("CHUNK_LIMIT", "10MB")
+    specs = make_specs(max_file_size_bytes=100 * 1024 * 1024)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.enabled is True
+    assert cfg.source == "user_and_connector"
+
+
+def test_config_connector_recommended_soft_enabled():
+    # Connector-recommended (soft, no hard limit) branch: chunking is optional
+    # but enabled, so enabled must be True.
+    specs = make_specs(recommended_chunk_seconds=480)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.enabled is True
+    assert cfg.source == "connector_recommended"
+
+
+def test_config_disabled_branch_enabled_false(monkeypatch):
+    # Disabled-via-env branch (ENABLE_CHUNKING=false) returns the disabled config
+    # with enabled=False, regardless of connector specs (as long as there are no
+    # hard limits and the connector doesn't chunk internally).
+    monkeypatch.setenv("ENABLE_CHUNKING", "false")
+    specs = make_specs(recommended_chunk_seconds=480)
+    cfg = get_effective_chunking_config(specs)
+    assert cfg.enabled is False
+    assert cfg.mode == "none"
+    assert cfg.source == "disabled"
+
+
+# ---------------------------------------------------------------------------
 # AudioChunkingService construction / needs_chunking
 # ---------------------------------------------------------------------------
 
