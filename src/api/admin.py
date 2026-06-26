@@ -260,7 +260,14 @@ def admin_update_user(user_id):
         user.password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
     
     if 'is_admin' in data:
-        user.is_admin = data['is_admin']
+        new_is_admin = bool(data['is_admin'])
+        # Guard against demoting the last remaining admin, which would lock
+        # everyone out of the admin panel with no in-app recovery.
+        if user.is_admin and not new_is_admin:
+            other_admins = User.query.filter(User.is_admin.is_(True), User.id != user.id).count()
+            if other_admins == 0:
+                return jsonify({'error': 'Cannot remove admin rights from the last remaining admin.'}), 400
+        user.is_admin = new_is_admin
 
     if 'can_share_publicly' in data:
         user.can_share_publicly = data['can_share_publicly']
@@ -376,11 +383,18 @@ def admin_toggle_admin(user_id):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
-    
+
+    # Guard against demoting the last remaining admin (defence in depth; the
+    # self-status check above already prevents the acting admin demoting itself).
+    if user.is_admin:
+        other_admins = User.query.filter(User.is_admin.is_(True), User.id != user.id).count()
+        if other_admins == 0:
+            return jsonify({'error': 'Cannot remove admin rights from the last remaining admin.'}), 400
+
     # Toggle admin status
     user.is_admin = not user.is_admin
     db.session.commit()
-    
+
     return jsonify({'success': True, 'is_admin': user.is_admin})
 
 

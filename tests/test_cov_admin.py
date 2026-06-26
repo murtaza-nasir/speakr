@@ -336,6 +336,69 @@ def test_toggle_admin_not_found_404(admin_client):
     assert resp.status_code == 404
 
 
+# --- last-admin lockout guard ----------------------------------------------
+# The admin flag is global, so these tests control the global admin set: the
+# "last admin" trigger demotes every other admin (restored afterwards) so the
+# target is genuinely the only one left.
+
+def _demote_other_admins(keep_id):
+    others = User.query.filter(User.is_admin.is_(True), User.id != keep_id).all()
+    ids = [u.id for u in others]
+    for u in others:
+        u.is_admin = False
+    db.session.commit()
+    return ids
+
+
+def _restore_admins(ids):
+    for uid in ids:
+        u = db.session.get(User, uid)
+        if u:
+            u.is_admin = True
+    db.session.commit()
+
+
+def test_update_user_promote_to_admin(admin_client, normal_user):
+    resp = admin_client.put(f'/admin/users/{normal_user.id}', json={'is_admin': True})
+    assert resp.status_code == 200
+    db.session.refresh(normal_user)
+    assert normal_user.is_admin is True
+
+
+def test_update_user_cannot_demote_last_admin(admin_client, admin_user):
+    saved = _demote_other_admins(admin_user.id)
+    try:
+        resp = admin_client.put(f'/admin/users/{admin_user.id}', json={'is_admin': False})
+        assert resp.status_code == 400
+        db.session.refresh(admin_user)
+        assert admin_user.is_admin is True
+    finally:
+        _restore_admins(saved)
+
+
+def test_update_user_can_demote_when_other_admin_exists(admin_client, admin_user):
+    other = _mk_user(is_admin=True)
+    try:
+        resp = admin_client.put(f'/admin/users/{other.id}', json={'is_admin': False})
+        assert resp.status_code == 200
+        db.session.refresh(other)
+        assert other.is_admin is False
+    finally:
+        db.session.delete(other)
+        db.session.commit()
+
+
+def test_toggle_admin_demote_other_admin_ok(admin_client, admin_user):
+    other = _mk_user(is_admin=True)
+    try:
+        resp = admin_client.post(f'/admin/users/{other.id}/toggle-admin')
+        assert resp.status_code == 200
+        assert resp.get_json()['is_admin'] is False
+    finally:
+        db.session.delete(other)
+        db.session.commit()
+
+
 def test_delete_user_self_blocked(admin_client, admin_user):
     resp = admin_client.delete(f'/admin/users/{admin_user.id}')
     assert resp.status_code == 400
