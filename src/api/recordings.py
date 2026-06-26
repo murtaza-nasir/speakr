@@ -72,7 +72,7 @@ def _resolve_transcription_model(value):
     # Fall back to admin-saved default when no override flowed through.
     default = SystemSetting.get_setting('transcription_default_model', None)
     return default or None
-from src.tasks.processing import format_transcription_for_llm
+from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
 from src.utils.ffmpeg_utils import FFmpegError, FFmpegNotFoundError
 from src.utils.titles import resolve_upload_title
 from src.services.speaker import update_speaker_usage, identify_unidentified_speakers_from_text
@@ -3023,7 +3023,13 @@ def chat_incognito():
         user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
         user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
 
-        formatted_transcription = format_transcription_for_llm(transcription)
+        _chat_ts = bool(current_user.is_authenticated and current_user.chat_include_timestamps)
+        formatted_transcription = format_transcription_for_llm(
+            transcription,
+            include_timestamps=_chat_ts,
+            template_format=_resolve_timestamp_template_format(
+                current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
+        )
 
         # Get configurable transcript length limit for chat
         transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
@@ -3747,7 +3753,14 @@ def chat_with_transcription():
         user_title = current_user.job_title if current_user.is_authenticated and current_user.job_title else "a professional"
         user_company = current_user.company if current_user.is_authenticated and current_user.company else "their organization"
 
-        formatted_transcription = format_transcription_for_llm(recording.transcription)
+        # Optionally include timestamps in the chat transcript per the user's setting (#304).
+        _chat_ts = bool(current_user.is_authenticated and current_user.chat_include_timestamps)
+        formatted_transcription = format_transcription_for_llm(
+            recording.transcription,
+            include_timestamps=_chat_ts,
+            template_format=_resolve_timestamp_template_format(
+                current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
+        )
 
         # Get configurable transcript length limit for chat
         transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)

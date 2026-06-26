@@ -1612,6 +1612,13 @@
     "hints": "Dicas",
     "hintsUsed": "Dicas de transcrição usadas nesta gravação"
   },
+  "timestamps": {
+    "title": "Marcações de tempo da transcrição",
+    "description": "Inclua marcações de tempo na transcrição enviada à IA para que ela possa indicar quando algo foi dito. Use o formato padrão ou um dos seus modelos de transcrição.",
+    "summaryLabel": "Adicionar marcações de tempo à transcrição do resumo",
+    "chatLabel": "Adicionar marcações de tempo à transcrição do chat",
+    "defaultFormat": "Formato de marcação de tempo padrão"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Identificar Oradores Automaticamente",
     "bubble": "Bolha",

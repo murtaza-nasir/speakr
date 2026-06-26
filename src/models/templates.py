@@ -21,8 +21,10 @@ class TranscriptTemplate(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
-    user = db.relationship('User', backref=db.backref('transcript_templates', lazy=True, cascade='all, delete-orphan'))
+    # Relationships. foreign_keys is explicit because User also has FK columns
+    # pointing back here (summary/chat timestamp template, #304), which would
+    # otherwise make this join ambiguous.
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('transcript_templates', lazy=True, cascade='all, delete-orphan'))
 
     def to_dict(self):
         """Convert model to dictionary representation."""

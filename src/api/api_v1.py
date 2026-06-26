@@ -2353,7 +2353,7 @@ def start_summarization(recording_id):
 def chat_with_recording(recording_id):
     """Chat about a recording's content."""
     from src.services.llm import chat_client, call_chat_completion
-    from src.tasks.processing import format_transcription_for_llm
+    from src.tasks.processing import format_transcription_for_llm, _resolve_timestamp_template_format
     from src.models import SystemSetting
 
     recording = db.session.get(Recording, recording_id)
@@ -2377,8 +2377,14 @@ def chat_with_recording(recording_id):
     if chat_client is None:
         return jsonify({'error': 'Chat service not available'}), 503
 
-    # Format transcription
-    formatted_transcription = format_transcription_for_llm(recording.transcription)
+    # Format transcription (optionally with timestamps per the user's setting, #304)
+    _chat_ts = bool(current_user.chat_include_timestamps)
+    formatted_transcription = format_transcription_for_llm(
+        recording.transcription,
+        include_timestamps=_chat_ts,
+        template_format=_resolve_timestamp_template_format(
+            current_user, current_user.chat_timestamp_template_id) if _chat_ts else None,
+    )
 
     # Get transcript limit
     transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)

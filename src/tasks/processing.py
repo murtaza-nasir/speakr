@@ -204,11 +204,32 @@ def apply_team_tag_auto_shares(recording_id):
         current_app.logger.info(f"Created {shares_created} auto-shares for recording {recording_id} after processing completed")
 
 
-def format_transcription_for_llm(transcription_text):
+def _resolve_timestamp_template_format(user, template_id):
+    """Return the format string of a user's transcript template, or None (#304).
+
+    Scoped to the user's own templates so one user can't reference another's.
+    """
+    if not template_id or user is None:
+        return None
+    from src.models import TranscriptTemplate
+    tpl = TranscriptTemplate.query.filter_by(id=template_id, user_id=user.id).first()
+    return tpl.template if tpl else None
+
+
+def format_transcription_for_llm(transcription_text, include_timestamps=False, template_format=None):
     """
     Formats transcription for LLM. If it's our simplified JSON, convert it to plain text.
     Otherwise, return as is.
+
+    When include_timestamps is True the transcript is rendered with a transcript
+    template (the given template_format, or a built-in default timestamp format)
+    so the summarizer / chat can reference times (#304).
     """
+    if include_timestamps:
+        from src.utils.transcript_render import render_transcription
+        rendered = render_transcription(transcription_text, template_format)
+        if rendered is not None:
+            return rendered
     try:
         transcription_data = json.loads(transcription_text)
         if isinstance(transcription_data, list):
@@ -607,8 +628,16 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
             user_summary_prompt = recording.owner.summary_prompt
             user_output_language = recording.owner.output_language
 
-        # Format transcription for LLM (convert JSON to clean text format like clipboard copy)
-        formatted_transcription = format_transcription_for_llm(recording.transcription)
+        # Format transcription for LLM (convert JSON to clean text format like clipboard copy).
+        # Optionally include timestamps for the summarizer per the owner's setting (#304).
+        _owner = recording.owner
+        _summary_ts = bool(_owner and _owner.summary_include_timestamps)
+        formatted_transcription = format_transcription_for_llm(
+            recording.transcription,
+            include_timestamps=_summary_ts,
+            template_format=_resolve_timestamp_template_format(
+                _owner, _owner.summary_timestamp_template_id) if _summary_ts else None,
+        )
 
         # Get configurable transcript length limit
         transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)

@@ -608,6 +608,22 @@ def account():
             initial_prompt = request.form.get('transcription_initial_prompt')
             current_user.transcription_initial_prompt = initial_prompt if initial_prompt else None
 
+            # Per-feature transcript timestamp settings (#304). A template id is
+            # only accepted if it belongs to the user; otherwise fall back to the
+            # built-in default format (None).
+            def _ts_template_id(field):
+                raw = (request.form.get(field) or '').strip()
+                if not raw.isdigit():
+                    return None
+                from src.models import TranscriptTemplate
+                tpl = TranscriptTemplate.query.filter_by(id=int(raw), user_id=current_user.id).first()
+                return tpl.id if tpl else None
+
+            current_user.summary_include_timestamps = 'summary_include_timestamps' in request.form
+            current_user.summary_timestamp_template_id = _ts_template_id('summary_timestamp_template_id')
+            current_user.chat_include_timestamps = 'chat_include_timestamps' in request.form
+            current_user.chat_timestamp_template_id = _ts_template_id('chat_timestamp_template_id')
+
         # Only update diarize if it's not locked by env var
         if 'ASR_DIARIZE' not in os.environ:
             current_user.diarize = 'diarize' in request.form

@@ -1621,6 +1621,13 @@
     "hints": "Hints",
     "hintsUsed": "Transcription hints used for this recording"
   },
+  "timestamps": {
+    "title": "Transcript Timestamps",
+    "description": "Include time markers in the transcript sent to the AI so it can reference when things were said. Use the default format, or one of your transcript templates.",
+    "summaryLabel": "Add timestamps to the summarizer's transcript",
+    "chatLabel": "Add timestamps to the chat transcript",
+    "defaultFormat": "Default timestamp format"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Auto-identify Speakers",
     "bubble": "Bubble",

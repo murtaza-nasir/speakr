@@ -339,6 +339,16 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'user', 'transcription_initial_prompt', 'TEXT'):
             app.logger.info("Added transcription_initial_prompt column to user table")
 
+        # Per-feature transcript timestamp settings (#304)
+        if add_column_if_not_exists(engine, 'user', 'summary_include_timestamps', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added summary_include_timestamps column to user table")
+        if add_column_if_not_exists(engine, 'user', 'summary_timestamp_template_id', 'INTEGER'):
+            app.logger.info("Added summary_timestamp_template_id column to user table")
+        if add_column_if_not_exists(engine, 'user', 'chat_include_timestamps', 'BOOLEAN DEFAULT 0'):
+            app.logger.info("Added chat_include_timestamps column to user table")
+        if add_column_if_not_exists(engine, 'user', 'chat_timestamp_template_id', 'INTEGER'):
+            app.logger.info("Added chat_timestamp_template_id column to user table")
+
         # UI/display preferences
         if add_column_if_not_exists(engine, 'user', 'show_timestamps_simple_view', 'BOOLEAN DEFAULT 0'):
             app.logger.info("Added show_timestamps_simple_view column to user table")

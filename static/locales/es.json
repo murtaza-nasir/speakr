@@ -1612,6 +1612,13 @@
     "hints": "Indicaciones",
     "hintsUsed": "Indicaciones de transcripción usadas en esta grabación"
   },
+  "timestamps": {
+    "title": "Marcas de tiempo de la transcripción",
+    "description": "Incluye marcas de tiempo en la transcripción enviada a la IA para que pueda indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
+    "summaryLabel": "Añadir marcas de tiempo a la transcripción del resumen",
+    "chatLabel": "Añadir marcas de tiempo a la transcripción del chat",
+    "defaultFormat": "Formato de marca de tiempo predeterminado"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Identificar Hablantes Automáticamente",
     "bubble": "Burbuja",

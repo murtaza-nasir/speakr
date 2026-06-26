@@ -1612,6 +1612,13 @@
     "hints": "提示",
     "hintsUsed": "本次录音使用的转录提示"
   },
+  "timestamps": {
+    "title": "转录时间戳",
+    "description": "在发送给 AI 的转录中加入时间标记，使其能够引用某句话的发生时间。使用默认格式，或选择您的某个转录模板。",
+    "summaryLabel": "为摘要使用的转录添加时间戳",
+    "chatLabel": "为聊天使用的转录添加时间戳",
+    "defaultFormat": "默认时间戳格式"
+  },
   "transcription": {
     "autoIdentifySpeakers": "自动识别发言人",
     "bubble": "气泡",

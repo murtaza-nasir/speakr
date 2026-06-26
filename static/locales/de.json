@@ -1612,6 +1612,13 @@
     "hints": "Hinweise",
     "hintsUsed": "Für diese Aufnahme verwendete Transkriptionshinweise"
   },
+  "timestamps": {
+    "title": "Transkript-Zeitstempel",
+    "description": "Fügen Sie dem an die KI gesendeten Transkript Zeitmarken hinzu, damit sie sich darauf beziehen kann, wann etwas gesagt wurde. Verwenden Sie das Standardformat oder eine Ihrer Transkriptvorlagen.",
+    "summaryLabel": "Zeitstempel zum Transkript des Zusammenfassers hinzufügen",
+    "chatLabel": "Zeitstempel zum Chat-Transkript hinzufügen",
+    "defaultFormat": "Standard-Zeitstempelformat"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Sprecher automatisch identifizieren",
     "bubble": "Blase",

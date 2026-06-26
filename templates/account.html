@@ -868,6 +868,49 @@
                             </div>
                         </div>
 
+                        <!-- Transcript Timestamps (#304) -->
+                        <div class="bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                            <h3 class="text-lg font-medium text-[var(--text-secondary)] mb-2">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span data-i18n="timestamps.title">Transcript Timestamps</span>
+                            </h3>
+                            <p class="text-xs text-[var(--text-muted)] mb-4" data-i18n="timestamps.description">
+                                Include time markers in the transcript sent to the AI so it can reference when things were said. Use the default format, or one of your transcript templates.
+                            </p>
+
+                            <div class="mb-4">
+                                <label class="flex items-start space-x-3">
+                                    <input type="checkbox" name="summary_include_timestamps" id="summary_include_timestamps"
+                                        {% if current_user.summary_include_timestamps %}checked{% endif %}
+                                        class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
+                                    <div>
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="timestamps.summaryLabel">Add timestamps to the summarizer's transcript</span>
+                                    </div>
+                                </label>
+                                <select name="summary_timestamp_template_id" id="summary_timestamp_template_id"
+                                        data-selected="{{ current_user.summary_timestamp_template_id or '' }}"
+                                        class="ts-template-picker mt-2 ml-7 w-[calc(100%-1.75rem)] px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option value="" data-i18n="timestamps.defaultFormat">Default timestamp format</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="flex items-start space-x-3">
+                                    <input type="checkbox" name="chat_include_timestamps" id="chat_include_timestamps"
+                                        {% if current_user.chat_include_timestamps %}checked{% endif %}
+                                        class="mt-1 h-4 w-4 text-[var(--border-accent)] focus:ring-[var(--border-focus)] border-[var(--border-secondary)] rounded">
+                                    <div>
+                                        <span class="block text-sm font-medium text-[var(--text-primary)]" data-i18n="timestamps.chatLabel">Add timestamps to the chat transcript</span>
+                                    </div>
+                                </label>
+                                <select name="chat_timestamp_template_id" id="chat_timestamp_template_id"
+                                        data-selected="{{ current_user.chat_timestamp_template_id or '' }}"
+                                        class="ts-template-picker mt-2 ml-7 w-[calc(100%-1.75rem)] px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]">
+                                    <option value="" data-i18n="timestamps.defaultFormat">Default timestamp format</option>
+                                </select>
+                            </div>
+                        </div>
+
                     </form>
                       </div><!-- /.tab-scroll -->
                       <div class="tab-footer">
@@ -3174,6 +3217,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadSystemInfo();
                 } else if (targetName === 'prompts') {
                     ensureInitialPromptTemplatesLoaded();
+                    loadTimestampTemplatePickers();
                 }
             }
 
@@ -7051,10 +7095,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         // ============================================
         // Initial-Prompt (Transcription) Templates
         // ============================================
-        let ipTemplates = [];
-        let ipCurrentTemplate = null;
-        let ipIsEditing = false;
-        let ipTemplatesLoaded = false;
+        // var (not let) so these hoist: the prompts tab can be activated from a
+        // #prompts hash during page init, before this line runs, and the handler
+        // reads ipTemplatesLoaded — a `let` would throw a TDZ ReferenceError.
+        var ipTemplates = [];
+        var ipCurrentTemplate = null;
+        var ipIsEditing = false;
+        var ipTemplatesLoaded = false;
 
         async function loadInitialPromptTemplates() {
             try {
@@ -7080,6 +7127,28 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 return;
             }
             await loadInitialPromptTemplates();
+        }
+
+        // Populate the per-feature timestamp-format dropdowns (#304) with the
+        // user's transcript templates, preserving each one's saved selection.
+        async function loadTimestampTemplatePickers() {
+            const pickers = document.querySelectorAll('select.ts-template-picker');
+            if (!pickers.length) return;
+            try {
+                const resp = await fetch('/api/transcript-templates');
+                if (!resp.ok) return;
+                const tts = await resp.json();
+                pickers.forEach(sel => {
+                    while (sel.options.length > 1) sel.remove(1);  // keep the "Default" option
+                    tts.forEach(tpl => {
+                        const opt = document.createElement('option');
+                        opt.value = String(tpl.id);
+                        opt.textContent = tpl.name;
+                        sel.appendChild(opt);
+                    });
+                    sel.value = sel.dataset.selected || '';
+                });
+            } catch (_) { /* leave default-only */ }
         }
 
         function renderIpTemplatesList() {

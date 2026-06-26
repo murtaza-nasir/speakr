@@ -62,6 +62,14 @@ class User(db.Model, UserMixin):
     transcription_hotwords = db.Column(db.Text, nullable=True)
     transcription_initial_prompt = db.Column(db.Text, nullable=True)
 
+    # Include timestamps in the transcript sent to the summarizer / chat (#304).
+    # Independent per feature; the *_template_id selects a transcript template to
+    # format the timestamps (null = a built-in default timestamp format).
+    summary_include_timestamps = db.Column(db.Boolean, default=False)
+    summary_timestamp_template_id = db.Column(db.Integer, db.ForeignKey('transcript_template.id', ondelete='SET NULL'), nullable=True)
+    chat_include_timestamps = db.Column(db.Boolean, default=False)
+    chat_timestamp_template_id = db.Column(db.Integer, db.ForeignKey('transcript_template.id', ondelete='SET NULL'), nullable=True)
+
     # UI/display preferences
     show_timestamps_simple_view = db.Column(db.Boolean, default=False)
     editor_autosave = db.Column(db.Boolean, default=False)
