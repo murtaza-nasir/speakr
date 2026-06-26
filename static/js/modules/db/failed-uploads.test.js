@@ -228,3 +228,72 @@ describe('IndexedDB transaction lifetime', () => {
         expect(store.has(999)).toBe(false);
     });
 });
+
+describe('storeFailedUpload structured-clone safety (Proxy metadata)', () => {
+    // A mock whose add() runs structuredClone(value) first — exactly what a real
+    // browser does. The previous mocks skipped this, which is why the
+    // "Proxy object could not be cloned" DataCloneError slipped through: tags /
+    // asrOptions arrive as Vue reactive proxies and IndexedDB rejects them.
+    let store;
+    let originalIndexedDB;
+    let storeFailedUpload;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        store = new Map();
+        let nextId = 1;
+        const makeRequest = (op) => {
+            const request = {};
+            queueMicrotask(() => {
+                try { request.result = op(); request.onsuccess?.(); }
+                catch (err) { request.error = err; request.onerror?.(); }
+            });
+            return request;
+        };
+        const db = {
+            transaction() {
+                const objectStore = {
+                    add: (value) => makeRequest(() => {
+                        // Throws DataCloneError on a Proxy, like a real engine.
+                        const cloned = structuredClone(value);
+                        const id = nextId++;
+                        store.set(id, { ...cloned, id });
+                        return id;
+                    }),
+                };
+                return { objectStore: () => objectStore };
+            },
+            objectStoreNames: { contains: () => true },
+        };
+        originalIndexedDB = global.indexedDB;
+        global.indexedDB = {
+            open: vi.fn(() => {
+                const request = {};
+                queueMicrotask(() => { request.result = db; request.onsuccess?.(); });
+                return request;
+            }),
+        };
+        ({ storeFailedUpload } = await import('./failed-uploads.js'));
+    });
+
+    afterEach(() => { global.indexedDB = originalIndexedDB; });
+
+    it('persists even when tags/asrOptions are reactive proxies', async () => {
+        const file = {
+            name: 'r.webm', size: 8, type: 'audio/webm',
+            arrayBuffer: async () => new ArrayBuffer(8),
+        };
+        // Simulate Vue reactive() state: a Proxy that structuredClone rejects.
+        const reactiveTags = new Proxy([{ id: 1, name: 'Work' }], {});
+        const reactiveAsr = new Proxy({ language: 'en', diarize: true }, {});
+
+        const id = await storeFailedUpload({
+            file, clientId: 'c', tags: reactiveTags, asrOptions: reactiveAsr,
+        });
+
+        expect(id).toBeTruthy();
+        const stored = store.get(id);
+        expect(stored.tags).toEqual([{ id: 1, name: 'Work' }]);
+        expect(stored.asrOptions).toEqual({ language: 'en', diarize: true });
+    });
+});

@@ -49,6 +49,20 @@ export const initDB = () => {
 /**
  * Store a failed upload for later retry
  */
+// IndexedDB's structured clone cannot serialize Vue reactive proxies (tags /
+// asrOptions arrive as reactive state), so objectStore.add() throws a
+// DataCloneError ("Proxy object could not be cloned") and the whole record is
+// lost to the download fallback. Round-trip through JSON to get plain,
+// clone-safe values. fileData (an ArrayBuffer) is already cloneable as-is.
+const toCloneable = (value, fallback) => {
+    if (value == null) return fallback;
+    try {
+        return JSON.parse(JSON.stringify(value));
+    } catch (_) {
+        return fallback;
+    }
+};
+
 export const storeFailedUpload = async (uploadData) => {
     try {
         const db = await initDB();
@@ -58,9 +72,9 @@ export const storeFailedUpload = async (uploadData) => {
             clientId: uploadData.clientId || `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
             fileName: uploadData.file?.name || uploadData.fileName || 'unknown',
             fileSize: uploadData.file?.size || uploadData.fileSize || 0,
-            notes: uploadData.notes || '',
-            tags: uploadData.tags || [],
-            asrOptions: uploadData.asrOptions || {},
+            notes: typeof uploadData.notes === 'string' ? uploadData.notes : toCloneable(uploadData.notes, ''),
+            tags: toCloneable(uploadData.tags, []),
+            asrOptions: toCloneable(uploadData.asrOptions, {}),
             retryCount: uploadData.retryCount || 0,
             lastError: uploadData.error || '',
             fileData: uploadData.fileData || null, // ArrayBuffer of file
