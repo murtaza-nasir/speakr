@@ -3267,6 +3267,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
+            // Keep the address bar in sync with the open recording so links are
+            // shareable/bookmarkable (#301). replaceState avoids history spam;
+            // the path is only changed (query + hash preserved). Incognito (id
+            // 'incognito') and the list view map back to '/'.
+            watch(selectedRecording, (rec) => {
+                try {
+                    const path = (rec && typeof rec.id === 'number') ? `/recordings/${rec.id}` : '/';
+                    if (window.location.pathname !== path) {
+                        window.history.replaceState({}, '', path + window.location.search + window.location.hash);
+                    }
+                } catch (_) { /* best-effort */ }
+            });
+
             watch(sortBy, (newValue) => {
                 localStorage.setItem('recordingsSortBy', newValue);
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
@@ -3564,6 +3577,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 } catch (_) { /* no-op: param parsing/replaceState are best-effort */ }
 
+                // Deep link to a specific recording: /recordings/<id> (#301).
+                // Captured before load; selected once recordings are in.
+                let deepLinkRecordingId = null;
+                try {
+                    const m = window.location.pathname.match(/^\/recordings\/(\d+)\/?$/);
+                    if (m) deepLinkRecordingId = m[1];
+                } catch (_) { /* best-effort */ }
+
                 // Load initial data
                 await Promise.all([
                     recordingsComposable.loadRecordings(),
@@ -3579,6 +3600,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (wantUploadDeepLink) {
                     await nextTick();
                     uiComposable.switchToUploadView();
+                } else if (deepLinkRecordingId) {
+                    // Honour the /recordings/<id> deep link now that data is loaded.
+                    await recordingsComposable.selectRecordingById(deepLinkRecordingId);
                 }
 
                 // Clean up orphaned incognito data if we're not viewing incognito recording

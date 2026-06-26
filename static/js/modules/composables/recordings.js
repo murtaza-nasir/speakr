@@ -287,6 +287,27 @@ export function useRecordings(state, utils, reprocessComposable) {
         }
     };
 
+    // Select a recording by ID, used by the /recordings/<id> deep link (#301).
+    // Resolves from the loaded list when possible, otherwise fetches it so the
+    // target works even when it isn't on the current page or is a shared one.
+    // Returns true if the recording was found and selected.
+    const selectRecordingById = async (id) => {
+        if (id == null) return false;
+        const existing = recordings.value.find(r => String(r.id) === String(id));
+        if (existing) {
+            await selectRecording(existing);
+            return true;
+        }
+        try {
+            const resp = await fetch(`/api/recordings/${id}`);
+            if (resp.ok) {
+                await selectRecording(await resp.json());
+                return true;
+            }
+        } catch (_) { /* unknown / inaccessible id — stay on the list */ }
+        return false;
+    };
+
     const hasUnsavedRecording = () => {
         return isRecording.value || audioBlobURL.value;
     };
@@ -483,6 +504,7 @@ export function useRecordings(state, utils, reprocessComposable) {
         loadFolders,
         loadSpeakers,
         selectRecording,
+        selectRecordingById,
         hasUnsavedRecording,
         toggleInbox,
         toggleHighlight,

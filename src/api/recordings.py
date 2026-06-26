@@ -1372,8 +1372,11 @@ def reset_status(recording_id):
 
 
 @recordings_bp.route('/')
+@recordings_bp.route('/recordings/<int:recording_id>')
 @login_required
-def index():
+def index(recording_id=None):
+    # recording_id is a deep link (#301): the server just serves the SPA shell
+    # here; the frontend reads it from the path and pre-selects the recording.
     # Check if user is a group admin
     is_team_admin = GroupMembership.query.filter_by(
         user_id=current_user.id,
