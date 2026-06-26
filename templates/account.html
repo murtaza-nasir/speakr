@@ -853,6 +853,9 @@
                                         <label for="transcription_initial_prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="account.defaultInitialPrompt">
                                             Default Initial Prompt
                                         </label>
+                                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="transcription_initial_prompt" style="display:none">
+                                            <option value="">Insert a saved prompt…</option>
+                                        </select>
                                         <textarea name="transcription_initial_prompt" id="transcription_initial_prompt" rows="2"
                                                   data-i18n-placeholder="account.defaultInitialPromptPlaceholder"
                                                   placeholder="e.g., This is a meeting about AI transcription tools. The speakers discuss CTranslate2, PyAnnote, and SDRs."
@@ -1238,6 +1241,9 @@
                               <button id="subtab-naming" class="tab" data-i18n="namingTemplates.tabTitle">
                                   Naming
                               </button>
+                              <button id="subtab-initial-prompts" class="tab" data-i18n="initialPromptTemplates.tabTitle">
+                                  Transcription Prompts
+                              </button>
                           </nav>
                       </div>
                       <div class="tab-scroll">
@@ -1581,6 +1587,84 @@
                                     <div id="namingTemplateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
                                         <i class="fas fa-heading text-4xl text-[var(--text-muted)] mb-4"></i>
                                         <p class="text-[var(--text-muted)]" data-i18n="namingTemplates.selectOrCreate">Select a template to edit or create a new one</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Initial-Prompt (Transcription) Templates Sub-content -->
+                        <div id="subcontent-initial-prompts" class="space-y-6 hidden">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div>
+                                    <h2 class="text-2xl font-semibold text-[var(--text-primary)]" data-i18n="initialPromptTemplates.title">Transcription Prompts</h2>
+                                    <p class="text-[var(--text-secondary)]" data-i18n="initialPromptTemplates.description">Save reusable initial prompts that steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.</p>
+                                </div>
+                                <button id="ipCreateTemplateBtn" class="inline-flex items-center px-4 py-2 bg-[var(--bg-button)] text-[var(--text-button)] rounded-md hover:bg-[var(--bg-button-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--border-focus)] transition-colors duration-200">
+                                    <i class="fas fa-plus mr-2"></i>
+                                    <span data-i18n="initialPromptTemplates.createNew">Create Prompt</span>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- List (Left) -->
+                                <div class="lg:col-span-1">
+                                    <div class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-4">
+                                        <h3 class="text-sm font-medium text-[var(--text-secondary)] mb-3" data-i18n="initialPromptTemplates.availableTemplates">Saved Prompts</h3>
+                                        <div id="ipTemplatesList" class="space-y-2">
+                                            <!-- Templates will be populated here -->
+                                        </div>
+                                        <button id="ipCreateDefaultTemplatesBtn" class="mt-4 w-full px-3 py-2 text-sm bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-accent-light)] transition-colors">
+                                            <i class="fas fa-magic mr-2"></i>
+                                            <span data-i18n="initialPromptTemplates.createDefaults">Create Starter Prompts</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Editor (Right) -->
+                                <div class="lg:col-span-2">
+                                    <div id="ipTemplateEditor" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-6 hidden">
+                                        <form id="ipTemplateForm" class="space-y-4">
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="initialPromptTemplates.templateName">Name</label>
+                                                <input type="text" id="ipTemplateName" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]" required>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="initialPromptTemplates.descriptionLabel">Description</label>
+                                                <input type="text" id="ipTemplateDescription" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)]">
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="initialPromptTemplates.template">Prompt</label>
+                                                <textarea id="ipTemplateContent" rows="4" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" required></textarea>
+                                                <p class="text-xs text-[var(--text-muted)] mt-2" data-i18n="initialPromptTemplates.help">A short, plain sentence that describes the recording, e.g. "This is a business meeting about quarterly sales." It is sent to the transcription engine to steer recognition.</p>
+                                            </div>
+
+                                            <div class="flex items-center">
+                                                <input type="checkbox" id="ipTemplateIsDefault" class="mr-2">
+                                                <label for="ipTemplateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="initialPromptTemplates.setDefault">Set as default prompt</label>
+                                            </div>
+
+                                            <div class="flex gap-3">
+                                                <button type="submit" class="btn btn--primary">
+                                                    <i class="fas fa-save mr-2"></i>
+                                                    <span data-i18n="initialPromptTemplates.save">Save</span>
+                                                </button>
+                                                <button type="button" id="ipCancelTemplateBtn" class="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-md hover:bg-[var(--bg-secondary)]">
+                                                    <span data-i18n="initialPromptTemplates.cancel">Cancel</span>
+                                                </button>
+                                                <button type="button" id="ipDeleteTemplateBtn" class="px-4 py-2 bg-[var(--bg-danger)] text-white rounded-md hover:bg-[var(--bg-danger-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 hidden">
+                                                    <i class="fas fa-trash mr-2"></i>
+                                                    <span data-i18n="initialPromptTemplates.delete">Delete</span>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- Empty State -->
+                                    <div id="ipTemplateEmptyState" class="bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)] p-12 text-center">
+                                        <i class="fas fa-comment-dots text-4xl text-[var(--text-muted)] mb-4"></i>
+                                        <p class="text-[var(--text-muted)]" data-i18n="initialPromptTemplates.selectOrCreate">Select a prompt to edit or create a new one</p>
                                     </div>
                                 </div>
                             </div>
@@ -2174,6 +2258,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% if connector_supports_initial_prompt %}
                     <div>
                         <label for="tagInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
+                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="tagInitialPrompt" style="display:none">
+                            <option value="">Insert a saved prompt…</option>
+                        </select>
                         <textarea id="tagInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
@@ -2393,6 +2480,9 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% if connector_supports_initial_prompt %}
                     <div>
                         <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
+                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="folderInitialPrompt" style="display:none">
+                            <option value="">Insert a saved prompt…</option>
+                        </select>
                         <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
                         <p class="text-xs text-[var(--text-light)] mt-1" data-i18n="form.initialPromptHelp">Context to steer the transcription model's style and vocabulary</p>
                     </div>
@@ -3082,6 +3172,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     loadWebhooks();
                 } else if (targetName === 'about') {
                     loadSystemInfo();
+                } else if (targetName === 'prompts') {
+                    ensureInitialPromptTemplatesLoaded();
                 }
             }
 
@@ -5245,6 +5337,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // loaders re-run it once their async <select> values are set.
             refreshTagTabIndicators();
 
+            ensureInitialPromptTemplatesLoaded();
             tagModal.classList.remove('hidden');
         }
 
@@ -5973,6 +6066,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             // re-run this once their <select> values are populated).
             refreshFolderTabIndicators();
 
+            ensureInitialPromptTemplatesLoaded();
             if (folderModal) folderModal.classList.remove('hidden');
         }
 
@@ -6955,25 +7049,252 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         });
 
         // ============================================
+        // Initial-Prompt (Transcription) Templates
+        // ============================================
+        let ipTemplates = [];
+        let ipCurrentTemplate = null;
+        let ipIsEditing = false;
+        let ipTemplatesLoaded = false;
+
+        async function loadInitialPromptTemplates() {
+            try {
+                const response = await fetch('/api/initial-prompt-templates');
+                if (!response.ok) throw new Error('Failed to load prompts');
+                ipTemplates = await response.json();
+                ipTemplatesLoaded = true;
+                const btn = document.getElementById('ipCreateDefaultTemplatesBtn');
+                if (btn) btn.style.display = ipTemplates.length === 0 ? 'block' : 'none';
+                renderIpTemplatesList();
+                populateInitialPromptPickers();
+            } catch (error) {
+                console.error('Error loading initial-prompt templates:', error);
+                showToast('Failed to load transcription prompts', 'error');
+            }
+        }
+
+        // Used by the account/tag/folder editors: fetch once, then just refresh
+        // their "pick from saved" dropdowns on subsequent opens.
+        async function ensureInitialPromptTemplatesLoaded() {
+            if (ipTemplatesLoaded) {
+                populateInitialPromptPickers();
+                return;
+            }
+            await loadInitialPromptTemplates();
+        }
+
+        function renderIpTemplatesList() {
+            const list = document.getElementById('ipTemplatesList');
+            if (!list) return;
+            list.innerHTML = '';
+            if (ipTemplates.length === 0) {
+                list.innerHTML = '<p class="text-sm text-[var(--text-muted)] text-center py-4">No prompts yet</p>';
+                return;
+            }
+            ipTemplates.forEach(template => {
+                const item = document.createElement('div');
+                item.className = 'p-3 bg-[var(--bg-primary)] rounded-md hover:bg-[var(--bg-tertiary)] cursor-pointer transition-colors border border-[var(--border-primary)]';
+                if (template.is_default) item.className += ' ring-2 ring-[var(--ring-focus)]';
+                // Build with textContent (not innerHTML) so user-supplied name /
+                // description can never be interpreted as markup.
+                const col = document.createElement('div');
+                col.className = 'flex-1';
+                const h4 = document.createElement('h4');
+                h4.className = 'text-sm font-medium text-[var(--text-primary)]';
+                h4.textContent = template.name;
+                col.appendChild(h4);
+                if (template.description) {
+                    const p = document.createElement('p');
+                    p.className = 'text-xs text-[var(--text-muted)] mt-1';
+                    p.textContent = template.description;
+                    col.appendChild(p);
+                }
+                if (template.is_default) {
+                    const span = document.createElement('span');
+                    span.className = 'text-xs text-[var(--text-accent)] mt-1';
+                    span.innerHTML = '<i class="fas fa-star mr-1"></i>';
+                    span.appendChild(document.createTextNode(t('initialPromptTemplates.default')));
+                    col.appendChild(span);
+                }
+                const wrap = document.createElement('div');
+                wrap.className = 'flex items-start justify-between';
+                wrap.appendChild(col);
+                item.appendChild(wrap);
+                item.addEventListener('click', () => selectIpTemplate(template));
+                list.appendChild(item);
+            });
+        }
+
+        function selectIpTemplate(template) {
+            ipCurrentTemplate = template;
+            ipIsEditing = true;
+            document.getElementById('ipTemplateEditor').classList.remove('hidden');
+            document.getElementById('ipTemplateEmptyState').classList.add('hidden');
+            document.getElementById('ipTemplateName').value = template.name;
+            document.getElementById('ipTemplateDescription').value = template.description || '';
+            document.getElementById('ipTemplateContent').value = template.template;
+            document.getElementById('ipTemplateIsDefault').checked = template.is_default;
+            document.getElementById('ipDeleteTemplateBtn').classList.remove('hidden');
+        }
+
+        function createNewIpTemplate() {
+            ipCurrentTemplate = null;
+            ipIsEditing = false;
+            document.getElementById('ipTemplateEditor').classList.remove('hidden');
+            document.getElementById('ipTemplateEmptyState').classList.add('hidden');
+            document.getElementById('ipTemplateForm').reset();
+            document.getElementById('ipDeleteTemplateBtn').classList.add('hidden');
+        }
+
+        document.getElementById('ipCreateTemplateBtn')?.addEventListener('click', createNewIpTemplate);
+
+        document.getElementById('ipCancelTemplateBtn')?.addEventListener('click', () => {
+            document.getElementById('ipTemplateEditor').classList.add('hidden');
+            document.getElementById('ipTemplateEmptyState').classList.remove('hidden');
+            ipCurrentTemplate = null;
+            ipIsEditing = false;
+        });
+
+        document.getElementById('ipTemplateForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const templateData = {
+                name: document.getElementById('ipTemplateName').value,
+                description: document.getElementById('ipTemplateDescription').value,
+                template: document.getElementById('ipTemplateContent').value,
+                is_default: document.getElementById('ipTemplateIsDefault').checked
+            };
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const url = ipIsEditing ? `/api/initial-prompt-templates/${ipCurrentTemplate.id}` : '/api/initial-prompt-templates';
+                const method = ipIsEditing ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify(templateData)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save prompt');
+                }
+                const saved = await response.json();
+                if (ipIsEditing) {
+                    const index = ipTemplates.findIndex(t => t.id === saved.id);
+                    if (index !== -1) ipTemplates[index] = saved;
+                } else {
+                    ipTemplates.push(saved);
+                }
+                if (saved.is_default) {
+                    ipTemplates.forEach(t => { if (t.id !== saved.id) t.is_default = false; });
+                }
+                renderIpTemplatesList();
+                populateInitialPromptPickers();
+                showToast(ipIsEditing ? 'Prompt updated' : 'Prompt created', 'success');
+                document.getElementById('ipTemplateEditor').classList.add('hidden');
+                document.getElementById('ipTemplateEmptyState').classList.remove('hidden');
+                ipCurrentTemplate = null;
+                ipIsEditing = false;
+            } catch (error) {
+                console.error('Error saving initial-prompt template:', error);
+                showToast(error.message || 'Failed to save prompt', 'error');
+            }
+        });
+
+        document.getElementById('ipDeleteTemplateBtn')?.addEventListener('click', async () => {
+            if (!ipCurrentTemplate || !confirm('Are you sure you want to delete this prompt?')) return;
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch(`/api/initial-prompt-templates/${ipCurrentTemplate.id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                if (!response.ok) throw new Error('Failed to delete prompt');
+                ipTemplates = ipTemplates.filter(t => t.id !== ipCurrentTemplate.id);
+                renderIpTemplatesList();
+                populateInitialPromptPickers();
+                document.getElementById('ipTemplateEditor').classList.add('hidden');
+                document.getElementById('ipTemplateEmptyState').classList.remove('hidden');
+                ipCurrentTemplate = null;
+                ipIsEditing = false;
+                showToast('Prompt deleted', 'success');
+            } catch (error) {
+                console.error('Error deleting initial-prompt template:', error);
+                showToast('Failed to delete prompt', 'error');
+            }
+        });
+
+        document.getElementById('ipCreateDefaultTemplatesBtn')?.addEventListener('click', async () => {
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const response = await fetch('/api/initial-prompt-templates/create-defaults', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                if (!response.ok) throw new Error('Failed to create starter prompts');
+                const result = await response.json();
+                if (result.templates) {
+                    ipTemplates = result.templates;
+                    renderIpTemplatesList();
+                    populateInitialPromptPickers();
+                }
+                showToast('Starter prompts created', 'success');
+            } catch (error) {
+                console.error('Error creating starter prompts:', error);
+                showToast('Failed to create starter prompts', 'error');
+            }
+        });
+
+        // Fill any <select class="ip-template-picker"> with the saved prompts so
+        // account/tag/folder editors can pick one to drop into their textarea.
+        // Each picker declares its target textarea id via data-target.
+        function populateInitialPromptPickers() {
+            document.querySelectorAll('select.ip-template-picker').forEach(sel => {
+                // Only show the picker once the user actually has saved prompts,
+                // so single-prompt users keep a clean editor.
+                sel.style.display = ipTemplates.length ? '' : 'none';
+                sel.innerHTML = '<option value="">' + (t('initialPromptTemplates.pickPlaceholder') || 'Insert a saved prompt…') + '</option>';
+                ipTemplates.forEach(tpl => {
+                    const opt = document.createElement('option');
+                    opt.value = String(tpl.id);
+                    opt.textContent = tpl.name;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+
+        // Delegated handler: choosing a saved prompt fills the picker's target textarea.
+        document.addEventListener('change', (e) => {
+            const sel = e.target;
+            if (!sel.classList || !sel.classList.contains('ip-template-picker')) return;
+            const tpl = ipTemplates.find(t => String(t.id) === sel.value);
+            const target = document.getElementById(sel.dataset.target);
+            if (tpl && target) {
+                target.value = tpl.template;
+                target.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            sel.value = '';
+        });
+
+        // ============================================
         // Templates Sub-tabs (Transcript / Export / Naming)
         // ============================================
         const subtabTranscript = document.getElementById('subtab-transcript');
         const subtabExport = document.getElementById('subtab-export');
         const subtabNaming = document.getElementById('subtab-naming');
+        const subtabInitialPrompts = document.getElementById('subtab-initial-prompts');
         const subcontentTranscript = document.getElementById('subcontent-transcript');
         const subcontentExport = document.getElementById('subcontent-export');
         const subcontentNaming = document.getElementById('subcontent-naming');
+        const subcontentInitialPrompts = document.getElementById('subcontent-initial-prompts');
 
         function switchTemplateSubtab(tab) {
             // Reset all tabs
-            [subtabTranscript, subtabExport, subtabNaming].forEach(t => {
+            [subtabTranscript, subtabExport, subtabNaming, subtabInitialPrompts].forEach(t => {
                 if (t) {
                     t.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
                     t.classList.add('border-transparent', 'text-[var(--text-muted)]');
                 }
             });
             // Hide all content
-            [subcontentTranscript, subcontentExport, subcontentNaming].forEach(c => {
+            [subcontentTranscript, subcontentExport, subcontentNaming, subcontentInitialPrompts].forEach(c => {
                 if (c) c.classList.add('hidden');
             });
 
@@ -6991,12 +7312,18 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 subtabNaming?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
                 subcontentNaming?.classList.remove('hidden');
                 loadNamingTemplates();
+            } else if (tab === 'initial-prompts') {
+                subtabInitialPrompts?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
+                subtabInitialPrompts?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
+                subcontentInitialPrompts?.classList.remove('hidden');
+                loadInitialPromptTemplates();
             }
         }
 
         subtabTranscript?.addEventListener('click', () => switchTemplateSubtab('transcript'));
         subtabExport?.addEventListener('click', () => switchTemplateSubtab('export'));
         subtabNaming?.addEventListener('click', () => switchTemplateSubtab('naming'));
+        subtabInitialPrompts?.addEventListener('click', () => switchTemplateSubtab('initial-prompts'));
 
         // ============================================
         // Copy Variable Button Handler
