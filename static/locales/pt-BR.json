@@ -1589,6 +1589,29 @@
     "title": "Modelos de Transcrição",
     "viewGuide": "Ver Guia de Modelo"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Prompts de transcrição",
+    "title": "Prompts de transcrição",
+    "description": "Salve prompts iniciais reutilizáveis que orientam o mecanismo de transcrição. Escolha um ao enviar um arquivo ou use-o para preencher um padrão de tag, pasta ou conta.",
+    "createNew": "Criar prompt",
+    "availableTemplates": "Prompts salvos",
+    "createDefaults": "Criar prompts iniciais",
+    "templateName": "Nome",
+    "descriptionLabel": "Descrição",
+    "template": "Prompt",
+    "help": "Uma frase curta e simples que descreve a gravação, por ex. \"Esta é uma reunião de negócios sobre as vendas trimestrais.\" Ela é enviada ao mecanismo de transcrição para orientar o reconhecimento.",
+    "setDefault": "Definir como prompt padrão",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "selectOrCreate": "Selecione um prompt para editar ou crie um novo",
+    "default": "Padrão",
+    "pickPlaceholder": "Inserir um prompt salvo…"
+  },
+  "detail": {
+    "hints": "Dicas",
+    "hintsUsed": "Dicas de transcrição usadas nesta gravação"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Identificar Oradores Automaticamente",
     "bubble": "Bolha",

@@ -1589,6 +1589,29 @@
     "title": "Modèles de Transcription",
     "viewGuide": "Voir le Guide des Modèles"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Prompts de transcription",
+    "title": "Prompts de transcription",
+    "description": "Enregistrez des prompts initiaux réutilisables qui orientent le moteur de transcription. Choisissez-en un lors de l'envoi, ou utilisez-le pour remplir une valeur par défaut d'étiquette, de dossier ou de compte.",
+    "createNew": "Créer un prompt",
+    "availableTemplates": "Prompts enregistrés",
+    "createDefaults": "Créer des prompts de départ",
+    "templateName": "Nom",
+    "descriptionLabel": "Description",
+    "template": "Prompt",
+    "help": "Une phrase courte et simple décrivant l'enregistrement, par ex. « Ceci est une réunion d'affaires sur les ventes trimestrielles. » Elle est envoyée au moteur de transcription pour orienter la reconnaissance.",
+    "setDefault": "Définir comme prompt par défaut",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "selectOrCreate": "Sélectionnez un prompt à modifier ou créez-en un nouveau",
+    "default": "Par défaut",
+    "pickPlaceholder": "Insérer un prompt enregistré…"
+  },
+  "detail": {
+    "hints": "Indices",
+    "hintsUsed": "Indices de transcription utilisés pour cet enregistrement"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Identifier Automatiquement les Orateurs",
     "bubble": "Bulle",

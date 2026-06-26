@@ -1589,6 +1589,29 @@
     "title": "Plantillas de Transcripción",
     "viewGuide": "Ver Guía de Plantillas"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Prompts de transcripción",
+    "title": "Prompts de transcripción",
+    "description": "Guarda prompts iniciales reutilizables que orientan el motor de transcripción. Elige uno al subir un archivo o úsalo para rellenar un valor predeterminado de etiqueta, carpeta o cuenta.",
+    "createNew": "Crear prompt",
+    "availableTemplates": "Prompts guardados",
+    "createDefaults": "Crear prompts iniciales",
+    "templateName": "Nombre",
+    "descriptionLabel": "Descripción",
+    "template": "Prompt",
+    "help": "Una frase breve y sencilla que describa la grabación, p. ej. «Esta es una reunión de negocios sobre las ventas trimestrales.» Se envía al motor de transcripción para orientar el reconocimiento.",
+    "setDefault": "Establecer como prompt predeterminado",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "selectOrCreate": "Selecciona un prompt para editar o crea uno nuevo",
+    "default": "Predeterminado",
+    "pickPlaceholder": "Insertar un prompt guardado…"
+  },
+  "detail": {
+    "hints": "Indicaciones",
+    "hintsUsed": "Indicaciones de transcripción usadas en esta grabación"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Identificar Hablantes Automáticamente",
     "bubble": "Burbuja",

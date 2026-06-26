@@ -1589,6 +1589,29 @@
     "title": "转录模板",
     "viewGuide": "查看模板指南"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "转录提示词",
+    "title": "转录提示词",
+    "description": "保存可重复使用的初始提示词，用于引导转录引擎。上传时选择一个，或用它来填充标签、文件夹或账户的默认值。",
+    "createNew": "创建提示词",
+    "availableTemplates": "已保存的提示词",
+    "createDefaults": "创建入门提示词",
+    "templateName": "名称",
+    "descriptionLabel": "描述",
+    "template": "提示词",
+    "help": "用一句简短、朴素的话描述录音，例如“这是一场关于季度销售的商务会议。”它会发送给转录引擎以引导识别。",
+    "setDefault": "设为默认提示词",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "selectOrCreate": "选择一个提示词进行编辑，或创建一个新的",
+    "default": "默认",
+    "pickPlaceholder": "插入已保存的提示词…"
+  },
+  "detail": {
+    "hints": "提示",
+    "hintsUsed": "本次录音使用的转录提示"
+  },
   "transcription": {
     "autoIdentifySpeakers": "自动识别发言人",
     "bubble": "气泡",

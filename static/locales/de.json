@@ -1589,6 +1589,29 @@
     "title": "Transkript-Vorlagen",
     "viewGuide": "Vorlagen-Leitfaden Anzeigen"
   },
+  "initialPromptTemplates": {
+    "tabTitle": "Transkriptions-Prompts",
+    "title": "Transkriptions-Prompts",
+    "description": "Speichern Sie wiederverwendbare Initial-Prompts, die die Transkription steuern. Wählen Sie einen beim Hochladen aus oder verwenden Sie ihn als Standard für Tags, Ordner oder Ihr Konto.",
+    "createNew": "Prompt erstellen",
+    "availableTemplates": "Gespeicherte Prompts",
+    "createDefaults": "Start-Prompts erstellen",
+    "templateName": "Name",
+    "descriptionLabel": "Beschreibung",
+    "template": "Prompt",
+    "help": "Ein kurzer, einfacher Satz, der die Aufnahme beschreibt, z. B. „Dies ist eine Geschäftsbesprechung über die Quartalsumsätze.“ Er wird an die Transkriptions-Engine gesendet, um die Erkennung zu steuern.",
+    "setDefault": "Als Standard-Prompt festlegen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "selectOrCreate": "Wählen Sie einen Prompt zum Bearbeiten oder erstellen Sie einen neuen",
+    "default": "Standard",
+    "pickPlaceholder": "Gespeicherten Prompt einfügen…"
+  },
+  "detail": {
+    "hints": "Hinweise",
+    "hintsUsed": "Für diese Aufnahme verwendete Transkriptionshinweise"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Sprecher automatisch identifizieren",
     "bubble": "Blase",
