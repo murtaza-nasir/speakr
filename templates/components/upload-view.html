@@ -682,8 +682,11 @@
                 </div><!-- end .disclosure-anim -->
             </div>
 
-            <!-- Advanced Options for diarization-enabled connectors (collapsible) -->
-            <div v-if="connectorSupportsDiarization" class="mt-4">
+            <!-- Advanced ASR Options (collapsible). Shown whenever the active
+                 connector supports any advanced option — not just diarization —
+                 so hotwords/initial-prompt remain reachable on hint-only
+                 connectors (e.g. OpenAI/Mistral) that don't diarize. -->
+            <div v-if="connectorSupportsDiarization || connectorSupportsSpeakerCount || connectorSupportsHotwords || connectorSupportsInitialPrompt" class="mt-4">
                 <button @click="showAdvancedOptions = !showAdvancedOptions"
                         :class="['disclosure-trigger w-full flex items-center justify-between px-3 py-2 bg-[var(--bg-tertiary)] rounded-md hover:bg-[var(--bg-accent)] transition-colors text-xs font-medium', { 'is-open': showAdvancedOptions }]">
                     <span class="flex items-center gap-2 text-[var(--text-secondary)]">
@@ -746,6 +749,14 @@
                         <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                             ${ t('form.initialPrompt') }
                         </label>
+                        <!-- Pick from saved transcription prompts (#309). Hidden
+                             until the user has saved prompts. -->
+                        <select v-if="initialPromptTemplates && initialPromptTemplates.length"
+                                @change="applyInitialPromptTemplate($event.target.value); $event.target.value=''"
+                                class="w-full mb-1 px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <option value="">${ t('initialPromptTemplates.pickPlaceholder') }</option>
+                            <option v-for="tpl in initialPromptTemplates" :key="tpl.id" :value="tpl.id" v-text="tpl.name"></option>
+                        </select>
                         <textarea v-model="uploadInitialPrompt"
                                   rows="2"
                                   :placeholder="t('form.initialPromptPlaceholder')"

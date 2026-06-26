@@ -523,6 +523,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const uploadMaxSpeakers = ref('');
             const uploadHotwords = ref('');
             const uploadInitialPrompt = ref('');
+            // Saved transcription initial-prompt templates (#309), shown as a
+            // picker above the initial-prompt field in the upload modal.
+            const initialPromptTemplates = ref([]);
+            const applyInitialPromptTemplate = (id) => {
+                const tpl = initialPromptTemplates.value.find(t => String(t.id) === String(id));
+                if (tpl) uploadInitialPrompt.value = tpl.template;
+            };
             const uploadTranscriptionModel = ref('');
             const uploadPromptVariables = reactive({});  // {variableName: value}
             const showPromptVariablesPanel = ref(true);  // expander state
@@ -1582,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
@@ -3420,6 +3427,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     audioPlayerPosition.value = (pos === 'top') ? 'top' : 'bottom';
                     currentUserName.value = appElement.dataset.currentUserName || '';
                 }
+
+                // Load saved transcription initial-prompt templates (#309) for
+                // the upload-modal picker. Non-fatal if it fails.
+                try {
+                    const r = await fetch('/api/initial-prompt-templates');
+                    if (r.ok) initialPromptTemplates.value = await r.json();
+                } catch (e) { /* picker simply stays empty */ }
 
                 // Initialize UI
                 uiComposable.initializeDarkMode();
