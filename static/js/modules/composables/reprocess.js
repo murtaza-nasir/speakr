@@ -38,8 +38,10 @@ export function useReprocess(state, utils) {
             asrReprocessOptions.language = userTranscriptionLanguage?.value || '';
             asrReprocessOptions.min_speakers = '';
             asrReprocessOptions.max_speakers = '';
-            asrReprocessOptions.hotwords = '';
-            asrReprocessOptions.initial_prompt = '';
+            // Pre-fill the hints with what this recording actually used so the
+            // user can see and iterate on them rather than starting blank (#309).
+            asrReprocessOptions.hotwords = reprocessRecording.value?.resolved_hotwords || '';
+            asrReprocessOptions.initial_prompt = reprocessRecording.value?.resolved_initial_prompt || '';
             asrReprocessOptions.transcription_model = '';
         } else {
             summaryReprocessPromptSource.value = 'default';

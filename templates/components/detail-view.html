@@ -120,6 +120,29 @@
                 <i class="fas fa-copy"></i>
                 <span>${ selectedRecording.duplicate_info.total_copies } ${ t('upload.copies') || 'copies' }</span>
             </button>
+
+            <!-- Transcription hints used (#309): click to see the effective
+                 hotwords / initial prompt that steered this transcription. -->
+            <div v-if="selectedRecording.resolved_hotwords || selectedRecording.resolved_initial_prompt" class="relative">
+                <button @click="showHintsPopover = !showHintsPopover"
+                        class="chip-meta chip-meta--clickable"
+                        :title="t('detail.hintsUsed')">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>${ t('detail.hints') }</span>
+                </button>
+                <div v-if="showHintsPopover" @click="showHintsPopover = false" class="fixed inset-0 z-40"></div>
+                <div v-if="showHintsPopover"
+                     class="absolute left-0 top-full mt-1 z-50 w-72 max-w-[80vw] p-3 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded-md shadow-lg text-left space-y-2">
+                    <div v-if="selectedRecording.resolved_hotwords">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">${ t('form.hotwords') }</p>
+                        <p class="text-xs text-[var(--text-primary)] whitespace-pre-wrap break-words">${ selectedRecording.resolved_hotwords }</p>
+                    </div>
+                    <div v-if="selectedRecording.resolved_initial_prompt">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">${ t('form.initialPrompt') }</p>
+                        <p class="text-xs text-[var(--text-primary)] whitespace-pre-wrap break-words">${ selectedRecording.resolved_initial_prompt }</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Persistent audio player. By default sits at the BOTTOM of

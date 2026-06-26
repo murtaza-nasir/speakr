@@ -1617,6 +1617,10 @@
     "default": "Default",
     "pickPlaceholder": "Insert a saved prompt…"
   },
+  "detail": {
+    "hints": "Hints",
+    "hintsUsed": "Transcription hints used for this recording"
+  },
   "transcription": {
     "autoIdentifySpeakers": "Auto-identify Speakers",
     "bubble": "Bubble",

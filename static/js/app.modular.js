@@ -530,6 +530,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const tpl = initialPromptTemplates.value.find(t => String(t.id) === String(id));
                 if (tpl) uploadInitialPrompt.value = tpl.template;
             };
+            // Detail-view popover showing which hotwords/initial-prompt a
+            // recording actually used (#309).
+            const showHintsPopover = ref(false);
             const uploadTranscriptionModel = ref('');
             const uploadPromptVariables = reactive({});  // {variableName: value}
             const showPromptVariablesPanel = ref(true);  // expander state
@@ -1589,7 +1592,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 maxConcurrentUploads, recordingDisclaimer, showRecordingDisclaimerModal, pendingRecordingMode,
                 uploadDisclaimer, showUploadDisclaimerModal,
                 customBanner, showBanner,
-                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
+                showAdvancedOptions, userTranscriptionLanguage, uploadLanguage, uploadMinSpeakers, uploadMaxSpeakers, uploadHotwords, uploadInitialPrompt, initialPromptTemplates, applyInitialPromptTemplate, showHintsPopover, uploadTranscriptionModel, uploadPromptVariables, showPromptVariablesPanel, selectedPromptVariables, reprocessAvailableVariables, transcriptionModelOptions,
                 availableTags, selectedTagIds, uploadTagSearchFilter,
                 availableFolders, selectedFolderId, foldersEnabled, filterFolder,
 
