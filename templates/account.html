@@ -7286,38 +7286,26 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
         const subcontentInitialPrompts = document.getElementById('subcontent-initial-prompts');
 
         function switchTemplateSubtab(tab) {
-            // Reset all tabs
-            [subtabTranscript, subtabExport, subtabNaming, subtabInitialPrompts].forEach(t => {
-                if (t) {
-                    t.classList.remove('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                    t.classList.add('border-transparent', 'text-[var(--text-muted)]');
-                }
+            // The .tab CSS drives the active underline off the `is-active` class
+            // (same as the main account tabs), so toggle that — not ad-hoc border
+            // utilities — otherwise the first tab stays underlined permanently.
+            const subtabMap = {
+                transcript: [subtabTranscript, subcontentTranscript],
+                export: [subtabExport, subcontentExport],
+                naming: [subtabNaming, subcontentNaming],
+                'initial-prompts': [subtabInitialPrompts, subcontentInitialPrompts],
+            };
+            Object.values(subtabMap).forEach(([btn, panel]) => {
+                btn?.classList.remove('is-active');
+                panel?.classList.add('hidden');
             });
-            // Hide all content
-            [subcontentTranscript, subcontentExport, subcontentNaming, subcontentInitialPrompts].forEach(c => {
-                if (c) c.classList.add('hidden');
-            });
+            const [activeBtn, activePanel] = subtabMap[tab] || [];
+            activeBtn?.classList.add('is-active');
+            activePanel?.classList.remove('hidden');
 
-            if (tab === 'transcript') {
-                subtabTranscript?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                subtabTranscript?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
-                subcontentTranscript?.classList.remove('hidden');
-            } else if (tab === 'export') {
-                subtabExport?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                subtabExport?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
-                subcontentExport?.classList.remove('hidden');
-                loadExportTemplates();
-            } else if (tab === 'naming') {
-                subtabNaming?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                subtabNaming?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
-                subcontentNaming?.classList.remove('hidden');
-                loadNamingTemplates();
-            } else if (tab === 'initial-prompts') {
-                subtabInitialPrompts?.classList.add('border-[var(--border-accent)]', 'text-[var(--text-accent)]');
-                subtabInitialPrompts?.classList.remove('border-transparent', 'text-[var(--text-muted)]');
-                subcontentInitialPrompts?.classList.remove('hidden');
-                loadInitialPromptTemplates();
-            }
+            if (tab === 'export') loadExportTemplates();
+            else if (tab === 'naming') loadNamingTemplates();
+            else if (tab === 'initial-prompts') loadInitialPromptTemplates();
         }
 
         subtabTranscript?.addEventListener('click', () => switchTemplateSubtab('transcript'));
