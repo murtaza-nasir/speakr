@@ -222,6 +222,13 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'recording', 'prompt_variables', 'JSON'):
             app.logger.info("Added prompt_variables column to recording table")
 
+        # Effective transcription hints (hotwords / initial prompt) actually used
+        # for a recording, captured at transcription time (issue #309).
+        if add_column_if_not_exists(engine, 'recording', 'resolved_hotwords', 'TEXT'):
+            app.logger.info("Added resolved_hotwords column to recording table")
+        if add_column_if_not_exists(engine, 'recording', 'resolved_initial_prompt', 'TEXT'):
+            app.logger.info("Added resolved_initial_prompt column to recording table")
+
         # Add speaker voice profile embedding fields
         if add_column_if_not_exists(engine, 'speaker', 'average_embedding', 'BLOB'):
             app.logger.info("Added average_embedding column to speaker table")

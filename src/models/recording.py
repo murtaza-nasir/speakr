@@ -67,6 +67,13 @@ class Recording(db.Model):
     # Substituted into {{name}} placeholders in the resolved summary prompt at summarisation time.
     prompt_variables = db.Column(db.JSON, nullable=True)
 
+    # Effective transcription hints actually sent to the ASR for this recording,
+    # captured at transcription time after tag/folder/user and admin-default
+    # resolution. Persisted so the UI can show which hotwords/initial prompt were
+    # used and pre-fill them on reprocess (issue #309). Null = none were applied.
+    resolved_hotwords = db.Column(db.Text, nullable=True)
+    resolved_initial_prompt = db.Column(db.Text, nullable=True)
+
     # Folder relationship (one-to-many: a recording belongs to at most one folder)
     folder_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True, index=True)
 
@@ -386,6 +393,8 @@ class Recording(db.Model):
             'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
             'events': [event.to_dict() for event in self.events] if self.events else [],
             'prompt_variables': self.prompt_variables or {},
+            'resolved_hotwords': self.resolved_hotwords,
+            'resolved_initial_prompt': self.resolved_initial_prompt,
             'duplicate_info': self._dup_from_map_or_query(duplicate_info_map),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,

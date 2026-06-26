@@ -550,6 +550,84 @@ def test_transcribe_with_connector_audio_success():
         mock_summary.assert_called_once()
 
 
+def test_transcribe_with_connector_persists_resolved_hints():
+    """Effective hotwords/initial prompt are stored on the recording (#309)."""
+    import time as _time
+    with app.app_context():
+        user = _make_user("trans_hints")
+        rec = _make_recording(user.id, transcription=None, status="PENDING")
+        rid = rec.id
+        connector = _make_connector(text="Body.")
+
+        tmp_path = os.path.join(app.config["UPLOAD_FOLDER"], f"hints_{rid}.mp3")
+        with open(tmp_path, "wb") as f:
+            f.write(b"\x00" * 1024)
+        conv_result = MagicMock()
+        conv_result.was_converted = False
+
+        with patch("src.services.transcription.get_connector", return_value=connector), \
+             patch.object(proc, "is_video_file", return_value=False), \
+             patch.object(proc, "convert_if_needed", return_value=conv_result), \
+             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+             patch.object(proc, "generate_title_task"), \
+             patch.object(proc, "generate_summary_only_task"), \
+             patch.object(proc, "chunking_service") as mock_chunk_svc:
+            mock_chunk_svc.needs_chunking.return_value = False
+            mock_chunk_svc.get_audio_duration.return_value = 120.0
+            proc.transcribe_with_connector(
+                app.app_context(), rid, tmp_path, "cov.mp3", _time.time(),
+                mime_type="audio/mpeg",
+                hotwords="acme, kpi", initial_prompt="This is a board meeting.",
+            )
+
+        db.session.expire_all()
+        out = db.session.get(Recording, rid)
+        assert out.resolved_hotwords == "acme, kpi"
+        assert out.resolved_initial_prompt == "This is a board meeting."
+        # And they surface through serialization for the UI.
+        d = out.to_dict(include_html=False, viewer_user=user)
+        assert d["resolved_hotwords"] == "acme, kpi"
+        assert d["resolved_initial_prompt"] == "This is a board meeting."
+
+
+def test_transcribe_with_connector_resolved_hints_default_none():
+    """With no hints and no admin default, resolved hints persist as NULL (#309)."""
+    import time as _time
+    with app.app_context():
+        user = _make_user("trans_hints_none")
+        rec = _make_recording(user.id, transcription=None, status="PENDING")
+        rid = rec.id
+        connector = _make_connector(text="Body.")
+
+        tmp_path = os.path.join(app.config["UPLOAD_FOLDER"], f"hints_none_{rid}.mp3")
+        with open(tmp_path, "wb") as f:
+            f.write(b"\x00" * 1024)
+        conv_result = MagicMock()
+        conv_result.was_converted = False
+
+        with patch("src.services.transcription.get_connector", return_value=connector), \
+             patch.object(proc, "is_video_file", return_value=False), \
+             patch.object(proc, "convert_if_needed", return_value=conv_result), \
+             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+             patch.object(proc, "generate_title_task"), \
+             patch.object(proc, "generate_summary_only_task"), \
+             patch.object(proc, "chunking_service") as mock_chunk_svc, \
+             patch.object(proc.SystemSetting, "get_setting", return_value=""):
+            mock_chunk_svc.needs_chunking.return_value = False
+            mock_chunk_svc.get_audio_duration.return_value = 120.0
+            proc.transcribe_with_connector(
+                app.app_context(), rid, tmp_path, "cov.mp3", _time.time(),
+                mime_type="audio/mpeg",
+            )
+
+        db.session.expire_all()
+        out = db.session.get(Recording, rid)
+        assert out.resolved_hotwords is None
+        assert out.resolved_initial_prompt is None
+
+
 def test_transcribe_with_connector_budget_exceeded_sets_failed():
     import time as _time
     with app.app_context():

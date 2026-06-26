@@ -1641,6 +1641,14 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 hotwords = resolved_hotwords
                 current_app.logger.debug(f"Using admin default hotwords: {hotwords}")
 
+            # Persist the effective hints actually used for this transcription so
+            # the UI can surface them and pre-fill them on reprocess (issue #309).
+            # At this point hotwords and initial_prompt hold their final values,
+            # after tag/folder/user and admin-default resolution.
+            recording.resolved_hotwords = hotwords or None
+            recording.resolved_initial_prompt = initial_prompt or None
+            db.session.commit()
+
             # Check transcription budget before processing
             can_proceed, usage_pct, budget_msg = transcription_tracker.check_budget(recording.user_id)
             if not can_proceed:
