@@ -1728,6 +1728,8 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Subida fallida. El audio se guardó en la carpeta de Descargas para reintentarlo más tarde.",
     "uploadFailedNoRecovery": "Subida fallida y el audio no pudo guardarse localmente. Por favor, vuelva a grabar.",
+    "retryingPendingUploads": "Reintentando subidas pendientes…",
+    "uploadFailedWillRetry": "Error en la subida — guardada y se reintentará automáticamente al reconectar.",
     "shareTargetReceived": "Audio compartido recibido y puesto en cola para transcripción",
     "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",
     "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",

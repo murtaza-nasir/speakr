@@ -3605,6 +3605,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     await recordingsComposable.selectRecordingById(deepLinkRecordingId);
                 }
 
+                // Auto-retry any uploads that previously failed and were saved to
+                // IndexedDB (#313): once on load, and again whenever the browser
+                // reports it's back online. Works in every browser (no Background
+                // Sync) and resubmits through the normal CSRF-correct upload path.
+                uploadComposable.resurfaceFailedUploads();
+                window.addEventListener('online', () => uploadComposable.resurfaceFailedUploads());
+
                 // Clean up orphaned incognito data if we're not viewing incognito recording
                 // This can happen if user navigated away without the cleanup triggering
                 if (uploadComposable.hasIncognitoRecording() && selectedRecording.value?.id !== 'incognito') {

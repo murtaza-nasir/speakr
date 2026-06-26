@@ -1730,6 +1730,8 @@
     "processingCompleted": "Processing completed!",
     "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
     "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
+    "retryingPendingUploads": "Retrying pending upload(s)…",
+    "uploadFailedWillRetry": "Upload failed — saved and will retry automatically when you reconnect.",
     "shareTargetReceived": "Shared audio received and queued for transcription",
     "recordingSizeSoftWarning": "Recording is {{size}}. Consider stopping when convenient.",
     "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",

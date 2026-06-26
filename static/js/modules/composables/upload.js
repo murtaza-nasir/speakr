@@ -647,6 +647,13 @@ export function useUpload(state, utils) {
             fileItem.recordingId = data.id;
             fileItem.progress = 100;
 
+            // If this was a resurfaced retry (#313), drop its IndexedDB record
+            // now that it's safely on the server so it isn't retried again.
+            if (fileItem._failedUploadId) {
+                try { await FailedUploads.deleteFailedUpload(fileItem._failedUploadId); }
+                catch (e) { console.warn('[Upload] Could not clear retried upload from IndexedDB:', e); }
+            }
+
             // The in-progress recording session is now safe to clear (issue
             // #287(b)): the audio is on the server. Only do this for queue
             // items that came from an in-app recording, to avoid touching the
@@ -719,61 +726,74 @@ export function useUpload(state, utils) {
             const friendlyErr = getFriendlyError(error.message, t);
             setGlobalError(`${friendlyErr.title}: ${friendlyErr.guidance}`);
 
-            // Defense-in-depth recovery (issue #297, #287):
-            //   1. Persist the file to IndexedDB so background sync can retry.
-            //   2. If IndexedDB persistence fails (quota exceeded, private mode,
-            //      missing IndexedDB), fall back to triggering a browser-side
-            //      download so the user keeps a local copy of the audio. The
-            //      worst possible outcome is permanent audio loss on upload
-            //      failure, so we treat both layers as best-effort and only
-            //      stop trying once one succeeded.
-            let persistedToIndexedDB = false;
-            try {
-                await FailedUploads.storeFailedUpload({
-                    file: fileItem.file,
-                    fileName: fileItem.file.name,
-                    fileSize: fileItem.file.size,
-                    clientId: fileItem.clientId,
-                    notes: fileItem.notes,
-                    tags: fileItem.tags,
-                    asrOptions: fileItem.asrOptions,
-                    error: error.message
-                });
-                persistedToIndexedDB = true;
-            } catch (dbError) {
-                console.warn('[Upload] IndexedDB persistence failed for failed upload:', dbError);
-            }
-
-            if (persistedToIndexedDB) {
+            // If this failure is itself a resurfaced retry, just bump the retry
+            // count on the EXISTING IndexedDB record — don't store a duplicate or
+            // re-download. resurfaceFailedUploads() will pick it up again on the
+            // next online/load (until it hits the retry cap).
+            if (fileItem._failedUploadId) {
                 try {
-                    if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
-                        const registration = await navigator.serviceWorker.ready;
-                        await registration.sync.register('sync-uploads');
-                        console.log('[Upload] Registered background sync for failed upload');
-                    }
-                } catch (syncError) {
-                    console.warn('[Upload] Failed to register background sync:', syncError);
+                    await FailedUploads.updateRetryCount(
+                        fileItem._failedUploadId, (fileItem._retryCount || 0) + 1, error.message);
+                } catch (e) {
+                    console.warn('[Upload] Could not bump retry count:', e);
                 }
             } else {
-                // IndexedDB rejected the failed-upload write. Last-resort:
-                // hand the audio back to the user as a browser download so it
-                // survives a tab close.
-                const downloaded = FailedUploads.triggerLocalDownload(
-                    fileItem.file,
-                    fileItem.file?.name || `speakr-recording-${Date.now()}.webm`
-                );
-                if (downloaded) {
+                // Defense-in-depth recovery (issue #297, #287, #313):
+                //   1. Persist the file to IndexedDB so it can be auto-retried
+                //      in-app on the next online/page-load (resurfaceFailedUploads).
+                //   2. If IndexedDB persistence fails (quota exceeded, private
+                //      mode, missing IndexedDB), fall back to a browser download
+                //      so the user keeps a local copy. Permanent audio loss is the
+                //      worst outcome, so both layers are best-effort.
+                let persistedToIndexedDB = false;
+                try {
+                    await FailedUploads.storeFailedUpload({
+                        file: fileItem.file,
+                        fileName: fileItem.file.name,
+                        fileSize: fileItem.file.size,
+                        clientId: fileItem.clientId,
+                        notes: fileItem.notes,
+                        tags: fileItem.tags,
+                        asrOptions: fileItem.asrOptions,
+                        error: error.message
+                    });
+                    persistedToIndexedDB = true;
+                } catch (dbError) {
+                    console.warn('[Upload] IndexedDB persistence failed for failed upload:', dbError);
+                }
+
+                if (persistedToIndexedDB) {
+                    // Saved for retry. We deliberately do NOT retry right here
+                    // (a server-side failure while still "online" would just storm
+                    // the endpoint); resurfaceFailedUploads() resubmits it through
+                    // the normal CSRF-correct upload path on the next `online`
+                    // event or page load — in every browser, no Background Sync.
                     showToast?.(
-                        (t && t('toasts.uploadFailedDownloadedLocally'))
-                            || 'Upload failed. Audio saved to your Downloads folder for retry.',
-                        'fa-file-download'
+                        (t && t('toasts.uploadFailedWillRetry'))
+                            || 'Upload failed — saved and will retry automatically when you reconnect.',
+                        'fa-rotate'
                     );
                 } else {
-                    showToast?.(
-                        (t && t('toasts.uploadFailedNoRecovery'))
-                            || 'Upload failed and audio could not be saved locally. Please record again.',
-                        'fa-triangle-exclamation'
+                    // IndexedDB rejected the failed-upload write. Last-resort:
+                    // hand the audio back to the user as a browser download so it
+                    // survives a tab close.
+                    const downloaded = FailedUploads.triggerLocalDownload(
+                        fileItem.file,
+                        fileItem.file?.name || `speakr-recording-${Date.now()}.webm`
                     );
+                    if (downloaded) {
+                        showToast?.(
+                            (t && t('toasts.uploadFailedDownloadedLocally'))
+                                || 'Upload failed. Audio saved to your Downloads folder for retry.',
+                            'fa-file-download'
+                        );
+                    } else {
+                        showToast?.(
+                            (t && t('toasts.uploadFailedNoRecovery'))
+                                || 'Upload failed and audio could not be saved locally. Please record again.',
+                            'fa-triangle-exclamation'
+                        );
+                    }
                 }
             }
         } finally {
@@ -1064,7 +1084,72 @@ export function useUpload(state, utils) {
         return IncognitoStorage.hasIncognitoRecording();
     };
 
+    // Cap so a permanently-broken upload doesn't retry forever.
+    const MAX_AUTO_RETRIES = 3;
+    let _isResurfacing = false;
+
+    // Auto-retry path for #313: read the failed uploads persisted in IndexedDB,
+    // rebuild a File for each, and resubmit them through the normal upload queue
+    // (correct CSRF, visible in the Processing Queue, works in every browser —
+    // no Background Sync). Triggered on page load and on the browser `online`
+    // event. Items are removed from IndexedDB on success and retry-counted on
+    // failure (see uploadSingleFile).
+    const resurfaceFailedUploads = async () => {
+        if (_isResurfacing) return;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+        _isResurfacing = true;
+        try {
+            const failed = await FailedUploads.getFailedUploads();
+            let queued = 0;
+            for (const rec of failed) {
+                if (!rec || !rec.fileData) continue;
+                if ((rec.retryCount || 0) >= MAX_AUTO_RETRIES) continue;
+
+                // Skip if this upload is already represented in the queue and
+                // actively in flight; otherwise drop a stale failed item so we
+                // don't show duplicates.
+                const existingIdx = uploadQueue.value.findIndex(i => i.clientId === rec.clientId);
+                if (existingIdx !== -1) {
+                    const st = uploadQueue.value[existingIdx].status;
+                    if (['uploading', 'pending', 'ready', 'queued'].includes(st)) continue;
+                    uploadQueue.value.splice(existingIdx, 1);
+                }
+
+                const file = new File([rec.fileData], rec.fileName || `speakr-recording-${Date.now()}.webm`,
+                    { type: rec.mimeType || 'audio/webm' });
+                uploadQueue.value.push({
+                    file: markRaw ? markRaw(file) : file,
+                    notes: rec.notes || '',
+                    tags: rec.tags || [],
+                    asrOptions: rec.asrOptions || {},
+                    status: 'ready',          // picked up by startProcessingQueue (skips startUpload's UI-state overwrite)
+                    recordingId: null,
+                    clientId: rec.clientId,
+                    error: null,
+                    duration: null,
+                    willAutoSummarize: false,
+                    preserveOptions: true,    // keep the stored tags/ASR, don't clobber with current UI state
+                    _failedUploadId: rec.id,
+                    _retryCount: rec.retryCount || 0,
+                });
+                queued++;
+            }
+            if (queued > 0) {
+                showToast?.(
+                    (t && t('toasts.retryingPendingUploads')) || 'Retrying pending upload(s)…',
+                    'fa-rotate'
+                );
+                startProcessingQueue();
+            }
+        } catch (e) {
+            console.warn('[Upload] resurfaceFailedUploads failed:', e);
+        } finally {
+            _isResurfacing = false;
+        }
+    };
+
     return {
+        resurfaceFailedUploads,
         handleDragOver,
         handleDragLeave,
         handleDrop,

@@ -1728,6 +1728,8 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
     "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
+    "retryingPendingUploads": "正在重试待处理的上传…",
+    "uploadFailedWillRetry": "上传失败——已保存，将在重新联网后自动重试。",
     "shareTargetReceived": "已接收共享音频并加入转录队列",
     "recordingSizeSoftWarning": "录音大小为 {{size}},可在方便时停止。",
     "recordingMaxDurationReached": "录音已达到最长时长,已自动停止。",

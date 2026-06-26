@@ -1728,6 +1728,8 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Upload falhou. Áudio salvo na pasta Downloads para tentar novamente mais tarde.",
     "uploadFailedNoRecovery": "Upload falhou e o áudio não pôde ser salvo localmente. Por favor, grave novamente.",
+    "retryingPendingUploads": "Tentando reenviar uploads pendentes…",
+    "uploadFailedWillRetry": "Falha no envio — salvo e será reenviado automaticamente quando você reconectar.",
     "shareTargetReceived": "Áudio compartilhado recebido e enfileirado para transcrição",
     "recordingSizeSoftWarning": "A gravação tem {{size}}. Considere parar quando for conveniente.",
     "recordingMaxDurationReached": "A gravação atingiu a duração máxima e foi parada automaticamente.",

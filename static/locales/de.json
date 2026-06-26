@@ -1730,6 +1730,8 @@
     "processingCompleted": "Verarbeitung abgeschlossen!",
     "uploadFailedDownloadedLocally": "Upload fehlgeschlagen. Audio wurde im Downloads-Ordner für einen späteren Versuch gespeichert.",
     "uploadFailedNoRecovery": "Upload fehlgeschlagen und Audio konnte nicht lokal gespeichert werden. Bitte erneut aufnehmen.",
+    "retryingPendingUploads": "Ausstehende Uploads werden erneut versucht…",
+    "uploadFailedWillRetry": "Upload fehlgeschlagen – gespeichert und wird bei erneuter Verbindung automatisch wiederholt.",
     "shareTargetReceived": "Geteilte Audiodatei empfangen und zur Transkription eingereiht",
     "recordingSizeSoftWarning": "Aufnahme ist {{size}}. Erwägen Sie, sie bei Gelegenheit zu stoppen.",
     "recordingMaxDurationReached": "Aufnahme hat die Höchstdauer erreicht und wurde automatisch gestoppt.",

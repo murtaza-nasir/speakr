@@ -1728,6 +1728,8 @@
   "toasts": {
     "uploadFailedDownloadedLocally": "Échec de l'envoi. L'audio a été enregistré dans votre dossier Téléchargements pour une nouvelle tentative.",
     "uploadFailedNoRecovery": "Échec de l'envoi et l'audio n'a pas pu être enregistré localement. Veuillez réenregistrer.",
+    "retryingPendingUploads": "Nouvelle tentative des envois en attente…",
+    "uploadFailedWillRetry": "Échec de l'envoi — enregistré et réessayé automatiquement à la reconnexion.",
     "shareTargetReceived": "Audio partagé reçu et mis en file pour transcription",
     "recordingSizeSoftWarning": "L'enregistrement fait {{size}}. Pensez à l'arrêter quand vous pourrez.",
     "recordingMaxDurationReached": "L'enregistrement a atteint la durée maximale et s'est arrêté automatiquement.",
