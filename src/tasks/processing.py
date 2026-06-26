@@ -1641,6 +1641,16 @@ def transcribe_with_connector(app_context, recording_id, filepath, original_file
                 hotwords = resolved_hotwords
                 current_app.logger.debug(f"Using admin default hotwords: {hotwords}")
 
+            # Fall back to admin default initial prompt if none provided (mirrors
+            # the hotwords fallback above; resolve_hotwords is a generic
+            # "explicit value wins, else admin default" helper).
+            resolved_initial_prompt = resolve_hotwords(
+                initial_prompt, SystemSetting.get_setting('admin_default_initial_prompt', '')
+            )
+            if resolved_initial_prompt != initial_prompt:
+                initial_prompt = resolved_initial_prompt
+                current_app.logger.debug("Using admin default initial prompt")
+
             # Persist the effective hints actually used for this transcription so
             # the UI can surface them and pre-fill them on reprocess (issue #309).
             # At this point hotwords and initial_prompt hold their final values,

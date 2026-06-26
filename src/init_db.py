@@ -728,6 +728,15 @@ def initialize_database(app):
             )
             app.logger.info("Initialized admin_default_hotwords setting")
 
+        if not SystemSetting.query.filter_by(key='admin_default_initial_prompt').first():
+            SystemSetting.set_setting(
+                key='admin_default_initial_prompt',
+                value='',
+                description='Global initial prompt injected into all transcription requests. Applied when users have not set their own initial prompt.',
+                setting_type='string'
+            )
+            app.logger.info("Initialized admin_default_initial_prompt setting")
+
         if not SystemSetting.query.filter_by(key='enable_folders').first():
             SystemSetting.set_setting(
                 key='enable_folders',

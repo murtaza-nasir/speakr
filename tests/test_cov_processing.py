@@ -628,6 +628,49 @@ def test_transcribe_with_connector_resolved_hints_default_none():
         assert out.resolved_initial_prompt is None
 
 
+def test_transcribe_with_connector_applies_admin_default_initial_prompt():
+    """With no initial prompt supplied, the admin default is applied + persisted (#309)."""
+    import time as _time
+    with app.app_context():
+        user = _make_user("trans_admin_ip")
+        rec = _make_recording(user.id, transcription=None, status="PENDING")
+        rid = rec.id
+        connector = _make_connector(text="Body.")
+
+        tmp_path = os.path.join(app.config["UPLOAD_FOLDER"], f"admin_ip_{rid}.mp3")
+        with open(tmp_path, "wb") as f:
+            f.write(b"\x00" * 1024)
+        conv_result = MagicMock()
+        conv_result.was_converted = False
+
+        def _fake_setting(key, default=None):
+            if key == "admin_default_initial_prompt":
+                return "This is a board meeting."
+            if key == "admin_default_hotwords":
+                return ""
+            return default
+
+        with patch("src.services.transcription.get_connector", return_value=connector), \
+             patch.object(proc, "is_video_file", return_value=False), \
+             patch.object(proc, "convert_if_needed", return_value=conv_result), \
+             patch.object(proc, "client", MagicMock()), \
+             patch.object(proc, "ENABLE_INQUIRE_MODE", False), \
+             patch.object(proc, "generate_title_task"), \
+             patch.object(proc, "generate_summary_only_task"), \
+             patch.object(proc, "chunking_service") as mock_chunk_svc, \
+             patch.object(proc.SystemSetting, "get_setting", side_effect=_fake_setting):
+            mock_chunk_svc.needs_chunking.return_value = False
+            mock_chunk_svc.get_audio_duration.return_value = 120.0
+            proc.transcribe_with_connector(
+                app.app_context(), rid, tmp_path, "cov.mp3", _time.time(),
+                mime_type="audio/mpeg",
+            )
+
+        db.session.expire_all()
+        out = db.session.get(Recording, rid)
+        assert out.resolved_initial_prompt == "This is a board meeting."
+
+
 def test_transcribe_with_connector_budget_exceeded_sets_failed():
     import time as _time
     with app.app_context():

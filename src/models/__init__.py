@@ -24,6 +24,7 @@ from .events import Event
 from .templates import TranscriptTemplate
 from .naming_template import NamingTemplate
 from .export_template import ExportTemplate
+from .initial_prompt_template import InitialPromptTemplate
 from .inquire import InquireSession
 from .system import SystemSetting
 from .audit import ShareAuditLog
@@ -68,6 +69,7 @@ __all__ = [
     'TranscriptTemplate',
     'NamingTemplate',
     'ExportTemplate',
+    'InitialPromptTemplate',
     'InquireSession',
     'SystemSetting',
     'PushSubscription',
