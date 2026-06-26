@@ -376,6 +376,9 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'internal_share', 'source_type', "VARCHAR(20) DEFAULT 'manual'"):
             app.logger.info("Added source_type column to internal_share table")
 
+        if add_column_if_not_exists(engine, 'internal_share', 'source_folder_id', 'INTEGER'):
+            app.logger.info("Added source_folder_id column to internal_share table")
+
         if add_column_if_not_exists(engine, 'internal_share', 'source_tag_id', 'INTEGER'):
             app.logger.info("Added source_tag_id column to internal_share table")
 

@@ -1849,10 +1849,21 @@ def get_recordings_paginated():
         # Execute query
         recordings = db.session.execute(stmt).scalars().all()
 
+        # Batch-load this viewer's shares for the page so serialization can resolve
+        # the #314 share-reason tag/folder without an N+1 query.
+        page_rec_ids = [r.id for r in recordings]
+        share_map = {}
+        if page_rec_ids:
+            for s in InternalShare.query.filter(
+                InternalShare.recording_id.in_(page_rec_ids),
+                InternalShare.shared_with_user_id == current_user.id
+            ).all():
+                share_map[s.recording_id] = s
+
         # Enrich recordings with sharing metadata
         enriched_recordings = []
         for recording in recordings:
-            rec_dict = recording.to_list_dict(viewer_user=current_user)
+            rec_dict = recording.to_list_dict(viewer_user=current_user, share_map=share_map)
 
             # Add sharing metadata
             is_owner = recording.user_id == current_user.id
@@ -1878,11 +1889,8 @@ def get_recordings_paginated():
                 rec_dict['shared_with_count'] = 0
                 rec_dict['public_share_count'] = 0
 
-                # Get share permissions
-                share = InternalShare.query.filter_by(
-                    recording_id=recording.id,
-                    shared_with_user_id=current_user.id
-                ).first()
+                # Get share permissions (reuse the batched map)
+                share = share_map.get(recording.id)
 
                 if share:
                     rec_dict['share_info'] = {

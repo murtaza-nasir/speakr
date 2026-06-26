@@ -58,8 +58,11 @@ class InternalShare(db.Model):
     can_reshare = db.Column(db.Boolean, default=False)  # Can share with others
 
     # Source tracking for share cleanup
-    source_type = db.Column(db.String(20), default='manual')  # 'manual' or 'group_tag'
+    source_type = db.Column(db.String(20), default='manual')  # 'manual', 'group_tag', or 'group_folder'
     source_tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='SET NULL'), nullable=True)
+    # The group folder that auto-shared this recording (when source_type='group_folder').
+    # Lets a recipient be shown only the share-reason folder, not the owner's other metadata (#314).
+    source_folder_id = db.Column(db.Integer, db.ForeignKey('folder.id', ondelete='SET NULL'), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

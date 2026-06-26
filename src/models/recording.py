@@ -268,12 +268,57 @@ class Recording(db.Model):
             }
         return None
 
-    def to_list_dict(self, viewer_user=None, duplicate_info_map=None):
+    def _serialize_tags_and_folder(self, viewer_user, share_map=None):
+        """Build (tags, folder, folder_id) for a viewer, applying #314 rules.
+
+        For a recording the viewer does NOT own, only the tag/folder that GRANTED
+        access (the share-reason, from the InternalShare row) is surfaced, each
+        flagged ``is_foreign: True`` so the UI can mark it and keep it
+        non-filterable. The owner's other tags/folder are never leaked. Owners
+        (and the no-viewer backward-compat case) see their tags/folder normally.
+
+        share_map: optional {recording_id: InternalShare} to avoid an N+1 query
+        in list views; falls back to a per-recording lookup when not provided.
+        """
+        visible_tags = self.get_visible_tags(viewer_user)
+        is_foreign = viewer_user is not None and self.user_id != viewer_user.id
+
+        if not is_foreign:
+            tags = [tag.to_dict() for tag in visible_tags] if visible_tags else []
+            folder = self.folder.to_dict() if self.folder else None
+            return tags, folder, self.folder_id
+
+        from src.models.sharing import InternalShare
+        if share_map is not None:
+            share = share_map.get(self.id)
+        else:
+            share = InternalShare.query.filter_by(
+                recording_id=self.id, shared_with_user_id=viewer_user.id
+            ).first()
+        reason_tag_id = share.source_tag_id if share else None
+        reason_folder_id = getattr(share, 'source_folder_id', None) if share else None
+
+        tags = []
+        if reason_tag_id:
+            for tag in visible_tags:
+                if tag.id == reason_tag_id:
+                    td = tag.to_dict()
+                    td['is_foreign'] = True
+                    tags.append(td)
+        if reason_folder_id and self.folder_id == reason_folder_id and self.folder:
+            folder = self.folder.to_dict()
+            folder['is_foreign'] = True
+            return tags, folder, self.folder_id
+        return tags, None, None
+
+    def to_list_dict(self, viewer_user=None, duplicate_info_map=None, share_map=None):
         """
         Lightweight dict for list views - excludes expensive HTML conversions.
 
         Args:
             viewer_user: User viewing the recording (for tag visibility filtering)
+            share_map: optional {recording_id: InternalShare} for #314 share-reason
+                resolution without an N+1 query.
         """
         # Import here to avoid circular dependencies
         from src.models.sharing import InternalShare, Share
@@ -288,8 +333,7 @@ class Recording(db.Model):
             Share.recording_id == self.id
         ).scalar() or 0
 
-        # Get visible tags for this viewer
-        visible_tags = self.get_visible_tags(viewer_user)
+        tags_ser, folder_ser, folder_id_ser = self._serialize_tags_and_folder(viewer_user, share_map)
 
         return {
             'id': self.id,
@@ -307,9 +351,9 @@ class Recording(db.Model):
             'audio_deleted_at': self.audio_deleted_at.isoformat() if self.audio_deleted_at else None,
             'audio_available': self.audio_deleted_at is None,
             'deletion_exempt': self.deletion_exempt,
-            'folder_id': self.folder_id,
-            'folder': self.folder.to_dict() if self.folder else None,
-            'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
+            'folder_id': folder_id_ser,
+            'folder': folder_ser,
+            'tags': tags_ser,
             'duplicate_info': self._dup_from_map_or_query(duplicate_info_map),
             'shared_with_count': shared_with_count,
             'public_share_count': public_share_count,
@@ -337,13 +381,15 @@ class Recording(db.Model):
             return {'total_copies': entry['total_copies'], 'copies': copies}
         return self.get_duplicate_info()
 
-    def to_dict(self, include_html=True, viewer_user=None, duplicate_info_map=None):
+    def to_dict(self, include_html=True, viewer_user=None, duplicate_info_map=None, share_map=None):
         """
         Full dict with optional HTML conversion for notes/summary.
 
         Args:
             include_html: Whether to include HTML-rendered markdown fields
             viewer_user: User viewing the recording (for tag visibility filtering)
+            share_map: optional {recording_id: InternalShare} for #314 share-reason
+                resolution without an N+1 query.
         """
         # Import here to avoid circular dependencies
         from src.models.sharing import InternalShare, Share
@@ -358,8 +404,7 @@ class Recording(db.Model):
             Share.recording_id == self.id
         ).scalar() or 0
 
-        # Get visible tags for this viewer
-        visible_tags = self.get_visible_tags(viewer_user)
+        tags_ser, folder_ser, folder_id_ser = self._serialize_tags_and_folder(viewer_user, share_map)
 
         # Get user-specific notes
         user_notes = self.get_user_notes(viewer_user)
@@ -388,9 +433,9 @@ class Recording(db.Model):
             'audio_available': self.audio_deleted_at is None,
             'audio_duration': self.get_audio_duration(allow_probe_fallback=False),
             'deletion_exempt': self.deletion_exempt,
-            'folder_id': self.folder_id,
-            'folder': self.folder.to_dict() if self.folder else None,
-            'tags': [tag.to_dict() for tag in visible_tags] if visible_tags else [],
+            'folder_id': folder_id_ser,
+            'folder': folder_ser,
+            'tags': tags_ser,
             'events': [event.to_dict() for event in self.events] if self.events else [],
             'prompt_variables': self.prompt_variables or {},
             'resolved_hotwords': self.resolved_hotwords,

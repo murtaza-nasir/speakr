@@ -3255,6 +3255,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 
+            // Guard against being stuck filtering by a folder the user can't
+            // access — e.g. a foreign folder ID persisted from a shared recording
+            // (#314). Once folders load, drop any filter that isn't a real,
+            // owned/accessible folder so "All Recordings" is always reachable.
+            watch(availableFolders, (folders) => {
+                const f = filterFolder.value;
+                if (f && f !== 'none' && Array.isArray(folders) &&
+                    !folders.some(folder => String(folder.id) === String(f))) {
+                    filterFolder.value = '';
+                }
+            });
+
             watch(sortBy, (newValue) => {
                 localStorage.setItem('recordingsSortBy', newValue);
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);

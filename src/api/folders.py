@@ -647,7 +647,8 @@ def _apply_folder_auto_shares(recording, folder):
                 can_edit=(membership.role == 'admin'),
                 can_reshare=False,
                 source_type='group_folder',
-                source_tag_id=None  # We don't use this field for folders
+                source_tag_id=None,
+                source_folder_id=folder.id  # share-reason folder, surfaced to the recipient (#314)
             )
             db.session.add(share)
 

@@ -470,9 +470,19 @@
                                  visible recording is in it and the pill would be
                                  redundant. Hidden for incognito recordings (no
                                  folder association). -->
-                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || getRecordingTags(recording).length > 0 || recording.duplicate_info || (recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito)"
+                            <div v-if="(foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito) || (recording.folder && recording.folder.is_foreign) || getRecordingTags(recording).length > 0 || recording.duplicate_info || (recording.mime_type && recording.mime_type.startsWith('video/') && !recording.audio_deleted_at && !recording.incognito)"
                                  class="flex flex-wrap items-center gap-1 mt-1">
-                                <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito"
+                                <!-- Foreign (shared-in) folder: the folder that granted access. Shown
+                                     leftmost, marked, and NOT clickable — it isn't a folder you own,
+                                     so it must never become a sticky filter (#314). -->
+                                <span v-if="recording.folder && recording.folder.is_foreign && !recording.incognito"
+                                      class="chip"
+                                      :style="{ backgroundColor: recording.folder.color || '#6B7280', color: getContrastTextColor(recording.folder.color || '#6B7280') }"
+                                      :title="t('sharing.sharedBadge') + ': ' + recording.folder.name">
+                                    <i class="fas fa-share-nodes"></i>
+                                    <span class="chip__label" v-text="recording.folder.name"></span>
+                                </span>
+                                <button v-if="foldersEnabled && !filterFolder && recording.folder_id && !recording.incognito && !(recording.folder && recording.folder.is_foreign)"
                                         @click.stop="filterFolder = recording.folder_id"
                                         class="chip chip--clickable"
                                         :style="{ backgroundColor: getFolderColor(recording.folder_id), color: getContrastTextColor(getFolderColor(recording.folder_id)) }"
@@ -480,14 +490,24 @@
                                     <i class="fas fa-folder"></i>
                                     <span class="chip__label" v-text="getFolderName(recording.folder_id)"></span>
                                 </button>
-                                <button v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id"
-                                        @click.stop="filterByTag(tag)"
-                                        class="chip chip--clickable"
-                                        :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
-                                        :title="tag.group_id ? ('Group: ' + tag.group_name) : ('Filter by ' + tag.name)">
-                                    <i v-if="tag.group_id" class="fas fa-users"></i>
-                                    <span class="chip__label" v-text="tag.name"></span>
-                                </button>
+                                <template v-for="tag in getRecordingTags(recording).slice(0, 4)" :key="tag.id">
+                                    <!-- Foreign (share-reason) tag: marked, not clickable (#314) -->
+                                    <span v-if="tag.is_foreign"
+                                          class="chip"
+                                          :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                                          :title="t('sharing.sharedBadge') + ': ' + tag.name">
+                                        <i class="fas fa-share-nodes"></i>
+                                        <span class="chip__label" v-text="tag.name"></span>
+                                    </span>
+                                    <button v-else
+                                            @click.stop="filterByTag(tag)"
+                                            class="chip chip--clickable"
+                                            :style="{ backgroundColor: tag.color, color: getContrastTextColor(tag.color) }"
+                                            :title="tag.group_id ? ('Group: ' + tag.group_name) : ('Filter by ' + tag.name)">
+                                        <i v-if="tag.group_id" class="fas fa-users"></i>
+                                        <span class="chip__label" v-text="tag.name"></span>
+                                    </button>
+                                </template>
                                 <span v-if="getRecordingTags(recording).length > 4"
                                       class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs text-[var(--text-muted)]"
                                       :title="'More tags...'">
