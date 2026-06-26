@@ -6869,8 +6869,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 templateItem.innerHTML = `
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
-                            <h4 class="text-sm font-medium text-[var(--text-primary)]">${template.name}</h4>
-                            ${template.description ? `<p class="text-xs text-[var(--text-muted)] mt-1">${template.description}</p>` : ''}
+                            <h4 class="text-sm font-medium text-[var(--text-primary)]">${escapeHtml(template.name)}</h4>
+                            ${template.description ? `<p class="text-xs text-[var(--text-muted)] mt-1">${escapeHtml(template.description)}</p>` : ''}
                             ${template.is_default ? `<span class="text-xs text-[var(--text-accent)] mt-1"><i class="fas fa-star mr-1"></i>${t('transcriptTemplates.default')}</span>` : ''}
                         </div>
                     </div>
