@@ -383,6 +383,10 @@ TITLE_MAX_TOKENS=200
 # Optional: Maximum tokens for event extraction from transcripts (default: 4000)
 EVENT_MAX_TOKENS=4000
 
+# Optional: Prefix-cache-friendly title/summary prompts (default: false)
+# Only useful on self-hosted backends with automatic prefix caching. See below.
+PREFIX_CACHE_OPTIMIZED_PROMPTS=false
+
 # GPT-5 specific (only used with GPT-5 models and OpenAI API)
 GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
 GPT5_VERBOSITY=medium          # low, medium, high
@@ -396,6 +400,44 @@ CHAT_MODEL_NAME=openai/gpt-4o
 CHAT_GPT5_REASONING_EFFORT=medium  # minimal, low, medium, high
 CHAT_GPT5_VERBOSITY=medium          # low, medium, high
 ```
+
+## Prefix-Cache-Friendly Prompts (`PREFIX_CACHE_OPTIMIZED_PROMPTS`)
+
+**Default: `false`. Opt-in. Only relevant for self-hosted text-generation backends.**
+
+For each recording, Speakr makes two LLM calls over the same transcript
+back-to-back: title generation, then summary generation. By default these two
+calls use different system messages and different text before the transcript, so
+they share no common prefix.
+
+Self-hosted, OpenAI-compatible inference servers that implement **Automatic
+Prefix Caching** — vLLM (APC), llama.cpp / Ollama (KV reuse), SGLang
+(RadixAttention), TGI — can skip recomputing a prompt's KV cache when a new
+request shares a prefix with a recent one. Because the title and summary prompts
+don't share a prefix today, the expensive transcript prefill is computed twice.
+
+When `PREFIX_CACHE_OPTIMIZED_PROMPTS=true`, Speakr rewrites the title and summary
+prompts so they use a byte-identical system message and a byte-identical
+transcript-first user block, pushing all per-task instructions into the suffix
+after the transcript. The backend then prefills the transcript once (on the
+title call) and reuses it on the summary call, prefilling only the short
+trailing instructions.
+
+**When to enable it:**
+
+- You self-host the text model on a backend with automatic prefix caching, and
+- Your transcripts are large (long diarized meetings), so prefill dominates the
+  title+summary cost.
+
+**When to leave it off (the default):**
+
+- You use a hosted API (OpenRouter, OpenAI, etc.) — prefix caching there is
+  opaque/automatic and this flag gives no benefit.
+- You want the exact upstream prompt wording. With the flag off, prompts are
+  unchanged.
+
+Scope is title + summary only. The flag has no effect on chat, event extraction,
+or other calls.
 
 ## Per-Upload, Per-Tag, Per-Folder Transcription Models
 

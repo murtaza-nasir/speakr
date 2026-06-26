@@ -44,6 +44,46 @@ ENABLE_INTERNAL_SHARING = os.environ.get('ENABLE_INTERNAL_SHARING', 'false').low
 # Video retention - when enabled, video files keep their video stream for playback
 VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 
+# Prefix-cache-friendly prompts (opt-in, default off).
+#
+# Title generation and summary generation run over the SAME transcript
+# back-to-back. By default they use different system messages and different
+# text before the transcript, so an OpenAI-compatible backend with Automatic
+# Prefix Caching (vLLM APC, llama.cpp/Ollama KV reuse, SGLang, TGI) cannot reuse
+# the (expensive) transcript prefill across the two calls.
+#
+# When this flag is true we rewrite both prompts so that:
+#   - the system message is byte-identical between the two calls, and
+#   - the user message starts with a fixed, byte-identical transcript-first
+#     block, with all per-task variability (task instructions, language,
+#     context, user info) pushed into the SUFFIX after the transcript.
+# The backend then prefills the transcript once (on the title call) and reuses
+# its KV cache on the summary call, prefilling only the short trailing suffix.
+#
+# Default off so existing deployments and prompt-quality behaviour are unchanged
+# unless explicitly opted in. Scope is title + summary only.
+PREFIX_CACHE_OPTIMIZED_PROMPTS = os.environ.get(
+    'PREFIX_CACHE_OPTIMIZED_PROMPTS', 'false'
+).lower() == 'true'
+
+# Must be byte-identical between the title and summary calls. Keep it short and
+# generic; per-task guidance belongs in the user-message suffix.
+_SHARED_LLM_SYSTEM_MSG = (
+    "You assist with meeting transcripts. Follow the user's specific "
+    "instruction precisely and output only what is requested."
+)
+
+
+def _shared_user_prefix(transcript_text):
+    """Byte-identical user-message prefix shared by the title and summary calls.
+
+    DO NOT insert any conditional content (language, date, context, user info)
+    before the closing triple-quote. Any byte that differs between the two calls
+    past the first divergence kills KV-cache reuse for everything that follows --
+    including the transcript itself, which is the expensive part.
+    """
+    return f'Transcript:\n"""\n{transcript_text}\n"""\n\n'
+
 
 # Maximum length for user-visible error_message text. The Recording.error_message
 # column is TEXT (unbounded) but the UI shows the value verbatim; capping avoids
@@ -376,7 +416,26 @@ def _generate_ai_title(recording):
 
     language_directive = f"Please provide the title in {user_output_language}." if user_output_language else ""
 
-    prompt_text = f"""Create a short title for this conversation:
+    if PREFIX_CACHE_OPTIMIZED_PROMPTS:
+        # Shared-prefix layout: identical system message + identical user prefix
+        # (including the transcript) between this call and the summary call, so
+        # a prefix-caching backend can reuse the transcript KV cache. Everything
+        # task-specific goes in the SUFFIX after the transcript block. This
+        # prefix MUST stay byte-identical to the one in generate_summary_only_task.
+        system_message_content = _SHARED_LLM_SYSTEM_MSG
+        prompt_text = (
+            _shared_user_prefix(transcript_text)
+            + "Task: produce ONE short title for the conversation above.\n"
+            + "Requirements:\n"
+            + "- Maximum 8 words\n"
+            + "- No phrases like \"Discussion about\" or \"Meeting on\"\n"
+            + "- Just the main topic\n"
+            + "- Output ONLY the title text, nothing else (no quotes, no prefix)\n"
+            + (f"- Respond in {user_output_language}\n" if user_output_language else "")
+            + "\nTitle:"
+        )
+    else:
+        prompt_text = f"""Create a short title for this conversation:
 
 {transcript_text}
 
@@ -389,9 +448,9 @@ Requirements:
 
 Title:"""
 
-    system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
-    if user_output_language:
-        system_message_content += f" Ensure your response is in {user_output_language}."
+        system_message_content = "You are an AI assistant that generates concise titles for audio transcriptions. Respond only with the title."
+        if user_output_language:
+            system_message_content += f" Ensure your response is in {user_output_language}."
 
     try:
         completion = call_llm_completion(
@@ -663,14 +722,39 @@ def generate_summary_only_task(app_context, recording_id, custom_prompt_override
 
         context_section = "Context:\n" + "\n".join(f"- {part}" for part in context_parts)
 
-        # Build SYSTEM message: Initial instructions + Context + Language
-        system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
-        system_message_content += f"\n\n{context_section}"
-        if user_output_language:
-            system_message_content += f"\n\nLanguage Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory."
+        if PREFIX_CACHE_OPTIMIZED_PROMPTS:
+            # Shared-prefix layout: the system message and the user-message bytes
+            # up to and including the transcript block MUST match _generate_ai_title
+            # byte-for-byte, so the transcript KV cache built by the title call is
+            # reusable here. All variability (role guidance, context, instructions,
+            # language) goes in the SUFFIX after the transcript block.
+            system_message_content = _SHARED_LLM_SYSTEM_MSG
+            suffix_parts = [
+                "Task: produce a comprehensive Markdown summary of the "
+                "transcript above. Output raw Markdown only -- no code fences, "
+                "no preamble, no commentary.",
+                "",
+                context_section,
+                "",
+                "Summarization Instructions:",
+                summarization_instructions,
+            ]
+            if user_output_language:
+                suffix_parts.append("")
+                suffix_parts.append(
+                    f"Language Requirement: You MUST write the entire summary "
+                    f"in {user_output_language}. This is mandatory."
+                )
+            prompt_text = _shared_user_prefix(transcript_text) + "\n".join(suffix_parts)
+        else:
+            # Build SYSTEM message: Initial instructions + Context + Language
+            system_message_content = "You are an AI assistant that generates comprehensive summaries for meeting transcripts. Respond only with the summary in Markdown format. Do NOT use markdown code blocks (```markdown). Provide raw markdown content directly."
+            system_message_content += f"\n\n{context_section}"
+            if user_output_language:
+                system_message_content += f"\n\nLanguage Requirement: You MUST generate the entire summary in {user_output_language}. This is mandatory."
 
-        # Build USER message: Transcription + Summarization Instructions + Language Directive
-        prompt_text = f"""Transcription:
+            # Build USER message: Transcription + Summarization Instructions + Language Directive
+            prompt_text = f"""Transcription:
 \"\"\"
 {transcript_text}
 \"\"\"
