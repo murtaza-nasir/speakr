@@ -699,42 +699,48 @@
                 <div class="disclosure-anim" :class="{ 'is-open': showAdvancedOptions }">
                   <div class="disclosure-anim__inner">
                 <div class="disclosure-panel p-3 bg-[var(--bg-tertiary)] space-y-3 border border-[var(--border-secondary)]">
-                    <!-- Saved transcription template (#309): fills BOTH the initial
-                         prompt and hotwords below. Hidden until the user has saved
-                         templates. -->
-                    <div v-if="initialPromptTemplates && initialPromptTemplates.length && (connectorSupportsInitialPrompt || connectorSupportsHotwords)">
-                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                            ${ t('initialPromptTemplates.savedTemplate') }
-                        </label>
-                        <select @change="applyInitialPromptTemplate($event.target.value); $event.target.value=''"
-                                class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                            <option value="">${ t('initialPromptTemplates.pickPlaceholder') }</option>
-                            <option v-for="tpl in initialPromptTemplates" :key="tpl.id" :value="tpl.id" v-text="tpl.name"></option>
-                        </select>
-                    </div>
+                    <!-- Prompt & hotwords sub-card (#309): the saved-template dropdown
+                         fills BOTH the initial prompt and hotwords, so the three are
+                         grouped in one bordered card to make that relationship obvious. -->
+                    <div v-if="connectorSupportsInitialPrompt || connectorSupportsHotwords"
+                         class="rounded-md border border-[var(--border-secondary)] bg-[var(--bg-secondary)] p-3 space-y-3">
+                        <!-- Saved transcription template: fills the fields below. Hidden
+                             until the user has saved templates. -->
+                        <div v-if="initialPromptTemplates && initialPromptTemplates.length">
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                ${ t('initialPromptTemplates.savedTemplate') }
+                            </label>
+                            <select @change="applyInitialPromptTemplate($event.target.value); $event.target.value=''"
+                                    class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                                <option value="">${ t('initialPromptTemplates.pickPlaceholder') }</option>
+                                <option v-for="tpl in initialPromptTemplates" :key="tpl.id" :value="tpl.id" v-text="tpl.name"></option>
+                            </select>
+                            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('initialPromptTemplates.savedTemplateHelp') }</p>
+                        </div>
 
-                    <!-- Initial Prompt -->
-                    <div v-if="connectorSupportsInitialPrompt">
-                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                            ${ t('form.initialPrompt') }
-                        </label>
-                        <textarea v-model="uploadInitialPrompt"
-                                  rows="2"
-                                  :placeholder="t('form.initialPromptPlaceholder')"
-                                  class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] resize-y"></textarea>
-                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.initialPromptHelp') }</p>
-                    </div>
+                        <!-- Initial Prompt -->
+                        <div v-if="connectorSupportsInitialPrompt">
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                ${ t('form.initialPrompt') }
+                            </label>
+                            <textarea v-model="uploadInitialPrompt"
+                                      rows="2"
+                                      :placeholder="t('form.initialPromptPlaceholder')"
+                                      class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)] resize-y"></textarea>
+                            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.initialPromptHelp') }</p>
+                        </div>
 
-                    <!-- Hotwords -->
-                    <div v-if="connectorSupportsHotwords">
-                        <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                            ${ t('form.hotwords') }
-                        </label>
-                        <input v-model="uploadHotwords"
-                               type="text"
-                               :placeholder="t('form.hotwordsPlaceholder')"
-                               class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
-                        <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.hotwordsHelp') }</p>
+                        <!-- Hotwords -->
+                        <div v-if="connectorSupportsHotwords">
+                            <label class="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                                ${ t('form.hotwords') }
+                            </label>
+                            <input v-model="uploadHotwords"
+                                   type="text"
+                                   :placeholder="t('form.hotwordsPlaceholder')"
+                                   class="w-full px-2 py-1 text-sm bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--ring-focus)]">
+                            <p class="text-[10px] text-[var(--text-muted)] mt-0.5">${ t('form.hotwordsHelp') }</p>
+                        </div>
                     </div>
 
                     <!-- Transcription Model (issue #266 — visible only when admin set TRANSCRIPTION_MODELS_AVAILABLE).

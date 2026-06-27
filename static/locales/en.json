@@ -1624,7 +1624,8 @@
     "pickPlaceholder": "Insert a saved template…",
     "hotwords": "Hotwords",
     "hotwordsHelp": "Optional comma-separated words to bias recognition of domain-specific terms.",
-    "savedTemplate": "Saved template"
+    "savedTemplate": "Saved template",
+    "savedTemplateHelp": "Fills the initial prompt and hotwords below."
   },
   "detail": {
     "hints": "Hints",

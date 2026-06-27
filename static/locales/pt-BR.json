@@ -1615,7 +1615,8 @@
     "pickPlaceholder": "Inserir um modelo salvo…",
     "hotwords": "Hotwords",
     "hotwordsHelp": "Palavras opcionais separadas por vírgula para melhorar o reconhecimento de termos específicos.",
-    "savedTemplate": "Modelo salvo"
+    "savedTemplate": "Modelo salvo",
+    "savedTemplateHelp": "Preenche o prompt inicial e as hotwords abaixo."
   },
   "detail": {
     "hints": "Dicas",

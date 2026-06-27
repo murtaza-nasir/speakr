@@ -1615,7 +1615,8 @@
     "pickPlaceholder": "Insérer un modèle enregistré…",
     "hotwords": "Hotwords",
     "hotwordsHelp": "Mots optionnels séparés par des virgules pour améliorer la reconnaissance de termes spécifiques.",
-    "savedTemplate": "Modèle enregistré"
+    "savedTemplate": "Modèle enregistré",
+    "savedTemplateHelp": "Remplit le prompt initial et les mots-clés ci-dessous."
   },
   "detail": {
     "hints": "Indices",

@@ -1615,7 +1615,8 @@
     "pickPlaceholder": "插入已保存的模板…",
     "hotwords": "热词",
     "hotwordsHelp": "可选的、以逗号分隔的词语，用于提高特定术语的识别。",
-    "savedTemplate": "已保存的模板"
+    "savedTemplate": "已保存的模板",
+    "savedTemplateHelp": "填充下方的初始提示和热词。"
   },
   "detail": {
     "hints": "提示",

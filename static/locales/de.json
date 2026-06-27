@@ -1615,7 +1615,8 @@
     "pickPlaceholder": "Gespeicherte Vorlage einfügen…",
     "hotwords": "Hotwords",
     "hotwordsHelp": "Optionale, durch Komma getrennte Wörter zur Verbesserung der Erkennung domänenspezifischer Begriffe.",
-    "savedTemplate": "Gespeicherte Vorlage"
+    "savedTemplate": "Gespeicherte Vorlage",
+    "savedTemplateHelp": "Füllt den Initial-Prompt und die Hotwords unten aus."
   },
   "detail": {
     "hints": "Hinweise",

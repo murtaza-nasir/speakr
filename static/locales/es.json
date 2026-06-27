@@ -1615,7 +1615,8 @@
     "pickPlaceholder": "Insertar una plantilla guardada…",
     "hotwords": "Hotwords",
     "hotwordsHelp": "Palabras opcionales separadas por comas para mejorar el reconocimiento de términos específicos.",
-    "savedTemplate": "Plantilla guardada"
+    "savedTemplate": "Plantilla guardada",
+    "savedTemplateHelp": "Rellena el prompt inicial y las palabras clave a continuación."
   },
   "detail": {
     "hints": "Indicaciones",
