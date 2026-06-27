@@ -28,8 +28,12 @@ class SystemSetting(db.Model):
             'value': self.value,
             'description': self.description,
             'setting_type': self.setting_type,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
+            # ISO 8601 strings (naive UTC) so the frontend parses them the same
+            # way as every other timestamp. Returning raw datetimes makes Flask
+            # emit RFC-1123 HTTP-date strings, which the client's parser cannot
+            # read (it rendered as "Invalid Date").
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
     @staticmethod

@@ -2720,6 +2720,9 @@ Summarization Instructions:
                 const formatDate = (dateString) => {
                     if (!dateString) return t('adminDashboard.never');
                     const date = parseInstant(dateString);
+                    // Guard against unparseable input so we never render the
+                    // literal "Invalid Date Invalid Date".
+                    if (isNaN(date.getTime())) return t('adminDashboard.never');
                     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
                 };
                 
