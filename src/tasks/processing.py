@@ -424,7 +424,21 @@ def _generate_ai_title(recording):
     # mid-sequence, which makes json.loads() fail and leaves the literal `\uXXXX`
     # escapes in the prompt (issue #260).
     transcript_limit = SystemSetting.get_setting('transcript_length_limit', 30000)
-    formatted_transcription = format_transcription_for_llm(recording.transcription)
+    # The title normally uses the plain transcript (it has no use for timestamps).
+    # BUT when prefix-cache prompts are on, the title and summary calls must share
+    # a byte-identical transcript for the KV cache to be reusable — and the summary
+    # may include timestamps (#304). So mirror the owner's summary-timestamp setting
+    # here too; otherwise the title prefills a plain transcript and the summary's
+    # timestamped transcript can't reuse it, defeating the optimization.
+    _t_owner = recording.owner
+    if PREFIX_CACHE_OPTIMIZED_PROMPTS and _t_owner and _t_owner.summary_include_timestamps:
+        formatted_transcription = format_transcription_for_llm(
+            recording.transcription,
+            include_timestamps=True,
+            template_format=_resolve_timestamp_template_format(_t_owner, _t_owner.summary_timestamp_template_id),
+        )
+    else:
+        formatted_transcription = format_transcription_for_llm(recording.transcription)
     if transcript_limit == -1:
         transcript_text = formatted_transcription
     else:

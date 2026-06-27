@@ -145,6 +145,42 @@ def test_flag_on_shares_system_and_transcript_prefix(app_with_recording):
     assert "Summarization Instructions:" not in summary_prefix
 
 
+def test_flag_on_with_summary_timestamps_keeps_shared_prefix(app_with_recording):
+    """Flag ON + summary timestamps ON (#304): the title must mirror the
+    summary's TIMESTAMPED transcript, otherwise the shared prefix diverges and
+    the KV cache can't be reused. The shared prefix must stay byte-identical and
+    actually contain timestamps."""
+    import json
+    app, db, user, recording, created_user = app_with_recording
+    # JSON-segment transcript so timestamps are actually applied.
+    recording.transcription = json.dumps([
+        {"speaker": "Alice", "sentence": "Let's lock the launch date.", "start_time": 0.0, "end_time": 3.0},
+        {"speaker": "Bob", "sentence": "I propose the 14th, this is long enough.", "start_time": 65.0, "end_time": 68.0},
+    ])
+    user.summary_include_timestamps = True
+    user.summary_timestamp_template_id = None
+    db.session.commit()
+    try:
+        with patch.object(processing, "PREFIX_CACHE_OPTIMIZED_PROMPTS", True):
+            title_msgs, summary_msgs = _run_both_calls(app, recording, user)
+
+        title_prefix = _shared_region(title_msgs["user"])
+        summary_prefix = _shared_region(summary_msgs["user"])
+        assert title_prefix is not None and summary_prefix is not None
+        assert title_prefix == summary_prefix, (
+            "title/summary transcript prefix diverges when summary timestamps are on:\n"
+            f"title:   {title_prefix!r}\n"
+            f"summary: {summary_prefix!r}"
+        )
+        # The shared transcript carries timestamps (proving the title mirrored
+        # the summary's timestamped format, not the plain one).
+        assert "[00:00:00]" in title_prefix
+        assert "[00:01:05]" in title_prefix
+    finally:
+        user.summary_include_timestamps = False
+        db.session.commit()
+
+
 def test_flag_off_keeps_upstream_prompts(app_with_recording):
     """With the flag OFF, the prompts are the original upstream prompts: distinct
     system messages and the original transcript wrappers."""
