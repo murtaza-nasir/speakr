@@ -9,7 +9,7 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
 !!! success "Latest Release: v0.9.4-alpha — Transcription templates, timestamp toggles, and sharing privacy"
     Transcription templates bundle a reusable initial prompt and hotwords, summarization and chat gain independent per-line timestamp toggles, and recipients of a shared recording now see only the tag or folder that granted them access. Failed uploads retry automatically across all browsers, recordings are reachable by direct `/recordings/<id>` links, and an opt-in prefix-cache prompt layout (with admin-visible cache reads) speeds up self-hosted backends.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.4.md) for details. Backwards compatible; database migrations run automatically on startup.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.4-alpha) for details. Backwards compatible; database migrations run automatically on startup.
 
 ## Quick Navigation
 
@@ -137,7 +137,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Upload reliability and deep links** - Failed uploads retry automatically on reconnect across all browsers (#313), and any recording is reachable at a direct `/recordings/<id>` link (#301).
     - **Prefix-cache prompts and cache visibility** - An opt-in option reshapes the title and summary prompts to reuse the transcript prefix on self-hosted prefix-caching backends, and the admin dashboard now reports prompt-cache reads. Off by default for now; it may become the default in a future release.
 
-    Recommended for all deployments, especially any that accept uploads from untrusted users. See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.3.md).
+    Recommended for all deployments, especially any that accept uploads from untrusted users. See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.3-alpha).
 
 !!! info "Version 0.9.2-alpha - Local / S3 storage backend"
     Recording audio can now be stored in S3-compatible object storage instead of, or alongside, the local filesystem. Backwards compatible; `FILE_STORAGE_BACKEND` defaults to `local`, so existing deployments are unaffected.
@@ -147,7 +147,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Migration tooling** - `scripts/migrate_local_recordings_to_s3.py` moves existing recordings into a bucket with a dry-run mode, size verification, and optional source deletion.
     - **Configuration** - See the [File Storage](admin-guide/storage.md) admin guide for the full settings reference and per-provider examples, and the [Migration Guide](admin-guide/migration-guide.md#migrating-audio-files-to-s3) for moving historical files.
 
-    Contributed by @Daabramov (#268). See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.2.md) for details.
+    Contributed by @Daabramov (#268). See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.2-alpha) for details.
 
 !!! info "Version 0.9.1-alpha - Upload-path fixes"
     A patch release hardening the v0.9.0 upload path. Backwards compatible with v0.8.x and v0.9.0; database migrations run automatically.
@@ -157,7 +157,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **API token modals (#308)** - An unclosed `<div>` nested the Create Token modal inside the hidden folder modal; the markup is fixed so it opens again.
     - **Stalled-upload timeout & leave-page warning** - A size-scaled `XMLHttpRequest` timeout routes a stalled upload into the recovery path instead of hanging, and the browser now warns before you leave the page with an upload still in flight.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.1.md) for the complete list.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.1-alpha) for the complete list.
 
 !!! info "Version 0.9.0-alpha - Multi-platform recording, Stats tab, mobile rebuild, design-system unification"
     The first non-patch release in the v0.8 line. Three big user-facing themes: capturing audio is now multi-platform, the mobile app is a first-class member of the design system, and the upload modal stops feeling like a desktop card pasted onto a phone. Backwards compatible with v0.8.x; database migrations run automatically.
@@ -172,7 +172,7 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     - **Design-system unification** - 22 modals on shared `.modal-*` primitives, `.btn` + `.field` everywhere, dark-mode `<select>` theming, header consolidation, sidebar redesign, floating dockable chat panel.
     - **Inquire mode** - "+ New Recording" opens the upload modal directly via `?upload=1`. Also: `GET /api/v1/users/me`, an audio-player position preference, and a localization refresh across all seven languages.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.0.md) for the complete list.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.0-alpha) for the complete list.
 
 !!! info "Version 0.8.21-alpha - Security: CSRF bypass and SSO account takeover"
     Security patch release on top of v0.8.20-alpha. Tracked as a GitHub Security Advisory; reported by **@Irench1k**.
