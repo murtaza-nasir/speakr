@@ -288,7 +288,13 @@
     "vectorStoreUpToDate": "The vector store is up to date.",
     "viewFullPromptStructure": "View Full LLM Prompt Structure",
     "warning": "warning",
-    "yes": "Yes"
+    "yes": "Yes",
+    "defaultTranscriptionHints": "Default Transcription Hints",
+    "defaultTranscriptionHintsInfo": "Global initial prompt and hotwords applied to every transcription when a user has not set their own. Users' personal values always take precedence.",
+    "defaultInitialPromptLabel": "Default Initial Prompt",
+    "defaultInitialPromptDesc": "Sent to the transcription engine to steer recognition (for example, the expected topic or vocabulary).",
+    "defaultHotwordsLabel": "Default Hotwords",
+    "defaultHotwordsDesc": "Comma-separated words to bias recognition of domain-specific terms."
   },
   "apiTokens": {
     "activeTokens": "Active Tokens",

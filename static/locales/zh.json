@@ -288,7 +288,13 @@
     "vectorStoreUpToDate": "向量存储是最新的",
     "viewFullPromptStructure": "查看完整的 LLM 提示结构",
     "warning": "警告",
-    "yes": "是"
+    "yes": "是",
+    "defaultTranscriptionHints": "默认转录提示",
+    "defaultTranscriptionHintsInfo": "当用户未设置自己的值时，应用于每次转录的全局初始提示和热词。用户的个人设置始终优先。",
+    "defaultInitialPromptLabel": "默认初始提示",
+    "defaultInitialPromptDesc": "发送给转录引擎以引导识别（例如预期的主题或词汇）。",
+    "defaultHotwordsLabel": "默认热词",
+    "defaultHotwordsDesc": "用逗号分隔的词语，用于提高对特定领域术语的识别。"
   },
   "apiTokens": {
     "activeTokens": "活跃令牌",

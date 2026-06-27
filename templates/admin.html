@@ -902,13 +902,60 @@
                         </div>
                         
                         <div v-if="promptSaveMessage" class="mt-4">
-                            <div :class="promptSaveError ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'" 
+                            <div :class="promptSaveError ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'"
                                  class="p-3 rounded-md text-sm">
                                 ${ promptSaveMessage }
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Default transcription hints: global initial prompt + hotwords applied
+                         when a user has not set their own. Authoritative editor for the
+                         admin_default_initial_prompt / admin_default_hotwords settings
+                         (hidden from the raw System Settings list to avoid a duplicate editor). -->
+                    <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
+                        <h4 class="text-md font-medium text-[var(--text-secondary)] mb-1">${t('adminDashboard.defaultTranscriptionHints')}</h4>
+                        <p class="text-sm text-[var(--text-muted)] mb-4">${t('adminDashboard.defaultTranscriptionHintsInfo')}</p>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">${t('adminDashboard.defaultInitialPromptLabel')}</label>
+                            <p class="text-sm text-[var(--text-muted)] mb-3">${t('adminDashboard.defaultInitialPromptDesc')}</p>
+                            <textarea
+                                v-model="defaultInitialPrompt"
+                                rows="3"
+                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                :placeholder="t('account.defaultInitialPromptPlaceholder')">
+                            </textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">${t('adminDashboard.defaultHotwordsLabel')}</label>
+                            <p class="text-sm text-[var(--text-muted)] mb-3">${t('adminDashboard.defaultHotwordsDesc')}</p>
+                            <input
+                                type="text"
+                                v-model="defaultHotwords"
+                                class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]"
+                                :placeholder="t('form.hotwordsPlaceholder')">
+                        </div>
+
+                        <div class="flex justify-end items-center">
+                            <button @click="saveDefaultHints"
+                                    :disabled="isSavingHints"
+                                    class="btn btn--primary">
+                                <i v-if="isSavingHints" class="fas fa-spinner fa-spin mr-2"></i>
+                                <i v-else class="fas fa-save mr-2"></i>
+                                ${ isSavingHints ? t('adminDashboard.saving') : t('buttons.saveChanges') }
+                            </button>
+                        </div>
+
+                        <div v-if="hintsSaveMessage" class="mt-4">
+                            <div :class="hintsSaveError ? 'bg-[var(--bg-danger-light)] text-[var(--text-danger-strong)]' : 'bg-[var(--bg-success-light)] text-[var(--text-success-strong)]'"
+                                 class="p-3 rounded-md text-sm">
+                                ${ hintsSaveMessage }
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mt-6 bg-[var(--bg-tertiary)] p-6 rounded-lg border border-[var(--border-primary)]">
                         <h4 class="text-md font-medium text-[var(--text-secondary)] mb-3">${t('adminDashboard.promptHierarchy')}</h4>
                         <p class="text-sm text-[var(--text-muted)] mb-3">
@@ -2035,6 +2082,11 @@ Summarization Instructions:
                     'transcription_models_visible_json',
                     'transcription_default_model',
                     'admin_default_summary_prompt',
+                    // Managed by the dedicated "Default transcription hints"
+                    // editor in the Default Prompts tab — hidden here so the
+                    // raw card isn't a redundant second editor.
+                    'admin_default_initial_prompt',
+                    'admin_default_hotwords',
                 ]);
                 const displayedSettings = computed(() =>
                     (settings.value || []).filter(s => !HIDDEN_SETTING_KEYS.has(s.key))
@@ -2253,6 +2305,12 @@ Summarization Instructions:
                 const promptSaveMessage = ref('');
                 const promptSaveError = ref(false);
                 const showFullPromptStructure = ref(false);
+                // Default transcription hints (managed in the Default Prompts tab)
+                const defaultInitialPrompt = ref('');
+                const defaultHotwords = ref('');
+                const isSavingHints = ref(false);
+                const hintsSaveMessage = ref('');
+                const hintsSaveError = ref(false);
                 const originalDefaultPrompt = `Generate a comprehensive summary that includes the following sections:
 - **Key Issues Discussed**: A bulleted list of the main topics
 - **Key Decisions Made**: A bulleted list of any decisions reached
@@ -3388,10 +3446,64 @@ Summarization Instructions:
                         if (promptSetting) {
                             defaultSummaryPrompt.value = promptSetting.value || '';
                         }
+
+                        // Default transcription hints share this tab.
+                        const ipSetting = settingsData.find(s => s.key === 'admin_default_initial_prompt');
+                        defaultInitialPrompt.value = ipSetting ? (ipSetting.value || '') : '';
+                        const hwSetting = settingsData.find(s => s.key === 'admin_default_hotwords');
+                        defaultHotwords.value = hwSetting ? (hwSetting.value || '') : '';
                     } catch (error) {
                         console.error('Error loading default prompt:', error);
                         promptSaveMessage.value = t('adminDashboard.errors.failedToLoadPrompt');
                         promptSaveError.value = true;
+                    }
+                };
+
+                const saveDefaultHints = async () => {
+                    isSavingHints.value = true;
+                    hintsSaveMessage.value = '';
+                    hintsSaveError.value = false;
+
+                    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+                    const putSetting = async (key, value, description) => {
+                        const response = await fetch('/admin/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                            body: JSON.stringify({ key, value, description, setting_type: 'string' })
+                        });
+                        if (!response.ok) throw new Error('Failed to save ' + key);
+                    };
+
+                    try {
+                        await putSetting(
+                            'admin_default_initial_prompt',
+                            defaultInitialPrompt.value,
+                            'Global initial prompt injected into all transcription requests. Applied when users have not set their own initial prompt.'
+                        );
+                        await putSetting(
+                            'admin_default_hotwords',
+                            defaultHotwords.value,
+                            'Global hotwords injected into all transcription requests. Comma-separated. Applied when users have not set their own hotwords.'
+                        );
+
+                        // Keep the cached settings list in sync so the hidden
+                        // raw cards don't show stale values if revisited.
+                        const sync = (key, value) => {
+                            const row = (settings.value || []).find(s => s.key === key);
+                            if (row) row.value = value;
+                        };
+                        sync('admin_default_initial_prompt', defaultInitialPrompt.value);
+                        sync('admin_default_hotwords', defaultHotwords.value);
+
+                        hintsSaveMessage.value = t('adminDashboard.promptSavedSuccessfully');
+                        hintsSaveError.value = false;
+                        setTimeout(() => { hintsSaveMessage.value = ''; }, 3000);
+                    } catch (error) {
+                        console.error('Error saving default hints:', error);
+                        hintsSaveMessage.value = t('adminDashboard.errors.failedToSavePrompt');
+                        hintsSaveError.value = true;
+                    } finally {
+                        isSavingHints.value = false;
                     }
                 };
                 
@@ -3738,6 +3850,11 @@ Summarization Instructions:
                     showFullPromptStructure,
                     originalDefaultPrompt,
                     formatPromptPreview,
+                    defaultInitialPrompt,
+                    defaultHotwords,
+                    isSavingHints,
+                    hintsSaveMessage,
+                    hintsSaveError,
                     
                     // Computed
                     filteredUsers,
@@ -3817,7 +3934,8 @@ Summarization Instructions:
                     // Default Prompts methods
                     loadDefaultPrompt,
                     saveDefaultPrompt,
-                    resetDefaultPrompt
+                    resetDefaultPrompt,
+                    saveDefaultHints
                 };
             },
             delimiters: ['${', '}'] // Use different delimiters to avoid conflict with Flask's Jinja2

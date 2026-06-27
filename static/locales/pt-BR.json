@@ -288,7 +288,13 @@
     "vectorStoreUpToDate": "O armazenamento vetorial está atualizado.",
     "viewFullPromptStructure": "Ver Estrutura Completa da Instrução do LLM",
     "warning": "aviso",
-    "yes": "Sim"
+    "yes": "Sim",
+    "defaultTranscriptionHints": "Dicas de transcrição padrão",
+    "defaultTranscriptionHintsInfo": "Prompt inicial e hotwords globais aplicados a cada transcrição quando o usuário não definiu os seus. Os valores pessoais dos usuários sempre têm prioridade.",
+    "defaultInitialPromptLabel": "Prompt inicial padrão",
+    "defaultInitialPromptDesc": "Enviado ao mecanismo de transcrição para orientar o reconhecimento (por exemplo, o tema ou vocabulário esperado).",
+    "defaultHotwordsLabel": "Hotwords padrão",
+    "defaultHotwordsDesc": "Palavras separadas por vírgulas para favorecer o reconhecimento de termos específicos do domínio."
   },
   "apiTokens": {
     "activeTokens": "Tokens Ativos",

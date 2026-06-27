@@ -288,7 +288,13 @@
     "vectorStoreUpToDate": "Le magasin de vecteurs est à jour.",
     "viewFullPromptStructure": "Voir la Structure Complète de l'Invite LLM",
     "warning": "avertissement",
-    "yes": "Oui"
+    "yes": "Oui",
+    "defaultTranscriptionHints": "Indications de transcription par défaut",
+    "defaultTranscriptionHintsInfo": "Prompt initial et mots-clés globaux appliqués à chaque transcription lorsque l'utilisateur n'a pas défini les siens. Les valeurs personnelles des utilisateurs sont toujours prioritaires.",
+    "defaultInitialPromptLabel": "Prompt initial par défaut",
+    "defaultInitialPromptDesc": "Envoyé au moteur de transcription pour orienter la reconnaissance (par exemple le sujet ou le vocabulaire attendu).",
+    "defaultHotwordsLabel": "Mots-clés par défaut",
+    "defaultHotwordsDesc": "Mots séparés par des virgules pour favoriser la reconnaissance de termes spécifiques au domaine."
   },
   "apiTokens": {
     "activeTokens": "Jetons actifs",

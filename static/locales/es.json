@@ -288,7 +288,13 @@
     "vectorStoreUpToDate": "El almacén de vectores está actualizado.",
     "viewFullPromptStructure": "Ver Estructura Completa del Prompt LLM",
     "warning": "advertencia",
-    "yes": "Sí"
+    "yes": "Sí",
+    "defaultTranscriptionHints": "Sugerencias de transcripción predeterminadas",
+    "defaultTranscriptionHintsInfo": "Prompt inicial y palabras clave globales aplicados a cada transcripción cuando un usuario no ha definido los suyos. Los valores personales de los usuarios siempre tienen prioridad.",
+    "defaultInitialPromptLabel": "Prompt inicial predeterminado",
+    "defaultInitialPromptDesc": "Se envía al motor de transcripción para guiar el reconocimiento (por ejemplo, el tema o vocabulario esperado).",
+    "defaultHotwordsLabel": "Palabras clave predeterminadas",
+    "defaultHotwordsDesc": "Palabras separadas por comas para favorecer el reconocimiento de términos específicos del dominio."
   },
   "apiTokens": {
     "activeTokens": "Tokens activos",

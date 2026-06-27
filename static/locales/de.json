@@ -288,7 +288,13 @@
     "vectorStoreUpToDate": "Der Vektorspeicher ist auf dem neuesten Stand.",
     "viewFullPromptStructure": "Vollständige LLM-Prompt-Struktur anzeigen",
     "warning": "Warnung",
-    "yes": "Ja"
+    "yes": "Ja",
+    "defaultTranscriptionHints": "Standard-Transkriptionshinweise",
+    "defaultTranscriptionHintsInfo": "Globaler Initial-Prompt und Hotwords, die bei jeder Transkription angewendet werden, wenn ein Benutzer keine eigenen festgelegt hat. Persönliche Werte der Benutzer haben immer Vorrang.",
+    "defaultInitialPromptLabel": "Standard-Initial-Prompt",
+    "defaultInitialPromptDesc": "Wird an die Transkriptions-Engine gesendet, um die Erkennung zu steuern (z. B. erwartetes Thema oder Vokabular).",
+    "defaultHotwordsLabel": "Standard-Hotwords",
+    "defaultHotwordsDesc": "Durch Kommas getrennte Wörter, um die Erkennung domänenspezifischer Begriffe zu verbessern."
   },
   "apiTokens": {
     "activeTokens": "Aktive Token",
