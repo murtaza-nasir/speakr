@@ -156,7 +156,7 @@ def make_user():
 def make_recording(user, *, status="COMPLETED", transcription="hello world this is a transcript",
                    audio_path="local://covrec/audio.mp3", title="rec",
                    summary="a summary", original_filename="audio.mp3",
-                   mime_type="audio/mpeg", folder_id=None):
+                   mime_type="audio/mpeg", folder_id=None, participants=None):
     rec = Recording(
         audio_path=audio_path,
         original_filename=original_filename,
@@ -164,6 +164,7 @@ def make_recording(user, *, status="COMPLETED", transcription="hello world this 
         status=status,
         transcription=transcription,
         summary=summary,
+        participants=participants,
         user_id=user.id,
         mime_type=mime_type,
         folder_id=folder_id,
@@ -383,6 +384,166 @@ def test_paginated_speaker_filter(owner):
     ids = {r["id"] for r in resp.get_json()["recordings"]}
     assert match_id in ids
     assert nomatch_id not in ids
+
+
+def test_paginated_needs_transcription_filter(owner):
+    with _db():
+        u = db.session.get(User, owner)
+        missing = make_recording(u, title="needs-transcription", transcription=None).id
+        error = make_recording(
+            u,
+            title="failed-transcription",
+            status="FAILED",
+            transcription="Transcription failed: provider unavailable",
+        ).id
+        ready = make_recording(u, title="already-transcribed", transcription="valid transcript").id
+        active = make_recording(
+            u,
+            title="active-transcription",
+            status="QUEUED",
+            transcription=None,
+        ).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get("/api/recordings?needs_transcription=true&per_page=100")
+    assert resp.status_code == 200
+    ids = {r["id"] for r in resp.get_json()["recordings"]}
+    assert missing in ids
+    assert error in ids
+    assert ready not in ids
+    assert active not in ids
+
+
+def test_paginated_needs_summary_filter(owner):
+    with _db():
+        u = db.session.get(User, owner)
+        missing = make_recording(
+            u,
+            title="needs-summary",
+            transcription="valid transcript with enough words",
+            summary=None,
+        ).id
+        failed = make_recording(
+            u,
+            title="failed-summary",
+            status="FAILED",
+            transcription="valid transcript with enough words",
+            summary="[Summary generation failed: quota exceeded]",
+        ).id
+        no_transcript = make_recording(
+            u,
+            title="no-transcript-summary",
+            transcription=None,
+            summary=None,
+        ).id
+        active = make_recording(
+            u,
+            title="active-summary",
+            status="SUMMARIZING",
+            transcription="valid transcript with enough words",
+            summary=None,
+        ).id
+        ready = make_recording(
+            u,
+            title="summary-ready",
+            transcription="valid transcript with enough words",
+            summary="finished summary",
+        ).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get("/api/recordings?needs_summary=true&per_page=100")
+    assert resp.status_code == 200
+    ids = {r["id"] for r in resp.get_json()["recordings"]}
+    assert missing in ids
+    assert failed in ids
+    assert no_transcript not in ids
+    assert active not in ids
+    assert ready not in ids
+
+
+def test_paginated_needs_speakers_filter(owner):
+    with _db():
+        u = db.session.get(User, owner)
+        unresolved = make_recording(
+            u,
+            title="needs-speakers",
+            transcription=json.dumps([
+                {"speaker": "SPEAKER_00", "sentence": "Hello."},
+                {"speaker": "Alice", "sentence": "Hi."},
+            ]),
+        ).id
+        assigned = make_recording(
+            u,
+            title="speakers-assigned",
+            transcription=json.dumps([
+                {"speaker": "Alice", "sentence": "Hello."},
+                {"speaker": "Bob", "sentence": "Hi."},
+            ]),
+            participants="Alice, Bob",
+        ).id
+        active = make_recording(
+            u,
+            title="active-speakers",
+            status="PROCESSING",
+            transcription=json.dumps([
+                {"speaker": "SPEAKER_00", "sentence": "Still running."},
+            ]),
+        ).id
+        no_transcript = make_recording(u, title="no-speaker-transcript", transcription=None).id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get("/api/recordings?needs_speakers=true&per_page=100")
+    assert resp.status_code == 200
+    ids = {r["id"] for r in resp.get_json()["recordings"]}
+    assert unresolved in ids
+    assert assigned not in ids
+    assert active not in ids
+    assert no_transcript not in ids
+
+
+def test_paginated_needs_filters_and_with_existing_filters(owner):
+    tagname = f"needstag{uuid.uuid4().hex[:6]}"
+    with _db():
+        u = db.session.get(User, owner)
+        tag = Tag(name=tagname, user_id=u.id)
+        db.session.add(tag)
+        db.session.commit()
+        tagged_need = make_recording(
+            u,
+            title="tagged-needs-summary",
+            transcription="valid transcript with enough words",
+            summary=None,
+        )
+        db.session.add(RecordingTag(recording_id=tagged_need.id, tag_id=tag.id, order=1))
+        tagged_ready = make_recording(
+            u,
+            title="tagged-summary-ready",
+            transcription="valid transcript with enough words",
+            summary="finished summary",
+        )
+        db.session.add(RecordingTag(recording_id=tagged_ready.id, tag_id=tag.id, order=1))
+        untagged_need = make_recording(
+            u,
+            title="untagged-needs-summary",
+            transcription="valid transcript with enough words",
+            summary=None,
+        )
+        db.session.commit()
+        tagged_need_id = tagged_need.id
+        tagged_ready_id = tagged_ready.id
+        untagged_need_id = untagged_need.id
+
+    c = new_client()
+    login(c, owner)
+    resp = c.get(f"/api/recordings?needs_summary=true&q=tag:{tagname}&per_page=100")
+    assert resp.status_code == 200
+    ids = {r["id"] for r in resp.get_json()["recordings"]}
+    assert tagged_need_id in ids
+    assert tagged_ready_id not in ids
+    assert untagged_need_id not in ids
 
 
 def test_paginated_requires_login():
