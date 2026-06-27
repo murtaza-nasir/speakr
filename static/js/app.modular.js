@@ -277,6 +277,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const filterTextQuery = ref('');
             const filterStarred = ref(false);
             const filterInbox = ref(false);
+            const filterNeedsTranscription = ref(false);
+            const filterNeedsSummary = ref(false);
+            const filterNeedsSpeakers = ref(false);
             const showArchivedRecordings = ref(false);
             const showSharedWithMe = ref(false);
 
@@ -1575,6 +1578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Filters
                 showAdvancedFilters, filterTags, filterSpeakers, filterTagSearch, filterSpeakerSearch,
                 filterDateRange, filterDatePreset, filterTextQuery, filterStarred, filterInbox,
+                filterNeedsTranscription, filterNeedsSummary, filterNeedsSpeakers,
                 showArchivedRecordings, showSharedWithMe, sortBy, selectedTagFilter,
 
                 // Pagination
@@ -3274,6 +3278,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             watch(filterInbox, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(filterNeedsTranscription, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(filterNeedsSummary, () => {
+                recordingsComposable.loadRecordings(1, false, searchQuery.value);
+            });
+
+            watch(filterNeedsSpeakers, () => {
                 recordingsComposable.loadRecordings(1, false, searchQuery.value);
             });
 

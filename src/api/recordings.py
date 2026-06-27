@@ -93,6 +93,21 @@ from src.utils.file_hash import compute_file_sha256
 # Create blueprint
 recordings_bp = Blueprint('recordings', __name__)
 
+ACTIVE_RECORDING_STATUSES = ['QUEUED', 'PENDING', 'PROCESSING', 'SUMMARIZING']
+TRANSCRIPTION_ERROR_PREFIXES = [
+    'ERROR_JSON:',
+    'Transcription failed:',
+    'Processing failed:',
+    'ASR processing failed:',
+    'Audio extraction failed:',
+    'Upload/Processing failed:',
+]
+SUMMARY_NEEDS_PREFIXES = [
+    '[Summary generation failed:',
+    '[Summary skipped:',
+    '[Summary not generated]',
+]
+
 # Configuration from environment
 ENABLE_INQUIRE_MODE = os.environ.get('ENABLE_INQUIRE_MODE', 'false').lower() == 'true'
 ENABLE_AUTO_DELETION = os.environ.get('ENABLE_AUTO_DELETION', 'false').lower() == 'true'
@@ -103,6 +118,62 @@ VIDEO_RETENTION = os.environ.get('VIDEO_RETENTION', 'false').lower() == 'true'
 VIDEO_PASSTHROUGH_ASR = os.environ.get('VIDEO_PASSTHROUGH_ASR', 'false').lower() == 'true'
 USE_ASR_ENDPOINT = os.environ.get('USE_ASR_ENDPOINT', 'false').lower() == 'true'
 ENABLE_CHUNKING = os.environ.get('ENABLE_CHUNKING', 'true').lower() == 'true'
+
+
+def _idle_recording_condition():
+    """Recordings that are not currently queued or running work."""
+    return db.or_(
+        Recording.status.is_(None),
+        ~Recording.status.in_(ACTIVE_RECORDING_STATUSES),
+    )
+
+
+def _blank_column_condition(column):
+    return db.or_(column.is_(None), db.func.trim(column) == '')
+
+
+def _prefixed_column_condition(column, prefixes):
+    return db.or_(*[column.like(f'{prefix}%') for prefix in prefixes])
+
+
+def _transcription_error_condition():
+    return _prefixed_column_condition(Recording.transcription, TRANSCRIPTION_ERROR_PREFIXES)
+
+
+def _valid_transcription_condition():
+    return db.and_(
+        ~_blank_column_condition(Recording.transcription),
+        ~_transcription_error_condition(),
+    )
+
+
+def _needs_transcription_condition():
+    return db.and_(
+        _idle_recording_condition(),
+        db.or_(
+            _blank_column_condition(Recording.transcription),
+            _transcription_error_condition(),
+        ),
+    )
+
+
+def _needs_summary_condition():
+    return db.and_(
+        _idle_recording_condition(),
+        _valid_transcription_condition(),
+        db.or_(
+            _blank_column_condition(Recording.summary),
+            _prefixed_column_condition(Recording.summary, SUMMARY_NEEDS_PREFIXES),
+        ),
+    )
+
+
+def _needs_speakers_condition():
+    return db.and_(
+        _idle_recording_condition(),
+        _valid_transcription_condition(),
+        Recording.transcription.like('%SPEAKER\\_%', escape='\\'),
+    )
 
 def reindex_recording_chunks_async(recording_id):
     """Rebuild a recording's semantic-search (Inquire) chunks in the background.
@@ -1522,6 +1593,9 @@ def get_recordings_paginated():
         show_shared = request.args.get('shared', '').lower() == 'true'
         show_starred = request.args.get('starred', '').lower() == 'true'
         show_inbox = request.args.get('inbox', '').lower() == 'true'
+        needs_transcription = request.args.get('needs_transcription', '').lower() == 'true'
+        needs_summary = request.args.get('needs_summary', '').lower() == 'true'
+        needs_speakers = request.args.get('needs_speakers', '').lower() == 'true'
         sort_by = request.args.get('sort_by', 'created_at')  # 'created_at' or 'meeting_date'
         folder_filter = request.args.get('folder', '').strip()  # folder_id or 'none' for no folder
 
@@ -1603,6 +1677,15 @@ def get_recordings_paginated():
                     stmt = stmt.where(Recording.folder_id == folder_id)
                 except ValueError:
                     pass  # Invalid folder_id, ignore filter
+
+        if needs_transcription:
+            stmt = stmt.where(_needs_transcription_condition())
+
+        if needs_summary:
+            stmt = stmt.where(_needs_summary_condition())
+
+        if needs_speakers:
+            stmt = stmt.where(_needs_speakers_condition())
 
         # Apply search filters if provided
         if search_query:
