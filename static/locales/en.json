@@ -1599,23 +1599,26 @@
     "viewGuide": "View Template Guide"
   },
   "initialPromptTemplates": {
-    "tabTitle": "Transcription Prompts",
-    "title": "Transcription Prompts",
-    "description": "Save reusable initial prompts that steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.",
-    "createNew": "Create Prompt",
-    "availableTemplates": "Saved Prompts",
-    "createDefaults": "Create Starter Prompts",
+    "tabTitle": "Transcription Templates",
+    "title": "Transcription Templates",
+    "description": "Save reusable templates that bundle an initial prompt and hotwords to steer the transcription engine. Pick one when uploading, or use it to fill a tag, folder, or account default.",
+    "createNew": "Create Template",
+    "availableTemplates": "Saved Templates",
+    "createDefaults": "Create Starter Templates",
     "templateName": "Name",
     "descriptionLabel": "Description",
-    "template": "Prompt",
+    "template": "Initial prompt",
     "help": "A short, plain sentence that describes the recording, e.g. \"This is a business meeting about quarterly sales.\" It is sent to the transcription engine to steer recognition.",
-    "setDefault": "Set as default prompt",
+    "setDefault": "Set as default template",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
-    "selectOrCreate": "Select a prompt to edit or create a new one",
+    "selectOrCreate": "Select a template to edit or create a new one",
     "default": "Default",
-    "pickPlaceholder": "Insert a saved prompt…"
+    "pickPlaceholder": "Insert a saved template…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Optional comma-separated words to bias recognition of domain-specific terms.",
+    "savedTemplate": "Saved template"
   },
   "detail": {
     "hints": "Hints",
@@ -1682,7 +1685,8 @@
     "keepAudioOnlySubtitleOn": "Video dropped",
     "keepAudioOnlyLargerAllowed": "Larger uploads allowed",
     "largeVideoNotice": "Large video file. Upload will proceed; transcription may take longer and uses chunking on the server.",
-    "options": "Options"
+    "options": "Options",
+    "transcriptionOptions": "Transcription Options"
   },
   "uploadProgress": {
     "title": "Upload Progress"

@@ -853,7 +853,7 @@
                                         <label for="transcription_initial_prompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="account.defaultInitialPrompt">
                                             Default Initial Prompt
                                         </label>
-                                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="transcription_initial_prompt" style="display:none">
+                                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md sm:text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="transcription_initial_prompt" data-target-hotwords="transcription_hotwords" style="display:none">
                                             <option value="">Insert a saved prompt…</option>
                                         </select>
                                         <textarea name="transcription_initial_prompt" id="transcription_initial_prompt" rows="2"
@@ -1678,14 +1678,20 @@
                                             </div>
 
                                             <div>
-                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="initialPromptTemplates.template">Prompt</label>
-                                                <textarea id="ipTemplateContent" rows="4" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" required></textarea>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="initialPromptTemplates.template">Initial prompt</label>
+                                                <textarea id="ipTemplateContent" rows="4" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm"></textarea>
                                                 <p class="text-xs text-[var(--text-muted)] mt-2" data-i18n="initialPromptTemplates.help">A short, plain sentence that describes the recording, e.g. "This is a business meeting about quarterly sales." It is sent to the transcription engine to steer recognition.</p>
+                                            </div>
+
+                                            <div>
+                                                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-1" data-i18n="initialPromptTemplates.hotwords">Hotwords</label>
+                                                <input type="text" id="ipTemplateHotwords" class="w-full px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-primary)] border border-[var(--border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--ring-focus)] text-sm" data-i18n-placeholder="form.hotwordsPlaceholder" placeholder="e.g., Speakr, CTranslate2, PyAnnote">
+                                                <p class="text-xs text-[var(--text-muted)] mt-2" data-i18n="initialPromptTemplates.hotwordsHelp">Optional comma-separated words to bias recognition of domain-specific terms.</p>
                                             </div>
 
                                             <div class="flex items-center">
                                                 <input type="checkbox" id="ipTemplateIsDefault" class="mr-2">
-                                                <label for="ipTemplateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="initialPromptTemplates.setDefault">Set as default prompt</label>
+                                                <label for="ipTemplateIsDefault" class="text-sm text-[var(--text-secondary)]" data-i18n="initialPromptTemplates.setDefault">Set as default template</label>
                                             </div>
 
                                             <div class="flex gap-3">
@@ -2301,7 +2307,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% if connector_supports_initial_prompt %}
                     <div>
                         <label for="tagInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
-                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="tagInitialPrompt" style="display:none">
+                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="tagInitialPrompt" data-target-hotwords="tagHotwords" style="display:none">
                             <option value="">Insert a saved prompt…</option>
                         </select>
                         <textarea id="tagInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
@@ -2523,7 +2529,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                     {% if connector_supports_initial_prompt %}
                     <div>
                         <label for="folderInitialPrompt" class="block text-sm font-medium text-[var(--text-muted)] mb-1" data-i18n="form.initialPrompt">Initial Prompt</label>
-                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="folderInitialPrompt" style="display:none">
+                        <select class="ip-template-picker w-full mb-2 px-3 py-2 border border-[var(--border-secondary)] rounded-md text-sm bg-[var(--bg-input)] text-[var(--text-primary)]" data-target="folderInitialPrompt" data-target-hotwords="folderHotwords" style="display:none">
                             <option value="">Insert a saved prompt…</option>
                         </select>
                         <textarea id="folderInitialPrompt" name="default_initial_prompt" rows="2" class="w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--border-focus)] bg-[var(--bg-input)] text-[var(--text-primary)]" data-i18n-placeholder="form.initialPromptPlaceholder" placeholder="e.g., This is a meeting about AI transcription tools."></textarea>
@@ -7200,7 +7206,8 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             document.getElementById('ipTemplateEmptyState').classList.add('hidden');
             document.getElementById('ipTemplateName').value = template.name;
             document.getElementById('ipTemplateDescription').value = template.description || '';
-            document.getElementById('ipTemplateContent').value = template.template;
+            document.getElementById('ipTemplateContent').value = template.template || '';
+            document.getElementById('ipTemplateHotwords').value = template.hotwords || '';
             document.getElementById('ipTemplateIsDefault').checked = template.is_default;
             document.getElementById('ipDeleteTemplateBtn').classList.remove('hidden');
         }
@@ -7229,8 +7236,13 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 name: document.getElementById('ipTemplateName').value,
                 description: document.getElementById('ipTemplateDescription').value,
                 template: document.getElementById('ipTemplateContent').value,
+                hotwords: document.getElementById('ipTemplateHotwords').value,
                 is_default: document.getElementById('ipTemplateIsDefault').checked
             };
+            if (!templateData.name.trim() || !(templateData.template.trim() || templateData.hotwords.trim())) {
+                showToast('Enter a name and a prompt or hotwords', 'error');
+                return;
+            }
             try {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                 const url = ipIsEditing ? `/api/initial-prompt-templates/${ipCurrentTemplate.id}` : '/api/initial-prompt-templates';
@@ -7319,7 +7331,7 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
                 // Only show the picker once the user actually has saved prompts,
                 // so single-prompt users keep a clean editor.
                 sel.style.display = ipTemplates.length ? '' : 'none';
-                sel.innerHTML = '<option value="">' + (t('initialPromptTemplates.pickPlaceholder') || 'Insert a saved prompt…') + '</option>';
+                sel.innerHTML = '<option value="">' + (t('initialPromptTemplates.pickPlaceholder') || 'Insert a saved template…') + '</option>';
                 ipTemplates.forEach(tpl => {
                     const opt = document.createElement('option');
                     opt.value = String(tpl.id);
@@ -7329,15 +7341,26 @@ curl "https://your-speakr-instance.com/api/recordings?token=YOUR_TOKEN_HERE"</co
             });
         }
 
-        // Delegated handler: choosing a saved prompt fills the picker's target textarea.
+        // Delegated handler: choosing a saved template fills BOTH the picker's
+        // target prompt field (data-target) and its hotwords field
+        // (data-target-hotwords), so a transcription template applies prompt +
+        // hotwords together.
         document.addEventListener('change', (e) => {
             const sel = e.target;
             if (!sel.classList || !sel.classList.contains('ip-template-picker')) return;
             const tpl = ipTemplates.find(t => String(t.id) === sel.value);
-            const target = document.getElementById(sel.dataset.target);
-            if (tpl && target) {
-                target.value = tpl.template;
-                target.dispatchEvent(new Event('input', { bubbles: true }));
+            if (tpl) {
+                const promptTarget = document.getElementById(sel.dataset.target);
+                if (promptTarget) {
+                    promptTarget.value = tpl.template || '';
+                    promptTarget.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                const hotwordsTarget = sel.dataset.targetHotwords
+                    ? document.getElementById(sel.dataset.targetHotwords) : null;
+                if (hotwordsTarget) {
+                    hotwordsTarget.value = tpl.hotwords || '';
+                    hotwordsTarget.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             }
             sel.value = '';
         });

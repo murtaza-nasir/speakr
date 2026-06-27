@@ -1590,23 +1590,26 @@
     "viewGuide": "Ver Guía de Plantillas"
   },
   "initialPromptTemplates": {
-    "tabTitle": "Prompts de transcripción",
-    "title": "Prompts de transcripción",
-    "description": "Guarda prompts iniciales reutilizables que orientan el motor de transcripción. Elige uno al subir un archivo o úsalo para rellenar un valor predeterminado de etiqueta, carpeta o cuenta.",
-    "createNew": "Crear prompt",
-    "availableTemplates": "Prompts guardados",
-    "createDefaults": "Crear prompts iniciales",
+    "tabTitle": "Plantillas de transcripción",
+    "title": "Plantillas de transcripción",
+    "description": "Guarda plantillas reutilizables que combinan un prompt inicial y hotwords para orientar el motor de transcripción. Elige una al subir un archivo o úsala como predeterminada de una etiqueta, carpeta o cuenta.",
+    "createNew": "Crear plantilla",
+    "availableTemplates": "Plantillas guardadas",
+    "createDefaults": "Crear plantillas iniciales",
     "templateName": "Nombre",
     "descriptionLabel": "Descripción",
-    "template": "Prompt",
+    "template": "Prompt inicial",
     "help": "Una frase breve y sencilla que describa la grabación, p. ej. «Esta es una reunión de negocios sobre las ventas trimestrales.» Se envía al motor de transcripción para orientar el reconocimiento.",
-    "setDefault": "Establecer como prompt predeterminado",
+    "setDefault": "Establecer como plantilla predeterminada",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
-    "selectOrCreate": "Selecciona un prompt para editar o crea uno nuevo",
+    "selectOrCreate": "Selecciona una plantilla para editar o crea una nueva",
     "default": "Predeterminado",
-    "pickPlaceholder": "Insertar un prompt guardado…"
+    "pickPlaceholder": "Insertar una plantilla guardada…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Palabras opcionales separadas por comas para mejorar el reconocimiento de términos específicos.",
+    "savedTemplate": "Plantilla guardada"
   },
   "detail": {
     "hints": "Indicaciones",
@@ -1673,7 +1676,8 @@
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
     "keepAudioOnlyLargerAllowed": "Se permiten subidas más grandes",
     "largeVideoNotice": "Archivo de vídeo grande. La subida continuará; la transcripción puede tardar más y usa el troceado en el servidor.",
-    "options": "Opciones"
+    "options": "Opciones",
+    "transcriptionOptions": "Opciones de transcripción"
   },
   "uploadProgress": {
     "title": "Progreso de Carga"

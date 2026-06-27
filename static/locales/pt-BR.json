@@ -1590,23 +1590,26 @@
     "viewGuide": "Ver Guia de Modelo"
   },
   "initialPromptTemplates": {
-    "tabTitle": "Prompts de transcrição",
-    "title": "Prompts de transcrição",
-    "description": "Salve prompts iniciais reutilizáveis que orientam o mecanismo de transcrição. Escolha um ao enviar um arquivo ou use-o para preencher um padrão de tag, pasta ou conta.",
-    "createNew": "Criar prompt",
-    "availableTemplates": "Prompts salvos",
-    "createDefaults": "Criar prompts iniciais",
+    "tabTitle": "Modelos de transcrição",
+    "title": "Modelos de transcrição",
+    "description": "Salve modelos reutilizáveis que combinam um prompt inicial e hotwords para orientar o mecanismo de transcrição. Escolha um ao enviar um arquivo ou use-o como padrão de tag, pasta ou conta.",
+    "createNew": "Criar modelo",
+    "availableTemplates": "Modelos salvos",
+    "createDefaults": "Criar modelos iniciais",
     "templateName": "Nome",
     "descriptionLabel": "Descrição",
-    "template": "Prompt",
+    "template": "Prompt inicial",
     "help": "Uma frase curta e simples que descreve a gravação, por ex. \"Esta é uma reunião de negócios sobre as vendas trimestrais.\" Ela é enviada ao mecanismo de transcrição para orientar o reconhecimento.",
-    "setDefault": "Definir como prompt padrão",
+    "setDefault": "Definir como modelo padrão",
     "save": "Salvar",
     "cancel": "Cancelar",
     "delete": "Excluir",
-    "selectOrCreate": "Selecione um prompt para editar ou crie um novo",
+    "selectOrCreate": "Selecione um modelo para editar ou crie um novo",
     "default": "Padrão",
-    "pickPlaceholder": "Inserir um prompt salvo…"
+    "pickPlaceholder": "Inserir um modelo salvo…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Palavras opcionais separadas por vírgula para melhorar o reconhecimento de termos específicos.",
+    "savedTemplate": "Modelo salvo"
   },
   "detail": {
     "hints": "Dicas",
@@ -1673,7 +1676,8 @@
     "keepAudioOnlySubtitleOn": "Vídeo descartado",
     "keepAudioOnlyLargerAllowed": "Envios maiores permitidos",
     "largeVideoNotice": "Arquivo de vídeo grande. O envio será concluído; a transcrição pode demorar mais e usa o particionamento no servidor.",
-    "options": "Opções"
+    "options": "Opções",
+    "transcriptionOptions": "Opções de transcrição"
   },
   "uploadProgress": {
     "title": "Progresso do Envio"

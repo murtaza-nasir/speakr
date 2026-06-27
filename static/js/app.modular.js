@@ -528,7 +528,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const initialPromptTemplates = ref([]);
             const applyInitialPromptTemplate = (id) => {
                 const tpl = initialPromptTemplates.value.find(t => String(t.id) === String(id));
-                if (tpl) uploadInitialPrompt.value = tpl.template;
+                if (!tpl) return;
+                // A transcription template applies BOTH its prompt and hotwords.
+                uploadInitialPrompt.value = tpl.template || '';
+                uploadHotwords.value = tpl.hotwords || '';
             };
             // Detail-view popover showing which hotwords/initial-prompt a
             // recording actually used (#309).

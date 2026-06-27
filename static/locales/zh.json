@@ -1590,23 +1590,26 @@
     "viewGuide": "查看模板指南"
   },
   "initialPromptTemplates": {
-    "tabTitle": "转录提示词",
-    "title": "转录提示词",
-    "description": "保存可重复使用的初始提示词，用于引导转录引擎。上传时选择一个，或用它来填充标签、文件夹或账户的默认值。",
-    "createNew": "创建提示词",
-    "availableTemplates": "已保存的提示词",
-    "createDefaults": "创建入门提示词",
+    "tabTitle": "转录模板",
+    "title": "转录模板",
+    "description": "保存可重复使用的模板，将初始提示词和热词组合起来引导转录引擎。上传时选择一个，或将其用作标签、文件夹或账户的默认值。",
+    "createNew": "创建模板",
+    "availableTemplates": "已保存的模板",
+    "createDefaults": "创建入门模板",
     "templateName": "名称",
     "descriptionLabel": "描述",
-    "template": "提示词",
+    "template": "初始提示词",
     "help": "用一句简短、朴素的话描述录音，例如“这是一场关于季度销售的商务会议。”它会发送给转录引擎以引导识别。",
-    "setDefault": "设为默认提示词",
+    "setDefault": "设为默认模板",
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
-    "selectOrCreate": "选择一个提示词进行编辑，或创建一个新的",
+    "selectOrCreate": "选择一个模板进行编辑，或创建一个新的",
     "default": "默认",
-    "pickPlaceholder": "插入已保存的提示词…"
+    "pickPlaceholder": "插入已保存的模板…",
+    "hotwords": "热词",
+    "hotwordsHelp": "可选的、以逗号分隔的词语，用于提高特定术语的识别。",
+    "savedTemplate": "已保存的模板"
   },
   "detail": {
     "hints": "提示",
@@ -1673,7 +1676,8 @@
     "keepAudioOnlySubtitleOn": "已丢弃视频",
     "keepAudioOnlyLargerAllowed": "允许更大文件",
     "largeVideoNotice": "视频文件较大。上传将继续；转录可能耗时更长，并依赖服务器端的分块处理。",
-    "options": "选项"
+    "options": "选项",
+    "transcriptionOptions": "转录选项"
   },
   "uploadProgress": {
     "title": "上传进度"

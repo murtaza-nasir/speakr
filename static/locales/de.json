@@ -1590,23 +1590,26 @@
     "viewGuide": "Vorlagen-Leitfaden Anzeigen"
   },
   "initialPromptTemplates": {
-    "tabTitle": "Transkriptions-Prompts",
-    "title": "Transkriptions-Prompts",
-    "description": "Speichern Sie wiederverwendbare Initial-Prompts, die die Transkription steuern. Wählen Sie einen beim Hochladen aus oder verwenden Sie ihn als Standard für Tags, Ordner oder Ihr Konto.",
-    "createNew": "Prompt erstellen",
-    "availableTemplates": "Gespeicherte Prompts",
-    "createDefaults": "Start-Prompts erstellen",
+    "tabTitle": "Transkriptionsvorlagen",
+    "title": "Transkriptionsvorlagen",
+    "description": "Speichern Sie wiederverwendbare Vorlagen aus Initial-Prompt und Hotwords, die die Transkription steuern. Wählen Sie eine beim Hochladen aus oder verwenden Sie sie als Standard für Tags, Ordner oder Ihr Konto.",
+    "createNew": "Vorlage erstellen",
+    "availableTemplates": "Gespeicherte Vorlagen",
+    "createDefaults": "Start-Vorlagen erstellen",
     "templateName": "Name",
     "descriptionLabel": "Beschreibung",
-    "template": "Prompt",
+    "template": "Initial-Prompt",
     "help": "Ein kurzer, einfacher Satz, der die Aufnahme beschreibt, z. B. „Dies ist eine Geschäftsbesprechung über die Quartalsumsätze.“ Er wird an die Transkriptions-Engine gesendet, um die Erkennung zu steuern.",
-    "setDefault": "Als Standard-Prompt festlegen",
+    "setDefault": "Als Standardvorlage festlegen",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "delete": "Löschen",
-    "selectOrCreate": "Wählen Sie einen Prompt zum Bearbeiten oder erstellen Sie einen neuen",
+    "selectOrCreate": "Wählen Sie eine Vorlage zum Bearbeiten oder erstellen Sie eine neue",
     "default": "Standard",
-    "pickPlaceholder": "Gespeicherten Prompt einfügen…"
+    "pickPlaceholder": "Gespeicherte Vorlage einfügen…",
+    "hotwords": "Hotwords",
+    "hotwordsHelp": "Optionale, durch Komma getrennte Wörter zur Verbesserung der Erkennung domänenspezifischer Begriffe.",
+    "savedTemplate": "Gespeicherte Vorlage"
   },
   "detail": {
     "hints": "Hinweise",
@@ -1673,7 +1676,8 @@
     "keepAudioOnlySubtitleOn": "Video verworfen",
     "keepAudioOnlyLargerAllowed": "Größere Uploads erlaubt",
     "largeVideoNotice": "Großes Videodatei. Upload wird fortgesetzt; Transkription dauert ggf. länger und nutzt das Chunking auf dem Server.",
-    "options": "Optionen"
+    "options": "Optionen",
+    "transcriptionOptions": "Transkriptionsoptionen"
   },
   "uploadProgress": {
     "title": "Upload-Fortschritt"

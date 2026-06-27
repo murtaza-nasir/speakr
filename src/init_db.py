@@ -229,6 +229,10 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'recording', 'resolved_initial_prompt', 'TEXT'):
             app.logger.info("Added resolved_initial_prompt column to recording table")
 
+        # Transcription templates now bundle hotwords alongside the prompt (#309)
+        if add_column_if_not_exists(engine, 'initial_prompt_template', 'hotwords', 'TEXT'):
+            app.logger.info("Added hotwords column to initial_prompt_template table")
+
         # Add speaker voice profile embedding fields
         if add_column_if_not_exists(engine, 'speaker', 'average_embedding', 'BLOB'):
             app.logger.info("Added average_embedding column to speaker table")

@@ -66,19 +66,40 @@ def test_requires_auth():
 
 def test_create_and_list(client, user):
     resp = client.post('/api/initial-prompt-templates',
-                       json={'name': 'Meeting', 'template': 'This is a meeting.'})
+                       json={'name': 'Meeting', 'template': 'This is a meeting.', 'hotwords': 'Acme, KPI'})
     assert resp.status_code == 201
     created = resp.get_json()
     assert created['name'] == 'Meeting'
     assert created['template'] == 'This is a meeting.'
+    assert created['hotwords'] == 'Acme, KPI'
 
     listing = client.get('/api/initial-prompt-templates').get_json()
     assert any(t['id'] == created['id'] for t in listing)
 
 
-def test_create_requires_name_and_template(client):
+def test_create_hotwords_only(client):
+    # A template may carry hotwords with no prompt.
+    resp = client.post('/api/initial-prompt-templates',
+                       json={'name': 'Jargon', 'hotwords': 'CTranslate2, PyAnnote'})
+    assert resp.status_code == 201
+    created = resp.get_json()
+    assert created['template'] == ''
+    assert created['hotwords'] == 'CTranslate2, PyAnnote'
+
+
+def test_update_hotwords(client):
+    t = client.post('/api/initial-prompt-templates',
+                    json={'name': 'A', 'template': 'a'}).get_json()
+    resp = client.put(f"/api/initial-prompt-templates/{t['id']}", json={'hotwords': 'foo, bar'})
+    assert resp.status_code == 200
+    assert resp.get_json()['hotwords'] == 'foo, bar'
+
+
+def test_create_requires_name_and_some_content(client):
+    # Need a name AND at least one of prompt/hotwords.
     assert client.post('/api/initial-prompt-templates', json={'name': 'x'}).status_code == 400
     assert client.post('/api/initial-prompt-templates', json={'template': 'x'}).status_code == 400
+    assert client.post('/api/initial-prompt-templates', json={'name': 'x', 'hotwords': '  '}).status_code == 400
 
 
 def test_single_default_enforced(client, user):

@@ -29,10 +29,13 @@ def get_initial_prompt_templates():
 @initial_prompt_templates_bp.route('/api/initial-prompt-templates', methods=['POST'])
 @login_required
 def create_initial_prompt_template():
-    """Create a new initial-prompt template."""
+    """Create a new transcription template (initial prompt and/or hotwords)."""
     data = request.json
-    if not data or not data.get('name') or not data.get('template'):
-        return jsonify({'error': 'Name and template are required'}), 400
+    prompt = (data.get('template') or '') if data else ''
+    hotwords = (data.get('hotwords') or '') if data else ''
+    # A template needs a name and at least one of prompt / hotwords.
+    if not data or not data.get('name') or not (prompt.strip() or hotwords.strip()):
+        return jsonify({'error': 'Name and a prompt or hotwords are required'}), 400
 
     # If this is set as default, unset other defaults
     if data.get('is_default'):
@@ -44,7 +47,8 @@ def create_initial_prompt_template():
     template = InitialPromptTemplate(
         user_id=current_user.id,
         name=data['name'],
-        template=data['template'],
+        template=prompt,
+        hotwords=hotwords or None,
         description=data.get('description'),
         is_default=data.get('is_default', False)
     )
@@ -80,6 +84,8 @@ def update_initial_prompt_template(template_id):
 
     template.name = data.get('name', template.name)
     template.template = data.get('template', template.template)
+    if 'hotwords' in data:
+        template.hotwords = data.get('hotwords') or None
     template.description = data.get('description', template.description)
     template.is_default = data.get('is_default', template.is_default)
     template.updated_at = datetime.utcnow()
@@ -118,24 +124,29 @@ def create_default_initial_prompt_templates():
     starters = [
         ('Business meeting',
          'This is a business meeting.',
+         '',
          'Generic business meeting context'),
         ('Interview',
          'This is an interview between an interviewer and an interviewee.',
+         '',
          'One-on-one interview context'),
         ('Podcast',
          'This is a podcast episode with hosts and guests having a conversation.',
+         '',
          'Podcast / multi-speaker conversation context'),
         ('Lecture',
          'This is an academic lecture given by a single speaker.',
+         '',
          'Single-speaker lecture or presentation context'),
     ]
 
     templates = []
-    for idx, (name, text, description) in enumerate(starters):
+    for idx, (name, text, hotwords, description) in enumerate(starters):
         templates.append(InitialPromptTemplate(
             user_id=current_user.id,
             name=name,
             template=text,
+            hotwords=hotwords or None,
             description=description,
             is_default=(idx == 0),
         ))
