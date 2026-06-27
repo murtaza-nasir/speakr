@@ -1616,10 +1616,10 @@
     "hintsUsed": "Indicaciones de transcripción usadas en esta grabación"
   },
   "timestamps": {
-    "title": "Marcas de tiempo de la transcripción",
-    "description": "Incluye marcas de tiempo en la transcripción enviada a la IA para que pueda indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
-    "summaryLabel": "Añadir marcas de tiempo a la transcripción del resumen",
-    "chatLabel": "Añadir marcas de tiempo a la transcripción del chat",
+    "title": "Disponibilidad de marcas de tiempo en la transcripción",
+    "description": "Elige si los agentes de resumen y de chat reciben marcas de tiempo en la transcripción, para que puedan indicar cuándo se dijo algo. Usa el formato predeterminado o una de tus plantillas de transcripción.",
+    "summaryLabel": "Dar marcas de tiempo al agente de resumen",
+    "chatLabel": "Dar marcas de tiempo al agente de chat",
     "defaultFormat": "Formato de marca de tiempo predeterminado"
   },
   "transcription": {

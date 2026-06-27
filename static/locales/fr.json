@@ -1616,10 +1616,10 @@
     "hintsUsed": "Indices de transcription utilisés pour cet enregistrement"
   },
   "timestamps": {
-    "title": "Horodatage de la transcription",
-    "description": "Ajoutez des repères temporels à la transcription envoyée à l'IA afin qu'elle puisse indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
-    "summaryLabel": "Ajouter des horodatages à la transcription du résumé",
-    "chatLabel": "Ajouter des horodatages à la transcription du chat",
+    "title": "Disponibilité des horodatages de transcription",
+    "description": "Choisissez si les agents de résumé et de chat reçoivent les horodatages dans la transcription, afin qu'ils puissent indiquer à quel moment les choses ont été dites. Utilisez le format par défaut ou l'un de vos modèles de transcription.",
+    "summaryLabel": "Fournir les horodatages à l'agent de résumé",
+    "chatLabel": "Fournir les horodatages à l'agent de chat",
     "defaultFormat": "Format d'horodatage par défaut"
   },
   "transcription": {

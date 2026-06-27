@@ -1625,10 +1625,10 @@
     "hintsUsed": "Transcription hints used for this recording"
   },
   "timestamps": {
-    "title": "Transcript Timestamps",
-    "description": "Include time markers in the transcript sent to the AI so it can reference when things were said. Use the default format, or one of your transcript templates.",
-    "summaryLabel": "Add timestamps to the summarizer's transcript",
-    "chatLabel": "Add timestamps to the chat transcript",
+    "title": "Transcript Timestamp Availability",
+    "description": "Choose whether the summarization and chat agents receive timestamps in the transcript, so they can reference when something was said. Pick the default format, or one of your transcript templates.",
+    "summaryLabel": "Give the summarization agent timestamps",
+    "chatLabel": "Give the chat agent timestamps",
     "defaultFormat": "Default timestamp format"
   },
   "transcription": {

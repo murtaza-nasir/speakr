@@ -1616,10 +1616,10 @@
     "hintsUsed": "Dicas de transcrição usadas nesta gravação"
   },
   "timestamps": {
-    "title": "Marcações de tempo da transcrição",
-    "description": "Inclua marcações de tempo na transcrição enviada à IA para que ela possa indicar quando algo foi dito. Use o formato padrão ou um dos seus modelos de transcrição.",
-    "summaryLabel": "Adicionar marcações de tempo à transcrição do resumo",
-    "chatLabel": "Adicionar marcações de tempo à transcrição do chat",
+    "title": "Disponibilidade de marcações de tempo na transcrição",
+    "description": "Escolha se os agentes de resumo e de chat recebem marcações de tempo na transcrição, para que possam indicar quando algo foi dito. Use o formato padrão ou um dos seus modelos de transcrição.",
+    "summaryLabel": "Dar marcações de tempo ao agente de resumo",
+    "chatLabel": "Dar marcações de tempo ao agente de chat",
     "defaultFormat": "Formato de marcação de tempo padrão"
   },
   "transcription": {
