@@ -436,53 +436,53 @@
                     <!-- Token Usage Section -->
                     <div class="mt-6">
                         <h4 class="text-lg font-medium text-[var(--text-secondary)] mb-4">
-                            <i class="fas fa-coins mr-2"></i> Token Usage Statistics
+                            <i class="fas fa-coins mr-2"></i> ${ t('adminDashboard.tokenUsage.title') }
                         </h4>
 
                         <!-- Token Stats and Per-User Usage Side by Side -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                             <!-- Token Usage Summary Cards (LLM and Embedding tracked separately) -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Usage Summary</h5>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${ t('adminDashboard.tokenUsage.usageSummary') }</h5>
 
                                 <!-- LLM bucket (chat, summarization, title, etc.) -->
                                 <div class="mb-3">
-                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-robot mr-1"></i> LLM</p>
+                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-robot mr-1"></i> ${ t('adminDashboard.tokenUsage.llm') }</p>
                                     <div class="grid grid-cols-3 gap-3">
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">Today</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.today') }</p>
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.today?.llm_tokens || 0).toLocaleString() }</p>
                                         </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">This Month</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.thisMonth') }</p>
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.current_month?.llm_tokens || 0).toLocaleString() }</p>
                                         </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">Monthly Cost</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.monthlyCost') }</p>
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.llm_cost || 0).toFixed(4) }</p>
                                         </div>
                                     </div>
                                     <!-- Prompt cache: reads are prompt tokens served from a prefix cache. -->
                                     <p class="text-xs text-[var(--text-muted)] mt-2 flex items-center flex-wrap gap-x-3">
-                                        <span><i class="fas fa-bolt mr-1 text-[var(--text-accent)]"></i>Cache reads: <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cached_tokens || 0).toLocaleString() }</span> this month <span v-if="(tokenStats.today?.cached_tokens || 0) > 0">(${ (tokenStats.today?.cached_tokens || 0).toLocaleString() } today)</span></span>
-                                        <span v-if="(tokenStats.current_month?.cache_write_tokens || 0) > 0">· writes: <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cache_write_tokens || 0).toLocaleString() }</span></span>
+                                        <span><i class="fas fa-bolt mr-1 text-[var(--text-accent)]"></i>${ t('adminDashboard.tokenUsage.cacheReadsLabel') } <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cached_tokens || 0).toLocaleString() }</span> ${ t('adminDashboard.tokenUsage.thisMonthInline') } <span v-if="(tokenStats.today?.cached_tokens || 0) > 0">(${ (tokenStats.today?.cached_tokens || 0).toLocaleString() } ${ t('adminDashboard.tokenUsage.todayInline') })</span></span>
+                                        <span v-if="(tokenStats.current_month?.cache_write_tokens || 0) > 0">· ${ t('adminDashboard.tokenUsage.cacheWritesLabel') } <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cache_write_tokens || 0).toLocaleString() }</span></span>
                                     </p>
                                 </div>
 
                                 <!-- Embedding bucket -->
                                 <div class="mb-3">
-                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-vector-square mr-1"></i> Embeddings</p>
+                                    <p class="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2"><i class="fas fa-vector-square mr-1"></i> ${ t('adminDashboard.tokenUsage.embeddings') }</p>
                                     <div class="grid grid-cols-3 gap-3">
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">Today</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.today') }</p>
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.today?.embedding_tokens || 0).toLocaleString() }</p>
                                         </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">This Month</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.thisMonth') }</p>
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">${ (tokenStats.current_month?.embedding_tokens || 0).toLocaleString() }</p>
                                         </div>
                                         <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
-                                            <p class="text-xs text-[var(--text-muted)]">Monthly Cost</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.monthlyCost') }</p>
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.embedding_cost || 0).toFixed(4) }</p>
                                         </div>
                                     </div>
@@ -495,11 +495,11 @@
                                             <i class="fas fa-exclamation-triangle"></i>
                                         </div>
                                         <div class="ml-3">
-                                            <p class="text-xs text-[var(--text-muted)]">Budget Warnings</p>
+                                            <p class="text-xs text-[var(--text-muted)]">${ t('adminDashboard.tokenUsage.budgetWarnings') }</p>
                                             <p class="text-sm font-semibold">
-                                                <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } blocked</span>
-                                                <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } warning</span>
-                                                <span v-else class="text-[var(--text-success-strong)]">None</span>
+                                                <span v-if="tokenStats.users_at_100_percent > 0" class="text-[var(--text-danger-strong)]">${ tokenStats.users_at_100_percent } ${ t('adminDashboard.tokenUsage.blocked') }</span>
+                                                <span v-else-if="tokenStats.users_over_80_percent > 0" class="text-[var(--text-warn-strong)]">${ tokenStats.users_over_80_percent } ${ t('adminDashboard.tokenUsage.warning') }</span>
+                                                <span v-else class="text-[var(--text-success-strong)]">${ t('adminDashboard.tokenUsage.none') }</span>
                                             </p>
                                         </div>
                                     </div>
@@ -508,9 +508,9 @@
 
                             <!-- Operation breakdown for the current month -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm lg:col-span-2">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Tokens by Operation (This Month)</h5>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${ t('adminDashboard.tokenUsage.tokensByOperation') }</h5>
                                 <div v-if="(tokenStats.current_month?.by_operation || []).length === 0" class="text-sm text-[var(--text-muted)]">
-                                    No usage recorded yet this month.
+                                    ${ t('adminDashboard.tokenUsage.noUsage') }
                                 </div>
                                 <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                     <div v-for="op in (tokenStats.current_month?.by_operation || [])"
@@ -519,10 +519,10 @@
                                         <p class="text-xs text-[var(--text-muted)] capitalize">${ op.operation_type.replace('_', ' ') }</p>
                                         <p class="text-base font-semibold text-[var(--text-primary)]">${ op.tokens.toLocaleString() }</p>
                                         <p class="text-xs text-[var(--text-muted)]">
-                                            ${ op.requests } req<span v-if="op.cost > 0"> · $${ op.cost.toFixed(4) }</span>
+                                            ${ op.requests } ${ t('adminDashboard.tokenUsage.requests') }<span v-if="op.cost > 0"> · $${ op.cost.toFixed(4) }</span>
                                         </p>
                                         <p v-if="(op.cached_tokens || 0) > 0" class="text-xs text-[var(--text-accent)]">
-                                            <i class="fas fa-bolt mr-1"></i>${ op.cached_tokens.toLocaleString() } cached
+                                            <i class="fas fa-bolt mr-1"></i>${ op.cached_tokens.toLocaleString() } ${ t('adminDashboard.tokenUsage.cached') }
                                         </p>
                                     </div>
                                 </div>
@@ -599,7 +599,7 @@
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <!-- Transcription Usage Summary Cards (2x2 grid) -->
                             <div class="bg-[var(--bg-tertiary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">Usage Summary</h5>
+                                <h5 class="text-md font-medium text-[var(--text-secondary)] mb-3">${ t('adminDashboard.tokenUsage.usageSummary') }</h5>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div class="p-3 bg-[var(--bg-secondary)] rounded-lg border border-[var(--border-primary)]">
                                         <div class="flex items-center">
