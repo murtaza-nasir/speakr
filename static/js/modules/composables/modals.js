@@ -131,8 +131,16 @@ export function useModals(state, utils) {
                 const remaining = recordings.value;
                 if (remaining.length > 0) {
                     const nextIndex = Math.min(deletedIndex, remaining.length - 1);
-                    selectedRecording.value = remaining[nextIndex];
-                    currentView.value = 'detail';
+                    // Navigate through selectRecording so the neighbour's FULL
+                    // detail (transcription/summary) is fetched. Assigning the
+                    // light list object directly left the detail pane showing
+                    // "No transcription available" until the row was clicked again.
+                    if (utils.selectRecording) {
+                        utils.selectRecording(remaining[nextIndex]);
+                    } else {
+                        selectedRecording.value = remaining[nextIndex];
+                        currentView.value = 'detail';
+                    }
                 } else {
                     selectedRecording.value = null;
                     currentView.value = null;

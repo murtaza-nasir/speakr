@@ -230,6 +230,11 @@ export function useRecordings(state, utils, reprocessComposable) {
             speakerColorMap.value = {};
         }
 
+        // Tell the hydration safety-net watcher that this path already fetches
+        // the full detail below, so it doesn't also fetch (avoids a double
+        // request on every normal selection). Set BEFORE the assignment so the
+        // watcher, which fires on the next tick, sees the flag.
+        if (recording && recording.id && utils) utils._hydratingSelectedRecording = true;
         selectedRecording.value = recording;
 
         if (recording && recording.id) {
@@ -258,6 +263,8 @@ export function useRecordings(state, utils, reprocessComposable) {
                 }
             } catch (error) {
                 console.error('Error loading full recording:', error);
+            } finally {
+                if (utils) utils._hydratingSelectedRecording = false;
             }
         }
 

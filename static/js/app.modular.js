@@ -2276,6 +2276,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Create reprocess composable first so it can be passed to recordings
             const reprocessComposable = useReprocess(state, utils);
             const recordingsComposable = useRecordings(state, utils, reprocessComposable);
+            // Expose selectRecording so other composables can navigate to a
+            // recording the same way a sidebar click does (which fetches its
+            // full detail). Used by delete-neighbour selection in modals.
+            utils.selectRecording = recordingsComposable.selectRecording;
+
+            // Hydration safety net: if selectedRecording is ever set to a light
+            // sidebar/list object (to_list_dict omits transcription/summary),
+            // fetch the full recording so the detail pane never shows a stale
+            // "No transcription available". The normal selectRecording() path
+            // sets utils._hydratingSelectedRecording while it does its own fetch,
+            // so this only acts on assignments that bypass it. Keyed on the id so
+            // it fires once per navigation, not on in-place field updates.
+            watch(() => (selectedRecording.value && selectedRecording.value.id) || null, async (id) => {
+                const rec = selectedRecording.value;
+                if (!id || id === 'incognito' || !rec) return;
+                if ('transcription' in rec) return;            // already a full detail object
+                if (utils._hydratingSelectedRecording) return; // selectRecording is fetching it
+                try {
+                    const resp = await fetch(`/api/recordings/${id}`);
+                    if (!resp.ok) return;
+                    const full = await resp.json();
+                    if (selectedRecording.value && selectedRecording.value.id === id) {
+                        selectedRecording.value = full;
+                        const idx = recordings.value.findIndex(r => r.id === id);
+                        if (idx !== -1) recordings.value[idx] = full;
+                    }
+                } catch (_) { /* non-fatal; a manual re-click still hydrates */ }
+            });
+
             const uploadComposable = useUpload(state, utils);
 
             // Upload disclaimer handlers
