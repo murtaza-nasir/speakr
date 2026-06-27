@@ -1,13 +1,16 @@
 name: Docker Build and Publish
 
-# Publishing is owned by Forgejo (.forgejo/workflows/docker-publish.yml fires on
-# a v* tag). This GitHub workflow is kept as a MANUAL fallback only — it no
-# longer auto-publishes on a GitHub release, so there's no double-publish while
-# Forgejo owns CD. To revert to GitHub auto-publishing (e.g. if the Forgejo CD
-# doesn't work out), restore the `release: { types: [published] }` trigger below.
+# Publishing is owned by this GitHub workflow. It builds and pushes the
+# multi-arch images to Docker Hub when a GitHub Release is published, on public
+# runners with auditable build logs and provenance attestation. Building images
+# on public CI rather than a private runner lets anyone verify exactly how a
+# published image was produced and from which commit. The Forgejo
+# docker-publish workflow is kept as a manual fallback only (workflow_dispatch),
+# so the same tag is never published twice. To hand CD back to Forgejo, restore
+# its `push: tags` trigger and comment out the `release` trigger below.
 on:
-  # release:
-  #   types: [published]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:

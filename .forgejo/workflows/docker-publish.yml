@@ -1,21 +1,20 @@
 name: Publish to Docker Hub
 
-# Publish step, kept separate from CI. The "Tests" workflow runs on every
-# push/PR; this one does NOT run on ordinary pushes. It publishes when you
-# create a version tag (deliberate "cut a release" act) and can also be run by
-# hand from the Actions tab. Building/pushing the multi-arch images needs the
-# DOCKERHUB_USERNAME / DOCKERHUB_TOKEN repo secrets.
-#
-#   git tag v0.6.0 && git push forgejo v0.6.0   ->   publishes :v0.6.0
+# Publish step, kept separate from CI. Tag-push publishing is now owned by the
+# GitHub workflow (.github/workflows/docker-publish.yml fires on a published
+# Release) so release images are built on public runners with auditable logs and
+# provenance. This Forgejo workflow is a MANUAL fallback only: run it by hand
+# from the Actions tab if GitHub CD is unavailable. It does NOT fire on tag
+# pushes, so the same tag is never published from two places at once.
+# Building/pushing the multi-arch images needs the DOCKERHUB_USERNAME /
+# DOCKERHUB_TOKEN repo secrets. To hand CD back to Forgejo, restore the
+# `push: tags: ['v*']` trigger here and comment out the GitHub `release` trigger.
 #
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Image tag to publish (manual runs only; tag pushes use the git tag)"
+        description: "Image tag to publish"
         required: false
         default: latest
 
