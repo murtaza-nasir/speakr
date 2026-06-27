@@ -47,6 +47,7 @@ class ConnectorRegistry:
         from .connectors.azure_openai_transcribe import AzureOpenAITranscribeConnector
         from .connectors.mistral import MistralTranscriptionConnector
         from .connectors.vibevoice import VibeVoiceTranscriptionConnector
+        from .connectors.assemblyai import AssemblyAITranscriptionConnector
 
         self.register('openai_whisper', OpenAIWhisperConnector)
         self.register('openai_transcribe', OpenAITranscribeConnector)
@@ -54,6 +55,7 @@ class ConnectorRegistry:
         self.register('azure_openai_transcribe', AzureOpenAITranscribeConnector)
         self.register('mistral', MistralTranscriptionConnector)
         self.register('vibevoice', VibeVoiceTranscriptionConnector)
+        self.register('assemblyai', AssemblyAITranscriptionConnector)
 
     def register(self, name: str, connector_class: Type[BaseTranscriptionConnector]):
         """
@@ -287,6 +289,18 @@ class ConnectorRegistry:
                 'base_url': base_url,
                 'model': os.environ.get('TRANSCRIPTION_MODEL', 'microsoft/VibeVoice-ASR'),
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+            }
+
+        elif connector_name == 'assemblyai':
+            base_url = os.environ.get('TRANSCRIPTION_BASE_URL', '')
+            if base_url:
+                base_url = base_url.split('#')[0].strip()
+
+            return {
+                'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
+                'base_url': base_url or 'https://api.assemblyai.com',
+                # Optional speech_model; account default when blank.
+                'model': os.environ.get('TRANSCRIPTION_MODEL', ''),
             }
 
         else:  # openai_whisper (default)
