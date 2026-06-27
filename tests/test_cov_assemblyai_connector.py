@@ -127,9 +127,32 @@ def test_payload_no_diarize_no_speaker_fields():
     assert p['language_code'] == 'de'
 
 
-def test_payload_model_passthrough():
-    p = _conn(model='universal')._build_payload(_req(diarize=False, language='en'), 'u')
-    assert p['speech_model'] == 'universal'
+def test_payload_model_passthrough_uses_plural_array():
+    # Single model -> one-element speech_models array (plural field).
+    p = _conn(model='universal-3-pro')._build_payload(_req(diarize=False, language='en'), 'u')
+    assert p['speech_models'] == ['universal-3-pro']
+    assert 'speech_model' not in p
+
+
+def test_payload_model_comma_list_becomes_fallback_array():
+    p = _conn(model='universal-3-pro, universal-2')._build_payload(_req(diarize=False, language='en'), 'u')
+    assert p['speech_models'] == ['universal-3-pro', 'universal-2']
+
+
+def test_payload_no_model_omits_speech_models():
+    p = _conn()._build_payload(_req(diarize=False, language='en'), 'u')
+    assert 'speech_models' not in p and 'speech_model' not in p
+
+
+def test_payload_foreign_model_dropped():
+    # A model name resolved from shared settings for another connector
+    # (WhisperX 'large-v3', OpenAI 'gpt-4o-...') must NOT be sent to AssemblyAI.
+    for bad in ('large-v3', 'gpt-4o-transcribe-diarize'):
+        p = _conn(model=bad)._build_payload(_req(diarize=False, language='en'), 'u')
+        assert 'speech_models' not in p, f"{bad} should have been dropped"
+    # A per-request override that's foreign is dropped too.
+    p = _conn(model='universal-2')._build_payload(_req(diarize=False, language='en', model='large-v3'), 'u')
+    assert 'speech_models' not in p
 
 
 # --- end-to-end flow (mocked) ---------------------------------------------

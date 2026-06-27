@@ -10,7 +10,8 @@ chunking is needed.
 Config (from env via the registry):
 - api_key:  TRANSCRIPTION_API_KEY            (required; sent as the `authorization` header, no Bearer)
 - base_url: TRANSCRIPTION_BASE_URL           (default https://api.assemblyai.com)
-- model:    TRANSCRIPTION_MODEL              (optional; passed as `speech_model`, omitted when blank)
+- model:    ASSEMBLYAI_SPEECH_MODEL          (optional; one or comma-separated AssemblyAI models
+            -> `speech_models`; foreign/blank values fall back to the account default)
 """
 
 import io
@@ -44,6 +45,14 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
         TranscriptionCapability.HOTWORDS,               # word_boost
     }
     PROVIDER_NAME = "assemblyai"
+
+    # AssemblyAI's own speech models. The transcription-model that reaches a
+    # connector can be resolved from shared settings (env, admin default, tag /
+    # folder defaults) that were meant for a DIFFERENT connector (e.g. WhisperX
+    # 'large-v3' or OpenAI 'gpt-4o-transcribe-diarize'). Sending one of those to
+    # AssemblyAI is a hard error, so we only forward models AssemblyAI knows and
+    # otherwise fall back to the account default.
+    KNOWN_MODELS = frozenset({'universal-3-pro', 'universal-2', 'universal', 'nano', 'best', 'slam-1'})
 
     # AssemblyAI ingests long files in a single async job (10h / up to 2.2GB on
     # upload), so the app must not chunk for this connector.
@@ -126,10 +135,19 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
                 payload["word_boost"] = words
                 payload["boost_param"] = self.boost_param
 
-        # Optional model override (account default when blank).
+        # Optional model selection (account default when blank). AssemblyAI
+        # deprecated the singular `speech_model` in favour of `speech_models`
+        # (an ordered fallback array). Only forward models AssemblyAI recognises;
+        # a foreign model name resolved from shared settings is dropped so we
+        # fall back to the account default rather than erroring.
         model = self._effective_model(request)
         if model:
-            payload["speech_model"] = model
+            candidates = [m.strip() for m in model.split(',') if m.strip()]
+            valid = [m for m in candidates if m.lower() in self.KNOWN_MODELS]
+            if valid:
+                payload["speech_models"] = valid
+            elif candidates:
+                logger.info("AssemblyAI: ignoring non-AssemblyAI model(s) %s; using account default", candidates)
 
         return payload
 
@@ -162,8 +180,8 @@ class AssemblyAITranscriptionConnector(BaseTranscriptionConnector):
                 audio_url = self._upload(client, audio_bytes)
                 payload = self._build_payload(request, audio_url)
                 logger.info(
-                    "AssemblyAI: submitting transcript (diarize=%s, lang=%s, model=%s)",
-                    request.diarize, payload.get('language_code', 'auto'), payload.get('speech_model', 'default'))
+                    "AssemblyAI: submitting transcript (diarize=%s, lang=%s, models=%s)",
+                    request.diarize, payload.get('language_code', 'auto'), payload.get('speech_models', 'default'))
                 resp = client.post("/v2/transcript", json=payload,
                                    headers={"content-type": "application/json"})
                 if resp.status_code not in (200, 201):

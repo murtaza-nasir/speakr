@@ -292,15 +292,20 @@ class ConnectorRegistry:
             }
 
         elif connector_name == 'assemblyai':
-            base_url = os.environ.get('TRANSCRIPTION_BASE_URL', '')
-            if base_url:
-                base_url = base_url.split('#')[0].strip()
+            # AssemblyAI's endpoint is fixed (api.assemblyai.com), so we do NOT
+            # read the shared TRANSCRIPTION_BASE_URL here: a stale value left
+            # over from another connector would otherwise send uploads to the
+            # wrong host. Use the dedicated ASSEMBLYAI_BASE_URL only for proxies.
+            base_url = os.environ.get('ASSEMBLYAI_BASE_URL', '').split('#')[0].strip()
 
             return {
                 'api_key': os.environ.get('TRANSCRIPTION_API_KEY', ''),
                 'base_url': base_url or 'https://api.assemblyai.com',
-                # Optional speech_model; account default when blank.
-                'model': os.environ.get('TRANSCRIPTION_MODEL', ''),
+                # Dedicated model var (NOT the shared TRANSCRIPTION_MODEL, which
+                # is often a leftover model name from another connector that
+                # AssemblyAI would reject). Account default when blank; a
+                # comma-separated list becomes an ordered speech_models fallback.
+                'model': os.environ.get('ASSEMBLYAI_SPEECH_MODEL', ''),
             }
 
         else:  # openai_whisper (default)
