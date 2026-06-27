@@ -1,13 +1,16 @@
 name: Build images (no publish)
 
-# Manual "does everything still build?" check. Builds BOTH images (main + lite)
-# for BOTH architectures (linux/amd64 + linux/arm64) using the exact same steps
-# as the publish workflow — but with push: false and NO Docker Hub login/secrets,
-# so nothing is ever published. Use it to validate the Dockerfile (incl. the arm
-# build) before cutting a v* release tag.
-#
-# Start it from the Forgejo Actions tab → "Build images (no publish)" → Run.
+# "Does everything still build?" check. Builds BOTH images (main + lite) for BOTH
+# architectures (linux/amd64 + linux/arm64) using the same steps as the publish
+# workflow, but with push: false and NO Docker Hub login/secrets, so nothing is
+# ever published. This is the private pre-flight gate: it runs automatically when
+# a v* tag is pushed to this Forgejo remote, so the full and arm builds are
+# validated here before the public GitHub release publishes the images. It can
+# also be started by hand from the Forgejo Actions tab.
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
