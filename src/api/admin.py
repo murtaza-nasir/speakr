@@ -497,6 +497,8 @@ def admin_get_token_stats():
             func.sum(TokenUsage.total_tokens).label('tokens'),
             func.sum(TokenUsage.cost).label('cost'),
             func.sum(TokenUsage.request_count).label('requests'),
+            func.sum(TokenUsage.cached_tokens).label('cached_tokens'),
+            func.sum(TokenUsage.cache_write_tokens).label('cache_write_tokens'),
         ).filter(
             extract('year', TokenUsage.date) == today.year,
             extract('month', TokenUsage.date) == today.month,
@@ -507,6 +509,8 @@ def admin_get_token_stats():
                 'tokens': int(r.tokens or 0),
                 'cost': float(r.cost or 0.0),
                 'requests': int(r.requests or 0),
+                'cached_tokens': int(r.cached_tokens or 0),
+                'cache_write_tokens': int(r.cache_write_tokens or 0),
                 'is_embedding': token_tracker.is_embedding_op(r.operation_type),
             }
             for r in op_rows
@@ -521,6 +525,8 @@ def admin_get_token_stats():
                 'llm_cost': current_month.get('llm_cost', 0),
                 'embedding_tokens': current_month.get('embedding_tokens', 0),
                 'embedding_cost': current_month.get('embedding_cost', 0),
+                'cached_tokens': current_month.get('cached_tokens', 0),
+                'cache_write_tokens': current_month.get('cache_write_tokens', 0),
                 'by_operation': by_operation,
             },
             'user_count_with_usage': len([u for u in user_stats if u['current_usage'] > 0]),

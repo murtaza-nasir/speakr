@@ -46,7 +46,9 @@ class TokenTracker:
         completion_tokens: int,
         total_tokens: int,
         model_name: str = None,
-        cost: float = None
+        cost: float = None,
+        cached_tokens: int = 0,
+        cache_write_tokens: int = 0
     ):
         """
         Record token usage - upserts into daily aggregate.
@@ -59,6 +61,8 @@ class TokenTracker:
             total_tokens: Total tokens (prompt + completion)
             model_name: Name of the model used
             cost: API cost if available (e.g., from OpenRouter)
+            cached_tokens: Prompt tokens served from a prefix cache (cache reads)
+            cache_write_tokens: Prompt tokens written into the cache on this call
         """
         try:
             today = date.today()
@@ -75,6 +79,8 @@ class TokenTracker:
                 usage.prompt_tokens += prompt_tokens
                 usage.completion_tokens += completion_tokens
                 usage.total_tokens += total_tokens
+                usage.cached_tokens = (usage.cached_tokens or 0) + (cached_tokens or 0)
+                usage.cache_write_tokens = (usage.cache_write_tokens or 0) + (cache_write_tokens or 0)
                 usage.request_count += 1
                 if cost:
                     usage.cost += cost
@@ -89,6 +95,8 @@ class TokenTracker:
                     prompt_tokens=prompt_tokens,
                     completion_tokens=completion_tokens,
                     total_tokens=total_tokens,
+                    cached_tokens=cached_tokens or 0,
+                    cache_write_tokens=cache_write_tokens or 0,
                     request_count=1,
                     model_name=model_name,
                     cost=cost or 0.0
@@ -180,7 +188,9 @@ class TokenTracker:
             TokenUsage.date,
             TokenUsage.operation_type,
             func.sum(TokenUsage.total_tokens).label('tokens'),
-            func.sum(TokenUsage.cost).label('cost')
+            func.sum(TokenUsage.cost).label('cost'),
+            func.sum(TokenUsage.cached_tokens).label('cached_tokens'),
+            func.sum(TokenUsage.cache_write_tokens).label('cache_write_tokens')
         ).filter(TokenUsage.date >= start_date)
 
         if user_id:
@@ -201,12 +211,16 @@ class TokenTracker:
                     'llm_cost': 0.0,
                     'embedding_tokens': 0,
                     'embedding_cost': 0.0,
+                    'cached_tokens': 0,
+                    'cache_write_tokens': 0,
                     'by_operation': {},
                 }
             tokens = r.tokens or 0
             cost = r.cost or 0
             stats[date_str]['total'] += tokens
             stats[date_str]['cost'] += cost
+            stats[date_str]['cached_tokens'] += r.cached_tokens or 0
+            stats[date_str]['cache_write_tokens'] += r.cache_write_tokens or 0
             if self.is_embedding_op(r.operation_type):
                 stats[date_str]['embedding_tokens'] += tokens
                 stats[date_str]['embedding_cost'] += cost
@@ -229,6 +243,8 @@ class TokenTracker:
                     'llm_cost': 0.0,
                     'embedding_tokens': 0,
                     'embedding_cost': 0.0,
+                    'cached_tokens': 0,
+                    'cache_write_tokens': 0,
                     'by_operation': {},
                 }
             all_dates.append(date_str)
@@ -247,7 +263,9 @@ class TokenTracker:
             extract('month', TokenUsage.date).label('month'),
             TokenUsage.operation_type,
             func.sum(TokenUsage.total_tokens).label('tokens'),
-            func.sum(TokenUsage.cost).label('cost')
+            func.sum(TokenUsage.cost).label('cost'),
+            func.sum(TokenUsage.cached_tokens).label('cached_tokens'),
+            func.sum(TokenUsage.cache_write_tokens).label('cache_write_tokens')
         ).group_by('year', 'month', TokenUsage.operation_type).order_by('year', 'month').all()
 
         buckets = {}
@@ -263,11 +281,15 @@ class TokenTracker:
                     'llm_cost': 0.0,
                     'embedding_tokens': 0,
                     'embedding_cost': 0.0,
+                    'cached_tokens': 0,
+                    'cache_write_tokens': 0,
                 }
             tokens = r.tokens or 0
             cost = r.cost or 0
             buckets[key]['tokens'] += tokens
             buckets[key]['cost'] += cost
+            buckets[key]['cached_tokens'] += r.cached_tokens or 0
+            buckets[key]['cache_write_tokens'] += r.cache_write_tokens or 0
             if self.is_embedding_op(r.operation_type):
                 buckets[key]['embedding_tokens'] += tokens
                 buckets[key]['embedding_cost'] += cost
@@ -315,7 +337,9 @@ class TokenTracker:
         query = db.session.query(
             TokenUsage.operation_type,
             func.sum(TokenUsage.total_tokens).label('tokens'),
-            func.sum(TokenUsage.cost).label('cost')
+            func.sum(TokenUsage.cost).label('cost'),
+            func.sum(TokenUsage.cached_tokens).label('cached_tokens'),
+            func.sum(TokenUsage.cache_write_tokens).label('cache_write_tokens')
         ).filter(TokenUsage.date == today)
 
         if user_id:
@@ -330,12 +354,16 @@ class TokenTracker:
             'llm_cost': 0.0,
             'embedding_tokens': 0,
             'embedding_cost': 0.0,
+            'cached_tokens': 0,
+            'cache_write_tokens': 0,
         }
         for r in rows:
             tokens = r.tokens or 0
             cost = r.cost or 0
             out['tokens'] += tokens
             out['cost'] += cost
+            out['cached_tokens'] += r.cached_tokens or 0
+            out['cache_write_tokens'] += r.cache_write_tokens or 0
             if self.is_embedding_op(r.operation_type):
                 out['embedding_tokens'] += tokens
                 out['embedding_cost'] += cost

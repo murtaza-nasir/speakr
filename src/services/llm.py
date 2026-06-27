@@ -23,6 +23,49 @@ class TokenBudgetExceeded(Exception):
 
 from src.utils import safe_json_loads, extract_json_object
 
+
+def extract_cache_tokens(usage):
+    """Pull prompt-cache counts out of a provider's usage object.
+
+    Returns (cached_tokens, cache_write_tokens) as ints, defaulting to 0.
+    Providers expose these differently:
+      - OpenAI / OpenRouter: usage.prompt_tokens_details.cached_tokens (reads),
+        and some surface a cache_write/cache_creation field alongside it.
+      - Anthropic: usage.cache_read_input_tokens / usage.cache_creation_input_tokens.
+    We probe all known shapes defensively because usage may be a pydantic
+    object or a plain dict, and missing fields must never break tracking.
+    """
+    if not usage:
+        return 0, 0
+
+    def _get(obj, name):
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return obj.get(name)
+        return getattr(obj, name, None)
+
+    def _to_int(val):
+        try:
+            return int(val) if val else 0
+        except (TypeError, ValueError):
+            return 0
+
+    details = _get(usage, 'prompt_tokens_details')
+
+    cached = (
+        _get(details, 'cached_tokens')
+        or _get(usage, 'cache_read_input_tokens')
+        or 0
+    )
+    cache_write = (
+        _get(usage, 'cache_creation_input_tokens')
+        or _get(details, 'cache_write_tokens')
+        or _get(usage, 'cache_write_tokens')
+        or 0
+    )
+    return _to_int(cached), _to_int(cache_write)
+
 # Configuration - use TEXT_MODEL_* variables for LLM
 TEXT_MODEL_API_KEY = os.environ.get("TEXT_MODEL_API_KEY")
 TEXT_MODEL_BASE_URL = os.environ.get("TEXT_MODEL_BASE_URL", "https://openrouter.ai/api/v1")
@@ -261,6 +304,7 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
         if user_id and operation_type and not stream and response.usage:
             try:
                 from src.services.token_tracking import token_tracker
+                cached_tokens, cache_write_tokens = extract_cache_tokens(response.usage)
                 token_tracker.record_usage(
                     user_id=user_id,
                     operation_type=operation_type,
@@ -268,7 +312,9 @@ def call_llm_completion(messages, temperature=0.7, response_format=None, stream=
                     completion_tokens=response.usage.completion_tokens,
                     total_tokens=response.usage.total_tokens,
                     model_name=TEXT_MODEL_NAME,
-                    cost=getattr(response.usage, 'cost', None)
+                    cost=getattr(response.usage, 'cost', None),
+                    cached_tokens=cached_tokens,
+                    cache_write_tokens=cache_write_tokens
                 )
             except Exception as e:
                 logger.warning(f"Failed to record token usage: {e}")
@@ -395,6 +441,7 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
         if user_id and operation_type and not stream and response.usage:
             try:
                 from src.services.token_tracking import token_tracker
+                cached_tokens, cache_write_tokens = extract_cache_tokens(response.usage)
                 token_tracker.record_usage(
                     user_id=user_id,
                     operation_type=operation_type,
@@ -402,7 +449,9 @@ def call_chat_completion(messages, temperature=0.7, response_format=None, stream
                     completion_tokens=response.usage.completion_tokens,
                     total_tokens=response.usage.total_tokens,
                     model_name=model_name,
-                    cost=getattr(response.usage, 'cost', None)
+                    cost=getattr(response.usage, 'cost', None),
+                    cached_tokens=cached_tokens,
+                    cache_write_tokens=cache_write_tokens
                 )
             except Exception as e:
                 logger.warning(f"Failed to record token usage: {e}")
@@ -479,6 +528,7 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
         if hasattr(chunk, 'usage') and chunk.usage and user_id and operation_type:
             try:
                 from src.services.token_tracking import token_tracker
+                cached_tokens, cache_write_tokens = extract_cache_tokens(chunk.usage)
                 # Use app context if provided (needed for generators where context may be lost)
                 if app:
                     with app.app_context():
@@ -489,7 +539,9 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
                             completion_tokens=chunk.usage.completion_tokens,
                             total_tokens=chunk.usage.total_tokens,
                             model_name=model_name or TEXT_MODEL_NAME,
-                            cost=getattr(chunk.usage, 'cost', None)
+                            cost=getattr(chunk.usage, 'cost', None),
+                            cached_tokens=cached_tokens,
+                            cache_write_tokens=cache_write_tokens
                         )
                 else:
                     token_tracker.record_usage(
@@ -499,7 +551,9 @@ def process_streaming_with_thinking(stream, user_id=None, operation_type=None, m
                         completion_tokens=chunk.usage.completion_tokens,
                         total_tokens=chunk.usage.total_tokens,
                         model_name=model_name or TEXT_MODEL_NAME,
-                        cost=getattr(chunk.usage, 'cost', None)
+                        cost=getattr(chunk.usage, 'cost', None),
+                        cached_tokens=cached_tokens,
+                        cache_write_tokens=cache_write_tokens
                     )
             except Exception as e:
                 logger.warning(f"Failed to record streaming token usage: {e}")

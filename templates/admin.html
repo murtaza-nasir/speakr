@@ -462,6 +462,11 @@
                                             <p class="text-lg font-semibold text-[var(--text-primary)]">$${ (tokenStats.current_month?.llm_cost || 0).toFixed(4) }</p>
                                         </div>
                                     </div>
+                                    <!-- Prompt cache: reads are prompt tokens served from a prefix cache. -->
+                                    <p class="text-xs text-[var(--text-muted)] mt-2 flex items-center flex-wrap gap-x-3">
+                                        <span><i class="fas fa-bolt mr-1 text-[var(--text-accent)]"></i>Cache reads: <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cached_tokens || 0).toLocaleString() }</span> this month <span v-if="(tokenStats.today?.cached_tokens || 0) > 0">(${ (tokenStats.today?.cached_tokens || 0).toLocaleString() } today)</span></span>
+                                        <span v-if="(tokenStats.current_month?.cache_write_tokens || 0) > 0">· writes: <span class="font-semibold text-[var(--text-secondary)]">${ (tokenStats.current_month?.cache_write_tokens || 0).toLocaleString() }</span></span>
+                                    </p>
                                 </div>
 
                                 <!-- Embedding bucket -->
@@ -515,6 +520,9 @@
                                         <p class="text-base font-semibold text-[var(--text-primary)]">${ op.tokens.toLocaleString() }</p>
                                         <p class="text-xs text-[var(--text-muted)]">
                                             ${ op.requests } req<span v-if="op.cost > 0"> · $${ op.cost.toFixed(4) }</span>
+                                        </p>
+                                        <p v-if="(op.cached_tokens || 0) > 0" class="text-xs text-[var(--text-accent)]">
+                                            <i class="fas fa-bolt mr-1"></i>${ op.cached_tokens.toLocaleString() } cached
                                         </p>
                                     </div>
                                 </div>

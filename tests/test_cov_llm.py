@@ -30,6 +30,7 @@ from src.services.llm import (
     call_chat_completion,
     format_api_error_message,
     process_streaming_with_thinking,
+    extract_cache_tokens,
     TokenBudgetExceeded,
 )
 
@@ -332,6 +333,74 @@ def test_call_llm_completion_records_usage(monkeypatch):
     assert rec_kwargs["completion_tokens"] == 7
     assert rec_kwargs["total_tokens"] == 18
     assert rec_kwargs["cost"] == 0.001
+    # No cache fields on this usage object → defaults to 0.
+    assert rec_kwargs["cached_tokens"] == 0
+    assert rec_kwargs["cache_write_tokens"] == 0
+
+
+def test_call_llm_completion_records_cache_tokens(monkeypatch):
+    """When the provider reports prefix-cache reads/writes, they reach the
+    tracker so the admin dashboard can show them."""
+    usage = make_usage(prompt=8000, completion=20, total=8020)
+    usage.prompt_tokens_details = SimpleNamespace(cached_tokens=6000)
+    usage.cache_creation_input_tokens = 1500
+    install_client(monkeypatch, return_value=make_completion("ok", usage=usage))
+    monkeypatch.setattr(llm, "TEXT_MODEL_API_KEY", "test-key")
+    monkeypatch.setattr(llm, "TEXT_MODEL_NAME", "gpt-4o")
+    fake_tracker = MagicMock()
+    fake_tracker.check_budget.return_value = (True, 50.0, None)
+    with patch("src.services.token_tracking.token_tracker", fake_tracker):
+        call_llm_completion(
+            [{"role": "user", "content": "q"}],
+            user_id=99012,
+            operation_type="summarization",
+        )
+    rec_kwargs = fake_tracker.record_usage.call_args.kwargs
+    assert rec_kwargs["cached_tokens"] == 6000
+    assert rec_kwargs["cache_write_tokens"] == 1500
+
+
+# ---------------------------------------------------------------------------
+# extract_cache_tokens — provider shape probing
+# ---------------------------------------------------------------------------
+
+def test_extract_cache_tokens_none_usage():
+    assert extract_cache_tokens(None) == (0, 0)
+
+
+def test_extract_cache_tokens_openai_shape():
+    usage = SimpleNamespace(
+        prompt_tokens_details=SimpleNamespace(cached_tokens=4096)
+    )
+    assert extract_cache_tokens(usage) == (4096, 0)
+
+
+def test_extract_cache_tokens_anthropic_shape():
+    usage = SimpleNamespace(
+        cache_read_input_tokens=2048,
+        cache_creation_input_tokens=512,
+    )
+    assert extract_cache_tokens(usage) == (2048, 512)
+
+
+def test_extract_cache_tokens_dict_shape():
+    usage = {
+        "prompt_tokens_details": {"cached_tokens": 100, "cache_write_tokens": 30},
+    }
+    assert extract_cache_tokens(usage) == (100, 30)
+
+
+def test_extract_cache_tokens_missing_fields_default_zero():
+    # A usage object with the standard fields but no cache details.
+    assert extract_cache_tokens(make_usage()) == (0, 0)
+
+
+def test_extract_cache_tokens_handles_garbage_values():
+    usage = SimpleNamespace(
+        prompt_tokens_details=SimpleNamespace(cached_tokens="not-a-number"),
+        cache_creation_input_tokens=None,
+    )
+    assert extract_cache_tokens(usage) == (0, 0)
 
 
 def test_call_llm_completion_budget_warning_near_limit(monkeypatch):

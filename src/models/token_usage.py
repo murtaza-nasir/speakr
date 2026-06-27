@@ -20,6 +20,13 @@ class TokenUsage(db.Model):
     completion_tokens = db.Column(db.Integer, default=0)
     total_tokens = db.Column(db.Integer, default=0)
 
+    # Prompt-cache counts (subset of prompt_tokens). cached_tokens are prompt
+    # tokens served from a prefix cache (cache reads); cache_write_tokens are
+    # tokens written into the cache on this call. Providers expose these under
+    # usage.prompt_tokens_details.cached_tokens / usage.cache_creation_input_tokens.
+    cached_tokens = db.Column(db.Integer, default=0)
+    cache_write_tokens = db.Column(db.Integer, default=0)
+
     # Cost tracking (OpenRouter provides this)
     cost = db.Column(db.Float, default=0.0)
 

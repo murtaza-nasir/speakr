@@ -233,6 +233,13 @@ def initialize_database(app):
         if add_column_if_not_exists(engine, 'initial_prompt_template', 'hotwords', 'TEXT'):
             app.logger.info("Added hotwords column to initial_prompt_template table")
 
+        # Prompt-cache token tracking: cached_tokens (prefix-cache reads) and
+        # cache_write_tokens (tokens written to the cache) per usage row.
+        if add_column_if_not_exists(engine, 'token_usage', 'cached_tokens', 'INTEGER DEFAULT 0'):
+            app.logger.info("Added cached_tokens column to token_usage table")
+        if add_column_if_not_exists(engine, 'token_usage', 'cache_write_tokens', 'INTEGER DEFAULT 0'):
+            app.logger.info("Added cache_write_tokens column to token_usage table")
+
         # Add speaker voice profile embedding fields
         if add_column_if_not_exists(engine, 'speaker', 'average_embedding', 'BLOB'):
             app.logger.info("Added average_embedding column to speaker table")
