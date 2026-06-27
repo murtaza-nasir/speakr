@@ -439,6 +439,41 @@ trailing instructions.
 Scope is title + summary only. The flag has no effect on chat, event extraction,
 or other calls.
 
+### Enabling prefix caching on your backend
+
+This flag only changes how Speakr *shapes* its prompts so that a shared prefix
+exists. The caching itself has to be turned on at the inference server, and it is
+off by default on most backends. The settings below are for vLLM; other servers
+(llama.cpp / Ollama, SGLang, TGI) have their own equivalents.
+
+- **Turn caching on.** Start vLLM with `--enable-prefix-caching`. Without it,
+  the title and summary calls still send a byte-identical transcript prefix, but
+  the server recomputes that prefix every time and the flag delivers no benefit.
+
+- **Make the saving visible (optional).** vLLM only reports per-request cache
+  hits in the API response when it is *also* started with
+  `--enable-prompt-tokens-details`, which defaults to off. With that flag set,
+  each response includes `usage.prompt_tokens_details.cached_tokens`, which
+  Speakr records and displays in the admin dashboard under **System Statistics →
+  Token Usage** as "Cache reads". Without it, caching still works, but the
+  dashboard shows zero cache reads because the server never reports them. You can
+  confirm caching independently from vLLM's `/metrics` endpoint, which exposes
+  `vllm:prefix_cache_hits_total` and `vllm:prompt_tokens_cached_total` regardless
+  of this flag.
+
+Example vLLM launch:
+
+```bash
+vllm serve <model> \
+  --enable-prefix-caching \
+  --enable-prompt-tokens-details \
+  # ... your other flags (--tensor-parallel-size, --max-model-len, etc.)
+```
+
+A note on what to expect: the very first call over a transcript is always a cache
+miss and reports zero cached tokens; the saving appears on the second call that
+reuses the prefix.
+
 ## Per-Upload, Per-Tag, Per-Folder Transcription Models
 
 By default Speakr uses the single `TRANSCRIPTION_MODEL` set in `.env` for every recording. If your users transcribe different kinds of recordings (calls, meetings, dictations, multi-speaker interviews) you can publish a list of models they're allowed to choose from at upload time.
