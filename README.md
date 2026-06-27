@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.9.3-alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.9.4-alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -193,7 +193,11 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.9.3-alpha)
+## Latest Release (v0.9.4-alpha)
+
+**A feature release focused on transcription control, sharing privacy, and upload reliability.** Transcription templates now bundle an initial prompt and hotwords that you save once and reuse from the upload modal, tags, folders, or your account default. Summarization and chat each gain an independent toggle for making per-line timestamps available to the model, so the AI can reference moments in long recordings. Recipients of a shared recording now see only the tag or folder that granted them access, never the owner's other labels. Failed uploads retry themselves automatically across all browsers, and any recording is reachable by a direct `/recordings/<id>` link. For self-hosted text backends with prefix caching, an opt-in option reshapes the title and summary prompts to reuse the transcript prefix, and the admin dashboard now reports prompt-cache reads so the saving is visible. This option stays off by default for now and may become the default in a future release. **Full release notes: [`release_notes_v0.9.4.md`](release_notes_v0.9.4.md).**
+
+### v0.9.3-alpha (previous release)
 
 **Security patch: updates bundled FFmpeg to fix CVE-2026-8461.** Speakr runs FFmpeg/ffprobe on uploaded media, and the previously bundled build (johnvansickle static 7.0.2) carried a MagicYUV decoder flaw ("PixelSmash") that a crafted file could use for a crash or remote code execution. FFmpeg now comes from the maintained BtbN builds, pinned to the 8.1 branch (8.1.2, which contains the fix). Recommended for all deployments, especially multi-user instances that accept untrusted uploads. **Full release notes: [`release_notes_v0.9.3.md`](release_notes_v0.9.3.md).**
 

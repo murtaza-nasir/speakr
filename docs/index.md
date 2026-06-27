@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.9.3-alpha — Security patch (FFmpeg CVE-2026-8461)"
-    Updates the bundled FFmpeg to fix CVE-2026-8461 ("PixelSmash"), a MagicYUV decoder flaw that a crafted upload could use for a crash or remote code execution. FFmpeg now comes from the maintained BtbN builds pinned to the 8.1 branch (8.1.2). Recommended for all deployments, especially multi-user instances that accept untrusted uploads.
+!!! success "Latest Release: v0.9.4-alpha — Transcription templates, timestamp toggles, and sharing privacy"
+    Transcription templates bundle a reusable initial prompt and hotwords, summarization and chat gain independent per-line timestamp toggles, and recipients of a shared recording now see only the tag or folder that granted them access. Failed uploads retry automatically across all browsers, recordings are reachable by direct `/recordings/<id>` links, and an opt-in prefix-cache prompt layout (with admin-visible cache reads) speeds up self-hosted backends.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.3.md) for details. No configuration or data changes; pull the new image to upgrade.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.4.md) for details. Backwards compatible; database migrations run automatically on startup.
 
 ## Quick Navigation
 
@@ -128,11 +128,14 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
 
 ## Latest Updates
 
-!!! info "Version 0.9.3-alpha - Security patch (FFmpeg CVE-2026-8461)"
-    A security patch. No configuration or data changes; pull the new image to upgrade.
+!!! info "Version 0.9.4-alpha - Transcription templates, timestamp toggles, and sharing privacy"
+    A feature release. Backwards compatible; database migrations run automatically on startup.
 
-    - **Patches CVE-2026-8461 ("PixelSmash")** - Speakr runs FFmpeg/ffprobe on uploaded media. The previously bundled FFmpeg (johnvansickle static 7.0.2) carried a heap out-of-bounds write in the MagicYUV decoder that a crafted file could use for a crash or remote code execution. Fixed upstream in FFmpeg 8.1.2.
-    - **New FFmpeg source** - Because the johnvansickle static builds have been frozen at 7.0.2 since 2024, the image now sources FFmpeg from the maintained BtbN/FFmpeg-Builds project, pinned to the 8.1 release branch. This also resolves the intermittent build failures from the johnvansickle download.
+    - **Transcription templates** - Save an initial prompt and hotwords together as a reusable template, then apply it from the upload modal, a tag, a folder, or your account default. The detail view shows which hints a recording actually used, and reprocessing pre-fills them.
+    - **Per-feature timestamp availability** - Independent toggles make per-line timestamps available to the summarizer and to chat, each with a default or custom template format, so the AI can reference specific moments in long recordings.
+    - **Sharing privacy (#314)** - Recipients of a shared recording see only the tag or folder that granted access, never the owner's other labels, and can no longer be locked into a folder filter they do not own.
+    - **Upload reliability and deep links** - Failed uploads retry automatically on reconnect across all browsers (#313), and any recording is reachable at a direct `/recordings/<id>` link (#301).
+    - **Prefix-cache prompts and cache visibility** - An opt-in option reshapes the title and summary prompts to reuse the transcript prefix on self-hosted prefix-caching backends, and the admin dashboard now reports prompt-cache reads. Off by default for now; it may become the default in a future release.
 
     Recommended for all deployments, especially any that accept uploads from untrusted users. See the [full release notes](https://github.com/murtaza-nasir/speakr/blob/master/release_notes_v0.9.3.md).
 
