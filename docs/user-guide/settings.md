@@ -83,6 +83,15 @@ These defaults apply to all your recordings unless overridden by tag defaults, f
 !!! tip "When to use hotwords vs initial prompt"
     Use **hotwords** for specific terms the model tends to misspell - proper nouns, brand names, technical acronyms. Use **initial prompt** for broader context that helps the model understand the domain and make better overall word choices.
 
+### Timestamp Availability for Summary and Chat
+
+At the top of the Prompt Options you can control whether the AI receives per-line timestamps with the transcript. There are two independent toggles, one for **summarization** and one for **chat**, so you can enable the feature only where you need it:
+
+- **Summary** - when on, the summarizer sees the time of each line and can reference moments in the recording (for example, "the budget was approved around 00:14:30"). Useful for long meetings where locating a decision matters.
+- **Chat** - when on, the chat assistant can answer time-aware questions such as "what was discussed near the start" or "around the 20-minute mark".
+
+Each toggle has a format dropdown. **Default** uses a compact `[hh:mm:ss] Speaker: text` layout; you can also select any of your saved transcript templates to control exactly how each line is rendered. Both toggles are off by default, which keeps the prompt shorter and avoids spending tokens on timestamps when you do not need them.
+
 ### Writing Effective Prompts
 
 Craft prompts based on how you actually use summaries. Do you extract action items for project management? Look for decisions that affect strategy? Track technical details for documentation? Your prompt should request exactly what you need for these next steps.

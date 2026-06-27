@@ -48,6 +48,8 @@ The Token Usage section provides visibility into LLM API consumption across your
 - Yellow: Between 80-100% (warning zone)
 - Red: At or over 100% (blocked)
 
+**Prompt Cache Reads**: The LLM card also reports prompt-cache activity for the current month (and today): **cache reads** are input tokens that the model served from a prefix cache instead of recomputing, and **writes** are tokens written into that cache. These figures only appear when the text-generation backend reports them in its API response. They are most useful alongside the `PREFIX_CACHE_OPTIMIZED_PROMPTS` option on a self-hosted backend with prefix caching, where the summary call reuses the transcript that the title call already prefilled. On hosted APIs that do not report cached tokens, the figure stays at zero even if caching is happening upstream. See [Prefix-Cache-Friendly Prompts](model-configuration.md#prefix-cache-friendly-prompts-prefix_cache_optimized_prompts) for how to enable this and what flags your server needs.
+
 **Cost Tracking**: When using OpenRouter or other providers that return cost information, the statistics include estimated costs based on actual API responses. For embeddings, the cost is calculated from the configured per-million-token price for the active embedding provider. This helps with budgeting and identifying high-cost operations.
 
 Use token statistics to identify heavy users, validate budget allocations, and forecast API costs. If certain users consistently hit their limits, you may need to increase their budgets or investigate their usage patterns. See [Token Budget Management](user-management.md#token-budget-management) for setting individual user limits.
