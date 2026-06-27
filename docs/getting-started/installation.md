@@ -224,6 +224,17 @@ TRANSCRIPTION_MODEL=vibevoice
 
 If your vLLM server requires authentication, also set `TRANSCRIPTION_API_KEY`. Configure the text generation model as described above for summaries and chat features.
 
+#### For AssemblyAI (Cloud-Based Diarization)
+
+AssemblyAI is a cloud transcription provider with strong speaker diarization on long, multi-speaker recordings. It is not OpenAI-compatible (it uses its own asynchronous upload-and-poll API), so it has a dedicated connector. It ingests files up to 10 hours in a single job, so the app does not chunk for it. New accounts get free credits and no credit card is required to create an API key.
+
+```bash
+TRANSCRIPTION_CONNECTOR=assemblyai
+TRANSCRIPTION_API_KEY=your-assemblyai-api-key
+```
+
+The AssemblyAI endpoint is fixed, so the shared `TRANSCRIPTION_BASE_URL` and `TRANSCRIPTION_MODEL` are intentionally ignored for this connector (a leftover value from another connector will not misroute requests). To pin a speech model, set `ASSEMBLYAI_SPEECH_MODEL` (for example `universal-3-pro`); omit it to use your account default. Speaker diarization and hotwords come from each user's settings (hotwords map to AssemblyAI's word boost). Configure the text generation model as described above for summaries and chat features.
+
 ### Step 4: Configure System Settings
 
 One of Speakr's conveniences is automatic admin account creation. Instead of going through a registration process, you define the admin credentials in your environment file, and Speakr creates the account automatically on first startup. This ensures you can log in immediately without any additional setup steps:

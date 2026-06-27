@@ -1,6 +1,6 @@
 # Creating Custom Transcription Connectors
 
-This guide explains how to create custom transcription connectors for Speakr. Connectors allow you to integrate new transcription providers like Deepgram, AssemblyAI, Google Cloud Speech-to-Text, or your own custom services.
+This guide explains how to create custom transcription connectors for Speakr. Connectors allow you to integrate new transcription providers like Deepgram, Google Cloud Speech-to-Text, or your own custom services. (AssemblyAI is already built in; see the [installation guide](../getting-started/installation.md#for-assemblyai-cloud-based-diarization). Its connector is a good reference example for an async upload-and-poll provider.)
 
 ## Architecture Overview
 

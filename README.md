@@ -40,7 +40,7 @@ Speakr turns a recording into organized, searchable, shareable knowledge. Here i
 - **Hands-off intake** - a watched "black hole" folder auto-imports and processes any audio dropped into it.
 
 ### Transcribe
-- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, or any custom ASR webservice. The right connector is auto-detected from your configuration.
+- **Bring your own engine** - self-hosted WhisperX (recommended; it is what enables the speaker features below), OpenAI, Mistral / Voxtral, AssemblyAI, or any custom ASR webservice. The right connector is auto-detected from your configuration.
 - **Speaker diarization** - automatic who-said-what labeling (WhisperX, or OpenAI's diarizing models).
 - **Voice profiles** - recognize the same person across different recordings via voice embeddings (requires the WhisperX ASR backend).
 - **Custom vocabulary and hotwords** (most effective with the WhisperX backend) - bias the transcriber toward names, jargon, and acronyms it would otherwise mishear; configurable globally or per tag / folder.
@@ -149,6 +149,7 @@ Speakr uses a **connector-based architecture** that auto-detects your transcript
 | **WhisperX ASR** | GPU container | Yes (best quality) | Yes |
 | **Mistral Voxtral** | Just API key | Yes (built-in) | No |
 | **VibeVoice ASR** | Self-hosted (vLLM) | Yes (built-in) | No |
+| **AssemblyAI** | Just API key | Yes (built-in) | No |
 | **Legacy Whisper** | Just API key | No | No |
 
 **Simplest setup (OpenAI with diarization):**
@@ -177,6 +178,13 @@ TRANSCRIPTION_CONNECTOR=vibevoice
 TRANSCRIPTION_BASE_URL=http://your-vllm-server:8000
 TRANSCRIPTION_MODEL=vibevoice
 ```
+
+**AssemblyAI (cloud diarization, long multi-speaker meetings):**
+```bash
+TRANSCRIPTION_CONNECTOR=assemblyai
+TRANSCRIPTION_API_KEY=your-assemblyai-key
+```
+Handles multi-hour, multi-speaker files in a single job. New accounts get free credits with no card required.
 Requires [VibeVoice](https://huggingface.co/microsoft/VibeVoice-ASR) served via vLLM with GPU.
 
 > **PyTorch 2.6 Users:** If you encounter a "Weights only load failed" error with WhisperX, add `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=true` to your ASR container. See [troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting#pytorch-26-weights-loading-error-whisperx-asr-service) for details.
