@@ -61,3 +61,6 @@ temp/ux-redesign-*.md
 # Internal-only documentation (design system, working notes, etc.).
 # Lives on disk for local reference but is never tracked.
 internal-docs/
+
+#Postgres data
+db_data/
