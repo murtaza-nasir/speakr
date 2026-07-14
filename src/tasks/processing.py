@@ -2428,12 +2428,18 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
         connector_name = type(connector).__name__
         current_app.logger.info(f"[Incognito] Using transcription connector: {connector_name}")
 
-        # Determine mime type
+        # Determine mime type from the real filename, but use an anonymized
+        # name (extension only) everywhere downstream: the shared conversion
+        # utilities and connectors log the filename they are given, and user
+        # filenames can themselves be sensitive (HIPAA guidance: no PHI in
+        # logs — "jane-doe-session-3.mp3" is PHI even if the audio never is).
         mime_type = mimetypes.guess_type(original_filename)[0] or 'audio/mpeg'
+        _anon_ext = os.path.splitext(original_filename)[1].lower() or '.audio'
+        anon_filename = f"incognito{_anon_ext}"
 
         # Handle video extraction if needed
         actual_filepath = filepath
-        actual_filename = original_filename
+        actual_filename = anon_filename
         actual_content_type = mime_type
 
         # Check if file is video and needs audio extraction
@@ -2454,7 +2460,10 @@ def transcribe_incognito(filepath, original_filename, language=None, min_speaker
             else:
                 current_app.logger.info(f"[Incognito] Video detected, extracting audio...")
                 try:
-                    audio_filepath, audio_mime_type = extract_audio_from_video(filepath, cleanup_original=False)
+                    # allow_debug_copy=False: the PRESERVE_TEMP_AUDIO debug copy
+                    # is untracked by incognito cleanup and would retain audio.
+                    audio_filepath, audio_mime_type = extract_audio_from_video(
+                        filepath, cleanup_original=False, allow_debug_copy=False)
                     actual_filepath = audio_filepath
                     actual_content_type = audio_mime_type
                     actual_filename = os.path.basename(audio_filepath)

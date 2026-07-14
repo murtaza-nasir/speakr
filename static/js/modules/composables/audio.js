@@ -717,7 +717,8 @@ export function useAudio(state, utils) {
                         min_speakers: asrMinSpeakers.value || '',
                         max_speakers: asrMaxSpeakers.value || ''
                     },
-                    mimeType
+                    mimeType,
+                    incognito: !!(incognitoMode && incognitoMode.value)
                 });
             } catch (dbError) {
                 console.warn('[Recording] IndexedDB persistence failed, continuing without persistence:', dbError);
@@ -1530,6 +1531,13 @@ export function useAudio(state, utils) {
                 asrMaxSpeakers.value = recovered.metadata.asrOptions.max_speakers || '';
             }
 
+            // Restore the incognito state the recording was left in, so a
+            // crashed incognito recording is offered back as incognito instead
+            // of silently becoming a normal (permanently stored) one.
+            if (incognitoMode && enableIncognitoMode && enableIncognitoMode.value) {
+                incognitoMode.value = !!recovered.metadata.incognito;
+            }
+
             console.log('[Recording] Successfully recovered recording from IndexedDB');
             return recovered.metadata;
         } catch (error) {
@@ -1542,6 +1550,17 @@ export function useAudio(state, utils) {
     const initializeAudio = async () => {
         // Placeholder for future initialization if needed
     };
+
+    // Keep the crash-recovery session's incognito flag in sync with the
+    // toggle. It can be flipped in the review pane after recording stops
+    // (and the modal toggle can flip it with no session — then this is a
+    // harmless no-op), so a crash after the flip still recovers into the
+    // mode the user last chose.
+    if (typeof Vue !== 'undefined' && Vue.watch && incognitoMode) {
+        Vue.watch(incognitoMode, (v) => {
+            RecordingDB.updateRecordingMetadata({ incognito: !!v });
+        });
+    }
 
     return {
         startRecording,

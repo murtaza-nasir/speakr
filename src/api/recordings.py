@@ -2957,8 +2957,11 @@ def upload_incognito():
                 'max_size_mb': float(effective_limit_mb),
             }), 413
 
-        # Save to temp file - use secure temp directory
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f'_{safe_filename}') as tmp:
+        # Save to temp file - use secure temp directory. Suffix carries only
+        # the extension, not the user's filename: the temp path is logged and
+        # filenames can themselves be sensitive (no PHI in logs or paths).
+        _ext = os.path.splitext(safe_filename)[1].lower() or '.audio'
+        with tempfile.NamedTemporaryFile(delete=False, suffix=_ext) as tmp:
             temp_filepath = tmp.name
             file.save(temp_filepath)
             current_app.logger.info(f"[Incognito] Temp file saved: {temp_filepath}")
@@ -2982,9 +2985,11 @@ def upload_incognito():
             except (ValueError, TypeError):
                 max_speakers = None
 
-        # Log only metadata - NEVER log content for HIPAA compliance
+        # Log only metadata - NEVER log content for HIPAA compliance. The
+        # user's filename is deliberately excluded too (extension only):
+        # filenames routinely contain names/dates and count as PHI.
         current_app.logger.info(f"[Incognito] Processing request from user {current_user.id}: "
-                               f"filename={original_filename}, size={file_size/1024/1024:.2f}MB, "
+                               f"ext={_ext}, size={file_size/1024/1024:.2f}MB, "
                                f"language={language}, auto_summarize={auto_summarize}")
 
         # Perform transcription synchronously (no database operations)

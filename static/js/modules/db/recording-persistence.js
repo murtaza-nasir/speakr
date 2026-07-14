@@ -74,7 +74,11 @@ export const startRecordingSession = async (recordingData) => {
             asrOptions: recordingData.asrOptions || {},
             chunks: [],
             mimeType: recordingData.mimeType || 'audio/webm',
-            duration: 0
+            duration: 0,
+            // Incognito state travels with the crash-recovery copy so a
+            // recovered recording reopens in the same mode instead of
+            // silently becoming a normal (permanently stored) one.
+            incognito: !!recordingData.incognito
         };
 
         await promisifyRequest(objectStore.put(session));
@@ -250,7 +254,8 @@ export const recoverRecording = async () => {
                 asrOptions: session.asrOptions,
                 mimeType: session.mimeType,
                 duration: session.duration || (session.chunks.length * 5),
-                startTime: session.startTime
+                startTime: session.startTime,
+                incognito: !!session.incognito
             }
         };
     } catch (error) {
