@@ -57,9 +57,13 @@ def is_smtp_configured() -> bool:
 
 
 def get_serializer(salt: str) -> URLSafeTimedSerializer:
-    """Get a URL-safe timed serializer for token generation."""
-    secret_key = current_app.config.get('SECRET_KEY', 'default-dev-key')
-    return URLSafeTimedSerializer(secret_key, salt=salt)
+    """Get a URL-safe timed serializer for token generation.
+
+    SECRET_KEY is guaranteed set (and never the insecure default) by the
+    startup guard in src/app.py, so no fallback is needed here — a fallback
+    would only reintroduce a weak, forgeable signing key.
+    """
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt=salt)
 
 
 def generate_verification_token(user_id: int) -> str:

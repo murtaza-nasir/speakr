@@ -5,6 +5,7 @@ This blueprint handles user registration, login, logout, account management,
 and password changes.
 """
 
+import hmac
 import os
 import re
 import mimetypes
@@ -526,6 +527,16 @@ def reset_password(token):
         flash('User not found.', 'danger')
         return redirect(url_for('auth.forgot_password'))
 
+    # Single-use enforcement: the itsdangerous token is only signature+expiry
+    # checked, so on its own it stays replayable for the whole TTL even after
+    # it has been used or superseded. Bind it to the token currently stored on
+    # the user: a used token (cleared on reset) or one superseded by a newer
+    # reset request no longer matches and is rejected immediately.
+    stored_token = user.password_reset_token or ''
+    if not stored_token or not hmac.compare_digest(stored_token, token):
+        flash('The password reset link is invalid or has expired.', 'danger')
+        return redirect(url_for('auth.forgot_password'))
+
     if request.method == 'POST':
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
@@ -870,6 +881,10 @@ def change_password():
     # Update password
     hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
     current_user.password = hashed_password
+    # Invalidate any outstanding password-reset link: a deliberate change must
+    # not leave an emailed reset token able to overwrite the new password.
+    current_user.password_reset_token = None
+    current_user.password_reset_sent_at = None
     db.session.commit()
 
     flash('Your password has been updated!', 'success')
