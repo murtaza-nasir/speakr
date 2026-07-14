@@ -25,6 +25,8 @@
 <script src="{{ url_for('static', filename='vendor/js/vue.global.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <script src="{{ url_for('static', filename='vendor/js/marked.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/js/purify.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/markdown-safe.js') }}"></script>
         <!-- All dependencies bundled locally for offline support -->
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/css/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
@@ -833,7 +835,7 @@
                                                     showProcessingStatus.value = false;
                                                 }
                                                 assistantMessage.content += data.delta;
-                                                assistantMessage.html = marked.parse(assistantMessage.content);
+                                                assistantMessage.html = window.renderMarkdownSafe(assistantMessage.content);
                                                 // Smart scroll during streaming
                                                 await nextTick();
                                                 scrollToBottom();

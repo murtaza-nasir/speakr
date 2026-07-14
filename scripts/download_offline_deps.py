@@ -23,6 +23,7 @@ DEPENDENCIES = {
         "easymde.min.js": "https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js",
         "axios.min.js": "https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js",
         "chart.umd.min.js": "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
+        "purify.min.js": "https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js",
     }
 }
 

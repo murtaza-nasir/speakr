@@ -3285,7 +3285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!recordingDisclaimer.value || recordingDisclaimer.value.trim() === '') {
                     return '';
                 }
-                return marked.parse(recordingDisclaimer.value);
+                return window.renderMarkdownSafe(recordingDisclaimer.value);
             });
 
             // Upload disclaimer parsed as markdown
@@ -3293,7 +3293,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!uploadDisclaimer.value || uploadDisclaimer.value.trim() === '') {
                     return '';
                 }
-                return marked.parse(uploadDisclaimer.value);
+                return window.renderMarkdownSafe(uploadDisclaimer.value);
             });
 
             // Custom banner parsed as markdown
@@ -3301,7 +3301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!customBanner.value || customBanner.value.trim() === '') {
                     return '';
                 }
-                return marked.parse(customBanner.value);
+                return window.renderMarkdownSafe(customBanner.value);
             });
 
             // Get tag prompt preview
