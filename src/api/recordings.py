@@ -4318,7 +4318,16 @@ def bulk_update_tags():
         if not tag:
             return jsonify({'error': 'Tag not found'}), 404
 
-        if tag.user_id != current_user.id and not tag.group_id:
+        # Access check matching the single-tag endpoints: a group tag requires
+        # membership in that group (previously group tags skipped this check
+        # entirely, letting a non-member attach another group's tag); a
+        # personal tag requires ownership.
+        if tag.group_id:
+            membership = GroupMembership.query.filter_by(
+                group_id=tag.group_id, user_id=current_user.id).first()
+            if not membership:
+                return jsonify({'error': 'You do not have access to this tag'}), 403
+        elif tag.user_id != current_user.id:
             return jsonify({'error': 'No permission to use this tag'}), 403
 
         affected_ids = []
