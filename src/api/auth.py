@@ -372,13 +372,11 @@ def sso_unlink():
     return redirect(url_for('auth.account'))
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 def logout():
-    # /logout is GET-only, so Flask-WTF's CSRF check (which runs only on
-    # state-changing methods) does not apply. No explicit exemption is
-    # needed. A future hardening pass should move logout to POST so a
-    # CSRF-redirected GET can't log a victim out, but that is a behaviour
-    # change deferred from this security release.
+    # POST-only so the global CSRF check applies: a cross-site GET (e.g.
+    # <img src="/logout">) can no longer force-log-out a victim. The menu
+    # "Sign out" controls are CSRF-token-carrying POST forms.
     logout_user()
     return redirect(url_for('auth.login'))
 
@@ -494,10 +492,13 @@ def forgot_password():
             # case by setting user.password from the form input; if the
             # SSO link is also present, the user ends up with both, which
             # is the prerequisite for sso_unlink later.
-            can_resend, remaining = can_resend_password_reset(user)
-            if not can_resend:
-                flash(f'Please wait {remaining} seconds before requesting another reset email.', 'warning')
-            else:
+            # Only send if outside the resend cooldown, but never surface the
+            # cooldown to the caller: a "please wait N seconds" message would
+            # only ever appear for a real account, confirming the address
+            # exists. Silently skip within the window; the generic message
+            # below is returned identically whether or not the account exists.
+            can_resend, _ = can_resend_password_reset(user)
+            if can_resend:
                 send_password_reset_email(user)
 
         flash('If an account exists with this email, a password reset link has been sent.', 'info')

@@ -146,9 +146,12 @@
                             <i class="fas fa-users-cog mr-2"></i>
                             Group Management
                         </a>
-                        <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
-                            <i class="fas fa-sign-out-alt mr-2"></i> Sign Out
-                        </a>
+                        <form method="POST" action="{{ url_for('auth.logout') }}" class="m-0">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="w-full text-left block px-4 py-2 text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-danger)]">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Sign Out
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

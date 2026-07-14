@@ -50,9 +50,12 @@
                 </a>
                 {% endif %}
                 <div class="border-t border-[var(--border-primary)] my-1"></div>
-                <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
-                    <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span data-i18n="nav.signOut">Sign out</span>
-                </a>
+                <form method="POST" action="{{ url_for('auth.logout') }}" class="m-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="w-full text-left block px-4 py-2 hover:bg-[var(--bg-tertiary)] transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2 w-4 text-center"></i><span data-i18n="nav.signOut">Sign out</span>
+                    </button>
+                </form>
             </div>
         </div>
         {% endif %}
