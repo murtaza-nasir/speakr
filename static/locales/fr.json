@@ -1774,6 +1774,7 @@
     "processingFailed": "Échec du traitement",
     "recordingFinalized": "Enregistrement envoyé pour traitement",
     "recordingMaxDurationApproaching": "L'enregistrement s'arrêtera automatiquement dans environ {{minutes}} minutes (durée maximale).",
+    "resumedRecordingNotIncognito": "Le mode incognito a été désactivé : cet enregistrement repris était déjà transmis au serveur.",
     "recordingMaxDurationReached": "L'enregistrement a atteint la durée maximale et s'est arrêté automatiquement.",
     "recordingResumeFound": "Un enregistrement en cours dans ce navigateur a été détecté sur le serveur. Reprendre ?",
     "recordingSizeSoftWarning": "L'enregistrement fait {{size}}. Pensez à l'arrêter quand vous pourrez.",

@@ -250,7 +250,7 @@ If a selected tag, folder, or your account default summary prompt contains `{{na
 
 The sticky modal footer holds **Cancel** (dismisses without uploading) and **Upload N files** (begins transcription immediately with your selected settings). The recording appears in your library with a processing indicator while transcription runs in the background. If you started a recording from inside the modal and the upload completes, Speakr auto-navigates to the new recording's detail view; bulk drag-drop uploads of multiple files leave you on whatever you were viewing.
 
-If incognito mode is enabled at the server, a toggle in the upload modal lets you process recordings without saving them to your account. Incognito uploads accept one file at a time.
+If incognito mode is enabled at the server, a toggle in the upload modal lets you process recordings without saving them to your account. Incognito uploads accept one file at a time. In-app recordings made with incognito on are captured entirely in the browser — even when server-side chunk streaming is enabled, no audio reaches the server until you explicitly process the recording — so the 200 MB in-browser recording cap applies to them.
 
 ### Mobile Upload Experience
 

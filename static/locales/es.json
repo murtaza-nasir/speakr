@@ -1774,6 +1774,7 @@
     "processingFailed": "Error en el procesamiento",
     "recordingFinalized": "Grabación subida para procesamiento",
     "recordingMaxDurationApproaching": "La grabación se detendrá automáticamente en unos {{minutes}} minutos (duración máxima).",
+    "resumedRecordingNotIncognito": "El modo incógnito se desactivó: esta grabación reanudada ya se estaba transmitiendo al servidor.",
     "recordingMaxDurationReached": "La grabación alcanzó la duración máxima y se detuvo automáticamente.",
     "recordingResumeFound": "Se detectó una grabación en curso de este navegador en el servidor. ¿Reanudar?",
     "recordingSizeSoftWarning": "La grabación ocupa {{size}}. Considere detenerla cuando le convenga.",

@@ -400,6 +400,21 @@ export function useAudio(state, utils) {
             estimatedFileSize.value = serverResumePriorBytes;
             fileSizeWarningShown.value = false;
 
+            // A resumed recording already has chunks on the server, so it
+            // cannot become incognito: processing it in incognito would send
+            // only the locally-held new segment (silent partial audio) and
+            // discard the prior one. Force the toggle off — relevant when
+            // INCOGNITO_MODE_DEFAULT is on or the user flipped it earlier.
+            if (resumeContext && resumeContext.sessionId && incognitoMode && incognitoMode.value) {
+                incognitoMode.value = false;
+                showToast(
+                    (utils.t && utils.t('toasts.resumedRecordingNotIncognito'))
+                        || 'Incognito was turned off: this resumed recording was already streaming to the server.',
+                    'fa-user-secret',
+                    7000
+                );
+            }
+
             // Initialize IndexedDB session
             currentChunkIndex = 0;
 
@@ -713,7 +728,15 @@ export function useAudio(state, utils) {
             // straight to the server. A failure here logs and falls back to
             // local-only recording — the user's audio is never blocked on
             // a network round-trip.
-            if (_serverRecordingChunksEnabled()) {
+            //
+            // Incognito recordings never open a session: the whole point of
+            // incognito is that audio does not touch server storage until the
+            // explicit process-without-saving upload, so they stay on the
+            // in-browser path (RAM + IndexedDB, 200 MB cap) regardless of the
+            // streaming flag. The resume guard above already cleared the
+            // toggle for resumed server sessions, so this cannot strand a
+            // half-uploaded session.
+            if (_serverRecordingChunksEnabled() && !(incognitoMode && incognitoMode.value)) {
                 try {
                     let startIndex = 1;
                     if (resumeContext && resumeContext.sessionId) {
@@ -1137,6 +1160,29 @@ export function useAudio(state, utils) {
             console.warn('[Incognito] Incognito state not available, falling back to normal upload');
             uploadRecordedAudio();
             return;
+        }
+
+        // The recording may have streamed to a server session before the user
+        // chose incognito in the review pane (incognito recordings never OPEN
+        // a session, but the toggle can be flipped after a normal recording
+        // finishes). Honor the choice: delete the server-side chunks up front,
+        // before processing, rather than only after success via
+        // discardRecording. Refuse outright if part of the audio exists ONLY
+        // on the server (resumed session) — incognito-processing just the
+        // local segment would silently truncate the recording. That state
+        // should be unreachable (the resume path clears the toggle), so this
+        // is defense-in-depth.
+        if (serverSessionId) {
+            if (serverResumePriorBytes > 0) {
+                setGlobalError('This resumed recording cannot be processed in incognito because its earlier audio exists only on the server. Use the normal upload instead.');
+                return;
+            }
+            try {
+                await ServerSessions.abortSession(serverSessionId);
+            } catch (e) {
+                console.warn('[Incognito] Could not abort server session before incognito processing:', e);
+            }
+            _resetServerSessionState();
         }
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

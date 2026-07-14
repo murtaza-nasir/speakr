@@ -1774,6 +1774,7 @@
     "processingFailed": "Falha no processamento",
     "recordingFinalized": "Gravação enviada para processamento",
     "recordingMaxDurationApproaching": "A gravação será interrompida automaticamente em cerca de {{minutes}} minutos (duração máxima).",
+    "resumedRecordingNotIncognito": "O modo anônimo foi desativado: esta gravação retomada já estava sendo transmitida ao servidor.",
     "recordingMaxDurationReached": "A gravação atingiu a duração máxima e foi parada automaticamente.",
     "recordingResumeFound": "Uma gravação em andamento deste navegador foi detectada no servidor. Retomar?",
     "recordingSizeSoftWarning": "A gravação tem {{size}}. Considere parar quando for conveniente.",

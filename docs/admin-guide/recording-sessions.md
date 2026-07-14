@@ -18,6 +18,13 @@ Off by default; opt in with `ENABLE_SERVER_RECORDING_CHUNKS=true`. It is planned
 | Finalize | Single-shot `POST /upload` | `POST /upload/session/{id}/finalize`; backend ffmpeg concat demux stitches chunks |
 | Reverse-proxy chunk POSTs | One big upload (subject to body-size + read-timeout) | Many small POSTs per recording, plus a longer finalize call |
 
+Incognito recordings are the exception: they never open a server session,
+regardless of this flag. Audio from an incognito recording stays in the
+browser (RAM + IndexedDB) until the explicit process-without-saving upload,
+so the legacy 200 MB cap and its warning still apply to them. If a recording
+did stream to the server and the user switches it to incognito in the review
+pane afterwards, the server-side chunks are deleted before processing.
+
 ## Configuration
 
 Environment variables, all optional:
