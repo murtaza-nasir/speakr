@@ -117,7 +117,8 @@ UPLOAD_FOLDER/_sessions/
 - Aborted sessions are torn down synchronously when the user clicks
   Discard. Sessions that go quiet for longer than
   `RECORDING_SESSION_TTL_HOURS` are reaped by the background cleanup
-  thread.
+  thread, which also removes orphaned session directories that no longer
+  have a database row (for example after a database reset).
 
 ## Crash recovery
 

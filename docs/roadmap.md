@@ -37,10 +37,12 @@ section is released and available. Full detail in the
   `RECORDING_SESSION_MAX_BYTES_PER_USER` is a per-user soft limit. Full
   setup, env-var reference, reverse-proxy guidance, and on-disk layout
   in [Recording Sessions](admin-guide/recording-sessions.md).
-- **Failed-upload safety net.** When an upload fails, the audio blob is
-  persisted to IndexedDB *and* offered as a browser download as a
-  defense-in-depth fallback, so the recording never silently disappears
-  (issues #297, #287).
+- **Failed-upload safety net.** When an in-app recording's upload fails,
+  the audio is persisted to IndexedDB and retried automatically; once
+  retries are exhausted (or IndexedDB is unavailable) it is handed back as
+  a browser download, so the recording never silently disappears (issues
+  #297, #287, #313). File uploads from disk are excluded — the original
+  still exists, so nothing is persisted or downloaded for them.
 
 ### Interface
 

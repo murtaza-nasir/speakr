@@ -6,10 +6,10 @@ Speakr is a powerful self-hosted transcription platform that helps you capture, 
   <img src="assets/images/screenshots/main-view-video.png" alt="Main Interface" style="border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
 </div>
 
-!!! success "Latest Release: v0.9.7-alpha — MP3 playback, transcript clicking, and retention fixes"
-    A bug fix release. MP3 uploads missing a Xing/VBR header, which cause stuttering playback in Chromium-based browsers, are now detected and repaired with a lossless in-place remux (#325). A transcript segment starting at exactly 0 seconds is clickable again and included in playback highlighting, in the main app and on the public share page (#326). The auto-deletion retention sweep now includes failed recordings, while recordings still queued or processing remain protected (#328).
+!!! success "Latest Release: v0.10.0-alpha — JSON 401 for API auth, duplicate-upload fixes, and incognito hardening"
+    Unauthenticated API requests now return a JSON 401 instead of a redirect to the login page (#333). The 200 MB size warning no longer fires in server-streaming mode; recordings warn at 80% of the duration ceiling instead (#332). Double-clicking Upload can no longer create duplicate recordings, failed file uploads are no longer copied into Downloads, and incognito recordings stay entirely in the browser until explicitly processed.
 
-    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.7-alpha) for details. Backwards compatible; no database changes.
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha) for details. Backwards compatible; no database changes.
 
 ## Quick Navigation
 
@@ -127,6 +127,15 @@ Learn more about [audio synchronization features](user-guide/transcripts.md#audi
     Tags aren't just for organization - they transform content. Create a "Recipe" tag to convert cooking narration into formatted recipes. Use "Study Notes" tags to turn lecture recordings into organized outlines. Stack tags like "Client Meeting" + "Legal Review" for combined analysis. Learn more in the [Custom Prompts guide](admin-guide/prompts.md#creative-tag-prompt-use-cases).
 
 ## Latest Updates
+
+!!! info "Version 0.9.7-alpha - MP3 playback, transcript clicking, and retention fixes"
+    A bug fix release. Backwards compatible; no database changes.
+
+    - **MP3 Xing header repair (#325)** - MP3 uploads missing a Xing/VBR header, which cause stuttering playback in Chromium-based browsers, are detected and repaired with a lossless in-place remux.
+    - **First transcript segment clickable (#326)** - A segment starting at exactly 0 seconds is clickable again and included in playback highlighting, in the main app and on the public share page.
+    - **Failed recordings in retention (#328)** - The auto-deletion retention sweep includes failed recordings, while recordings still queued or processing remain protected.
+
+    See the [full release notes](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.7-alpha).
 
 !!! info "Version 0.9.6-alpha - Merge recordings, Markdown export, and backfill export"
     A feature release. Backwards compatible; database migrations run automatically on startup.

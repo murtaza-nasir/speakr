@@ -9,7 +9,7 @@
   <a href="https://www.gnu.org/licenses/agpl-3.0"><img alt="AGPL v3" src="https://img.shields.io/badge/License-AGPL_v3-blue.svg"></a>
   <a href="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml"><img alt="Docker Build" src="https://github.com/murtaza-nasir/speakr/actions/workflows/docker-publish.yml/badge.svg"></a>
   <a href="https://hub.docker.com/r/learnedmachine/speakr"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/learnedmachine/speakr"></a>
-  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.9.7--alpha-brightgreen.svg"></a>
+  <a href="https://github.com/murtaza-nasir/speakr/releases/latest"><img alt="Latest Version" src="https://img.shields.io/badge/version-0.10.0--alpha-brightgreen.svg"></a>
 </p>
 
 <p align="center">
@@ -201,7 +201,11 @@ Complete documentation is available at **[murtaza-nasir.github.io/speakr](https:
 - [Troubleshooting](https://murtaza-nasir.github.io/speakr/troubleshooting) - Common issues and solutions
 - [FAQ](https://murtaza-nasir.github.io/speakr/faq) - Frequently asked questions
 
-## Latest Release (v0.9.7-alpha)
+## Latest Release (v0.10.0-alpha)
+
+**Fixes API auth responses and duplicate uploads, and hardens incognito mode.** Unauthenticated API requests now return a proper JSON 401 instead of a redirect to the login page, so integrations with a bad token fail loudly rather than mistaking the login page for success (#333). The 200 MB size warning no longer fires when server-side chunk streaming is active; recordings instead warn at 80% of the duration ceiling before the automatic stop (#332). The upload button disables immediately while a recording finalizes and the finalize endpoint is idempotent, so double-clicking can no longer create duplicate recordings, and failed drag-and-drop uploads are no longer copied into the Downloads folder. Incognito recordings now stay entirely in the browser until explicitly processed, even with chunk streaming enabled, keep filenames out of server logs, and survive crash recovery as incognito. No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.10.0-alpha).**
+
+### v0.9.7-alpha (previous release)
 
 **A bug fix release for MP3 playback, transcript interaction, and retention.** MP3 uploads missing a Xing/VBR header, which cause stuttering playback in Chromium-based browsers, are now detected and repaired with a lossless in-place remux, so the audio stays bit-identical while gaining a proper header (#325). A transcript segment starting at exactly 0 seconds can be clicked again for seeking and is included in playback highlighting, in the main app and on the public share page (#326). The auto-deletion retention sweep now includes failed recordings rather than keeping them forever, while recordings that are still queued or processing remain protected (#328). No database changes. **Full release notes on the [GitHub release page](https://github.com/murtaza-nasir/speakr/releases/tag/v0.9.7-alpha).**
 
