@@ -498,6 +498,71 @@ Once logged in, test the installation by creating a test recording or uploading 
 
 If transcription fails, check the Docker logs for API authentication errors or connection issues. Common problems include incorrect API keys, insufficient API credits, or network connectivity issues.
 
+## Production Security Hardening
+
+Speakr ships with safe defaults, but a production deployment on a public
+network should confirm the following.
+
+### Secret key
+
+`SECRET_KEY` signs session cookies and email / password-reset tokens. If you
+leave it unset, Speakr now generates a strong random key on first start and
+persists it to `instance/secret_key` inside your data volume, so a deployment
+is never silently exploitable. The old built-in default key is refused at
+startup.
+
+For most single-host installs the auto-generated key is fine and is captured
+by any normal backup of the data volume. Set `SECRET_KEY` explicitly when you
+run multiple app hosts that must share sessions, or when you want to control
+key rotation:
+
+```bash
+SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
+```
+
+The key does **not** encrypt stored data — losing it only forces users to log
+in again and invalidates outstanding reset links, never any recordings or
+transcripts. You do not need to archive it separately to restore your data.
+
+### HTTPS and the session cookie
+
+Terminate TLS at a reverse proxy (nginx, Caddy, Traefik) and serve Speakr over
+HTTPS. When you do, set:
+
+```bash
+SESSION_COOKIE_SECURE=true
+```
+
+so the session cookie is only ever sent over TLS. It defaults to `false` so
+plain-HTTP LAN installs keep working out of the box.
+
+### Security headers
+
+The app sets `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy`, a `Content-Security-Policy`, and (over HTTPS)
+`Strict-Transport-Security` on every response, so you are protected even
+without a hardening proxy. If your proxy already sets all of these, you can
+disable the app's copies with `SECURITY_HEADERS_ENABLED=false`. To customise:
+
+```bash
+# Replace the whole Content-Security-Policy:
+CONTENT_SECURITY_POLICY=default-src 'self'; ...
+# Tune or disable HSTS (empty string disables it, e.g. if your proxy sets it):
+HSTS_HEADER=max-age=63072000; includeSubDomains
+```
+
+Note the default CSP allows `'unsafe-inline'` and `'unsafe-eval'` for scripts
+because the bundled Vue build compiles templates in the browser; the policy
+still restricts framing, object/base/form targets, and the origins scripts,
+images, and connections may use.
+
+### Reverse-proxy hops
+
+`TRUSTED_PROXY_HOPS` (default `1`) controls how many `X-Forwarded-For` /
+`X-Forwarded-Proto` hops are trusted for client-IP and HTTPS detection. Set it
+to the actual number of proxies in front of the app so rate limiting and HSTS
+behave correctly and forwarded headers cannot be spoofed.
+
 ## Advanced Deployment Scenarios
 
 ### Running ASR Service for Speaker Diarization
