@@ -606,6 +606,41 @@ def load_user_from_request(request):
     return load_user_from_token()
 
 
+@login_manager.unauthorized_handler
+def handle_unauthorized():
+    """API requests get a JSON 401; browser page loads keep the login redirect.
+
+    Flask-Login's default is a 302 to /login for everything. Nearly every
+    HTTP client follows redirects and treats the resulting 200 text/html
+    login page as success, so integrations with a missing/invalid/expired
+    token "pass" their connection checks and fail later with confusing
+    JSON parse errors — or worse, report an upload as successful after the
+    redirect silently dropped the multipart body (issue #333).
+
+    A request is API-shaped when it targets an /api/ path or presented an
+    API token in any of the forms token_auth accepts; a token client
+    deserves a 401 whichever path it hits.
+    """
+    presented_token = bool(
+        request.headers.get('Authorization', '').startswith('Bearer ')
+        or request.headers.get('X-API-Token')
+        or request.headers.get('API-Token')
+        or request.args.get('token')
+    )
+    if request.path.startswith('/api/') or presented_token:
+        response = jsonify({'error': 'Authentication required: missing, invalid, expired, or revoked API token or session'})
+        response.status_code = 401
+        response.headers['WWW-Authenticate'] = 'Bearer'
+        return response
+
+    # Browser page load: replicate Flask-Login's default behavior
+    # (flash the login message, redirect to the login view with ?next=).
+    from flask_login.utils import login_url as _login_url
+    if login_manager.login_message:
+        flash(login_manager.login_message, category=login_manager.login_message_category)
+    return redirect(_login_url(url_for(login_manager.login_view), request.url))
+
+
 # --- Embedding and Chunking Utilities ---
 
 from src.api.auth import auth_bp, init_auth_extensions
