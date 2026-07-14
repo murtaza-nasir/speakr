@@ -1781,6 +1781,7 @@
     "uploadFailedDownloadedLocally": "上传失败。音频已保存到下载文件夹,可稍后重试。",
     "uploadFailedNoRecovery": "上传失败,且音频未能本地保存。请重新录制。",
     "uploadFailedWillRetry": "上传失败——已保存，将在重新联网后自动重试。",
+    "uploadRetriesExhaustedDownloaded": "自动重试上传已达上限。音频已保存到您的下载文件夹。",
     "videoRecordingUnsupported": "此浏览器无法录制视频，将仅录制音频。"
   },
   "webhooks": {

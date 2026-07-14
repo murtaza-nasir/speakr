@@ -1781,6 +1781,7 @@
     "uploadFailedDownloadedLocally": "Échec de l'envoi. L'audio a été enregistré dans votre dossier Téléchargements pour une nouvelle tentative.",
     "uploadFailedNoRecovery": "Échec de l'envoi et l'audio n'a pas pu être enregistré localement. Veuillez réenregistrer.",
     "uploadFailedWillRetry": "Échec de l'envoi — enregistré et réessayé automatiquement à la reconnexion.",
+    "uploadRetriesExhaustedDownloaded": "Les tentatives automatiques d'envoi sont épuisées. L'audio a été enregistré dans votre dossier Téléchargements.",
     "videoRecordingUnsupported": "Ce navigateur ne peut pas enregistrer la vidéo — capture de l'audio uniquement."
   },
   "webhooks": {

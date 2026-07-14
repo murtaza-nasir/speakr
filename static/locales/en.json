@@ -1781,6 +1781,7 @@
     "uploadFailedDownloadedLocally": "Upload failed. Audio saved to your Downloads folder for later retry.",
     "uploadFailedNoRecovery": "Upload failed and audio could not be saved locally. Please record again.",
     "uploadFailedWillRetry": "Upload failed — saved and will retry automatically when you reconnect.",
+    "uploadRetriesExhaustedDownloaded": "Automatic upload retries exhausted. The audio was saved to your Downloads folder.",
     "videoRecordingUnsupported": "This browser cannot record video — capturing audio only."
   },
   "webhooks": {

@@ -1781,6 +1781,7 @@
     "uploadFailedDownloadedLocally": "Upload falhou. Áudio salvo na pasta Downloads para tentar novamente mais tarde.",
     "uploadFailedNoRecovery": "Upload falhou e o áudio não pôde ser salvo localmente. Por favor, grave novamente.",
     "uploadFailedWillRetry": "Falha no envio — salvo e será reenviado automaticamente quando você reconectar.",
+    "uploadRetriesExhaustedDownloaded": "As tentativas automáticas de envio se esgotaram. O áudio foi salvo na sua pasta de Downloads.",
     "videoRecordingUnsupported": "Este navegador não consegue gravar vídeo — capturando apenas o áudio."
   },
   "webhooks": {

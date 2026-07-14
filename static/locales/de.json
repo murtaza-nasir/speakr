@@ -1781,6 +1781,7 @@
     "uploadFailedDownloadedLocally": "Upload fehlgeschlagen. Audio wurde im Downloads-Ordner für einen späteren Versuch gespeichert.",
     "uploadFailedNoRecovery": "Upload fehlgeschlagen und Audio konnte nicht lokal gespeichert werden. Bitte erneut aufnehmen.",
     "uploadFailedWillRetry": "Upload fehlgeschlagen – gespeichert und wird bei erneuter Verbindung automatisch wiederholt.",
+    "uploadRetriesExhaustedDownloaded": "Automatische Upload-Wiederholungen erschöpft. Die Audiodatei wurde in Ihrem Downloads-Ordner gespeichert.",
     "videoRecordingUnsupported": "Dieser Browser kann kein Video aufnehmen — es wird nur Audio aufgezeichnet."
   },
   "webhooks": {
