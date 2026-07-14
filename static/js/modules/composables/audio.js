@@ -12,7 +12,7 @@ export function useAudio(state, utils) {
         isRecording, mediaRecorder, audioContext, analyser, micAnalyser, systemAnalyser,
         audioChunks, recordingTime, recordingInterval, recordingMode, audioBlobURL,
         estimatedFileSize, actualBitrate, recordingNotes, recordingQuality,
-        maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, recordingDisclaimer,
+        maxRecordingMB, fileSizeWarningShown, sizeCheckInterval, isServerStreamedRecording, recordingDisclaimer,
         showRecordingDisclaimerModal, pendingRecordingMode, currentView, showUploadModal, showSystemAudioHelp, disableAudioProcessing,
         recordSystemVideo, recordingVideoActive, videoRetentionEnabled,
         selectedMicDeviceId, selectedSecondaryDeviceId,
@@ -78,6 +78,7 @@ export function useAudio(state, utils) {
         serverSessionId = null;
         serverSessionUploader = null;
         serverSessionLastError = null;
+        if (isServerStreamedRecording) isServerStreamedRecording.value = false;
     }
 
     // Pick the best MediaRecorder container for the capture. Video captures
@@ -739,6 +740,10 @@ export function useAudio(state, utils) {
                             }
                         },
                     });
+                    // Mirror the streaming state into a ref so the recording
+                    // view can hide the size-limit warning UI (#332), which
+                    // only applies to the in-RAM legacy path.
+                    if (isServerStreamedRecording) isServerStreamedRecording.value = true;
                 } catch (e) {
                     serverSessionLastError = e;
                     console.warn('[Recording] Could not open server session; falling back to local-only:', e);
@@ -813,8 +818,24 @@ export function useAudio(state, utils) {
             const appEl = document.getElementById('app');
             const maxHoursAttr = appEl?.dataset?.recordingMaxHours;
             const recordingMaxSeconds = Math.max(60, parseFloat(maxHoursAttr || '8') * 3600);
+            // Warn once at 80% of the ceiling (matching the size warning's
+            // threshold convention) so a long recording never just cuts off
+            // by surprise. `>=` plus a flag, not `===`: a recovered/resumed
+            // recording restores recordingTime past the mark in one jump and
+            // then gets the warning on its first tick.
+            let durationWarningShown = false;
             recordingInterval.value = setInterval(() => {
                 recordingTime.value++;
+                if (!durationWarningShown && recordingTime.value >= recordingMaxSeconds * 0.8) {
+                    durationWarningShown = true;
+                    const minutesLeft = Math.max(1, Math.round((recordingMaxSeconds - recordingTime.value) / 60));
+                    showToast(
+                        (utils.t && utils.t('toasts.recordingMaxDurationApproaching', { minutes: minutesLeft }))
+                            || `Recording will stop automatically in about ${minutesLeft} minutes (maximum duration reached).`,
+                        'fa-exclamation-triangle',
+                        7000
+                    );
+                }
                 if (recordingTime.value >= recordingMaxSeconds) {
                     stopRecording();
                     showToast(
@@ -1373,15 +1394,22 @@ export function useAudio(state, utils) {
             actualBitrate.value = (totalSize * 8) / recordingTime.value;
         }
 
-        // Phase C of #287 (c)(d): the 200 MB cap used to be a hard auto-stop
-        // because the entire blob was held in browser RAM and would crash
-        // the tab past a certain size. When server-side chunk streaming is
-        // active that constraint goes away — chunks flush to the server as
-        // they are produced. We still surface a soft warning at the same
-        // threshold so users know they are recording a large file, but the
-        // hard auto-stop is replaced by an absolute hours-based ceiling
-        // (`RECORDING_MAX_HOURS`, default 8) so a runaway recording from a
-        // misclick still has a backstop.
+        // Phase C of #287 (c)(d): the 200 MB cap exists because on the legacy
+        // path the entire blob is held in browser RAM and would crash the tab
+        // past a certain size. When server-side chunk streaming is active that
+        // constraint goes away — chunks flush to the server as they are
+        // produced, so NO size-based warning or stop applies (#332: warning
+        // users about a limit that does not exist was alarming them). The
+        // ceiling in streaming mode is hours-based (`RECORDING_MAX_HOURS`,
+        // default 8, warned about and enforced in the recording-time tick) so
+        // a runaway recording from a misclick still has a backstop.
+        if (serverSessionUploader) {
+            return;
+        }
+
+        // Legacy single-shot path: soft-warn at 80% of the cap, then hard
+        // auto-stop at the cap so the in-memory blob does not run the tab
+        // out of RAM.
         const sizeMB = totalSize / (1024 * 1024);
         const warningThresholdMB = maxRecordingMB.value * 0.8;
 
@@ -1395,14 +1423,6 @@ export function useAudio(state, utils) {
             );
         }
 
-        // Server-streaming path: no client-side hard size cap. The absolute
-        // ceiling is hours-based and lives in the recording-time tick below.
-        if (serverSessionUploader) {
-            return;
-        }
-
-        // Legacy single-shot path: keep the hard auto-stop at the configured
-        // size so the in-memory blob does not run the tab out of RAM.
         if (sizeMB > maxRecordingMB.value) {
             stopRecording();
             showToast(

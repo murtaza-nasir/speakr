@@ -1773,6 +1773,7 @@
     "processingCompleted": "Verarbeitung abgeschlossen!",
     "processingFailed": "Verarbeitung fehlgeschlagen",
     "recordingFinalized": "Aufnahme zur Verarbeitung hochgeladen",
+    "recordingMaxDurationApproaching": "Die Aufnahme wird in etwa {{minutes}} Minuten automatisch gestoppt (Höchstdauer).",
     "recordingMaxDurationReached": "Aufnahme hat die Höchstdauer erreicht und wurde automatisch gestoppt.",
     "recordingResumeFound": "Eine laufende Aufnahme aus diesem Browser wurde auf dem Server gefunden. Fortsetzen?",
     "recordingSizeSoftWarning": "Aufnahme ist {{size}}. Erwägen Sie, sie bei Gelegenheit zu stoppen.",

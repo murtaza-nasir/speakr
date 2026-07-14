@@ -1773,6 +1773,7 @@
     "processingCompleted": "Processing completed!",
     "processingFailed": "Processing failed",
     "recordingFinalized": "Recording uploaded for processing",
+    "recordingMaxDurationApproaching": "Recording will stop automatically in about {{minutes}} minutes (maximum duration).",
     "recordingMaxDurationReached": "Recording reached the maximum duration and was stopped automatically.",
     "recordingResumeFound": "An in-progress recording from this browser was detected on the server. Resume?",
     "recordingSizeSoftWarning": "Recording is {{size}}. Consider stopping when convenient.",

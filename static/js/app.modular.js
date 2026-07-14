@@ -528,6 +528,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const actualBitrate = ref(0);
             const maxRecordingMB = ref(200);
             const sizeCheckInterval = ref(null);
+            // True while the CURRENT recording streams its chunks to the
+            // server (#287 Phase B/C). Set by the audio composable when the
+            // upload session actually opens — not from the feature flag —
+            // because session creation can fail and fall back to local-only
+            // RAM recording, where the size limit still applies. Gates the
+            // size-limit warning UI, which is meaningless when streaming
+            // (#332: there is no size cap in that mode, only an hours cap).
+            const isServerStreamedRecording = ref(false);
 
             // Advanced Options for ASR
             const showAdvancedOptions = ref(false);
@@ -1639,7 +1647,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 systemVisualizer, animationFrameId, recordingMode, activeStreams,
                 wakeLock, recordingNotification, isPageVisible,
                 estimatedFileSize, fileSizeWarningShown, recordingQuality, actualBitrate,
-                maxRecordingMB, sizeCheckInterval,
+                maxRecordingMB, sizeCheckInterval, isServerStreamedRecording,
 
                 // PWA Features
                 deferredInstallPrompt, showInstallButton, isPWAInstalled,

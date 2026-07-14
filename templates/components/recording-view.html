@@ -65,8 +65,11 @@
                             (${Math.round(actualBitrate / 1000)}kbps)
                         </span>
                     </p>
-                    <!-- Size warning indicator -->
-                    <div v-if="estimatedFileSize > (maxRecordingMB * 1024 * 1024 * 0.8)" class="mt-0.5">
+                    <!-- Size warning indicator. Only meaningful on the legacy
+                         in-RAM path: with server-side chunk streaming there is
+                         no size limit (only an hours ceiling), so showing an
+                         "approaching limit" banner would be wrong (#332). -->
+                    <div v-if="!isServerStreamedRecording && estimatedFileSize > (maxRecordingMB * 1024 * 1024 * 0.8)" class="mt-0.5">
                         <div class="flex items-center text-xs text-amber-600 dark:text-amber-400">
                             <i class="fas fa-exclamation-triangle mr-1"></i>
                             <span v-text="t('help.approachingLimit', { limit: maxRecordingMB })"></span>
