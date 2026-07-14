@@ -428,6 +428,44 @@ app.config['SESSION_COOKIE_SECURE'] = (
 )
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # Still protect against XSS
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+
+# --- Security response headers ---
+# Set at the app level so a deployment WITHOUT a hardening reverse proxy is
+# still protected (previously the app set only X-Robots-Tag, leaving direct /
+# plain-proxy deployments with no clickjacking, MIME-sniffing, or CSP defense).
+# All are `setdefault`-applied in add_security_headers so an operator's proxy
+# can still override them.
+#
+# CSP note: the frontend loads Vue's full build (in-DOM template compiler, so
+# script execution needs 'unsafe-eval') and bootstraps from inline <script>
+# blocks in every template ('unsafe-inline'), so the script-src cannot be
+# locked down without a frontend build step that precompiles templates and
+# adds per-response nonces. The policy still meaningfully constrains object-src,
+# base-uri, form-action, frame-ancestors, and the connect/img/media/font
+# origins. Override the whole policy via CONTENT_SECURITY_POLICY, or disable
+# the block with SECURITY_HEADERS_ENABLED=false.
+SECURITY_HEADERS_ENABLED = os.environ.get('SECURITY_HEADERS_ENABLED', 'true').lower() == 'true'
+_DEFAULT_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "media-src 'self' blob: data:; "
+    "font-src 'self' data:; "
+    "connect-src 'self'; "
+    "worker-src 'self' blob:; "
+    "manifest-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "form-action 'self'; "
+    "frame-ancestors 'self'"
+)
+CONTENT_SECURITY_POLICY = os.environ.get('CONTENT_SECURITY_POLICY', _DEFAULT_CSP).strip()
+# HSTS is only meaningful (and only emitted) over HTTPS. Configurable so
+# operators terminating TLS elsewhere can tune or disable it.
+HSTS_HEADER_VALUE = os.environ.get(
+    'HSTS_HEADER', 'max-age=63072000; includeSubDomains'
+).strip()
 if app.config['SESSION_COOKIE_SECURE']:
     app.logger.info("Session cookies marked Secure (HTTPS-only)")
 else:
@@ -778,6 +816,30 @@ def add_no_crawl_headers(response):
     This provides defense-in-depth alongside robots.txt and meta tags.
     """
     response.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive, nosnippet, noimageindex'
+    return response
+
+
+@app.after_request
+def add_security_headers(response):
+    """Set baseline security headers so the app is safe even without a
+    hardening reverse proxy. Uses setdefault so a proxy that already sets a
+    header wins (no duplicates). See the SECURITY_HEADERS config block above.
+    """
+    if not SECURITY_HEADERS_ENABLED:
+        return response
+    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    # Deny sensors the app never uses; allow mic + screen capture (recording).
+    response.headers.setdefault(
+        'Permissions-Policy',
+        'geolocation=(), camera=(), microphone=(self), display-capture=(self), interest-cohort=()'
+    )
+    if CONTENT_SECURITY_POLICY:
+        response.headers.setdefault('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+    # HSTS only over HTTPS (request.is_secure reflects X-Forwarded-Proto via ProxyFix).
+    if HSTS_HEADER_VALUE and request.is_secure:
+        response.headers.setdefault('Strict-Transport-Security', HSTS_HEADER_VALUE)
     return response
 
 # --- No-Crawl System: Serve robots.txt ---
